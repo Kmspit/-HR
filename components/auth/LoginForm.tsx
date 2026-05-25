@@ -6,11 +6,8 @@ import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
-import { useLoading } from '@/components/LoadingProvider'
-
 export default function LoginForm() {
   const router = useRouter()
-  const { showLoading } = useLoading()
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [form, setForm] = useState({ email: '', password: '', remember: false })
@@ -52,7 +49,6 @@ export default function LoginForm() {
       }
 
       toast.success('เข้าสู่ระบบสำเร็จ')
-      showLoading('กำลังเข้าสู่ระบบ...')
       router.push('/dashboard')
       router.refresh()
     } catch {

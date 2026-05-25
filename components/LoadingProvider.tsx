@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import Spinner from '@/components/ui/Spinner'
 
 type LoadingState = {
@@ -17,6 +18,7 @@ const LoadingContext = createContext<LoadingContextValue | null>(null)
 
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<LoadingState>({ show: false, message: 'กำลังโหลด...' })
+  const pathname = usePathname()
 
   const showLoading = useCallback((message = 'กำลังโหลด...') => {
     setState({ show: true, message })
@@ -25,6 +27,11 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const hideLoading = useCallback(() => {
     setState({ show: false, message: 'กำลังโหลด...' })
   }, [])
+
+  // Auto-hide overlay when route changes (prevents stuck loading after login/nav)
+  useEffect(() => {
+    hideLoading()
+  }, [pathname, hideLoading])
 
   return (
     <LoadingContext.Provider value={{ showLoading, hideLoading }}>
