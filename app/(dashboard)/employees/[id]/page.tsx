@@ -3,13 +3,14 @@ import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import EmployeeEditClient from './EmployeeEditClient'
 
-export default async function EmployeeEditPage({ params }: { params: { id: string } }) {
+export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) redirect('/')
   if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) redirect('/unauthorized')
 
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true, name: true, email: true, employeeId: true, role: true, status: true,
       department: true, position: true, baseSalary: true, socialSecurity: true,
@@ -20,7 +21,7 @@ export default async function EmployeeEditPage({ params }: { params: { id: strin
 
   if (!user) notFound()
 
-  const warningCount = await prisma.warning.count({ where: { userId: params.id } })
+  const warningCount = await prisma.warning.count({ where: { userId: id } })
 
   return (
     <EmployeeEditClient

@@ -179,5 +179,11 @@ export async function createAuditLog(params: {
   ip?: string
   userAgent?: string
 }) {
-  return prisma.auditLog.create({ data: params })
+  return prisma.auditLog.create({
+    data: {
+      ...params,
+      before:    params.before    ? JSON.stringify(params.before)    : undefined,
+      after:     params.after     ? JSON.stringify(params.after)     : undefined,
+    },
+  })
 }

@@ -1,8 +1,11 @@
-import { auth } from '@/lib/auth'
+import NextAuth from 'next-auth'
+import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { ROUTE_PERMISSIONS, ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
 import type { Role } from '@prisma/client'
+
+const { auth } = NextAuth(authConfig)
 
 // Public routes — no auth needed
 const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password']
@@ -35,7 +38,7 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
 
   const { role, status } = session.user
 
-  // Pending / disabled accounts → sign them out to login with message
+  // Pending / disabled accounts
   if (status !== 'ACTIVE') {
     if (pathname === '/') return NextResponse.next()
     const url = req.nextUrl.clone()

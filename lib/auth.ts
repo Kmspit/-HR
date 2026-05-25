@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import type { Role, UserStatus } from '@prisma/client'
+import { authConfig } from './auth.config'
 
 declare module 'next-auth' {
   interface User {
@@ -25,14 +26,6 @@ declare module 'next-auth' {
   }
 }
 
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id: string
-    role: Role
-    status: UserStatus
-    department: string | null
-  }
-}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -40,6 +33,7 @@ const loginSchema = z.object({
 })
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -53,7 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         })
 
         if (!user) return null
-        if (user.status === 'PENDING') throw new Error('PENDING_APPROVAL')
+        if (user.status === 'PENDING')  throw new Error('PENDING_APPROVAL')
         if (user.status === 'DISABLED') throw new Error('ACCOUNT_DISABLED')
         if (user.status === 'REJECTED') throw new Error('ACCOUNT_REJECTED')
 
@@ -71,37 +65,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.role = user.role
-        token.status = user.status
-        token.department = user.department
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id
-        session.user.role = token.role
-        session.user.status = token.status
-        session.user.department = token.department
-      }
-      return session
-    },
-  },
-
-  pages: {
-    signIn: '/login',
-    error: '/login',
-  },
-
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-
-  secret: process.env.NEXTAUTH_SECRET,
 })
