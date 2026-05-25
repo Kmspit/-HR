@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import NavLink from './NavLink'
 import { usePathname } from 'next/navigation'
 import { cn, getInitials } from '@/lib/utils'
 import { ROLE_LABELS, ROLE_ICONS } from '@/lib/permissions'
@@ -125,36 +125,35 @@ export default function Sidebar({ user, onClose }: Props) {
               {section.items.map((item) => {
                 const active = pathname.startsWith(item.href)
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className={cn(
-                      'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-150',
-                      active
-                        ? 'nav-active dark:text-blue-300 light:text-blue-600 font-semibold'
-                        : 'dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200 light:text-slate-500 light:hover:bg-slate-50 light:hover:text-slate-800',
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={() => cn(
+                    'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-150',
+                    active
+                      ? 'nav-active dark:text-blue-300 light:text-blue-600 font-semibold'
+                      : 'dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200 light:text-slate-500 light:hover:bg-slate-50 light:hover:text-slate-800',
+                  )}
+                >
+                  <span className={cn(
+                    'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
+                    active ? 'bg-blue-500 opacity-100' : 'opacity-0',
+                  )} />
+                  <Icon
+                    d={ICONS[item.icon] ?? ICONS.dashboard}
+                    className={cn('h-4 w-4', active
+                      ? 'dark:text-blue-400 light:text-blue-600'
+                      : 'dark:text-slate-500 dark:group-hover:text-slate-300 light:text-slate-400 light:group-hover:text-slate-700'
                     )}
-                  >
-                    {/* Active indicator */}
-                    <span className={cn(
-                      'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
-                      active ? 'bg-blue-500 opacity-100' : 'opacity-0',
-                    )} />
-                    <Icon
-                      d={ICONS[item.icon] ?? ICONS.dashboard}
-                      className={cn('h-4 w-4', active
-                        ? 'dark:text-blue-400 light:text-blue-600'
-                        : 'dark:text-slate-500 dark:group-hover:text-slate-300 light:text-slate-400 light:group-hover:text-slate-700'
-                      )}
-                    />
-                    <span className="flex-1 leading-none">{item.label}</span>
-                    {item.badge && (
-                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
+                  />
+                  <span className="flex-1 leading-none">{item.label}</span>
+                  {item.badge && (
+                    <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {item.badge}
+                    </span>
+                  )}
+                </NavLink>
                 )
               })}
             </div>

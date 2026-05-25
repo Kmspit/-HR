@@ -6,6 +6,8 @@ import { LogOut, User, ChevronDown } from 'lucide-react'
 import type { Role } from '@prisma/client'
 import { getInitials } from '@/lib/utils'
 import { ROLE_LABELS, ROLE_ICONS } from '@/lib/permissions'
+import { useLoading } from '@/components/LoadingProvider'
+import Spinner from '@/components/ui/Spinner'
 
 type Props = {
   user: { name: string; email: string; role: Role }
@@ -14,7 +16,9 @@ type Props = {
 
 export default function UserMenu({ user, showName = true }: Props) {
   const [open, setOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { showLoading } = useLoading()
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -24,11 +28,19 @@ export default function UserMenu({ user, showName = true }: Props) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  async function handleSignOut() {
+    setSigningOut(true)
+    setOpen(false)
+    showLoading('กำลังออกจากระบบ...')
+    await signOut({ callbackUrl: '/' })
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-all active:scale-[0.98]
+        disabled={signingOut}
+        className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-all active:scale-[0.98] disabled:opacity-70
           dark:hover:bg-white/[0.06] light:hover:bg-slate-100"
         aria-expanded={open}
         aria-haspopup="menu"
@@ -40,7 +52,7 @@ export default function UserMenu({ user, showName = true }: Props) {
             boxShadow: open ? '0 0 0 2px rgba(99,102,241,0.45)' : 'none',
           }}
         >
-          {getInitials(user.name)}
+          {signingOut ? <Spinner size="sm" className="text-white" /> : getInitials(user.name)}
         </div>
         {showName && (
           <div className="hidden md:block min-w-0 text-left">
@@ -61,7 +73,8 @@ export default function UserMenu({ user, showName = true }: Props) {
       {open && (
         <div
           className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 rounded-2xl border py-1.5 shadow-2xl
-            dark:bg-[#0d1424] dark:border-white/10 light:bg-white light:border-slate-200"
+            dark:bg-[#0d1424] dark:border-white/10 light:bg-white light:border-slate-200
+            animate-fade-in"
           role="menu"
         >
           <div className="px-4 py-2.5 border-b dark:border-white/8 light:border-slate-100">
@@ -89,13 +102,14 @@ export default function UserMenu({ user, showName = true }: Props) {
 
             <button
               role="menuitem"
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all
+              disabled={signingOut}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-60
                 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300
                 light:text-red-500 light:hover:bg-red-50 light:hover:text-red-600"
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={handleSignOut}
             >
-              <LogOut size={14} />
-              ออกจากระบบ
+              {signingOut ? <Spinner size="sm" className="text-red-400" /> : <LogOut size={14} />}
+              {signingOut ? 'กำลังออกจากระบบ...' : 'ออกจากระบบ'}
             </button>
           </div>
         </div>

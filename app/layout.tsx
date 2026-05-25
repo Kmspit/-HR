@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from 'next'
+import { Suspense } from 'react'
 import { Noto_Sans_Thai, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/lib/auth'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { LoadingProvider } from '@/components/LoadingProvider'
+import NavigationProgress from '@/components/NavigationProgress'
 
 const notoSansThai = Noto_Sans_Thai({
   weight: ['300', '400', '500', '600', '700'],
@@ -46,7 +49,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${notoSansThai.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
         <ThemeProvider>
           <SessionProvider session={session}>
-            {children}
+            <LoadingProvider>
+              <Suspense fallback={null}>
+                <NavigationProgress />
+              </Suspense>
+              {children}
+            </LoadingProvider>
             <Toaster
               position="top-right"
               toastOptions={{

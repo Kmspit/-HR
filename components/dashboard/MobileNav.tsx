@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Role } from '@prisma/client'
 
@@ -27,59 +28,58 @@ const MOBILE_ITEMS: { href: string; icon: keyof typeof NAV_ICONS; label: string;
 
 export default function MobileNav({ role }: { role: Role }) {
   const pathname = usePathname()
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
   const items = MOBILE_ITEMS.filter((i) => !i.roles || i.roles.includes(role)).slice(0, 5)
+
+  useEffect(() => {
+    setPendingHref(null)
+  }, [pathname])
 
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Blur backdrop */}
       <div
         className="absolute inset-0 dark:[background:rgba(8,12,22,0.92)] light:[background:rgba(255,255,255,0.92)]"
         style={{ backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' }}
       />
-      {/* Top border */}
       <div className="absolute top-0 left-0 right-0 h-px dark:bg-white/[0.06] light:bg-slate-200" />
 
       <div className="relative flex items-stretch justify-around px-0.5 py-1.5">
         {items.map((item) => {
           const active = pathname.startsWith(item.href)
+          const pending = pendingHref === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => { if (!active) setPendingHref(item.href) }}
               className={cn(
                 'relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-0.5 pt-2 pb-1.5 transition-all duration-150 min-h-[50px] justify-center',
-                active
-                  ? 'dark:text-blue-400 light:text-blue-600'
-                  : 'dark:text-slate-500 dark:active:text-slate-200 light:text-slate-400 light:active:text-slate-700',
+                active ? 'dark:text-blue-400 light:text-blue-600' : 'dark:text-slate-500 light:text-slate-400',
+                pending && 'opacity-70 pointer-events-none',
               )}
             >
-              {/* Active indicator */}
               {active && (
                 <span className="absolute top-0.5 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full dark:bg-blue-400 light:bg-blue-500" />
               )}
 
-              {/* Icon */}
               <span className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150',
-                active ? 'dark:bg-blue-500/15 light:bg-blue-50' : '',
+                'flex h-7 w-7 items-center justify-center rounded-lg',
+                active && 'dark:bg-blue-500/15 light:bg-blue-50',
               )}>
-                <svg
-                  className={cn('h-4.5 w-4.5', active ? 'dark:text-blue-400 light:text-blue-600' : '')}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                  strokeWidth={active ? 2.2 : 1.75}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d={NAV_ICONS[item.icon]} />
-                </svg>
+                {pending ? (
+                  <span className="h-4 w-4 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
+                ) : (
+                  <svg className={cn('h-4.5 w-4.5', active && 'dark:text-blue-400 light:text-blue-600')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.75}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={NAV_ICONS[item.icon]} />
+                  </svg>
+                )}
               </span>
 
-              <span className={cn(
-                'text-[9px] font-semibold leading-none',
-                active ? 'dark:text-blue-400 light:text-blue-600' : 'dark:text-slate-500 light:text-slate-400',
-              )}>
-                {item.label}
+              <span className={cn('text-[9px] font-semibold leading-none', active && 'dark:text-blue-400 light:text-blue-600')}>
+                {pending ? '...' : item.label}
               </span>
             </Link>
           )
