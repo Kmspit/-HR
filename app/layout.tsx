@@ -1,0 +1,66 @@
+import type { Metadata, Viewport } from 'next'
+import { Noto_Sans_Thai, Plus_Jakarta_Sans } from 'next/font/google'
+import './globals.css'
+import { Toaster } from 'sonner'
+import { SessionProvider } from 'next-auth/react'
+import { auth } from '@/lib/auth'
+import { ThemeProvider } from '@/components/ThemeProvider'
+
+const notoSansThai = Noto_Sans_Thai({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['thai', 'latin'],
+  display: 'swap',
+  variable: '--font-thai',
+})
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  weight: ['400', '500', '600', '700', '800'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jakarta',
+})
+
+export const metadata: Metadata = {
+  title: { default: 'HR KM Serviceplus', template: '%s — HR KM Serviceplus' },
+  description: 'ระบบ HR KM Serviceplus — Enterprise HR Management Platform',
+  icons: { icon: '/favicon.ico' },
+}
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#070b14' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth()
+
+  return (
+    <html lang="th" suppressHydrationWarning>
+      <body className={`${notoSansThai.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
+        <ThemeProvider>
+          <SessionProvider session={session}>
+            {children}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                classNames: {
+                  toast: 'dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 bg-white border-slate-200 text-slate-800',
+                  success: 'border-green-500/30',
+                  error: 'border-red-500/30',
+                  warning: 'border-yellow-500/30',
+                },
+              }}
+            />
+          </SessionProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}

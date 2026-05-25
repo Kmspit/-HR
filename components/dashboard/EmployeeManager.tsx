@@ -1,0 +1,143 @@
+'use client'
+
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { Loader2, CheckCircle, XCircle, Search } from 'lucide-react'
+import { formatThaiDate } from '@/lib/utils'
+import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS } from '@/lib/permissions'
+import type { Role } from '@prisma/client'
+
+type User = {
+  id: string; name: string; email: string; employeeId: string | null
+  role: Role; status: string; department: string | null; position: string | null
+  phone: string | null; baseSalary: number | null; socialSecurity: boolean
+  startDate: string | null; lineId: string | null; isCoworker: boolean; createdAt: string
+}
+
+type Props = { users: User[]; stats: { total: number; pending: number; active: number; disabled: number }; initialTab: string }
+
+export default function EmployeeManager({ users, stats, initialTab }: Props) {
+  const [tab, setTab] = useState<'all' | 'pending' | 'disabled'>(initialTab === 'pending' ? 'pending' : 'all')
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState<string | null>(null)
+  const router = useRouter()
+
+  const filtered = users.filter((u) => {
+    const matchTab = tab === 'all' ? u.status === 'ACTIVE' || u.status === 'DISABLED' : tab === 'pending' ? u.status === 'PENDING' : u.status === 'DISABLED'
+    if (tab === 'all') {
+      const matchSearch = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.department ?? '').toLowerCase().includes(search.toLowerCase())
+      return u.status === 'ACTIVE' && matchSearch
+    }
+    return matchTab
+  })
+
+  const handleApprove = async (id: string, action: 'APPROVE' | 'REJECT') => {
+    setLoading(id)
+    try {
+      const res = await fetch(`/api/users/${id}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'เกิดข้อผิดพลาด'); return }
+      toast.success(action === 'APPROVE' ? '✅ อนุมัติบัญชีแล้ว' : '❌ ปฏิเสธบัญชีแล้ว')
+      router.refresh()
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setLoading(null) }
+  }
+
+  const statusBadge = (s: string) => {
+    const map: Record<string, string> = { ACTIVE: 'text-green-400 bg-green-500/10', PENDING: 'text-yellow-400 bg-yellow-500/10', DISABLED: 'text-slate-400 bg-slate-500/10', REJECTED: 'text-red-400 bg-red-500/10' }
+    const label: Record<string, string> = { ACTIVE: 'Active', PENDING: 'รอ Approve', DISABLED: 'ระงับ', REJECTED: 'ปฏิเสธ' }
+    return <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${map[s] ?? 'text-slate-400 bg-slate-700'}`}>{label[s] ?? s}</span>
+  }
+
+  return (
+    <div className="p-5 space-y-5">
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Active', value: stats.active, color: 'text-green-400' },
+          { label: 'รออนุมัติ', value: stats.pending, color: 'text-yellow-400' },
+          { label: 'ระงับ', value: stats.disabled, color: 'text-slate-400' },
+          { label: 'ทั้งหมด', value: stats.total, color: 'text-blue-400' },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl border border-white/5 bg-slate-900 p-4 text-center">
+            <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs + Search */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5">
+          {[
+            { id: 'all' as const, label: `ทั้งหมด (${stats.active})` },
+            { id: 'pending' as const, label: `รออนุมัติ (${stats.pending})` },
+            { id: 'disabled' as const, label: `ระงับ (${stats.disabled})` },
+          ].map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>{t.label}</button>
+          ))}
+        </div>
+        {tab === 'all' && (
+          <div className="relative flex-1 max-w-xs">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input type="text" placeholder="ค้นหาชื่อ, อีเมล, แผนก..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-900 py-2 pl-8 pr-3 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50" />
+          </div>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl border border-white/5 bg-slate-900 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/5">
+                {['พนักงาน', 'ตำแหน่ง / แผนก', 'Role', 'สถานะ', 'เริ่มงาน', 'ประกันสังคม', ...(tab === 'pending' ? ['การดำเนินการ'] : [])].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {filtered.length === 0 ? (
+                <tr><td colSpan={8} className="py-8 text-center text-slate-500">ไม่มีข้อมูล</td></tr>
+              ) : filtered.map((u) => (
+                <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-xs font-bold text-blue-400">{u.name[0]}</div>
+                      <div>
+                        <p className="font-semibold text-white">{u.name}</p>
+                        <p className="text-[10px] text-slate-500">{u.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-slate-400">{u.position ?? '-'} / {u.department ?? '-'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${ROLE_COLORS[u.role]}`}>{ROLE_ICONS[u.role]} {ROLE_LABELS[u.role]}</span>
+                  </td>
+                  <td className="px-4 py-3">{statusBadge(u.status)}</td>
+                  <td className="px-4 py-3 text-xs text-slate-400">{u.startDate ? formatThaiDate(u.startDate) : '-'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${u.socialSecurity ? 'text-green-400 bg-green-500/10' : 'text-slate-400 bg-slate-700'}`}>{u.socialSecurity ? 'อยู่' : 'ไม่อยู่'}</span>
+                  </td>
+                  {tab === 'pending' && (
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id} className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-green-500 disabled:opacity-50">
+                          {loading === u.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle size={10} />} อนุมัติ
+                        </button>
+                        <button onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id} className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[10px] font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50">
+                          <XCircle size={10} /> ปฏิเสธ
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

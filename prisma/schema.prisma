@@ -1,0 +1,422 @@
+// HRFlow - Prisma Schema
+// Database: SQLite (dev) / Turso (prod)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── ENUMS ───────────────────────────────────────
+
+enum Role {
+  MANAGER_HR
+  ADMIN
+  EMPLOYEE
+  LAWYER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  NORMAL
+  LATE
+  ABSENT
+  LEAVE
+  OT
+  HALF_DAY
+}
+
+enum LeaveType {
+  SICK
+  VACATION
+  PERSONAL
+  UNPAID
+  MATERNITY
+  ORDINATION
+}
+
+enum RequestStatus {
+  PENDING
+  ADMIN_APPROVED
+  ADMIN_REJECTED
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  LEAVE_REQUEST
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  OUTSIDE_REQUEST
+  OUTSIDE_APPROVED
+  OUTSIDE_REJECTED
+  REGISTER_REQUEST
+  ACCOUNT_APPROVED
+  ACCOUNT_REJECTED
+  WARNING_ISSUED
+  WEEKLY_PLAN_DUE
+  WEEKLY_PLAN_APPROVED
+  SYSTEM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  LOGIN
+  LOGOUT
+  PASSWORD_RESET
+}
+
+// ── USER ────────────────────────────────────────
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  employeeId       String?    @unique
+  passwordHash     String
+  name             String
+  nameEn           String?
+  nickname         String?
+  prefix           String?
+  phone            String?    @unique
+  birthDate        DateTime?
+  address          String?
+  nationalId       String?    @unique
+  profileImage     String?
+  role             Role       @default(EMPLOYEE)
+  status           UserStatus @default(PENDING)
+  department       String?
+  position         String?
+  baseSalary       Float?
+  startDate        DateTime?
+  socialSecurity   Boolean    @default(true)
+  lineId           String?
+  isCoworker       Boolean    @default(false)
+  approvedById     String?
+  approvedAt       DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  approvedBy      User?               @relation("UserApproval", fields: [approvedById], references: [id])
+  approvedUsers   User[]              @relation("UserApproval")
+  attendances     Attendance[]
+  leaveRequests   LeaveRequest[]
+  outsideRequests OutsideWorkRequest[]
+  weeklyPlans     WeeklyLawyerPlan[]
+  approvalActions ApprovalHistory[]   @relation("ApprovedBy")
+  notifications   Notification[]
+  auditLogs       AuditLog[]          @relation("AuditUser")
+  auditActions    AuditLog[]          @relation("AuditActor")
+  leaveBalances   LeaveBalance[]
+  warnings        Warning[]
+  payrolls        Payroll[]
+
+  @@map("users")
+}
+
+// ── ATTENDANCE ──────────────────────────────────
+
+model Attendance {
+  id          String           @id @default(cuid())
+  userId      String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  lunchOut    DateTime?
+  lunchIn     DateTime?
+  lat         Float?
+  lng         Float?
+  address     String?
+  photoUrl    String?
+  isOutside   Boolean          @default(false)
+  status      AttendanceStatus @default(NORMAL)
+  lateMinutes Int              @default(0)
+  note        String?
+  editedById  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@map("attendances")
+}
+
+// ── LEAVE ───────────────────────────────────────
+
+model LeaveRequest {
+  id            String        @id @default(cuid())
+  userId        String
+  type          LeaveType
+  startDate     DateTime
+  endDate       DateTime
+  days          Int
+  reason        String
+  attachmentUrl String?
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id])
+  approvals ApprovalHistory[]
+
+  @@map("leave_requests")
+}
+
+model LeaveBalance {
+  id        String   @id @default(cuid())
+  userId    String
+  year      Int
+  sick      Int      @default(30)
+  vacation  Int      @default(6)
+  personal  Int      @default(3)
+  unpaid    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, year])
+  @@map("leave_balances")
+}
+
+// ── OUTSIDE WORK ────────────────────────────────
+
+model OutsideWorkRequest {
+  id        String        @id @default(cuid())
+  userId    String
+  date      DateTime
+  startTime String
+  endTime   String
+  place     String
+  purpose   String
+  client    String?
+  note      String?
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id])
+  approvals ApprovalHistory[]
+
+  @@map("outside_work_requests")
+}
+
+// ── WEEKLY LAWYER PLAN ──────────────────────────
+
+model WeeklyLawyerPlan {
+  id        String        @id @default(cuid())
+  lawyerId  String
+  weekStart DateTime
+  weekEnd   DateTime
+  deadline  DateTime
+  status    RequestStatus @default(PENDING)
+  note      String?
+  isLate    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  lawyer    User              @relation(fields: [lawyerId], references: [id])
+  days      WeeklyPlanDay[]
+  approvals ApprovalHistory[]
+
+  @@map("weekly_lawyer_plans")
+}
+
+model WeeklyPlanDay {
+  id        String   @id @default(cuid())
+  planId    String
+  dayOfWeek Int
+  date      DateTime
+  startTime String?
+  endTime   String?
+  place     String?
+  purpose   String?
+  client    String?
+  note      String?
+
+  plan WeeklyLawyerPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("weekly_plan_days")
+}
+
+// ── APPROVAL HISTORY ────────────────────────────
+
+model ApprovalHistory {
+  id               String   @id @default(cuid())
+  approvedById     String
+  action           String
+  reason           String?
+  step             Int
+  ip               String?
+  createdAt        DateTime @default(now())
+  leaveRequestId   String?
+  outsideRequestId String?
+  weeklyPlanId     String?
+
+  approvedBy     User                @relation("ApprovedBy", fields: [approvedById], references: [id])
+  leaveRequest   LeaveRequest?       @relation(fields: [leaveRequestId], references: [id])
+  outsideRequest OutsideWorkRequest? @relation(fields: [outsideRequestId], references: [id])
+  weeklyPlan     WeeklyLawyerPlan?   @relation(fields: [weeklyPlanId], references: [id])
+
+  @@map("approval_histories")
+}
+
+// ── NOTIFICATIONS ───────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ── AUDIT LOGS ──────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String
+  targetId   String?
+  targetType String?
+  action     AuditAction
+  before     String?
+  after      String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  actor  User  @relation("AuditActor", fields: [actorId], references: [id])
+  target User? @relation("AuditUser", fields: [targetId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ── WARNINGS ────────────────────────────────────
+
+model Warning {
+  id          String   @id @default(cuid())
+  userId      String
+  issuedById  String
+  level       Int      @default(1)
+  reason      String
+  description String?
+  fileUrl     String?
+  sentToLine  Boolean  @default(false)
+  isAuto      Boolean  @default(false)
+  month       Int?
+  year        Int?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("warnings")
+}
+
+// ── WARNING RULES ───────────────────────────────
+
+model WarningRule {
+  id              String   @id @default(cuid())
+  level           Int
+  name            String
+  lateThreshold   Int?
+  absentThreshold Int?
+  periodDays      Int      @default(30)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@map("warning_rules")
+}
+
+// ── PAYROLL ─────────────────────────────────────
+
+model Payroll {
+  id              String    @id @default(cuid())
+  userId          String
+  month           Int
+  year            Int
+  baseSalary      Float
+  lateDeduction   Float     @default(0)
+  absentDeduction Float     @default(0)
+  unpaidLeave     Float     @default(0)
+  socialSecurity  Float     @default(0)
+  otherDeduction  Float     @default(0)
+  otherAddition   Float     @default(0)
+  netSalary       Float
+  lateDays        Int       @default(0)
+  absentDays      Int       @default(0)
+  lateMinutes     Int       @default(0)
+  status          String    @default("DRAFT")
+  slipSentAt      DateTime?
+  note            String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, month, year])
+  @@map("payrolls")
+}
+
+// ── COMPANY RULES ───────────────────────────────
+
+model CompanyRule {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?
+  fileUrl     String?
+  category    String   @default("general")
+  version     String?
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdById String
+  updatedAt   DateTime @updatedAt
+
+  @@map("company_rules")
+}
+
+// ── COMPANY SETTINGS ────────────────────────────
+
+model CompanySettings {
+  id               String   @id @default("singleton")
+  companyName      String   @default("บริษัท ตัวอย่าง จำกัด")
+  companyNameEn    String?
+  logoUrl          String?
+  workStartTime    String   @default("08:30")
+  workEndTime      String   @default("17:30")
+  lateGraceMin     Int      @default(15)
+  sickDaysYear     Int      @default(30)
+  vacationDaysYear Int      @default(6)
+  personalDaysYear Int      @default(3)
+  lineChannelId    String?
+  lineChannelSecret String?
+  lineAccessToken  String?
+  lineNotifyToken  String?
+  geofenceLat      Float?
+  geofenceLng      Float?
+  geofenceRadius   Float    @default(200)
+  lateDeductRate   Float    @default(0)
+  absentDeductRate Float    @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@map("company_settings")
+}
