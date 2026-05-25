@@ -18,7 +18,7 @@ export default async function NotificationsPage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="แจ้งเตือน" subtitle={`${notifications.filter(n => !n.isRead).length} รายการที่ยังไม่ได้อ่าน`} user={user} />
+      <Topbar title="แจ้งเตือน" subtitle={`${notifications.filter(n => !n.isRead).length} รายการที่ยังไม่ได้อ่าน`} />
       <NotificationList notifications={JSON.parse(JSON.stringify(notifications))} />
     </div>
   )

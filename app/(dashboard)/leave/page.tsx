@@ -25,7 +25,7 @@ export default async function LeavePage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="ขอลาหยุด" subtitle="ยื่นคำขอและดูประวัติการลา" user={user} />
+      <Topbar title="ขอลาหยุด" subtitle="ยื่นคำขอและดูประวัติการลา" />
       <LeavePanel
         leaves={JSON.parse(JSON.stringify(myLeaves))}
         balance={JSON.parse(JSON.stringify(leaveBalance))}

@@ -35,7 +35,6 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       <Topbar
         title="จัดการพนักงาน"
         subtitle={`พนักงานทั้งหมด ${stats.active} คน · รออนุมัติ ${stats.pending} คน`}
-        user={user}
       />
       <EmployeeManager users={JSON.parse(JSON.stringify(users))} stats={stats} initialTab={tab ?? 'all'} />
     </div>

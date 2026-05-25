@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/dashboard/Sidebar'
 import MobileNav from '@/components/dashboard/MobileNav'
+import DashboardHeader from '@/components/dashboard/DashboardHeader'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -25,6 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       {/* Main content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <DashboardHeader user={user} />
         <main
           className="flex-1 overflow-y-auto overflow-x-hidden"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 68px)' }}

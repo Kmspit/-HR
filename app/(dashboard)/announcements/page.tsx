@@ -27,7 +27,7 @@ export default async function AnnouncementsPage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="ประกาศ & ข่าวสาร" subtitle="ข้อมูลสำคัญจากบริษัท" user={user} />
+      <Topbar title="ประกาศ & ข่าวสาร" subtitle="ข้อมูลสำคัญจากบริษัท" />
       <AnnouncementsClient notifications={notifications} role={role} userId={session.user.id} />
     </div>
   )

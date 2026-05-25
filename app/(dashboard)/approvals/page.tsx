@@ -43,7 +43,7 @@ export default async function ApprovalsPage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="อนุมัติคำขอ" subtitle={role === 'ADMIN' ? 'Step 1 — ตรวจสอบเบื้องต้น' : 'Step 2 — Final Approval'} user={user} />
+      <Topbar title="อนุมัติคำขอ" subtitle={role === 'ADMIN' ? 'Step 1 — ตรวจสอบเบื้องต้น' : 'Step 2 — Final Approval'} />
       <ApprovalPanel
         leaveRequests={JSON.parse(JSON.stringify(leaveRequests))}
         outsideRequests={JSON.parse(JSON.stringify(outsideRequests))}

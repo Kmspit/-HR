@@ -39,7 +39,6 @@ export default async function WeeklyPlanPage() {
       <Topbar
         title="แผนงานออกนอกสถานที่"
         subtitle={`ส่งก่อนวันอาทิตย์ · กำหนด: ${deadline.toLocaleDateString('th-TH')}`}
-        user={user}
       />
       <WeeklyPlanPanel
         plans={JSON.parse(JSON.stringify(plans))}

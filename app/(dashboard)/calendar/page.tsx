@@ -45,7 +45,7 @@ export default async function CalendarPage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="ปฏิทิน" subtitle="บันทึกการเข้างานรายวัน" user={user} />
+      <Topbar title="ปฏิทิน" subtitle="บันทึกการเข้างานรายวัน" />
       <CalendarClient
         attendance={attendanceRecords.map(r => ({
           ...r,

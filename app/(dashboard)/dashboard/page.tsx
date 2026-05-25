@@ -140,7 +140,6 @@ export default async function DashboardPage() {
       <Topbar
         title={`สวัสดี, ${name.split(' ')[0]} 👋`}
         subtitle={`${ROLE_LABELS[role]} · ${formatThaiDate(new Date())}`}
-        user={{ name: name ?? '', email: session.user.email ?? '', role, department: session.user.department }}
         actions={
           pendingUsers > 0 ? (
             <Link
