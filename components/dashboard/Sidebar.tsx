@@ -39,41 +39,41 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'หลัก',
     items: [
-      { href: '/dashboard', icon: 'dashboard', label: 'แดชบอร์ด' },
+      { href: '/dashboard', icon: 'dashboard', label: 'แดชบอร์ด', roles: ['MANAGER_HR', 'ADMIN'] },
     ],
   },
   {
     title: 'การทำงาน',
     items: [
-      { href: '/attendance',   icon: 'attendance', label: 'ลงเวลางาน' },
-      { href: '/calendar',     icon: 'calendar',   label: 'ปฏิทิน' },
-      { href: '/leave',        icon: 'leave',       label: 'ขอลาหยุด' },
-      { href: '/outside-work', icon: 'outside',     label: 'ออกนอกสถานที่' },
-      { href: '/weekly-plan',  icon: 'plan',        label: 'แผนงานสัปดาห์', roles: ['MANAGER_HR', 'LAWYER'] },
+      { href: '/attendance',   icon: 'attendance', label: 'ลงเวลางาน',       roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/calendar',     icon: 'calendar',   label: 'ปฏิทิน',           roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/leave',        icon: 'leave',       label: 'ขอลาหยุด',        roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/outside-work', icon: 'outside',     label: 'ออกนอกสถานที่',   roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/weekly-plan',  icon: 'plan',        label: 'แผนงานสัปดาห์',   roles: ['MANAGER_HR', 'LAWYER'] },
     ],
   },
   {
     title: 'HR จัดการ',
     items: [
-      { href: '/employees', icon: 'employees', label: 'พนักงาน',      roles: ['MANAGER_HR'] },
-      { href: '/payroll',   icon: 'payroll',   label: 'เงินเดือน',    roles: ['MANAGER_HR'] },
-      { href: '/payslip',   icon: 'payslip',   label: 'สลิปเงินเดือน' },
-      { href: '/approvals', icon: 'approvals', label: 'อนุมัติ',       roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/warnings',  icon: 'warnings',  label: 'ใบเตือน' },
-      { href: '/rules',     icon: 'rules',     label: 'กฎระเบียบ' },
+      { href: '/employees', icon: 'employees', label: 'พนักงาน',       roles: ['MANAGER_HR'] },
+      { href: '/payroll',   icon: 'payroll',   label: 'เงินเดือน',     roles: ['MANAGER_HR'] },
+      { href: '/payslip',   icon: 'payslip',   label: 'สลิปเงินเดือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/approvals', icon: 'approvals', label: 'อนุมัติ',        roles: ['MANAGER_HR', 'ADMIN'] },
+      { href: '/warnings',  icon: 'warnings',  label: 'ใบเตือน',        roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/rules',     icon: 'rules',     label: 'กฎระเบียบ',      roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
     ],
   },
   {
     title: 'สื่อสาร',
     items: [
-      { href: '/announcements', icon: 'announce', label: 'ประกาศ' },
-      { href: '/notifications', icon: 'notif',    label: 'แจ้งเตือน' },
+      { href: '/announcements', icon: 'announce', label: 'ประกาศ',    roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/notifications', icon: 'notif',    label: 'แจ้งเตือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
     ],
   },
   {
     title: 'ระบบ',
     items: [
-      { href: '/settings', icon: 'settings', label: 'ตั้งค่า', roles: ['MANAGER_HR'] },
+      { href: '/settings', icon: 'settings', label: 'ตั้งค่า', roles: ['MANAGER_HR', 'ADMIN'] },
     ],
   },
 ]
