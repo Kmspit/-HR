@@ -1,0 +1,516 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HRFlow" />
+<title>ลงเวลางาน — HRFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<!-- Leaflet.js — OpenStreetMap (ฟรี ไม่ต้อง API key) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+#live-map { width:100%; height:220px; border-radius:12px; z-index:0; background:var(--bg2); }
+#all-map  { width:100%; height:400px; border-radius:12px; z-index:0; }
+.leaflet-popup-content-wrapper { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+.leaflet-popup-tip { background: var(--card); }
+.map-status-bar { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--bg2); border-radius:10px; margin:10px 0; font-size:12px; }
+.gps-blink { width:10px; height:10px; border-radius:50%; background:var(--green); animation:gpsBlink 1.5s ease-in-out infinite; flex-shrink:0; }
+@keyframes gpsBlink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⚡</div>
+    <div>
+      <div class="logo-text">HRFlow</div>
+      <div class="logo-badge">ENTERPRISE</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section">
+      <div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item active"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info">
+        <div class="user-name">สมหญิง ประสาน</div>
+        <div class="user-role">Manager / HR</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ลงเวลางาน <span class="topbar-subtitle">/ ยืนยันตัวตน & ประวัติ</span></div>
+  </header>
+
+  <main class="content">
+    <div class="main-grid" style="grid-template-columns: 1.2fr 1fr;">
+      <!-- Left: Camera View -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">👤 ถ่ายใบหน้า — หน้าตรง</span>
+          <span class="tag blue" style="font-size:11px">กล้องกำลังทำงาน</span>
+        </div>
+        <div class="view-container" style="background: #000; border: none; border-radius: 16px;">
+          <video id="checkin-video" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);" autoplay playsinline></video>
+          <div class="scan-overlay"><div class="scan-frame"></div></div>
+          <div class="face-scan"></div>
+          <div class="face-status" id="liveness-instruction">กรุณามองตรงไปที่กล้อง...</div>
+        </div>
+        <div class="checkin-steps-wrapper">
+          <div class="step-dots">
+            <div class="step-dot active" id="dot-0"></div>
+          </div>
+          <div class="step-current" id="step-current">
+            <div class="step-current-icon" id="step-current-icon">😐</div>
+            <div class="step-current-label" id="step-current-label">หน้าตรง</div>
+            <div class="step-current-num" id="step-current-num">มองตรงไปที่กล้อง — รอ 2 วินาที</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Status & GPS (Live Map) -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📍 ตำแหน่ง Real-time</span>
+          <span id="gps-tag" class="tag" style="font-size:11px;">กำลังระบุตำแหน่ง...</span>
+        </div>
+
+        <!-- Live Leaflet Map -->
+        <div id="live-map"></div>
+
+        <!-- Status bar -->
+        <div class="map-status-bar">
+          <div class="gps-blink" id="gps-blink"></div>
+          <div id="gps-address" style="flex:1;color:var(--text2);">กำลังโหลดที่อยู่...</div>
+          <div id="gps-coords" style="color:var(--text3);font-size:11px;white-space:nowrap;"></div>
+        </div>
+        <div class="gps-detail" style="margin-bottom:16px">
+          <div id="gps-status-chip" class="gps-chip" style="color:var(--text3)">⏳ กำลังระบุตำแหน่ง...</div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:15px">
+          <label>ประเภทการเช็คอิน</label>
+          <select id="checkin-type" class="form-input">
+            <option value="IN_OFFICE">เข้างาน (ในสำนักงาน)</option>
+            <option value="IN_OFFICE">ออกงาน (เย็น)</option>
+            <option value="OUT_OF_OFFICE">ออกนอกสถานที่</option>
+          </select>
+        </div>
+        <button id="btn-submit" class="btn-primary" style="width:100%; height:48px; font-size:16px; opacity: 0.5; pointer-events: none;" onclick="submitAttendance()">บันทึกเวลาทำงาน</button>
+      </div>
+    </div>
+
+    <!-- HR: Live All-Employee Map (visible to Manager/HR only) -->
+    <div class="card role-hr-admin-only" id="all-emp-map-card" style="margin-top:20px;">
+      <div class="card-header">
+        <span class="card-title">🗺️ แผนที่ตำแหน่งพนักงาน (Real-time)</span>
+        <button class="btn-outline" style="height:30px;font-size:12px;" onclick="refreshAllMap()">🔄 อัปเดต</button>
+      </div>
+      <div id="all-map"></div>
+      <div id="emp-location-list" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
+    </div>
+
+    <!-- History Section (ตารางประวัติแบบ Real-time) -->
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-header">
+        <span class="card-title">📜 ประวัติการลงเวลางานล่าสุดของฉัน</span>
+        <a href="attendance-history.html" class="card-action">ดูทั้งหมด →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>วันที่</th><th>รูปถ่าย</th><th>เวลาเข้า/ออก</th><th>พิกัด & สถานที่</th><th>สถานะ</th></tr></thead>
+          <tbody id="attendance-body">
+            <tr>
+              <td>25 พ.ค. 69</td>
+              <td><div class="emp-av" style="border-radius: 6px; background: url('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop') center/cover;"></div></td>
+              <td>08:02 / 17:05</td>
+              <td>
+                <div style="font-size: 11px; color: var(--text3);">13.7563, 100.5018</div>
+                <span class="tag blue">สำนักงานใหญ่</span>
+              </td>
+              <td><span class="tag green">ปกติ</span></td>
+            </tr>
+            <tr>
+              <td>24 พ.ค. 69</td>
+              <td><div class="emp-av" style="border-radius: 6px; background: url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop') center/cover;"></div></td>
+              <td>08:48 / 18:30</td>
+              <td>
+                <div style="font-size: 11px; color: var(--text3);">13.7563, 100.5018</div>
+                <span class="tag blue">สำนักงานใหญ่</span>
+              </td>
+              <td><span class="tag yellow">มาสาย</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item active"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+// ── LEAFLET MAP + REAL-TIME GPS ──
+let userCoords   = { lat: 13.7563, lng: 100.5018 };
+let liveMap      = null;
+let userMarker   = null;
+let allMap       = null;
+let allMarkersMap = {};
+let watchId      = null;
+
+function getOfficeCoords() {
+  const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
+  return { lat: s.lat ?? 13.7563, lng: s.lng ?? 100.5018, radius: s.radius ?? 200 };
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+  const dp = (lat2-lat1)*Math.PI/180, dl = (lon2-lon1)*Math.PI/180;
+  const a  = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── Reverse geocode ด้วย Nominatim (OpenStreetMap, ฟรี) ──
+async function reverseGeocode(lat, lng) {
+  try {
+    const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=th`);
+    const data = await res.json();
+    const a    = data.address || {};
+    return [a.road, a.suburb, a.city_district, a.city || a.town || a.village].filter(Boolean).join(', ') || data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } catch { return `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
+}
+
+// ── สร้างแผนที่ Leaflet (individual) ──
+function initLiveMap(lat, lng) {
+  if (liveMap) { liveMap.remove(); liveMap = null; }
+
+  liveMap = L.map('live-map', { zoomControl: true, attributionControl: false }).setView([lat, lng], 16);
+
+  // OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(liveMap);
+
+  // Office marker (red)
+  const office = getOfficeCoords();
+  const officeIcon = L.divIcon({
+    html: `<div style="background:#ef4444;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+    className: '', iconAnchor: [9,9]
+  });
+  L.marker([office.lat, office.lng], { icon: officeIcon })
+   .addTo(liveMap)
+   .bindPopup(`<b>🏢 สำนักงาน</b><br>${office.lat.toFixed(5)}, ${office.lng.toFixed(5)}`);
+
+  // Geofence circle
+  L.circle([office.lat, office.lng], {
+    radius: office.radius,
+    color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 2, dashArray: '6,4'
+  }).addTo(liveMap);
+
+  // User marker (blue pulsing)
+  const user = getCurrentUser ? getCurrentUser() : null;
+  const userIcon = L.divIcon({
+    html: `<div style="position:relative;">
+      <div style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 2px 10px rgba(59,130,246,0.6);position:relative;z-index:2;"></div>
+      <div style="position:absolute;top:-4px;left:-4px;width:28px;height:28px;border-radius:50%;background:rgba(59,130,246,0.3);animation:gpsBlink 1.5s infinite;"></div>
+    </div>`,
+    className: '', iconAnchor: [10,10]
+  });
+
+  userMarker = L.marker([lat, lng], { icon: userIcon })
+    .addTo(liveMap)
+    .bindPopup(`<b>📍 ${user?.name || 'คุณ'}</b><br>กำลังโหลดที่อยู่...`);
+
+  return liveMap;
+}
+
+// ── อัปเดต marker เมื่อ GPS เปลี่ยน ──
+async function onGPSUpdate(position) {
+  const lat = position.coords.latitude;
+  const lng = position.coords.longitude;
+  const acc = Math.round(position.coords.accuracy);
+  userCoords = { lat, lng };
+
+  const office   = getOfficeCoords();
+  const dist     = calculateDistance(lat, lng, office.lat, office.lng);
+  const inRange  = dist <= office.radius;
+
+  // Update map marker
+  if (!liveMap) {
+    initLiveMap(lat, lng);
+  } else if (userMarker) {
+    userMarker.setLatLng([lat, lng]);
+    liveMap.panTo([lat, lng], { animate: true, duration: 1 });
+  }
+
+  // Status chip
+  const statusColor = inRange ? 'var(--green)' : 'var(--red)';
+  const statusLabel = inRange ? '✓ อยู่ในรัศมีสำนักงาน' : '⚠ อยู่นอกรัศมีสำนักงาน';
+  document.getElementById('gps-status-chip').style.color = statusColor;
+  document.getElementById('gps-status-chip').textContent = `${statusLabel} — ห่าง ${dist.toFixed(0)} ม. | ความแม่นยำ ±${acc} ม.`;
+
+  // Tag
+  const tag = document.getElementById('gps-tag');
+  tag.textContent  = inRange ? '✓ ในสำนักงาน' : '⚠ นอกสำนักงาน';
+  tag.className    = `tag ${inRange ? 'green' : 'red'}`;
+  tag.style.fontSize = '11px';
+
+  // Coords
+  document.getElementById('gps-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+  // Reverse geocode (async)
+  const addr = await reverseGeocode(lat, lng);
+  document.getElementById('gps-address').textContent = addr;
+  if (userMarker) {
+    const user = getCurrentUser ? getCurrentUser() : null;
+    userMarker.bindPopup(`<b>📍 ${user?.name || 'คุณ'}</b><br>${addr}<br><small>${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`);
+  }
+
+  // บันทึกตำแหน่งล่าสุดลง localStorage (เพื่อให้ HR เห็น)
+  if (typeof getCurrentUser === 'function' && getCurrentUser()) {
+    const user = getCurrentUser();
+    const locs = JSON.parse(localStorage.getItem('hrflow_liveLocations') || '{}');
+    locs[user.email] = { lat, lng, name: user.name, role: user.role, dept: user.dept, addr, updatedAt: new Date().toISOString(), inRange };
+    localStorage.setItem('hrflow_liveLocations', JSON.stringify(locs));
+    refreshAllMap();
+  }
+}
+
+function onGPSError(err) {
+  document.getElementById('gps-status-chip').textContent = '❌ ไม่สามารถเข้าถึง GPS: ' + err.message;
+  document.getElementById('gps-status-chip').style.color = 'var(--red)';
+  document.getElementById('gps-blink').style.background = 'var(--red)';
+  document.getElementById('gps-tag').textContent = 'GPS Error';
+  // Fallback: show map at default office location
+  if (!liveMap) initLiveMap(userCoords.lat, userCoords.lng);
+}
+
+function startRealTimeGPS() {
+  if (!navigator.geolocation) { onGPSError({ message: 'Browser ไม่รองรับ Geolocation' }); return; }
+  // ใช้ watchPosition เพื่อ real-time อัปเดตทุกครั้งที่ตำแหน่งเปลี่ยน
+  watchId = navigator.geolocation.watchPosition(onGPSUpdate, onGPSError, {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 15000
+  });
+}
+
+// ── แผนที่ HR รวมพนักงานทุกคน ──
+function initAllMap() {
+  const office = getOfficeCoords();
+  if (allMap) return;
+  allMap = L.map('all-map', { zoomControl: true, attributionControl: false }).setView([office.lat, office.lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(allMap);
+
+  // Office
+  const officeIcon = L.divIcon({
+    html: `<div style="background:#ef4444;width:22px;height:22px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;">🏢</div>`,
+    className: '', iconAnchor: [11,11]
+  });
+  L.marker([office.lat, office.lng], { icon: officeIcon }).addTo(allMap).bindPopup('<b>🏢 สำนักงาน</b>');
+  L.circle([office.lat, office.lng], { radius: office.radius, color:'#3b82f6', fillColor:'#3b82f6', fillOpacity:0.08, weight:2, dashArray:'6,4' }).addTo(allMap);
+}
+
+function refreshAllMap() {
+  const card = document.getElementById('all-emp-map-card');
+  if (!card || card.style.display === 'none') return;
+
+  const locs = JSON.parse(localStorage.getItem('hrflow_liveLocations') || '{}');
+  if (!allMap) initAllMap();
+
+  const listEl = document.getElementById('emp-location-list');
+  listEl.innerHTML = '';
+
+  Object.values(locs).forEach(loc => {
+    const color = loc.inRange ? '#22c55e' : '#ef4444';
+    const icon  = L.divIcon({
+      html: `<div style="background:${color};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
+      className: '', iconAnchor: [8,8]
+    });
+
+    const since = loc.updatedAt ? new Date(loc.updatedAt).toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'}) : '—';
+
+    if (allMarkersMap[loc.name]) {
+      allMarkersMap[loc.name].setLatLng([loc.lat, loc.lng]);
+    } else {
+      allMarkersMap[loc.name] = L.marker([loc.lat, loc.lng], { icon })
+        .addTo(allMap)
+        .bindPopup(`<b>👤 ${loc.name}</b><br>${loc.dept||''}<br>${loc.addr||''}<br><small>อัปเดต: ${since}</small>`);
+    }
+
+    // Sidebar location card
+    listEl.innerHTML += `
+      <div style="border:1px solid var(--border);border-radius:var(--r);padding:10px;display:flex;align-items:center;gap:10px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${loc.name}</div>
+          <div style="font-size:11px;color:var(--text3);">${loc.inRange ? '✓ ในสำนักงาน' : '⚠ นอกสำนักงาน'}</div>
+          <div style="font-size:10px;color:var(--text3);">อัปเดต ${since}</div>
+        </div>
+      </div>`;
+  });
+
+  if (!Object.keys(locs).length) {
+    listEl.innerHTML = `<div style="color:var(--text3);font-size:13px;">ยังไม่มีพนักงานออนไลน์</div>`;
+  }
+}
+
+// ── ถ่ายหน้าตรง (ไม่มีหันซ้าย-ขวา) ──
+const FACE_CAPTURE_MS = 2000;
+
+function startFaceCapture() {
+  document.getElementById('liveness-instruction').textContent = 'กรุณามองตรงไปที่กล้อง...';
+  document.getElementById('step-current-num').textContent = 'มองตรง — รอ 2 วินาที';
+
+  setTimeout(() => {
+    document.getElementById('liveness-instruction').innerHTML =
+      "<span style='color:var(--green)'>✓ ถ่ายใบหน้าสำเร็จ</span>";
+
+    document.querySelectorAll('.step-dot').forEach((dot) => {
+      dot.classList.remove('active');
+      dot.classList.add('done');
+    });
+
+    const stepCurrent = document.getElementById('step-current');
+    stepCurrent.classList.add('fade-out');
+    setTimeout(() => {
+      stepCurrent.innerHTML = '<div class="step-current-done">✓ สแกนสำเร็จ</div>';
+      stepCurrent.classList.remove('fade-out');
+      stepCurrent.classList.add('fade-in');
+      setTimeout(() => stepCurrent.classList.remove('fade-in'), 350);
+    }, 250);
+
+    const submitBtn = document.getElementById('btn-submit');
+    submitBtn.style.opacity = '1';
+    submitBtn.style.pointerEvents = 'auto';
+  }, FACE_CAPTURE_MS);
+}
+
+function submitAttendance() {
+  // 📸 ดึงรูปจาก Video Stream
+  const video = document.getElementById('checkin-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = 120; // ขนาดเล็กสำหรับ Thumbnail
+  canvas.height = 90;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const photoUrl = canvas.toDataURL('image/jpeg');
+
+  const now = new Date();
+  const day = now.getDate();
+  const year = (now.getFullYear() + 543).toString().slice(-2); // ปี พ.ศ. แบบย่อ
+  const formattedDate = `${day} พ.ค. ${year}`;
+  const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  
+  const tbody = document.getElementById('attendance-body');
+  const newRow = document.createElement('tr');
+  newRow.style.animation = "fadeUp 0.5s ease both";
+  
+  newRow.innerHTML = `
+    <td>${formattedDate}</td>
+    <td><div class="emp-av" style="border-radius: 6px; background: url('${photoUrl}') center/cover;"></div></td>
+    <td>${timeStr} / -</td>
+    <td>
+      <div style="font-size: 11px; color: var(--text3);">${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}</div>
+      <span class="tag blue">สำนักงานใหญ่</span>
+    </td>
+    <td><span class="tag green">ปกติ</span></td>
+  `;
+  
+  // เพิ่มแถวใหม่ลงในตาราง (ด้านบนสุด)
+  tbody.insertBefore(newRow, tbody.firstChild);
+
+  alert('🚀 บันทึกเวลาสำเร็จ!\nข้อมูลถูกเพิ่มลงในตารางประวัติเรียบร้อยแล้ว');
+  
+  // ปรับสถานะปุ่มหลังจากบันทึกแล้ว เพื่อป้องกันการกดซ้ำ
+  const submitBtn = document.getElementById('btn-submit');
+  submitBtn.style.opacity = "0.5";
+  submitBtn.style.pointerEvents = "none";
+  submitBtn.textContent = "บันทึกเรียบร้อยแล้ว";
+}
+
+// ── CAMERA INITIATION ──
+async function initCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    document.getElementById('checkin-video').srcObject = stream;
+    
+    setTimeout(startFaceCapture, 1000);
+    
+  } catch (err) {
+    console.error("Error accessing camera:", err);
+    document.getElementById('liveness-instruction').textContent = "ไม่สามารถเข้าถึงกล้องได้: " + err.message;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof initRole === 'function') initRole();
+
+  // เริ่มกล้อง
+  initCamera();
+
+  // เริ่ม Real-time GPS (watchPosition)
+  startRealTimeGPS();
+
+  // ถ้าเป็น HR/Manager ให้โหลดแผนที่รวม
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  if (user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN')) {
+    setTimeout(refreshAllMap, 1500); // รอให้ DOM render ก่อน
+  }
+});
+</script>
+</body>
+</html>
