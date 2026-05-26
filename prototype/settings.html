@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HRFlow" />
+<title>ตั้งค่า — HRFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+.settings-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--r2); padding: 24px; margin-bottom: 20px; }
+.settings-section h3 { font-size: 15px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">HRFlow</div><div class="logo-badge">ENTERPRISE</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item active"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ตั้งค่าระบบ <span class="topbar-subtitle">/ Company Settings</span></div>
+    <div class="topbar-actions">
+      <button class="btn-primary" onclick="saveSettings()">💾 บันทึกทั้งหมด</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- 1. Company info -->
+    <div class="settings-section">
+      <h3>🏢 ข้อมูลบริษัท</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>ชื่อบริษัท</label><input id="s-company" class="form-input" placeholder="ชื่อบริษัท..."></div>
+        <div class="form-group"><label>ที่อยู่</label><input id="s-address" class="form-input" placeholder="ที่อยู่..."></div>
+        <div class="form-group"><label>เบอร์โทรศัพท์</label><input id="s-phone" class="form-input" placeholder="02-xxx-xxxx"></div>
+        <div class="form-group"><label>อีเมลบริษัท</label><input id="s-email" type="email" class="form-input" placeholder="hr@company.com"></div>
+      </div>
+    </div>
+
+    <!-- 2. Geofence -->
+    <div class="settings-section">
+      <h3>📍 Geofence (พิกัดสำนักงาน)</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>Latitude</label><input id="s-lat" type="number" step="0.0001" class="form-input" placeholder="13.7563"></div>
+        <div class="form-group"><label>Longitude</label><input id="s-lng" type="number" step="0.0001" class="form-input" placeholder="100.5018"></div>
+        <div class="form-group"><label>รัศมี (เมตร)</label><input id="s-radius" type="number" class="form-input" placeholder="200"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3);">การเช็คอินจะถือว่า "ในสำนักงาน" เมื่ออยู่ในรัศมีที่กำหนด</div>
+    </div>
+
+    <!-- 3. Work hours -->
+    <div class="settings-section">
+      <h3>⏰ เวลาทำงาน</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>เวลาเข้างาน</label><input id="s-work-start" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาออกงาน</label><input id="s-work-end" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาพักเที่ยง (เริ่ม)</label><input id="s-break-start" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาพักเที่ยง (สิ้นสุด)</label><input id="s-break-end" type="time" class="form-input"></div>
+        <div class="form-group"><label>ผ่อนผันมาสาย (นาที)</label><input id="s-late-grace" type="number" class="form-input" placeholder="15"></div>
+      </div>
+    </div>
+
+    <!-- 4. Leave policy -->
+    <div class="settings-section">
+      <h3>📅 นโยบายวันลา (ต่อปี/คน)</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>ลาป่วย (วัน)</label><input id="s-sick" type="number" class="form-input"></div>
+        <div class="form-group"><label>ลาพักร้อน (วัน)</label><input id="s-vac" type="number" class="form-input"></div>
+        <div class="form-group"><label>ลากิจ (วัน)</label><input id="s-personal" type="number" class="form-input"></div>
+        <div class="form-group"><label>ลาคลอด (วัน)</label><input id="s-mat" type="number" class="form-input" value="98"></div>
+        <div class="form-group"><label>ลาพักร้อนสะสมสูงสุด (วัน)</label><input id="s-max-carry" type="number" class="form-input" value="5"></div>
+      </div>
+    </div>
+
+    <!-- 5. Payroll -->
+    <div class="settings-section">
+      <h3>💰 ตั้งค่าเงินเดือน</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>วันจ่ายเงินเดือน (วันที่ของเดือน)</label><input id="s-pay-day" type="number" min="1" max="31" class="form-input"></div>
+        <div class="form-group"><label>อัตราหักมาสาย (฿/ครั้ง)</label><input id="s-rate-late" type="number" class="form-input"></div>
+        <div class="form-group"><label>อัตราหักขาดงาน (฿/วัน)</label><input id="s-rate-absent" type="number" class="form-input"></div>
+        <div class="form-group"><label>ค่าล่วงเวลา (฿/ชั่วโมง)</label><input id="s-ot-rate" type="number" class="form-input"></div>
+      </div>
+    </div>
+
+    <!-- 6. LINE OA -->
+    <div class="settings-section">
+      <h3>💬 LINE OA Integration</h3>
+      <div class="settings-grid">
+        <div class="form-group" style="grid-column:1/-1"><label>Channel Access Token</label>
+          <div style="display:flex;gap:8px;">
+            <input id="s-line-token" type="password" class="form-input" placeholder="เพิ่ม LINE Channel Access Token...">
+            <button class="btn-outline" style="height:40px;white-space:nowrap;" onclick="testLine()">ทดสอบ</button>
+          </div>
+        </div>
+        <div class="form-group" style="grid-column:1/-1"><label>Webhook URL (สำหรับตั้งค่าใน LINE Developers)</label>
+          <input class="form-input" readonly value="https://your-backend.com/api/line/webhook" style="opacity:0.6;">
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div style="font-weight:600;color:var(--text2);">การแจ้งเตือนอัตโนมัติที่เปิดใช้:</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-leave" style="accent-color:var(--accent);" checked> แจ้งเมื่อมีคำขอลาใหม่</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-ooo" style="accent-color:var(--accent);" checked> แจ้งเมื่อมีแผนออกนอกสถานที่ใหม่</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-warn" style="accent-color:var(--accent);" checked> ส่งใบเตือนเข้า LINE อัตโนมัติ</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-payslip" style="accent-color:var(--accent);" checked> ส่งสลิปเงินเดือนเข้า LINE</label>
+      </div>
+    </div>
+
+    <!-- 7. Session / Account -->
+    <div class="settings-section">
+      <h3>👤 บัญชีผู้ใช้</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn-outline" onclick="changePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
+        <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="logout()">🚪 ออกจากระบบ</button>
+        <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="clearAllData()">⚠️ ล้างข้อมูล Demo ทั้งหมด</button>
+      </div>
+    </div>
+
+    <div id="save-toast" style="display:none; background:rgba(34,197,94,0.12); border:1px solid var(--green); border-radius:var(--r); padding:12px 18px; font-size:13px; color:var(--green);">
+      ✓ บันทึกการตั้งค่าเรียบร้อยแล้ว
+    </div>
+
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item active"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+function loadSettings() {
+  const s = getCompanySettings();
+  document.getElementById('s-company').value     = s.companyName || 'บริษัท HRFlow';
+  document.getElementById('s-address').value     = s.address     || '';
+  document.getElementById('s-phone').value       = s.phone       || '';
+  document.getElementById('s-email').value       = s.companyEmail|| '';
+  document.getElementById('s-lat').value         = s.lat         ?? 13.7563;
+  document.getElementById('s-lng').value         = s.lng         ?? 100.5018;
+  document.getElementById('s-radius').value      = s.radius      ?? 200;
+  document.getElementById('s-work-start').value  = s.workStart   || '08:00';
+  document.getElementById('s-work-end').value    = s.workEnd     || '17:00';
+  document.getElementById('s-break-start').value = s.breakStart  || '12:00';
+  document.getElementById('s-break-end').value   = s.breakEnd    || '13:00';
+  document.getElementById('s-late-grace').value  = s.lateGrace   ?? 15;
+  document.getElementById('s-sick').value        = s.sickDays    ?? 30;
+  document.getElementById('s-vac').value         = s.vacDays     ?? 10;
+  document.getElementById('s-personal').value    = s.personalDays?? 3;
+  document.getElementById('s-pay-day').value     = s.payDay      ?? 30;
+  document.getElementById('s-rate-late').value   = s.rateLate    ?? 200;
+  document.getElementById('s-rate-absent').value = s.rateAbsent  ?? 1000;
+  document.getElementById('s-ot-rate').value     = s.otRate      ?? 100;
+  document.getElementById('s-line-token').value  = s.lineToken   || '';
+}
+
+function saveSettings() {
+  const s = {
+    companyName:  document.getElementById('s-company').value.trim(),
+    address:      document.getElementById('s-address').value.trim(),
+    phone:        document.getElementById('s-phone').value.trim(),
+    companyEmail: document.getElementById('s-email').value.trim(),
+    lat:          parseFloat(document.getElementById('s-lat').value)        || 13.7563,
+    lng:          parseFloat(document.getElementById('s-lng').value)        || 100.5018,
+    radius:       parseInt(document.getElementById('s-radius').value)       || 200,
+    workStart:    document.getElementById('s-work-start').value,
+    workEnd:      document.getElementById('s-work-end').value,
+    breakStart:   document.getElementById('s-break-start').value,
+    breakEnd:     document.getElementById('s-break-end').value,
+    lateGrace:    parseInt(document.getElementById('s-late-grace').value)   || 15,
+    sickDays:     parseInt(document.getElementById('s-sick').value)         || 30,
+    vacDays:      parseInt(document.getElementById('s-vac').value)          || 10,
+    personalDays: parseInt(document.getElementById('s-personal').value)     || 3,
+    payDay:       parseInt(document.getElementById('s-pay-day').value)      || 30,
+    rateLate:     parseInt(document.getElementById('s-rate-late').value)    || 200,
+    rateAbsent:   parseInt(document.getElementById('s-rate-absent').value)  || 1000,
+    otRate:       parseInt(document.getElementById('s-ot-rate').value)      || 100,
+    lineToken:    document.getElementById('s-line-token').value.trim(),
+    notifyLeave:  document.getElementById('s-notify-leave').checked,
+    notifyOOO:    document.getElementById('s-notify-ooo').checked,
+    notifyWarn:   document.getElementById('s-notify-warn').checked,
+    notifyPayslip:document.getElementById('s-notify-payslip').checked,
+  };
+
+  lsSet('settings', s);
+
+  const toast = document.getElementById('save-toast');
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+function testLine() {
+  const token = document.getElementById('s-line-token').value.trim();
+  if (!token) { alert('กรุณากรอก LINE Channel Access Token ก่อน'); return; }
+  mockLineNotify('🔔 ทดสอบการเชื่อมต่อ LINE OA สำเร็จ!\nระบบ HRFlow พร้อมส่งการแจ้งเตือน', 'ทุกคน');
+  alert('ส่งข้อความทดสอบไปยัง LINE แล้ว (mock)');
+}
+
+function changePassword() {
+  const np = prompt('รหัสผ่านใหม่:');
+  if (np && np.length >= 6) alert('เปลี่ยนรหัสผ่านเรียบร้อย (demo — ไม่มีผลจริง)');
+  else if (np) alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+}
+
+function logout() {
+  if (confirm('ต้องการออกจากระบบ?')) {
+    localStorage.removeItem('hrflow_user');
+    window.location.href = 'login.html';
+  }
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ ล้างข้อมูล Demo ทั้งหมด? (ไม่สามารถกู้คืนได้)')) return;
+  ['employees','leaves','warnings','announcements','weeklyPlans','attendances','settings'].forEach(k => localStorage.removeItem('hrflow_' + k));
+  alert('ล้างข้อมูลเรียบร้อยแล้ว');
+  loadSettings();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  loadSettings();
+});
+</script>
+</body>
+</html>
