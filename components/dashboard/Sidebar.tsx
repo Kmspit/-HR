@@ -115,10 +115,10 @@ export default function Sidebar({ user, onClose }: Props) {
           HR
         </div>
         <div>
-          <div className="text-[13px] font-extrabold tracking-tight text-white leading-tight">
-            HR <span className="gradient-text-blue">KM</span>
+          <div className="text-[12px] font-extrabold tracking-tight text-white leading-tight">
+            เค เอ็ม <span className="gradient-text-blue">เซอร์วิส</span> พลัส
           </div>
-          <div className="text-[9px] text-slate-500 leading-tight">Serviceplus</div>
+          <div className="text-[9px] text-slate-500 leading-tight">จำกัด</div>
         </div>
       </Link>
 

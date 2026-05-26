@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       notifyRole('MANAGER_HR', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
     )
     await runNotify(() =>
-      sendLineNotify(`\n🔔 [HRFlow] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
+      sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
     )
 
     return NextResponse.json({ success: true, id: leave.id })

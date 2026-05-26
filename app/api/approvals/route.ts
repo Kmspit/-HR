@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     await runNotify(() =>
-      sendLineNotify(`\n🔔 [HRFlow] การลา: ${notifTitle}\nรหัสคำขอ: ${body.requestId}${body.reason ? `\nเหตุผล: ${body.reason}` : ''}`),
+      sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] การลา: ${notifTitle}\nรหัสคำขอ: ${body.requestId}${body.reason ? `\nเหตุผล: ${body.reason}` : ''}`),
     )
 
     return NextResponse.json({ success: true, newStatus })
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step, ip, outsideRequestId: body.requestId } })
 
     await runNotify(() => createNotification({ userId: req_.userId, type: newStatus === 'APPROVED' ? 'OUTSIDE_APPROVED' : 'OUTSIDE_REJECTED', title: newStatus === 'APPROVED' ? '✅ อนุมัติออกนอกสถานที่' : '❌ ปฏิเสธออกนอกสถานที่', message: body.reason ?? '', link: '/outside-work' }))
-    await runNotify(() => sendLineNotify(`\n🔔 [HRFlow] ออกนอกสถานที่: ${newStatus}`))
+    await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] ออกนอกสถานที่: ${newStatus}`))
 
     return NextResponse.json({ success: true, newStatus })
   }
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step, ip, weeklyPlanId: body.requestId } })
 
     await runNotify(() => createNotification({ userId: plan.lawyerId, type: newStatus === 'APPROVED' ? 'WEEKLY_PLAN_APPROVED' : 'OUTSIDE_REJECTED', title: newStatus === 'APPROVED' ? '✅ แผนงานสัปดาห์ได้รับการอนุมัติ' : '❌ แผนงานสัปดาห์ถูกปฏิเสธ', message: body.reason ?? '', link: '/weekly-plan' }))
-    await runNotify(() => sendLineNotify(`\n🔔 [HRFlow] แผนทนาย: ${newStatus}`))
+    await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: ${newStatus}`))
 
     return NextResponse.json({ success: true, newStatus })
   }

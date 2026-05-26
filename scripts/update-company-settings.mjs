@@ -8,8 +8,8 @@ config({ path: resolve(process.cwd(), '.env.local') })
 config({ path: resolve(process.cwd(), '.env') })
 
 const data = {
-  companyName: 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด',
-  companyNameEn: 'KM Serviceplus Co., Ltd.',
+  companyName: 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
+  companyNameEn: 'KM Service Plus Co., Ltd.',
   officeAddress:
     '16 ซอย รามอินทรา 93 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230',
   geofenceLat: 13.8253,

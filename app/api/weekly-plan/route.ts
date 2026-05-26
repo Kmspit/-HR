@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     })
 
     await runNotify(() => notifyRole('ADMIN', 'OUTSIDE_REQUEST', '📋 แผนงานทนายใหม่', `${plan.lawyer.name} ส่งแผนงานสัปดาห์${isLate ? ' (ส่งช้า ⚠️)' : ''}`, '/approvals'))
-    await runNotify(() => sendLineNotify(`\n🔔 [HRFlow] แผนงานทนายใหม่\nชื่อ: ${plan.lawyer.name}\nสัปดาห์: ${new Date(weekStart).toLocaleDateString('th-TH')}`))
+    await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนงานทนายใหม่\nชื่อ: ${plan.lawyer.name}\nสัปดาห์: ${new Date(weekStart).toLocaleDateString('th-TH')}`))
 
     return NextResponse.json({ success: true, id: plan.id })
   } catch (err) {

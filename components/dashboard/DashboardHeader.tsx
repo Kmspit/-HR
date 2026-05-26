@@ -51,7 +51,7 @@ export default function DashboardHeader({ user }: Props) {
 
         <div className="flex-1 min-w-0 md:hidden">
           <p className="truncate text-[13px] font-bold dark:text-white light:text-slate-800">
-            ระบบ HR KM serviceplus
+            บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด
           </p>
         </div>
 

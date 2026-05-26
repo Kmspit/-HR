@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Save, MapPin, Clock, MessageCircle, Building2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { KM_COMPANY } from '@/lib/company-defaults'
 
 type Settings = {
   companyName: string
@@ -27,8 +28,8 @@ type Settings = {
 
 export default function SettingsClient({ settings }: { settings: Settings | null }) {
   const [form, setForm] = useState<Settings>({
-    companyName: settings?.companyName ?? 'บริษัท ตัวอย่าง จำกัด',
-    companyNameEn: settings?.companyNameEn ?? '',
+    companyName: settings?.companyName ?? KM_COMPANY.companyName,
+    companyNameEn: settings?.companyNameEn ?? KM_COMPANY.companyNameEn,
     workStartTime: settings?.workStartTime ?? '08:30',
     workEndTime: settings?.workEndTime ?? '17:30',
     lateGraceMin: settings?.lateGraceMin ?? 15,

@@ -32,10 +32,10 @@ function WelcomeContent() {
           style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: '0 0 32px rgba(99,102,241,0.4)' }}>
           HR
         </div>
-        <h1 className="text-lg font-extrabold tracking-tight text-white">
-          HR <span className="gradient-text">KM</span> Serviceplus
+        <h1 className="text-base font-extrabold tracking-tight text-white leading-snug">
+          เค เอ็ม <span className="gradient-text">เซอร์วิส</span> พลัส
         </h1>
-        <p className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-slate-600">Enterprise Edition</p>
+        <p className="mt-0.5 text-[9px] text-slate-500">บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
       </div>
 
       {/* Status banner */}
@@ -59,7 +59,7 @@ function WelcomeContent() {
           <div className="mb-6 text-center">
             <h2 className="text-lg font-bold text-white leading-snug">
               ยินดีต้อนรับ<br />
-              <span className="gradient-text">ระบบ HR KM Serviceplus</span>
+              <span className="gradient-text">ระบบ HR</span>
             </h2>
             <p className="mt-2 text-xs text-slate-500 leading-relaxed">
               จัดการเวลางาน เงินเดือน และบุคลากร
@@ -114,7 +114,7 @@ function WelcomeContent() {
         </div>
       </div>
 
-      <p className="relative mt-6 text-[10px] text-slate-700">© 2026 HR KM Serviceplus</p>
+      <p className="relative mt-6 text-[10px] text-slate-700">© 2026 บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
     </div>
   )
 }

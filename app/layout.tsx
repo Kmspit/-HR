@@ -24,8 +24,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: { default: 'HR KM Serviceplus', template: '%s — HR KM Serviceplus' },
-  description: 'ระบบ HR KM Serviceplus — Enterprise HR Management Platform',
+  title: { default: 'เค เอ็ม เซอร์วิส พลัส', template: '%s — เค เอ็ม เซอร์วิส พลัส' },
+  description: 'ระบบ HR — บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
   icons: { icon: '/favicon.ico' },
 }
 

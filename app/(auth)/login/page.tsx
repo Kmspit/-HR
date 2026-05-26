@@ -22,8 +22,8 @@ export default function LoginPage() {
           HR
         </div>
         <div>
-          <p className="text-sm font-extrabold text-white leading-tight">HR KM <span className="gradient-text-blue">Serviceplus</span></p>
-          <p className="text-[9px] text-slate-600">Enterprise Edition</p>
+          <p className="text-sm font-extrabold text-white leading-tight">เค เอ็ม <span className="gradient-text-blue">เซอร์วิส</span> พลัส</p>
+          <p className="text-[9px] text-slate-600">จำกัด</p>
         </div>
       </Link>
 
@@ -33,7 +33,7 @@ export default function LoginPage() {
           style={{ background: 'rgba(13,19,33,0.92)', backdropFilter: 'blur(24px) saturate(180%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}>
           <div className="mb-6 text-center">
             <h1 className="text-lg font-bold text-white">เข้าสู่ระบบ</h1>
-            <p className="mt-1 text-xs text-slate-500">ยินดีต้อนรับกลับสู่ HR KM Serviceplus</p>
+            <p className="mt-1 text-xs text-slate-500">บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
           </div>
           <LoginForm />
         </div>

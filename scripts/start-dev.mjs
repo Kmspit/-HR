@@ -57,7 +57,7 @@ const port = '3000'
 const network = lanUrls(port)
 
 console.log('')
-console.log('  HR KM Serviceplus — dev server')
+console.log('  เค เอ็ม เซอร์วิส พลัส — dev server')
 console.log('  This PC:     http://localhost:' + port)
 if (network.length) {
   console.log('  Other devices (same Wi‑Fi/LAN):')

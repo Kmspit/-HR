@@ -447,7 +447,7 @@ model CompanyRule {
 
 model CompanySettings {
   id               String   @id @default("singleton")
-  companyName      String   @default("บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด")
+  companyName      String   @default("บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด")
   companyNameEn    String?
   officeAddress    String?
   logoUrl          String?
