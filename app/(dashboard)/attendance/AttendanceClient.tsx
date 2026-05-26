@@ -5,6 +5,10 @@ import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation } fr
 import dynamic from 'next/dynamic'
 import CheckInPanel from '@/components/dashboard/CheckInPanel'
 import RealtimeClock from '@/components/dashboard/RealtimeClock'
+import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { toast } from 'sonner'
+import { Coffee, Loader2 } from 'lucide-react'
 
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
 
@@ -12,10 +16,14 @@ type TodayRecord = {
   id: string
   checkIn: string | null
   checkOut: string | null
+  lunchOut: string | null
+  lunchIn: string | null
   status: string
   lateMinutes: number
+  earlyLeaveMinutes: number
   isOutside: boolean
   address: string | null
+  workPlaceName: string | null
   photoUrl: string | null
   lat: number | null
   lng: number | null
@@ -26,13 +34,19 @@ type RecentRecord = {
   date: string
   checkIn: string | null
   checkOut: string | null
+  lunchOut: string | null
+  lunchIn: string | null
   status: string
   lateMinutes: number
   isOutside: boolean
+  workPlaceName: string | null
+  lat: number | null
+  lng: number | null
 }
 
 type Props = {
   role: string
+  companyOffice: { name: string; address: string } | null
   todayRecord: TodayRecord | null
   recentRecords: RecentRecord[]
   leaveBalance: { sick: number; vacation: number; personal: number } | null
@@ -46,18 +60,22 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   LEAVE:    { label: 'ลา',        color: 'text-blue-400' },
   OT:       { label: 'OT',        color: 'text-purple-400' },
   HALF_DAY: { label: 'ครึ่งวัน', color: 'text-orange-400' },
+  EARLY_LEAVE: { label: 'กลับก่อน', color: 'text-orange-400' },
 }
 
 type LocationType = 'company' | 'outside'
 
-export default function AttendanceClient({ role, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
+export default function AttendanceClient({ role, companyOffice, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
+  const [lunchLoading, setLunchLoading] = useState(false)
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(role)
   const canCheckIn = !todayRecord?.checkIn
   const canCheckOut = !!todayRecord?.checkIn && !todayRecord?.checkOut
+  const canLunchOut = !!todayRecord?.checkIn && !todayRecord?.lunchOut && !todayRecord?.checkOut
+  const canLunchIn = !!todayRecord?.lunchOut && !todayRecord?.lunchIn && !todayRecord?.checkOut
 
   const formatTime = (iso: string | null) => {
     if (!iso) return '--:--'
@@ -70,8 +88,23 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
   const handleSuccess = () => {
     setSelectedType(null)
     setRefreshKey((k) => k + 1)
-    // Reload page to refresh server data
     setTimeout(() => window.location.reload(), 800)
+  }
+
+  const handleLunch = async (action: 'lunch-out' | 'lunch-in') => {
+    setLunchLoading(true)
+    const { ok, data, status } = await apiJson('/api/attendance/lunch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    })
+    setLunchLoading(false)
+    if (!ok) {
+      toast.error(apiErrorMessage(data as Record<string, unknown>, 'เกิดข้อผิดพลาด', status))
+      return
+    }
+    toast.success(action === 'lunch-out' ? 'บันทึกเริ่มพักกลางวัน' : 'บันทึกกลับจากพัก')
+    setTimeout(() => window.location.reload(), 600)
   }
 
   return (
@@ -151,6 +184,42 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
             </div>
           )}
 
+          {todayRecord?.checkIn && (
+            <AttendanceTimeline
+              checkIn={todayRecord.checkIn}
+              lunchOut={todayRecord.lunchOut}
+              lunchIn={todayRecord.lunchIn}
+              checkOut={todayRecord.checkOut}
+              workPlaceName={todayRecord.workPlaceName}
+            />
+          )}
+
+          {(canLunchOut || canLunchIn) && (
+            <div className="flex gap-2">
+              {canLunchOut && (
+                <button
+                  type="button"
+                  disabled={lunchLoading}
+                  onClick={() => handleLunch('lunch-out')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/90 text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  {lunchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coffee className="w-4 h-4" />}
+                  เริ่มพักกลางวัน
+                </button>
+              )}
+              {canLunchIn && (
+                <button
+                  type="button"
+                  disabled={lunchLoading}
+                  onClick={() => handleLunch('lunch-in')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/80 text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  สิ้นพักกลางวัน
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Leave balance */}
           {leaveBalance && (
             <div className="flex items-center gap-4 rounded-xl px-3.5 py-2.5"
@@ -186,7 +255,14 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
                     <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <p className="font-bold text-white">เช็คอิน ในบริษัท</p>
-                  <p className="mt-1 text-xs text-slate-400">สำหรับพนักงานที่ทำงานในสำนักงาน</p>
+                  <p className="mt-1 text-xs text-slate-300 line-clamp-2">
+                    {companyOffice?.name ?? 'สำนักงาน'}
+                  </p>
+                  {companyOffice?.address && (
+                    <p className="mt-1 text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                      {companyOffice.address}
+                    </p>
+                  )}
                   <div className="mt-3 flex items-center gap-1 text-[11px] text-cyan-400">
                     <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
                     ตรวจสอบ Geofence อัตโนมัติ
@@ -242,7 +318,12 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
                   }
                 </div>
               </div>
-              <CheckInPanel type="checkin" locationType={selectedType} onSuccess={handleSuccess} />
+              <CheckInPanel
+                type="checkin"
+                locationType={selectedType}
+                companyOffice={selectedType === 'company' ? companyOffice : null}
+                onSuccess={handleSuccess}
+              />
             </div>
           )}
 
@@ -260,6 +341,7 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
               <CheckInPanel
                 type="checkout"
                 locationType={todayRecord?.isOutside ? 'outside' : 'company'}
+                companyOffice={!todayRecord?.isOutside ? companyOffice : null}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -301,8 +383,11 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                   <th className="text-left p-3 text-[11px] text-slate-500 font-medium">วันที่</th>
-                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">เข้างาน</th>
-                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ออกงาน</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">เข้า</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">พักออก</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">พักกลับ</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ออก</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">แผนที่</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">สถานะ</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ประเภท</th>
                 </tr>
@@ -315,7 +400,23 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
                       className="hover:bg-white/[0.02] transition-colors">
                       <td className="p-3 text-slate-300 text-xs">{formatDate(r.date)}</td>
                       <td className="p-3 text-center text-green-400 font-medium text-xs">{formatTime(r.checkIn)}</td>
+                      <td className="p-3 text-center text-amber-400/80 font-medium text-xs">{formatTime(r.lunchOut)}</td>
+                      <td className="p-3 text-center text-amber-300/80 font-medium text-xs">{formatTime(r.lunchIn)}</td>
                       <td className="p-3 text-center text-blue-400 font-medium text-xs">{formatTime(r.checkOut)}</td>
+                      <td className="p-3 text-center">
+                        {r.lat != null && r.lng != null ? (
+                          <a
+                            href={`https://www.google.com/maps?q=${r.lat},${r.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-blue-400 hover:underline"
+                          >
+                            ดูแผนที่
+                          </a>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
                       <td className="p-3 text-center">
                         <span className={`text-xs font-semibold ${s.color}`}>{s.label}</span>
                         {r.lateMinutes > 0 && (
@@ -338,7 +439,7 @@ export default function AttendanceClient({ role, todayRecord, recentRecords, lea
                 })}
                 {recentRecords.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-600 text-sm">ยังไม่มีข้อมูล</td>
+                    <td colSpan={7} className="py-10 text-center text-slate-600 text-sm">ยังไม่มีข้อมูล</td>
                   </tr>
                 )}
               </tbody>

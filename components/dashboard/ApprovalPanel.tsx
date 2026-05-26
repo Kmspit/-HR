@@ -6,6 +6,7 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 
 type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; user: { name: string; email: string; department: string; role: string } }
 type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; user: { name: string; email: string; department: string; role: string } }
@@ -18,7 +19,7 @@ type Props = {
   userRole: string
 }
 
-const LEAVE_TYPES: Record<string, string> = { SICK: 'ลาป่วย', VACATION: 'ลาพักร้อน', PERSONAL: 'ลากิจ', UNPAID: 'ลาไม่รับค่าจ้าง', MATERNITY: 'ลาคลอด' }
+const LEAVE_TYPES = LEAVE_TYPE_LABELS
 const DAYS_TH = ['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสฯ', 'ศุกร์']
 
 export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPlans, userRole }: Props) {

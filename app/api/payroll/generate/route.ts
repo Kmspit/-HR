@@ -41,27 +41,36 @@ export async function POST(req: NextRequest) {
       const lateDays = attendances.filter((a) => a.status === 'LATE').length
 
       // Approved unpaid leave
+      const unpaidTypes = ['UNPAID'] as const
       const unpaidLeaves = await prisma.leaveRequest.findMany({
         where: {
           userId: emp.id,
-          type: 'UNPAID',
+          type: { in: [...unpaidTypes] },
           status: 'APPROVED',
-          startDate: { gte: startDate, lte: endDate },
+          startDate: { lte: endDate },
+          endDate: { gte: startDate },
         },
       })
       const unpaidDays = unpaidLeaves.reduce((s, l) => s + l.days, 0)
 
+      const earlyLeaveDays = attendances.filter(
+        (a) => a.status === 'EARLY_LEAVE' || (a.earlyLeaveMinutes ?? 0) > 0,
+      ).length
+
       const dailyRate = emp.baseSalary / 26
-      const lateDeduction = lateRate > 0 ? totalLateMinutes * lateRate : 0
+      const lateDeduction =
+        lateRate > 0 ? totalLateMinutes * lateRate + lateDays * dailyRate * 0.1 : lateDays * dailyRate * 0.1
       const absentDeduction = absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0)
       const unpaidLeaveDeduction = unpaidDays * dailyRate
+      const earlyLeaveDeduction = earlyLeaveDays * dailyRate * 0.5
 
       let ssDeduction = 0
       if (emp.socialSecurity) {
         ssDeduction = Math.min(emp.baseSalary * SS_RATE, SS_MAX)
       }
 
-      const netSalary = emp.baseSalary - lateDeduction - absentDeduction - unpaidLeaveDeduction - ssDeduction
+      const netSalary =
+        emp.baseSalary - lateDeduction - absentDeduction - unpaidLeaveDeduction - earlyLeaveDeduction - ssDeduction
 
       return prisma.payroll.upsert({
         where: { userId_month_year: { userId: emp.id, month, year } },

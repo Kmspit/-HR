@@ -1,5 +1,14 @@
 type ApiResult<T> = { ok: boolean; status: number; data: T }
 
+function mergeDeviceHeaders(init?: RequestInit): Headers {
+  const headers = new Headers(init?.headers)
+  if (typeof window !== 'undefined') {
+    const key = localStorage.getItem('hrflow_device_id')
+    if (key) headers.set('X-Device-Key', key)
+  }
+  return headers
+}
+
 export async function apiJson<T extends Record<string, unknown> = Record<string, unknown>>(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -7,6 +16,7 @@ export async function apiJson<T extends Record<string, unknown> = Record<string,
   try {
     const res = await fetch(input, {
       ...init,
+      headers: mergeDeviceHeaders(init),
       credentials: init?.credentials ?? 'include',
     })
     const text = await res.text()

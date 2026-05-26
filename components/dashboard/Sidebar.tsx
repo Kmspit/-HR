@@ -66,6 +66,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: '/employees', icon: 'employees', label: 'พนักงาน',       roles: ['MANAGER_HR'] },
       { href: '/payroll',   icon: 'payroll',   label: 'เงินเดือน',     roles: ['MANAGER_HR'] },
+      { href: '/reports',   icon: 'calendar',  label: 'รายงานรายเดือน', roles: ['MANAGER_HR', 'ADMIN'] },
       { href: '/payslip',   icon: 'payslip',   label: 'สลิปเงินเดือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
       { href: '/approvals', icon: 'approvals', label: 'อนุมัติ',        roles: ['MANAGER_HR', 'ADMIN'] },
       { href: '/warnings',  icon: 'warnings',  label: 'ใบเตือน',        roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },

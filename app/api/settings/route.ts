@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 
 const ALLOWED_FIELDS = [
-  'companyName', 'companyNameEn', 'workStartTime', 'workEndTime', 'lateGraceMin',
+  'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
   'sickDaysYear', 'vacationDaysYear', 'personalDaysYear',
   'lineChannelId', 'lineChannelSecret', 'lineAccessToken', 'lineNotifyToken',
   'geofenceLat', 'geofenceLng', 'geofenceRadius', 'lateDeductRate', 'absentDeductRate',

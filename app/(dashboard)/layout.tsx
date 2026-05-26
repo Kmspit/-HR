@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/dashboard/Sidebar'
 import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
+import DeviceBinder from '@/components/dashboard/DeviceBinder'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -19,6 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="dashboard-shell flex min-h-[100dvh] dark:bg-[#070b14] light:bg-slate-50">
+      <DeviceBinder />
       {/* Desktop sidebar */}
       <div className="dashboard-sidebar-slot hidden md:flex md:w-56 md:flex-shrink-0">
         <Sidebar user={user} />

@@ -61,18 +61,29 @@ async function main() {
     console.log(`✅ Created: ${u.email}`)
   }
 
-  // Company settings
+  // Company settings — KM Serviceplus
   await prisma.companySettings.upsert({
     where: { id: 'singleton' },
-    update: {},
+    update: {
+      companyName: 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด',
+      companyNameEn: 'KM Serviceplus Co., Ltd.',
+      officeAddress: '16 ซอย รามอินทรา 93 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230',
+      geofenceLat: 13.8253,
+      geofenceLng: 100.6785,
+      geofenceRadius: 250,
+    },
     create: {
-      id:              'singleton',
-      companyName:     'บริษัท ตัวอย่าง จำกัด',
-      companyNameEn:   'Example Co., Ltd.',
-      workStartTime:   '08:30',
-      workEndTime:     '17:30',
-      lateGraceMin:    15,
-      sickDaysYear:    30,
+      id: 'singleton',
+      companyName: 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด',
+      companyNameEn: 'KM Serviceplus Co., Ltd.',
+      officeAddress: '16 ซอย รามอินทรา 93 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230',
+      geofenceLat: 13.8253,
+      geofenceLng: 100.6785,
+      geofenceRadius: 250,
+      workStartTime: '08:30',
+      workEndTime: '17:30',
+      lateGraceMin: 15,
+      sickDaysYear: 30,
       vacationDaysYear: 6,
       personalDaysYear: 3,
     },

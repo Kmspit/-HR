@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
-import { startOfTodayLocal } from '@/lib/utils'
+import { assertDeviceAllowed } from '@/lib/device'
+import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const deviceCheck = await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))
+    if (!deviceCheck.ok) return NextResponse.json({ error: deviceCheck.error }, { status: 403 })
+
+    const formData = await req.formData()
+    const photo = formData.get('photo') as File | null
+    const lat = parseCoord(formData.get('lat'))
+    const lng = parseCoord(formData.get('lng'))
+    const address = (formData.get('address') as string) || ''
+    const workPlaceName = ((formData.get('workPlaceName') as string) || '').trim() || null
+
+    if (!photo || photo.size === 0) {
+      return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้องตอนเช็คเอาท์' }, { status: 400 })
+    }
+
+    const checkOutPhotoUrl = await saveUpload(photo, 'checkout', session.user.id)
 
     const now = new Date()
     const today = startOfTodayLocal()
@@ -23,12 +41,34 @@ export async function POST(_req: NextRequest) {
       return NextResponse.json({ error: 'เช็คเอาท์แล้ววันนี้' }, { status: 400 })
     }
 
+    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    let earlyLeaveMinutes = 0
+    let status = attendance.status
+    if (settings?.workEndTime) {
+      const [h, m] = settings.workEndTime.split(':').map(Number)
+      const workEnd = new Date(now)
+      workEnd.setHours(h, m, 0, 0)
+      if (now < workEnd) {
+        earlyLeaveMinutes = Math.floor((workEnd.getTime() - now.getTime()) / 60000)
+        status = 'EARLY_LEAVE'
+      }
+    }
+
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
-      data: { checkOut: now },
+      data: {
+        checkOut: now,
+        checkOutPhotoUrl,
+        earlyLeaveMinutes,
+        status,
+        ...(lat != null ? { lat } : {}),
+        ...(lng != null ? { lng } : {}),
+        ...(address ? { address } : {}),
+        ...(workPlaceName ? { workPlaceName } : {}),
+      },
     })
 
-    return NextResponse.json({ success: true, attendance: updated })
+    return NextResponse.json({ success: true, attendance: updated, earlyLeaveMinutes })
   } catch (err) {
     return apiError(err)
   }

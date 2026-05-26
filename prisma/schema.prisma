@@ -33,6 +33,7 @@ enum AttendanceStatus {
   LEAVE
   OT
   HALF_DAY
+  EARLY_LEAVE
 }
 
 enum LeaveType {
@@ -42,6 +43,14 @@ enum LeaveType {
   UNPAID
   MATERNITY
   ORDINATION
+  FUNERAL
+  WEDDING
+  SPECIAL_HOLIDAY
+}
+
+enum DeviceStatus {
+  ACTIVE
+  PENDING_RESET
 }
 
 enum RequestStatus {
@@ -65,6 +74,7 @@ enum NotificationType {
   WARNING_ISSUED
   WEEKLY_PLAN_DUE
   WEEKLY_PLAN_APPROVED
+  DEVICE_RESET_REQUEST
   SYSTEM
 }
 
@@ -122,8 +132,42 @@ model User {
   leaveBalances   LeaveBalance[]
   warnings        Warning[]
   payrolls        Payroll[]
+  savedWorkPlaces SavedWorkPlace[]
+  device          UserDevice?
 
   @@map("users")
+}
+
+// ── SAVED WORK PLACES (ชื่อสถานที่ — ไม่ผูก GPS) ──
+
+model SavedWorkPlace {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("saved_work_places")
+}
+
+// ── DEVICE BINDING (1 user = 1 device) ──
+
+model UserDevice {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  deviceKey        String
+  deviceLabel      String?
+  status           DeviceStatus @default(ACTIVE)
+  registeredAt     DateTime     @default(now())
+  lastSeenAt       DateTime     @default(now())
+  resetRequestedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_devices")
 }
 
 // ── ATTENDANCE ──────────────────────────────────
@@ -138,12 +182,15 @@ model Attendance {
   lunchIn     DateTime?
   lat         Float?
   lng         Float?
-  address     String?
-  photoUrl    String?
-  isOutside   Boolean          @default(false)
-  status      AttendanceStatus @default(NORMAL)
-  lateMinutes Int              @default(0)
-  note        String?
+  address          String?
+  workPlaceName    String?
+  photoUrl         String?
+  checkOutPhotoUrl String?
+  isOutside        Boolean          @default(false)
+  status           AttendanceStatus @default(NORMAL)
+  lateMinutes      Int              @default(0)
+  earlyLeaveMinutes Int             @default(0)
+  note             String?
   editedById  String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -398,8 +445,9 @@ model CompanyRule {
 
 model CompanySettings {
   id               String   @id @default("singleton")
-  companyName      String   @default("บริษัท ตัวอย่าง จำกัด")
+  companyName      String   @default("บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด")
   companyNameEn    String?
+  officeAddress    String?
   logoUrl          String?
   workStartTime    String   @default("08:30")
   workEndTime      String   @default("17:30")

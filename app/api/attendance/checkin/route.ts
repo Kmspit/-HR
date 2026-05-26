@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
+import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -20,13 +21,21 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const deviceCheck = await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))
+    if (!deviceCheck.ok) return NextResponse.json({ error: deviceCheck.error }, { status: 403 })
+
     const formData = await req.formData()
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
     const address = (formData.get('address') as string) || ''
     const photo = formData.get('photo') as File | null
     const locationType = (formData.get('locationType') as string) ?? 'company'
+    const workPlaceName = ((formData.get('workPlaceName') as string) || '').trim() || null
     const forceOutside = locationType === 'outside'
+
+    if (!photo || photo.size === 0) {
+      return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้อง' }, { status: 400 })
+    }
 
     const photoUrl = photo && photo.size > 0
       ? await saveUpload(photo, 'checkin', session.user.id)
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     const attendance = await prisma.attendance.upsert({
       where: { userId_date: { userId: session.user.id, date: today } },
-      update: { checkIn: now, lat, lng, address, photoUrl, isOutside, status, lateMinutes },
+      update: { checkIn: now, lat, lng, address, workPlaceName, photoUrl, isOutside, status, lateMinutes },
       create: {
         userId: session.user.id,
         date: today,
@@ -76,6 +85,7 @@ export async function POST(req: NextRequest) {
         lat,
         lng,
         address,
+        workPlaceName,
         photoUrl,
         isOutside,
         status,
