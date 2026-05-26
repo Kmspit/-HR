@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node scripts/start-dev.mjs",
     "dev:reset": "node scripts/start-dev.mjs --clean",
+    "share": "npx --yes cloudflared tunnel --url http://localhost:3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

@@ -5,7 +5,7 @@
  */
 import { rmSync, existsSync } from 'fs'
 import { spawn, execSync } from 'child_process'
-import { platform } from 'os'
+import { platform, networkInterfaces } from 'os'
 
 const PORTS = [3000, 3001, 3002]
 const cleanNext = process.argv.includes('--clean')
@@ -43,13 +43,33 @@ if (cleanNext) {
 
 killPorts()
 
+function lanUrls(port) {
+  const urls = []
+  for (const list of Object.values(networkInterfaces())) {
+    for (const ni of list ?? []) {
+      if (ni.family === 'IPv4' && !ni.internal) urls.push(`http://${ni.address}:${port}`)
+    }
+  }
+  return [...new Set(urls)]
+}
+
+const port = '3000'
+const network = lanUrls(port)
+
 console.log('')
 console.log('  HR KM Serviceplus — dev server')
-console.log('  Open: http://localhost:3000')
+console.log('  This PC:     http://localhost:' + port)
+if (network.length) {
+  console.log('  Other devices (same Wi‑Fi/LAN):')
+  network.forEach((u) => console.log('    ' + u))
+} else {
+  console.log('  Other devices: run ipconfig → use IPv4 + :' + port)
+}
 console.log('  Login: employee@demo.com / demo1234')
+console.log('  If blocked: allow port ' + port + ' in Windows Firewall (see README)')
 console.log('')
 
-const child = spawn('npx', ['next', 'dev', '-p', '3000'], {
+const child = spawn('npx', ['next', 'dev', '-p', port, '-H', '0.0.0.0'], {
   stdio: 'inherit',
   cwd: process.cwd(),
   shell: true,
