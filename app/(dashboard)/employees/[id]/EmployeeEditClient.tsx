@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Save, ArrowLeft, User, Briefcase, DollarSign, AlertTriangle, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Employee = {
   id: string; name: string; email: string; employeeId: string | null; role: string; status: string
@@ -43,13 +44,16 @@ export default function EmployeeEditClient({ employee }: { employee: Employee })
   const save = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/users/${employee.id}`, {
+      const { ok, data, status } = await apiJson(`/api/users/${employee.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (res.ok) toast.success('บันทึกข้อมูลแล้ว')
-      else { const d = await res.json(); toast.error(d.error) }
+      if (ok) toast.success('บันทึกข้อมูลแล้ว')
+      else toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
+    } catch (err) {
+      console.error('[employee-edit]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setSaving(false)
     }

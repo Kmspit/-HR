@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import NavLink from './NavLink'
 import { usePathname } from 'next/navigation'
 import { cn, getInitials } from '@/lib/utils'
@@ -8,7 +9,16 @@ import type { Role } from '@prisma/client'
 
 /* ── SVG Icon components ── */
 const Icon = ({ d, className }: { d: string; className?: string }) => (
-  <svg className={cn('h-4.5 w-4.5 flex-shrink-0', className)} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+  <svg
+    width={18}
+    height={18}
+    className={cn('hr-icon h-4.5 w-4.5 flex-shrink-0', className)}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={1.75}
+    aria-hidden
+  >
     <path strokeLinecap="round" strokeLinejoin="round" d={d} />
   </svg>
 )
@@ -38,7 +48,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'หลัก',
     items: [
-      { href: '/dashboard', icon: 'dashboard', label: 'แดชบอร์ด', roles: ['MANAGER_HR', 'ADMIN'] },
+      { href: '/dashboard', icon: 'dashboard', label: 'แดชบอร์ด' },
     ],
   },
   {
@@ -96,7 +106,7 @@ export default function Sidebar({ user, onClose }: Props) {
       light:bg-white light:border-r light:border-slate-200 light:shadow-sm"
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5">
+      <Link href="/dashboard" className="flex items-center gap-3 px-5 py-5 hover:opacity-90 transition-opacity">
         <div
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
           style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)', boxShadow: '0 0 20px rgba(99,102,241,0.35)' }}
@@ -109,7 +119,7 @@ export default function Sidebar({ user, onClose }: Props) {
           </div>
           <div className="text-[9px] text-slate-500 leading-tight">Serviceplus</div>
         </div>
-      </div>
+      </Link>
 
       {/* Divider */}
       <div className="mx-4 h-px dark:bg-gradient-to-r dark:from-transparent dark:via-white/8 dark:to-transparent light:bg-slate-100" />
@@ -130,6 +140,7 @@ export default function Sidebar({ user, onClose }: Props) {
                   href={item.href}
                   onClick={onClose}
                   className={() => cn(
+                    'nav-link-icon',
                     'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-150',
                     active
                       ? 'nav-active dark:text-blue-300 light:text-blue-600 font-semibold'

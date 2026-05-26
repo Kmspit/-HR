@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { apiJson } from '@/lib/client-api'
 import type { Role } from '@prisma/client'
 
 type Notif = {
@@ -42,11 +43,13 @@ export default function AnnouncementsClient({
 
   const markAllRead = async () => {
     try {
-      await fetch('/api/notifications/read-all', { method: 'POST' })
+      const { ok } = await apiJson('/api/notifications/read-all', { method: 'POST' })
+      if (!ok) { toast.error('เกิดข้อผิดพลาด'); return }
       setItems(prev => prev.map(n => ({ ...n, isRead: true })))
       toast.success('อ่านทั้งหมดแล้ว')
-    } catch {
-      toast.error('เกิดข้อผิดพลาด')
+    } catch (err) {
+      console.error('[announcements]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     }
   }
 

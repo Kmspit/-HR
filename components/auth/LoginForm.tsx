@@ -53,6 +53,7 @@ export default function LoginForm() {
       router.refresh()
     } catch {
       toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
       setLoading(false)
     }
   }

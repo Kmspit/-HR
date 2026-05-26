@@ -6,6 +6,7 @@ import { ROLE_LABELS } from '@/lib/permissions'
 import { formatThaiDate } from '@/lib/utils'
 import Link from 'next/link'
 import AttendanceChartWrapper from '@/components/dashboard/AttendanceChartWrapper'
+import EmployeeDashboard from './EmployeeDashboard'
 
 type Role = 'MANAGER_HR' | 'ADMIN' | 'EMPLOYEE' | 'LAWYER'
 
@@ -24,7 +25,7 @@ function StatCard({
       <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-15 blur-2xl" style={{ background: gradient }} />
       <div className="relative flex items-center gap-3">
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: gradient, boxShadow: `0 4px 12px ${glow}` }}>
-          <svg className="h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg width={18} height={18} className="hr-icon h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
           </svg>
         </div>
@@ -41,10 +42,11 @@ function StatCard({
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user) redirect('/')
-  const { role, name } = session.user
+  const { role, name, id: userId } = session.user
 
-  if (role === 'EMPLOYEE') redirect('/attendance')
-  if (role === 'LAWYER')   redirect('/weekly-plan')
+  if (role === 'EMPLOYEE' || role === 'LAWYER') {
+    return <EmployeeDashboard userId={userId} name={name ?? ''} role={role} />
+  }
 
   const today = new Date()
   const todayStart = new Date(today.setHours(0, 0, 0, 0))
@@ -401,7 +403,7 @@ export default async function DashboardPage() {
                 <Link key={a.href} href={a.href}
                   className="group flex flex-col items-center gap-2 rounded-xl p-3 text-center border border-white/[0.05] bg-white/[0.02] transition-all duration-150 hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.04]">
                   <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${a.gradient} group-hover:scale-105 transition-transform`}>
-                    <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg width={16} height={16} className="hr-icon-sm h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
                     </svg>
                   </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { Eye, EyeOff, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const STEPS = ['ข้อมูลส่วนตัว', 'ข้อมูลพนักงาน', 'ตั้งรหัสผ่าน']
@@ -49,7 +50,7 @@ export default function RegisterForm() {
       if (!form.email)     e.email     = 'กรุณากรอกอีเมล'
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
       if (!form.phone)     e.phone     = 'กรุณากรอกเบอร์โทร'
-      else if (!/^0[0-9]{8,9}$/.test(form.phone)) e.phone = 'รูปแบบเบอร์โทรไม่ถูกต้อง'
+      else if (!/^0[0-9]{9}$/.test(form.phone.replace(/\D/g, ''))) e.phone = 'เบอร์ 10 หลัก เช่น 0812345678'
     }
     if (s === 1) {
       if (!form.role)       e.role       = 'กรุณาเลือกตำแหน่ง'
@@ -73,34 +74,70 @@ export default function RegisterForm() {
 
   const back = () => { setErrors({}); setStep((s) => s - 1) }
 
+  const buildPayload = () => {
+    const phone = form.phone.replace(/\D/g, '')
+    const baseSalaryNum = form.baseSalary.trim() ? parseFloat(form.baseSalary) : null
+    return {
+      prefix: form.prefix,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      nickname: form.nickname.trim() || undefined,
+      email: form.email.trim().toLowerCase(),
+      phone,
+      birthDate: form.birthDate || undefined,
+      address: form.address.trim() || undefined,
+      nationalId: form.nationalId.trim() || undefined,
+      role: form.role as 'EMPLOYEE' | 'ADMIN' | 'LAWYER',
+      department: form.department,
+      baseSalary: baseSalaryNum != null && !Number.isNaN(baseSalaryNum) ? baseSalaryNum : null,
+      startDate: form.startDate,
+      socialSecurity: form.socialSecurity,
+      password: form.password,
+      name: `${form.prefix}${form.firstName.trim()} ${form.lastName.trim()}`.replace(/\s+/g, ' ').trim(),
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const errs = validateStep(2)
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    const allErrors = { ...validateStep(0), ...validateStep(1), ...validateStep(2) }
+    if (Object.keys(allErrors).length) {
+      setErrors(allErrors)
+      const firstStep = allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone
+        ? 0
+        : allErrors.role || allErrors.department || allErrors.startDate
+          ? 1
+          : 2
+      setStep(firstStep)
+      toast.error('กรุณากรอกข้อมูลให้ครบถ้วน')
+      return
+    }
 
     setLoading(true)
     try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          name: `${form.prefix}${form.firstName} ${form.lastName}`,
-          baseSalary: form.baseSalary ? parseFloat(form.baseSalary) : null,
-        }),
-      })
+      const { ok, data, status } = await apiJson<{ success?: boolean; message?: string }>(
+        '/api/register',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildPayload()),
+        },
+      )
 
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? 'เกิดข้อผิดพลาด')
-        setLoading(false)
+      if (!ok) {
+        if (status === 0) {
+          toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ — ตรวจสอบว่า npm run dev ยังรันอยู่')
+        } else {
+          toast.error(apiErrorMessage(data, 'สมัครไม่สำเร็จ', status))
+        }
         return
       }
 
       toast.success('สมัครเรียบร้อย! กรุณารอ HR อนุมัติ (1-2 วันทำการ)')
       setTimeout(() => router.push('/?status=pending'), 1500)
-    } catch {
-      toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } catch (err) {
+      console.error('[register]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
       setLoading(false)
     }
   }
@@ -160,7 +197,13 @@ export default function RegisterForm() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เบอร์โทร *</label>
-              <input type="tel" placeholder="0812345678" className={inputClass('phone')} value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+              <input
+                type="tel"
+                placeholder="0812345678"
+                className={inputClass('phone')}
+                value={form.phone}
+                onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+              />
               {errors.phone && <p className="text-xs text-red-400">{errors.phone}</p>}
             </div>
           </div>

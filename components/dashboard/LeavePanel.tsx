@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { formatThaiDate } from '@/lib/utils'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Leave = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; createdAt: string }
 type Balance = { sick: number; vacation: number; personal: number } | null
@@ -41,18 +42,20 @@ export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balan
     if (days < 1) { toast.error('วันที่ไม่ถูกต้อง'); return }
     setLoading(true)
     try {
-      const res = await fetch('/api/leave', {
+      const { ok, data, status } = await apiJson('/api/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, days }),
       })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'เกิดข้อผิดพลาด'); return }
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success('ส่งคำขอลาเรียบร้อย รอ Admin อนุมัติ')
       setForm({ type: 'SICK', startDate: '', endDate: '', reason: '' })
       router.refresh()
       setTab('history')
-    } catch { toast.error('เกิดข้อผิดพลาด') }
+    } catch (err) {
+      console.error('[leave]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    }
     finally { setLoading(false) }
   }
 

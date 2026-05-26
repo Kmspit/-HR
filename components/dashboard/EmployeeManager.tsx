@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Loader2, CheckCircle, XCircle, Search } from 'lucide-react'
 import { formatThaiDate } from '@/lib/utils'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS } from '@/lib/permissions'
 import type { Role } from '@prisma/client'
 
@@ -35,12 +36,18 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
   const handleApprove = async (id: string, action: 'APPROVE' | 'REJECT') => {
     setLoading(id)
     try {
-      const res = await fetch(`/api/users/${id}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'เกิดข้อผิดพลาด'); return }
+      const { ok, data, status } = await apiJson(`/api/users/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success(action === 'APPROVE' ? '✅ อนุมัติบัญชีแล้ว' : '❌ ปฏิเสธบัญชีแล้ว')
       router.refresh()
-    } catch { toast.error('เกิดข้อผิดพลาด') }
+    } catch (err) {
+      console.error('[employee-approve]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    }
     finally { setLoading(null) }
   }
 

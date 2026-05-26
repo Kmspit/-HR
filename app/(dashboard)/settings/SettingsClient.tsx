@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Save, MapPin, Clock, MessageCircle, Building2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Settings = {
   companyName: string
@@ -59,13 +60,16 @@ export default function SettingsClient({ settings }: { settings: Settings | null
   const save = async () => {
     setSaving(true)
     try {
-      const res = await fetch('/api/settings', {
+      const { ok, data, status } = await apiJson('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (res.ok) toast.success('บันทึกการตั้งค่าแล้ว')
-      else toast.error('เกิดข้อผิดพลาด')
+      if (ok) toast.success('บันทึกการตั้งค่าแล้ว')
+      else toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
+    } catch (err) {
+      console.error('[settings]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setSaving(false)
     }

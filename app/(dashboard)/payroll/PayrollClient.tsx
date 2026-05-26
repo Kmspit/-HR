@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { DollarSign, FileText, Send, Download, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type PayrollRow = {
   id: string; userId: string; name: string; employeeId: string
@@ -27,31 +28,31 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
 
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
-    const res = await fetch(`/api/payroll/report?month=${m}&year=${y}`)
-    const data = await res.json()
-    setPayrolls(data.payrolls?.map((p: any) => ({
+    const { data } = await apiJson<{ payrolls?: PayrollRow[] }>(`/api/payroll/report?month=${m}&year=${y}`)
+    setPayrolls(data.payrolls?.map((p) => ({
       ...p,
-      name: p.user?.name ?? '', employeeId: p.user?.employeeId ?? '',
-      department: p.user?.department ?? '', position: p.user?.position ?? '',
-      socialSecurity: p.user?.socialSecurity ?? false,
-      ssDeduction: p.socialSecurity,
+      name: (p as { user?: { name?: string } }).user?.name ?? p.name ?? '',
+      employeeId: (p as { user?: { employeeId?: string } }).user?.employeeId ?? p.employeeId ?? '',
+      department: (p as { user?: { department?: string } }).user?.department ?? p.department ?? '',
+      position: (p as { user?: { position?: string } }).user?.position ?? p.position ?? '',
+      socialSecurity: (p as { user?: { socialSecurity?: boolean } }).user?.socialSecurity ?? p.socialSecurity ?? false,
+      ssDeduction: (p as { ssDeduction?: number }).ssDeduction ?? p.ssDeduction ?? 0,
     })) ?? [])
     setLoading(false)
   }
 
   const generate = async () => {
     setGenerating(true)
-    const res = await fetch('/api/payroll/generate', {
+    const { ok, data, status } = await apiJson('/api/payroll/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ month, year }),
     })
-    const data = await res.json()
-    if (res.ok) {
-      toast.success(`สร้าง payroll สำเร็จ ${data.count} คน`)
+    if (ok) {
+      toast.success(`สร้าง payroll สำเร็จ ${(data as { count?: number }).count ?? 0} คน`)
       await loadPayrolls(month, year)
     } else {
-      toast.error(data.error)
+      toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
     }
     setGenerating(false)
   }

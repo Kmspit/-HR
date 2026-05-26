@@ -18,14 +18,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-[100dvh] dark:bg-[#070b14] light:bg-slate-50">
+    <div className="dashboard-shell flex min-h-[100dvh] dark:bg-[#070b14] light:bg-slate-50">
       {/* Desktop sidebar */}
-      <div className="hidden md:flex md:w-56 md:flex-shrink-0">
+      <div className="dashboard-sidebar-slot hidden md:flex md:w-56 md:flex-shrink-0">
         <Sidebar user={user} />
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <div className="dashboard-main flex flex-1 flex-col min-w-0 overflow-hidden">
         <DashboardHeader user={user} />
         <main
           className="flex-1 overflow-y-auto overflow-x-hidden"

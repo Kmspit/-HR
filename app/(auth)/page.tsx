@@ -110,7 +110,7 @@ function WelcomeContent() {
             <span>employee@demo.com</span><span className="text-slate-600">Employee</span>
             <span>lawyer@demo.com</span><span className="text-slate-600">Lawyer</span>
           </div>
-          <p className="mt-1.5 text-slate-600 text-[10px]">Password: demo1234</p>
+          <p className="mt-1.5 text-slate-600 text-[10px]">Password: demo1234 · แอปจริง: http://localhost:3000</p>
         </div>
       </div>
 

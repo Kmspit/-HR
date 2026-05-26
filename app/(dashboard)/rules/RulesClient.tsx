@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { BookOpen, Plus, ExternalLink, Tag, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Rule = { id: string; title: string; content: string; fileUrl: string; category: string; version: string; publishedAt: string }
 
@@ -29,18 +30,23 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
     if (!form.title) { toast.error('กรุณาระบุชื่อ'); return }
     setSubmitting(true)
     try {
-      const res = await fetch('/api/rules', {
+      const { ok, data, status } = await apiJson('/api/rules', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error); return }
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success('เพิ่มกฎระเบียบแล้ว')
       setShowForm(false)
       setForm({ title: '', content: '', fileUrl: '', category: 'general', version: '' })
-      const r2 = await fetch('/api/rules')
-      const d2 = await r2.json()
-      setRules(d2.rules ?? [])
+      try {
+        const { data: d2 } = await apiJson<{ rules?: Rule[] }>('/api/rules')
+        setRules(d2.rules ?? [])
+      } catch {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error('[rules]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setSubmitting(false)
     }
@@ -48,8 +54,8 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
 
   const deleteRule = async (id: string) => {
     if (!confirm('ลบกฎระเบียบนี้?')) return
-    const res = await fetch(`/api/rules?id=${id}`, { method: 'DELETE' })
-    if (res.ok) {
+    const { ok } = await apiJson(`/api/rules?id=${id}`, { method: 'DELETE' })
+    if (ok) {
       setRules((r) => r.filter((x) => x.id !== id))
       if (selected?.id === id) setSelected(null)
       toast.success('ลบแล้ว')

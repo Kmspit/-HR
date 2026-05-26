@@ -17,7 +17,7 @@ const NAV_ICONS: Record<string, string> = {
 }
 
 const MOBILE_ITEMS: { href: string; icon: keyof typeof NAV_ICONS; label: string; roles?: Role[] }[] = [
-  { href: '/dashboard',    icon: 'dashboard',  label: 'หน้าหลัก',  roles: ['MANAGER_HR', 'ADMIN'] },
+  { href: '/dashboard',    icon: 'dashboard',  label: 'หน้าหลัก' },
   { href: '/attendance',   icon: 'attendance', label: 'เช็คอิน',   roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
   { href: '/leave',        icon: 'leave',      label: 'ลาหยุด',    roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
   { href: '/approvals',    icon: 'approvals',  label: 'อนุมัติ',   roles: ['MANAGER_HR', 'ADMIN'] },
@@ -37,7 +37,7 @@ export default function MobileNav({ role }: { role: Role }) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden mobile-bottom-nav"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div
@@ -72,7 +72,16 @@ export default function MobileNav({ role }: { role: Role }) {
                 {pending ? (
                   <span className="h-4 w-4 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
                 ) : (
-                  <svg className={cn('h-4.5 w-4.5', active && 'dark:text-blue-400 light:text-blue-600')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.75}>
+                  <svg
+                    width={18}
+                    height={18}
+                    className={cn('hr-icon h-4.5 w-4.5', active && 'dark:text-blue-400 light:text-blue-600')}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={active ? 2.2 : 1.75}
+                    aria-hidden
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d={NAV_ICONS[item.icon]} />
                   </svg>
                 )}

@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Camera, MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { dataUrlToBlob } from '@/lib/utils'
 
 type LivenessStep = {
   id: string
@@ -127,9 +129,8 @@ export default function CheckInPanel({ type, locationType = 'company', onSuccess
 
     try {
       if (type === 'checkout') {
-        const res = await fetch('/api/attendance/checkout', { method: 'POST' })
-        const data = await res.json()
-        if (!res.ok) { toast.error(data.error); setIsLoading(false); return }
+        const { ok, data, status } = await apiJson('/api/attendance/checkout', { method: 'POST' })
+        if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); setIsLoading(false); return }
         toast.success('เช็คเอาท์สำเร็จ')
         setStep('done')
         onSuccess?.()
@@ -143,23 +144,26 @@ export default function CheckInPanel({ type, locationType = 'company', onSuccess
       formData.append('locationType', locationType)   // ← ส่ง locationType ไป API
 
       if (capturedPhoto) {
-        const blob = await fetch(capturedPhoto).then((r) => r.blob())
+        const blob = dataUrlToBlob(capturedPhoto)
         formData.append('photo', blob, 'face.jpg')
       }
 
-      const res = await fetch('/api/attendance/checkin', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error); setIsLoading(false); return }
+      const { ok, data, status } = await apiJson<{ lateMinutes?: number; isOutside?: boolean }>(
+        '/api/attendance/checkin',
+        { method: 'POST', body: formData },
+      )
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); setIsLoading(false); return }
 
-      if (data.lateMinutes > 0) {
+      if ((data.lateMinutes ?? 0) > 0) {
         toast.warning(`เช็คอินสำเร็จ — มาสาย ${data.lateMinutes} นาที`)
       } else {
         toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
       }
       setStep('done')
       onSuccess?.()
-    } catch {
-      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง')
+    } catch (err) {
+      console.error('[checkin]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง')
     } finally {
       setIsLoading(false)
     }

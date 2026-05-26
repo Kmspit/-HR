@@ -56,7 +56,6 @@
 @layer base {
   * {
     @apply border-border;
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
   }
 
   body {
@@ -292,4 +291,57 @@
   input, select, textarea {
     font-size: 16px !important; /* Prevents iOS zoom on focus */
   }
+}
+
+/* ── Critical layout fallback (เมื่อ Tailwind/CSS โหลดไม่ครบ) ── */
+.dashboard-shell {
+  display: flex;
+  min-height: 100dvh;
+  background-color: #070b14;
+  color: #e2e8f0;
+}
+.light .dashboard-shell {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+.dashboard-sidebar-slot {
+  display: none;
+  width: 14rem;
+  flex-shrink: 0;
+}
+@media (min-width: 768px) {
+  .dashboard-sidebar-slot {
+    display: flex;
+  }
+}
+.dashboard-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ป้องกัน SVG ขยายเต็มจอ */
+.hr-icon,
+aside svg,
+nav.mobile-bottom-nav svg,
+.nav-link-icon svg {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+  max-width: 1.125rem;
+  max-height: 1.125rem;
+  flex-shrink: 0;
+}
+.hr-icon-lg {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  max-width: 2.25rem;
+  max-height: 2.25rem;
+}
+.hr-icon-sm {
+  width: 1rem !important;
+  height: 1rem !important;
+  max-width: 1rem;
+  max-height: 1rem;
 }

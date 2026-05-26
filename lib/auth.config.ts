@@ -3,6 +3,7 @@ import type { Role, UserStatus } from '@prisma/client'
 
 // Edge-compatible auth config (no Prisma, no bcrypt)
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   pages: {
     signIn: '/login',
     error: '/login',
@@ -32,5 +33,5 @@ export const authConfig: NextAuthConfig = {
     },
   },
   providers: [],   // providers are added in lib/auth.ts
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
 }

@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; user: { name: string; email: string; department: string; role: string } }
 type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; user: { name: string; email: string; department: string; role: string } }
@@ -31,17 +32,19 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
     if (action === 'REJECT' && !rejectingId) { setRejectingId(requestId); return }
     setLoading(requestId)
     try {
-      const res = await fetch('/api/approvals', {
+      const { ok, data, status } = await apiJson('/api/approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, requestId, action, reason: action === 'REJECT' ? reason : undefined }),
       })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'เกิดข้อผิดพลาด'); return }
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success(action === 'APPROVE' ? '✅ อนุมัติเรียบร้อย' : '❌ ปฏิเสธเรียบร้อย')
       setRejectingId(null); setReason('')
       router.refresh()
-    } catch { toast.error('เกิดข้อผิดพลาด') }
+    } catch (err) {
+      console.error('[approval]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    }
     finally { setLoading(null) }
   }
 

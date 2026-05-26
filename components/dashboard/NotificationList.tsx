@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { formatThaiDateTime } from '@/lib/utils'
+import { apiJson } from '@/lib/client-api'
 import Link from 'next/link'
 
 type Notification = {
@@ -27,17 +28,29 @@ export default function NotificationList({ notifications }: { notifications: Not
   const markAllRead = async () => {
     setLoading(true)
     try {
-      await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      const { ok } = await apiJson('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!ok) { toast.error('เกิดข้อผิดพลาด'); return }
       setItems((prev) => prev.map((n) => ({ ...n, isRead: true })))
       toast.success('อ่านทั้งหมดแล้ว')
       router.refresh()
-    } catch { toast.error('เกิดข้อผิดพลาด') }
+    } catch (err) {
+      console.error('[notifications]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    }
     finally { setLoading(false) }
   }
 
   const markRead = async (id: string) => {
-    await fetch('/api/notifications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
-    setItems((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n))
+    const { ok } = await apiJson('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (ok) setItems((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n))
   }
 
   const unreadCount = items.filter((n) => !n.isRead).length

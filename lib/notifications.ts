@@ -9,7 +9,11 @@ export async function createNotification(params: {
   message: string
   link?: string
 }) {
-  return prisma.notification.create({ data: params })
+  try {
+    return await prisma.notification.create({ data: params })
+  } catch (err) {
+    console.error('[createNotification]', err)
+  }
 }
 
 // ─── Notify all users with specific role ─────────────
@@ -20,13 +24,18 @@ export async function notifyRole(
   message: string,
   link?: string
 ) {
-  const users = await prisma.user.findMany({
-    where: { role, status: 'ACTIVE' },
-    select: { id: true },
-  })
-  await prisma.notification.createMany({
-    data: users.map((u) => ({ userId: u.id, type, title, message, link: link ?? null })),
-  })
+  try {
+    const users = await prisma.user.findMany({
+      where: { role, status: 'ACTIVE' },
+      select: { id: true },
+    })
+    if (users.length === 0) return
+    await prisma.notification.createMany({
+      data: users.map((u) => ({ userId: u.id, type, title, message, link: link ?? null })),
+    })
+  } catch (err) {
+    console.error('[notifyRole]', err)
+  }
 }
 
 // ─── LINE Messaging API (Messaging API — ส่งถึงคนเดียว) ──
@@ -179,11 +188,15 @@ export async function createAuditLog(params: {
   ip?: string
   userAgent?: string
 }) {
-  return prisma.auditLog.create({
-    data: {
-      ...params,
-      before:    params.before    ? JSON.stringify(params.before)    : undefined,
-      after:     params.after     ? JSON.stringify(params.after)     : undefined,
-    },
-  })
+  try {
+    return await prisma.auditLog.create({
+      data: {
+        ...params,
+        before: params.before ? JSON.stringify(params.before) : undefined,
+        after:  params.after  ? JSON.stringify(params.after)  : undefined,
+      },
+    })
+  } catch (err) {
+    console.error('[createAuditLog]', err)
+  }
 }

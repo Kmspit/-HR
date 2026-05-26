@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Plus, Zap, User, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Warning = {
   id: string; userId: string; userName: string; userDept: string; employeeId: string
@@ -36,23 +37,37 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     if (!form.userId || !form.reason) { toast.error('กรุณากรอกข้อมูลให้ครบ'); return }
     setSubmitting(true)
     try {
-      const res = await fetch('/api/warnings', {
+      const { ok, data, status } = await apiJson('/api/warnings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error); return }
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success('ออกใบเตือนสำเร็จ')
       setShowForm(false)
       setForm({ userId: '', level: 1, reason: '', description: '' })
-      // Refresh list
-      const r2 = await fetch('/api/warnings')
-      const d2 = await r2.json()
-      setList(d2.warnings?.map((w: any) => ({
-        ...w, userName: w.user?.name ?? '', userDept: w.user?.department ?? '',
-        employeeId: w.user?.employeeId ?? '', createdAt: w.createdAt,
-      })) ?? [])
+      try {
+        const { data: d2 } = await apiJson<{ warnings?: Array<Record<string, unknown>> }>('/api/warnings')
+        setList(d2.warnings?.map((w) => ({
+          id: String(w.id),
+          userId: String(w.userId),
+          userName: (w.user as { name?: string })?.name ?? '',
+          userDept: (w.user as { department?: string })?.department ?? '',
+          employeeId: (w.user as { employeeId?: string })?.employeeId ?? '',
+          level: Number(w.level),
+          reason: String(w.reason),
+          description: String(w.description ?? ''),
+          isAuto: Boolean(w.isAuto),
+          month: w.month != null ? Number(w.month) : null,
+          year: w.year != null ? Number(w.year) : null,
+          createdAt: String(w.createdAt),
+        })) ?? [])
+      } catch {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error('[warnings]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setSubmitting(false)
     }
@@ -61,15 +76,27 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const runCron = async () => {
     setRunningCron(true)
     try {
-      const res = await fetch('/api/cron/check-warnings?secret=hrflow-cron-secret')
-      const data = await res.json()
+      const { ok, data, status } = await apiJson<{ warned?: number }>('/api/cron/check-warnings?secret=hrflow-cron-secret')
+      if (!ok) { toast.error(apiErrorMessage(data as Record<string, unknown>, 'เกิดข้อผิดพลาด', status)); return }
       toast.success(`ตรวจสอบเสร็จ: ออกใบเตือน ${data.warned ?? 0} คน`)
-      const r2 = await fetch('/api/warnings')
-      const d2 = await r2.json()
-      setList(d2.warnings?.map((w: any) => ({
-        ...w, userName: w.user?.name ?? '', userDept: w.user?.department ?? '',
-        employeeId: w.user?.employeeId ?? '', createdAt: w.createdAt,
+      const { data: d2 } = await apiJson<{ warnings?: Array<Record<string, unknown>> }>('/api/warnings')
+      setList(d2.warnings?.map((w) => ({
+        id: String(w.id),
+        userId: String(w.userId),
+        userName: (w.user as { name?: string })?.name ?? '',
+        userDept: (w.user as { department?: string })?.department ?? '',
+        employeeId: (w.user as { employeeId?: string })?.employeeId ?? '',
+        level: Number(w.level),
+        reason: String(w.reason),
+        description: String(w.description ?? ''),
+        isAuto: Boolean(w.isAuto),
+        month: w.month != null ? Number(w.month) : null,
+        year: w.year != null ? Number(w.year) : null,
+        createdAt: String(w.createdAt),
       })) ?? [])
+    } catch (err) {
+      console.error('[warnings-cron]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setRunningCron(false)
     }

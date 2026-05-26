@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 const DAYS = [
   { id: 1, label: 'วันจันทร์' },
@@ -45,17 +46,19 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
     if (!hasSomeDay) { toast.error('กรุณากรอกแผนงานอย่างน้อย 1 วัน'); return }
     setLoading(true)
     try {
-      const res = await fetch('/api/weekly-plan', {
+      const { ok, data, status } = await apiJson('/api/weekly-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weekStart: nextWeek.start, weekEnd: nextWeek.end, days: days.filter(d => d.place || d.purpose), note, isLate }),
       })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'เกิดข้อผิดพลาด'); return }
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success('ส่งแผนงานเรียบร้อย รอ Admin อนุมัติ')
       router.refresh()
       setTab('history')
-    } catch { toast.error('เกิดข้อผิดพลาด') }
+    } catch (err) {
+      console.error('[weekly-plan]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    }
     finally { setLoading(false) }
   }
 

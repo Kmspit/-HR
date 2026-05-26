@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/start-dev.mjs",
+    "dev:reset": "node scripts/start-dev.mjs --clean",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

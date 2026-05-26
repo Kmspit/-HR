@@ -26,8 +26,8 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
 export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
   MANAGER_HR: '/dashboard',
   ADMIN:      '/dashboard',
-  EMPLOYEE:   '/attendance',
-  LAWYER:     '/weekly-plan',
+  EMPLOYEE:   '/dashboard',
+  LAWYER:     '/dashboard',
 }
 
 // Role display names (Thai)

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { MapPin, Plus, Clock, User, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Request = {
   id: string; userId: string; userName: string; userDept: string
@@ -41,20 +42,37 @@ export default function OutsideWorkClient({ isManager, requests: init }: { isMan
     if (!form.date || !form.place || !form.purpose) { toast.error('กรุณากรอกข้อมูลให้ครบ'); return }
     setSubmitting(true)
     try {
-      const res = await fetch('/api/outside-work', {
+      const { ok, data, status } = await apiJson('/api/outside-work', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error); return }
+      if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success('ส่งคำขอแล้ว รอ Admin ตรวจสอบ')
       setShowForm(false)
-      const r2 = await fetch('/api/outside-work')
-      const d2 = await r2.json()
-      setRequests(d2.requests?.map((r: any) => ({
-        ...r, userName: r.user?.name ?? '', userDept: r.user?.department ?? '',
-        date: r.date, createdAt: r.createdAt,
-      })) ?? [])
+      setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '' })
+      try {
+        const { data: d2 } = await apiJson<{ requests?: Array<Record<string, unknown>> }>('/api/outside-work')
+        setRequests(d2.requests?.map((r) => ({
+          id: String(r.id),
+          userId: String(r.userId),
+          userName: (r.user as { name?: string })?.name ?? '',
+          userDept: (r.user as { department?: string })?.department ?? '',
+          date: String(r.date),
+          startTime: String(r.startTime),
+          endTime: String(r.endTime),
+          place: String(r.place),
+          purpose: String(r.purpose),
+          client: String(r.client ?? ''),
+          note: String(r.note ?? ''),
+          status: String(r.status),
+          createdAt: String(r.createdAt),
+        })) ?? [])
+      } catch {
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error('[outside-work]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setSubmitting(false)
     }

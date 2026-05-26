@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { apiError } from '@/lib/api-handler'
 
 const SS_RATE = 0.05
 const SS_MAX = 750
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await auth()
   if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -95,4 +97,7 @@ export async function POST(req: NextRequest) {
   )
 
   return NextResponse.json({ success: true, count: results.filter(Boolean).length })
+  } catch (err) {
+    return apiError(err)
+  }
 }

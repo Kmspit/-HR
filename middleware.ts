@@ -15,10 +15,10 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   const { pathname } = req.nextUrl
   const session = req.auth
 
-  // Allow public assets and API auth routes
+  // Allow public assets, API routes (handlers return JSON errors)
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.')
   ) {
