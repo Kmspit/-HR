@@ -1,48 +1,95 @@
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { redirect } from 'next/navigation'
-import PayrollClient from './PayrollClient'
-
-export default async function PayrollPage() {
-  const session = await auth()
-  if (!session?.user?.id) redirect('/')
-  if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) redirect('/unauthorized')
-
-  const now = new Date()
-  const month = now.getMonth() + 1
-  const year = now.getFullYear()
-
-  const payrolls = await prisma.payroll.findMany({
-    where: { month, year },
-    include: {
-      user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
-    },
-    orderBy: { user: { name: 'asc' } },
-  })
-
-  return (
-    <PayrollClient
-      month={month}
-      year={year}
-      payrolls={payrolls.map((p) => ({
-        id: p.id,
-        userId: p.userId,
-        name: p.user.name,
-        employeeId: p.user.employeeId ?? '',
-        department: p.user.department ?? '',
-        position: p.user.position ?? '',
-        socialSecurity: p.user.socialSecurity,
-        baseSalary: p.baseSalary,
-        lateDeduction: p.lateDeduction,
-        absentDeduction: p.absentDeduction,
-        unpaidLeave: p.unpaidLeave,
-        ssDeduction: p.socialSecurity,
-        netSalary: p.netSalary,
-        lateDays: p.lateDays,
-        absentDays: p.absentDays,
-        lateMinutes: p.lateMinutes ?? 0,
-        status: p.status,
-      }))}
-    />
-  )
-}
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import PayrollClient from './PayrollClient'
+
+const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
+
+export default async function PayrollPage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect('/')
+  if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) redirect('/unauthorized')
+
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  const [employees, payrollRecords] = await Promise.all([
+    prisma.user.findMany({
+      where: { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } },
+      select: {
+        id: true,
+        name: true,
+        employeeId: true,
+        department: true,
+        position: true,
+        socialSecurity: true,
+        baseSalary: true,
+      },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.payroll.findMany({
+      where: { month, year },
+      include: {
+        user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
+      },
+    }),
+  ])
+
+  const payrollByUser = new Map(payrollRecords.map((p) => [p.userId, p]))
+
+  const payrolls = employees.map((emp) => {
+    const p = payrollByUser.get(emp.id)
+    if (p) {
+      return {
+        id: p.id,
+        userId: p.userId,
+        name: p.user.name,
+        employeeId: p.user.employeeId ?? '',
+        department: p.user.department ?? '',
+        position: p.user.position ?? '',
+        socialSecurity: p.user.socialSecurity,
+        baseSalary: p.baseSalary,
+        lateDeduction: p.lateDeduction,
+        absentDeduction: p.absentDeduction,
+        unpaidLeave: p.unpaidLeave,
+        ssDeduction: p.socialSecurity,
+        netSalary: p.netSalary,
+        lateDays: p.lateDays,
+        absentDays: p.absentDays,
+        lateMinutes: p.lateMinutes ?? 0,
+        status: p.status,
+        hasPayroll: true,
+      }
+    }
+    return {
+      id: `pending-${emp.id}`,
+      userId: emp.id,
+      name: emp.name,
+      employeeId: emp.employeeId ?? '',
+      department: emp.department ?? '',
+      position: emp.position ?? '',
+      socialSecurity: emp.socialSecurity,
+      baseSalary: emp.baseSalary ?? 0,
+      lateDeduction: 0,
+      absentDeduction: 0,
+      unpaidLeave: 0,
+      ssDeduction: 0,
+      netSalary: 0,
+      lateDays: 0,
+      absentDays: 0,
+      lateMinutes: 0,
+      status: 'PENDING',
+      hasPayroll: false,
+    }
+  })
+
+  return (
+    <PayrollClient
+      month={month}
+      year={year}
+      payrolls={payrolls}
+      totalEmployees={employees.length}
+    />
+  )
+}

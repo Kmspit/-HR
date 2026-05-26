@@ -26,20 +26,41 @@ export default async function AttendancePage() {
     }),
   ])
 
-  // Manager/Admin: also get all employee attendance today
-  let allToday: { id: string; name: string; status: string; checkIn: string | null; checkOut: string | null }[] = []
+  // Manager/Admin: แสดงพนักงานทุกคน (รวมที่ยังไม่เช็คอินวันนี้)
+  const TEAM_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
+  let allToday: {
+    id: string
+    name: string
+    department: string | null
+    status: string
+    checkIn: string | null
+    checkOut: string | null
+    hasCheckedIn: boolean
+  }[] = []
   if (['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
-    const records = await prisma.attendance.findMany({
-      where: { date: today },
-      include: { user: { select: { name: true } } },
+    const [employees, records] = await Promise.all([
+      prisma.user.findMany({
+        where: { status: 'ACTIVE', role: { in: [...TEAM_ROLES] } },
+        select: { id: true, name: true, department: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.attendance.findMany({
+        where: { date: today },
+      }),
+    ])
+    const attByUser = new Map(records.map((r) => [r.userId, r]))
+    allToday = employees.map((emp) => {
+      const a = attByUser.get(emp.id)
+      return {
+        id: emp.id,
+        name: emp.name,
+        department: emp.department,
+        status: a?.status ?? 'NONE',
+        checkIn: a?.checkIn?.toISOString() ?? null,
+        checkOut: a?.checkOut?.toISOString() ?? null,
+        hasCheckedIn: !!a?.checkIn,
+      }
     })
-    allToday = records.map((r) => ({
-      id: r.userId,
-      name: r.user.name,
-      status: r.status,
-      checkIn: r.checkIn?.toISOString() ?? null,
-      checkOut: r.checkOut?.toISOString() ?? null,
-    }))
   }
 
   return (

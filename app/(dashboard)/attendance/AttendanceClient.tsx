@@ -53,7 +53,15 @@ type Props = {
   todayRecord: TodayRecord | null
   recentRecords: RecentRecord[]
   leaveBalance: { sick: number; vacation: number; personal: number } | null
-  allToday: { id: string; name: string; status: string; checkIn: string | null; checkOut: string | null }[]
+  allToday: {
+    id: string
+    name: string
+    department: string | null
+    status: string
+    checkIn: string | null
+    checkOut: string | null
+    hasCheckedIn: boolean
+  }[]
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -64,6 +72,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   OT:       { label: 'OT',        color: 'text-purple-400' },
   HALF_DAY: { label: 'ครึ่งวัน', color: 'text-orange-400' },
   EARLY_LEAVE: { label: 'กลับก่อน', color: 'text-orange-400' },
+  NONE: { label: 'ยังไม่เช็คอิน', color: 'text-slate-500' },
 }
 
 type LocationType = 'company' | 'outside'
@@ -480,7 +489,9 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
       {/* Team Tab (Manager only) */}
       {activeTab === 'team' && isManager && (
         <div className="space-y-3">
-          <p className="text-slate-500 text-xs">พนักงานที่เช็คอินวันนี้ ({allToday.length} คน)</p>
+          <p className="text-slate-500 text-xs">
+            พนักงานทั้งหมด {allToday.length} คน · เช็คอินแล้ว {allToday.filter((e) => e.hasCheckedIn).length} คน
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {allToday.map((emp) => {
               const s = STATUS_LABEL[emp.status] ?? { label: emp.status, color: 'text-white/60' }
@@ -493,8 +504,11 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold text-sm truncate">{emp.name}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
-                      {formatTime(emp.checkIn)} — {formatTime(emp.checkOut)}
+                    <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                      {emp.department ?? '—'} ·{' '}
+                      {emp.hasCheckedIn
+                        ? `${formatTime(emp.checkIn)} — ${formatTime(emp.checkOut)}`
+                        : 'ยังไม่ลงเวลาวันนี้'}
                     </p>
                   </div>
                   <span className={`text-xs font-semibold flex-shrink-0 ${s.color}`}>{s.label}</span>
@@ -502,7 +516,7 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
               )
             })}
             {allToday.length === 0 && (
-              <div className="col-span-3 text-center text-slate-600 py-10 text-sm">ยังไม่มีพนักงานเช็คอินวันนี้</div>
+              <div className="col-span-3 text-center text-slate-600 py-10 text-sm">ไม่พบพนักงานในระบบ</div>
             )}
           </div>
         </div>

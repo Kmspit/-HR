@@ -18,8 +18,17 @@ export default async function WarningsPage() {
     }),
     isManager
       ? prisma.user.findMany({
-          where: { status: 'ACTIVE' },
-          select: { id: true, name: true, department: true },
+          where: {
+            status: 'ACTIVE',
+            role: { in: ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] },
+          },
+          select: {
+            id: true,
+            name: true,
+            department: true,
+            employeeId: true,
+            _count: { select: { warnings: true } },
+          },
           orderBy: { name: 'asc' },
         })
       : [],
@@ -42,7 +51,13 @@ export default async function WarningsPage() {
         year: w.year ?? null,
         createdAt: w.createdAt.toISOString(),
       }))}
-      employees={employees.map((e) => ({ id: e.id, name: e.name, department: e.department ?? '' }))}
+      employees={employees.map((e) => ({
+        id: e.id,
+        name: e.name,
+        department: e.department ?? '',
+        employeeId: e.employeeId ?? '',
+        warningCount: e._count.warnings,
+      }))}
     />
   )
 }

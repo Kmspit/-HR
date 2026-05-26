@@ -11,15 +11,17 @@ type PayrollRow = {
   baseSalary: number; lateDeduction: number; absentDeduction: number
   unpaidLeave: number; ssDeduction: number; netSalary: number
   lateDays: number; absentDays: number; lateMinutes: number; status: string
+  hasPayroll?: boolean
 }
 
 type Props = {
   month: number; year: number; payrolls: PayrollRow[]
+  totalEmployees?: number
 }
 
 const MONTH_NAMES = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
 
-export default function PayrollClient({ month: initMonth, year: initYear, payrolls: initPayrolls }: Props) {
+export default function PayrollClient({ month: initMonth, year: initYear, payrolls: initPayrolls, totalEmployees }: Props) {
   const [month, setMonth] = useState(initMonth)
   const [year, setYear] = useState(initYear)
   const [payrolls, setPayrolls] = useState(initPayrolls)
@@ -28,16 +30,23 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
 
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
-    const { data } = await apiJson<{ payrolls?: PayrollRow[] }>(`/api/payroll/report?month=${m}&year=${y}`)
-    setPayrolls(data.payrolls?.map((p) => ({
-      ...p,
-      name: (p as { user?: { name?: string } }).user?.name ?? p.name ?? '',
-      employeeId: (p as { user?: { employeeId?: string } }).user?.employeeId ?? p.employeeId ?? '',
-      department: (p as { user?: { department?: string } }).user?.department ?? p.department ?? '',
-      position: (p as { user?: { position?: string } }).user?.position ?? p.position ?? '',
-      socialSecurity: (p as { user?: { socialSecurity?: boolean } }).user?.socialSecurity ?? p.socialSecurity ?? false,
-      ssDeduction: (p as { ssDeduction?: number }).ssDeduction ?? p.ssDeduction ?? 0,
-    })) ?? [])
+    const { ok, data } = await apiJson<{ payrolls?: PayrollRow[]; employeeCount?: number }>(
+      `/api/payroll/report?month=${m}&year=${y}`,
+    )
+    if (ok && data.payrolls) {
+      setPayrolls(
+        data.payrolls.map((p) => ({
+          ...p,
+          name: (p as { user?: { name?: string } }).user?.name ?? p.name ?? '',
+          employeeId: (p as { user?: { employeeId?: string } }).user?.employeeId ?? p.employeeId ?? '',
+          department: (p as { user?: { department?: string } }).user?.department ?? p.department ?? '',
+          position: (p as { user?: { position?: string } }).user?.position ?? p.position ?? '',
+          socialSecurity:
+            (p as { user?: { socialSecurity?: boolean } }).user?.socialSecurity ?? p.socialSecurity ?? false,
+          ssDeduction: (p as { ssDeduction?: number }).ssDeduction ?? p.ssDeduction ?? 0,
+        })),
+      )
+    }
     setLoading(false)
   }
 
@@ -107,8 +116,8 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
-          <p className="text-2xl font-bold text-blue-400">{payrolls.length}</p>
-          <p className="text-sm text-white/50">พนักงาน</p>
+          <p className="text-2xl font-bold text-blue-400">{totalEmployees ?? payrolls.length}</p>
+          <p className="text-sm text-white/50">พนักงานทั้งหมด</p>
         </div>
         <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-green-400">฿{totalNet.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
@@ -140,12 +149,17 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
             </thead>
             <tbody>
               {payrolls.map((p) => (
-                <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.03]">
+                <tr key={p.id} className={`border-b border-white/5 hover:bg-white/[0.03] ${!p.hasPayroll ? 'opacity-70' : ''}`}>
                   <td className="p-3">
                     <p className="text-white font-medium">{p.name}</p>
                     <p className="text-white/40 text-xs">{p.department} · {p.position}</p>
+                    {!p.hasPayroll && (
+                      <p className="text-[10px] text-amber-400 mt-0.5">ยังไม่คำนวณ — กดปุ่มคำนวณ</p>
+                    )}
                   </td>
-                  <td className="p-3 text-right text-white/70">฿{p.baseSalary.toLocaleString()}</td>
+                  <td className="p-3 text-right text-white/70">
+                    {p.hasPayroll ? `฿${p.baseSalary.toLocaleString()}` : '—'}
+                  </td>
                   <td className="p-3 text-right text-red-400">
                     {p.lateDeduction > 0 ? `-฿${p.lateDeduction.toFixed(0)}` : '-'}
                   </td>
@@ -155,13 +169,15 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
                   <td className="p-3 text-right text-orange-400">
                     {p.ssDeduction > 0 ? `-฿${p.ssDeduction.toFixed(0)}` : '-'}
                   </td>
-                  <td className="p-3 text-right font-bold text-green-400">฿{p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}</td>
+                  <td className="p-3 text-right font-bold text-green-400">
+                    {p.hasPayroll ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}` : '—'}
+                  </td>
                   <td className="p-3 text-center text-xs text-white/40">
                     สาย {p.lateDays}ครั้ง · ขาด {p.absentDays}วัน
                   </td>
                   <td className="p-3 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : p.status === 'SENT' ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-white/40'}`}>
-                      {p.status === 'APPROVED' ? 'อนุมัติ' : p.status === 'SENT' ? 'ส่งแล้ว' : 'ร่าง'}
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : p.status === 'SENT' ? 'bg-blue-500/20 text-blue-400' : p.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' : 'bg-white/10 text-white/40'}`}>
+                      {p.status === 'APPROVED' ? 'อนุมัติ' : p.status === 'SENT' ? 'ส่งแล้ว' : p.status === 'PENDING' ? 'รอคำนวณ' : 'ร่าง'}
                     </span>
                   </td>
                 </tr>

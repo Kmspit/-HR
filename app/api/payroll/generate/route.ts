@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { monthDateRange } from '@/lib/utils'
+
+const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
 const SS_RATE = 0.05
 const SS_MAX = 750
@@ -21,16 +24,15 @@ export async function POST(req: NextRequest) {
   const absentRate = settings?.absentDeductRate ?? 0  // เธเธฒเธ—/เธงเธฑเธ
 
   const employees = await prisma.user.findMany({
-    where: { status: 'ACTIVE', isCoworker: false },
+    where: { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } },
     select: { id: true, baseSalary: true, socialSecurity: true },
   })
 
-  const startDate = new Date(year, month - 1, 1)
-  const endDate = new Date(year, month, 0, 23, 59, 59)
+  const { start: startDate, end: endDate } = monthDateRange(month, year)
 
   const results = await Promise.all(
     employees.map(async (emp) => {
-      if (!emp.baseSalary) return null
+      const baseSalary = emp.baseSalary ?? 0
 
       const attendances = await prisma.attendance.findMany({
         where: { userId: emp.id, date: { gte: startDate, lte: endDate } },
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
         (a) => a.status === 'EARLY_LEAVE' || (a.earlyLeaveMinutes ?? 0) > 0,
       ).length
 
-      const dailyRate = emp.baseSalary / 26
+      const dailyRate = baseSalary / 26
       const lateDeduction =
         lateRate > 0 ? totalLateMinutes * lateRate + lateDays * dailyRate * 0.1 : lateDays * dailyRate * 0.1
       const absentDeduction = absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0)
@@ -65,17 +67,17 @@ export async function POST(req: NextRequest) {
       const earlyLeaveDeduction = earlyLeaveDays * dailyRate * 0.5
 
       let ssDeduction = 0
-      if (emp.socialSecurity) {
-        ssDeduction = Math.min(emp.baseSalary * SS_RATE, SS_MAX)
+      if (emp.socialSecurity && baseSalary > 0) {
+        ssDeduction = Math.min(baseSalary * SS_RATE, SS_MAX)
       }
 
       const netSalary =
-        emp.baseSalary - lateDeduction - absentDeduction - unpaidLeaveDeduction - earlyLeaveDeduction - ssDeduction
+        baseSalary - lateDeduction - absentDeduction - unpaidLeaveDeduction - earlyLeaveDeduction - ssDeduction
 
       return prisma.payroll.upsert({
         where: { userId_month_year: { userId: emp.id, month, year } },
         update: {
-          baseSalary: emp.baseSalary,
+          baseSalary,
           lateDeduction,
           absentDeduction,
           unpaidLeave: unpaidLeaveDeduction,
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
           userId: emp.id,
           month,
           year,
-          baseSalary: emp.baseSalary,
+          baseSalary,
           lateDeduction,
           absentDeduction,
           unpaidLeave: unpaidLeaveDeduction,

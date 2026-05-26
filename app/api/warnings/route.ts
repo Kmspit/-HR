@@ -35,18 +35,25 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { userId, level, reason, description } = body
+    const { userId, level, reason, description, useAutoLevel } = body
 
-    if (!userId || !level || !reason) {
-      return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
+    if (!userId || !reason) {
+      return NextResponse.json({ error: 'กรุณาเลือกพนักงานและระบุเหตุผล' }, { status: 400 })
     }
+
+    const priorCount = await prisma.warning.count({ where: { userId } })
+    const autoLevel = Math.min(priorCount + 1, 3)
+    const levelToUse =
+      useAutoLevel !== false && (level == null || level === '')
+        ? autoLevel
+        : Math.min(Math.max(Number(level) || autoLevel, 1), 3)
 
     const now = new Date()
     const warning = await prisma.warning.create({
       data: {
         userId,
         issuedById: session.user.id,
-        level: Number(level),
+        level: levelToUse,
         reason,
         description: description || null,
         isAuto: false,
@@ -59,13 +66,18 @@ export async function POST(req: NextRequest) {
       data: {
         userId,
         type: 'WARNING_ISSUED',
-        title: `ได้รับใบเตือนระดับ ${level}`,
+        title: `ได้รับใบเตือนระดับ ${levelToUse}`,
         message: reason,
         link: '/warnings',
       },
     }).catch((e) => console.error('[warning notify]', e))
 
-    return NextResponse.json({ warning })
+    return NextResponse.json({
+      warning,
+      priorCount,
+      warningNumber: priorCount + 1,
+      levelUsed: levelToUse,
+    })
   } catch (err) {
     return apiError(err)
   }

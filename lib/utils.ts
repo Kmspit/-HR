@@ -46,6 +46,15 @@ export function startOfTodayLocal(): Date {
   return d
 }
 
+/** ช่วงวันที่เริ่ม–สิ้นเดือน (month 1–12) ตามเวลา local */
+export function monthDateRange(month: number, year: number) {
+  const start = new Date(year, month - 1, 1)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(year, month, 0)
+  end.setHours(23, 59, 59, 999)
+  return { start, end }
+}
+
 export function parseCoord(value: FormDataEntryValue | null): number | null {
   if (value == null || value === '') return null
   const n = parseFloat(String(value))
