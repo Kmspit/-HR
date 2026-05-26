@@ -33,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           className="flex-1 overflow-y-auto overflow-x-hidden"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 68px)' }}
         >
-          <div className="md:pb-0">
+          <div className="page-enter md:pb-0">
             {children}
           </div>
         </main>

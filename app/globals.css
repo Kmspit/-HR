@@ -133,11 +133,51 @@
 
   /* Card hover */
   .card-hover {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 ease-out;
   }
   .card-hover:hover {
     @apply -translate-y-0.5;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+  .light .card-hover:hover {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.07) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+  .light .skeleton::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.65) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Page enter */
+  .page-enter {
+    @apply animate-fade-in-sm;
+  }
+
+  /* Smooth transitions for interactive UI */
+  .smooth-transition {
+    @apply transition-all duration-200 ease-out;
   }
 
   /* Gradient borders */

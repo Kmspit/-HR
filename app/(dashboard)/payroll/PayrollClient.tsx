@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { DollarSign, FileText, Send, Download, Loader2, RefreshCw } from 'lucide-react'
+import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -115,15 +116,15 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
+        <div className="card-hover smooth-transition bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-blue-400">{totalEmployees ?? payrolls.length}</p>
           <p className="text-sm text-white/50">พนักงานทั้งหมด</p>
         </div>
-        <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4 text-center">
+        <div className="card-hover smooth-transition bg-green-500/10 border border-green-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-green-400">฿{totalNet.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
           <p className="text-sm text-white/50">รวมจ่ายสุทธิ</p>
         </div>
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center">
+        <div className="card-hover smooth-transition bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-yellow-400">
             {payrolls.filter((p) => p.status === 'APPROVED').length}/{payrolls.length}
           </p>
@@ -132,7 +133,7 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
       </div>
 
       {/* Table */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[800px]">
             <thead>
@@ -148,8 +149,9 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
               </tr>
             </thead>
             <tbody>
-              {payrolls.map((p) => (
-                <tr key={p.id} className={`border-b border-white/5 hover:bg-white/[0.03] ${!p.hasPayroll ? 'opacity-70' : ''}`}>
+              {loading && <TableSkeletonRows rows={6} cols={8} />}
+              {!loading && payrolls.map((p) => (
+                <tr key={p.id} className={`table-row-hover ${!p.hasPayroll ? 'opacity-70' : ''}`}>
                   <td className="p-3">
                     <p className="text-white font-medium">{p.name}</p>
                     <p className="text-white/40 text-xs">{p.department} · {p.position}</p>
@@ -182,10 +184,10 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
                   </td>
                 </tr>
               ))}
-              {payrolls.length === 0 && (
+              {!loading && payrolls.length === 0 && (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-white/30">
-                    {loading ? 'กำลังโหลด...' : 'ยังไม่มีข้อมูล กด "คำนวณ" เพื่อสร้าง payroll'}
+                    ยังไม่มีข้อมูล กด &quot;คำนวณ&quot; เพื่อสร้าง payroll
                   </td>
                 </tr>
               )}

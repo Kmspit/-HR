@@ -50,7 +50,7 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
 
       <div className="p-4 md:p-5 space-y-5">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <div className="rounded-2xl p-3.5" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="glass-card card-hover rounded-2xl p-3.5" style={{ animationDelay: '0ms' }}>
             <p className="text-[10px] text-slate-500">สถานะวันนี้</p>
             <p className="mt-1 text-lg font-bold text-white">
               {!checkedIn ? 'ยังไม่เช็คอิน' : checkedOut ? 'เสร็จสิ้น' : 'กำลังทำงาน'}
@@ -61,28 +61,28 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
               </p>
             )}
           </div>
-          <div className="rounded-2xl p-3.5" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="glass-card card-hover rounded-2xl p-3.5">
             <p className="text-[10px] text-slate-500">ลาป่วยคงเหลือ</p>
             <p className="mt-1 text-lg font-bold text-white">{leaveBalance?.sick ?? 30} วัน</p>
           </div>
-          <div className="rounded-2xl p-3.5" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="glass-card card-hover rounded-2xl p-3.5">
             <p className="text-[10px] text-slate-500">ลาพักร้อน</p>
             <p className="mt-1 text-lg font-bold text-white">{leaveBalance?.vacation ?? 6} วัน</p>
           </div>
-          <div className="rounded-2xl p-3.5" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="glass-card card-hover rounded-2xl p-3.5">
             <p className="text-[10px] text-slate-500">แจ้งเตือน</p>
             <p className="mt-1 text-lg font-bold text-white">{unreadCount} รายการ</p>
           </div>
         </div>
 
-        <div className="rounded-2xl p-4 md:p-5" style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="glass-card card-hover rounded-2xl p-4 md:p-5">
           <h2 className="font-semibold text-white text-[15px] mb-4">เมนูด่วน</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {quickActions.map((a) => (
               <Link
                 key={a.href}
                 href={a.href}
-                className="group flex flex-col items-center gap-2 rounded-xl p-3 text-center border border-white/[0.05] bg-white/[0.02] transition-all hover:-translate-y-0.5 hover:border-white/[0.1]"
+                className="group card-hover flex flex-col items-center gap-2 rounded-xl p-3 text-center border border-white/[0.05] bg-white/[0.02] hover:border-white/[0.1]"
               >
                 <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${a.gradient}`}>
                   <svg width={16} height={16} className="hr-icon-sm h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>

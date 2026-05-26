@@ -59,8 +59,7 @@ export default function AnnouncementsClient({
   return (
     <div className="p-4 md:p-5 space-y-5">
       {/* Company Announcements */}
-      <div className="rounded-2xl p-4 md:p-5"
-        style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="glass-card card-hover rounded-2xl p-4 md:p-5 smooth-transition">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-white text-[15px]">ประกาศจากบริษัท</h2>
@@ -77,8 +76,7 @@ export default function AnnouncementsClient({
             const cfg = TYPE_CONFIG[ann.type] ?? TYPE_CONFIG.GENERAL
             return (
               <div key={ann.id}
-                className="group rounded-xl p-4 border transition-all"
-                style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
+                className="group card-hover rounded-xl p-4 border border-white/[0.06] bg-white/[0.025] smooth-transition"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-base"
@@ -108,8 +106,7 @@ export default function AnnouncementsClient({
       </div>
 
       {/* Personal Notifications */}
-      <div className="rounded-2xl p-4 md:p-5"
-        style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="glass-card card-hover rounded-2xl p-4 md:p-5 smooth-transition">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-white text-[15px]">การแจ้งเตือนของฉัน</h2>
@@ -148,7 +145,7 @@ export default function AnnouncementsClient({
               const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.GENERAL
               return (
                 <div key={n.id}
-                  className={`flex items-start gap-3 rounded-xl px-3.5 py-3 border transition-all ${
+                  className={`card-hover flex items-start gap-3 rounded-xl px-3.5 py-3 border smooth-transition ${
                     n.isRead
                       ? 'border-white/[0.04] bg-transparent'
                       : 'border-blue-500/20 bg-blue-500/[0.04]'

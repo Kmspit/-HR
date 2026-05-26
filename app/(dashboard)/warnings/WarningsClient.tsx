@@ -248,7 +248,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       </div>
 
       {showForm && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+        <div className="glass-card card-hover rounded-2xl p-5 space-y-4 animate-fade-in-sm">
           <h3 className="font-semibold text-white">ออกใบเตือนด้วยตนเอง</h3>
 
           <div>
@@ -437,14 +437,14 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
       <div className="grid grid-cols-3 gap-3">
         {[1, 2, 3].map((lvl) => (
-          <div key={lvl} className={`border rounded-2xl p-4 text-center ${LEVEL_STYLES[lvl]}`}>
+          <div key={lvl} className={`card-hover smooth-transition border rounded-2xl p-4 text-center ${LEVEL_STYLES[lvl]}`}>
             <p className="text-2xl font-bold">{list.filter((w) => w.level === lvl).length}</p>
             <p className="text-sm opacity-80">ระดับ {lvl}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -463,7 +463,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
               {list.map((w) => {
                 const userOrdinal = warningOrdinalById.get(w.id) ?? '?'
                 return (
-                  <tr key={w.id} className="border-b border-white/5 hover:bg-white/[0.03]">
+                  <tr key={w.id} className="table-row-hover">
                     {isManager && (
                       <td className="p-3">
                         <p className="text-white font-medium">{w.userName}</p>

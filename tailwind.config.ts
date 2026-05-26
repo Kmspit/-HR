@@ -76,6 +76,10 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(16px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        'fade-in-sm': {
+          from: { opacity: '0', transform: 'translateY(6px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
         'fade-in-slow': {
           from: { opacity: '0' },
           to: { opacity: '1' },
@@ -111,6 +115,7 @@ const config: Config = {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.5s cubic-bezier(0.16,1,0.3,1)',
+        'fade-in-sm': 'fade-in-sm 0.35s cubic-bezier(0.16,1,0.3,1) forwards',
         'fade-in-slow': 'fade-in-slow 0.8s ease-out',
         'slide-up': 'slide-up 0.5s cubic-bezier(0.16,1,0.3,1)',
         'slide-in-right': 'slide-in-right 0.4s cubic-bezier(0.16,1,0.3,1)',
