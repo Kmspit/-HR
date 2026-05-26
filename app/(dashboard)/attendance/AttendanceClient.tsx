@@ -3,12 +3,11 @@
 import { useState } from 'react'
 import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import CheckInPanel from '@/components/dashboard/CheckInPanel'
+import CheckInPanel, { type CompanyGeofence } from '@/components/dashboard/CheckInPanel'
 import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
-import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { toast } from 'sonner'
-import { Coffee, Loader2 } from 'lucide-react'
+import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
+import { Coffee } from 'lucide-react'
 
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
 
@@ -25,6 +24,9 @@ type TodayRecord = {
   address: string | null
   workPlaceName: string | null
   photoUrl: string | null
+  checkOutPhotoUrl: string | null
+  lunchOutPhotoUrl: string | null
+  lunchInPhotoUrl: string | null
   lat: number | null
   lng: number | null
 }
@@ -47,6 +49,7 @@ type RecentRecord = {
 type Props = {
   role: string
   companyOffice: { name: string; address: string } | null
+  companyGeofence: CompanyGeofence | null
   todayRecord: TodayRecord | null
   recentRecords: RecentRecord[]
   leaveBalance: { sick: number; vacation: number; personal: number } | null
@@ -65,11 +68,11 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 
 type LocationType = 'company' | 'outside'
 
-export default function AttendanceClient({ role, companyOffice, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
+export default function AttendanceClient({ role, companyOffice, companyGeofence, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
-  const [lunchLoading, setLunchLoading] = useState(false)
+  const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | null>(null)
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(role)
   const canCheckIn = !todayRecord?.checkIn
@@ -87,25 +90,19 @@ export default function AttendanceClient({ role, companyOffice, todayRecord, rec
 
   const handleSuccess = () => {
     setSelectedType(null)
+    setLunchPanel(null)
     setRefreshKey((k) => k + 1)
     setTimeout(() => window.location.reload(), 800)
   }
 
-  const handleLunch = async (action: 'lunch-out' | 'lunch-in') => {
-    setLunchLoading(true)
-    const { ok, data, status } = await apiJson('/api/attendance/lunch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
-    })
-    setLunchLoading(false)
-    if (!ok) {
-      toast.error(apiErrorMessage(data as Record<string, unknown>, 'เกิดข้อผิดพลาด', status))
-      return
-    }
-    toast.success(action === 'lunch-out' ? 'บันทึกเริ่มพักกลางวัน' : 'บันทึกกลับจากพัก')
-    setTimeout(() => window.location.reload(), 600)
-  }
+  const todayPhotos = todayRecord
+    ? [
+        { key: 'in', label: 'เช็คอิน', url: todayRecord.photoUrl, time: todayRecord.checkIn },
+        { key: 'lunch-out', label: 'เริ่มพัก', url: todayRecord.lunchOutPhotoUrl, time: todayRecord.lunchOut },
+        { key: 'lunch-in', label: 'กลับจากพัก', url: todayRecord.lunchInPhotoUrl, time: todayRecord.lunchIn },
+        { key: 'out', label: 'เช็คเอาท์', url: todayRecord.checkOutPhotoUrl, time: todayRecord.checkOut },
+      ]
+    : []
 
   return (
     <div className="p-4 md:p-5 space-y-4">
@@ -175,14 +172,27 @@ export default function AttendanceClient({ role, companyOffice, todayRecord, rec
             </div>
           </div>
 
-          {/* Location */}
+          {companyGeofence && (
+            <div className="rounded-xl px-3.5 py-2.5 space-y-1"
+              style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)' }}>
+              <p className="text-[10px] text-cyan-400 font-semibold">พิกัดสำนักงาน (Geofence)</p>
+              <p className="text-xs text-white font-mono">
+                {companyGeofence.lat.toFixed(5)}, {companyGeofence.lng.toFixed(5)}
+                <span className="text-slate-500 font-sans ml-2">รัศมี {companyGeofence.radiusM} ม.</span>
+              </p>
+              <p className="text-[10px] text-slate-500 line-clamp-2">{companyGeofence.address}</p>
+            </div>
+          )}
+
           {todayRecord?.address && (
             <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5"
               style={{ background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-              <span className="text-xs text-slate-400 truncate">{todayRecord.address}</span>
+              <span className="text-xs text-slate-400 truncate">GPS ล่าสุด: {todayRecord.address}</span>
             </div>
           )}
+
+          {todayRecord?.checkIn && <AttendancePhotos items={todayPhotos} />}
 
           {todayRecord?.checkIn && (
             <AttendanceTimeline
@@ -194,29 +204,46 @@ export default function AttendanceClient({ role, companyOffice, todayRecord, rec
             />
           )}
 
-          {(canLunchOut || canLunchIn) && (
+          {(canLunchOut || canLunchIn) && !lunchPanel && (
             <div className="flex gap-2">
               {canLunchOut && (
                 <button
                   type="button"
-                  disabled={lunchLoading}
-                  onClick={() => handleLunch('lunch-out')}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/90 text-white text-sm font-semibold disabled:opacity-50"
+                  onClick={() => setLunchPanel('lunch-out')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/90 text-white text-sm font-semibold"
                 >
-                  {lunchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coffee className="w-4 h-4" />}
-                  เริ่มพักกลางวัน
+                  <Coffee className="w-4 h-4" />
+                  เริ่มพักกลางวัน (ถ่ายรูป)
                 </button>
               )}
               {canLunchIn && (
                 <button
                   type="button"
-                  disabled={lunchLoading}
-                  onClick={() => handleLunch('lunch-in')}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/80 text-white text-sm font-semibold disabled:opacity-50"
+                  onClick={() => setLunchPanel('lunch-in')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/80 text-white text-sm font-semibold"
                 >
-                  สิ้นพักกลางวัน
+                  <Coffee className="w-4 h-4" />
+                  สิ้นพักกลางวัน (ถ่ายรูป)
                 </button>
               )}
+            </div>
+          )}
+
+          {lunchPanel && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setLunchPanel(null)}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                ← ยกเลิก
+              </button>
+              <CheckInPanel
+                type={lunchPanel}
+                companyOffice={companyOffice}
+                companyGeofence={companyGeofence}
+                onSuccess={handleSuccess}
+              />
             </div>
           )}
 
@@ -322,6 +349,7 @@ export default function AttendanceClient({ role, companyOffice, todayRecord, rec
                 type="checkin"
                 locationType={selectedType}
                 companyOffice={selectedType === 'company' ? companyOffice : null}
+                companyGeofence={selectedType === 'company' ? companyGeofence : null}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -342,6 +370,7 @@ export default function AttendanceClient({ role, companyOffice, todayRecord, rec
                 type="checkout"
                 locationType={todayRecord?.isOutside ? 'outside' : 'company'}
                 companyOffice={!todayRecord?.isOutside ? companyOffice : null}
+                companyGeofence={!todayRecord?.isOutside ? companyGeofence : null}
                 onSuccess={handleSuccess}
               />
             </div>

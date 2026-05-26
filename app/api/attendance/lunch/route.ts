@@ -1,22 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
-import { startOfTodayLocal } from '@/lib/utils'
+import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const deviceKey = req.headers.get('X-Device-Key')
-    const deviceCheck = await assertDeviceAllowed(session.user.id, deviceKey)
+    const deviceCheck = await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))
     if (!deviceCheck.ok) return NextResponse.json({ error: deviceCheck.error }, { status: 403 })
 
-    const { action } = await req.json()
+    const formData = await req.formData()
+    const action = formData.get('action') as string
+    const photo = formData.get('photo') as File | null
+    const lat = parseCoord(formData.get('lat'))
+    const lng = parseCoord(formData.get('lng'))
+    const address = (formData.get('address') as string) || ''
+
     if (action !== 'lunch-out' && action !== 'lunch-in') {
       return NextResponse.json({ error: 'action ต้องเป็น lunch-out หรือ lunch-in' }, { status: 400 })
+    }
+    if (!photo || photo.size === 0) {
+      return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าตรงจากกล้อง' }, { status: 400 })
+    }
+
+    const photoUrl = await saveUpload(photo, action, session.user.id)
+    if (!photoUrl) {
+      return NextResponse.json({ error: 'บันทึกรูปไม่สำเร็จ' }, { status: 500 })
     }
 
     const today = startOfTodayLocal()
@@ -32,6 +46,10 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date()
+    const geoPatch =
+      lat != null && lng != null
+        ? { lat, lng, ...(address ? { address } : {}) }
+        : {}
 
     if (action === 'lunch-out') {
       if (attendance.lunchOut) {
@@ -39,7 +57,7 @@ export async function POST(req: NextRequest) {
       }
       const updated = await prisma.attendance.update({
         where: { id: attendance.id },
-        data: { lunchOut: now },
+        data: { lunchOut: now, lunchOutPhotoUrl: photoUrl, ...geoPatch },
       })
       return NextResponse.json({ success: true, attendance: updated })
     }
@@ -53,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
-      data: { lunchIn: now },
+      data: { lunchIn: now, lunchInPhotoUrl: photoUrl, ...geoPatch },
     })
     return NextResponse.json({ success: true, attendance: updated })
   } catch (err) {

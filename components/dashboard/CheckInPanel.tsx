@@ -1,42 +1,85 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation, Camera, BookmarkPlus } from 'lucide-react'
+import { MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation, BookmarkPlus, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { dataUrlToBlob } from '@/lib/utils'
 
 type SavedPlace = { id: string; name: string }
 
+export type CompanyGeofence = {
+  name: string
+  address: string
+  lat: number
+  lng: number
+  radiusM: number
+}
+
+type PanelType = 'checkin' | 'checkout' | 'lunch-out' | 'lunch-in'
+
 type Props = {
-  type: 'checkin' | 'checkout'
+  type: PanelType
   locationType?: 'company' | 'outside'
   companyOffice?: { name: string; address: string } | null
+  companyGeofence?: CompanyGeofence | null
   onSuccess?: () => void
 }
 
-export default function CheckInPanel({ type, locationType = 'company', companyOffice, onSuccess }: Props) {
+function CompanyGeofenceCard({ geo }: { geo: CompanyGeofence }) {
+  return (
+    <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3.5 space-y-2">
+      <div className="flex items-start gap-2">
+        <Building2 className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-white">{geo.name}</p>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">{geo.address}</p>
+        </div>
+      </div>
+      <div className="rounded-lg bg-black/25 px-3 py-2 text-[11px] text-slate-300 font-mono space-y-0.5">
+        <p>พิกัดสำนักงาน: {geo.lat.toFixed(5)}, {geo.lng.toFixed(5)}</p>
+        <p className="text-slate-500">รัศมี Geofence: {geo.radiusM} ม.</p>
+      </div>
+    </div>
+  )
+}
+
+export default function CheckInPanel({
+  type,
+  locationType = 'company',
+  companyOffice,
+  companyGeofence,
+  onSuccess,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
-  const [step, setStep] = useState<'place' | 'gps' | 'camera' | 'confirm' | 'done'>('place')
+  const isLunch = type === 'lunch-out' || type === 'lunch-in'
+  const isOutsideType = !isLunch && locationType === 'outside'
+  const isCompanyOffice = !isOutsideType && !!companyOffice
+
+  const [step, setStep] = useState<'place' | 'gps' | 'camera' | 'confirm' | 'done'>(
+    isLunch ? 'camera' : 'place',
+  )
   const [workPlaceName, setWorkPlaceName] = useState('')
   const [savePlace, setSavePlace] = useState(false)
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
   const [location, setLocation] = useState<{ lat: number; lng: number; address: string } | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
-  const [cameraTimer, setCameraTimer] = useState(2)
   const [isLoading, setIsLoading] = useState(false)
   const [cameraError, setCameraError] = useState('')
 
-  const isOutsideType = locationType === 'outside'
   const accentGradient = isOutsideType
     ? 'linear-gradient(135deg,#f97316,#ef4444)'
-    : 'linear-gradient(135deg,#06b6d4,#3b82f6)'
-  const accentBorder = isOutsideType ? 'rgba(249,115,22,0.3)' : 'rgba(6,182,212,0.3)'
-
-  const isCompanyOffice = !isOutsideType && !!companyOffice
+    : isLunch
+      ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+      : 'linear-gradient(135deg,#06b6d4,#3b82f6)'
+  const accentBorder = isOutsideType
+    ? 'rgba(249,115,22,0.3)'
+    : isLunch
+      ? 'rgba(245,158,11,0.3)'
+      : 'rgba(6,182,212,0.3)'
 
   useEffect(() => {
     if (isCompanyOffice && companyOffice) {
@@ -52,6 +95,30 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
     }
   }, [isCompanyOffice])
 
+  const captureGpsQuiet = useCallback(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+          )
+          const data = await res.json()
+          address = data.display_name ?? address
+        } catch {}
+        setLocation({ lat, lng, address })
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  }, [])
+
+  useEffect(() => {
+    if (isLunch) captureGpsQuiet()
+  }, [isLunch, captureGpsQuiet])
+
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -62,7 +129,7 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
       if (videoRef.current) videoRef.current.srcObject = stream
       setCameraError('')
     } catch {
-      setCameraError('ไม่สามารถเปิดกล้องได้ — ต้องถ่ายสดจากกล้องเท่านั้น (ห้ามอัปโหลดจากแกลเลอรี่)')
+      setCameraError('ไม่สามารถเปิดกล้องได้ — ต้องถ่ายสดจากกล้องเท่านั้น')
     }
   }, [])
 
@@ -72,22 +139,10 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
   }, [])
 
   useEffect(() => {
-    if (step === 'camera') {
-      startCamera()
-      setCameraTimer(2)
-    } else stopCamera()
+    if (step === 'camera') startCamera()
+    else stopCamera()
     return () => stopCamera()
   }, [step, startCamera, stopCamera])
-
-  useEffect(() => {
-    if (step !== 'camera' || cameraError) return
-    if (cameraTimer <= 0) {
-      capturePhoto()
-      return
-    }
-    const t = setTimeout(() => setCameraTimer((v) => v - 1), 1000)
-    return () => clearTimeout(t)
-  }, [step, cameraTimer, cameraError])
 
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
@@ -143,18 +198,37 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
   }
 
   const handleSubmit = async () => {
-    if (!location || !capturedPhoto) return
+    if (!capturedPhoto) return
+    if (!isLunch && !location) return
+
     setIsLoading(true)
     try {
       const formData = new FormData()
-      formData.append('lat', String(location.lat))
-      formData.append('lng', String(location.lng))
-      formData.append('address', location.address)
-      formData.append('workPlaceName', workPlaceName.trim())
       const blob = dataUrlToBlob(capturedPhoto)
       formData.append('photo', blob, 'face.jpg')
 
-      if (type === 'checkin') {
+      if (isLunch) {
+        formData.append('action', type)
+        if (location) {
+          formData.append('lat', String(location.lat))
+          formData.append('lng', String(location.lng))
+          formData.append('address', location.address)
+        }
+        const { ok, data, status } = await apiJson('/api/attendance/lunch', {
+          method: 'POST',
+          body: formData,
+        })
+        if (!ok) {
+          toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
+          return
+        }
+        toast.success(type === 'lunch-out' ? 'บันทึกเริ่มพักกลางวัน (ถ่ายรูปแล้ว)' : 'บันทึกกลับจากพัก (ถ่ายรูปแล้ว)')
+      } else if (type === 'checkin') {
+        if (!location) return
+        formData.append('lat', String(location.lat))
+        formData.append('lng', String(location.lng))
+        formData.append('address', location.address)
+        formData.append('workPlaceName', workPlaceName.trim())
         formData.append('locationType', locationType)
         const { ok, data, status } = await apiJson<{ lateMinutes?: number; isOutside?: boolean }>(
           '/api/attendance/checkin',
@@ -170,6 +244,11 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
           toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
         }
       } else {
+        if (!location) return
+        formData.append('lat', String(location.lat))
+        formData.append('lng', String(location.lng))
+        formData.append('address', location.address)
+        formData.append('workPlaceName', workPlaceName.trim())
         const { ok, data, status } = await apiJson('/api/attendance/checkout', {
           method: 'POST',
           body: formData,
@@ -178,7 +257,7 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
           toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
           return
         }
-        toast.success('เช็คเอาท์สำเร็จ (ถ่ายรูปยืนยันแล้ว)')
+        toast.success('เช็คเอาท์สำเร็จ (ถ่ายรูปแล้ว)')
       }
       setStep('done')
       onSuccess?.()
@@ -190,34 +269,42 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
     }
   }
 
-  const title = type === 'checkin'
-    ? (isOutsideType ? 'เช็คอิน นอกสถานที่' : `เช็คอิน ในบริษัท`)
-    : 'เช็คเอาท์'
+  const title =
+    type === 'checkin'
+      ? isOutsideType
+        ? 'เช็คอิน นอกสถานที่'
+        : 'เช็คอิน ในบริษัท'
+      : type === 'checkout'
+        ? 'เช็คเอาท์'
+        : type === 'lunch-out'
+          ? 'เริ่มพักกลางวัน'
+          : 'กลับจากพักกลางวัน'
+
+  const showCompanyGeo = companyGeofence && (isCompanyOffice || isLunch || (!isOutsideType && type === 'checkout'))
 
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: 'rgba(13,19,33,0.8)', border: `1px solid ${accentBorder}` }}>
+    <div
+      className="rounded-2xl p-5 flex flex-col gap-4"
+      style={{ background: 'rgba(13,19,33,0.8)', border: `1px solid ${accentBorder}` }}
+    >
       <p className="font-bold text-white text-sm">{title}</p>
+
+      {showCompanyGeo && <CompanyGeofenceCard geo={companyGeofence!} />}
 
       {step === 'place' && (
         <div className="space-y-3">
           {isCompanyOffice && companyOffice ? (
-            <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3.5 space-y-2">
-              <div className="flex items-start gap-2">
-                <Building2 className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-white">{companyOffice.name}</p>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">{companyOffice.address}</p>
-                </div>
-              </div>
-              <p className="text-[10px] text-slate-500">ชื่อสถานที่นี้แยกจากพิกัด GPS ที่จะบันทึกตอนเช็คอิน</p>
+            <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3.5">
+              <p className="text-sm font-semibold text-white">{companyOffice.name}</p>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">{companyOffice.address}</p>
             </div>
           ) : (
             <>
-              <label className="text-xs text-slate-400">ชื่อสถานที่ทำงาน (พิมพ์เอง เช่น ศาลมีนบุรี)</label>
+              <label className="text-xs text-slate-400">ชื่อสถานที่ทำงาน</label>
               <input
                 value={workPlaceName}
                 onChange={(e) => setWorkPlaceName(e.target.value)}
-                placeholder="ชื่อสถานที่ — ไม่เกี่ยวกับ GPS"
+                placeholder="ชื่อสถานที่"
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white"
               />
               {savedPlaces.length > 0 && (
@@ -235,7 +322,12 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
                 </div>
               )}
               <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-                <input type="checkbox" checked={savePlace} onChange={(e) => setSavePlace(e.target.checked)} className="accent-blue-500" />
+                <input
+                  type="checkbox"
+                  checked={savePlace}
+                  onChange={(e) => setSavePlace(e.target.checked)}
+                  className="accent-blue-500"
+                />
                 <BookmarkPlus className="w-3.5 h-3.5" /> บันทึกเป็นสถานที่ใช้ประจำ
               </label>
             </>
@@ -253,7 +345,7 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
 
       {step === 'gps' && (
         <div className="flex flex-col items-center gap-3 py-2">
-          <p className="text-xs text-slate-400 text-center">ระบบจะเก็บพิกัด GPS จริงแยกจากชื่อสถานที่</p>
+          <p className="text-xs text-slate-400 text-center">บันทึกพิกัด GPS จริง ณ ขณะลงเวลา</p>
           <button
             type="button"
             onClick={getGps}
@@ -270,32 +362,75 @@ export default function CheckInPanel({ type, locationType = 'company', companyOf
       {step === 'camera' && (
         <div className="flex flex-col items-center gap-3">
           <div className="text-center space-y-1">
-            <p className="text-lg font-bold text-white">มองตรงไปที่กล้อง</p>
-            <p className="text-xs text-slate-400">ถ่ายสดเท่านั้น — ห้ามเลือกรูปจากแกลเลอรี่</p>
+            <p className="text-lg font-bold text-white">ถ่ายรูปหน้าตรง</p>
+            <p className="text-xs text-slate-400">มองตรงกล้อง — ไม่ต้องหันซ้าย หันขวา หรือพยักหน้า</p>
           </div>
           <div className="relative w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden bg-black">
-            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-1">
-              <span className="text-sm font-semibold text-white/90 bg-black/40 px-3 py-1 rounded-full">หน้าตรง</span>
-              {cameraTimer > 0 && (
-                <span className="text-3xl font-bold text-white drop-shadow-lg">{cameraTimer}</span>
-              )}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover scale-x-[-1]"
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-sm font-semibold text-white/90 bg-black/40 px-3 py-1 rounded-full">
+                หน้าตรง
+              </span>
             </div>
           </div>
           <canvas ref={canvasRef} className="hidden" />
+          <button
+            type="button"
+            onClick={capturePhoto}
+            disabled={!!cameraError}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: accentGradient }}
+          >
+            <Camera className="w-5 h-5" />
+            ถ่ายรูป
+          </button>
+          <p className="text-[10px] text-slate-500 text-center">กดปุ่มเมื่อพร้อม — ไม่มีนับถอยหลังอัตโนมัติ</p>
           {cameraError && <p className="text-xs text-red-400 text-center">{cameraError}</p>}
         </div>
       )}
 
-      {step === 'confirm' && location && (
+      {step === 'confirm' && (
         <div className="space-y-3">
           {capturedPhoto && (
-            <img src={capturedPhoto} alt="face" className="w-24 h-24 rounded-full mx-auto object-cover scale-x-[-1] border-2 border-cyan-500/50" />
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={capturedPhoto}
+              alt="face"
+              className="w-24 h-24 rounded-full mx-auto object-cover scale-x-[-1] border-2 border-cyan-500/50"
+            />
           )}
-          <p className="text-xs text-white"><strong>สถานที่:</strong> {workPlaceName}</p>
-          <p className="text-xs text-slate-400 line-clamp-2">GPS: {location.address}</p>
+          {!isLunch && workPlaceName && (
+            <p className="text-xs text-white">
+              <strong>สถานที่:</strong> {workPlaceName}
+            </p>
+          )}
+          {location && (
+            <p className="text-xs text-slate-400 line-clamp-2">
+              GPS ณ ขณะถ่าย: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+              <br />
+              {location.address}
+            </p>
+          )}
+          {!location && isLunch && companyGeofence && (
+            <p className="text-xs text-slate-400">
+              พิกัดอ้างอิงสำนักงาน: {companyGeofence.lat.toFixed(5)}, {companyGeofence.lng.toFixed(5)}
+            </p>
+          )}
           <div className="flex gap-2">
-            <button type="button" onClick={() => { setStep('camera'); setCapturedPhoto(null) }} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setStep('camera')
+                setCapturedPhoto(null)
+              }}
+              className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm"
+            >
               <RotateCcw className="w-3.5 h-3.5 inline mr-1" /> ถ่ายใหม่
             </button>
             <button

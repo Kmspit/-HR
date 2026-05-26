@@ -53,6 +53,17 @@ export default async function AttendancePage() {
             }
           : null
       }
+      companyGeofence={
+        companySettings?.geofenceLat != null && companySettings?.geofenceLng != null
+          ? {
+              name: companySettings.companyName,
+              address: companySettings.officeAddress ?? '',
+              lat: companySettings.geofenceLat,
+              lng: companySettings.geofenceLng,
+              radiusM: companySettings.geofenceRadius ?? 250,
+            }
+          : null
+      }
       todayRecord={todayRecord ? {
         id: todayRecord.id,
         checkIn: todayRecord.checkIn?.toISOString() ?? null,
@@ -66,6 +77,9 @@ export default async function AttendancePage() {
         address: todayRecord.address ?? null,
         workPlaceName: todayRecord.workPlaceName ?? null,
         photoUrl: todayRecord.photoUrl ?? null,
+        checkOutPhotoUrl: todayRecord.checkOutPhotoUrl ?? null,
+        lunchOutPhotoUrl: todayRecord.lunchOutPhotoUrl ?? null,
+        lunchInPhotoUrl: todayRecord.lunchInPhotoUrl ?? null,
         lat: todayRecord.lat ?? null,
         lng: todayRecord.lng ?? null,
       } : null}

@@ -103,7 +103,7 @@
           <div class="step-current" id="step-current">
             <div class="step-current-icon" id="step-current-icon">😐</div>
             <div class="step-current-label" id="step-current-label">หน้าตรง</div>
-            <div class="step-current-num" id="step-current-num">มองตรงไปที่กล้อง — รอ 2 วินาที</div>
+            <div class="step-current-num" id="step-current-num">กดปุ่มถ่ายรูปเมื่อพร้อม</div>
           </div>
         </div>
       </div>
@@ -136,6 +136,7 @@
             <option value="OUT_OF_OFFICE">ออกนอกสถานที่</option>
           </select>
         </div>
+        <button id="btn-capture" type="button" class="btn-outline" style="width:100%; height:44px; font-size:15px; margin-bottom:10px;" onclick="captureFacePhoto()">📷 ถ่ายรูปหน้าตรง</button>
         <button id="btn-submit" class="btn-primary" style="width:100%; height:48px; font-size:16px; opacity: 0.5; pointer-events: none;" onclick="submitAttendance()">บันทึกเวลาทำงาน</button>
       </div>
     </div>
@@ -408,39 +409,34 @@ function refreshAllMap() {
   }
 }
 
-// ── ถ่ายหน้าตรง (ไม่มีหันซ้าย-ขวา) ──
-const FACE_CAPTURE_MS = 2000;
+// ── ถ่ายหน้าตรง — กดถ่ายเอง (ไม่มี delay) ──
+let faceCaptured = false;
 
-function startFaceCapture() {
-  document.getElementById('liveness-instruction').textContent = 'กรุณามองตรงไปที่กล้อง...';
-  document.getElementById('step-current-num').textContent = 'มองตรง — รอ 2 วินาที';
-
-  setTimeout(() => {
-    document.getElementById('liveness-instruction').innerHTML =
-      "<span style='color:var(--green)'>✓ ถ่ายใบหน้าสำเร็จ</span>";
-
-    document.querySelectorAll('.step-dot').forEach((dot) => {
-      dot.classList.remove('active');
-      dot.classList.add('done');
-    });
-
-    const stepCurrent = document.getElementById('step-current');
-    stepCurrent.classList.add('fade-out');
-    setTimeout(() => {
-      stepCurrent.innerHTML = '<div class="step-current-done">✓ สแกนสำเร็จ</div>';
-      stepCurrent.classList.remove('fade-out');
-      stepCurrent.classList.add('fade-in');
-      setTimeout(() => stepCurrent.classList.remove('fade-in'), 350);
-    }, 250);
-
-    const submitBtn = document.getElementById('btn-submit');
-    submitBtn.style.opacity = '1';
-    submitBtn.style.pointerEvents = 'auto';
-  }, FACE_CAPTURE_MS);
+function captureFacePhoto() {
+  const video = document.getElementById('checkin-video');
+  if (!video?.srcObject) {
+    alert('เปิดกล้องก่อน');
+    return;
+  }
+  faceCaptured = true;
+  document.getElementById('liveness-instruction').innerHTML =
+    "<span style='color:var(--green)'>✓ ถ่ายใบหน้าแล้ว — กดบันทึกเวลาได้</span>";
+  document.querySelectorAll('.step-dot').forEach((dot) => {
+    dot.classList.remove('active');
+    dot.classList.add('done');
+  });
+  const stepCurrent = document.getElementById('step-current');
+  stepCurrent.innerHTML = '<div class="step-current-done">✓ ถ่ายรูปแล้ว</div>';
+  const submitBtn = document.getElementById('btn-submit');
+  submitBtn.style.opacity = '1';
+  submitBtn.style.pointerEvents = 'auto';
 }
 
 function submitAttendance() {
-  // 📸 ดึงรูปจาก Video Stream
+  if (!faceCaptured) {
+    alert('กรุณากดถ่ายรูปหน้าตรงก่อน');
+    return;
+  }
   const video = document.getElementById('checkin-video');
   const canvas = document.createElement('canvas');
   canvas.width = 120; // ขนาดเล็กสำหรับ Thumbnail
@@ -487,9 +483,7 @@ async function initCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
     document.getElementById('checkin-video').srcObject = stream;
-    
-    setTimeout(startFaceCapture, 1000);
-    
+    document.getElementById('liveness-instruction').textContent = 'มองตรงกล้อง แล้วกดปุ่มถ่ายรูป';
   } catch (err) {
     console.error("Error accessing camera:", err);
     document.getElementById('liveness-instruction').textContent = "ไม่สามารถเข้าถึงกล้องได้: " + err.message;

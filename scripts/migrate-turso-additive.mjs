@@ -23,6 +23,8 @@ const alters = [
   `ALTER TABLE attendances ADD COLUMN workPlaceName TEXT`,
   `ALTER TABLE attendances ADD COLUMN checkOutPhotoUrl TEXT`,
   `ALTER TABLE attendances ADD COLUMN earlyLeaveMinutes INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE attendances ADD COLUMN lunchOutPhotoUrl TEXT`,
+  `ALTER TABLE attendances ADD COLUMN lunchInPhotoUrl TEXT`,
 ]
 
 const creates = [

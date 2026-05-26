@@ -186,6 +186,8 @@ model Attendance {
   workPlaceName    String?
   photoUrl         String?
   checkOutPhotoUrl String?
+  lunchOutPhotoUrl String?
+  lunchInPhotoUrl  String?
   isOutside        Boolean          @default(false)
   status           AttendanceStatus @default(NORMAL)
   lateMinutes      Int              @default(0)
