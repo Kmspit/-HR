@@ -1,0 +1,308 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HRFlow" />
+<title>ปฏิทิน — HRFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.cal-head { background: var(--bg2); padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--text2); text-align: center; }
+.cal-day  { background: var(--bg); min-height: 90px; padding: 8px; font-size: 12px; vertical-align: top; position: relative; }
+.cal-day.other-month { background: var(--bg); opacity: 0.4; }
+.cal-day.today { background: var(--bg2); outline: 2px solid var(--accent); outline-offset: -2px; }
+.cal-day .day-num { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.cal-day.today .day-num { color: var(--accent); }
+.cal-event { font-size: 10px; border-radius: 4px; padding: 2px 5px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cal-event.leave   { background: rgba(239,68,68,0.18);  color: var(--red);    }
+.cal-event.ooo     { background: rgba(234,179,8,0.18);  color: var(--yellow); }
+.cal-event.checkin { background: rgba(34,197,94,0.18);  color: var(--green);  }
+.cal-event.absent  { background: rgba(239,68,68,0.35);  color: var(--red);    }
+.cal-event.late    { background: rgba(249,115,22,0.18); color: var(--orange); }
+.cal-event.meeting { background: rgba(59,130,246,0.18); color: var(--accent); }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⚡</div>
+    <div><div class="logo-text">HRFlow</div><div class="logo-badge">ENTERPRISE</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item active"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info">
+        <div class="user-name">—</div>
+        <div class="user-role">—</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ปฏิทินองค์กร <span class="topbar-subtitle">/ แผนงานและตารางการทำงาน</span></div>
+  </header>
+
+  <main class="content">
+    <div class="main-grid" style="grid-template-columns: 1fr 300px;">
+
+      <!-- Left: Calendar -->
+      <div class="card" style="padding: 24px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button class="cal-btn" onclick="changeMonth(-1)">‹</button>
+            <h2 id="cal-month-label" style="font-size:22px; font-weight:800; min-width:180px; text-align:center;"></h2>
+            <button class="cal-btn" onclick="changeMonth(1)">›</button>
+            <button class="btn-outline" style="height:32px;font-size:12px;padding:0 12px;" onclick="goToday()">วันนี้</button>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="cal-filter-emp" class="form-input" style="height:32px;font-size:12px;width:140px;" onchange="renderCal()">
+              <option value="">ทุกคน</option>
+            </select>
+            <select id="cal-filter-type" class="form-input" style="height:32px;font-size:12px;width:120px;" onchange="renderCal()">
+              <option value="">ทุกประเภท</option>
+              <option value="leave">วันลา</option>
+              <option value="ooo">ออกนอกสถานที่</option>
+              <option value="late">มาสาย</option>
+              <option value="absent">ขาดงาน</option>
+            </select>
+          </div>
+        </div>
+        <div id="cal-grid-wrap"></div>
+      </div>
+
+      <!-- Right panel -->
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📋 รายการเดือนนี้</span></div>
+          <div id="cal-events-list" style="display:flex; flex-direction:column; gap:10px; max-height:340px; overflow-y:auto;"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">💡 สัญลักษณ์</span></div>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+            <div style="display:flex;align-items:center;gap:8px;"><div class="legend-dot" style="background:var(--green);"></div> เข้างานปกติ</div>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="legend-dot" style="background:var(--orange);"></div> มาสาย</div>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="legend-dot" style="background:var(--red);"></div> ลา / ขาดงาน</div>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="legend-dot" style="background:var(--yellow);"></div> ออกนอกสถานที่</div>
+            <div style="display:flex;align-items:center;gap:8px;"><div class="legend-dot" style="background:var(--accent);"></div> ประชุม/นัดหมาย</div>
+          </div>
+        </div>
+        <div class="card" id="cal-stats-card">
+          <div class="card-header"><span class="card-title">📊 สรุปเดือนนี้</span></div>
+          <div id="cal-stats"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const THAI_DAYS   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-based
+
+function changeMonth(delta) { calMonth += delta; if (calMonth > 11) { calMonth=0; calYear++; } if (calMonth < 0) { calMonth=11; calYear--; } renderCal(); }
+function goToday() { calYear = new Date().getFullYear(); calMonth = new Date().getMonth(); renderCal(); }
+
+/** Collect all events from localStorage */
+function getCalEvents() {
+  const user = getCurrentUser();
+  const events = []; // { date: 'YYYY-MM-DD', type, label, empName }
+
+  // Leave requests
+  const leaves = getLeaveRequests();
+  leaves.forEach(l => {
+    if (l.status !== 'REJECTED') {
+      let d = new Date(l.startDate);
+      const end = new Date(l.endDate);
+      while (d <= end) {
+        const ds = d.toISOString().slice(0,10);
+        events.push({ date: ds, type: 'leave', label: `ลา (${l.empName || l.userId})`, empName: l.empName || '' });
+        d.setDate(d.getDate()+1);
+      }
+    }
+  });
+
+  // Weekly plans (OOO)
+  const plans = getWeeklyPlans();
+  plans.forEach(p => {
+    if (p.managerStatus === 'APPROVED') {
+      // weekDate is Monday; mark Mon-Fri
+      let d = new Date(p.weekDate);
+      for (let i = 0; i < 5; i++) {
+        const ds = new Date(d); ds.setDate(d.getDate()+i);
+        events.push({ date: ds.toISOString().slice(0,10), type: 'ooo', label: `OOO: ${p.purpose || 'แผนงาน'}`, empName: p.lawyerName || '' });
+      }
+    }
+  });
+
+  // Attendances
+  const atts = getAttendances();
+  atts.forEach(a => {
+    const ds = new Date(a.checkIn).toISOString().slice(0,10);
+    if (a.isLate) events.push({ date: ds, type: 'late', label: `มาสาย (${a.empName || ''})`, empName: a.empName || '' });
+    else         events.push({ date: ds, type: 'checkin', label: `เข้างาน (${a.empName || ''})`, empName: a.empName || '' });
+  });
+
+  // Role filter: Employee only sees own events
+  if (user && user.role === 'EMPLOYEE') {
+    return events.filter(e => !e.empName || e.empName === user.name);
+  }
+  return events;
+}
+
+function renderCal() {
+  const user = getCurrentUser();
+  const empFilter  = document.getElementById('cal-filter-emp').value;
+  const typeFilter = document.getElementById('cal-filter-type').value;
+
+  // Show/hide employee filter for non-HR
+  if (user && user.role === 'EMPLOYEE') {
+    document.getElementById('cal-filter-emp').parentElement.style.display = 'none';
+  }
+
+  document.getElementById('cal-month-label').textContent = `${THAI_MONTHS[calMonth]} ${calYear + 543}`;
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+
+  let rawEvents = getCalEvents();
+  if (empFilter)  rawEvents = rawEvents.filter(e => e.empName === empFilter);
+  if (typeFilter) rawEvents = rawEvents.filter(e => e.type === typeFilter);
+
+  // Group by date
+  const eventMap = {};
+  rawEvents.forEach(e => { (eventMap[e.date] = eventMap[e.date] || []).push(e); });
+
+  let html = `<div class="cal-grid">`;
+  THAI_DAYS.forEach(d => { html += `<div class="cal-head">${d}</div>`; });
+
+  // Leading blanks
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day other-month"></div>`;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday = ds === today;
+    const dayEvts = eventMap[ds] || [];
+    html += `<div class="cal-day${isToday?' today':''}">`;
+    html += `<div class="day-num">${day}</div>`;
+    dayEvts.slice(0,3).forEach(e => {
+      html += `<div class="cal-event ${e.type}" title="${e.label}">${e.label}</div>`;
+    });
+    if (dayEvts.length > 3) html += `<div style="font-size:10px;color:var(--text3)">+${dayEvts.length-3} เพิ่มเติม</div>`;
+    html += `</div>`;
+  }
+
+  // Trailing blanks
+  const total = firstDay + daysInMonth;
+  const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 0; i < trailing; i++) html += `<div class="cal-day other-month"></div>`;
+  html += '</div>';
+
+  document.getElementById('cal-grid-wrap').innerHTML = html;
+
+  // Sidebar event list
+  const monthEvts = rawEvents.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`));
+  const listEl = document.getElementById('cal-events-list');
+  if (!monthEvts.length) {
+    listEl.innerHTML = `<div style="color:var(--text3);font-size:13px;">ไม่มีกิจกรรมเดือนนี้</div>`;
+  } else {
+    listEl.innerHTML = monthEvts.slice(0,20).map(e => `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="cal-event ${e.type}" style="min-width:60px;text-align:center;">${e.type==='leave'?'ลา':e.type==='ooo'?'OOO':e.type==='late'?'มาสาย':e.type==='absent'?'ขาด':'เข้างาน'}</div>
+        <div>
+          <div style="font-size:13px;">${e.label}</div>
+          <div style="font-size:11px;color:var(--text3);">${thDate(e.date)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // Stats
+  const leaveCount  = monthEvts.filter(e=>e.type==='leave').length;
+  const lateCount   = monthEvts.filter(e=>e.type==='late').length;
+  const oooCount    = monthEvts.filter(e=>e.type==='ooo').length;
+  const checkinCount= monthEvts.filter(e=>e.type==='checkin').length;
+  document.getElementById('cal-stats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="stat-mini"><div class="stat-num" style="color:var(--green)">${checkinCount}</div><div class="stat-label">เข้างาน</div></div>
+      <div class="stat-mini"><div class="stat-num" style="color:var(--orange)">${lateCount}</div><div class="stat-label">มาสาย</div></div>
+      <div class="stat-mini"><div class="stat-num" style="color:var(--red)">${leaveCount}</div><div class="stat-label">วันลา</div></div>
+      <div class="stat-mini"><div class="stat-num" style="color:var(--yellow)">${oooCount}</div><div class="stat-label">OOO</div></div>
+    </div>`;
+}
+
+function populateEmpFilter() {
+  const user = getCurrentUser();
+  if (!user || user.role === 'EMPLOYEE') return;
+  const emps = getEmployees();
+  const sel = document.getElementById('cal-filter-emp');
+  emps.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.name; opt.textContent = e.name;
+    sel.appendChild(opt);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  populateEmpFilter();
+  renderCal();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HRFlow" />
+<title>ออกนอกสถานที่ — HRFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">HRFlow</div><div class="logo-badge">ENTERPRISE</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item active"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ออกนอกสถานที่ <span class="topbar-subtitle">/ แผนงานรายอาทิตย์</span></div>
+  </header>
+
+  <main class="content">
+    <!-- Deadline banner for lawyers -->
+    <div id="deadline-banner" style="display:none; background: rgba(234,179,8,0.12); border:1px solid var(--yellow); border-radius: var(--r); padding:12px 18px; margin-bottom:20px; font-size:13px; color:var(--yellow);">
+      ⏰ <strong>กรุณาส่งแผนงานก่อนวันศุกร์สิ้นอาทิตย์นี้</strong> — แผนงานสำหรับอาทิตย์หน้าต้องส่งภายใน <span id="deadline-date"></span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-submit',this)">🚗 ส่งแผนงาน</button>
+      <button class="tab-btn" onclick="switchTab('tab-myplans',this)">📋 แผนของฉัน</button>
+      <button class="tab-btn role-hr-admin-only" onclick="switchTab('tab-admin',this)">✅ อนุมัติ (Admin)</button>
+      <button class="tab-btn role-manager-only"  onclick="switchTab('tab-manager',this)">🏁 อนุมัติ (Manager)</button>
+      <button class="tab-btn role-hr-admin-only" onclick="switchTab('tab-all',this)">👁 ดูทั้งหมด</button>
+    </div>
+
+    <!-- Tab: Submit plan -->
+    <div id="tab-submit" class="tab-content active">
+      <div class="main-grid" style="grid-template-columns: 420px 1fr;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📋 แบบฟอร์มแผนงานรายอาทิตย์</span></div>
+          <div class="form-group" style="margin-bottom:15px">
+            <label>อาทิตย์เริ่มต้น (วันจันทร์)</label>
+            <input id="p-weekdate" type="date" class="form-input">
+          </div>
+          <div class="form-group" style="margin-bottom:15px">
+            <label>วัตถุประสงค์ / ประเภทงาน</label>
+            <input id="p-purpose" class="form-input" placeholder="เช่น นัดหมายลูกความ, ขึ้นศาล">
+          </div>
+          <div class="form-group" style="margin-bottom:15px">
+            <label>สถานที่</label>
+            <input id="p-location" class="form-input" placeholder="เช่น ศาลแพ่ง, สำนักงานลูกความ X">
+          </div>
+          <div id="plan-days-wrap">
+            <div class="form-group" style="margin-bottom:10px"><label>รายละเอียดแต่ละวัน</label></div>
+            <div id="plan-days-grid" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:15px;margin-top:15px">
+            <label>หมายเหตุเพิ่มเติม</label>
+            <textarea id="p-note" class="form-input" style="height:70px;padding:10px" placeholder="ระบุเพิ่มเติม..."></textarea>
+          </div>
+          <button class="btn-primary" style="width:100%" onclick="submitPlan()">ส่งแผนงานเพื่ออนุมัติ</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">🔄 ขั้นตอนการอนุมัติ</span></div>
+          <div style="display:flex;flex-direction:column;gap:16px;font-size:13px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;">1</div>
+              <div><div style="font-weight:600;">ทนายความส่งแผนงาน</div><div style="color:var(--text3);">ส่งก่อนวันศุกร์สิ้นอาทิตย์</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;">2</div>
+              <div><div style="font-weight:600;">Admin ตรวจสอบและอนุมัติ</div><div style="color:var(--text3);">ตรวจตามกฎบริษัท → แจ้ง Manager</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;">3</div>
+              <div><div style="font-weight:600;">ผู้จัดการ/HR อนุมัติสุดท้าย</div><div style="color:var(--text3);">แจ้งผลทั้งในแอพและไลน์</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: My plans -->
+    <div id="tab-myplans" class="tab-content">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📋 แผนงานของฉัน</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>อาทิตย์</th><th>วัตถุประสงค์</th><th>สถานที่</th><th>Admin</th><th>Manager</th><th>ส่งเมื่อ</th></tr></thead>
+          <tbody id="myplans-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- Tab: Admin approve -->
+    <div id="tab-admin" class="tab-content role-hr-admin-only">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">✅ แผนงานรออนุมัติ (Admin)</span>
+          <span id="ooo-pending-count" class="tag red"></span>
+        </div>
+        <div id="admin-plans-list" style="display:flex;flex-direction:column;gap:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Manager approve -->
+    <div id="tab-manager" class="tab-content role-manager-only">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏁 แผนงานรออนุมัติสุดท้าย (Manager)</span>
+          <span id="ooo-manager-count" class="tag yellow"></span>
+        </div>
+        <div id="manager-plans-list" style="display:flex;flex-direction:column;gap:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Tab: All (HR view) -->
+    <div id="tab-all" class="tab-content role-hr-admin-only">
+      <div class="card">
+        <div class="card-header"><span class="card-title">👁 แผนงานทั้งหมด</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ทนายความ</th><th>อาทิตย์</th><th>วัตถุประสงค์</th><th>สถานที่</th><th>Admin</th><th>Manager</th></tr></thead>
+          <tbody id="allplans-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="out-of-office.html" class="mnav-item active"><span class="icon">🚗</span>OOO</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+const STATUS_LABELS = { PENDING:'รออนุมัติ', APPROVED:'อนุมัติแล้ว', REJECTED:'ปฏิเสธ' };
+const STATUS_TAGS   = { PENDING:'yellow', APPROVED:'green', REJECTED:'red' };
+
+function getNextMonday() {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? 1 : (8 - day);
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function getDeadlineFriday() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = day === 0 ? 5 : (5 - day + 7) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return thDate(d.toISOString().slice(0,10));
+}
+
+function buildDaysGrid() {
+  const weekDate = document.getElementById('p-weekdate').value;
+  const grid = document.getElementById('plan-days-grid');
+  if (!weekDate) { grid.innerHTML = ''; return; }
+  const days = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'];
+  grid.innerHTML = days.map((d, i) => {
+    const date = new Date(weekDate); date.setDate(date.getDate() + i);
+    return `<div style="display:flex;align-items:center;gap:8px;">
+      <div style="min-width:90px;font-size:12px;color:var(--text2);">${d} (${date.getDate()}/${date.getMonth()+1})</div>
+      <input class="form-input" id="day-${i}" style="font-size:12px;height:34px;" placeholder="งาน/สถานที่วันนี้...">
+    </div>`;
+  }).join('');
+}
+
+function submitPlan() {
+  const user    = getCurrentUser();
+  const weekDate = document.getElementById('p-weekdate').value;
+  const purpose  = document.getElementById('p-purpose').value.trim();
+  const location = document.getElementById('p-location').value.trim();
+  const note     = document.getElementById('p-note').value.trim();
+  if (!weekDate || !purpose || !location) { alert('กรุณากรอกข้อมูลให้ครบ'); return; }
+
+  const dayDetails = [0,1,2,3,4].map(i => {
+    const el = document.getElementById('day-'+i);
+    return el ? el.value.trim() : '';
+  });
+
+  const plan = {
+    id: uid(), lawyerId: user.email, lawyerName: user.name,
+    weekDate, purpose, location, note, dayDetails,
+    adminStatus: 'PENDING', managerStatus: 'PENDING',
+    submittedAt: new Date().toISOString()
+  };
+
+  const plans = getWeeklyPlans();
+  plans.push(plan);
+  lsSet('weeklyPlans', plans);
+
+  mockLineNotify(`🚗 แผนงานใหม่รอการอนุมัติ\nทนายความ: ${user.name}\nอาทิตย์: ${thDate(weekDate)}\nวัตถุประสงค์: ${purpose}\nสถานที่: ${location}`, 'Admin / HR');
+  renderAll();
+  switchTab('tab-myplans', document.querySelectorAll('.tab-btn')[1]);
+  alert('ส่งแผนงานเรียบร้อยแล้ว');
+}
+
+function approvePlan(id, action) {
+  const plans = getWeeklyPlans();
+  const plan  = plans.find(p => p.id === id);
+  if (!plan) return;
+
+  if (action === 'admin_approve') {
+    plan.adminStatus = 'APPROVED';
+    mockLineNotify(`✅ Admin อนุมัติแผนงานของ ${plan.lawyerName}\nอาทิตย์: ${thDate(plan.weekDate)}\nรอการอนุมัติจากผู้จัดการ`, 'ผู้จัดการ / HR');
+  } else if (action === 'admin_reject') {
+    plan.adminStatus  = 'REJECTED';
+    plan.managerStatus = 'REJECTED';
+    mockLineNotify(`❌ Admin ปฏิเสธแผนงานของ ${plan.lawyerName}`, plan.lawyerName);
+  } else if (action === 'manager_approve') {
+    plan.managerStatus = 'APPROVED';
+    mockLineNotify(`🎉 ผู้จัดการอนุมัติแผนงานของคุณแล้ว!\nอาทิตย์: ${thDate(plan.weekDate)}\nวัตถุประสงค์: ${plan.purpose}\nสถานที่: ${plan.location}`, plan.lawyerName);
+  } else if (action === 'manager_reject') {
+    plan.managerStatus = 'REJECTED';
+    mockLineNotify(`❌ ผู้จัดการปฏิเสธแผนงานของ ${plan.lawyerName}`, plan.lawyerName);
+  }
+  lsSet('weeklyPlans', plans);
+  renderAll();
+}
+
+function planCard(p, actions) {
+  return `<div style="border:1px solid var(--border);border-radius:var(--r);padding:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:600;margin-bottom:4px;">${p.lawyerName} — อาทิตย์ ${thDate(p.weekDate)}</div>
+        <div style="font-size:13px;color:var(--text2);">📌 ${p.purpose} · ${p.location}</div>
+        ${p.note ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">หมายเหตุ: ${p.note}</div>` : ''}
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <span class="tag">Admin: <span class="${STATUS_TAGS[p.adminStatus]}">${STATUS_LABELS[p.adminStatus]}</span></span>
+          <span class="tag">Manager: <span class="${STATUS_TAGS[p.managerStatus]}">${STATUS_LABELS[p.managerStatus]}</span></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">${actions}</div>
+    </div>
+  </div>`;
+}
+
+function renderMyPlans() {
+  const user  = getCurrentUser();
+  const plans = getWeeklyPlans().filter(p => p.lawyerId === user.email);
+  const tb = document.getElementById('myplans-tbody');
+  if (!plans.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3)">ยังไม่มีแผนงาน</td></tr>`; return; }
+  tb.innerHTML = plans.slice().reverse().map(p => `
+    <tr>
+      <td>${thDate(p.weekDate)}</td>
+      <td>${p.purpose}</td>
+      <td>${p.location}</td>
+      <td><span class="tag ${STATUS_TAGS[p.adminStatus]}">${STATUS_LABELS[p.adminStatus]}</span></td>
+      <td><span class="tag ${STATUS_TAGS[p.managerStatus]}">${STATUS_LABELS[p.managerStatus]}</span></td>
+      <td style="font-size:11px;color:var(--text3)">${thDate(p.submittedAt)}</td>
+    </tr>`).join('');
+}
+
+function renderAdminPlans() {
+  const pending = getWeeklyPlans().filter(p => p.adminStatus === 'PENDING');
+  document.getElementById('ooo-pending-count').textContent = `${pending.length} รายการ`;
+  const el = document.getElementById('admin-plans-list');
+  if (!pending.length) { el.innerHTML = `<div style="color:var(--text3);font-size:13px;">ไม่มีแผนงานรออนุมัติ</div>`; return; }
+  el.innerHTML = pending.map(p => planCard(p,
+    `<button class="btn-primary" style="height:30px;font-size:12px;padding:0 10px;" onclick="approvePlan('${p.id}','admin_approve')">✓ อนุมัติ</button>
+     <button class="btn-outline" style="height:30px;font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);" onclick="approvePlan('${p.id}','admin_reject')">✕ ปฏิเสธ</button>`
+  )).join('');
+}
+
+function renderManagerPlans() {
+  const pending = getWeeklyPlans().filter(p => p.adminStatus === 'APPROVED' && p.managerStatus === 'PENDING');
+  document.getElementById('ooo-manager-count').textContent = `${pending.length} รายการ`;
+  const el = document.getElementById('manager-plans-list');
+  if (!pending.length) { el.innerHTML = `<div style="color:var(--text3);font-size:13px;">ไม่มีแผนงานรออนุมัติขั้นสุดท้าย</div>`; return; }
+  el.innerHTML = pending.map(p => planCard(p,
+    `<button class="btn-primary" style="height:30px;font-size:12px;padding:0 10px;" onclick="approvePlan('${p.id}','manager_approve')">✓ อนุมัติสุดท้าย</button>
+     <button class="btn-outline" style="height:30px;font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);" onclick="approvePlan('${p.id}','manager_reject')">✕ ปฏิเสธ</button>`
+  )).join('');
+}
+
+function renderAllPlans() {
+  const plans = getWeeklyPlans();
+  const tb = document.getElementById('allplans-tbody');
+  if (!plans.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3)">ยังไม่มีแผนงาน</td></tr>`; return; }
+  tb.innerHTML = plans.slice().reverse().map(p => `
+    <tr>
+      <td><strong>${p.lawyerName}</strong></td>
+      <td>${thDate(p.weekDate)}</td>
+      <td>${p.purpose}</td>
+      <td>${p.location}</td>
+      <td><span class="tag ${STATUS_TAGS[p.adminStatus]}">${STATUS_LABELS[p.adminStatus]}</span></td>
+      <td><span class="tag ${STATUS_TAGS[p.managerStatus]}">${STATUS_LABELS[p.managerStatus]}</span></td>
+    </tr>`).join('');
+}
+
+function renderAll() {
+  renderMyPlans();
+  renderAdminPlans();
+  renderManagerPlans();
+  renderAllPlans();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+
+  // Deadline banner for lawyers
+  const user = getCurrentUser();
+  if (user && user.role === 'LAWYER') {
+    document.getElementById('deadline-banner').style.display = 'block';
+    document.getElementById('deadline-date').textContent = getDeadlineFriday();
+  }
+
+  // Set default week date to next monday
+  document.getElementById('p-weekdate').value = getNextMonday();
+  document.getElementById('p-weekdate').addEventListener('change', buildDaysGrid);
+  buildDaysGrid();
+
+  renderAll();
+});
+</script>
+</body>
+</html>
