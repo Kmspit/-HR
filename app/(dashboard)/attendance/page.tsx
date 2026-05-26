@@ -70,7 +70,7 @@ export default async function AttendancePage() {
         companySettings
           ? {
               name: companySettings.companyName,
-              address: companySettings.officeAddress ?? '',
+              address: '',
             }
           : null
       }
@@ -78,7 +78,7 @@ export default async function AttendancePage() {
         companySettings?.geofenceLat != null && companySettings?.geofenceLng != null
           ? {
               name: companySettings.companyName,
-              address: companySettings.officeAddress ?? '',
+              address: '',
               lat: companySettings.geofenceLat,
               lng: companySettings.geofenceLng,
               radiusM: companySettings.geofenceRadius ?? 250,
