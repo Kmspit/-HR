@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { AlertTriangle, Plus, Zap, Search, User } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { AlertTriangle, Plus, Zap, Search, User, FileUp, FileText, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -14,6 +14,7 @@ type Warning = {
   level: number
   reason: string
   description: string
+  fileUrl: string | null
   isAuto: boolean
   month: number | null
   year: number | null
@@ -61,6 +62,7 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
     level: Number(w.level),
     reason: String(w.reason),
     description: String(w.description ?? ''),
+    fileUrl: w.fileUrl != null ? String(w.fileUrl) : null,
     isAuto: Boolean(w.isAuto),
     month: w.month != null ? Number(w.month) : null,
     year: w.year != null ? Number(w.year) : null,
@@ -68,9 +70,13 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
   }))
 }
 
+const MAX_PDF_MB = 10
+
 export default function WarningsClient({ isManager, warnings, employees }: Props) {
+  const pdfInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ userId: '', level: 1, reason: '', description: '' })
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [runningCron, setRunningCron] = useState(false)
@@ -132,16 +138,28 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       toast.error('กรุณาเลือกพนักงานและระบุเหตุผล')
       return
     }
+    if (pdfFile && pdfFile.size > MAX_PDF_MB * 1024 * 1024) {
+      toast.error(`ไฟล์ PDF ต้องไม่เกิน ${MAX_PDF_MB} MB`)
+      return
+    }
+
     setSubmitting(true)
     try {
+      const formData = new FormData()
+      formData.append('userId', form.userId)
+      formData.append('level', String(form.level))
+      formData.append('reason', form.reason)
+      formData.append('description', form.description)
+      formData.append('useAutoLevel', 'true')
+      if (pdfFile) formData.append('file', pdfFile, pdfFile.name)
+
       const { ok, data, status } = await apiJson<{
         warningNumber?: number
         levelUsed?: number
         priorCount?: number
       }>('/api/warnings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, useAutoLevel: true }),
+        body: formData,
       })
       if (!ok) {
         toast.error(apiErrorMessage(data as Record<string, unknown>, 'เกิดข้อผิดพลาด', status))
@@ -152,6 +170,8 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       )
       setShowForm(false)
       setForm({ userId: '', level: 1, reason: '', description: '' })
+      setPdfFile(null)
+      if (pdfInputRef.current) pdfInputRef.current.value = ''
       setEmployeeSearch('')
       setEmployeeStats(null)
       await refreshList()
@@ -325,6 +345,70 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
               className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
             />
           </div>
+
+          {isManager && (
+            <div>
+              <label className="text-sm text-white/50 block mb-1">ไฟล์ใบเตือน (PDF)</label>
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) {
+                    setPdfFile(null)
+                    return
+                  }
+                  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                    toast.error('กรุณาเลือกไฟล์ PDF เท่านั้น')
+                    e.target.value = ''
+                    setPdfFile(null)
+                    return
+                  }
+                  if (file.size > MAX_PDF_MB * 1024 * 1024) {
+                    toast.error(`ไฟล์ต้องไม่เกิน ${MAX_PDF_MB} MB`)
+                    e.target.value = ''
+                    setPdfFile(null)
+                    return
+                  }
+                  setPdfFile(file)
+                }}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => pdfInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-sm font-medium hover:bg-red-500/20 transition"
+                >
+                  <FileUp className="w-4 h-4" />
+                  อัปโหลด PDF
+                </button>
+                {pdfFile && (
+                  <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+                    <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <span className="truncate max-w-[200px]">{pdfFile.name}</span>
+                    <span className="text-xs text-slate-500">
+                      ({(pdfFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPdfFile(null)
+                        if (pdfInputRef.current) pdfInputRef.current.value = ''
+                      }}
+                      className="p-0.5 text-slate-500 hover:text-white"
+                      aria-label="ลบไฟล์"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB</p>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               type="button"
@@ -332,6 +416,8 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                 setShowForm(false)
                 setEmployeeSearch('')
                 setEmployeeStats(null)
+                setPdfFile(null)
+                if (pdfInputRef.current) pdfInputRef.current.value = ''
               }}
               className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/50 text-sm hover:bg-white/5 transition"
             >
@@ -368,6 +454,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                 <th className="text-center p-3 text-white/40 font-medium">ครั้งที่</th>
                 <th className="text-left p-3 text-white/40 font-medium">เหตุผล</th>
                 <th className="text-center p-3 text-white/40 font-medium">ประเภท</th>
+                <th className="text-center p-3 text-white/40 font-medium">PDF</th>
                 <th className="text-center p-3 text-white/40 font-medium">เดือน</th>
                 <th className="text-center p-3 text-white/40 font-medium">วันที่</th>
               </tr>
@@ -406,6 +493,21 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                         <span className="text-blue-400 text-xs">ด้วยตนเอง</span>
                       )}
                     </td>
+                    <td className="p-3 text-center">
+                      {w.fileUrl ? (
+                        <a
+                          href={w.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          เปิด PDF
+                        </a>
+                      ) : (
+                        <span className="text-slate-600 text-xs">—</span>
+                      )}
+                    </td>
                     <td className="p-3 text-center text-white/50 text-xs">
                       {w.month && w.year ? `${monthNames[w.month]} ${w.year}` : '-'}
                     </td>
@@ -420,7 +522,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
               })}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={isManager ? 7 : 6} className="p-8 text-center text-white/30">
+                  <td colSpan={isManager ? 8 : 7} className="p-8 text-center text-white/30">
                     <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     ไม่มีใบเตือน
                   </td>

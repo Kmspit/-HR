@@ -46,6 +46,7 @@ export default async function WarningsPage() {
         level: w.level,
         reason: w.reason,
         description: w.description ?? '',
+        fileUrl: w.fileUrl ?? null,
         isAuto: w.isAuto,
         month: w.month ?? null,
         year: w.year ?? null,
