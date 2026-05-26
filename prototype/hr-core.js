@@ -1,5 +1,5 @@
 /**
- * hr-core.js — HRFlow shared utilities
+ * hr-core.js — เค เอ็ม เซอร์วิส พลัส shared utilities
  * Include this script in every page: <script src="hr-core.js"></script>
  */
 
@@ -93,7 +93,7 @@ function lsSet(key, value) {
 
 function getCompanySettings() {
   return lsGet('settings', {
-    companyName: 'บริษัท HRFlow',
+    companyName: 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
     lat: 13.7563, lng: 100.5018, radius: 200,
     workStart: '08:00', workEnd: '17:00', lateGrace: 15,
     sickDays: 30, vacDays: 10, personalDays: 3,
