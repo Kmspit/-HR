@@ -69,16 +69,11 @@ npm run dev
 - ✅ Audit logs
 - ✅ Mobile responsive
 
-## โฟลเดอร์ `appHrKm` vs `hrflow-app`
-
-| โฟลเดอร์ | บทบาท | Push GitHub |
-|----------|--------|-------------|
-| `hrflow-app` | แอป Next.js (ฟีเจอร์จริง) | `git push origin main` |
-| `appHrKm` | HTML prototype สำหรับออกแบบ UI | ใช้ `scripts/sync-prototype.ps1` (คัดลอกไป `prototype/` ก่อน push) |
-
-อย่า `git push` จาก `appHrKm` โดยตรง — จะถูก reject
-
 ## Deploy to Vercel
-
-Push จาก `hrflow-app` ไป https://github.com/Kmspit/-HR แล้วเชื่อม Vercel  
-ตั้งค่า env: `DATABASE_URL`, `AUTH_SECRET`, ฯลฯ ใน Vercel dashboard
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+# Push to GitHub, then import to Vercel
+# Add environment variables in Vercel dashboard
+```
