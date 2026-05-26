@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { KM_COMPANY } from '@/lib/company-defaults'
 import { redirect } from 'next/navigation'
 import AttendanceClient from './AttendanceClient'
 
@@ -10,7 +11,15 @@ export default async function AttendancePage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const companySettings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+  const companySettings = await prisma.companySettings.findUnique({
+    where: { id: 'singleton' },
+    select: {
+      companyName: true,
+      geofenceLat: true,
+      geofenceLng: true,
+      geofenceRadius: true,
+    },
+  })
 
   const [todayRecord, recentRecords, leaveBalance] = await Promise.all([
     prisma.attendance.findUnique({
@@ -70,7 +79,7 @@ export default async function AttendancePage() {
         companySettings
           ? {
               name: companySettings.companyName,
-              address: '',
+              address: KM_COMPANY.officeAddress,
             }
           : null
       }
@@ -78,7 +87,7 @@ export default async function AttendancePage() {
         companySettings?.geofenceLat != null && companySettings?.geofenceLng != null
           ? {
               name: companySettings.companyName,
-              address: '',
+              address: KM_COMPANY.officeAddress,
               lat: companySettings.geofenceLat,
               lng: companySettings.geofenceLng,
               radiusM: companySettings.geofenceRadius ?? 250,
