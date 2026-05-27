@@ -416,7 +416,7 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
       {activeTab === 'history' && (
         <div className="rounded-2xl overflow-hidden"
           style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="overflow-x-auto">
+          <div className="table-scroll">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>

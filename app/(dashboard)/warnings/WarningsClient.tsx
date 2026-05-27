@@ -435,7 +435,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[1, 2, 3].map((lvl) => (
           <div key={lvl} className={`card-hover smooth-transition border rounded-2xl p-4 text-center ${LEVEL_STYLES[lvl]}`}>
             <p className="text-2xl font-bold">{list.filter((w) => w.level === lvl).length}</p>
@@ -445,7 +445,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       </div>
 
       <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10">

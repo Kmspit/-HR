@@ -115,7 +115,7 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="card-hover smooth-transition bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-blue-400">{totalEmployees ?? payrolls.length}</p>
           <p className="text-sm text-white/50">พนักงานทั้งหมด</p>
@@ -134,7 +134,7 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
 
       {/* Table */}
       <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="border-b border-white/10">

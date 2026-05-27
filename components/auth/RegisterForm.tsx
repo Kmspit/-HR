@@ -148,14 +148,14 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit}>
       {/* Step indicator */}
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2">
         {STEPS.map((s, i) => (
-          <div key={s} className="flex flex-1 items-center gap-2">
+          <div key={s} className="flex flex-1 items-center gap-2 min-w-0">
             <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${i < step ? 'bg-green-500 text-white' : i === step ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
               {i < step ? '✓' : i + 1}
             </div>
-            <span className={`text-xs transition-colors ${i === step ? 'text-white font-semibold' : 'text-slate-500'}`}>{s}</span>
-            {i < STEPS.length - 1 && <div className={`h-px flex-1 transition-all ${i < step ? 'bg-green-500/50' : 'bg-slate-700'}`} />}
+            <span className={`text-xs transition-colors truncate ${i === step ? 'text-white font-semibold' : 'text-slate-500'}`}>{s}</span>
+            {i < STEPS.length - 1 && <div className={`hidden sm:block h-px flex-1 transition-all ${i < step ? 'bg-green-500/50' : 'bg-slate-700'}`} />}
           </div>
         ))}
       </div>
@@ -163,22 +163,22 @@ export default function RegisterForm() {
       {/* STEP 0: Personal Info */}
       {step === 0 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">คำนำหน้า</label>
               <select value={form.prefix} onChange={(e) => set('prefix', e.target.value)} className={inputClass('prefix')}>
                 {['นาย', 'นาง', 'นางสาว', 'ดร.', 'อื่นๆ'].map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div className="col-span-2 space-y-1.5">
+            <div className="sm:col-span-2 space-y-1.5 min-w-0">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อจริง *</label>
               <input type="text" placeholder="ชื่อจริง" className={inputClass('firstName')} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} />
               {errors.firstName && <p className="text-xs text-red-400">{errors.firstName}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">นามสกุล *</label>
               <input type="text" placeholder="นามสกุล" className={inputClass('lastName')} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} />
               {errors.lastName && <p className="text-xs text-red-400">{errors.lastName}</p>}
@@ -189,7 +189,7 @@ export default function RegisterForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">อีเมล *</label>
               <input type="email" placeholder="name@company.com" className={inputClass('email')} value={form.email} onChange={(e) => set('email', e.target.value)} />
@@ -208,7 +208,7 @@ export default function RegisterForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันเกิด</label>
               <input type="date" className={inputClass('birthDate')} value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
@@ -245,7 +245,7 @@ export default function RegisterForm() {
             {errors.role && <p className="text-xs text-red-400">{errors.role}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">แผนก *</label>
               <select className={inputClass('department')} value={form.department} onChange={(e) => set('department', e.target.value)}>
@@ -268,9 +268,9 @@ export default function RegisterForm() {
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">สถานะประกันสังคม</label>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               {[{ val: true, label: '✅ อยู่ในประกันสังคม' }, { val: false, label: '❌ ไม่อยู่ในประกันสังคม' }].map(({ val, label }) => (
-                <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all ${form.socialSecurity === val ? 'border-blue-500/50 bg-blue-500/10 text-white' : 'border-white/10 text-slate-400 hover:border-white/20'}`}>
+                <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all min-h-[44px] ${form.socialSecurity === val ? 'border-blue-500/50 bg-blue-500/10 text-white' : 'border-white/10 text-slate-400 hover:border-white/20'}`}>
                   <input type="radio" name="ss" checked={form.socialSecurity === val} onChange={() => set('socialSecurity', val)} className="accent-blue-500" />
                   {label}
                 </label>

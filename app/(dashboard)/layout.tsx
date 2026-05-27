@@ -29,11 +29,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {/* Main content */}
       <div className="dashboard-main flex flex-1 flex-col min-w-0 overflow-hidden">
         <DashboardHeader user={user} />
-        <main
-          className="flex-1 overflow-y-auto overflow-x-hidden"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 68px)' }}
-        >
-          <div className="page-enter md:pb-0">
+        <main className="dashboard-main-scroll flex-1 overflow-y-auto overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+          <div className="page-enter">
             {children}
           </div>
         </main>

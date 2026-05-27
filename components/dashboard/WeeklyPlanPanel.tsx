@@ -99,7 +99,7 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
             return (
               <div key={day.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
                 <p className="text-sm font-semibold text-white mb-3">{day.label}</p>
-                <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                   <div><label className="block text-[10px] text-slate-500 mb-1">เวลา</label>
                     <div className="flex items-center gap-1"><input type="time" className={inputCls} value={d.startTime} onChange={(e) => setDay(day.id, 'startTime', e.target.value)} /><span className="text-slate-500 text-xs">—</span><input type="time" className={inputCls} value={d.endTime} onChange={(e) => setDay(day.id, 'endTime', e.target.value)} /></div>
                   </div>

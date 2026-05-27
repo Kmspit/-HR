@@ -92,7 +92,7 @@ export default function CalendarClient({ attendance, leaves, year: initYear, mon
   return (
     <div className="p-4 md:p-5 space-y-5">
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'มาทำงาน', value: presentDays, dot: 'bg-blue-400' },
           { label: 'มาสาย',   value: lateDays,    dot: 'bg-yellow-400' },
@@ -139,7 +139,7 @@ export default function CalendarClient({ attendance, leaves, year: initYear, mon
         {/* Days grid */}
         <div className="grid grid-cols-7">
           {cells.map((day, idx) => {
-            if (!day) return <div key={idx} className="aspect-square md:h-16" />
+            if (!day) return <div key={idx} className="min-h-[44px] md:h-16" />
             const key = `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
             const rec = attendanceMap[key]
             const isLeave = leaveSet.has(key)
@@ -154,7 +154,7 @@ export default function CalendarClient({ attendance, leaves, year: initYear, mon
                 key={key}
                 onClick={() => setSelected(isSelected ? null : key)}
                 className={cn(
-                  'relative flex flex-col items-center justify-start py-2 aspect-square md:h-16 border-b border-r border-white/[0.03] transition-all text-xs',
+                  'relative flex flex-col items-center justify-start py-1.5 min-h-[44px] md:h-16 border-b border-r border-white/[0.03] transition-all text-xs touch-manipulation',
                   isSelected ? 'bg-blue-500/20 border-blue-500/30' : 'hover:bg-white/[0.04]',
                   isWeekend && !isSelected ? 'bg-white/[0.01]' : '',
                 )}

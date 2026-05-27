@@ -6,6 +6,9 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Role } from '@prisma/client'
 
+const MENU_ICON =
+  'M4 6h16M4 12h16M4 18h16'
+
 const NAV_ICONS: Record<string, string> = {
   dashboard:  'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
   attendance: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -29,7 +32,7 @@ const MOBILE_ITEMS: { href: string; icon: keyof typeof NAV_ICONS; label: string;
 export default function MobileNav({ role }: { role: Role }) {
   const pathname = usePathname()
   const [pendingHref, setPendingHref] = useState<string | null>(null)
-  const items = MOBILE_ITEMS.filter((i) => !i.roles || i.roles.includes(role)).slice(0, 5)
+  const items = MOBILE_ITEMS.filter((i) => !i.roles || i.roles.includes(role)).slice(0, 4)
 
   useEffect(() => {
     setPendingHref(null)
@@ -93,6 +96,23 @@ export default function MobileNav({ role }: { role: Role }) {
             </Link>
           )
         })}
+
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('hrflow:open-sidebar'))}
+          className={cn(
+            'relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-0.5 pt-2 pb-1.5 transition-all duration-150 min-h-[50px] justify-center',
+            'dark:text-slate-500 light:text-slate-400',
+          )}
+          aria-label="เมนูทั้งหมด"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg">
+            <svg width={18} height={18} className="hr-icon h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d={MENU_ICON} />
+            </svg>
+          </span>
+          <span className="text-[9px] font-semibold leading-none">เมนู</span>
+        </button>
       </div>
     </nav>
   )

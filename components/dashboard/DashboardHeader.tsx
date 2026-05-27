@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, X, Bell } from 'lucide-react'
 import Sidebar from './Sidebar'
 import UserMenu from './UserMenu'
@@ -13,6 +13,12 @@ type Props = {
 
 export default function DashboardHeader({ user }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    const open = () => setSidebarOpen(true)
+    window.addEventListener('hrflow:open-sidebar', open)
+    return () => window.removeEventListener('hrflow:open-sidebar', open)
+  }, [])
 
   return (
     <>
@@ -51,7 +57,7 @@ export default function DashboardHeader({ user }: Props) {
 
         <div className="flex-1 min-w-0 md:hidden">
           <p className="truncate text-[13px] font-bold dark:text-white light:text-slate-800">
-            บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด
+            เค เอ็ม เซอร์วิส พลัส
           </p>
         </div>
 

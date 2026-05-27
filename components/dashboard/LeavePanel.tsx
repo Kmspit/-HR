@@ -61,9 +61,9 @@ export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balan
   const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-4 md:p-5 space-y-5 max-w-full overflow-x-hidden">
       {balance && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'ลาป่วยคงเหลือ', value: balance.sick, icon: '🤒', color: 'text-red-400' },
             { label: 'ลาพักร้อน', value: balance.vacation, icon: '🏖️', color: 'text-green-400' },
@@ -85,7 +85,7 @@ export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balan
       </div>
 
       {tab === 'request' && (
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-white/5 bg-slate-900 p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-5 space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ประเภทการลา</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

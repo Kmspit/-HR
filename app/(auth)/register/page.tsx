@@ -6,14 +6,14 @@ export const metadata: Metadata = { title: 'สมัครใช้งาน' }
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-8 sm:py-12">
       <Link href="/" className="mb-6 flex items-center gap-2 group">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-lg">⚡</div>
         <span className="text-lg font-bold text-white">HR<span className="gradient-text">Flow</span></span>
       </Link>
 
       <div className="w-full max-w-2xl animate-slide-up">
-        <div className="glass rounded-3xl border border-white/10 p-8 shadow-2xl">
+        <div className="glass rounded-3xl border border-white/10 p-4 sm:p-8 shadow-2xl">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-white">สมัครใช้งาน</h1>
             <p className="mt-1.5 text-sm text-slate-400">

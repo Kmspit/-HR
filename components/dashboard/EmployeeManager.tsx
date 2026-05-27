@@ -58,9 +58,9 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
   }
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-4 md:p-5 space-y-5 max-w-full overflow-x-hidden">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Active', value: stats.active, color: 'text-green-400' },
           { label: 'รออนุมัติ', value: stats.pending, color: 'text-yellow-400' },
@@ -76,13 +76,13 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
 
       {/* Tabs + Search */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5">
+        <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5 overflow-x-auto max-w-full">
           {[
             { id: 'all' as const, label: `ทั้งหมด (${stats.active})` },
             { id: 'pending' as const, label: `รออนุมัติ (${stats.pending})` },
             { id: 'disabled' as const, label: `ระงับ (${stats.disabled})` },
           ].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>{t.label}</button>
+            <button key={t.id} onClick={() => setTab(t.id)} className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all min-h-[40px] ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>{t.label}</button>
           ))}
         </div>
         {tab === 'all' && (
@@ -95,7 +95,7 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
 
       {/* Table */}
       <div className="rounded-2xl border border-white/5 bg-slate-900 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/5">

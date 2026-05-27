@@ -219,7 +219,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
       <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
 
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
 
           <table className="w-full text-sm min-w-[720px]">
 
