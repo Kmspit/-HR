@@ -84,24 +84,43 @@ export default function ProfileClient({ initial }: Props) {
   }
 
   const save = async () => {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      toast.error('กรุณากรอกชื่อและนามสกุล')
+    if (!form.firstName.trim()) {
+      toast.error('กรุณากรอกชื่อ')
+      return
+    }
+    const phoneDigits = form.phone.replace(/\D/g, '')
+    if (!/^0[0-9]{9}$/.test(phoneDigits) && !(phoneDigits.startsWith('66') && phoneDigits.length === 11)) {
+      toast.error('เบอร์โทรต้อง 10 หลัก ขึ้นต้นด้วย 0')
       return
     }
     setSaving(true)
     try {
-      const fd = new FormData()
-      fd.append('prefix', form.prefix)
-      fd.append('firstName', form.firstName.trim())
-      fd.append('lastName', form.lastName.trim())
-      fd.append('nickname', form.nickname.trim())
-      fd.append('phone', form.phone)
-      fd.append('address', form.address.trim())
-      if (avatarFile) fd.append('avatar', avatarFile, avatarFile.name)
+      const payload = {
+        prefix: form.prefix,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        nickname: form.nickname.trim(),
+        phone: form.phone,
+        address: form.address.trim(),
+      }
+
+      let init: RequestInit
+      if (avatarFile) {
+        const fd = new FormData()
+        Object.entries(payload).forEach(([k, v]) => fd.append(k, v))
+        fd.append('avatar', avatarFile, avatarFile.name)
+        init = { method: 'PATCH', body: fd }
+      } else {
+        init = {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      }
 
       const { ok, data, status } = await apiJson<{ message?: string; profile?: { profileImage?: string | null } }>(
         '/api/profile',
-        { method: 'PATCH', body: fd },
+        init,
       )
       if (!ok) {
         toast.error(apiErrorMessage(data as Record<string, unknown>, 'บันทึกไม่สำเร็จ', status))

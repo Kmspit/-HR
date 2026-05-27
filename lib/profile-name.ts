@@ -33,5 +33,14 @@ export function buildDisplayName(prefix: string, firstName: string, lastName: st
   const p = prefix.trim()
   const f = firstName.trim()
   const l = lastName.trim()
-  return `${p}${f} ${l}`.replace(/\s+/g, ' ').trim()
+  const name = l ? `${f} ${l}` : f
+  return `${p}${name}`.replace(/\s+/g, ' ').trim()
+}
+
+/** แปลงเบอร์เป็น 10 หลักขึ้นต้น 0 — คืน null ถ้าไม่ถูกต้อง */
+export function normalizeThaiPhone(input: string): string | null {
+  let digits = input.replace(/\D/g, '')
+  if (digits.startsWith('66') && digits.length === 11) digits = `0${digits.slice(2)}`
+  if (/^0[0-9]{9}$/.test(digits)) return digits
+  return null
 }

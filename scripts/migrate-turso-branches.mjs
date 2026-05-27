@@ -80,6 +80,12 @@ async function main() {
   } else {
     console.log('[skip] users.branchId exists')
   }
+  if (!userCols.includes('profileImageBase64')) {
+    await db.execute(`ALTER TABLE users ADD COLUMN profileImageBase64 TEXT`)
+    console.log('[ok] users.profileImageBase64 added')
+  } else {
+    console.log('[skip] users.profileImageBase64 exists')
+  }
 
   await db.execute({
     sql: `INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)

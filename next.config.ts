@@ -20,7 +20,10 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    serverActions: { allowedOrigins: ['localhost:3000', 'localhost:3001', 'localhost:3002'] },
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'localhost:3001', 'localhost:3002'],
+      bodySizeLimit: '3mb',
+    },
   },
   serverExternalPackages: [
     '@prisma/client',

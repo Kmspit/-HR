@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { splitDisplayName, buildDisplayName } from '@/lib/profile-name'
+import { splitDisplayName, buildDisplayName, normalizeThaiPhone } from '@/lib/profile-name'
 import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
 import { ROLE_LABELS } from '@/lib/permissions'
 
@@ -141,13 +141,16 @@ export async function PATCH(req: NextRequest) {
       address = body.address ?? null
     }
 
-    if (!firstName.trim() || !lastName.trim()) {
-      return NextResponse.json({ error: 'กรุณากรอกชื่อและนามสกุล' }, { status: 400 })
+    if (!firstName.trim()) {
+      return NextResponse.json({ error: 'กรุณากรอกชื่อ' }, { status: 400 })
     }
 
-    const phoneNorm = phone.replace(/\D/g, '')
-    if (!/^0[0-9]{9}$/.test(phoneNorm)) {
-      return NextResponse.json({ error: 'เบอร์โทรต้อง 10 หลัก' }, { status: 400 })
+    const phoneNorm = normalizeThaiPhone(phone)
+    if (!phoneNorm) {
+      return NextResponse.json(
+        { error: 'เบอร์โทรต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)' },
+        { status: 400 },
+      )
     }
 
     const dupPhone = await prisma.user.findFirst({
@@ -157,15 +160,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'เบอร์โทรนี้มีในระบบแล้ว' }, { status: 409 })
     }
 
-    const updateData: {
-      name: string
-      prefix: string
-      nickname: string | null
-      phone: string
-      address: string | null
-      profileImage?: string
-      profileImageBase64?: string | null
-    } = {
+    const updateData: Record<string, unknown> = {
       name: buildDisplayName(prefix, firstName, lastName),
       prefix: prefix.trim(),
       nickname: nickname?.trim() || null,
@@ -183,7 +178,9 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json({ error: 'บันทึกรูปโปรไฟล์ไม่สำเร็จ' }, { status: 500 })
         }
         updateData.profileImage = stored.profileImage
-        updateData.profileImageBase64 = stored.profileImageBase64
+        if (stored.profileImageBase64 != null) {
+          updateData.profileImageBase64 = stored.profileImageBase64
+        }
       } catch (e) {
         if (e instanceof Error && e.message === 'AVATAR_TOO_LARGE') {
           return NextResponse.json({ error: 'รูปต้องไม่เกิน 2 MB' }, { status: 400 })
@@ -192,11 +189,25 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const user = await prisma.user.update({
-      where: { id: session.user.id },
-      data: updateData,
-      select: PROFILE_SELECT,
-    })
+    let user
+    try {
+      user = await prisma.user.update({
+        where: { id: session.user.id },
+        data: updateData,
+        select: PROFILE_SELECT,
+      })
+    } catch (updateErr) {
+      if (avatarFile && updateData.profileImageBase64 != null) {
+        const { profileImageBase64: _drop, ...withoutB64 } = updateData
+        user = await prisma.user.update({
+          where: { id: session.user.id },
+          data: withoutB64,
+          select: PROFILE_SELECT,
+        })
+      } else {
+        throw updateErr
+      }
+    }
 
     return NextResponse.json({ profile: serializeUser(user), message: 'บันทึกโปรไฟล์แล้ว' })
   } catch (err) {

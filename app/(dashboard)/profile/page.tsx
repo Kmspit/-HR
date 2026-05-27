@@ -33,11 +33,24 @@ export default async function ProfilePage() {
       socialSecurity: true,
       lineId: true,
       createdAt: true,
-      branch: { select: { name: true, code: true } },
+      branchId: true,
     },
   })
 
   if (!user) redirect('/dashboard')
+
+  let branchName = '—'
+  if (user.branchId) {
+    try {
+      const branch = await prisma.companyBranch.findUnique({
+        where: { id: user.branchId },
+        select: { name: true, code: true },
+      })
+      if (branch) branchName = `${branch.name} (${branch.code})`
+    } catch {
+      branchName = '—'
+    }
+  }
 
   const { prefix, firstName, lastName } = splitDisplayName(user.name, user.prefix)
 
@@ -58,7 +71,7 @@ export default async function ProfilePage() {
           birthDate: user.birthDate?.toISOString().slice(0, 10) ?? '',
           nationalId: user.nationalId ?? '',
           roleLabel: ROLE_LABELS[user.role],
-          branchName: user.branch ? `${user.branch.name} (${user.branch.code})` : '—',
+          branchName,
           status: user.status,
           department: user.department ?? '',
           position: user.position ?? '',
