@@ -19,6 +19,7 @@ export const authConfig: NextAuthConfig = {
         token.role       = user.role as Role
         token.status     = user.status as UserStatus
         token.department = user.department as string | null
+        token.branchId   = user.branchId as string | null
       }
       return token
     },
@@ -28,6 +29,7 @@ export const authConfig: NextAuthConfig = {
         session.user.role       = token.role       as Role
         session.user.status     = token.status     as UserStatus
         session.user.department = token.department as string | null
+        session.user.branchId   = token.branchId   as string | null
       }
       return session
     },

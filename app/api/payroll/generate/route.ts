@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { monthDateRange } from '@/lib/utils'
+import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -16,15 +17,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { month, year } = await req.json()
+  const { month, year, branchId: filterBranchId } = await req.json()
   if (!month || !year) return NextResponse.json({ error: 'month and year required' }, { status: 400 })
+
+  const scope = buildBranchScope(
+    { role: session.user.role, branchId: session.user.branchId },
+    { branchId: filterBranchId },
+  )
 
   const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
   const lateRate = settings?.lateDeductRate ?? 0   // เธเธฒเธ—/เธเธฒเธ—เธต
   const absentRate = settings?.absentDeductRate ?? 0  // เธเธฒเธ—/เธงเธฑเธ
 
   const employees = await prisma.user.findMany({
-    where: { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } },
+    where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } }),
     select: { id: true, baseSalary: true, socialSecurity: true },
   })
 

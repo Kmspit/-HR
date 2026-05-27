@@ -3,13 +3,30 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import ApprovalPanel from '@/components/dashboard/ApprovalPanel'
+import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
+import {
+  buildBranchScope,
+  requestUserWhere,
+  branchNestedUserWhere,
+  parseBranchQueryParam,
+} from '@/lib/branch-scope'
+import { Suspense } from 'react'
 
-export default async function ApprovalsPage() {
+export default async function ApprovalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branchId?: string }>
+}) {
   const session = await auth()
   if (!session?.user) redirect('/')
 
   const { role } = session.user
   if (role !== 'MANAGER_HR' && role !== 'ADMIN') redirect('/dashboard')
+
+  const sp = await searchParams
+  const branchParam = parseBranchQueryParam(sp.branchId)
+  const scope = buildBranchScope(session.user, { branchId: branchParam })
+  const nestedUser = branchNestedUserWhere(scope)
 
   // Admin sees PENDING, Manager sees ADMIN_APPROVED
   const leaveStatus = role === 'ADMIN' ? 'PENDING' : 'ADMIN_APPROVED'
@@ -17,23 +34,32 @@ export default async function ApprovalsPage() {
 
   const [leaveRequests, outsideRequests, weeklyPlans] = await Promise.all([
     prisma.leaveRequest.findMany({
-      where: { status: leaveStatus },
+      where: requestUserWhere(scope, { status: leaveStatus }),
       include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.outsideWorkRequest.findMany({
-      where: { status: outsideStatus },
+      where: {
+        status: outsideStatus,
+        ...(nestedUser ? { user: nestedUser } : {}),
+      },
       include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     role === 'MANAGER_HR'
       ? prisma.weeklyLawyerPlan.findMany({
-          where: { status: 'ADMIN_APPROVED' },
+          where: {
+            status: 'ADMIN_APPROVED',
+            ...(nestedUser ? { lawyer: nestedUser } : {}),
+          },
           include: { lawyer: { select: { name: true, email: true } }, days: true },
           orderBy: { createdAt: 'desc' },
         })
       : prisma.weeklyLawyerPlan.findMany({
-          where: { status: 'PENDING' },
+          where: {
+            status: 'PENDING',
+            ...(nestedUser ? { lawyer: nestedUser } : {}),
+          },
           include: { lawyer: { select: { name: true, email: true } }, days: true },
           orderBy: { createdAt: 'desc' },
         }),
@@ -44,6 +70,9 @@ export default async function ApprovalsPage() {
   return (
     <div className="flex flex-col">
       <Topbar title="อนุมัติคำขอ" subtitle={role === 'ADMIN' ? 'Step 1 — ตรวจสอบเบื้องต้น' : 'Step 2 — Final Approval'} />
+      <Suspense fallback={null}>
+        <BranchFilterBar role={role} filterBranchId={branchParam} />
+      </Suspense>
       <ApprovalPanel
         leaveRequests={JSON.parse(JSON.stringify(leaveRequests))}
         outsideRequests={JSON.parse(JSON.stringify(outsideRequests))}

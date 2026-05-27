@@ -24,6 +24,31 @@ const prisma = makePrisma()
 async function main() {
   console.log('🌱 Seeding database...')
 
+  const hq = await prisma.companyBranch.upsert({
+    where: { code: 'HQ' },
+    update: { isActive: true, isDefault: true },
+    create: {
+      code: 'HQ',
+      name: 'สำนักงานใหญ่',
+      nameEn: 'Head Office',
+      isActive: true,
+      isDefault: true,
+    },
+  })
+  const nma = await prisma.companyBranch.upsert({
+    where: { code: 'NMA' },
+    update: { isActive: true },
+    create: {
+      code: 'NMA',
+      name: 'สาขานครราชสีมา',
+      nameEn: 'Nakhon Ratchasima Branch',
+      address: 'จังหวัดนครราชสีมา',
+      isActive: true,
+      isDefault: false,
+    },
+  })
+  console.log(`✅ Branches: ${hq.code}, ${nma.code}`)
+
   const PASS = await bcrypt.hash('demo1234', 12)
 
   const users = [
@@ -49,6 +74,7 @@ async function main() {
         startDate:    new Date('2024-01-01'),
         socialSecurity: true,
         employeeId:   `EMP24${Math.floor(Math.random() * 9000) + 1000}`,
+        branchId:     hq.id,
       },
     })
 

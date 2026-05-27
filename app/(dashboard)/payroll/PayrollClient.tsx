@@ -18,11 +18,12 @@ type PayrollRow = {
 type Props = {
   month: number; year: number; payrolls: PayrollRow[]
   totalEmployees?: number
+  filterBranchId?: string
 }
 
 const MONTH_NAMES = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
 
-export default function PayrollClient({ month: initMonth, year: initYear, payrolls: initPayrolls, totalEmployees }: Props) {
+export default function PayrollClient({ month: initMonth, year: initYear, payrolls: initPayrolls, totalEmployees, filterBranchId }: Props) {
   const [month, setMonth] = useState(initMonth)
   const [year, setYear] = useState(initYear)
   const [payrolls, setPayrolls] = useState(initPayrolls)
@@ -32,7 +33,7 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
     const { ok, data } = await apiJson<{ payrolls?: PayrollRow[]; employeeCount?: number }>(
-      `/api/payroll/report?month=${m}&year=${y}`,
+      `/api/payroll/report?month=${m}&year=${y}${filterBranchId ? `&branchId=${encodeURIComponent(filterBranchId)}` : ''}`,
     )
     if (ok && data.payrolls) {
       setPayrolls(
@@ -56,7 +57,7 @@ export default function PayrollClient({ month: initMonth, year: initYear, payrol
     const { ok, data, status } = await apiJson('/api/payroll/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month, year }),
+      body: JSON.stringify({ month, year, branchId: filterBranchId }),
     })
     if (ok) {
       toast.success(`สร้าง payroll สำเร็จ ${(data as { count?: number }).count ?? 0} คน`)

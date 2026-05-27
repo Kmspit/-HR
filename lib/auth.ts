@@ -12,6 +12,7 @@ declare module 'next-auth' {
     role: Role
     status: UserStatus
     department: string | null
+    branchId: string | null
   }
   interface Session {
     user: {
@@ -22,6 +23,7 @@ declare module 'next-auth' {
       role: Role
       status: UserStatus
       department: string | null
+      branchId: string | null
     }
   }
 }
@@ -61,6 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           status: user.status,
           department: user.department,
+          branchId: user.branchId,
         }
       },
     }),

@@ -7,6 +7,16 @@ import { formatThaiDate } from '@/lib/utils'
 import Link from 'next/link'
 import AttendanceChartWrapper from '@/components/dashboard/AttendanceChartWrapper'
 import EmployeeDashboard from './EmployeeDashboard'
+import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
+import {
+  buildBranchScope,
+  branchUserWhere,
+  branchNestedUserWhere,
+  attendanceWhere,
+  requestUserWhere,
+  parseBranchQueryParam,
+} from '@/lib/branch-scope'
+import { Suspense } from 'react'
 
 type Role = 'MANAGER_HR' | 'ADMIN' | 'EMPLOYEE' | 'LAWYER'
 
@@ -39,17 +49,29 @@ function StatCard({
   )
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branchId?: string }>
+}) {
   const session = await auth()
   if (!session?.user) redirect('/')
   const { role, name, id: userId } = session.user
+  const sp = await searchParams
+  const branchParam = parseBranchQueryParam(sp.branchId)
 
   if (role === 'EMPLOYEE' || role === 'LAWYER') {
     return <EmployeeDashboard userId={userId} name={name ?? ''} role={role} />
   }
 
+  const scope = buildBranchScope(session.user, { branchId: branchParam })
+  const activeUserWhere = branchUserWhere(scope, { status: 'ACTIVE' })
+  const pendingUserWhere = branchUserWhere(scope, { status: 'PENDING' })
+  const nestedUser = branchNestedUserWhere(scope)
+
   const today = new Date()
   const todayStart = new Date(today.setHours(0, 0, 0, 0))
+  const todayAttWhere = attendanceWhere(scope, { date: { gte: todayStart } })
 
   /* ─── parallel data fetch ─── */
   const [
@@ -57,18 +79,24 @@ export default async function DashboardPage() {
     todayLate, todayAbsent, pendingUsers, pendingApprovals,
     recentLeaves, payrollRecs,
   ] = await Promise.all([
-    prisma.user.count({ where: { status: 'ACTIVE' } }),
-    prisma.leaveRequest.count({ where: { status: 'PENDING' } }),
-    prisma.outsideWorkRequest.count({ where: { status: 'PENDING' } }),
-    prisma.attendance.count({ where: { date: { gte: todayStart } } }),
-    prisma.attendance.count({ where: { date: { gte: todayStart }, status: 'LATE' } }),
-    prisma.attendance.count({ where: { date: { gte: todayStart }, status: 'ABSENT' } }),
-    prisma.user.count({ where: { status: 'PENDING' } }),
+    prisma.user.count({ where: activeUserWhere }),
+    prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
+    prisma.outsideWorkRequest.count({
+      where: {
+        status: 'PENDING',
+        ...(nestedUser ? { user: nestedUser } : {}),
+      },
+    }),
+    prisma.attendance.count({ where: todayAttWhere }),
+    prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: todayStart }, status: 'LATE' }) }),
+    prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: todayStart }, status: 'ABSENT' }) }),
+    prisma.user.count({ where: pendingUserWhere }),
     role === 'MANAGER_HR'
-      ? prisma.leaveRequest.count({ where: { status: 'ADMIN_APPROVED' } })
-      : prisma.leaveRequest.count({ where: { status: 'PENDING' } }),
+      ? prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'ADMIN_APPROVED' }) })
+      : prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
     prisma.leaveRequest.findMany({
-      include: { user: { select: { name: true, department: true } } },
+      where: requestUserWhere(scope),
+      include: { user: { select: { name: true, department: true, branch: { select: { name: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),
@@ -76,6 +104,7 @@ export default async function DashboardPage() {
       where: {
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
+        ...(nestedUser ? { user: nestedUser } : {}),
       },
       include: { user: { select: { name: true, department: true, baseSalary: true } } },
       take: 50,
@@ -84,7 +113,7 @@ export default async function DashboardPage() {
 
   /* ─── late employees ─── */
   const lateToday = await prisma.attendance.findMany({
-    where: { date: { gte: todayStart }, status: 'LATE' },
+    where: attendanceWhere(scope, { date: { gte: todayStart }, status: 'LATE' }),
     include: { user: { select: { id: true, name: true, department: true } } },
     take: 5,
   })
@@ -95,9 +124,9 @@ export default async function DashboardPage() {
       const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0, 0, 0, 0)
       const next = new Date(d); next.setDate(d.getDate() + 1)
       const [present, late, absent] = await Promise.all([
-        prisma.attendance.count({ where: { date: { gte: d, lt: next }, status: { in: ['NORMAL', 'OT'] } } }),
-        prisma.attendance.count({ where: { date: { gte: d, lt: next }, status: 'LATE' } }),
-        prisma.attendance.count({ where: { date: { gte: d, lt: next }, status: 'ABSENT' } }),
+        prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: d, lt: next }, status: { in: ['NORMAL', 'OT'] } }) }),
+        prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: d, lt: next }, status: 'LATE' }) }),
+        prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: d, lt: next }, status: 'ABSENT' }) }),
       ])
       return {
         day: d.toLocaleDateString('th-TH', { weekday: 'short' }),
@@ -119,7 +148,7 @@ export default async function DashboardPage() {
 
   /* ─── activity feed ─── */
   const recentAttendance = await prisma.attendance.findMany({
-    where: { date: { gte: todayStart } },
+    where: todayAttWhere,
     include: { user: { select: { name: true } } },
     orderBy: { checkIn: 'desc' },
     take: 5,
@@ -157,6 +186,9 @@ export default async function DashboardPage() {
           ) : undefined
         }
       />
+      <Suspense fallback={null}>
+        <BranchFilterBar role={role} filterBranchId={branchParam} />
+      </Suspense>
 
       <div className="p-4 md:p-5 space-y-5">
 

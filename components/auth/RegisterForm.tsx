@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -11,7 +11,7 @@ const STEPS = ['ข้อมูลส่วนตัว', 'ข้อมูลพ
 type FormData = {
   prefix: string; firstName: string; lastName: string; nickname: string
   email: string; phone: string; birthDate: string; address: string
-  nationalId: string; role: string; department: string
+  nationalId: string; role: string; department: string; branchId: string
   baseSalary: string; startDate: string; socialSecurity: boolean
   password: string; confirmPassword: string
 }
@@ -31,11 +31,25 @@ export default function RegisterForm() {
   const [showPw, setShowPw] = useState(false)
   const [showCPw, setShowCPw] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
+  const [branches, setBranches] = useState<{ id: string; name: string; code: string }[]>([])
+  const [loadingBranches, setLoadingBranches] = useState(true)
+
+  useEffect(() => {
+    apiJson<{ branches?: { id: string; name: string; code: string }[] }>('/api/branches/public')
+      .then(({ ok, data }) => {
+        if (ok && data.branches?.length) {
+          setBranches(data.branches)
+          const def = data.branches[0]
+          setForm((f) => (f.branchId ? f : { ...f, branchId: def.id }))
+        }
+      })
+      .finally(() => setLoadingBranches(false))
+  }, [])
 
   const [form, setForm] = useState<FormData>({
     prefix: 'นาย', firstName: '', lastName: '', nickname: '',
     email: '', phone: '', birthDate: '', address: '', nationalId: '',
-    role: '', department: '', baseSalary: '', startDate: '', socialSecurity: true,
+    role: '', department: '', branchId: '', baseSalary: '', startDate: '', socialSecurity: true,
     password: '', confirmPassword: '',
   })
 
@@ -53,6 +67,7 @@ export default function RegisterForm() {
       else if (!/^0[0-9]{9}$/.test(form.phone.replace(/\D/g, ''))) e.phone = 'เบอร์ 10 หลัก เช่น 0812345678'
     }
     if (s === 1) {
+      if (!form.branchId)   e.branchId   = 'กรุณาเลือกสาขา'
       if (!form.role)       e.role       = 'กรุณาเลือกตำแหน่ง'
       if (!form.department) e.department = 'กรุณากรอกแผนก'
       if (!form.startDate)  e.startDate  = 'กรุณาเลือกวันที่เริ่มงาน'
@@ -89,6 +104,7 @@ export default function RegisterForm() {
       nationalId: form.nationalId.trim() || undefined,
       role: form.role as 'EMPLOYEE' | 'ADMIN' | 'LAWYER',
       department: form.department,
+      branchId: form.branchId,
       baseSalary: baseSalaryNum != null && !Number.isNaN(baseSalaryNum) ? baseSalaryNum : null,
       startDate: form.startDate,
       socialSecurity: form.socialSecurity,
@@ -229,6 +245,25 @@ export default function RegisterForm() {
       {/* STEP 1: Employee Info */}
       {step === 1 && (
         <div className="space-y-4 animate-fade-in">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">สาขา / Branch *</label>
+            <select
+              className={inputClass('branchId')}
+              value={form.branchId}
+              onChange={(e) => set('branchId', e.target.value)}
+              disabled={loadingBranches}
+            >
+              <option value="">{loadingBranches ? 'กำลังโหลดสาขา...' : '— เลือกสาขา —'}</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} ({b.code})
+                </option>
+              ))}
+            </select>
+            {errors.branchId && <p className="text-xs text-red-400">{errors.branchId}</p>}
+            <p className="text-[10px] text-slate-500">เค เอ็ม เซอร์วิสพลัส จำกัด</p>
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ตำแหน่ง / Role *</label>
             <div className="grid gap-2">

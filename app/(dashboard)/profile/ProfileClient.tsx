@@ -29,6 +29,7 @@ type ProfileData = {
   birthDate: string
   nationalId: string
   roleLabel: string
+  branchName: string
   status: string
   department: string
   position: string
@@ -126,6 +127,7 @@ export default function ProfileClient({ initial }: Props) {
     { label: 'อีเมล', value: initial.email },
     { label: 'รหัสพนักงาน', value: initial.employeeId || '—' },
     { label: 'ตำแหน่งในระบบ', value: initial.roleLabel },
+    { label: 'สาขา', value: initial.branchName },
     { label: 'สถานะบัญชี', value: STATUS_LABELS[initial.status] ?? initial.status },
     { label: 'แผนก', value: initial.department || '—' },
     { label: 'ตำแหน่งงาน', value: initial.position || '—' },

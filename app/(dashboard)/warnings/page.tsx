@@ -4,12 +4,28 @@ import { redirect } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import WarningsClient from './WarningsClient'
 import { WARNING_TARGET_USER_SELECT, WARNING_TARGET_USER_WHERE } from '@/lib/warning-employees'
+import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
+import {
+  buildBranchScope,
+  branchUserWhere,
+  resolveFilterBranchId,
+  parseBranchQueryParam,
+} from '@/lib/branch-scope'
+import { Suspense } from 'react'
 
-export default async function WarningsPage() {
+export default async function WarningsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branchId?: string }>
+}) {
   const session = await auth()
   if (!session?.user?.id) redirect('/')
 
+  const sp = await searchParams
+  const branchParam = parseBranchQueryParam(sp.branchId)
+  const scope = buildBranchScope(session.user, { branchId: branchParam })
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+  const filterBranch = resolveFilterBranchId(scope)
 
   type WarningRow = Awaited<
     ReturnType<
@@ -32,7 +48,9 @@ export default async function WarningsPage() {
   try {
     ;[warnings, employees] = await Promise.all([
       prisma.warning.findMany({
-        where: isManager ? {} : { userId: session.user.id },
+        where: isManager
+          ? (filterBranch ? { user: { branchId: filterBranch } } : {})
+          : { userId: session.user.id },
         include: {
           user: { select: { name: true, employeeId: true, department: true } },
         },
@@ -41,7 +59,7 @@ export default async function WarningsPage() {
       }),
       isManager
         ? prisma.user.findMany({
-            where: WARNING_TARGET_USER_WHERE,
+            where: branchUserWhere(scope, WARNING_TARGET_USER_WHERE),
             select: WARNING_TARGET_USER_SELECT,
             orderBy: { name: 'asc' },
           })
@@ -75,6 +93,11 @@ export default async function WarningsPage() {
             : 'ประวัติใบเตือนของตัวเอง'
         }
       />
+      {isManager && (
+        <Suspense fallback={null}>
+          <BranchFilterBar role={session.user.role} filterBranchId={branchParam} />
+        </Suspense>
+      )}
       <WarningsClient
       isManager={isManager}
       warnings={warnings.map((w) => ({

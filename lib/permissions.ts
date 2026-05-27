@@ -22,6 +22,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/settings':          ['MANAGER_HR', 'ADMIN'],
   '/notifications':     ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/profile':           ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
+  '/branches':          ['MANAGER_HR', 'ADMIN'],
 }
 
 // Default redirect after login per role

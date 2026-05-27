@@ -14,6 +14,7 @@ type User = {
   role: Role; status: string; department: string | null; position: string | null
   phone: string | null; baseSalary: number | null; socialSecurity: boolean
   startDate: string | null; lineId: string | null; isCoworker: boolean; createdAt: string
+  branch?: { name: string; code: string } | null
 }
 
 type Props = { users: User[]; stats: { total: number; pending: number; active: number; disabled: number }; initialTab: string }
@@ -140,14 +141,14 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/5">
-                {['พนักงาน', 'ตำแหน่ง / แผนก', 'Role', 'สถานะ', 'เริ่มงาน', 'ประกันสังคม', ...(tab === 'pending' ? ['การดำเนินการ'] : [])].map((h) => (
+                {['พนักงาน', 'ตำแหน่ง / แผนก', 'สาขา', 'Role', 'สถานะ', 'เริ่มงาน', 'ประกันสังคม', ...(tab === 'pending' ? ['การดำเนินการ'] : [])].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="py-8 text-center text-slate-500">ไม่มีข้อมูล</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-slate-500">ไม่มีข้อมูล</td></tr>
               ) : filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
@@ -160,6 +161,7 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">{u.position ?? '-'} / {u.department ?? '-'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-400">{u.branch ? `${u.branch.name} (${u.branch.code})` : '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${ROLE_COLORS[u.role]}`}>{ROLE_ICONS[u.role]} {ROLE_LABELS[u.role]}</span>
                   </td>

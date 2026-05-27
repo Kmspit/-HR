@@ -23,6 +23,7 @@ const registerSchema = z.object({
   startDate:     z.string().min(1, 'กรุณาเลือกวันที่เริ่มงาน'),
   socialSecurity:z.boolean().default(true),
   password:      z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'),
+  branchId:      z.string().min(1, 'กรุณาเลือกสาขา'),
 })
 
 function zodFirstError(err: z.ZodError): string {
@@ -66,6 +67,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const branch = await prisma.companyBranch.findFirst({
+      where: { id: data.branchId, isActive: true },
+    })
+    if (!branch) {
+      return NextResponse.json({ error: 'สาขาที่เลือกไม่ถูกต้องหรือปิดใช้งาน' }, { status: 400 })
+    }
+
     const passwordHash = await bcrypt.hash(data.password, 12)
     const employeeId   = generateEmployeeId()
 
@@ -84,6 +92,7 @@ export async function POST(req: NextRequest) {
         role:          data.role,
         status:        'PENDING',
         department:    data.department,
+        branchId:      branch.id,
         baseSalary:    data.baseSalary ?? null,
         startDate:     new Date(data.startDate),
         socialSecurity:data.socialSecurity,
@@ -105,7 +114,7 @@ export async function POST(req: NextRequest) {
         'MANAGER_HR',
         'REGISTER_REQUEST',
         '📋 มีคำขอสมัครใหม่',
-        `${data.name} (${email}) ขอสมัครในตำแหน่ง ${data.role} แผนก ${data.department}`,
+        `${data.name} (${email}) ขอสมัคร ${branch.name} · ${data.role} แผนก ${data.department}`,
         '/employees?tab=pending',
       ),
     )

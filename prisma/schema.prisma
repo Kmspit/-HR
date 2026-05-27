@@ -89,6 +89,25 @@ enum AuditAction {
   PASSWORD_RESET
 }
 
+// ── COMPANY BRANCH ──────────────────────────────
+
+model CompanyBranch {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  nameEn    String?
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("company_branches")
+}
+
 // ── USER ────────────────────────────────────────
 
 model User {
@@ -117,9 +136,11 @@ model User {
   isCoworker       Boolean    @default(false)
   approvedById     String?
   approvedAt       DateTime?
+  branchId         String?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
+  branch          CompanyBranch?      @relation(fields: [branchId], references: [id])
   approvedBy      User?               @relation("UserApproval", fields: [approvedById], references: [id])
   approvedUsers   User[]              @relation("UserApproval")
   attendances     Attendance[]

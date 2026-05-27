@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -12,6 +13,9 @@ export async function GET(req: NextRequest) {
   const month = parseInt(searchParams.get('month') ?? String(new Date().getMonth() + 1))
   const year = parseInt(searchParams.get('year') ?? String(new Date().getFullYear()))
   const userId = searchParams.get('userId')
+  const branchParam = parseBranchQueryParam(searchParams.get('branchId') ?? undefined)
+  const scope = buildBranchScope(session.user, { branchId: branchParam })
+  const nestedUser = branchNestedUserWhere(scope)
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
 
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   const [employees, payrollRecords] = await Promise.all([
     prisma.user.findMany({
-      where: { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } },
+      where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } }),
       select: {
         id: true,
         name: true,
@@ -54,7 +58,7 @@ export async function GET(req: NextRequest) {
       orderBy: { name: 'asc' },
     }),
     prisma.payroll.findMany({
-      where: { month, year },
+      where: { month, year, ...(nestedUser ? { user: nestedUser } : {}) },
       include: {
         user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
       },

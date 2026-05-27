@@ -3,10 +3,20 @@ import { prisma } from '@/lib/prisma'
 import { KM_COMPANY } from '@/lib/company-defaults'
 import { redirect } from 'next/navigation'
 import AttendanceClient from './AttendanceClient'
+import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
+import { buildBranchScope, branchUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import { Suspense } from 'react'
 
-export default async function AttendancePage() {
+export default async function AttendancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branchId?: string }>
+}) {
   const session = await auth()
   if (!session?.user?.id) redirect('/')
+  const sp = await searchParams
+  const branchParam = parseBranchQueryParam(sp.branchId)
+  const scope = buildBranchScope(session.user, { branchId: branchParam })
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -49,8 +59,8 @@ export default async function AttendancePage() {
   if (['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
     const [employees, records] = await Promise.all([
       prisma.user.findMany({
-        where: { status: 'ACTIVE', role: { in: [...TEAM_ROLES] } },
-        select: { id: true, name: true, department: true },
+        where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...TEAM_ROLES] } }),
+        select: { id: true, name: true, department: true, branch: { select: { name: true } } },
         orderBy: { name: 'asc' },
       }),
       prisma.attendance.findMany({
@@ -73,6 +83,12 @@ export default async function AttendancePage() {
   }
 
   return (
+    <>
+    {['MANAGER_HR', 'ADMIN'].includes(session.user.role) && (
+      <Suspense fallback={null}>
+        <BranchFilterBar role={session.user.role} filterBranchId={branchParam} />
+      </Suspense>
+    )}
     <AttendanceClient
       role={session.user.role}
       companyOffice={
@@ -134,5 +150,6 @@ export default async function AttendancePage() {
       } : null}
       allToday={allToday}
     />
+    </>
   )
 }
