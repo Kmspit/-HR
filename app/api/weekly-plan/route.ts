@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
+import { dateForPlanDay } from '@/lib/weekly-plan-days'
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,9 +15,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { weekStart, weekEnd, days, note, isLate } = body
 
-    if (!weekStart || !weekEnd || !Array.isArray(days) || days.length === 0) {
-      return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
+    if (!weekStart || !weekEnd || !Array.isArray(days)) {
+      return NextResponse.json({ error: 'กรุณาระบุช่วงสัปดาห์' }, { status: 400 })
     }
+
+    const filledDays = days.filter(
+      (d: { place?: string; purpose?: string }) =>
+        String(d.place ?? '').trim() || String(d.purpose ?? '').trim(),
+    )
 
     const deadline = new Date(weekStart)
     deadline.setDate(deadline.getDate() - 1)
@@ -31,15 +37,15 @@ export async function POST(req: NextRequest) {
         isLate:    !!isLate,
         status:    'PENDING',
         days: {
-          create: days.map((d: { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }) => ({
+          create: filledDays.map((d: { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }) => ({
             dayOfWeek: d.dayOfWeek,
-            date:      new Date(weekStart),
+            date:      dateForPlanDay(weekStart, d.dayOfWeek),
             startTime: d.startTime || null,
             endTime:   d.endTime || null,
-            place:     d.place || '',
-            purpose:   d.purpose || '',
-            client:    d.client || null,
-            note:      d.note || null,
+            place:     String(d.place ?? '').trim(),
+            purpose:   String(d.purpose ?? '').trim(),
+            client:    d.client?.trim() || null,
+            note:      d.note?.trim() || null,
           })),
         },
       },

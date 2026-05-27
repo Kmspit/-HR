@@ -6,14 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-
-const DAYS = [
-  { id: 1, label: 'วันจันทร์' },
-  { id: 2, label: 'วันอังคาร' },
-  { id: 3, label: 'วันพุธ' },
-  { id: 4, label: 'วันพฤหัสบดี' },
-  { id: 5, label: 'วันศุกร์' },
-]
+import { WEEKLY_PLAN_DAYS, weeklyDayLabel } from '@/lib/weekly-plan-days'
 
 type DayPlan = { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }
 type Plan = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note: string | null; lawyer: { name: string }; days: DayPlan[] }
@@ -28,7 +21,17 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
   const [tab, setTab] = useState<'submit' | 'history'>('submit')
   const [loading, setLoading] = useState(false)
   const [note, setNote] = useState('')
-  const [days, setDays] = useState<DayPlan[]>(DAYS.map((d) => ({ dayOfWeek: d.id, startTime: '08:00', endTime: '17:00', place: '', purpose: '', client: '', note: '' })))
+  const [days, setDays] = useState<DayPlan[]>(
+    WEEKLY_PLAN_DAYS.map((d) => ({
+      dayOfWeek: d.id,
+      startTime: '08:00',
+      endTime: '17:00',
+      place: '',
+      purpose: '',
+      client: '',
+      note: '',
+    })),
+  )
   const router = useRouter()
 
   const deadlineDate = new Date(deadline)
@@ -42,17 +45,26 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const hasSomeDay = days.some((d) => d.place || d.purpose)
-    if (!hasSomeDay) { toast.error('กรุณากรอกแผนงานอย่างน้อย 1 วัน'); return }
+    const filledDays = days.filter((d) => d.place.trim() || d.purpose.trim())
     setLoading(true)
     try {
       const { ok, data, status } = await apiJson('/api/weekly-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weekStart: nextWeek.start, weekEnd: nextWeek.end, days: days.filter(d => d.place || d.purpose), note, isLate }),
+        body: JSON.stringify({
+          weekStart: nextWeek.start,
+          weekEnd: nextWeek.end,
+          days: filledDays,
+          note: note.trim() || (filledDays.length === 0 ? 'อยู่ที่ออฟฟิศ / ไม่มีงานนอกสถานที่ในสัปดาห์นี้' : note),
+          isLate,
+        }),
       })
       if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
-      toast.success('ส่งแผนงานเรียบร้อย รอ Admin อนุมัติ')
+      toast.success(
+        filledDays.length === 0
+          ? 'ส่งแผนงานแล้ว (ไม่มีวันออกนอกสถานที่) รอ Admin อนุมัติ'
+          : 'ส่งแผนงานเรียบร้อย รอ Admin อนุมัติ',
+      )
       router.refresh()
       setTab('history')
     } catch (err) {
@@ -91,14 +103,25 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-2xl border border-white/5 bg-slate-900 p-4">
             <p className="text-sm font-semibold text-white mb-1">สัปดาห์: {formatThaiDate(nextWeek.start)} — {formatThaiDate(nextWeek.end)}</p>
-            <p className="text-xs text-slate-400">กรอกเฉพาะวันที่มีงานนอกสถานที่</p>
+            <p className="text-xs text-slate-400">
+              กรอกเฉพาะวันที่ออกนอกสถานที่ (จันทร์–อาทิตย์) — วันไหนอยู่ออฟฟิศไม่ต้องกรอก · ส่งได้แม้ไม่มีวันออกนอก
+            </p>
           </div>
 
-          {DAYS.map((day) => {
+          {WEEKLY_PLAN_DAYS.map((day) => {
             const d = days.find(x => x.dayOfWeek === day.id)!
+            const hasEntry = !!(d.place.trim() || d.purpose.trim())
             return (
-              <div key={day.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
-                <p className="text-sm font-semibold text-white mb-3">{day.label}</p>
+              <div
+                key={day.id}
+                className={`rounded-2xl border p-4 transition-colors ${
+                  hasEntry ? 'border-blue-500/20 bg-slate-900' : 'border-white/5 bg-slate-900/60'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <p className="text-sm font-semibold text-white">{day.label}</p>
+                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-500">ไม่บังคับ</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                   <div><label className="block text-[10px] text-slate-500 mb-1">เวลา</label>
                     <div className="flex items-center gap-1"><input type="time" className={inputCls} value={d.startTime} onChange={(e) => setDay(day.id, 'startTime', e.target.value)} /><span className="text-slate-500 text-xs">—</span><input type="time" className={inputCls} value={d.endTime} onChange={(e) => setDay(day.id, 'endTime', e.target.value)} /></div>
@@ -113,7 +136,13 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">หมายเหตุเพิ่มเติม</label>
-            <textarea rows={2} placeholder="หมายเหตุ..." className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none resize-none focus:border-blue-500/50" value={note} onChange={(e) => setNote(e.target.value)} />
+            <textarea
+              rows={2}
+              placeholder="เช่น อยู่ออฟฟิศทั้งสัปดาห์ / ไม่มีนัดนอกสถานที่..."
+              className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none resize-none focus:border-blue-500/50"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
           <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
@@ -136,12 +165,18 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                 <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[p.status] ?? ''}`}>{STATUS_LABELS[p.status] ?? p.status}</span>
               </div>
               <div className="space-y-1">
-                {p.days.map((d) => (
-                  <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs">
-                    <span className="font-semibold text-blue-400 w-16 flex-shrink-0">{['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์'][d.dayOfWeek]}</span>
-                    <span className="text-slate-300">{d.place} — {d.purpose}</span>
-                  </div>
-                ))}
+                {p.days.length === 0 ? (
+                  <p className="text-xs text-slate-500 rounded-lg bg-white/5 px-3 py-2">
+                    ไม่มีวันออกนอกสถานที่{p.note ? ` · ${p.note}` : ''}
+                  </p>
+                ) : (
+                  p.days.map((d) => (
+                    <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs">
+                      <span className="font-semibold text-blue-400 w-16 flex-shrink-0">{weeklyDayLabel(d.dayOfWeek)}</span>
+                      <span className="text-slate-300">{d.place} — {d.purpose}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           ))}

@@ -7,11 +7,12 @@ import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
+import { weeklyDayLabel } from '@/lib/weekly-plan-days'
 
 type Person = { name: string; email: string; department: string | null; position?: string | null; role: string }
 type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; user: Person }
 type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; user: Person }
-type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string; purpose: string }[] }
+type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note?: string | null; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string; purpose: string }[] }
 
 type Props = {
   leaveRequests: LR[]
@@ -21,7 +22,6 @@ type Props = {
 }
 
 const LEAVE_TYPES = LEAVE_TYPE_LABELS
-const DAYS_TH = ['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสฯ', 'ศุกร์']
 
 function personSubtitle(u: Person) {
   const pos = u.position?.trim() || '—'
@@ -250,12 +250,18 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
               </div>
               <ApprovalActions requestId={p.id} type="WEEKLY_PLAN" {...actionProps} />
               <div className="mt-3 space-y-1.5">
-                {p.days.map((d) => (
-                  <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-2.5 py-2 text-xs">
-                    <span className="font-semibold text-blue-400 w-12 flex-shrink-0">วัน{DAYS_TH[d.dayOfWeek]}</span>
-                    <span className="text-slate-300">{d.place} — {d.purpose}</span>
-                  </div>
-                ))}
+                {p.days.length === 0 ? (
+                  <p className="text-xs text-slate-500 rounded-lg bg-white/5 px-2.5 py-2">
+                    ไม่มีวันออกนอกสถานที่{p.note ? ` · ${p.note}` : ''}
+                  </p>
+                ) : (
+                  p.days.map((d) => (
+                    <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-2.5 py-2 text-xs">
+                      <span className="font-semibold text-blue-400 w-14 flex-shrink-0">วัน{weeklyDayLabel(d.dayOfWeek)}</span>
+                      <span className="text-slate-300">{d.place} — {d.purpose}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           ))}
