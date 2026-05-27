@@ -4,6 +4,7 @@ import Sidebar from '@/components/dashboard/Sidebar'
 import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
+import { prisma } from '@/lib/prisma'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -18,6 +19,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     department: session.user.department,
   }
 
+  const unreadCount = await prisma.notification.count({
+    where: { userId: session.user.id, isRead: false },
+  })
+
   return (
     <div className="dashboard-shell flex min-h-[100dvh] dark:bg-[#070b14] light:bg-slate-50">
       <DeviceBinder />
@@ -28,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       {/* Main content */}
       <div className="dashboard-main flex flex-1 flex-col min-w-0 overflow-hidden">
-        <DashboardHeader user={user} />
+        <DashboardHeader user={user} unreadCount={unreadCount} />
         <main className="dashboard-main-scroll flex-1 overflow-y-auto overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
           <div className="page-enter">
             {children}

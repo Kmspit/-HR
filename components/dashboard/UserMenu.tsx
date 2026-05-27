@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import { LogOut, User, ChevronDown } from 'lucide-react'
 import type { Role } from '@prisma/client'
@@ -87,7 +88,8 @@ export default function UserMenu({ user, showName = true }: Props) {
           </div>
 
           <div className="py-1 px-1.5">
-            <button
+            <Link
+              href="/profile"
               role="menuitem"
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] transition-all
                 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-200
@@ -96,7 +98,7 @@ export default function UserMenu({ user, showName = true }: Props) {
             >
               <User size={14} />
               โปรไฟล์ของฉัน
-            </button>
+            </Link>
 
             <div className="my-1 h-px dark:bg-white/[0.06] light:bg-slate-100" />
 

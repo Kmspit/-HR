@@ -1,0 +1,37 @@
+const PREFIXES = ['นางสาว', 'นาง', 'นาย', 'Mr.', 'Mrs.', 'Ms.'] as const
+
+export function splitDisplayName(name: string, storedPrefix?: string | null) {
+  let rest = name.trim()
+  let prefix = storedPrefix?.trim() ?? ''
+
+  if (!prefix) {
+    const sorted = [...PREFIXES].sort((a, b) => b.length - a.length)
+    for (const p of sorted) {
+      if (rest.startsWith(p)) {
+        prefix = p
+        rest = rest.slice(p.length).trim()
+        break
+      }
+    }
+  } else if (rest.startsWith(prefix)) {
+    rest = rest.slice(prefix.length).trim()
+  }
+
+  const parts = rest.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) {
+    return { prefix: prefix || 'นาย', firstName: '', lastName: '' }
+  }
+  if (parts.length === 1) {
+    return { prefix: prefix || 'นาย', firstName: parts[0], lastName: '' }
+  }
+  const lastName = parts[parts.length - 1]
+  const firstName = parts.slice(0, -1).join(' ')
+  return { prefix: prefix || 'นาย', firstName, lastName }
+}
+
+export function buildDisplayName(prefix: string, firstName: string, lastName: string) {
+  const p = prefix.trim()
+  const f = firstName.trim()
+  const l = lastName.trim()
+  return `${p}${f} ${l}`.replace(/\s+/g, ' ').trim()
+}

@@ -104,7 +104,8 @@ model User {
   birthDate        DateTime?
   address          String?
   nationalId       String?    @unique
-  profileImage     String?
+  profileImage        String?
+  profileImageBase64  String?
   role             Role       @default(EMPLOYEE)
   status           UserStatus @default(PENDING)
   department       String?

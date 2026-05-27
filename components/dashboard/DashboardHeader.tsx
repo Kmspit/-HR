@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Menu, X, Bell } from 'lucide-react'
 import Sidebar from './Sidebar'
 import UserMenu from './UserMenu'
@@ -9,9 +10,10 @@ import type { Role } from '@prisma/client'
 
 type Props = {
   user: { name: string; email: string; role: Role; department: string | null }
+  unreadCount?: number
 }
 
-export default function DashboardHeader({ user }: Props) {
+export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -68,17 +70,20 @@ export default function DashboardHeader({ user }: Props) {
         <div className="flex items-center gap-2">
           <ThemeToggle />
 
-          <button
+          <Link
+            href="/notifications"
             className="relative flex h-8.5 w-8.5 items-center justify-center rounded-xl border transition-all
-              dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400
-              light:border-slate-200 light:bg-white light:text-slate-500 light:shadow-sm"
+              dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:text-slate-200
+              light:border-slate-200 light:bg-white light:text-slate-500 light:shadow-sm light:hover:text-slate-700"
             aria-label="แจ้งเตือน"
           >
             <Bell size={15} />
-            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white">
-              3
-            </span>
-          </button>
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex min-h-3.5 min-w-3.5 items-center justify-center rounded-full bg-blue-500 px-0.5 text-[8px] font-bold text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </Link>
 
           <UserMenu user={user} />
         </div>

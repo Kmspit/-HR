@@ -73,6 +73,14 @@ async function main() {
   await addColumnIfMissing('warnings', 'month', 'ALTER TABLE warnings ADD COLUMN month INTEGER')
   await addColumnIfMissing('warnings', 'year', 'ALTER TABLE warnings ADD COLUMN year INTEGER')
 
+  const userCols = await columns('users')
+  console.log('users columns:', userCols.join(', ') || '(none)')
+  await addColumnIfMissing(
+    'users',
+    'profileImageBase64',
+    'ALTER TABLE users ADD COLUMN profileImageBase64 TEXT',
+  )
+
   // Backfill issuedById for legacy rows (use recipient as fallback)
   const backfill = await db.execute(`
     UPDATE warnings
