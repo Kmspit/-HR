@@ -357,6 +357,12 @@
   nav.mobile-bottom-nav {
     min-height: 56px;
   }
+
+  .warnings-table th,
+  .warnings-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
 }
 
 /* Safe area helpers */

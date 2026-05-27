@@ -221,6 +221,39 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     return ordinalByWarningId
   }, [list])
 
+  const summaryByEmployee = useMemo(() => {
+    const map = new Map<
+      string,
+      { userId: string; name: string; employeeId: string; dept: string; total: number; byLevel: Record<number, number>; latestReason: string; latestAt: string }
+    >()
+    for (const w of list) {
+      const cur = map.get(w.userId)
+      if (!cur) {
+        map.set(w.userId, {
+          userId: w.userId,
+          name: w.userName,
+          employeeId: w.employeeId,
+          dept: w.userDept,
+          total: 1,
+          byLevel: { [w.level]: 1 },
+          latestReason: w.reason,
+          latestAt: w.createdAt,
+        })
+      } else {
+        cur.total += 1
+        cur.byLevel[w.level] = (cur.byLevel[w.level] ?? 0) + 1
+        if (new Date(w.createdAt) >= new Date(cur.latestAt)) {
+          cur.latestAt = w.createdAt
+          cur.latestReason = w.reason
+        }
+      }
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total)
+  }, [list])
+
+  const thCls = 'p-3 text-white/40 font-medium whitespace-nowrap'
+  const tdCls = 'p-3 whitespace-nowrap align-middle'
+
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -292,20 +325,14 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                   <span className="text-xs text-slate-400">({selectedEmployee.employeeId})</span>
                 )}
               </div>
-              <p className="text-sm text-amber-100/90">
-                เคยได้รับใบเตือนแล้ว{' '}
-                <strong className="text-white">{employeeStats?.total ?? selectedEmployee.warningCount}</strong>{' '}
-                ครั้ง
+              <p className="text-sm text-amber-100/90 whitespace-nowrap overflow-x-auto">
+                เคยได้รับใบเตือนแล้ว <strong className="text-white">{employeeStats?.total ?? selectedEmployee.warningCount}</strong> ครั้ง
                 {employeeStats && (
                   <span className="text-slate-400 text-xs ml-2">
-                    (ระดับ 1: {employeeStats.byLevel[1] ?? 0} · ระดับ 2: {employeeStats.byLevel[2] ?? 0} · ระดับ 3:{' '}
-                    {employeeStats.byLevel[3] ?? 0})
+                    · ระดับ 1: {employeeStats.byLevel[1] ?? 0} · ระดับ 2: {employeeStats.byLevel[2] ?? 0} · ระดับ 3: {employeeStats.byLevel[3] ?? 0}
                   </span>
                 )}
-              </p>
-              <p className="text-sm font-semibold text-amber-300">
-                ครั้งนี้เป็นใบเตือนครั้งที่ <span className="text-white text-lg">{warningNumber}</span> → ระบบตั้งระดับอัตโนมัติเป็น{' '}
-                <span className="text-white">ระดับ {form.level}</span>
+                {' · '}ครั้งนี้ครั้งที่ <strong className="text-white">{warningNumber}</strong> → ระดับ <strong className="text-white">{form.level}</strong>
               </p>
             </div>
           )}
@@ -444,74 +471,121 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         ))}
       </div>
 
+      {summaryByEmployee.length > 0 && (
+        <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
+          <div className="px-4 py-3 border-b border-white/10">
+            <h2 className="text-sm font-semibold text-white">สรุปใบเตือนรายคน</h2>
+          </div>
+          <div className="table-scroll">
+            <table className="warnings-table w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="border-b border-white/10">
+                  {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
+                  <th className={`${thCls} text-center`}>ใบเตือนสะสม</th>
+                  <th className={`${thCls} text-center`}>ระดับ 1</th>
+                  <th className={`${thCls} text-center`}>ระดับ 2</th>
+                  <th className={`${thCls} text-center`}>ระดับ 3</th>
+                  <th className={`${thCls} text-left`}>เหตุผลล่าสุด</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summaryByEmployee.map((row) => (
+                  <tr key={row.userId} className="table-row-hover border-b border-white/5">
+                    {isManager && (
+                      <td className={`${tdCls} text-white font-medium`}>
+                        {row.name}
+                        {row.employeeId ? ` (${row.employeeId})` : ''}
+                        {row.dept ? ` · ${row.dept}` : ''}
+                      </td>
+                    )}
+                    <td className={`${tdCls} text-center`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${row.total >= 3 ? LEVEL_STYLES[3] : row.total >= 2 ? LEVEL_STYLES[2] : LEVEL_STYLES[1]}`}>
+                        {row.total} ใบ
+                      </span>
+                    </td>
+                    <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[1] ?? 0}</td>
+                    <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[2] ?? 0}</td>
+                    <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[3] ?? 0}</td>
+                    <td className={`${tdCls} text-white/70 max-w-[220px] truncate`} title={row.latestReason}>
+                      {row.latestReason}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
+        <div className="px-4 py-3 border-b border-white/10">
+          <h2 className="text-sm font-semibold text-white">ประวัติใบเตือนทั้งหมด</h2>
+        </div>
         <div className="table-scroll">
-          <table className="w-full text-sm">
+          <table className="warnings-table w-full text-sm min-w-[720px]">
             <thead>
               <tr className="border-b border-white/10">
-                {isManager && <th className="text-left p-3 text-white/40 font-medium">พนักงาน</th>}
-                <th className="text-center p-3 text-white/40 font-medium">ระดับ</th>
-                <th className="text-center p-3 text-white/40 font-medium">ครั้งที่</th>
-                <th className="text-left p-3 text-white/40 font-medium">เหตุผล</th>
-                <th className="text-center p-3 text-white/40 font-medium">ประเภท</th>
-                <th className="text-center p-3 text-white/40 font-medium">PDF</th>
-                <th className="text-center p-3 text-white/40 font-medium">เดือน</th>
-                <th className="text-center p-3 text-white/40 font-medium">วันที่</th>
+                {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
+                <th className={`${thCls} text-center`}>ระดับ</th>
+                <th className={`${thCls} text-center`}>ครั้งที่</th>
+                <th className={`${thCls} text-left`}>เหตุผล</th>
+                <th className={`${thCls} text-center`}>ประเภท</th>
+                <th className={`${thCls} text-center`}>PDF</th>
+                <th className={`${thCls} text-center`}>เดือน</th>
+                <th className={`${thCls} text-center`}>วันที่</th>
               </tr>
             </thead>
             <tbody>
               {list.map((w) => {
                 const userOrdinal = warningOrdinalById.get(w.id) ?? '?'
                 return (
-                  <tr key={w.id} className="table-row-hover">
+                  <tr key={w.id} className="table-row-hover border-b border-white/5">
                     {isManager && (
-                      <td className="p-3">
-                        <p className="text-white font-medium">{w.userName}</p>
-                        <p className="text-white/40 text-xs">
-                          {w.employeeId ? `${w.employeeId} · ` : ''}
-                          {w.userDept}
-                        </p>
+                      <td className={`${tdCls} text-white font-medium`}>
+                        {w.userName}
+                        {w.employeeId ? ` (${w.employeeId})` : ''}
+                        {w.userDept ? ` · ${w.userDept}` : ''}
                       </td>
                     )}
-                    <td className="p-3 text-center">
+                    <td className={`${tdCls} text-center`}>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${LEVEL_STYLES[w.level]}`}
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${LEVEL_STYLES[w.level]}`}
                       >
                         ระดับ {w.level}
                       </span>
                     </td>
-                    <td className="p-3 text-center text-slate-400 text-xs tabular-nums">
+                    <td className={`${tdCls} text-center text-slate-400 text-xs tabular-nums`}>
                       ครั้งที่ {userOrdinal}
                     </td>
-                    <td className="p-3 text-white/70 max-w-xs">
-                      <p className="line-clamp-2">{w.reason}</p>
+                    <td className={`${tdCls} text-white/70 max-w-[200px] truncate`} title={w.reason}>
+                      {w.reason}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className={`${tdCls} text-center`}>
                       {w.isAuto ? (
-                        <span className="text-purple-400 text-xs">อัตโนมัติ</span>
+                        <span className="text-purple-400 text-xs whitespace-nowrap">อัตโนมัติ</span>
                       ) : (
-                        <span className="text-blue-400 text-xs">ด้วยตนเอง</span>
+                        <span className="text-blue-400 text-xs whitespace-nowrap">ด้วยตนเอง</span>
                       )}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className={`${tdCls} text-center`}>
                       {w.fileUrl ? (
                         <a
                           href={w.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
+                          className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 whitespace-nowrap"
                         >
-                          <FileText className="w-3.5 h-3.5" />
-                          เปิด PDF
+                          <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                          PDF
                         </a>
                       ) : (
                         <span className="text-slate-600 text-xs">—</span>
                       )}
                     </td>
-                    <td className="p-3 text-center text-white/50 text-xs">
+                    <td className={`${tdCls} text-center text-white/50 text-xs`}>
                       {w.month && w.year ? `${monthNames[w.month]} ${w.year}` : '-'}
                     </td>
-                    <td className="p-3 text-center text-white/50 text-xs">
+                    <td className={`${tdCls} text-center text-white/50 text-xs`}>
                       {new Date(w.createdAt).toLocaleDateString('th-TH', {
                         day: 'numeric',
                         month: 'short',
