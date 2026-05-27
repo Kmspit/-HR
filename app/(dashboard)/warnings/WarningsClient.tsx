@@ -1,7 +1,18 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { AlertTriangle, Plus, Zap, User, FileUp, FileText, X, Send, ChevronDown, Loader2, Search } from 'lucide-react'
+import {
+  AlertTriangle,
+  Plus,
+  Zap,
+  User,
+  FileUp,
+  FileText,
+  X,
+  Send,
+  ChevronDown,
+  Loader2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -25,7 +36,16 @@ type Employee = {
   department: string
   position?: string
   employeeId: string
+  roleLabel?: string
   warningCount: number
+}
+
+function formatEmployeeLabel(e: Employee) {
+  const parts = [e.name]
+  if (e.employeeId) parts.push(`(${e.employeeId})`)
+  parts.push(`— ${e.department || 'ไม่ระบุแผนก'}`)
+  if (e.roleLabel) parts.push(`· ${e.roleLabel}`)
+  return parts.join(' ')
 }
 
 type Props = {
@@ -52,10 +72,10 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
 
 const MAX_PDF_MB = 10
 
-async function loadEmployeesFromApi(): Promise<Employee[]> {
+async function loadEmployeesFromApi(): Promise<Employee[] | null> {
   const { ok, data } = await apiJson<{ employees?: Employee[] }>('/api/warnings/employees')
-  if (ok && data.employees?.length) return data.employees
-  return []
+  if (ok && Array.isArray(data.employees)) return data.employees
+  return null
 }
 
 export default function WarningsClient({ isManager, warnings, employees }: Props) {
@@ -63,6 +83,8 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ userId: '', reason: '', description: '' })
   const [empSearch, setEmpSearch] = useState('')
+  const [empPickerOpen, setEmpPickerOpen] = useState(false)
+  const empPickerRef = useRef<HTMLDivElement>(null)
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [sendToEmployee, setSendToEmployee] = useState(true)
   const [employeeList, setEmployeeList] = useState(employees)
@@ -93,25 +115,63 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     setEmployeeList(employees)
   }, [employees])
 
-  useEffect(() => {
-    if (!isManager) return
+  const refreshEmployeeList = () => {
     setLoadingEmployees(true)
-    loadEmployeesFromApi()
+    return loadEmployeesFromApi()
       .then((list) => {
-        if (list.length) setEmployeeList(list)
+        if (list) setEmployeeList(list)
       })
       .finally(() => setLoadingEmployees(false))
+  }
+
+  useEffect(() => {
+    if (!isManager) return
+    refreshEmployeeList()
   }, [isManager])
 
   useEffect(() => {
     if (!showForm || !isManager) return
-    setLoadingEmployees(true)
-    loadEmployeesFromApi()
-      .then((list) => {
-        if (list.length) setEmployeeList(list)
-      })
-      .finally(() => setLoadingEmployees(false))
+    refreshEmployeeList()
   }, [showForm, isManager])
+
+  useEffect(() => {
+    if (!empPickerOpen) return
+    const onDocClick = (e: MouseEvent) => {
+      if (empPickerRef.current && !empPickerRef.current.contains(e.target as Node)) {
+        setEmpPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [empPickerOpen])
+
+  const pickEmployee = (e: Employee) => {
+    setForm((f) => ({ ...f, userId: e.id }))
+    setEmpSearch(formatEmployeeLabel(e))
+    setEmpPickerOpen(false)
+  }
+
+  const onEmpSearchChange = (text: string) => {
+    setEmpSearch(text)
+    const q = text.trim().toLowerCase()
+    if (!q) {
+      setForm((f) => ({ ...f, userId: '' }))
+      return
+    }
+    const exact = employeeList.find(
+      (e) =>
+        e.name.toLowerCase() === q ||
+        formatEmployeeLabel(e).toLowerCase() === q ||
+        (e.employeeId && e.employeeId.toLowerCase() === q),
+    )
+    if (exact) setForm((f) => ({ ...f, userId: exact.id }))
+    else if (form.userId) {
+      const cur = employeeList.find((x) => x.id === form.userId)
+      if (cur && !formatEmployeeLabel(cur).toLowerCase().includes(q) && !cur.name.toLowerCase().includes(q)) {
+        setForm((f) => ({ ...f, userId: '' }))
+      }
+    }
+  }
 
   useEffect(() => {
     if (!form.userId) {
@@ -200,6 +260,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       setShowForm(false)
       setForm({ userId: '', reason: '', description: '' })
       setEmpSearch('')
+      setEmpPickerOpen(false)
       setSendToEmployee(true)
       setPdfFile(null)
       if (pdfInputRef.current) pdfInputRef.current.value = ''
@@ -390,48 +451,79 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
           <div>
             <label className="text-sm text-white/50 block mb-1.5">เลือกพนักงาน</label>
-            <div className="rounded-xl border border-white/15 bg-slate-900/80 overflow-hidden focus-within:border-blue-500/50 transition-colors">
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10">
-                <Search className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <div
+              ref={empPickerRef}
+              className="relative rounded-xl border border-white/15 bg-slate-900/80 focus-within:border-blue-500/50 transition-colors"
+            >
+              <div className="flex items-center gap-1 pr-1">
                 <input
-                  type="search"
+                  type="text"
                   value={empSearch}
-                  onChange={(e) => setEmpSearch(e.target.value)}
-                  placeholder="ค้นหาชื่อพนักงาน รหัส หรือแผนก..."
-                  className="flex-1 bg-transparent border-0 text-sm text-white placeholder:text-slate-500 outline-none min-h-[40px]"
+                  onChange={(e) => {
+                    onEmpSearchChange(e.target.value)
+                    setEmpPickerOpen(true)
+                  }}
+                  onFocus={() => setEmpPickerOpen(true)}
+                  placeholder="พิมพ์ชื่อพนักงาน รหัส หรือแผนก..."
+                  autoComplete="off"
+                  className="flex-1 min-w-0 bg-transparent border-0 px-4 py-3.5 text-sm text-white placeholder:text-slate-500 outline-none"
                 />
-                {loadingEmployees && (
-                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" />
+                {loadingEmployees ? (
+                  <Loader2 className="w-5 h-5 text-blue-400 animate-spin flex-shrink-0" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEmpPickerOpen((o) => !o)}
+                    className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition touch-manipulation"
+                    aria-label="เปิดรายชื่อพนักงาน"
+                    title="เลือกจากรายการ"
+                  >
+                    <ChevronDown
+                      className={`w-5 h-5 transition-transform ${empPickerOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
                 )}
               </div>
-              <div className="relative">
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none z-10" />
-                <select
-                  value={form.userId}
-                  onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
-                  disabled={loadingEmployees}
-                  className="w-full appearance-none bg-transparent border-0 px-4 py-3 pr-10 text-sm text-white outline-none cursor-pointer disabled:opacity-60 min-h-[48px]"
+
+              {empPickerOpen && !loadingEmployees && (
+                <ul
+                  className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-white/15 bg-slate-900 shadow-xl"
+                  role="listbox"
                 >
-                  <option value="" className="bg-slate-900 text-slate-400">
-                    — เลือกพนักงานจากรายการ —
-                  </option>
-                  {filteredEmployees.map((e) => (
-                    <option key={e.id} value={e.id} className="bg-slate-900 text-white">
-                      {e.name}
-                      {e.employeeId ? ` (${e.employeeId})` : ''}
-                      {' — '}
-                      {e.department || 'ไม่ระบุแผนก'}
-                      {e.position ? ` · ${e.position}` : ''}
-                      {' · ใบเตือนแล้ว '}
-                      {e.warningCount}
-                      {' ครั้ง'}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {filteredEmployees.length === 0 ? (
+                    <li className="px-4 py-3 text-sm text-slate-500">ไม่พบพนักงานที่ตรงกับคำค้น</li>
+                  ) : (
+                    filteredEmployees.map((e) => (
+                      <li key={e.id} role="option">
+                        <button
+                          type="button"
+                          onClick={() => pickEmployee(e)}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition hover:bg-white/5 touch-manipulation ${
+                            form.userId === e.id ? 'bg-blue-500/15 text-blue-200' : 'text-white'
+                          }`}
+                        >
+                          <span className="font-medium">{e.name}</span>
+                          {e.employeeId && (
+                            <span className="text-slate-400 ml-1">({e.employeeId})</span>
+                          )}
+                          <span className="block text-xs text-slate-500 mt-0.5">
+                            {e.department || 'ไม่ระบุแผนก'}
+                            {e.roleLabel ? ` · ${e.roleLabel}` : ''}
+                            {' · ใบเตือนแล้ว '}
+                            {e.warningCount} ครั้ง
+                          </span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
             </div>
             <p className="text-[10px] text-slate-500 mt-1">
-              ดึงรายชื่อจากฐานข้อมูลพนักงาน · {loadingEmployees ? 'กำลังโหลด...' : `${employeeList.length} คน`}
+              พิมพ์ชื่อหรือกดลูกศรเลือกจากรายการ ·{' '}
+              {loadingEmployees
+                ? 'กำลังโหลดจากฐานข้อมูล...'
+                : `พนักงาน ACTIVE ทั้งหมด ${employeeList.length} คน`}
             </p>
           </div>
 

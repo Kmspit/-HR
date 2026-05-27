@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import WarningsClient from './WarningsClient'
+import { WARNING_TARGET_USER_SELECT, WARNING_TARGET_USER_WHERE } from '@/lib/warning-employees'
 
 export default async function WarningsPage() {
   const session = await auth()
@@ -40,17 +41,8 @@ export default async function WarningsPage() {
       }),
       isManager
         ? prisma.user.findMany({
-            where: {
-              status: 'ACTIVE',
-              role: { in: ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] },
-            },
-            select: {
-              id: true,
-              name: true,
-              department: true,
-              employeeId: true,
-              _count: { select: { warnings: true } },
-            },
+            where: WARNING_TARGET_USER_WHERE,
+            select: WARNING_TARGET_USER_SELECT,
             orderBy: { name: 'asc' },
           })
         : [],
