@@ -221,34 +221,42 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     return ordinalByWarningId
   }, [list])
 
-  const summaryByEmployee = useMemo(() => {
+  const getMonthKey = (w: Warning) => {
+    if (w.month && w.year) return `${w.year}-${String(w.month).padStart(2, '0')}`
+    const d = new Date(w.createdAt)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const formatMonthLabel = (key: string) => {
+    const [y, m] = key.split('-')
+    const mi = parseInt(m, 10)
+    return `${monthNames[mi] ?? m} ${parseInt(y, 10) + 543}`
+  }
+
+  const summaryByMonth = useMemo(() => {
     const map = new Map<
       string,
-      { userId: string; name: string; employeeId: string; dept: string; total: number; byLevel: Record<number, number>; latestReason: string; latestAt: string }
+      { key: string; total: number; byLevel: Record<number, number>; employeeIds: Set<string> }
     >()
     for (const w of list) {
-      const cur = map.get(w.userId)
+      const key = getMonthKey(w)
+      const cur = map.get(key)
       if (!cur) {
-        map.set(w.userId, {
-          userId: w.userId,
-          name: w.userName,
-          employeeId: w.employeeId,
-          dept: w.userDept,
+        map.set(key, {
+          key,
           total: 1,
           byLevel: { [w.level]: 1 },
-          latestReason: w.reason,
-          latestAt: w.createdAt,
+          employeeIds: new Set([w.userId]),
         })
       } else {
         cur.total += 1
         cur.byLevel[w.level] = (cur.byLevel[w.level] ?? 0) + 1
-        if (new Date(w.createdAt) >= new Date(cur.latestAt)) {
-          cur.latestAt = w.createdAt
-          cur.latestReason = w.reason
-        }
+        cur.employeeIds.add(w.userId)
       }
     }
-    return [...map.values()].sort((a, b) => b.total - a.total)
+    return [...map.values()]
+      .map((row) => ({ ...row, employeeCount: row.employeeIds.size }))
+      .sort((a, b) => b.key.localeCompare(a.key))
   }, [list])
 
   const thCls = 'p-3 text-white/40 font-medium whitespace-nowrap'
@@ -471,44 +479,38 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         ))}
       </div>
 
-      {summaryByEmployee.length > 0 && (
+      {summaryByMonth.length > 0 && (
         <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
           <div className="px-4 py-3 border-b border-white/10">
-            <h2 className="text-sm font-semibold text-white">สรุปใบเตือนรายคน</h2>
+            <h2 className="text-sm font-semibold text-white">สรุปใบเตือนรายเดือน</h2>
           </div>
           <div className="table-scroll">
-            <table className="warnings-table w-full text-sm min-w-[640px]">
+            <table className="warnings-table w-full text-sm min-w-[520px]">
               <thead>
                 <tr className="border-b border-white/10">
-                  {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
-                  <th className={`${thCls} text-center`}>ใบเตือนสะสม</th>
+                  <th className={`${thCls} text-left`}>เดือน / ปี</th>
+                  <th className={`${thCls} text-center`}>จำนวนใบ</th>
                   <th className={`${thCls} text-center`}>ระดับ 1</th>
                   <th className={`${thCls} text-center`}>ระดับ 2</th>
                   <th className={`${thCls} text-center`}>ระดับ 3</th>
-                  <th className={`${thCls} text-left`}>เหตุผลล่าสุด</th>
+                  {isManager && <th className={`${thCls} text-center`}>พนักงานที่โดน</th>}
                 </tr>
               </thead>
               <tbody>
-                {summaryByEmployee.map((row) => (
-                  <tr key={row.userId} className="table-row-hover border-b border-white/5">
-                    {isManager && (
-                      <td className={`${tdCls} text-white font-medium`}>
-                        {row.name}
-                        {row.employeeId ? ` (${row.employeeId})` : ''}
-                        {row.dept ? ` · ${row.dept}` : ''}
-                      </td>
-                    )}
+                {summaryByMonth.map((row) => (
+                  <tr key={row.key} className="table-row-hover border-b border-white/5">
+                    <td className={`${tdCls} text-white font-medium`}>{formatMonthLabel(row.key)}</td>
                     <td className={`${tdCls} text-center`}>
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${row.total >= 3 ? LEVEL_STYLES[3] : row.total >= 2 ? LEVEL_STYLES[2] : LEVEL_STYLES[1]}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${row.total >= 5 ? LEVEL_STYLES[3] : row.total >= 3 ? LEVEL_STYLES[2] : LEVEL_STYLES[1]}`}>
                         {row.total} ใบ
                       </span>
                     </td>
                     <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[1] ?? 0}</td>
                     <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[2] ?? 0}</td>
                     <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[3] ?? 0}</td>
-                    <td className={`${tdCls} text-white/70 max-w-[220px] truncate`} title={row.latestReason}>
-                      {row.latestReason}
-                    </td>
+                    {isManager && (
+                      <td className={`${tdCls} text-center text-slate-300 tabular-nums`}>{row.employeeCount} คน</td>
+                    )}
                   </tr>
                 ))}
               </tbody>
