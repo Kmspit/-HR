@@ -131,6 +131,7 @@ model User {
   auditActions    AuditLog[]          @relation("AuditActor")
   leaveBalances   LeaveBalance[]
   warnings        Warning[]
+  warningsIssued  Warning[]           @relation("WarningsIssued")
   payrolls        Payroll[]
   savedWorkPlaces SavedWorkPlace[]
   device          UserDevice?
@@ -376,7 +377,8 @@ model Warning {
   year        Int?
   createdAt   DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user     User @relation(fields: [userId], references: [id])
+  issuedBy User @relation("WarningsIssued", fields: [issuedById], references: [id])
 
   @@map("warnings")
 }

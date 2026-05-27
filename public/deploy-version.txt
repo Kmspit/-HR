@@ -1,3 +1,3 @@
-commit=dae71e3
+commit=pending
 deploy=2026-05-27
-feature=weekly-plan-sat-sun-optional-days
+feature=warnings-issuer-columns-send-pdf

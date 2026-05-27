@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
+import Topbar from '@/components/dashboard/Topbar'
 import WarningsClient from './WarningsClient'
 
 export default async function WarningsPage() {
@@ -12,7 +13,10 @@ export default async function WarningsPage() {
   const [warnings, employees] = await Promise.all([
     prisma.warning.findMany({
       where: isManager ? {} : { userId: session.user.id },
-      include: { user: { select: { name: true, employeeId: true, department: true } } },
+      include: {
+        user: { select: { name: true, employeeId: true, department: true } },
+        issuedBy: { select: { name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     }),
@@ -35,7 +39,16 @@ export default async function WarningsPage() {
   ])
 
   return (
-    <WarningsClient
+    <div className="flex flex-col">
+      <Topbar
+        title="ใบเตือน"
+        subtitle={
+          isManager
+            ? 'ดูใบเตือนทุกคน · แยกรายเดือน · ส่งไฟล์ให้พนักงานได้'
+            : 'ดูใบเตือนของตัวเองเท่านั้น'
+        }
+      />
+      <WarningsClient
       isManager={isManager}
       warnings={warnings.map((w) => ({
         id: w.id,
@@ -43,10 +56,12 @@ export default async function WarningsPage() {
         userName: w.user.name,
         userDept: w.user.department ?? '',
         employeeId: w.user.employeeId ?? '',
+        issuedByName: w.isAuto ? 'ระบบ (อัตโนมัติ)' : (w.issuedBy?.name ?? '—'),
         level: w.level,
         reason: w.reason,
         description: w.description ?? '',
         fileUrl: w.fileUrl ?? null,
+        sentToLine: w.sentToLine,
         isAuto: w.isAuto,
         month: w.month ?? null,
         year: w.year ?? null,
@@ -60,5 +75,6 @@ export default async function WarningsPage() {
         warningCount: e._count.warnings,
       }))}
     />
+    </div>
   )
 }

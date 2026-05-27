@@ -20,11 +20,18 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId')
     const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
 
-    const whereUserId = isManager && !userId ? undefined : (userId ?? session.user.id)
+    const where = isManager
+      ? userId
+        ? { userId }
+        : {}
+      : { userId: session.user.id }
 
     const warnings = await prisma.warning.findMany({
-      where: whereUserId ? { userId: whereUserId } : {},
-      include: { user: { select: { name: true, employeeId: true, department: true } } },
+      where,
+      include: {
+        user: { select: { name: true, employeeId: true, department: true } },
+        issuedBy: { select: { name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     })
@@ -112,12 +119,19 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    const base = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
+    const fileLink = fileUrl
+      ? fileUrl.startsWith('http')
+        ? fileUrl
+        : `${base}${fileUrl}`
+      : null
+
     await prisma.notification.create({
       data: {
         userId,
         type: 'WARNING_ISSUED',
         title: `ได้รับใบเตือนระดับ ${levelToUse}`,
-        message: reason,
+        message: fileLink ? `${reason}\n\n📎 ไฟล์: ${fileLink}` : reason,
         link: '/warnings',
       },
     }).catch((e) => console.error('[warning notify]', e))

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { AlertTriangle, Plus, Zap, Search, User, FileUp, FileText, X } from 'lucide-react'
+import { AlertTriangle, Plus, Zap, Search, User, FileUp, FileText, X, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -11,10 +11,12 @@ type Warning = {
   userName: string
   userDept: string
   employeeId: string
+  issuedByName: string
   level: number
   reason: string
   description: string
   fileUrl: string | null
+  sentToLine: boolean
   isAuto: boolean
   month: number | null
   year: number | null
@@ -59,7 +61,11 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
     userName: (w.user as { name?: string })?.name ?? '',
     userDept: (w.user as { department?: string })?.department ?? '',
     employeeId: (w.user as { employeeId?: string })?.employeeId ?? '',
+    issuedByName: Boolean(w.isAuto)
+      ? 'ระบบ (อัตโนมัติ)'
+      : ((w.issuedBy as { name?: string })?.name ?? '—'),
     level: Number(w.level),
+    sentToLine: Boolean(w.sentToLine),
     reason: String(w.reason),
     description: String(w.description ?? ''),
     fileUrl: w.fileUrl != null ? String(w.fileUrl) : null,
@@ -80,6 +86,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [runningCron, setRunningCron] = useState(false)
+  const [sendingId, setSendingId] = useState<string | null>(null)
   const [list, setList] = useState(warnings)
   const [employeeStats, setEmployeeStats] = useState<{
     total: number
@@ -131,6 +138,26 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const refreshList = async () => {
     const { data } = await apiJson<{ warnings?: Array<Record<string, unknown>> }>('/api/warnings')
     if (data.warnings) setList(mapWarningsFromApi(data.warnings))
+  }
+
+  const sendToEmployee = async (warningId: string) => {
+    setSendingId(warningId)
+    try {
+      const { ok, data, status } = await apiJson<Record<string, unknown>>(`/api/warnings/${warningId}/send`, {
+        method: 'POST',
+      })
+      if (!ok) {
+        toast.error(apiErrorMessage(data, 'ส่งไม่สำเร็จ', status))
+        return
+      }
+      toast.success('ส่งใบเตือนให้พนักงานแล้ว (แจ้งเตือนในแอพ + LINE ถ้ามี)')
+      await refreshList()
+    } catch (err) {
+      console.error('[warnings-send]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setSendingId(null)
+    }
   }
 
   const submit = async () => {
@@ -233,6 +260,22 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     return `${monthNames[mi] ?? m} ${parseInt(y, 10) + 543}`
   }
 
+  const listGroupedByMonth = useMemo(() => {
+    const groups = new Map<string, Warning[]>()
+    const sorted = [...list].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    for (const w of sorted) {
+      const key = getMonthKey(w)
+      const arr = groups.get(key) ?? []
+      arr.push(w)
+      groups.set(key, arr)
+    }
+    return [...groups.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, items]) => ({ key, label: formatMonthLabel(key), items }))
+  }, [list])
+
   const summaryByMonth = useMemo(() => {
     const map = new Map<
       string,
@@ -262,10 +305,88 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const thCls = 'p-3 text-white/40 font-medium whitespace-nowrap'
   const tdCls = 'p-3 whitespace-nowrap align-middle'
 
+  const renderWarningRow = (w: Warning) => {
+    const userOrdinal = warningOrdinalById.get(w.id) ?? '?'
+    const dateStr = new Date(w.createdAt).toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: '2-digit',
+    })
+    const monthStr =
+      w.month && w.year ? `${monthNames[w.month]} ${w.year + 543}` : formatMonthLabel(getMonthKey(w))
+
+    return (
+      <tr key={w.id} className="table-row-hover border-b border-white/5">
+        {isManager && (
+          <td className={`${tdCls} text-white font-medium max-w-[160px] truncate`} title={w.userName}>
+            {w.userName}
+            {w.employeeId ? ` (${w.employeeId})` : ''}
+          </td>
+        )}
+        <td className={`${tdCls} text-white/90 font-medium`}>{w.issuedByName}</td>
+        <td className={`${tdCls} text-center text-white/60 text-xs`}>{dateStr}</td>
+        <td className={`${tdCls} text-center text-white/50 text-xs`}>{monthStr}</td>
+        <td className={`${tdCls} text-center text-slate-400 text-xs tabular-nums`}>ครั้งที่ {userOrdinal}</td>
+        <td className={`${tdCls} text-white/70 max-w-[200px] truncate`} title={w.reason}>
+          {w.reason}
+        </td>
+        <td className={`${tdCls} text-center`}>
+          {w.isAuto ? (
+            <span className="text-purple-400 text-xs whitespace-nowrap">อัตโนมัติ</span>
+          ) : (
+            <span className="text-blue-400 text-xs whitespace-nowrap">ด้วยตนเอง</span>
+          )}
+        </td>
+        <td className={`${tdCls} text-center`}>
+          {w.fileUrl ? (
+            <a
+              href={w.fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 whitespace-nowrap"
+            >
+              <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+              PDF
+            </a>
+          ) : (
+            <span className="text-slate-600 text-xs">—</span>
+          )}
+        </td>
+        {isManager && (
+          <td className={`${tdCls} text-center`}>
+            <button
+              type="button"
+              onClick={() => sendToEmployee(w.id)}
+              disabled={sendingId === w.id}
+              title={w.sentToLine ? 'ส่งซ้ำให้พนักงาน' : 'ส่งแจ้งเตือน + ลิงก์ไฟล์ให้พนักงาน'}
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 hover:bg-blue-500/20 disabled:opacity-50 touch-manipulation"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {sendingId === w.id ? '...' : w.sentToLine ? 'ส่งอีกครั้ง' : 'ส่งให้พนักงาน'}
+            </button>
+          </td>
+        )}
+      </tr>
+    )
+  }
+
+  const historyHead = (
+    <tr className="border-b border-white/10">
+      {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
+      <th className={`${thCls} text-left`}>ผู้ออกใบเตือน</th>
+      <th className={`${thCls} text-center`}>วันที่</th>
+      <th className={`${thCls} text-center`}>เดือน</th>
+      <th className={`${thCls} text-center`}>ครั้งที่</th>
+      <th className={`${thCls} text-left`}>เหตุผล</th>
+      <th className={`${thCls} text-center`}>ประเภท</th>
+      <th className={`${thCls} text-center`}>PDF</th>
+      {isManager && <th className={`${thCls} text-center`}>ส่งไฟล์</th>}
+    </tr>
+  )
+
   return (
     <div className="p-4 md:p-6 space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-white">ใบเตือน</h1>
+      <div className="flex items-center justify-end flex-wrap gap-3">
         {isManager && (
           <div className="flex gap-2">
             <button
@@ -519,95 +640,29 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         </div>
       )}
 
-      <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white">ประวัติใบเตือนทั้งหมด</h2>
+      {list.length === 0 ? (
+        <div className="glass-card rounded-2xl p-8 text-center text-white/30">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          {isManager ? 'ยังไม่มีใบเตือนในระบบ' : 'คุณยังไม่มีใบเตือน'}
         </div>
-        <div className="table-scroll">
-          <table className="warnings-table w-full text-sm min-w-[720px]">
-            <thead>
-              <tr className="border-b border-white/10">
-                {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
-                <th className={`${thCls} text-center`}>ระดับ</th>
-                <th className={`${thCls} text-center`}>ครั้งที่</th>
-                <th className={`${thCls} text-left`}>เหตุผล</th>
-                <th className={`${thCls} text-center`}>ประเภท</th>
-                <th className={`${thCls} text-center`}>PDF</th>
-                <th className={`${thCls} text-center`}>เดือน</th>
-                <th className={`${thCls} text-center`}>วันที่</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((w) => {
-                const userOrdinal = warningOrdinalById.get(w.id) ?? '?'
-                return (
-                  <tr key={w.id} className="table-row-hover border-b border-white/5">
-                    {isManager && (
-                      <td className={`${tdCls} text-white font-medium`}>
-                        {w.userName}
-                        {w.employeeId ? ` (${w.employeeId})` : ''}
-                        {w.userDept ? ` · ${w.userDept}` : ''}
-                      </td>
-                    )}
-                    <td className={`${tdCls} text-center`}>
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${LEVEL_STYLES[w.level]}`}
-                      >
-                        ระดับ {w.level}
-                      </span>
-                    </td>
-                    <td className={`${tdCls} text-center text-slate-400 text-xs tabular-nums`}>
-                      ครั้งที่ {userOrdinal}
-                    </td>
-                    <td className={`${tdCls} text-white/70 max-w-[200px] truncate`} title={w.reason}>
-                      {w.reason}
-                    </td>
-                    <td className={`${tdCls} text-center`}>
-                      {w.isAuto ? (
-                        <span className="text-purple-400 text-xs whitespace-nowrap">อัตโนมัติ</span>
-                      ) : (
-                        <span className="text-blue-400 text-xs whitespace-nowrap">ด้วยตนเอง</span>
-                      )}
-                    </td>
-                    <td className={`${tdCls} text-center`}>
-                      {w.fileUrl ? (
-                        <a
-                          href={w.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 whitespace-nowrap"
-                        >
-                          <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-                          PDF
-                        </a>
-                      ) : (
-                        <span className="text-slate-600 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className={`${tdCls} text-center text-white/50 text-xs`}>
-                      {w.month && w.year ? `${monthNames[w.month]} ${w.year}` : '-'}
-                    </td>
-                    <td className={`${tdCls} text-center text-white/50 text-xs`}>
-                      {new Date(w.createdAt).toLocaleDateString('th-TH', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </td>
-                  </tr>
-                )
-              })}
-              {list.length === 0 && (
-                <tr>
-                  <td colSpan={isManager ? 8 : 7} className="p-8 text-center text-white/30">
-                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    ไม่มีใบเตือน
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      ) : (
+        listGroupedByMonth.map((group) => (
+          <div key={group.key} className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">
+                {isManager ? `รายเดือน — ${group.label}` : `ใบเตือนเดือน ${group.label}`}
+              </h2>
+              <span className="text-xs text-slate-500">{group.items.length} รายการ</span>
+            </div>
+            <div className="table-scroll">
+              <table className="warnings-table w-full text-sm min-w-[800px]">
+                <thead>{historyHead}</thead>
+                <tbody>{group.items.map((w) => renderWarningRow(w))}</tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   )
 }
