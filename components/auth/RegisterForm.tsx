@@ -4,7 +4,28 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { Eye, EyeOff, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Eye, EyeOff, Loader2, ChevronLeft, ChevronRight, Building2 } from 'lucide-react'
+import {
+  DEFAULT_COMPANY_BRANCHES,
+  registerBranchLabel,
+  HQ_BRANCH_ID,
+} from '@/lib/company-branches'
+
+type BranchOption = {
+  id: string
+  name: string
+  code: string
+  registerTag: string
+  label: string
+}
+
+const FALLBACK_BRANCHES: BranchOption[] = DEFAULT_COMPANY_BRANCHES.map((b) => ({
+  id: b.id,
+  name: b.name,
+  code: b.code,
+  registerTag: b.registerTag,
+  label: registerBranchLabel(b.name, b.registerTag),
+}))
 
 const STEPS = ['ข้อมูลส่วนตัว', 'ข้อมูลพนักงาน', 'ตั้งรหัสผ่าน']
 
@@ -31,17 +52,41 @@ export default function RegisterForm() {
   const [showPw, setShowPw] = useState(false)
   const [showCPw, setShowCPw] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
-  const [branches, setBranches] = useState<{ id: string; name: string; code: string }[]>([])
+  const [branches, setBranches] = useState<BranchOption[]>(FALLBACK_BRANCHES)
   const [loadingBranches, setLoadingBranches] = useState(true)
 
   useEffect(() => {
-    apiJson<{ branches?: { id: string; name: string; code: string }[] }>('/api/branches/public')
+    apiJson<{
+      branches?: {
+        id: string
+        name: string
+        code: string
+        registerTag?: string
+        label?: string
+      }[]
+    }>('/api/branches/public')
       .then(({ ok, data }) => {
-        if (ok && data.branches?.length) {
-          setBranches(data.branches)
-          const def = data.branches[0]
-          setForm((f) => (f.branchId ? f : { ...f, branchId: def.id }))
-        }
+        const list =
+          ok && data.branches?.length
+            ? data.branches.map((b) => {
+                const registerTag =
+                  b.registerTag ?? (b.code === 'HQ' ? 'สาขาหลัก' : 'สาขาย่อย')
+                return {
+                  id: b.id,
+                  name: b.name,
+                  code: b.code,
+                  registerTag,
+                  label: b.label ?? registerBranchLabel(b.name, registerTag),
+                }
+              })
+            : FALLBACK_BRANCHES
+        setBranches(list)
+        const def = list.find((b) => b.code === 'HQ') ?? list[0]
+        setForm((f) => (f.branchId ? f : { ...f, branchId: def.id }))
+      })
+      .catch(() => {
+        setBranches(FALLBACK_BRANCHES)
+        setForm((f) => (f.branchId ? f : { ...f, branchId: HQ_BRANCH_ID }))
       })
       .finally(() => setLoadingBranches(false))
   }, [])
@@ -120,7 +165,7 @@ export default function RegisterForm() {
       setErrors(allErrors)
       const firstStep = allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone
         ? 0
-        : allErrors.role || allErrors.department || allErrors.startDate
+        : allErrors.branchId || allErrors.role || allErrors.department || allErrors.startDate
           ? 1
           : 2
       setStep(firstStep)
@@ -245,23 +290,41 @@ export default function RegisterForm() {
       {/* STEP 1: Employee Info */}
       {step === 1 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">สาขา / Branch *</label>
-            <select
-              className={inputClass('branchId')}
-              value={form.branchId}
-              onChange={(e) => set('branchId', e.target.value)}
-              disabled={loadingBranches}
-            >
-              <option value="">{loadingBranches ? 'กำลังโหลดสาขา...' : '— เลือกสาขา —'}</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} ({b.code})
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Building2 size={14} className="text-blue-400" />
+              เลือกสาขาที่สังกัด *
+            </label>
+            {loadingBranches ? (
+              <p className="text-sm text-slate-500 py-2">กำลังโหลดรายการสาขา...</p>
+            ) : (
+              <div className="grid gap-2">
+                {branches.map((b) => (
+                  <label
+                    key={b.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all ${
+                      form.branchId === b.id
+                        ? 'border-blue-500/50 bg-blue-500/10'
+                        : 'border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="branchId"
+                      value={b.id}
+                      checked={form.branchId === b.id}
+                      onChange={(e) => set('branchId', e.target.value)}
+                      className="accent-blue-500 mt-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white leading-snug">{b.name}</p>
+                      <p className="text-xs text-blue-300/90 mt-0.5">({b.registerTag})</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
             {errors.branchId && <p className="text-xs text-red-400">{errors.branchId}</p>}
-            <p className="text-[10px] text-slate-500">เค เอ็ม เซอร์วิสพลัส จำกัด</p>
           </div>
 
           <div className="space-y-2">
@@ -322,6 +385,7 @@ export default function RegisterForm() {
             <p className="font-semibold text-white mb-1">สรุปข้อมูล</p>
             <p>ชื่อ: {form.prefix}{form.firstName} {form.lastName} ({form.nickname || '-'})</p>
             <p>อีเมล: {form.email}</p>
+            <p>สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'}</p>
             <p>ตำแหน่ง: {ROLES.find(r => r.value === form.role)?.label ?? '-'} · {form.department}</p>
           </div>
 

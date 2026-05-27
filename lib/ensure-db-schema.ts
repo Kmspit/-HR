@@ -1,7 +1,5 @@
 import { prisma } from '@/lib/prisma'
-
-const HQ_ID = 'branch-hq-kmsp'
-const NMA_ID = 'branch-nma-korat'
+import { DEFAULT_COMPANY_BRANCHES } from '@/lib/company-branches'
 
 let ensurePromise: Promise<boolean> | null = null
 
@@ -56,17 +54,22 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE users ADD COLUMN profileImageBase64 TEXT`,
   )
 
-  await prisma.$executeRaw`
-    INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
-    VALUES (${HQ_ID}, 'HQ', 'สำนักงานใหญ่', 'Head Office', 'กรุงเทพมหานคร', 1, 1, datetime('now'), datetime('now'))
-  `
-  await prisma.$executeRaw`
-    INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
-    VALUES (${NMA_ID}, 'NMA', 'สาขานครราชสีมา', 'Nakhon Ratchasima Branch', 'จังหวัดนครราชสีมา', 1, 0, datetime('now'), datetime('now'))
-  `
-  await prisma.$executeRaw`
-    UPDATE users SET branchId = ${HQ_ID} WHERE branchId IS NULL OR branchId = ''
-  `
+  for (const b of DEFAULT_COMPANY_BRANCHES) {
+    await prisma.$executeRaw`
+      INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
+      VALUES (${b.id}, ${b.code}, ${b.name}, ${b.nameEn}, ${b.address}, 1, ${b.isDefault ? 1 : 0}, datetime('now'), datetime('now'))
+    `
+    await prisma.$executeRaw`
+      UPDATE company_branches
+      SET code = ${b.code}, name = ${b.name}, nameEn = ${b.nameEn}, address = ${b.address},
+          isActive = 1, isDefault = ${b.isDefault ? 1 : 0}, updatedAt = datetime('now')
+      WHERE id = ${b.id}
+    `
+  }
 
+  const hqId = DEFAULT_COMPANY_BRANCHES[0].id
+  await prisma.$executeRaw`
+    UPDATE users SET branchId = ${hqId} WHERE branchId IS NULL OR branchId = ''
+  `
   return true
 }

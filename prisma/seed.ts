@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import bcrypt from 'bcryptjs'
+import { DEFAULT_COMPANY_BRANCHES } from '../lib/company-branches'
 import { config } from 'dotenv'
 import { resolve } from 'path'
 
@@ -24,25 +25,43 @@ const prisma = makePrisma()
 async function main() {
   console.log('🌱 Seeding database...')
 
+  const [hqDef, nmaDef] = DEFAULT_COMPANY_BRANCHES
   const hq = await prisma.companyBranch.upsert({
-    where: { code: 'HQ' },
-    update: { isActive: true, isDefault: true },
+    where: { id: hqDef.id },
+    update: {
+      code: hqDef.code,
+      name: hqDef.name,
+      nameEn: hqDef.nameEn,
+      address: hqDef.address,
+      isActive: true,
+      isDefault: true,
+    },
     create: {
-      code: 'HQ',
-      name: 'สำนักงานใหญ่',
-      nameEn: 'Head Office',
+      id: hqDef.id,
+      code: hqDef.code,
+      name: hqDef.name,
+      nameEn: hqDef.nameEn,
+      address: hqDef.address,
       isActive: true,
       isDefault: true,
     },
   })
   const nma = await prisma.companyBranch.upsert({
-    where: { code: 'NMA' },
-    update: { isActive: true },
+    where: { id: nmaDef.id },
+    update: {
+      code: nmaDef.code,
+      name: nmaDef.name,
+      nameEn: nmaDef.nameEn,
+      address: nmaDef.address,
+      isActive: true,
+      isDefault: false,
+    },
     create: {
-      code: 'NMA',
-      name: 'สาขานครราชสีมา',
-      nameEn: 'Nakhon Ratchasima Branch',
-      address: 'จังหวัดนครราชสีมา',
+      id: nmaDef.id,
+      code: nmaDef.code,
+      name: nmaDef.name,
+      nameEn: nmaDef.nameEn,
+      address: nmaDef.address,
       isActive: true,
       isDefault: false,
     },

@@ -87,16 +87,21 @@ async function main() {
     console.log('[skip] users.profileImageBase64 exists')
   }
 
-  await db.execute({
-    sql: `INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
-          VALUES (?, 'HQ', 'สำนักงานใหญ่', 'Head Office', 'กรุงเทพมหานคร', 1, 1, datetime('now'), datetime('now'))`,
-    args: [HQ_ID],
-  })
-  await db.execute({
-    sql: `INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
-          VALUES (?, 'NMA', 'สาขานครราชสีมา', 'Nakhon Ratchasima Branch', 'จังหวัดนครราชสีมา', 1, 0, datetime('now'), datetime('now'))`,
-    args: [NMA_ID],
-  })
+  const branches = [
+    [HQ_ID, 'HQ', 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด', 'KM Service Plus Co., Ltd.', 'สาขาหลัก', 1],
+    [NMA_ID, 'NMA', 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด สาขานครราชสีมา', 'KM Service Plus Co., Ltd. — Nakhon Ratchasima', 'จังหวัดนครราชสีมา', 0],
+  ]
+  for (const [id, code, name, nameEn, address, isDefault] of branches) {
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))`,
+      args: [id, code, name, nameEn, address, isDefault],
+    })
+    await db.execute({
+      sql: `UPDATE company_branches SET code = ?, name = ?, nameEn = ?, address = ?, isActive = 1, isDefault = ?, updatedAt = datetime('now') WHERE id = ?`,
+      args: [code, name, nameEn, address, isDefault, id],
+    })
+  }
   console.log('[ok] default branches seeded')
 
   const backfill = await db.execute(
