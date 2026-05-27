@@ -22,6 +22,42 @@
 .map-status-bar { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--bg2); border-radius:10px; margin:10px 0; font-size:12px; }
 .gps-blink { width:10px; height:10px; border-radius:50%; background:var(--green); animation:gpsBlink 1.5s ease-in-out infinite; flex-shrink:0; }
 @keyframes gpsBlink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+.att-status-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+@media (min-width:640px){ .att-status-grid { grid-template-columns:repeat(4,1fr); } }
+.att-stat { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:12px; text-align:center; }
+.att-stat-label { font-size:10px; color:var(--text3); margin-bottom:4px; }
+.att-stat-value { font-size:18px; font-weight:700; }
+.att-timeline { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r2); padding:16px; margin-top:16px; }
+.att-tl-row { display:flex; gap:12px; }
+.att-tl-dot { width:20px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; }
+.att-tl-dot span { width:10px; height:10px; border-radius:50%; background:var(--border2); }
+.att-tl-dot.done span { background:var(--accent); box-shadow:0 0 0 3px rgba(59,130,246,0.2); }
+.att-tl-dot.amber.done span { background:var(--orange); box-shadow:0 0 0 3px rgba(249,115,22,0.2); }
+.att-tl-line { width:2px; flex:1; min-height:28px; background:var(--border); margin:4px 0; }
+.att-tl-dot.done + .att-tl-line, .att-tl-line.done { background:rgba(59,130,246,0.35); }
+.att-photos { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px; }
+.att-photo-slot { text-align:center; }
+.att-photo-slot img, .att-photo-slot .att-photo-ph { width:100%; aspect-ratio:4/3; border-radius:8px; object-fit:cover; background:var(--bg3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text3); }
+.att-photo-slot p { font-size:10px; color:var(--text3); margin-top:4px; }
+.att-type-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+@media (min-width:520px){ .att-type-grid { grid-template-columns:1fr 1fr; } }
+.att-type-card { border-radius:16px; padding:18px; text-align:left; cursor:pointer; transition:transform .2s, box-shadow .2s; border:1px solid transparent; }
+.att-type-card:hover { transform:translateY(-2px); }
+.att-type-card.company { background:linear-gradient(135deg,rgba(6,182,212,.12),rgba(59,130,246,.08)); border-color:rgba(6,182,212,.25); }
+.att-type-card.outside { background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(239,68,68,.08)); border-color:rgba(249,115,22,.25); }
+.att-type-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:10px; }
+.att-type-card.company .att-type-icon { background:linear-gradient(135deg,#06b6d4,#3b82f6); }
+.att-type-card.outside .att-type-icon { background:linear-gradient(135deg,#f97316,#ef4444); }
+.att-type-title { font-weight:700; font-size:15px; margin-bottom:4px; }
+.att-type-desc { font-size:12px; color:var(--text2); line-height:1.4; }
+.btn-lunch { width:100%; height:48px; font-size:14px; font-weight:600; border:none; border-radius:12px; color:#fff; cursor:pointer; margin-bottom:8px; }
+.btn-lunch.out { background:linear-gradient(135deg,#d97706,#b45309); }
+.btn-lunch.in { background:linear-gradient(135deg,#f59e0b,#d97706); }
+.btn-lunch:disabled { opacity:.45; pointer-events:none; }
+.att-panel-hint { font-size:13px; color:var(--text2); margin-bottom:12px; line-height:1.5; }
+.att-back { font-size:12px; color:var(--text3); background:none; border:none; cursor:pointer; padding:0; margin-bottom:10px; }
+.att-back:hover { color:var(--text); }
+.att-done-msg { text-align:center; padding:20px; color:var(--green); font-weight:600; }
 </style>
 </head>
 <body>
@@ -83,11 +119,18 @@
   </header>
 
   <main class="content">
+    <div class="att-status-grid" id="att-status-grid">
+      <div class="att-stat"><div class="att-stat-label">เช็คอิน</div><div class="att-stat-value" id="stat-checkin" style="color:var(--green)">--:--</div></div>
+      <div class="att-stat"><div class="att-stat-label">เช็คเอาท์</div><div class="att-stat-value" id="stat-checkout" style="color:var(--accent)">--:--</div></div>
+      <div class="att-stat"><div class="att-stat-label">สถานะ</div><div class="att-stat-value" id="stat-status" style="font-size:14px;color:var(--text2)">—</div></div>
+      <div class="att-stat"><div class="att-stat-label">ประเภท</div><div class="att-stat-value" id="stat-type" style="font-size:14px;color:var(--text2)">—</div></div>
+    </div>
+
     <div class="main-grid" style="grid-template-columns: 1.2fr 1fr;">
       <!-- Left: Camera View -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">👤 ถ่ายใบหน้า — หน้าตรง</span>
+          <span class="card-title" id="camera-card-title">👤 ถ่ายใบหน้า — หน้าตรง</span>
           <span class="tag blue" style="font-size:11px">กล้องกำลังทำงาน</span>
         </div>
         <div class="view-container" style="background: #000; border: none; border-radius: 16px;">
@@ -128,17 +171,18 @@
           <div id="gps-status-chip" class="gps-chip" style="color:var(--text3)">⏳ กำลังระบุตำแหน่ง...</div>
         </div>
 
-        <div class="form-group" style="margin-bottom:15px">
-          <label>ประเภทการเช็คอิน</label>
-          <select id="checkin-type" class="form-input">
-            <option value="IN_OFFICE">เข้างาน (ในสำนักงาน)</option>
-            <option value="IN_OFFICE">ออกงาน (เย็น)</option>
-            <option value="OUT_OF_OFFICE">ออกนอกสถานที่</option>
-          </select>
+        <div id="att-actions"></div>
+        <div id="att-capture-bar" style="display:none;">
+          <p class="att-panel-hint" id="att-panel-hint"></p>
+          <button id="btn-capture" type="button" class="btn-outline" style="width:100%; height:44px; font-size:15px; margin-bottom:10px;" onclick="captureFacePhoto()">📷 ถ่ายรูปหน้าตรง</button>
+          <button id="btn-submit" class="btn-primary" style="width:100%; height:48px; font-size:16px; opacity:0.5; pointer-events:none;" onclick="submitActiveAction()">บันทึก</button>
         </div>
-        <button id="btn-capture" type="button" class="btn-outline" style="width:100%; height:44px; font-size:15px; margin-bottom:10px;" onclick="captureFacePhoto()">📷 ถ่ายรูปหน้าตรง</button>
-        <button id="btn-submit" class="btn-primary" style="width:100%; height:48px; font-size:16px; opacity: 0.5; pointer-events: none;" onclick="submitAttendance()">บันทึกเวลาทำงาน</button>
       </div>
+    </div>
+
+    <div id="att-extras-wrap" style="display:none;">
+      <div class="att-timeline" id="att-timeline"></div>
+      <div class="att-photos" id="att-photos"></div>
     </div>
 
     <!-- HR: Live All-Employee Map (visible to Manager/HR only) -->
@@ -159,7 +203,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>วันที่</th><th>รูปถ่าย</th><th>เวลาเข้า/ออก</th><th>พิกัด & สถานที่</th><th>สถานะ</th></tr></thead>
+          <thead><tr><th>วันที่</th><th>รูปถ่าย</th><th>เวลา (เข้า · พัก · ออก)</th><th>พิกัด & สถานที่</th><th>สถานะ</th></tr></thead>
           <tbody id="attendance-body">
             <tr>
               <td>25 พ.ค. 69</td>
@@ -198,6 +242,7 @@
   </div>
 </nav>
 
+<script src="hr-core.js"></script>
 <script>
 function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
@@ -409,8 +454,81 @@ function refreshAllMap() {
   }
 }
 
-// ── ถ่ายหน้าตรง — กดถ่ายเอง (ไม่มี delay) ──
+// ── ลงเวลา 4 ขั้น (เหมือนแอปจริง) ──
 let faceCaptured = false;
+let activePanel = null; // checkin-company | checkin-outside | lunch-out | lunch-in | checkout
+
+const PANEL_LABELS = {
+  'checkin-company':  { title: 'เช็คอิน ในบริษัท', submit: 'บันทึกเช็คอิน' },
+  'checkin-outside':  { title: 'เช็คอิน นอกสถานที่', submit: 'บันทึกเช็คอิน' },
+  'lunch-out':        { title: 'เริ่มพักกลางวัน', submit: 'บันทึกเริ่มพักกลางวัน' },
+  'lunch-in':         { title: 'กลับจากพักกลางวัน', submit: 'บันทึกสิ้นพักกลางวัน' },
+  'checkout':         { title: 'เช็คเอาท์', submit: 'บันทึกเช็คเอาท์' },
+};
+
+function todayStorageKey() {
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  const day = new Date().toISOString().slice(0, 10);
+  return `hrflow_today_${user?.email || 'guest'}_${day}`;
+}
+
+function getTodayRecord() {
+  try { return JSON.parse(localStorage.getItem(todayStorageKey()) || 'null'); }
+  catch { return null; }
+}
+
+function saveTodayRecord(rec) {
+  localStorage.setItem(todayStorageKey(), JSON.stringify(rec));
+}
+
+function fmtTime(iso) {
+  if (!iso) return '--:--';
+  return new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+function resetCaptureUI() {
+  faceCaptured = false;
+  const submitBtn = document.getElementById('btn-submit');
+  if (submitBtn) {
+    submitBtn.style.opacity = '0.5';
+    submitBtn.style.pointerEvents = 'none';
+    submitBtn.textContent = 'บันทึก';
+    submitBtn.disabled = false;
+  }
+  document.getElementById('liveness-instruction').textContent = 'มองตรงกล้อง แล้วกดปุ่มถ่ายรูป';
+  const stepCurrent = document.getElementById('step-current');
+  if (stepCurrent) {
+    stepCurrent.innerHTML = `
+      <div class="step-current-icon" id="step-current-icon">😐</div>
+      <div class="step-current-label" id="step-current-label">หน้าตรง</div>
+      <div class="step-current-num" id="step-current-num">กดปุ่มถ่ายรูปเมื่อพร้อม</div>`;
+  }
+  document.querySelectorAll('.step-dot').forEach((dot) => {
+    dot.classList.remove('done');
+    dot.classList.add('active');
+  });
+}
+
+function openPanel(panel) {
+  activePanel = panel;
+  const meta = PANEL_LABELS[panel];
+  document.getElementById('camera-card-title').textContent = '👤 ' + meta.title;
+  document.getElementById('att-capture-bar').style.display = 'block';
+  document.getElementById('att-panel-hint').textContent =
+    'ถ่ายรูปหน้าตรง + ใช้ GPS ปัจจุบัน แล้วกดบันทึก';
+  const submitBtn = document.getElementById('btn-submit');
+  submitBtn.textContent = meta.submit;
+  resetCaptureUI();
+  renderAttendanceUI();
+}
+
+function closePanel() {
+  activePanel = null;
+  document.getElementById('att-capture-bar').style.display = 'none';
+  document.getElementById('camera-card-title').textContent = '👤 ถ่ายใบหน้า — หน้าตรง';
+  resetCaptureUI();
+  renderAttendanceUI();
+}
 
 function captureFacePhoto() {
   const video = document.getElementById('checkin-video');
@@ -418,64 +536,244 @@ function captureFacePhoto() {
     alert('เปิดกล้องก่อน');
     return;
   }
+  if (!activePanel) {
+    alert('เลือกประเภทการลงเวลาก่อน');
+    return;
+  }
   faceCaptured = true;
   document.getElementById('liveness-instruction').innerHTML =
-    "<span style='color:var(--green)'>✓ ถ่ายใบหน้าแล้ว — กดบันทึกเวลาได้</span>";
+    "<span style='color:var(--green)'>✓ ถ่ายใบหน้าแล้ว — กดบันทึกได้</span>";
   document.querySelectorAll('.step-dot').forEach((dot) => {
     dot.classList.remove('active');
     dot.classList.add('done');
   });
-  const stepCurrent = document.getElementById('step-current');
-  stepCurrent.innerHTML = '<div class="step-current-done">✓ ถ่ายรูปแล้ว</div>';
+  document.getElementById('step-current').innerHTML = '<div class="step-current-done">✓ ถ่ายรูปแล้ว</div>';
   const submitBtn = document.getElementById('btn-submit');
   submitBtn.style.opacity = '1';
   submitBtn.style.pointerEvents = 'auto';
 }
 
-function submitAttendance() {
+function capturePhotoDataUrl() {
+  const video = document.getElementById('checkin-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = 120;
+  canvas.height = 90;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg');
+}
+
+function submitActiveAction() {
+  if (!activePanel) return;
   if (!faceCaptured) {
     alert('กรุณากดถ่ายรูปหน้าตรงก่อน');
     return;
   }
-  const video = document.getElementById('checkin-video');
-  const canvas = document.createElement('canvas');
-  canvas.width = 120; // ขนาดเล็กสำหรับ Thumbnail
-  canvas.height = 90;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const photoUrl = canvas.toDataURL('image/jpeg');
+  const photoUrl = capturePhotoDataUrl();
+  const now = new Date().toISOString();
+  const addr = document.getElementById('gps-address')?.textContent || '';
+  const office = getOfficeCoords();
+  const dist = calculateDistance(userCoords.lat, userCoords.lng, office.lat, office.lng);
+  const inRange = dist <= office.radius;
+  let rec = getTodayRecord() || {};
 
-  const now = new Date();
-  const day = now.getDate();
-  const year = (now.getFullYear() + 543).toString().slice(-2); // ปี พ.ศ. แบบย่อ
-  const formattedDate = `${day} พ.ค. ${year}`;
-  const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-  
+  if (activePanel === 'checkin-company') {
+    if (rec.checkIn) { alert('เช็คอินแล้ววันนี้'); return; }
+    if (!inRange) { alert('อยู่นอกรัศมีสำนักงาน — ใช้เช็คอินนอกสถานที่แทน'); return; }
+    rec = {
+      checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
+      isOutside: false, workPlaceName: 'สำนักงาน',
+      photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
+      address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
+    };
+    appendHistoryRow(rec, photoUrl);
+    mockLineNotify?.('✅ เช็คอินเข้างาน ' + fmtTime(now), getCurrentUser()?.name);
+  } else if (activePanel === 'checkin-outside') {
+    if (rec.checkIn) { alert('เช็คอินแล้ววันนี้'); return; }
+    rec = {
+      checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
+      isOutside: true, workPlaceName: 'นอกสถานที่',
+      photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
+      address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
+    };
+    appendHistoryRow(rec, photoUrl);
+    mockLineNotify?.('✅ เช็คอินนอกสถานที่ ' + fmtTime(now), getCurrentUser()?.name);
+  } else if (activePanel === 'lunch-out') {
+    if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
+    if (rec.lunchOut) { alert('บันทึกเริ่มพักแล้ว'); return; }
+    rec.lunchOut = now;
+    rec.lunchOutPhotoUrl = photoUrl;
+    mockLineNotify?.('☕ เริ่มพักกลางวัน ' + fmtTime(now), getCurrentUser()?.name);
+  } else if (activePanel === 'lunch-in') {
+    if (!rec.lunchOut) { alert('ต้องเริ่มพักก่อน'); return; }
+    if (rec.lunchIn) { alert('บันทึกกลับจากพักแล้ว'); return; }
+    rec.lunchIn = now;
+    rec.lunchInPhotoUrl = photoUrl;
+    mockLineNotify?.('☕ กลับจากพัก ' + fmtTime(now), getCurrentUser()?.name);
+  } else if (activePanel === 'checkout') {
+    if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
+    if (rec.checkOut) { alert('เช็คเอาท์แล้ว'); return; }
+    rec.checkOut = now;
+    rec.checkOutPhotoUrl = photoUrl;
+    updateHistoryCheckout(rec);
+    mockLineNotify?.('🏁 เช็คเอาท์ ' + fmtTime(now), getCurrentUser()?.name);
+  }
+
+  saveTodayRecord(rec);
+  closePanel();
+  alert('บันทึกสำเร็จ');
+}
+
+function formatTimesCell(rec) {
+  const parts = [fmtTime(rec.checkIn)];
+  if (rec.lunchOut) parts.push('พัก ' + fmtTime(rec.lunchOut) + (rec.lunchIn ? '-' + fmtTime(rec.lunchIn) : ''));
+  parts.push(rec.checkOut ? fmtTime(rec.checkOut) : '-');
+  return parts.join(' / ');
+}
+
+function appendHistoryRow(rec, photoUrl) {
+  const now = new Date(rec.checkIn);
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const formattedDate = `${now.getDate()} ${months[now.getMonth()]} ${(now.getFullYear() + 543).toString().slice(-2)}`;
   const tbody = document.getElementById('attendance-body');
-  const newRow = document.createElement('tr');
-  newRow.style.animation = "fadeUp 0.5s ease both";
-  
-  newRow.innerHTML = `
+  const tr = document.createElement('tr');
+  tr.dataset.todayRow = '1';
+  tr.style.animation = 'fadeUp 0.5s ease both';
+  const placeTag = rec.isOutside ? '<span class="tag orange">นอกสถานที่</span>' : '<span class="tag blue">ในบริษัท</span>';
+  tr.innerHTML = `
     <td>${formattedDate}</td>
-    <td><div class="emp-av" style="border-radius: 6px; background: url('${photoUrl}') center/cover;"></div></td>
-    <td>${timeStr} / -</td>
-    <td>
-      <div style="font-size: 11px; color: var(--text3);">${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}</div>
-      <span class="tag blue">สำนักงานใหญ่</span>
-    </td>
-    <td><span class="tag green">ปกติ</span></td>
-  `;
-  
-  // เพิ่มแถวใหม่ลงในตาราง (ด้านบนสุด)
-  tbody.insertBefore(newRow, tbody.firstChild);
+    <td><div class="emp-av" style="border-radius:6px;background:url('${photoUrl}') center/cover;"></div></td>
+    <td>${formatTimesCell(rec)}</td>
+    <td><div style="font-size:11px;color:var(--text3);">${rec.lat?.toFixed(6)}, ${rec.lng?.toFixed(6)}</div>${placeTag}</td>
+    <td><span class="tag green">ปกติ</span></td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+}
 
-  alert('🚀 บันทึกเวลาสำเร็จ!\nข้อมูลถูกเพิ่มลงในตารางประวัติเรียบร้อยแล้ว');
-  
-  // ปรับสถานะปุ่มหลังจากบันทึกแล้ว เพื่อป้องกันการกดซ้ำ
-  const submitBtn = document.getElementById('btn-submit');
-  submitBtn.style.opacity = "0.5";
-  submitBtn.style.pointerEvents = "none";
-  submitBtn.textContent = "บันทึกเรียบร้อยแล้ว";
+function updateHistoryCheckout(rec) {
+  const tr = document.querySelector('#attendance-body tr[data-today-row="1"]');
+  if (tr && tr.cells[2]) tr.cells[2].textContent = formatTimesCell(rec);
+}
+
+function renderTimeline(rec) {
+  const steps = [
+    { key: 'checkIn', label: 'เช็คอิน', color: 'var(--green)' },
+    { key: 'lunchOut', label: 'เริ่มพักกลางวัน', color: 'var(--orange)', amber: true },
+    { key: 'lunchIn', label: 'กลับจากพัก', color: 'var(--orange)', amber: true },
+    { key: 'checkOut', label: 'เช็คเอาท์', color: 'var(--accent)' },
+  ];
+  let html = '';
+  if (rec.workPlaceName) {
+    html += `<p style="font-size:12px;color:var(--accent3);margin:0 0 12px;">📍 สถานที่: <strong style="color:var(--text)">${rec.workPlaceName}</strong></p>`;
+  }
+  steps.forEach((s, i) => {
+    const done = !!rec[s.key];
+    const isLast = i === steps.length - 1;
+    html += `<div class="att-tl-row">
+      <div class="att-tl-dot ${s.amber ? 'amber' : ''} ${done ? 'done' : ''}"><span></span>${!isLast ? '<div class="att-tl-line' + (done ? ' done' : '') + '"></div>' : ''}</div>
+      <div style="padding-bottom:${isLast ? 0 : 16}px;">
+        <div style="font-size:13px;font-weight:600;color:${done ? 'var(--text)' : 'var(--text3)'}">${s.label}</div>
+        <div style="font-size:18px;font-weight:700;color:${done ? s.color : 'var(--text3)'}">${fmtTime(rec[s.key])}</div>
+      </div></div>`;
+  });
+  document.getElementById('att-timeline').innerHTML = html;
+}
+
+function renderPhotos(rec) {
+  const items = [
+    { label: 'เช็คอิน', url: rec.photoUrl, time: rec.checkIn },
+    { label: 'เริ่มพัก', url: rec.lunchOutPhotoUrl, time: rec.lunchOut },
+    { label: 'กลับพัก', url: rec.lunchInPhotoUrl, time: rec.lunchIn },
+    { label: 'เช็คเอาท์', url: rec.checkOutPhotoUrl, time: rec.checkOut },
+  ];
+  document.getElementById('att-photos').innerHTML = items.map((it) => `
+    <div class="att-photo-slot">
+      ${it.url ? `<img src="${it.url}" alt="">` : `<div class="att-photo-ph">—</div>`}
+      <p>${it.label}${it.time ? ' · ' + fmtTime(it.time) : ''}</p>
+    </div>`).join('');
+}
+
+function renderAttendanceUI() {
+  const rec = getTodayRecord();
+  const canCheckIn = !rec?.checkIn;
+  const canCheckOut = !!rec?.checkIn && !rec?.checkOut;
+  const canLunchOut = !!rec?.checkIn && !rec?.lunchOut && !rec?.checkOut;
+  const canLunchIn = !!rec?.lunchOut && !rec?.lunchIn && !rec?.checkOut;
+  const allDone = !!rec?.checkIn && !!rec?.checkOut;
+
+  document.getElementById('stat-checkin').textContent = fmtTime(rec?.checkIn);
+  document.getElementById('stat-checkout').textContent = fmtTime(rec?.checkOut);
+  document.getElementById('stat-status').textContent = rec
+    ? (allDone ? 'ครบวัน' : rec.checkIn ? 'กำลังทำงาน' : '—')
+    : 'ยังไม่เช็คอิน';
+  document.getElementById('stat-status').style.color = rec?.checkIn ? 'var(--green)' : 'var(--text3)';
+  document.getElementById('stat-type').textContent = rec
+    ? (rec.isOutside ? 'นอกสถานที่' : 'ในบริษัท')
+    : '—';
+  document.getElementById('stat-type').style.color = rec?.isOutside ? 'var(--orange)' : 'var(--accent3)';
+
+  const extras = document.getElementById('att-extras-wrap');
+  if (rec?.checkIn) {
+    extras.style.display = 'block';
+    renderTimeline(rec);
+    renderPhotos(rec);
+  } else {
+    extras.style.display = 'none';
+  }
+
+  const actions = document.getElementById('att-actions');
+
+  if (activePanel) {
+    const backLabel = activePanel.startsWith('checkin') ? '← เปลี่ยนประเภท' : '← ยกเลิก';
+    actions.innerHTML = `<button type="button" class="att-back" onclick="closePanel()">${backLabel}</button>`;
+    return;
+  }
+
+  let html = '';
+
+  if (canCheckIn) {
+    const settings = typeof getCompanySettings === 'function' ? getCompanySettings() : {};
+    const officeName = settings.companyName || 'สำนักงาน';
+    html += `<p style="font-size:14px;font-weight:600;margin:0 0 10px;">เลือกประเภทการเช็คอิน</p>
+      <div class="att-type-grid">
+        <button type="button" class="att-type-card company" onclick="openPanel('checkin-company')">
+          <div class="att-type-icon">🏢</div>
+          <div class="att-type-title">เช็คอิน ในบริษัท</div>
+          <div class="att-type-desc">${officeName}<br><span style="color:var(--accent3);font-size:11px;">ตรวจ Geofence อัตโนมัติ</span></div>
+        </button>
+        <button type="button" class="att-type-card outside" onclick="openPanel('checkin-outside')">
+          <div class="att-type-icon">📍</div>
+          <div class="att-type-title">เช็คอิน นอกสถานที่</div>
+          <div class="att-type-desc">งานนอกบริษัท / ลูกค้า / Field<br><span style="color:var(--orange);font-size:11px;">บันทึก GPS ตำแหน่งงาน</span></div>
+        </button>
+      </div>`;
+  }
+
+  if (rec?.checkIn && (canLunchOut || canLunchIn)) {
+    html += '<div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">';
+    if (canLunchOut) {
+      html += `<button type="button" class="btn-lunch out" onclick="openPanel('lunch-out')">☕ เริ่มพักกลางวัน (ถ่ายรูป)</button>`;
+    }
+    if (canLunchIn) {
+      html += `<button type="button" class="btn-lunch in" onclick="openPanel('lunch-in')">☕ สิ้นพักกลางวัน (ถ่ายรูป)</button>`;
+    }
+    html += '</div>';
+  }
+
+  if (canCheckOut) {
+    const badge = rec.isOutside
+      ? '<span class="tag orange" style="font-size:11px;">นอกสถานที่</span>'
+      : '<span class="tag blue" style="font-size:11px;">ในบริษัท</span>';
+    html += `<div style="margin-top:14px;">
+      <p style="font-size:14px;font-weight:600;margin:0 0 8px;">เช็คเอาท์ ${badge}</p>
+      <button type="button" class="btn-primary" style="width:100%;height:48px;" onclick="openPanel('checkout')">บันทึกเช็คเอาท์ (ถ่ายรูป)</button>
+    </div>`;
+  }
+
+  if (allDone) {
+    html = `<div class="att-done-msg">✓ ลงเวลาครบวันนี้แล้ว (เช็คอิน · พัก · เช็คเอาท์ตามที่บันทึก)</div>`;
+  }
+
+  actions.innerHTML = html;
 }
 
 // ── CAMERA INITIATION ──
@@ -492,17 +790,12 @@ async function initCamera() {
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof initRole === 'function') initRole();
-
-  // เริ่มกล้อง
+  renderAttendanceUI();
   initCamera();
-
-  // เริ่ม Real-time GPS (watchPosition)
   startRealTimeGPS();
-
-  // ถ้าเป็น HR/Manager ให้โหลดแผนที่รวม
   const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   if (user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN')) {
-    setTimeout(refreshAllMap, 1500); // รอให้ DOM render ก่อน
+    setTimeout(refreshAllMap, 1500);
   }
 });
 </script>
