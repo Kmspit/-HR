@@ -116,14 +116,14 @@ export async function POST(req: NextRequest) {
         'MANAGER_HR',
         'REGISTER_REQUEST',
         '📋 มีคำขอสมัครใหม่',
-        `${data.name} (${email}) ขอสมัคร ${branch.name} · ${data.role} แผนก ${data.department}`,
+        `${data.name} (${email}) ขอสมัคร [${branch.name}] · ${data.role} แผนก ${data.department}`,
         '/employees?tab=pending',
       ),
     )
 
     await runNotify(() =>
       sendLineNotify(
-        `\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอสมัครใหม่\nชื่อ: ${data.name}\nตำแหน่ง: ${data.role}\nแผนก: ${data.department}\nอีเมล: ${email}\n\n⚠️ กรุณาอนุมัติที่ระบบ HR`,
+        `\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอสมัครใหม่\nสาขา: ${branch.name}\nชื่อ: ${data.name}\nตำแหน่ง: ${data.role}\nแผนก: ${data.department}\nอีเมล: ${email}\n\n⚠️ กรุณาอนุมัติที่ระบบ HR`,
       ),
     )
 

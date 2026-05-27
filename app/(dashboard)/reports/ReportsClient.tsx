@@ -3,6 +3,7 @@
 
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 import { Loader2, FileBarChart, Users } from 'lucide-react'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
@@ -68,6 +69,8 @@ type Props = { defaultMonth: number; defaultYear: number }
 
 
 export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
+  const searchParams = useSearchParams()
+  const branchId = searchParams.get('branchId')
 
   const [month, setMonth] = useState(defaultMonth)
 
@@ -85,7 +88,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
     const { ok, data, status } = await apiJson<ReportData>(
 
-      `/api/reports/monthly?month=${month}&year=${year}`,
+      `/api/reports/monthly?month=${month}&year=${year}${branchId && branchId !== 'all' ? `&branchId=${encodeURIComponent(branchId)}` : ''}`,
 
     )
 
@@ -103,7 +106,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
     setReport(data as ReportData)
 
-  }, [month, year])
+  }, [month, year, branchId])
 
 
 

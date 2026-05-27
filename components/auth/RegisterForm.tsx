@@ -104,6 +104,7 @@ export default function RegisterForm() {
   const validateStep = (s: number): Partial<Record<keyof FormData, string>> => {
     const e: Partial<Record<keyof FormData, string>> = {}
     if (s === 0) {
+      if (!form.branchId)   e.branchId   = 'กรุณาเลือกสาขา'
       if (!form.firstName) e.firstName = 'กรุณากรอกชื่อจริง'
       if (!form.lastName)  e.lastName  = 'กรุณากรอกนามสกุล'
       if (!form.email)     e.email     = 'กรุณากรอกอีเมล'
@@ -112,7 +113,6 @@ export default function RegisterForm() {
       else if (!/^0[0-9]{9}$/.test(form.phone.replace(/\D/g, ''))) e.phone = 'เบอร์ 10 หลัก เช่น 0812345678'
     }
     if (s === 1) {
-      if (!form.branchId)   e.branchId   = 'กรุณาเลือกสาขา'
       if (!form.role)       e.role       = 'กรุณาเลือกตำแหน่ง'
       if (!form.department) e.department = 'กรุณากรอกแผนก'
       if (!form.startDate)  e.startDate  = 'กรุณาเลือกวันที่เริ่มงาน'
@@ -163,9 +163,9 @@ export default function RegisterForm() {
     const allErrors = { ...validateStep(0), ...validateStep(1), ...validateStep(2) }
     if (Object.keys(allErrors).length) {
       setErrors(allErrors)
-      const firstStep = allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone
+      const firstStep = allErrors.branchId || allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone
         ? 0
-        : allErrors.branchId || allErrors.role || allErrors.department || allErrors.startDate
+        : allErrors.role || allErrors.department || allErrors.startDate
           ? 1
           : 2
       setStep(firstStep)
@@ -224,6 +224,43 @@ export default function RegisterForm() {
       {/* STEP 0: Personal Info */}
       {step === 0 && (
         <div className="space-y-4 animate-fade-in">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Building2 size={14} className="text-blue-400" />
+              เลือกสาขาที่สังกัด *
+            </label>
+            {loadingBranches ? (
+              <p className="text-sm text-slate-500 py-2">กำลังโหลดรายการสาขา...</p>
+            ) : (
+              <div className="grid gap-2">
+                {branches.map((b) => (
+                  <label
+                    key={b.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all ${
+                      form.branchId === b.id
+                        ? 'border-blue-500/50 bg-blue-500/10'
+                        : 'border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="branchId"
+                      value={b.id}
+                      checked={form.branchId === b.id}
+                      onChange={(e) => set('branchId', e.target.value)}
+                      className="accent-blue-500 mt-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white leading-snug">{b.name}</p>
+                      <p className="text-xs text-blue-300/90 mt-0.5">({b.registerTag})</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+            {errors.branchId && <p className="text-xs text-red-400">{errors.branchId}</p>}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5 min-w-0">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">คำนำหน้า</label>
@@ -290,41 +327,11 @@ export default function RegisterForm() {
       {/* STEP 1: Employee Info */}
       {step === 1 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Building2 size={14} className="text-blue-400" />
-              เลือกสาขาที่สังกัด *
-            </label>
-            {loadingBranches ? (
-              <p className="text-sm text-slate-500 py-2">กำลังโหลดรายการสาขา...</p>
-            ) : (
-              <div className="grid gap-2">
-                {branches.map((b) => (
-                  <label
-                    key={b.id}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all ${
-                      form.branchId === b.id
-                        ? 'border-blue-500/50 bg-blue-500/10'
-                        : 'border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="branchId"
-                      value={b.id}
-                      checked={form.branchId === b.id}
-                      onChange={(e) => set('branchId', e.target.value)}
-                      className="accent-blue-500 mt-1"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-white leading-snug">{b.name}</p>
-                      <p className="text-xs text-blue-300/90 mt-0.5">({b.registerTag})</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-            {errors.branchId && <p className="text-xs text-red-400">{errors.branchId}</p>}
+          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
+            สาขา:{' '}
+            <span className="text-white font-medium">
+              {branches.find((b) => b.id === form.branchId)?.label ?? '—'}
+            </span>
           </div>
 
           <div className="space-y-2">

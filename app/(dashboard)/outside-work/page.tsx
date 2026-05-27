@@ -3,15 +3,30 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import OutsideWorkClient from './OutsideWorkClient'
+import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
+import { buildBranchScope, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import { Suspense } from 'react'
 
-export default async function OutsideWorkPage() {
+export default async function OutsideWorkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branchId?: string }>
+}) {
   const session = await auth()
   if (!session?.user?.id) redirect('/')
 
+  const sp = await searchParams
+  const branchParam = parseBranchQueryParam(sp.branchId)
   const canViewAll = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+  const scope = buildBranchScope(session.user, { branchId: branchParam })
+  const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
 
   const requests = await prisma.outsideWorkRequest.findMany({
-    where: canViewAll ? {} : { userId: session.user.id },
+    where: canViewAll
+      ? nestedUser
+        ? { user: nestedUser }
+        : {}
+      : { userId: session.user.id },
     include: {
       user: { select: { name: true, department: true, position: true } },
     },
@@ -29,6 +44,11 @@ export default async function OutsideWorkPage() {
             : 'ยื่นคำขอและดูประวัติของตัวเอง'
         }
       />
+      {canViewAll && (
+        <Suspense fallback={null}>
+          <BranchFilterBar role={session.user.role} filterBranchId={branchParam} />
+        </Suspense>
+      )}
       <OutsideWorkClient
         canViewAll={canViewAll}
         requests={requests.map((r) => ({

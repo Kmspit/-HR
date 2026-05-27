@@ -106,6 +106,7 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white">{u.name}</p>
                   <p className="text-xs text-slate-400 mt-0.5 truncate">{u.position ?? '—'} · {u.department ?? '—'}</p>
+                  <p className="text-[10px] text-cyan-400/80 truncate">{u.branch ? `${u.branch.name} (${u.branch.code})` : '—'}</p>
                   <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
                 </div>
                 {statusBadge(u.status)}

@@ -72,8 +72,16 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
 
 const MAX_PDF_MB = 10
 
+function branchEmployeesQuery(): string {
+  if (typeof window === 'undefined') return ''
+  const id = new URLSearchParams(window.location.search).get('branchId')
+  return id && id !== 'all' ? `?branchId=${encodeURIComponent(id)}` : ''
+}
+
 async function loadEmployeesFromApi(): Promise<Employee[] | null> {
-  const { ok, data } = await apiJson<{ employees?: Employee[] }>('/api/warnings/employees')
+  const { ok, data } = await apiJson<{ employees?: Employee[] }>(
+    `/api/warnings/employees${branchEmployeesQuery()}`,
+  )
   if (ok && Array.isArray(data.employees)) return data.employees
   return null
 }
