@@ -1,3 +1,3 @@
-commit=pending
+commit=5767f7d
 deploy=2026-05-27
 feature=profile-page-notifications-link
