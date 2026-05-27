@@ -2,10 +2,12 @@
 
 ต้นแบบ UI (HTML/CSS) สำหรับอ้างอิงการออกแบบ
 
-- **แอปใช้งานจริง:** รัน Next.js ที่ root โปรเจกต์ (`npm run dev` → http://localhost:3000)
-- **สแกนใบหน้า:** เหลือเฉพาะ **หน้าตรง** (ไม่มีหันซ้าย–ขวา) ใน `attendance.html` และ `index.html`
+- **แอปใช้งานจริง:** `npm run dev` → http://localhost:3000
+- **ต้นแบบ HTML (ลิงก์เดียวกัน):** http://localhost:3000/prototype/login.html  
+  (ไฟล์ในโฟลเดอร์นี้ถูก sync ไป `public/prototype/` อัตโนมัติ)
+- **สแกนใบหน้า:** เหลือเฉพาะ **หน้าตรง** ใน `attendance.html` และ `index.html`
 
-เปิดดูต้นแบบ: เปิด `attendance.html` หรือ `index.html` ในเบราว์เซอร์ (ต้องมี `style.css`, `hr-core.js`, `dev-banner.js` ในโฟลเดอร์เดียวกัน)
+แก้ HTML ที่เครื่อง: โฟลเดอร์ `appHrKm` แล้วรัน `.\run.ps1` หรือ `.\push-github.ps1`
 
 ## Push จากโฟลเดอร์ `appHrKm` (บนเครื่อง)
 
