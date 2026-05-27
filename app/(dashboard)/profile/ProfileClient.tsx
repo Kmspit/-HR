@@ -141,52 +141,54 @@ export default function ProfileClient({ initial }: Props) {
   ]
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-3xl">
-      <div className="glass-card rounded-2xl p-5 md:p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-          <User className="w-4 h-4 text-blue-400" />
+    <div className="w-full max-w-3xl md:max-w-none p-4 md:p-8 lg:px-10 space-y-5 md:space-y-6">
+      <div className="glass-card rounded-2xl p-5 md:p-8 lg:p-10 space-y-5 md:space-y-8 w-full md:min-h-[calc(100dvh-10rem)]">
+        <h2 className="text-sm md:text-base font-semibold text-white flex items-center gap-2">
+          <User className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
           แก้ไขข้อมูลของฉัน
         </h2>
 
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-          <div className="relative flex-shrink-0">
-            <div
-              className="w-24 h-24 rounded-2xl overflow-hidden flex items-center justify-center text-xl font-bold text-white border border-white/10"
-              style={{
-                background: avatarPreview
-                  ? undefined
-                  : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-              }}
-            >
-              {avatarPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
-              ) : (
-                getInitials(displayName || initial.email)
-              )}
+        <div className="flex flex-col md:flex-row md:items-start gap-6 md:gap-10 md:flex-1">
+          <div className="flex flex-col items-center md:items-start gap-3 flex-shrink-0">
+            <div className="relative">
+              <div
+                className="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden flex items-center justify-center text-xl md:text-2xl font-bold text-white border border-white/10"
+                style={{
+                  background: avatarPreview
+                    ? undefined
+                    : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                }}
+              >
+                {avatarPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(displayName || initial.email)
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="absolute -bottom-1 -right-1 p-2 rounded-xl bg-blue-600 text-white shadow-lg hover:bg-blue-500 transition touch-manipulation"
+                aria-label="เปลี่ยนรูปโปรไฟล์"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={onAvatarChange}
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="absolute -bottom-1 -right-1 p-2 rounded-xl bg-blue-600 text-white shadow-lg hover:bg-blue-500 transition touch-manipulation"
-              aria-label="เปลี่ยนรูปโปรไฟล์"
-            >
-              <Camera className="w-4 h-4" />
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={onAvatarChange}
-            />
+            <p className="text-xs text-slate-500 text-center md:text-left md:max-w-[10rem]">
+              แตะไอคอนกล้องเพื่ออัปโหลดรูป (JPG, PNG, WEBP · สูงสุด 2 MB)
+            </p>
           </div>
-          <p className="text-xs text-slate-500 text-center sm:text-left">
-            แตะไอคอนกล้องเพื่ออัปโหลดรูป (JPG, PNG, WEBP · สูงสุด 2 MB)
-          </p>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex-1 min-w-0 space-y-4 md:space-y-5 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4">
           <div>
             <label className="text-xs text-white/50 block mb-1">คำนำหน้า</label>
             <select
@@ -219,7 +221,7 @@ export default function ProfileClient({ initial }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3 md:gap-4">
           <div>
             <label className="text-xs text-white/50 block mb-1">ชื่อเล่น</label>
             <input
@@ -253,19 +255,21 @@ export default function ProfileClient({ initial }: Props) {
           type="button"
           onClick={save}
           disabled={saving}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 transition"
+          className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 transition"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์'}
         </button>
+          </div>
+        </div>
       </div>
 
-      <div className="glass-card rounded-2xl p-5 md:p-6">
+      <div className="glass-card rounded-2xl p-5 md:p-6 max-w-3xl md:max-w-none">
         <h2 className="text-sm font-semibold text-white mb-4">ประวัติข้อมูลตอนสมัครบัญชี</h2>
         <p className="text-xs text-slate-500 mb-4">
           ข้อมูลด้านล่างมาจากตอนลงทะเบียน — แก้ไขได้เฉพาะชื่อ-นามสกุล รูป เบอร์ และที่อยู่ด้านบน
         </p>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
           {infoRows.map((row) => (
             <div key={row.label} className="border-b border-white/5 pb-2">
               <dt className="text-[11px] text-slate-500">{row.label}</dt>
