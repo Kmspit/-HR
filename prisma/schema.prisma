@@ -371,6 +371,7 @@ model Warning {
   reason      String
   description String?
   fileUrl     String?
+  pdfBase64   String?
   sentToLine  Boolean  @default(false)
   isAuto      Boolean  @default(false)
   month       Int?

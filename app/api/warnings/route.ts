@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { saveUpload } from '@/lib/save-upload'
+import { isPdfFile, storeWarningPdf } from '@/lib/warning-pdf'
+import { notifyWarningToEmployee } from '@/lib/warnings-notify'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
-
-function isPdfFile(file: File) {
-  const name = file.name.toLowerCase()
-  return file.type === 'application/pdf' || name.endsWith('.pdf')
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -51,28 +47,25 @@ export async function POST(req: NextRequest) {
 
     const contentType = req.headers.get('content-type') ?? ''
     let userId: string
-    let level: number | string | null = null
     let reason: string
     let description: string | null = null
-    let useAutoLevel = true
+    let sendToEmployee = true
     let pdfFile: File | null = null
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData()
       userId = (formData.get('userId') as string) || ''
-      level = formData.get('level') as string | null
       reason = (formData.get('reason') as string) || ''
       description = (formData.get('description') as string) || null
-      useAutoLevel = formData.get('useAutoLevel') !== 'false'
+      sendToEmployee = formData.get('sendToEmployee') !== 'false'
       const file = formData.get('file') as File | null
       if (file && file.size > 0) pdfFile = file
     } else {
       const body = await req.json()
       userId = body.userId
-      level = body.level
       reason = body.reason
       description = body.description
-      useAutoLevel = body.useAutoLevel !== false
+      sendToEmployee = body.sendToEmployee !== false
     }
 
     if (!userId || !reason) {
@@ -89,20 +82,8 @@ export async function POST(req: NextRequest) {
     }
 
     const priorCount = await prisma.warning.count({ where: { userId } })
-    const autoLevel = Math.min(priorCount + 1, 3)
-    const levelToUse =
-      useAutoLevel !== false && (level == null || level === '')
-        ? autoLevel
-        : Math.min(Math.max(Number(level) || autoLevel, 1), 3)
-
-    let fileUrl: string | null = null
-    if (pdfFile) {
-      const saved = await saveUpload(pdfFile, 'warning', userId)
-      if (!saved) {
-        return NextResponse.json({ error: 'บันทึกไฟล์ PDF ไม่สำเร็จ' }, { status: 500 })
-      }
-      fileUrl = saved
-    }
+    const levelToUse = Math.min(priorCount + 1, 3)
+    const warningNumber = priorCount + 1
 
     const now = new Date()
     const warning = await prisma.warning.create({
@@ -112,36 +93,57 @@ export async function POST(req: NextRequest) {
         level: levelToUse,
         reason,
         description: description || null,
-        fileUrl,
+        fileUrl: null,
+        pdfBase64: null,
         isAuto: false,
         month: now.getMonth() + 1,
         year: now.getFullYear(),
       },
     })
 
-    const base = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
-    const fileLink = fileUrl
-      ? fileUrl.startsWith('http')
-        ? fileUrl
-        : `${base}${fileUrl}`
-      : null
+    let fileUrl: string | null = null
+    if (pdfFile) {
+      try {
+        const stored = await storeWarningPdf(warning.id, userId, pdfFile)
+        if (!stored) {
+          await prisma.warning.delete({ where: { id: warning.id } })
+          return NextResponse.json({ error: 'บันทึกไฟล์ PDF ไม่สำเร็จ' }, { status: 500 })
+        }
+        fileUrl = stored.fileUrl
+        await prisma.warning.update({
+          where: { id: warning.id },
+          data: { fileUrl: stored.fileUrl, pdfBase64: stored.pdfBase64 },
+        })
+      } catch (e) {
+        await prisma.warning.delete({ where: { id: warning.id } })
+        if (e instanceof Error && e.message === 'PDF_TOO_LARGE') {
+          return NextResponse.json({ error: 'ไฟล์ PDF ต้องไม่เกิน 10 MB' }, { status: 400 })
+        }
+        return NextResponse.json({ error: 'บันทึกไฟล์ PDF ไม่สำเร็จ' }, { status: 500 })
+      }
+    }
 
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: 'WARNING_ISSUED',
-        title: `ได้รับใบเตือนระดับ ${levelToUse}`,
-        message: fileLink ? `${reason}\n\n📎 ไฟล์: ${fileLink}` : reason,
-        link: '/warnings',
-      },
-    }).catch((e) => console.error('[warning notify]', e))
+    if (sendToEmployee) {
+      await notifyWarningToEmployee(warning.id, { warningNumber })
+    } else {
+      await prisma.notification.create({
+        data: {
+          userId,
+          type: 'WARNING_ISSUED',
+          title: `ได้รับใบเตือน (ครั้งที่ ${warningNumber})`,
+          message: reason,
+          link: '/warnings',
+        },
+      }).catch((e) => console.error('[warning notify]', e))
+    }
 
     return NextResponse.json({
-      warning,
+      warning: { id: warning.id, fileUrl },
       priorCount,
-      warningNumber: priorCount + 1,
+      warningNumber,
       levelUsed: levelToUse,
       fileUrl,
+      sent: sendToEmployee,
     })
   } catch (err) {
     return apiError(err)

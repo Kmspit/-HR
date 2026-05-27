@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { AlertTriangle, Plus, Zap, Search, User, FileUp, FileText, X, Send } from 'lucide-react'
+import { AlertTriangle, Plus, Zap, User, FileUp, FileText, X, Send, ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -27,6 +27,7 @@ type Employee = {
   id: string
   name: string
   department: string
+  position?: string
   employeeId: string
   warningCount: number
 }
@@ -35,23 +36,6 @@ type Props = {
   isManager: boolean
   warnings: Warning[]
   employees: Employee[]
-}
-
-const LEVEL_STYLES = [
-  '',
-  'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
-  'bg-orange-500/20 border-orange-500/30 text-orange-400',
-  'bg-red-500/20 border-red-500/30 text-red-400',
-]
-
-const LEVEL_LABELS: Record<number, string> = {
-  1: 'ระดับ 1 — ใบเตือนครั้งที่ 1',
-  2: 'ระดับ 2 — ใบเตือนครั้งที่ 2',
-  3: 'ระดับ 3 — ใบเตือนครั้งที่ 3 ขึ้นไป',
-}
-
-function suggestedLevelFromCount(count: number) {
-  return Math.min(count + 1, 3)
 }
 
 function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
@@ -81,9 +65,11 @@ const MAX_PDF_MB = 10
 export default function WarningsClient({ isManager, warnings, employees }: Props) {
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ userId: '', level: 1, reason: '', description: '' })
+  const [form, setForm] = useState({ userId: '', reason: '', description: '' })
   const [pdfFile, setPdfFile] = useState<File | null>(null)
-  const [employeeSearch, setEmployeeSearch] = useState('')
+  const [sendToEmployee, setSendToEmployee] = useState(true)
+  const [employeeList, setEmployeeList] = useState(employees)
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [runningCron, setRunningCron] = useState(false)
   const [sendingId, setSendingId] = useState<string | null>(null)
@@ -91,46 +77,38 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const [employeeStats, setEmployeeStats] = useState<{
     total: number
     warningNumber: number
-    nextLevel: number
-    byLevel: Record<number, number>
   } | null>(null)
 
-  const selectedEmployee = employees.find((e) => e.id === form.userId)
+  const selectedEmployee = employeeList.find((e) => e.id === form.userId)
 
-  const filteredEmployees = useMemo(() => {
-    const q = employeeSearch.trim().toLowerCase()
-    if (!q) return employees
-    return employees.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.department.toLowerCase().includes(q) ||
-        e.employeeId.toLowerCase().includes(q),
-    )
-  }, [employees, employeeSearch])
+  useEffect(() => {
+    setEmployeeList(employees)
+  }, [employees])
+
+  useEffect(() => {
+    if (!showForm || !isManager) return
+    setLoadingEmployees(true)
+    apiJson<{ employees?: Employee[] }>('/api/warnings/employees')
+      .then(({ ok, data }) => {
+        if (ok && data.employees?.length) setEmployeeList(data.employees)
+      })
+      .finally(() => setLoadingEmployees(false))
+  }, [showForm, isManager])
 
   useEffect(() => {
     if (!form.userId) {
       setEmployeeStats(null)
       return
     }
-    const localCount = selectedEmployee?.warningCount ?? 0
-    const next = suggestedLevelFromCount(localCount)
-    setForm((f) => ({ ...f, level: next }))
-
     apiJson<{
       total: number
       warningNumber: number
-      nextLevel: number
-      byLevel: Record<number, number>
     }>(`/api/warnings/count?userId=${form.userId}`).then(({ ok, data }) => {
       if (ok && data) {
         setEmployeeStats({
           total: data.total,
           warningNumber: data.warningNumber,
-          nextLevel: data.nextLevel,
-          byLevel: data.byLevel,
         })
-        setForm((f) => ({ ...f, level: data.nextLevel }))
       }
     })
   }, [form.userId, selectedEmployee?.warningCount])
@@ -140,7 +118,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     if (data.warnings) setList(mapWarningsFromApi(data.warnings))
   }
 
-  const sendToEmployee = async (warningId: string) => {
+  const handleSendWarning = async (warningId: string) => {
     setSendingId(warningId)
     try {
       const { ok, data, status } = await apiJson<Record<string, unknown>>(`/api/warnings/${warningId}/send`, {
@@ -174,16 +152,15 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     try {
       const formData = new FormData()
       formData.append('userId', form.userId)
-      formData.append('level', String(form.level))
       formData.append('reason', form.reason)
       formData.append('description', form.description)
-      formData.append('useAutoLevel', 'true')
+      formData.append('sendToEmployee', sendToEmployee ? 'true' : 'false')
       if (pdfFile) formData.append('file', pdfFile, pdfFile.name)
 
       const { ok, data, status } = await apiJson<{
         warningNumber?: number
-        levelUsed?: number
-        priorCount?: number
+        sent?: boolean
+        fileUrl?: string | null
       }>('/api/warnings', {
         method: 'POST',
         body: formData,
@@ -192,14 +169,21 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         toast.error(apiErrorMessage(data as Record<string, unknown>, 'เกิดข้อผิดพลาด', status))
         return
       }
-      toast.success(
-        `ออกใบเตือนสำเร็จ — ครั้งที่ ${data.warningNumber ?? '?'} (ระดับ ${data.levelUsed ?? form.level})`,
-      )
+      const n = data.warningNumber ?? '?'
+      if (sendToEmployee) {
+        toast.success(
+          pdfFile
+            ? `ออกใบเตือนครั้งที่ ${n} และส่ง PDF ให้พนักงานแล้ว`
+            : `ออกใบเตือนครั้งที่ ${n} และแจ้งพนักงานแล้ว`,
+        )
+      } else {
+        toast.success(`ออกใบเตือนครั้งที่ ${n} เรียบร้อย`)
+      }
       setShowForm(false)
-      setForm({ userId: '', level: 1, reason: '', description: '' })
+      setForm({ userId: '', reason: '', description: '' })
+      setSendToEmployee(true)
       setPdfFile(null)
       if (pdfInputRef.current) pdfInputRef.current.value = ''
-      setEmployeeSearch('')
       setEmployeeStats(null)
       await refreshList()
     } catch (err) {
@@ -312,20 +296,20 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       month: 'short',
       year: '2-digit',
     })
-    const monthStr =
-      w.month && w.year ? `${monthNames[w.month]} ${w.year + 543}` : formatMonthLabel(getMonthKey(w))
-
     return (
       <tr key={w.id} className="table-row-hover border-b border-white/5">
         {isManager && (
-          <td className={`${tdCls} text-white font-medium max-w-[160px] truncate`} title={w.userName}>
-            {w.userName}
-            {w.employeeId ? ` (${w.employeeId})` : ''}
-          </td>
+          <>
+            <td className={`${tdCls} text-white font-medium max-w-[160px] truncate`} title={w.userName}>
+              {w.userName}
+              {w.employeeId ? ` (${w.employeeId})` : ''}
+            </td>
+            <td className={`${tdCls} text-white/90 font-medium max-w-[140px] truncate`} title={w.issuedByName}>
+              {w.issuedByName}
+            </td>
+          </>
         )}
-        <td className={`${tdCls} text-white/90 font-medium`}>{w.issuedByName}</td>
         <td className={`${tdCls} text-center text-white/60 text-xs`}>{dateStr}</td>
-        <td className={`${tdCls} text-center text-white/50 text-xs`}>{monthStr}</td>
         <td className={`${tdCls} text-center text-slate-400 text-xs tabular-nums`}>ครั้งที่ {userOrdinal}</td>
         <td className={`${tdCls} text-white/70 max-w-[200px] truncate`} title={w.reason}>
           {w.reason}
@@ -356,7 +340,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
           <td className={`${tdCls} text-center`}>
             <button
               type="button"
-              onClick={() => sendToEmployee(w.id)}
+              onClick={() => handleSendWarning(w.id)}
               disabled={sendingId === w.id}
               title={w.sentToLine ? 'ส่งซ้ำให้พนักงาน' : 'ส่งแจ้งเตือน + ลิงก์ไฟล์ให้พนักงาน'}
               className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 hover:bg-blue-500/20 disabled:opacity-50 touch-manipulation"
@@ -372,10 +356,13 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
   const historyHead = (
     <tr className="border-b border-white/10">
-      {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
-      <th className={`${thCls} text-left`}>ผู้ออกใบเตือน</th>
+      {isManager && (
+        <>
+          <th className={`${thCls} text-left`}>พนักงาน</th>
+          <th className={`${thCls} text-left`}>ผู้ออกใบเตือน</th>
+        </>
+      )}
       <th className={`${thCls} text-center`}>วันที่</th>
-      <th className={`${thCls} text-center`}>เดือน</th>
       <th className={`${thCls} text-center`}>ครั้งที่</th>
       <th className={`${thCls} text-left`}>เหตุผล</th>
       <th className={`${thCls} text-center`}>ประเภท</th>
@@ -414,35 +401,35 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
           <h3 className="font-semibold text-white">ออกใบเตือนด้วยตนเอง</h3>
 
           <div>
-            <label className="text-sm text-white/50 block mb-1">ค้นหา / เลือกพนักงาน</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                type="text"
-                value={employeeSearch}
-                onChange={(e) => setEmployeeSearch(e.target.value)}
-                placeholder="พิมพ์ชื่อ รหัส หรือแผนก..."
-                className="w-full pl-10 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <select
-              value={form.userId}
-              onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
-              size={Math.min(6, Math.max(3, filteredEmployees.length))}
-              className="w-full mt-2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-            >
-              <option value="">— เลือกพนักงานจากรายการ —</option>
-              {filteredEmployees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                  {e.employeeId ? ` (${e.employeeId})` : ''} — {e.department || 'ไม่ระบุแผนก'} · ใบเตือนแล้ว{' '}
-                  {e.warningCount} ครั้ง
+            <label className="text-sm text-white/50 block mb-1.5">เลือกพนักงาน</label>
+            <div className="relative rounded-xl border border-white/10 bg-slate-900/80 focus-within:border-blue-500/50 transition-colors">
+              {loadingEmployees && (
+                <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin pointer-events-none" />
+              )}
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              <select
+                value={form.userId}
+                onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
+                disabled={loadingEmployees}
+                className="w-full appearance-none bg-transparent border-0 rounded-xl px-4 py-3 pr-10 text-sm text-white outline-none cursor-pointer disabled:opacity-60 min-h-[48px]"
+              >
+                <option value="" className="bg-slate-900 text-slate-400">
+                  — เลือกพนักงาน —
                 </option>
-              ))}
-            </select>
-            {filteredEmployees.length === 0 && (
-              <p className="text-xs text-slate-500 mt-1">ไม่พบพนักงานที่ตรงกับคำค้นหา</p>
-            )}
+                {employeeList.map((e) => (
+                  <option key={e.id} value={e.id} className="bg-slate-900 text-white">
+                    {e.name}
+                    {e.employeeId ? ` (${e.employeeId})` : ''}
+                    {' — '}
+                    {e.department || 'ไม่ระบุแผนก'}
+                    {' · ใบเตือนแล้ว '}
+                    {e.warningCount}
+                    {' ครั้ง'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">ดึงรายชื่อจากฐานข้อมูลพนักงานล่าสุด</p>
           </div>
 
           {form.userId && selectedEmployee && (
@@ -454,43 +441,23 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                   <span className="text-xs text-slate-400">({selectedEmployee.employeeId})</span>
                 )}
               </div>
-              <p className="text-sm text-amber-100/90 whitespace-nowrap overflow-x-auto">
-                เคยได้รับใบเตือนแล้ว <strong className="text-white">{employeeStats?.total ?? selectedEmployee.warningCount}</strong> ครั้ง
-                {employeeStats && (
-                  <span className="text-slate-400 text-xs ml-2">
-                    · ระดับ 1: {employeeStats.byLevel[1] ?? 0} · ระดับ 2: {employeeStats.byLevel[2] ?? 0} · ระดับ 3: {employeeStats.byLevel[3] ?? 0}
-                  </span>
-                )}
-                {' · '}ครั้งนี้ครั้งที่ <strong className="text-white">{warningNumber}</strong> → ระดับ <strong className="text-white">{form.level}</strong>
+              <p className="text-sm text-amber-100/90">
+                เคยได้รับใบเตือนแล้ว{' '}
+                <strong className="text-white">{employeeStats?.total ?? selectedEmployee.warningCount}</strong> ครั้ง
+                {' · '}ครั้งนี้จะเป็น{' '}
+                <strong className="text-white">ครั้งที่ {warningNumber}</strong>
               </p>
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-white/50 block mb-1">ระดับใบเตือน (อัตโนมัติ)</label>
-              <select
-                value={form.level}
-                onChange={(e) => setForm((f) => ({ ...f, level: parseInt(e.target.value, 10) }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-              >
-                <option value={1}>{LEVEL_LABELS[1]}</option>
-                <option value={2}>{LEVEL_LABELS[2]}</option>
-                <option value={3}>{LEVEL_LABELS[3]}</option>
-              </select>
-              <p className="text-[10px] text-slate-500 mt-1">
-                ปรับเองได้หากจำเป็น — ค่าเริ่มต้นคำนวณจากจำนวนครั้งที่เคยโดน
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-white/50 block mb-1">เหตุผล</label>
-              <input
-                value={form.reason}
-                onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-                placeholder="ระบุเหตุผล..."
-              />
-            </div>
+          <div>
+            <label className="text-sm text-white/50 block mb-1">เหตุผล *</label>
+            <input
+              value={form.reason}
+              onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
+              placeholder="ระบุเหตุผลการออกใบเตือน..."
+            />
           </div>
           <div>
             <label className="text-sm text-white/50 block mb-1">รายละเอียดเพิ่มเติม</label>
@@ -502,77 +469,87 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
             />
           </div>
 
-          {isManager && (
-            <div>
-              <label className="text-sm text-white/50 block mb-1">ไฟล์ใบเตือน (PDF)</label>
-              <input
-                ref={pdfInputRef}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) {
-                    setPdfFile(null)
-                    return
-                  }
-                  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-                    toast.error('กรุณาเลือกไฟล์ PDF เท่านั้น')
-                    e.target.value = ''
-                    setPdfFile(null)
-                    return
-                  }
-                  if (file.size > MAX_PDF_MB * 1024 * 1024) {
-                    toast.error(`ไฟล์ต้องไม่เกิน ${MAX_PDF_MB} MB`)
-                    e.target.value = ''
-                    setPdfFile(null)
-                    return
-                  }
-                  setPdfFile(file)
-                }}
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => pdfInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-sm font-medium hover:bg-red-500/20 transition"
-                >
-                  <FileUp className="w-4 h-4" />
-                  อัปโหลด PDF
-                </button>
-                {pdfFile && (
-                  <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
-                    <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    <span className="truncate max-w-[200px]">{pdfFile.name}</span>
-                    <span className="text-xs text-slate-500">
-                      ({(pdfFile.size / 1024 / 1024).toFixed(2)} MB)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPdfFile(null)
-                        if (pdfInputRef.current) pdfInputRef.current.value = ''
-                      }}
-                      className="p-0.5 text-slate-500 hover:text-white"
-                      aria-label="ลบไฟล์"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <p className="text-[10px] text-slate-500 mt-1">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB</p>
+          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 space-y-3">
+            <label className="text-sm font-semibold text-white block">ไฟล์ใบเตือน (PDF)</label>
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) {
+                  setPdfFile(null)
+                  return
+                }
+                if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                  toast.error('กรุณาเลือกไฟล์ PDF เท่านั้น')
+                  e.target.value = ''
+                  setPdfFile(null)
+                  return
+                }
+                if (file.size > MAX_PDF_MB * 1024 * 1024) {
+                  toast.error(`ไฟล์ต้องไม่เกิน ${MAX_PDF_MB} MB`)
+                  e.target.value = ''
+                  setPdfFile(null)
+                  return
+                }
+                setPdfFile(file)
+                setSendToEmployee(true)
+              }}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => pdfInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-sm font-medium hover:bg-red-500/20 transition touch-manipulation"
+              >
+                <FileUp className="w-4 h-4" />
+                เลือกไฟล์ PDF
+              </button>
+              {pdfFile && (
+                <div className="flex items-center gap-2 rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2 text-sm text-slate-300">
+                  <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <span className="truncate max-w-[180px]">{pdfFile.name}</span>
+                  <span className="text-xs text-slate-500">
+                    ({(pdfFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPdfFile(null)
+                      if (pdfInputRef.current) pdfInputRef.current.value = ''
+                    }}
+                    className="p-0.5 text-slate-500 hover:text-white"
+                    aria-label="ลบไฟล์"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+            <p className="text-[10px] text-slate-500">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB · รองรับทั้งเครื่อง local และ Vercel</p>
+            <label className="flex items-start gap-2.5 cursor-pointer touch-manipulation">
+              <input
+                type="checkbox"
+                checked={sendToEmployee}
+                onChange={(e) => setSendToEmployee(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded accent-blue-500"
+              />
+              <span className="text-xs text-slate-300 leading-relaxed">
+                ส่งแจ้งพนักงานทันที (แอพ + LINE){pdfFile ? ' พร้อมลิงก์ไฟล์ PDF' : ''}
+              </span>
+            </label>
+          </div>
 
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => {
                 setShowForm(false)
-                setEmployeeSearch('')
                 setEmployeeStats(null)
                 setPdfFile(null)
+                setSendToEmployee(true)
                 if (pdfInputRef.current) pdfInputRef.current.value = ''
               }}
               className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/50 text-sm hover:bg-white/5 transition"
@@ -591,16 +568,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[1, 2, 3].map((lvl) => (
-          <div key={lvl} className={`card-hover smooth-transition border rounded-2xl p-4 text-center ${LEVEL_STYLES[lvl]}`}>
-            <p className="text-2xl font-bold">{list.filter((w) => w.level === lvl).length}</p>
-            <p className="text-sm opacity-80">ระดับ {lvl}</p>
-          </div>
-        ))}
-      </div>
-
-      {summaryByMonth.length > 0 && (
+      {isManager && summaryByMonth.length > 0 && (
         <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">สรุปใบเตือนรายเดือน</h2>
@@ -611,10 +579,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                 <tr className="border-b border-white/10">
                   <th className={`${thCls} text-left`}>เดือน / ปี</th>
                   <th className={`${thCls} text-center`}>จำนวนใบ</th>
-                  <th className={`${thCls} text-center`}>ระดับ 1</th>
-                  <th className={`${thCls} text-center`}>ระดับ 2</th>
-                  <th className={`${thCls} text-center`}>ระดับ 3</th>
-                  {isManager && <th className={`${thCls} text-center`}>พนักงานที่โดน</th>}
+                  <th className={`${thCls} text-center`}>พนักงานที่โดน</th>
                 </tr>
               </thead>
               <tbody>
@@ -622,16 +587,11 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                   <tr key={row.key} className="table-row-hover border-b border-white/5">
                     <td className={`${tdCls} text-white font-medium`}>{formatMonthLabel(row.key)}</td>
                     <td className={`${tdCls} text-center`}>
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${row.total >= 5 ? LEVEL_STYLES[3] : row.total >= 3 ? LEVEL_STYLES[2] : LEVEL_STYLES[1]}`}>
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold border border-white/10 bg-white/5 text-slate-200">
                         {row.total} ใบ
                       </span>
                     </td>
-                    <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[1] ?? 0}</td>
-                    <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[2] ?? 0}</td>
-                    <td className={`${tdCls} text-center text-slate-400 tabular-nums`}>{row.byLevel[3] ?? 0}</td>
-                    {isManager && (
-                      <td className={`${tdCls} text-center text-slate-300 tabular-nums`}>{row.employeeCount} คน</td>
-                    )}
+                    <td className={`${tdCls} text-center text-slate-300 tabular-nums`}>{row.employeeCount} คน</td>
                   </tr>
                 ))}
               </tbody>
@@ -649,13 +609,11 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         listGroupedByMonth.map((group) => (
           <div key={group.key} className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-white">
-                {isManager ? `รายเดือน — ${group.label}` : `ใบเตือนเดือน ${group.label}`}
-              </h2>
+              <h2 className="text-sm font-semibold text-white">{group.label}</h2>
               <span className="text-xs text-slate-500">{group.items.length} รายการ</span>
             </div>
             <div className="table-scroll">
-              <table className="warnings-table w-full text-sm min-w-[800px]">
+              <table className={`warnings-table w-full text-sm ${isManager ? 'min-w-[720px]' : 'min-w-[480px]'}`}>
                 <thead>{historyHead}</thead>
                 <tbody>{group.items.map((w) => renderWarningRow(w))}</tbody>
               </table>

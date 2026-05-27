@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { createNotification, sendLineMessage } from '@/lib/notifications'
+import { notifyWarningToEmployee } from '@/lib/warnings-notify'
 
 export async function POST(
   _req: NextRequest,
@@ -17,42 +17,20 @@ export async function POST(
     const { id } = await params
     const warning = await prisma.warning.findUnique({
       where: { id },
-      include: { user: { select: { name: true, lineId: true } } },
+      select: { id: true, userId: true, createdAt: true },
     })
     if (!warning) return NextResponse.json({ error: 'ไม่พบใบเตือน' }, { status: 404 })
 
-    const base = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
-    const fileLink = warning.fileUrl
-      ? warning.fileUrl.startsWith('http')
-        ? warning.fileUrl
-        : `${base}${warning.fileUrl}`
-      : null
-
-    const title = `ใบเตือนระดับ ${warning.level}`
-    const message = fileLink
-      ? `${warning.reason}\n\n📎 ไฟล์ใบเตือน: ${fileLink}`
-      : `${warning.reason}\n\nดูรายละเอียดในเมนูใบเตือน`
-
-    await createNotification({
-      userId: warning.userId,
-      type: 'WARNING_ISSUED',
-      title,
-      message,
-      link: '/warnings',
+    const warningNumber = await prisma.warning.count({
+      where: {
+        userId: warning.userId,
+        createdAt: { lte: warning.createdAt },
+      },
     })
 
-    const lineText = fileLink
-      ? `📄 ใบเตือน — ${warning.user.name}\n${warning.reason}\n\nดาวน์โหลดไฟล์:\n${fileLink}`
-      : `⚠️ ใบเตือน — ${warning.user.name}\n${warning.reason}\n\nกรุณาเปิดแอพ HRFlow → เมนูใบเตือน`
+    const result = await notifyWarningToEmployee(id, { warningNumber })
 
-    await sendLineMessage(warning.userId, lineText)
-
-    await prisma.warning.update({
-      where: { id },
-      data: { sentToLine: true },
-    })
-
-    return NextResponse.json({ success: true, fileLink })
+    return NextResponse.json({ success: true, fileLink: result?.fileLink ?? null })
   } catch (err) {
     return apiError(err)
   }
