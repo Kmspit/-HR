@@ -1,1 +1,3 @@
-deploy-trigger=2026-05-26-e79ebfa
+commit=ebef0c8
+deploy=2026-05-27
+feature=warnings-monthly-summary
