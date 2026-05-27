@@ -423,6 +423,35 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
 }
 .form-row-dates .form-group { margin-bottom: 0 !important; }
 
+/* ตารางใบเตือน — หัวข้อและข้อมูลบรรทัดเดียว */
+.warnings-table { width: 100%; border-collapse: collapse; }
+.warnings-table th,
+.warnings-table td {
+  white-space: nowrap;
+  vertical-align: middle;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.warnings-table th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.warnings-table .cell-ellipsis {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.warn-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 /* ── AUTH PAGES ── */
 .auth-wrapper {
   min-height: 100vh;
@@ -688,8 +717,10 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
   /* Announcement cards */
   .ann-card    { flex-direction: column; gap: 10px; }
 
-  /* Warning items */
-  .warn-item   { flex-wrap: wrap; gap: 10px; }
+  /* Warning items — คงบรรทัดเดียว (เลื่อนแนวนอนถ้าจอแคบ) */
+  .warn-item   { flex-wrap: nowrap; gap: 10px; overflow-x: auto; }
+  .warnings-table th,
+  .warnings-table td { white-space: nowrap; }
 
   /* Timeline */
   .tl-item     { gap: 10px; }

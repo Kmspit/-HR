@@ -74,14 +74,19 @@
         <span class="card-title">🚨 สรุปใบเตือนรายคน</span>
         <input id="warn-search" class="form-input" style="width:200px;height:32px;font-size:12px;" placeholder="ค้นหาชื่อ..." oninput="renderWarnings()">
       </div>
-      <div id="warn-summary"></div>
+      <div class="table-wrap" id="warn-summary-wrap" style="display:none;">
+        <table class="warnings-table">
+          <thead><tr><th>พนักงาน</th><th>ใบเตือนสะสม</th><th>ระดับ</th><th>เหตุผลล่าสุด</th><th>จัดการ</th></tr></thead>
+          <tbody id="warn-summary"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Full history table -->
     <div class="card">
       <div class="card-header"><span class="card-title">📋 ประวัติใบเตือนทั้งหมด</span></div>
       <div class="table-wrap">
-        <table>
+        <table class="warnings-table">
           <thead><tr><th>วันที่</th><th>พนักงาน</th><th>เหตุผล</th><th>ระดับ</th><th>ใบเตือนสะสม</th><th>จัดการ</th></tr></thead>
           <tbody id="warn-tbody"></tbody>
         </table>
@@ -128,23 +133,26 @@ function renderWarnings() {
   document.getElementById('stat-high-risk').textContent = highRisk;
 
   // Summary cards
+  const summaryWrap = document.getElementById('warn-summary-wrap');
   const summaryEl = document.getElementById('warn-summary');
   const empNames = Object.keys(grouped);
   if (!empNames.length) {
-    summaryEl.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text3)">ยังไม่มีใบเตือน</div>`;
+    summaryWrap.style.display = 'none';
+    summaryEl.innerHTML = '';
   } else {
+    summaryWrap.style.display = '';
     summaryEl.innerHTML = empNames.map(name => {
       const list = grouped[name];
       const total = list.length;
-      const barColor = total >= 3 ? 'var(--red)' : total >= 2 ? 'var(--orange)' : 'var(--yellow)';
-      return `<div class="warn-item" style="margin-bottom:0;border-bottom:1px solid var(--border);padding:14px;">
-        <div class="warn-count" style="background:${barColor};color:#fff;min-width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;">${total}</div>
-        <div style="flex:1;">
-          <div class="warn-name" style="font-weight:600;">${name}</div>
-          <div style="font-size:12px;color:var(--text3);">ล่าสุด: ${list[list.length-1].reason}</div>
-        </div>
-        <button class="btn-sm" style="background:rgba(6,199,85,0.12);color:#06C755;border:1px solid #06C755;" onclick="sendWarnLine('${name}', ${total})">💬 แจ้ง LINE</button>
-      </div>`;
+      const latest = list[list.length - 1];
+      const lvlLabel = LEVEL_LABELS[latest.level] || '—';
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td style="text-align:center;"><span class="tag" style="color:${LEVEL_COLORS[latest.level]};border-color:${LEVEL_COLORS[latest.level]}">${total} ใบ</span></td>
+        <td style="text-align:center;">${lvlLabel}</td>
+        <td class="cell-ellipsis" title="${latest.reason}">${latest.reason}</td>
+        <td><span class="warn-actions"><button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${name}', ${total})">💬 LINE</button></span></td>
+      </tr>`;
     }).join('');
   }
 
@@ -153,15 +161,15 @@ function renderWarnings() {
   if (!warns.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3)">ยังไม่มีประวัติ</td></tr>`; return; }
   tb.innerHTML = warns.slice().reverse().map(w => `
     <tr>
-      <td style="font-size:12px;">${thDate(w.createdAt)}</td>
+      <td>${thDate(w.createdAt)}</td>
       <td><strong>${w.empName}</strong></td>
-      <td>${w.reason}</td>
-      <td><span class="tag" style="color:${LEVEL_COLORS[w.level]};border-color:${LEVEL_COLORS[w.level]}">${LEVEL_LABELS[w.level]||'—'}</span></td>
+      <td class="cell-ellipsis" title="${w.reason}">${w.reason}</td>
+      <td style="text-align:center;"><span class="tag" style="color:${LEVEL_COLORS[w.level]};border-color:${LEVEL_COLORS[w.level]}">${LEVEL_LABELS[w.level]||'—'}</span></td>
       <td style="text-align:center;">${w.cumulative}</td>
-      <td style="display:flex;gap:6px;">
-        <button class="btn-sm" style="color:#06C755;" onclick="sendWarnLine('${w.empName}', ${w.cumulative})">💬 LINE</button>
-        <button class="btn-sm" style="color:var(--red);" onclick="deleteWarning('${w.id}')">ลบ</button>
-      </td>
+      <td><span class="warn-actions">
+        <button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${w.empName}', ${w.cumulative})">💬 LINE</button>
+        <button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="deleteWarning('${w.id}')">ลบ</button>
+      </span></td>
     </tr>`).join('');
 }
 
