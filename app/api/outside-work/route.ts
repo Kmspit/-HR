@@ -9,15 +9,21 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+    const canViewAll = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
     const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('userId')
+    const filterUserId = searchParams.get('userId')
+
+    const where = canViewAll
+      ? filterUserId
+        ? { userId: filterUserId }
+        : {}
+      : { userId: session.user.id }
 
     const requests = await prisma.outsideWorkRequest.findMany({
-      where: isManager && !userId ? {} : { userId: userId ?? session.user.id },
-      include: { user: { select: { name: true, department: true } } },
+      where,
+      include: { user: { select: { name: true, department: true, position: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: canViewAll ? 200 : 100,
     })
 
     return NextResponse.json({ requests })
