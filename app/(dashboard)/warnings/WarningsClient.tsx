@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { AlertTriangle, Plus, Zap, User, FileUp, FileText, X, Send, ChevronDown, Loader2 } from 'lucide-react'
+import { AlertTriangle, Plus, Zap, User, FileUp, FileText, X, Send, ChevronDown, Loader2, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -11,15 +11,11 @@ type Warning = {
   userName: string
   userDept: string
   employeeId: string
-  issuedByName: string
-  level: number
   reason: string
   description: string
   fileUrl: string | null
   sentToLine: boolean
   isAuto: boolean
-  month: number | null
-  year: number | null
   createdAt: string
 }
 
@@ -45,27 +41,28 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
     userName: (w.user as { name?: string })?.name ?? '',
     userDept: (w.user as { department?: string })?.department ?? '',
     employeeId: (w.user as { employeeId?: string })?.employeeId ?? '',
-    issuedByName: Boolean(w.isAuto)
-      ? 'ระบบ (อัตโนมัติ)'
-      : ((w.issuedBy as { name?: string })?.name ?? '—'),
-    level: Number(w.level),
-    sentToLine: Boolean(w.sentToLine),
     reason: String(w.reason),
     description: String(w.description ?? ''),
     fileUrl: w.fileUrl != null ? String(w.fileUrl) : null,
+    sentToLine: Boolean(w.sentToLine),
     isAuto: Boolean(w.isAuto),
-    month: w.month != null ? Number(w.month) : null,
-    year: w.year != null ? Number(w.year) : null,
     createdAt: String(w.createdAt),
   }))
 }
 
 const MAX_PDF_MB = 10
 
+async function loadEmployeesFromApi(): Promise<Employee[]> {
+  const { ok, data } = await apiJson<{ employees?: Employee[] }>('/api/warnings/employees')
+  if (ok && data.employees?.length) return data.employees
+  return []
+}
+
 export default function WarningsClient({ isManager, warnings, employees }: Props) {
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ userId: '', reason: '', description: '' })
+  const [empSearch, setEmpSearch] = useState('')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [sendToEmployee, setSendToEmployee] = useState(true)
   const [employeeList, setEmployeeList] = useState(employees)
@@ -81,16 +78,37 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
   const selectedEmployee = employeeList.find((e) => e.id === form.userId)
 
+  const filteredEmployees = useMemo(() => {
+    const q = empSearch.trim().toLowerCase()
+    if (!q) return employeeList
+    return employeeList.filter(
+      (e) =>
+        e.name.toLowerCase().includes(q) ||
+        (e.employeeId && e.employeeId.toLowerCase().includes(q)) ||
+        (e.department && e.department.toLowerCase().includes(q)),
+    )
+  }, [employeeList, empSearch])
+
   useEffect(() => {
     setEmployeeList(employees)
   }, [employees])
 
   useEffect(() => {
+    if (!isManager) return
+    setLoadingEmployees(true)
+    loadEmployeesFromApi()
+      .then((list) => {
+        if (list.length) setEmployeeList(list)
+      })
+      .finally(() => setLoadingEmployees(false))
+  }, [isManager])
+
+  useEffect(() => {
     if (!showForm || !isManager) return
     setLoadingEmployees(true)
-    apiJson<{ employees?: Employee[] }>('/api/warnings/employees')
-      .then(({ ok, data }) => {
-        if (ok && data.employees?.length) setEmployeeList(data.employees)
+    loadEmployeesFromApi()
+      .then((list) => {
+        if (list.length) setEmployeeList(list)
       })
       .finally(() => setLoadingEmployees(false))
   }, [showForm, isManager])
@@ -181,6 +199,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       }
       setShowForm(false)
       setForm({ userId: '', reason: '', description: '' })
+      setEmpSearch('')
       setSendToEmployee(true)
       setPdfFile(null)
       if (pdfInputRef.current) pdfInputRef.current.value = ''
@@ -214,8 +233,6 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     }
   }
 
-  const monthNames = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-
   const warningNumber = employeeStats?.warningNumber ?? (selectedEmployee ? selectedEmployee.warningCount + 1 : 1)
 
   const warningOrdinalById = useMemo(() => {
@@ -232,8 +249,14 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     return ordinalByWarningId
   }, [list])
 
+  const sortedHistory = useMemo(
+    () => [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [list],
+  )
+
+  const monthNames = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
   const getMonthKey = (w: Warning) => {
-    if (w.month && w.year) return `${w.year}-${String(w.month).padStart(2, '0')}`
     const d = new Date(w.createdAt)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   }
@@ -244,40 +267,15 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     return `${monthNames[mi] ?? m} ${parseInt(y, 10) + 543}`
   }
 
-  const listGroupedByMonth = useMemo(() => {
-    const groups = new Map<string, Warning[]>()
-    const sorted = [...list].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
-    for (const w of sorted) {
-      const key = getMonthKey(w)
-      const arr = groups.get(key) ?? []
-      arr.push(w)
-      groups.set(key, arr)
-    }
-    return [...groups.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([key, items]) => ({ key, label: formatMonthLabel(key), items }))
-  }, [list])
-
   const summaryByMonth = useMemo(() => {
-    const map = new Map<
-      string,
-      { key: string; total: number; byLevel: Record<number, number>; employeeIds: Set<string> }
-    >()
+    const map = new Map<string, { key: string; total: number; employeeIds: Set<string> }>()
     for (const w of list) {
       const key = getMonthKey(w)
       const cur = map.get(key)
       if (!cur) {
-        map.set(key, {
-          key,
-          total: 1,
-          byLevel: { [w.level]: 1 },
-          employeeIds: new Set([w.userId]),
-        })
+        map.set(key, { key, total: 1, employeeIds: new Set([w.userId]) })
       } else {
         cur.total += 1
-        cur.byLevel[w.level] = (cur.byLevel[w.level] ?? 0) + 1
         cur.employeeIds.add(w.userId)
       }
     }
@@ -299,15 +297,10 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     return (
       <tr key={w.id} className="table-row-hover border-b border-white/5">
         {isManager && (
-          <>
-            <td className={`${tdCls} text-white font-medium max-w-[160px] truncate`} title={w.userName}>
-              {w.userName}
-              {w.employeeId ? ` (${w.employeeId})` : ''}
-            </td>
-            <td className={`${tdCls} text-white/90 font-medium max-w-[140px] truncate`} title={w.issuedByName}>
-              {w.issuedByName}
-            </td>
-          </>
+          <td className={`${tdCls} text-white font-medium max-w-[160px] truncate`} title={w.userName}>
+            {w.userName}
+            {w.employeeId ? ` (${w.employeeId})` : ''}
+          </td>
         )}
         <td className={`${tdCls} text-center text-white/60 text-xs`}>{dateStr}</td>
         <td className={`${tdCls} text-center text-slate-400 text-xs tabular-nums`}>ครั้งที่ {userOrdinal}</td>
@@ -356,12 +349,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
   const historyHead = (
     <tr className="border-b border-white/10">
-      {isManager && (
-        <>
-          <th className={`${thCls} text-left`}>พนักงาน</th>
-          <th className={`${thCls} text-left`}>ผู้ออกใบเตือน</th>
-        </>
-      )}
+      {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
       <th className={`${thCls} text-center`}>วันที่</th>
       <th className={`${thCls} text-center`}>ครั้งที่</th>
       <th className={`${thCls} text-left`}>เหตุผล</th>
@@ -402,34 +390,49 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
           <div>
             <label className="text-sm text-white/50 block mb-1.5">เลือกพนักงาน</label>
-            <div className="relative rounded-xl border border-white/10 bg-slate-900/80 focus-within:border-blue-500/50 transition-colors">
-              {loadingEmployees && (
-                <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin pointer-events-none" />
-              )}
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-              <select
-                value={form.userId}
-                onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
-                disabled={loadingEmployees}
-                className="w-full appearance-none bg-transparent border-0 rounded-xl px-4 py-3 pr-10 text-sm text-white outline-none cursor-pointer disabled:opacity-60 min-h-[48px]"
-              >
-                <option value="" className="bg-slate-900 text-slate-400">
-                  — เลือกพนักงาน —
-                </option>
-                {employeeList.map((e) => (
-                  <option key={e.id} value={e.id} className="bg-slate-900 text-white">
-                    {e.name}
-                    {e.employeeId ? ` (${e.employeeId})` : ''}
-                    {' — '}
-                    {e.department || 'ไม่ระบุแผนก'}
-                    {' · ใบเตือนแล้ว '}
-                    {e.warningCount}
-                    {' ครั้ง'}
+            <div className="rounded-xl border border-white/15 bg-slate-900/80 overflow-hidden focus-within:border-blue-500/50 transition-colors">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10">
+                <Search className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                <input
+                  type="search"
+                  value={empSearch}
+                  onChange={(e) => setEmpSearch(e.target.value)}
+                  placeholder="ค้นหาชื่อพนักงาน รหัส หรือแผนก..."
+                  className="flex-1 bg-transparent border-0 text-sm text-white placeholder:text-slate-500 outline-none min-h-[40px]"
+                />
+                {loadingEmployees && (
+                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" />
+                )}
+              </div>
+              <div className="relative">
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none z-10" />
+                <select
+                  value={form.userId}
+                  onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
+                  disabled={loadingEmployees}
+                  className="w-full appearance-none bg-transparent border-0 px-4 py-3 pr-10 text-sm text-white outline-none cursor-pointer disabled:opacity-60 min-h-[48px]"
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">
+                    — เลือกพนักงานจากรายการ —
                   </option>
-                ))}
-              </select>
+                  {filteredEmployees.map((e) => (
+                    <option key={e.id} value={e.id} className="bg-slate-900 text-white">
+                      {e.name}
+                      {e.employeeId ? ` (${e.employeeId})` : ''}
+                      {' — '}
+                      {e.department || 'ไม่ระบุแผนก'}
+                      {e.position ? ` · ${e.position}` : ''}
+                      {' · ใบเตือนแล้ว '}
+                      {e.warningCount}
+                      {' ครั้ง'}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">ดึงรายชื่อจากฐานข้อมูลพนักงานล่าสุด</p>
+            <p className="text-[10px] text-slate-500 mt-1">
+              ดึงรายชื่อจากฐานข้อมูลพนักงาน · {loadingEmployees ? 'กำลังโหลด...' : `${employeeList.length} คน`}
+            </p>
           </div>
 
           {form.userId && selectedEmployee && (
@@ -528,7 +531,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-slate-500">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB · รองรับทั้งเครื่อง local และ Vercel</p>
+            <p className="text-[10px] text-slate-500">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB</p>
             <label className="flex items-start gap-2.5 cursor-pointer touch-manipulation">
               <input
                 type="checkbox"
@@ -548,6 +551,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
               onClick={() => {
                 setShowForm(false)
                 setEmployeeStats(null)
+                setEmpSearch('')
                 setPdfFile(null)
                 setSendToEmployee(true)
                 if (pdfInputRef.current) pdfInputRef.current.value = ''
@@ -574,7 +578,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
             <h2 className="text-sm font-semibold text-white">สรุปใบเตือนรายเดือน</h2>
           </div>
           <div className="table-scroll">
-            <table className="warnings-table w-full text-sm min-w-[520px]">
+            <table className="warnings-table w-full text-sm min-w-[400px]">
               <thead>
                 <tr className="border-b border-white/10">
                   <th className={`${thCls} text-left`}>เดือน / ปี</th>
@@ -606,22 +610,20 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
           {isManager ? 'ยังไม่มีใบเตือนในระบบ' : 'คุณยังไม่มีใบเตือน'}
         </div>
       ) : (
-        listGroupedByMonth.map((group) => (
-          <div key={group.key} className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-white">{group.label}</h2>
-              <span className="text-xs text-slate-500">{group.items.length} รายการ</span>
-            </div>
-            <div className="table-scroll">
-              <table className={`warnings-table w-full text-sm ${isManager ? 'min-w-[720px]' : 'min-w-[480px]'}`}>
-                <thead>{historyHead}</thead>
-                <tbody>{group.items.map((w) => renderWarningRow(w))}</tbody>
-              </table>
-            </div>
+        <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
+          <div className="px-4 py-3 border-b border-white/10">
+            <h2 className="text-sm font-semibold text-white">
+              {isManager ? 'ประวัติใบเตือนทั้งหมด' : 'ประวัติใบเตือนของฉัน'}
+            </h2>
           </div>
-        ))
+          <div className="table-scroll">
+            <table className={`warnings-table w-full text-sm ${isManager ? 'min-w-[640px]' : 'min-w-[480px]'}`}>
+              <thead>{historyHead}</thead>
+              <tbody>{sortedHistory.map((w) => renderWarningRow(w))}</tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   )
 }
-

@@ -10,8 +10,23 @@ export default async function WarningsPage() {
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
 
-  let warnings: Awaited<ReturnType<typeof prisma.warning.findMany>>
-  let employees: Awaited<ReturnType<typeof prisma.user.findMany>>
+  type WarningRow = Awaited<
+    ReturnType<
+      typeof prisma.warning.findMany<{
+        include: { user: { select: { name: true; employeeId: true; department: true } } }
+      }>
+    >
+  >
+  type EmployeeRow = {
+    id: string
+    name: string
+    department: string | null
+    employeeId: string | null
+    _count: { warnings: number }
+  }
+
+  let warnings: WarningRow
+  let employees: EmployeeRow[]
 
   try {
     ;[warnings, employees] = await Promise.all([
@@ -19,7 +34,6 @@ export default async function WarningsPage() {
         where: isManager ? {} : { userId: session.user.id },
         include: {
           user: { select: { name: true, employeeId: true, department: true } },
-          issuedBy: { select: { name: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 100,
@@ -65,8 +79,8 @@ export default async function WarningsPage() {
         title="ใบเตือน"
         subtitle={
           isManager
-            ? 'ดูใบเตือนทุกคน · แยกรายเดือน · ส่งไฟล์ให้พนักงานได้'
-            : 'ดูใบเตือนของตัวเองเท่านั้น'
+            ? 'ออกใบเตือน · แนบ PDF · ส่งให้พนักงาน'
+            : 'ประวัติใบเตือนของตัวเอง'
         }
       />
       <WarningsClient
@@ -77,15 +91,11 @@ export default async function WarningsPage() {
         userName: w.user.name,
         userDept: w.user.department ?? '',
         employeeId: w.user.employeeId ?? '',
-        issuedByName: w.isAuto ? 'ระบบ (อัตโนมัติ)' : (w.issuedBy?.name ?? '—'),
-        level: w.level,
         reason: w.reason,
         description: w.description ?? '',
         fileUrl: w.fileUrl ?? null,
         sentToLine: w.sentToLine,
         isAuto: w.isAuto,
-        month: w.month ?? null,
-        year: w.year ?? null,
         createdAt: w.createdAt.toISOString(),
       }))}
       employees={employees.map((e) => ({

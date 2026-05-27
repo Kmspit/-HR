@@ -11,6 +11,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
+<style>
+.emp-picker{border:1px solid var(--border2);border-radius:12px;background:var(--bg2);overflow:hidden}
+.emp-picker-search{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.emp-picker-search input{flex:1;background:transparent;border:0;color:var(--text);font-size:13px;outline:none}
+.emp-picker select{width:100%;background:transparent;border:0;color:var(--text);padding:12px;font-size:13px;outline:none}
+</style>
 </head>
 <body>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -61,33 +67,21 @@
   </header>
 
   <main class="content">
-    <!-- Summary stats -->
-    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
-      <div class="stat-card red"><div class="stat-value" id="stat-total-warn">—</div><div class="stat-label">ใบเตือนทั้งหมด</div></div>
-      <div class="stat-card yellow"><div class="stat-value" id="stat-high-risk">—</div><div class="stat-label">พนักงานเสี่ยงสูง (≥3 ใบ)</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-this-month">—</div><div class="stat-label">ออกเดือนนี้</div></div>
-    </div>
-
-    <!-- Warning summary by month -->
-    <div class="card" style="margin-bottom:20px;">
-      <div class="card-header">
-        <span class="card-title">📅 สรุปใบเตือนรายเดือน</span>
-        <input id="warn-search" class="form-input" style="width:200px;height:32px;font-size:12px;" placeholder="ค้นหาชื่อ (กรองประวัติ)..." oninput="renderWarnings()">
-      </div>
+    <div class="card" style="margin-bottom:20px;" id="warn-summary-card">
+      <div class="card-header"><span class="card-title">📅 สรุปใบเตือนรายเดือน</span></div>
       <div class="table-wrap" id="warn-summary-wrap" style="display:none;">
         <table class="warnings-table">
-          <thead><tr><th>เดือน / ปี</th><th>จำนวนใบ</th><th>ระดับ 1</th><th>ระดับ 2</th><th>ระดับ 3</th><th>พนักงานที่โดน</th></tr></thead>
+          <thead><tr><th>เดือน / ปี</th><th>จำนวนใบ</th><th>พนักงานที่โดน</th></tr></thead>
           <tbody id="warn-summary"></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Full history table -->
     <div class="card">
-      <div class="card-header"><span class="card-title">📋 ประวัติใบเตือนทั้งหมด</span></div>
+      <div class="card-header"><span class="card-title">📋 ประวัติใบเตือน</span></div>
       <div class="table-wrap">
         <table class="warnings-table">
-          <thead><tr><th>วันที่</th><th>พนักงาน</th><th>เหตุผล</th><th>ระดับ</th><th>ใบเตือนสะสม</th><th>จัดการ</th></tr></thead>
+          <thead><tr><th>วันที่</th><th>พนักงาน</th><th>ครั้งที่</th><th>เหตุผล</th><th>ประเภท</th><th>PDF</th><th>จัดการ</th></tr></thead>
           <tbody id="warn-tbody"></tbody>
         </table>
       </div>
@@ -110,8 +104,6 @@
 function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
 
-const LEVEL_LABELS = { 1:'เบา', 2:'ปานกลาง', 3:'รุนแรง' };
-const LEVEL_COLORS = { 1:'var(--yellow)', 2:'var(--orange)', 3:'var(--red)' };
 const MONTH_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 function monthKeyFromWarning(w) {
@@ -123,32 +115,27 @@ function formatMonthLabel(key) {
   return (MONTH_TH[parseInt(m, 10)] || m) + ' ' + (parseInt(y, 10) + 543);
 }
 
+function warningOrdinalMap(warns) {
+  const sorted = warns.slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const byId = {};
+  const count = {};
+  sorted.forEach(w => {
+    const name = w.empName;
+    count[name] = (count[name] || 0) + 1;
+    byId[w.id] = count[name];
+  });
+  return byId;
+}
+
 function renderWarnings() {
-  const search = document.getElementById('warn-search').value.toLowerCase();
-  let warns = getWarnings();
-  if (search) warns = warns.filter(w => w.empName.toLowerCase().includes(search));
-
-  // Stats
-  const now = new Date();
-  document.getElementById('stat-total-warn').textContent  = warns.length;
-  document.getElementById('stat-this-month').textContent  = warns.filter(w => {
-    const d = new Date(w.createdAt);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
-
-  const grouped = {};
-  warns.forEach(w => { (grouped[w.empName] = grouped[w.empName] || []).push(w); });
-  const highRisk = Object.values(grouped).filter(g => g.length >= 3).length;
-  document.getElementById('stat-high-risk').textContent = highRisk;
+  const warns = getWarnings().slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const ordinals = warningOrdinalMap(getWarnings());
 
   const byMonth = {};
   warns.forEach(w => {
     const k = monthKeyFromWarning(w);
-    if (!byMonth[k]) byMonth[k] = { total: 0, l1: 0, l2: 0, l3: 0, employees: {} };
+    if (!byMonth[k]) byMonth[k] = { total: 0, employees: {} };
     byMonth[k].total++;
-    if (w.level === 1) byMonth[k].l1++;
-    else if (w.level === 2) byMonth[k].l2++;
-    else if (w.level === 3) byMonth[k].l3++;
     byMonth[k].employees[w.empName] = true;
   });
 
@@ -163,37 +150,40 @@ function renderWarnings() {
     summaryEl.innerHTML = monthKeys.map(k => {
       const row = byMonth[k];
       const empCount = Object.keys(row.employees).length;
-      const barColor = row.total >= 5 ? LEVEL_COLORS[3] : row.total >= 3 ? LEVEL_COLORS[2] : LEVEL_COLORS[1];
       return `<tr>
         <td><strong>${formatMonthLabel(k)}</strong></td>
-        <td style="text-align:center;"><span class="tag" style="color:${barColor};border-color:${barColor}">${row.total} ใบ</span></td>
-        <td style="text-align:center;">${row.l1}</td>
-        <td style="text-align:center;">${row.l2}</td>
-        <td style="text-align:center;">${row.l3}</td>
+        <td style="text-align:center;">${row.total} ใบ</td>
         <td style="text-align:center;">${empCount} คน</td>
       </tr>`;
     }).join('');
   }
 
-  // Full history
   const tb = document.getElementById('warn-tbody');
-  if (!warns.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3)">ยังไม่มีประวัติ</td></tr>`; return; }
-  tb.innerHTML = warns.slice().reverse().map(w => `
-    <tr>
+  if (!warns.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text3)">ยังไม่มีประวัติ</td></tr>`;
+    return;
+  }
+  tb.innerHTML = warns.map(w => {
+    const n = ordinals[w.id] || '—';
+    const typeLabel = w.isAuto ? 'อัตโนมัติ' : 'ด้วยตนเอง';
+    const pdf = w.fileUrl ? `<a href="${w.fileUrl}" target="_blank" rel="noopener" style="color:var(--red)">PDF</a>` : '—';
+    return `<tr>
       <td>${thDate(w.createdAt)}</td>
       <td><strong>${w.empName}</strong></td>
+      <td style="text-align:center;">ครั้งที่ ${n}</td>
       <td class="cell-ellipsis" title="${w.reason}">${w.reason}</td>
-      <td style="text-align:center;"><span class="tag" style="color:${LEVEL_COLORS[w.level]};border-color:${LEVEL_COLORS[w.level]}">${LEVEL_LABELS[w.level]||'—'}</span></td>
-      <td style="text-align:center;">${w.cumulative}</td>
+      <td style="text-align:center;">${typeLabel}</td>
+      <td style="text-align:center;">${pdf}</td>
       <td><span class="warn-actions">
-        <button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${w.empName}', ${w.cumulative})">💬 LINE</button>
+        <button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${w.empName}', ${n})">💬 LINE</button>
         <button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="deleteWarning('${w.id}')">ลบ</button>
       </span></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function sendWarnLine(name, count) {
-  mockLineNotify(`⚠️ ใบเตือนพนักงาน\nชื่อ: ${name}\nใบเตือนสะสม: ${count} ใบ\nกรุณาติดต่อ HR ภายใน 3 วันทำการ`, name);
+  mockLineNotify(`⚠️ ใบเตือนพนักงาน\nชื่อ: ${name}\nครั้งที่ ${count}\nกรุณาติดต่อ HR ภายใน 3 วันทำการ`, name);
 }
 
 function deleteWarning(id) {
@@ -202,31 +192,53 @@ function deleteWarning(id) {
   renderWarnings();
 }
 
+function filterEmpOptions() {
+  const q = (document.getElementById('w-emp-search').value || '').toLowerCase();
+  const sel = document.getElementById('w-emp');
+  const emps = getEmployees();
+  const filtered = !q ? emps : emps.filter(e =>
+    e.name.toLowerCase().includes(q) ||
+    (e.dept || '').toLowerCase().includes(q) ||
+    (e.id || '').toLowerCase().includes(q)
+  );
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— เลือกพนักงานจากรายการ —</option>' +
+    filtered.map(e => `<option value="${e.name}">${e.name} (${e.dept || 'ไม่ระบุแผนก'})</option>`).join('');
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
 function openIssueModal() {
   const emps = getEmployees();
   const bd = openModal(`
     <h3>⚠️ ออกใบเตือนพนักงาน</h3>
     <div class="form-group" style="margin-bottom:14px">
-      <label>พนักงาน *</label>
-      <select id="w-emp" class="form-input">
-        <option value="">— เลือกพนักงาน —</option>
-        ${emps.map(e => `<option value="${e.name}">${e.name} (${e.dept})</option>`).join('')}
-      </select>
+      <label>เลือกพนักงาน *</label>
+      <div class="emp-picker">
+        <div class="emp-picker-search">
+          <span>🔍</span>
+          <input type="search" id="w-emp-search" placeholder="ค้นหาชื่อพนักงาน รหัส หรือแผนก..." oninput="filterEmpOptions()">
+        </div>
+        <select id="w-emp" class="form-input" style="border:0;border-radius:0">
+          <option value="">— เลือกพนักงานจากรายการ —</option>
+          ${emps.map(e => `<option value="${e.name}">${e.name} (${e.dept || 'ไม่ระบุแผนก'})</option>`).join('')}
+        </select>
+      </div>
+      <p style="font-size:10px;color:var(--text3);margin-top:6px">ดึงจากข้อมูลพนักงานในระบบ · ${emps.length} คน</p>
     </div>
     <div class="form-group" style="margin-bottom:14px">
       <label>เหตุผล *</label>
       <textarea id="w-reason" class="form-input" style="height:80px;padding:10px" placeholder="ระบุเหตุผลการออกใบเตือน..."></textarea>
     </div>
-    <div class="form-group" style="margin-bottom:20px">
-      <label>ระดับความรุนแรง</label>
-      <select id="w-level" class="form-input">
-        <option value="1">1 — เบา (ตักเตือนด้วยวาจา)</option>
-        <option value="2">2 — ปานกลาง (ตักเตือนเป็นลายลักษณ์)</option>
-        <option value="3">3 — รุนแรง (พักงานหรือออก)</option>
-      </select>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>ไฟล์ใบเตือน (PDF)</label>
+      <input type="file" id="w-pdf" accept="application/pdf,.pdf" class="form-input">
+      <p style="font-size:10px;color:var(--text3);margin-top:4px">ไม่บังคับ — สูงสุด 10 MB</p>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="w-send" checked> ส่งแจ้งพนักงานทันที (LINE)
+    </label>
     <div style="display:flex;gap:10px;">
-      <button class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);" onclick="issueWarning()">⚠️ ออกใบเตือน + แจ้ง LINE</button>
+      <button class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);" onclick="issueWarning()">⚠️ ออกใบเตือน</button>
       <button class="btn-outline" style="flex:1" onclick="this.closest('.modal-backdrop').remove()">ยกเลิก</button>
     </div>
   `);
@@ -236,22 +248,41 @@ function openIssueModal() {
 function issueWarning() {
   const empName = document.getElementById('w-emp').value;
   const reason  = document.getElementById('w-reason').value.trim();
-  const level   = parseInt(document.getElementById('w-level').value);
+  const send    = document.getElementById('w-send').checked;
+  const pdfIn   = document.getElementById('w-pdf');
   if (!empName || !reason) { alert('กรุณาเลือกพนักงานและระบุเหตุผล'); return; }
 
   const warns = getWarnings();
-  const cumulative = warns.filter(w => w.empName === empName).length + 1;
+  const prior = warns.filter(w => w.empName === empName);
+  const cumulative = prior.length + 1;
 
-  const warn = { id: uid(), empName, reason, level, cumulative, createdAt: new Date().toISOString() };
+  const warn = {
+    id: uid(),
+    empName,
+    reason,
+    cumulative,
+    isAuto: false,
+    fileUrl: null,
+    createdAt: new Date().toISOString()
+  };
+  if (pdfIn.files && pdfIn.files[0]) {
+    const f = pdfIn.files[0];
+    if (!f.name.toLowerCase().endsWith('.pdf')) { alert('กรุณาเลือกไฟล์ PDF'); return; }
+    warn.fileUrl = '#pdf-' + warn.id;
+    warn._pdfName = f.name;
+  }
   warns.push(warn);
   lsSet('warnings', warns);
 
-  mockLineNotify(`⚠️ คุณได้รับใบเตือน\nเหตุผล: ${reason}\nระดับ: ${LEVEL_LABELS[level]}\nใบเตือนสะสม: ${cumulative} ใบ\n\nกรุณาพบ HR ภายใน 3 วันทำการ`, empName);
+  if (send) {
+    const pdfNote = warn.fileUrl ? '\nมีไฟล์ PDF แนบ' : '';
+    mockLineNotify(`⚠️ คุณได้รับใบเตือน\nเหตุผล: ${reason}\nครั้งที่ ${cumulative}${pdfNote}\n\nกรุณาพบ HR ภายใน 3 วันทำการ`, empName);
+  }
 
   if (window._warnModalBd) window._warnModalBd.remove();
   renderWarnings();
 
-  if (cumulative >= 3) alert(`⚠️ ${empName} สะสมใบเตือนถึง ${cumulative} ใบ! กรุณาพิจารณาดำเนินการเพิ่มเติม`);
+  if (cumulative >= 3) alert(`⚠️ ${empName} สะสมใบเตือนถึง ${cumulative} ครั้ง! กรุณาพิจารณาดำเนินการเพิ่มเติม`);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
