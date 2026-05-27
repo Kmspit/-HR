@@ -68,15 +68,15 @@
       <div class="stat-card"><div class="stat-value" id="stat-this-month">—</div><div class="stat-label">ออกเดือนนี้</div></div>
     </div>
 
-    <!-- Warning list grouped by employee -->
+    <!-- Warning summary by month -->
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
-        <span class="card-title">🚨 สรุปใบเตือนรายคน</span>
-        <input id="warn-search" class="form-input" style="width:200px;height:32px;font-size:12px;" placeholder="ค้นหาชื่อ..." oninput="renderWarnings()">
+        <span class="card-title">📅 สรุปใบเตือนรายเดือน</span>
+        <input id="warn-search" class="form-input" style="width:200px;height:32px;font-size:12px;" placeholder="ค้นหาชื่อ (กรองประวัติ)..." oninput="renderWarnings()">
       </div>
       <div class="table-wrap" id="warn-summary-wrap" style="display:none;">
         <table class="warnings-table">
-          <thead><tr><th>พนักงาน</th><th>ใบเตือนสะสม</th><th>ระดับ</th><th>เหตุผลล่าสุด</th><th>จัดการ</th></tr></thead>
+          <thead><tr><th>เดือน / ปี</th><th>จำนวนใบ</th><th>ระดับ 1</th><th>ระดับ 2</th><th>ระดับ 3</th><th>พนักงานที่โดน</th></tr></thead>
           <tbody id="warn-summary"></tbody>
         </table>
       </div>
@@ -112,6 +112,16 @@ function closeSidebar(){ document.getElementById('sidebar').classList.remove('op
 
 const LEVEL_LABELS = { 1:'เบา', 2:'ปานกลาง', 3:'รุนแรง' };
 const LEVEL_COLORS = { 1:'var(--yellow)', 2:'var(--orange)', 3:'var(--red)' };
+const MONTH_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function monthKeyFromWarning(w) {
+  const d = new Date(w.createdAt);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function formatMonthLabel(key) {
+  const [y, m] = key.split('-');
+  return (MONTH_TH[parseInt(m, 10)] || m) + ' ' + (parseInt(y, 10) + 543);
+}
 
 function renderWarnings() {
   const search = document.getElementById('warn-search').value.toLowerCase();
@@ -126,32 +136,41 @@ function renderWarnings() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
-  // Group by employee
   const grouped = {};
   warns.forEach(w => { (grouped[w.empName] = grouped[w.empName] || []).push(w); });
   const highRisk = Object.values(grouped).filter(g => g.length >= 3).length;
   document.getElementById('stat-high-risk').textContent = highRisk;
 
-  // Summary cards
+  const byMonth = {};
+  warns.forEach(w => {
+    const k = monthKeyFromWarning(w);
+    if (!byMonth[k]) byMonth[k] = { total: 0, l1: 0, l2: 0, l3: 0, employees: {} };
+    byMonth[k].total++;
+    if (w.level === 1) byMonth[k].l1++;
+    else if (w.level === 2) byMonth[k].l2++;
+    else if (w.level === 3) byMonth[k].l3++;
+    byMonth[k].employees[w.empName] = true;
+  });
+
   const summaryWrap = document.getElementById('warn-summary-wrap');
   const summaryEl = document.getElementById('warn-summary');
-  const empNames = Object.keys(grouped);
-  if (!empNames.length) {
+  const monthKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+  if (!monthKeys.length) {
     summaryWrap.style.display = 'none';
     summaryEl.innerHTML = '';
   } else {
     summaryWrap.style.display = '';
-    summaryEl.innerHTML = empNames.map(name => {
-      const list = grouped[name];
-      const total = list.length;
-      const latest = list[list.length - 1];
-      const lvlLabel = LEVEL_LABELS[latest.level] || '—';
+    summaryEl.innerHTML = monthKeys.map(k => {
+      const row = byMonth[k];
+      const empCount = Object.keys(row.employees).length;
+      const barColor = row.total >= 5 ? LEVEL_COLORS[3] : row.total >= 3 ? LEVEL_COLORS[2] : LEVEL_COLORS[1];
       return `<tr>
-        <td><strong>${name}</strong></td>
-        <td style="text-align:center;"><span class="tag" style="color:${LEVEL_COLORS[latest.level]};border-color:${LEVEL_COLORS[latest.level]}">${total} ใบ</span></td>
-        <td style="text-align:center;">${lvlLabel}</td>
-        <td class="cell-ellipsis" title="${latest.reason}">${latest.reason}</td>
-        <td><span class="warn-actions"><button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${name}', ${total})">💬 LINE</button></span></td>
+        <td><strong>${formatMonthLabel(k)}</strong></td>
+        <td style="text-align:center;"><span class="tag" style="color:${barColor};border-color:${barColor}">${row.total} ใบ</span></td>
+        <td style="text-align:center;">${row.l1}</td>
+        <td style="text-align:center;">${row.l2}</td>
+        <td style="text-align:center;">${row.l3}</td>
+        <td style="text-align:center;">${empCount} คน</td>
       </tr>`;
     }).join('');
   }
