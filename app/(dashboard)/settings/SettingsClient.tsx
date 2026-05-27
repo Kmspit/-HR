@@ -77,14 +77,14 @@ export default function SettingsClient({ settings }: { settings: Settings | null
   }
 
   const Input = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
-    <div>
+    <div className="min-w-0">
       <label className="block text-sm text-white/50 mb-1">{label}</label>
       <input
         type={type}
         value={value ?? ''}
         onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) : e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500"
+        className="w-full min-w-0 max-w-full box-border bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500"
       />
     </div>
   )
@@ -119,11 +119,16 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         <h2 className="font-semibold text-white flex items-center gap-2">
           <Clock className="w-4 h-4 text-blue-400" /> เวลาทำงาน
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Input label="เวลาเข้างาน" value={form.workStartTime} onChange={(v: string) => set('workStartTime', v)} type="time" />
-          <Input label="เวลาออกงาน" value={form.workEndTime} onChange={(v: string) => set('workEndTime', v)} type="time" />
-          <Input label="ผ่อนผันสาย (นาที)" value={form.lateGraceMin} onChange={(v: number) => set('lateGraceMin', v)} type="number" />
-          <div />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="min-w-0">
+            <Input label="เวลาเข้างาน" value={form.workStartTime} onChange={(v: string) => set('workStartTime', v)} type="time" />
+          </div>
+          <div className="min-w-0">
+            <Input label="เวลาออกงาน" value={form.workEndTime} onChange={(v: string) => set('workEndTime', v)} type="time" />
+          </div>
+          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+            <Input label="ผ่อนผันสาย (นาที)" value={form.lateGraceMin} onChange={(v: number) => set('lateGraceMin', v)} type="number" />
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input label="วันลาป่วย/ปี" value={form.sickDaysYear} onChange={(v: number) => set('sickDaysYear', v)} type="number" />

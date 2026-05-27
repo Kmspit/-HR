@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync:prototype": "node scripts/sync-prototype.mjs",
+    "predev": "node scripts/sync-prototype.mjs",
+    "prebuild": "node scripts/sync-prototype.mjs",
     "dev": "node scripts/start-dev.mjs",
     "dev:reset": "node scripts/start-dev.mjs --clean",
     "share": "npx --yes cloudflared tunnel --url http://localhost:3000",

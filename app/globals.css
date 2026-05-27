@@ -97,6 +97,15 @@
   .light ::-webkit-scrollbar-track { background: transparent; }
   .light ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
   .light ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+
+  /* มือถือ: ช่องวันที่/เวลาไม่ล้นซ้อนกัน */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 @layer utilities {

@@ -58,12 +58,13 @@ const network = lanUrls(port)
 
 console.log('')
 console.log('  เค เอ็ม เซอร์วิส พลัส — dev server')
-console.log('  This PC:     http://localhost:' + port)
+console.log('  App:         http://localhost:' + port)
+console.log('  Prototype:   http://localhost:' + port + '/prototype/login.html')
 if (network.length) {
-  console.log('  Other devices (same Wi‑Fi/LAN):')
-  network.forEach((u) => console.log('    ' + u))
+  console.log('  LAN:')
+  network.forEach((u) => console.log('    ' + u + '  (แอป) · ' + u + '/prototype/login.html  (ต้นแบบ)'))
 } else {
-  console.log('  Other devices: run ipconfig → use IPv4 + :' + port)
+  console.log('  LAN: ipconfig → IPv4:' + port)
 }
 console.log('  Login: employee@demo.com / demo1234')
 console.log('  If blocked: allow port ' + port + ' in Windows Firewall (see README)')

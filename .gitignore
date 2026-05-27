@@ -10,6 +10,9 @@ out/
 # production
 build/
 
+# generated from prototype/ on predev & prebuild
+public/prototype/
+
 # env files (IMPORTANT — ห้าม push)
 .env
 .env.local

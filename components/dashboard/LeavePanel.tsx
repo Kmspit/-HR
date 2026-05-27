@@ -98,14 +98,14 @@ export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balan
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="min-w-0 space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">จากวันที่ *</label>
-              <input type="date" className={inputCls} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required />
+              <input type="date" className={`${inputCls} min-w-0 max-w-full`} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ถึงวันที่ *</label>
-              <input type="date" className={inputCls} value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required />
+              <input type="date" className={`${inputCls} min-w-0 max-w-full`} value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required />
             </div>
           </div>
 
