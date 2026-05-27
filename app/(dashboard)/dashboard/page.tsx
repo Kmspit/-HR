@@ -96,7 +96,7 @@ export default async function DashboardPage({
       : prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
     prisma.leaveRequest.findMany({
       where: requestUserWhere(scope),
-      include: { user: { select: { name: true, department: true, branch: { select: { name: true } } } } },
+      include: { user: { select: { name: true, department: true } } },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),

@@ -60,7 +60,7 @@ export default async function AttendancePage({
     const [employees, records] = await Promise.all([
       prisma.user.findMany({
         where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...TEAM_ROLES] } }),
-        select: { id: true, name: true, department: true, branch: { select: { name: true } } },
+        select: { id: true, name: true, department: true },
         orderBy: { name: 'asc' },
       }),
       prisma.attendance.findMany({

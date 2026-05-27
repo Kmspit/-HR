@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { generateEmployeeId } from '@/lib/utils'
 import { apiError, runNotify } from '@/lib/api-handler'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 const registerSchema = z.object({
   name:          z.string().min(2, 'กรุณากรอกชื่อ-นามสกุล'),
@@ -38,6 +39,7 @@ function emptyToNull(v?: string | null) {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSchema()
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)
 

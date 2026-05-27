@@ -5,8 +5,10 @@ import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
 import { prisma } from '@/lib/prisma'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await ensureDbSchema()
   const session = await auth()
 
   if (!session?.user) redirect('/')
