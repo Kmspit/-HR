@@ -3,13 +3,14 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineNotify, createAuditLog } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
+import { canApproveAccounts } from '@/lib/permissions'
 import { headers } from 'next/headers'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== 'MANAGER_HR') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    if (!session?.user || !canApproveAccounts(session.user.role)) {
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์อนุมัติบัญชี' }, { status: 403 })
     }
 
     const { id } = await params

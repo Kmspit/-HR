@@ -18,12 +18,12 @@ export default async function ApprovalsPage() {
   const [leaveRequests, outsideRequests, weeklyPlans] = await Promise.all([
     prisma.leaveRequest.findMany({
       where: { status: leaveStatus },
-      include: { user: { select: { name: true, email: true, department: true, role: true } } },
+      include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.outsideWorkRequest.findMany({
       where: { status: outsideStatus },
-      include: { user: { select: { name: true, email: true, department: true, role: true } } },
+      include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     role === 'MANAGER_HR'

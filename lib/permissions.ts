@@ -14,7 +14,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/payroll':           ['MANAGER_HR'],
   '/reports':           ['MANAGER_HR', 'ADMIN'],
   '/payslip':           ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/employees':         ['MANAGER_HR'],
+  '/employees':         ['MANAGER_HR', 'ADMIN'],
   '/approvals':         ['MANAGER_HR', 'ADMIN'],
   '/announcements':     ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/warnings':          ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
@@ -81,6 +81,11 @@ export function canApproveStep2(role: Role): boolean {
 
 export function canManageEmployees(role: Role): boolean {
   return role === 'MANAGER_HR'
+}
+
+/** อนุมัติ/ปฏิเสธบัญชีพนักงานที่สมัครใหม่ (รออนุมัติ) */
+export function canApproveAccounts(role: Role): boolean {
+  return role === 'MANAGER_HR' || role === 'ADMIN'
 }
 
 export function canViewAllAttendance(role: Role): boolean {

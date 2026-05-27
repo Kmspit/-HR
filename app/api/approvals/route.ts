@@ -100,6 +100,13 @@ export async function POST(req: NextRequest) {
     const req_ = await prisma.outsideWorkRequest.findUnique({ where: { id: body.requestId } })
     if (!req_) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    if (step === 1 && req_.status !== 'PENDING') {
+      return NextResponse.json({ error: 'คำขอนี้ไม่อยู่ในขั้นตอน Admin แล้ว' }, { status: 400 })
+    }
+    if (step === 2 && req_.status !== 'ADMIN_APPROVED') {
+      return NextResponse.json({ error: 'ต้องให้ Admin อนุมัติก่อน' }, { status: 400 })
+    }
+
     const newStatus = body.action === 'REJECT' ? 'REJECTED' : step === 1 ? 'ADMIN_APPROVED' : 'APPROVED'
     await prisma.outsideWorkRequest.update({ where: { id: body.requestId }, data: { status: newStatus } })
     await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step, ip, outsideRequestId: body.requestId } })
@@ -114,6 +121,13 @@ export async function POST(req: NextRequest) {
   if (body.type === 'WEEKLY_PLAN') {
     const plan = await prisma.weeklyLawyerPlan.findUnique({ where: { id: body.requestId } })
     if (!plan) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    if (step === 1 && plan.status !== 'PENDING') {
+      return NextResponse.json({ error: 'แผนงานนี้ไม่อยู่ในขั้นตอน Admin แล้ว' }, { status: 400 })
+    }
+    if (step === 2 && plan.status !== 'ADMIN_APPROVED') {
+      return NextResponse.json({ error: 'ต้องให้ Admin อนุมัติก่อน' }, { status: 400 })
+    }
 
     const newStatus = body.action === 'REJECT' ? 'REJECTED' : step === 1 ? 'ADMIN_APPROVED' : 'APPROVED'
     await prisma.weeklyLawyerPlan.update({ where: { id: body.requestId }, data: { status: newStatus } })

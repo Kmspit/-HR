@@ -93,8 +93,49 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
         )}
       </div>
 
+      {/* รออนุมัติ — การ์ดมือถือ (ปุ่มใต้ชื่อ/ตำแหน่ง) */}
+      {tab === 'pending' && (
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ไม่มีบัญชีรออนุมัติ ✅</div>
+          ) : filtered.map((u) => (
+            <div key={`card-${u.id}`} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-sm font-bold text-blue-400">{u.name[0]}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white">{u.name}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">{u.position ?? '—'} · {u.department ?? '—'}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{u.email}</p>
+                </div>
+                {statusBadge(u.status)}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleApprove(u.id, 'APPROVE')}
+                  disabled={loading === u.id}
+                  className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50 touch-manipulation"
+                >
+                  {loading === u.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                  อนุมัติ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApprove(u.id, 'REJECT')}
+                  disabled={loading === u.id}
+                  className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/20 disabled:opacity-50 touch-manipulation"
+                >
+                  <XCircle size={14} />
+                  ปฏิเสธ
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Table */}
-      <div className="rounded-2xl border border-white/5 bg-slate-900 overflow-hidden">
+      <div className={`rounded-2xl border border-white/5 bg-slate-900 overflow-hidden ${tab === 'pending' ? 'hidden md:block' : ''}`}>
         <div className="table-scroll">
           <table className="w-full text-sm">
             <thead>
@@ -130,11 +171,11 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
                   {tab === 'pending' && (
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5">
-                        <button onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id} className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-green-500 disabled:opacity-50">
-                          {loading === u.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle size={10} />} อนุมัติ
+                        <button type="button" onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id} className="flex min-h-[36px] items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-500 disabled:opacity-50 touch-manipulation">
+                          {loading === u.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} อนุมัติ
                         </button>
-                        <button onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id} className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[10px] font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50">
-                          <XCircle size={10} /> ปฏิเสธ
+                        <button type="button" onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id} className="flex min-h-[36px] items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50 touch-manipulation">
+                          <XCircle size={12} /> ปฏิเสธ
                         </button>
                       </div>
                     </td>

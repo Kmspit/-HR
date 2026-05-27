@@ -3,13 +3,15 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import EmployeeManager from '@/components/dashboard/EmployeeManager'
+import { canApproveAccounts } from '@/lib/permissions'
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await auth()
   if (!session?.user) redirect('/')
-  if (session.user.role !== 'MANAGER_HR') redirect('/dashboard')
+  if (!canApproveAccounts(session.user.role)) redirect('/dashboard')
 
   const { tab } = await searchParams
+  const defaultTab = session.user.role === 'ADMIN' ? 'pending' : (tab ?? 'all')
 
   const users = await prisma.user.findMany({
     orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
@@ -36,7 +38,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         title="จัดการพนักงาน"
         subtitle={`พนักงานทั้งหมด ${stats.active} คน · รออนุมัติ ${stats.pending} คน`}
       />
-      <EmployeeManager users={JSON.parse(JSON.stringify(users))} stats={stats} initialTab={tab ?? 'all'} />
+      <EmployeeManager users={JSON.parse(JSON.stringify(users))} stats={stats} initialTab={defaultTab} />
     </div>
   )
 }
