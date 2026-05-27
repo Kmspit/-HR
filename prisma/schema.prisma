@@ -103,9 +103,74 @@ model CompanyBranch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
+  users       User[]
+  divisions   Division[]
+  departments Department[]
+  sections    Section[]
 
   @@map("company_branches")
+}
+
+// ── ORG STRUCTURE (ฝ่าย / แผนก / ส่วนงาน) ─────
+
+model Division {
+  id        String   @id @default(cuid())
+  branchId  String
+  code      String
+  name      String
+  nameEn    String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch      CompanyBranch @relation(fields: [branchId], references: [id])
+  departments Department[]
+  users       User[]
+
+  @@unique([branchId, code])
+  @@map("divisions")
+}
+
+model Department {
+  id         String   @id @default(cuid())
+  branchId   String
+  divisionId String
+  code       String
+  name       String
+  nameEn     String?
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  branch   CompanyBranch @relation(fields: [branchId], references: [id])
+  division Division      @relation(fields: [divisionId], references: [id])
+  sections Section[]
+  users    User[]
+
+  @@unique([divisionId, code])
+  @@map("departments")
+}
+
+model Section {
+  id           String   @id @default(cuid())
+  branchId     String
+  departmentId String
+  code         String
+  name         String
+  nameEn       String?
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  branch     CompanyBranch @relation(fields: [branchId], references: [id])
+  department Department    @relation(fields: [departmentId], references: [id])
+  users      User[]
+
+  @@unique([departmentId, code])
+  @@map("sections")
 }
 
 // ── USER ────────────────────────────────────────
@@ -128,6 +193,9 @@ model User {
   role             Role       @default(EMPLOYEE)
   status           UserStatus @default(PENDING)
   department       String?
+  divisionId       String?
+  departmentId     String?
+  sectionId        String?
   position         String?
   baseSalary       Float?
   startDate        DateTime?
@@ -141,6 +209,9 @@ model User {
   updatedAt        DateTime   @updatedAt
 
   branch          CompanyBranch?      @relation(fields: [branchId], references: [id])
+  division        Division?           @relation(fields: [divisionId], references: [id])
+  orgDepartment   Department?         @relation(fields: [departmentId], references: [id])
+  section         Section?            @relation(fields: [sectionId], references: [id])
   approvedBy      User?               @relation("UserApproval", fields: [approvedById], references: [id])
   approvedUsers   User[]              @relation("UserApproval")
   attendances     Attendance[]

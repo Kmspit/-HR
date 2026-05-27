@@ -19,7 +19,7 @@ const registerSchema = z.object({
   address:       z.string().optional(),
   nationalId:    z.string().optional(),
   role:          z.enum(['EMPLOYEE', 'ADMIN', 'LAWYER'], { message: 'กรุณาเลือกตำแหน่ง' }),
-  department:    z.string().min(1, 'กรุณาเลือกแผนก'),
+  department:    z.string().optional(),
   baseSalary:    z.number().optional().nullable(),
   startDate:     z.string().min(1, 'กรุณาเลือกวันที่เริ่มงาน'),
   socialSecurity:z.boolean().default(true),
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         nationalId,
         role:          data.role,
         status:        'PENDING',
-        department:    data.department,
+        department:    null,
         branchId:      branch.id,
         baseSalary:    data.baseSalary ?? null,
         startDate:     new Date(data.startDate),
@@ -116,14 +116,14 @@ export async function POST(req: NextRequest) {
         'MANAGER_HR',
         'REGISTER_REQUEST',
         '📋 มีคำขอสมัครใหม่',
-        `${data.name} (${email}) ขอสมัคร [${branch.name}] · ${data.role} แผนก ${data.department}`,
+        `${data.name} (${email}) ขอสมัคร [${branch.name}] · ${data.role} — รอ HR กำหนดฝ่าย/แผนก/ส่วนงาน`,
         '/employees?tab=pending',
       ),
     )
 
     await runNotify(() =>
       sendLineNotify(
-        `\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอสมัครใหม่\nสาขา: ${branch.name}\nชื่อ: ${data.name}\nตำแหน่ง: ${data.role}\nแผนก: ${data.department}\nอีเมล: ${email}\n\n⚠️ กรุณาอนุมัติที่ระบบ HR`,
+        `\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอสมัครใหม่\nสาขา: ${branch.name}\nชื่อ: ${data.name}\nตำแหน่ง: ${data.role}\nอีเมล: ${email}\n\n⚠️ อนุมัติและกำหนดฝ่าย/แผนก/ส่วนงานที่ระบบ HR`,
       ),
     )
 

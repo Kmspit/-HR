@@ -6,6 +6,10 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
 import { prisma } from '@/lib/prisma'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { headers } from 'next/headers'
+import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
+
+const ORG_EXEMPT_PREFIXES = ['/org-pending', '/profile']
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   await ensureDbSchema()
@@ -13,6 +17,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!session?.user) redirect('/')
   if (session.user.status !== 'ACTIVE') redirect(`/?status=${session.user.status.toLowerCase()}`)
+
+  const pathname = (await headers()).get('x-pathname') ?? ''
+  const orgExempt = ORG_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
+
+  if (needsOrgAssignment(session.user.role) && !orgExempt) {
+    const orgUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { divisionId: true, departmentId: true, sectionId: true },
+    })
+    if (!hasOrgAssignment(orgUser ?? {})) redirect('/org-pending')
+  }
 
   const user = {
     name:       session.user.name ?? '',

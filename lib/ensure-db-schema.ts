@@ -71,5 +71,55 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRaw`
     UPDATE users SET branchId = ${hqId} WHERE branchId IS NULL OR branchId = ''
   `
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS divisions (
+      id TEXT NOT NULL PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      nameEn TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(branchId, code)
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS departments (
+      id TEXT NOT NULL PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      divisionId TEXT NOT NULL,
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      nameEn TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(divisionId, code)
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS sections (
+      id TEXT NOT NULL PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      departmentId TEXT NOT NULL,
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      nameEn TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(departmentId, code)
+    )
+  `)
+
+  await addUserColumnIfMissing('divisionId', `ALTER TABLE users ADD COLUMN divisionId TEXT`)
+  await addUserColumnIfMissing('departmentId', `ALTER TABLE users ADD COLUMN departmentId TEXT`)
+  await addUserColumnIfMissing('sectionId', `ALTER TABLE users ADD COLUMN sectionId TEXT`)
+
   return true
 }

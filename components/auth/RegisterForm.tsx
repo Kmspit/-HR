@@ -32,7 +32,7 @@ const STEPS = ['ข้อมูลส่วนตัว', 'ข้อมูลพ
 type FormData = {
   prefix: string; firstName: string; lastName: string; nickname: string
   email: string; phone: string; birthDate: string; address: string
-  nationalId: string; role: string; department: string; branchId: string
+  nationalId: string; role: string; branchId: string
   baseSalary: string; startDate: string; socialSecurity: boolean
   password: string; confirmPassword: string
 }
@@ -42,8 +42,6 @@ const ROLES = [
   { value: 'ADMIN',    label: '🔧 Admin',   desc: 'ดูแลระบบ + อนุมัติขั้น 1' },
   { value: 'LAWYER',   label: '⚖️ ทนายความ', desc: 'ส่งแผนงานรายสัปดาห์' },
 ]
-
-const DEPARTMENTS = ['HR', 'IT', 'Marketing', 'Finance', 'Legal', 'Operations', 'Sales', 'Engineering', 'Design', 'Management']
 
 export default function RegisterForm() {
   const router = useRouter()
@@ -94,7 +92,7 @@ export default function RegisterForm() {
   const [form, setForm] = useState<FormData>({
     prefix: 'นาย', firstName: '', lastName: '', nickname: '',
     email: '', phone: '', birthDate: '', address: '', nationalId: '',
-    role: '', department: '', branchId: '', baseSalary: '', startDate: '', socialSecurity: true,
+    role: '', branchId: '', baseSalary: '', startDate: '', socialSecurity: true,
     password: '', confirmPassword: '',
   })
 
@@ -114,7 +112,6 @@ export default function RegisterForm() {
     }
     if (s === 1) {
       if (!form.role)       e.role       = 'กรุณาเลือกตำแหน่ง'
-      if (!form.department) e.department = 'กรุณากรอกแผนก'
       if (!form.startDate)  e.startDate  = 'กรุณาเลือกวันที่เริ่มงาน'
     }
     if (s === 2) {
@@ -148,7 +145,6 @@ export default function RegisterForm() {
       address: form.address.trim() || undefined,
       nationalId: form.nationalId.trim() || undefined,
       role: form.role as 'EMPLOYEE' | 'ADMIN' | 'LAWYER',
-      department: form.department,
       branchId: form.branchId,
       baseSalary: baseSalaryNum != null && !Number.isNaN(baseSalaryNum) ? baseSalaryNum : null,
       startDate: form.startDate,
@@ -165,7 +161,7 @@ export default function RegisterForm() {
       setErrors(allErrors)
       const firstStep = allErrors.branchId || allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone
         ? 0
-        : allErrors.role || allErrors.department || allErrors.startDate
+        : allErrors.role || allErrors.startDate
           ? 1
           : 2
       setStep(firstStep)
@@ -327,11 +323,8 @@ export default function RegisterForm() {
       {/* STEP 1: Employee Info */}
       {step === 1 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
-            สาขา:{' '}
-            <span className="text-white font-medium">
-              {branches.find((b) => b.id === form.branchId)?.label ?? '—'}
-            </span>
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-200/90">
+            สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'} — ฝ่าย/แผนก/ส่วนงาน HR จะกำหนดหลังอนุมัติบัญชี
           </div>
 
           <div className="space-y-2">
@@ -350,19 +343,9 @@ export default function RegisterForm() {
             {errors.role && <p className="text-xs text-red-400">{errors.role}</p>}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">แผนก *</label>
-              <select className={inputClass('department')} value={form.department} onChange={(e) => set('department', e.target.value)}>
-                <option value="">— เลือกแผนก —</option>
-                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              {errors.department && <p className="text-xs text-red-400">{errors.department}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินเดือนพื้นฐาน</label>
-              <input type="number" placeholder="25000" className={inputClass('baseSalary')} value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} />
-            </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินเดือนพื้นฐาน (ถ้ามี)</label>
+            <input type="number" placeholder="25000" className={inputClass('baseSalary')} value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
@@ -393,7 +376,7 @@ export default function RegisterForm() {
             <p>ชื่อ: {form.prefix}{form.firstName} {form.lastName} ({form.nickname || '-'})</p>
             <p>อีเมล: {form.email}</p>
             <p>สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'}</p>
-            <p>ตำแหน่ง: {ROLES.find(r => r.value === form.role)?.label ?? '-'} · {form.department}</p>
+            <p>ตำแหน่ง: {ROLES.find(r => r.value === form.role)?.label ?? '-'}</p>
           </div>
 
           <div className="space-y-1.5">

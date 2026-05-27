@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         type:    body.action === 'APPROVE' ? 'ACCOUNT_APPROVED' : 'ACCOUNT_REJECTED',
         title:   body.action === 'APPROVE' ? '✅ บัญชีได้รับการอนุมัติ' : '❌ คำขอถูกปฏิเสธ',
         message: body.action === 'APPROVE'
-          ? 'บัญชีของคุณได้รับการอนุมัติแล้ว สามารถเข้าสู่ระบบได้ทันที'
+          ? 'บัญชีของคุณได้รับการอนุมัติแล้ว — รอ HR กำหนดฝ่าย แผนก และส่วนงานก่อนใช้งานเต็มรูปแบบ'
           : `คำขอสมัครของคุณถูกปฏิเสธ${body.reason ? `: ${body.reason}` : ''} กรุณาติดต่อ HR`,
       })
 

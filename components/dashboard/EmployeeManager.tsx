@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
-import { Loader2, CheckCircle, XCircle, Search } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { Loader2, CheckCircle, XCircle, Search, Layers } from 'lucide-react'
+import OrgAssignModal from '@/components/dashboard/OrgAssignModal'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS } from '@/lib/permissions'
@@ -15,15 +16,53 @@ type User = {
   phone: string | null; baseSalary: number | null; socialSecurity: boolean
   startDate: string | null; lineId: string | null; isCoworker: boolean; createdAt: string
   branch?: { name: string; code: string } | null
+  branchId?: string | null
+  divisionId?: string | null
+  departmentId?: string | null
+  sectionId?: string | null
+  division?: { name: string; code: string } | null
+  orgDepartment?: { name: string; code: string } | null
+  section?: { name: string; code: string } | null
 }
 
-type Props = { users: User[]; stats: { total: number; pending: number; active: number; disabled: number }; initialTab: string }
+type OrgOpt = { id: string; name: string; code?: string; divisionId?: string; departmentId?: string }
 
-export default function EmployeeManager({ users, stats, initialTab }: Props) {
+type Props = {
+  users: User[]
+  stats: { total: number; pending: number; active: number; disabled: number }
+  initialTab: string
+  orgFilterOptions?: { divisions: OrgOpt[]; departments: OrgOpt[]; sections: OrgOpt[] }
+  currentOrgFilters?: { divisionId?: string; departmentId?: string; sectionId?: string }
+}
+
+function orgLabel(u: User) {
+  if (u.division && u.orgDepartment && u.section) {
+    return `${u.division.name} / ${u.orgDepartment.name} / ${u.section.name}`
+  }
+  if (u.department) return u.department
+  return '— ยังไม่กำหนด'
+}
+
+export default function EmployeeManager({ users, stats, initialTab, orgFilterOptions, currentOrgFilters }: Props) {
   const [tab, setTab] = useState<'all' | 'pending' | 'disabled'>(initialTab === 'pending' ? 'pending' : 'all')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
+  const [assignUser, setAssignUser] = useState<User | null>(null)
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const setOrgFilter = (key: 'divisionId' | 'departmentId' | 'sectionId', value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (!value || value === 'all') params.delete(key)
+    else params.set(key, value)
+    if (key === 'divisionId') { params.delete('departmentId'); params.delete('sectionId') }
+    if (key === 'departmentId') params.delete('sectionId')
+    const q = params.toString()
+    router.push(q ? `${pathname}?${q}` : pathname)
+  }
+
+  const sel = (key: 'divisionId' | 'departmentId' | 'sectionId') => currentOrgFilters?.[key] ?? ''
 
   const filtered = users.filter((u) => {
     const matchTab = tab === 'all' ? u.status === 'ACTIVE' || u.status === 'DISABLED' : tab === 'pending' ? u.status === 'PENDING' : u.status === 'DISABLED'
@@ -74,6 +113,32 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
           </div>
         ))}
       </div>
+
+      {orgFilterOptions && (
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] text-slate-500">ฝ่าย</label>
+            <select value={sel('divisionId') || 'all'} onChange={(e) => setOrgFilter('divisionId', e.target.value)} className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-800 px-2 py-2 text-xs text-white">
+              <option value="all">ทุกฝ่าย</option>
+              {orgFilterOptions.divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">แผนก</label>
+            <select value={sel('departmentId') || 'all'} onChange={(e) => setOrgFilter('departmentId', e.target.value)} className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-800 px-2 py-2 text-xs text-white">
+              <option value="all">ทุกแผนก</option>
+              {orgFilterOptions.departments.filter((d) => !sel('divisionId') || d.divisionId === sel('divisionId')).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">ส่วนงาน</label>
+            <select value={sel('sectionId') || 'all'} onChange={(e) => setOrgFilter('sectionId', e.target.value)} className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-800 px-2 py-2 text-xs text-white">
+              <option value="all">ทุกส่วนงาน</option>
+              {orgFilterOptions.sections.filter((s) => !sel('departmentId') || s.departmentId === sel('departmentId')).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Tabs + Search */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -142,14 +207,14 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/5">
-                {['พนักงาน', 'ตำแหน่ง / แผนก', 'สาขา', 'Role', 'สถานะ', 'เริ่มงาน', 'ประกันสังคม', ...(tab === 'pending' ? ['การดำเนินการ'] : [])].map((h) => (
+                {['พนักงาน', 'ฝ่าย/แผนก/ส่วนงาน', 'สาขา', 'Role', 'สถานะ', 'เริ่มงาน', 'ประกันสังคม', 'การดำเนินการ'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="py-8 text-center text-slate-500">ไม่มีข้อมูล</td></tr>
+                <tr><td colSpan={8} className="py-8 text-center text-slate-500">ไม่มีข้อมูล</td></tr>
               ) : filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
@@ -161,7 +226,12 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-400">{u.position ?? '-'} / {u.department ?? '-'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px]">
+                    <p className="truncate" title={orgLabel(u)}>{orgLabel(u)}</p>
+                    {!u.sectionId && u.status === 'ACTIVE' && (
+                      <span className="text-amber-400 text-[10px]">รอกำหนดโครงสร้าง</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-400">{u.branch ? `${u.branch.name} (${u.branch.code})` : '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${ROLE_COLORS[u.role]}`}>{ROLE_ICONS[u.role]} {ROLE_LABELS[u.role]}</span>
@@ -171,24 +241,38 @@ export default function EmployeeManager({ users, stats, initialTab }: Props) {
                   <td className="px-4 py-3">
                     <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${u.socialSecurity ? 'text-green-400 bg-green-500/10' : 'text-slate-400 bg-slate-700'}`}>{u.socialSecurity ? 'อยู่' : 'ไม่อยู่'}</span>
                   </td>
-                  {tab === 'pending' && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1.5">
-                        <button type="button" onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id} className="flex min-h-[36px] items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-500 disabled:opacity-50 touch-manipulation">
-                          {loading === u.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} อนุมัติ
-                        </button>
-                        <button type="button" onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id} className="flex min-h-[36px] items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50 touch-manipulation">
-                          <XCircle size={12} /> ปฏิเสธ
-                        </button>
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {tab === 'pending' && (
+                        <>
+                          <button type="button" onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id} className="flex min-h-[36px] items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-500 disabled:opacity-50 touch-manipulation">
+                            {loading === u.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} อนุมัติ
+                          </button>
+                          <button type="button" onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id} className="flex min-h-[36px] items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 disabled:opacity-50 touch-manipulation">
+                            <XCircle size={12} /> ปฏิเสธ
+                          </button>
+                        </>
+                      )}
+                      <button type="button" onClick={() => setAssignUser(u)} className="flex min-h-[36px] items-center gap-1 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 touch-manipulation">
+                        <Layers size={12} /> กำหนดฝ่าย/แผนก
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {assignUser && (
+        <OrgAssignModal
+          userId={assignUser.id}
+          userName={assignUser.name}
+          branchId={assignUser.branchId ?? null}
+          onClose={() => setAssignUser(null)}
+        />
+      )}
     </div>
   )
 }
