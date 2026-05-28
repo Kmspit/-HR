@@ -1,10 +1,9 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import type { Role, UserStatus } from '@prisma/client'
 import { authConfig } from './auth.config'
+import { verifyLoginCredentials } from './login-credentials'
 
 declare module 'next-auth' {
   interface User {
@@ -28,7 +27,6 @@ declare module 'next-auth' {
   }
 }
 
-
 const loginSchema = z.object({
   email: z.string().min(1),
   password: z.string().min(1),
@@ -38,40 +36,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
+      credentials: {
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' },
+      },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials)
         if (!parsed.success) return null
 
         const { email, password } = parsed.data
-        const identifier = email.trim().toLowerCase()
+        const result = await verifyLoginCredentials(email, password)
 
-        const user = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { email: identifier },
-              { employeeId: identifier },
-              { employeeId: email.trim() },
-            ],
-          },
-        })
-
-        if (!user) return null
-        if (user.status === 'PENDING')  throw new Error('PENDING_APPROVAL')
-        if (user.status === 'DISABLED') throw new Error('ACCOUNT_DISABLED')
-        if (user.status === 'REJECTED') throw new Error('ACCOUNT_REJECTED')
-
-        const isValid = await bcrypt.compare(password, user.passwordHash)
-        if (!isValid) return null
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          status: user.status,
-          department: user.department,
-          branchId: user.branchId,
+        if (!result.ok) {
+          throw new Error(result.error)
         }
+
+        return result.user
       },
     }),
   ],

@@ -1,16 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 const ERROR_MESSAGES: Record<string, string> = {
-  PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR / Manager',
+  MISSING_FIELDS: 'กรุณากรอกอีเมลและรหัสผ่าน',
+  INVALID_CREDENTIALS: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
+  PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR — รหัสผ่านถูกต้องแล้ว',
   ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
   ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
   CredentialsSignin: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
-  SessionRequired: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
+  MissingCSRF: 'เซสชันหมดอายุ กรุณารีเฟรชหน้าแล้วลองใหม่',
+  SessionRequired: 'กรุณาเข้าสู่ระบบอีกครั้ง',
+  SERVER_ERROR: 'ระบบขัดข้อง กรุณาลองใหม่ภายหลัง',
 }
 
 export default function LoginForm({ initialError }: { initialError?: string | null }) {
@@ -45,24 +48,36 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
     setErrors({})
 
     try {
-      const res = await signIn('credentials', {
-        email: form.email.trim(),
-        password: form.password,
-        redirect: false,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: form.email.trim(),
+          password: form.password,
+        }),
       })
 
-      if (res?.error || !res?.ok) {
-        toast.error(ERROR_MESSAGES[res?.error ?? ''] ?? 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        message?: string
+        url?: string
+      }
+
+      if (!res.ok || !data.ok) {
+        const code = data.error ?? ''
+        toast.error(
+          ERROR_MESSAGES[code] ?? data.message ?? 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่',
+        )
         setLoading(false)
         return
       }
 
       toast.success('เข้าสู่ระบบสำเร็จ กำลังเปิดหน้าหลัก...')
-
-      // โหลดหน้าใหม่ผ่านเซิร์ฟเวอร์ — cookie session พร้อมก่อน redirect (แก้ปัญหา PC)
-      window.location.href = '/api/auth/post-login'
+      window.location.href = data.url ?? '/api/auth/post-login'
     } catch {
-      toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่')
       setLoading(false)
     }
   }
@@ -70,21 +85,14 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
   const inputBase = `
     w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all
     dark:bg-white/[0.05] dark:text-white dark:placeholder-slate-500
-    light:bg-white light:text-slate-800 light:placeholder-slate-400
   `
-  const inputNormal = `${inputBase}
-    dark:border-white/10 dark:focus:border-blue-500/60 dark:focus:bg-white/[0.08] dark:focus:ring-2 dark:focus:ring-blue-500/10
-    light:border-slate-200 light:focus:border-blue-400 light:focus:ring-2 light:focus:ring-blue-500/10
-  `
-  const inputError = `${inputBase}
-    dark:border-red-500/50 dark:focus:border-red-500/60
-    light:border-red-400 light:focus:border-red-400
-  `
+  const inputNormal = `${inputBase} dark:border-white/10 dark:focus:border-blue-500/60 dark:focus:ring-2 dark:focus:ring-blue-500/10`
+  const inputError = `${inputBase} dark:border-red-500/50`
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 light:text-slate-500">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
           อีเมล / รหัสพนักงาน
         </label>
         <input
@@ -93,23 +101,16 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
           placeholder="name@company.com หรือรหัสพนักงาน"
           className={errors.email ? inputError : inputNormal}
           value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          onChange={(ev) => setForm((f) => ({ ...f, email: ev.target.value }))}
           disabled={loading}
         />
-        {errors.email && (
-          <p className="flex items-center gap-1 text-xs text-red-400">{errors.email}</p>
-        )}
+        {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label className="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 light:text-slate-500">
-            รหัสผ่าน
-          </label>
-          <span className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 transition-colors">
-            ลืมรหัสผ่าน?
-          </span>
-        </div>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          รหัสผ่าน
+        </label>
         <div className="relative">
           <input
             type={showPw ? 'text' : 'password'}
@@ -117,43 +118,29 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
             placeholder="••••••••"
             className={`${errors.password ? inputError : inputNormal} pr-12`}
             value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            onChange={(ev) => setForm((f) => ({ ...f, password: ev.target.value }))}
             disabled={loading}
           />
           <button
             type="button"
             onClick={() => setShowPw((v) => !v)}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg transition-colors dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-white/5"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
           >
             {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
-        {errors.password && (
-          <p className="flex items-center gap-1 text-xs text-red-400">{errors.password}</p>
-        )}
+        {errors.password && <p className="text-xs text-red-400">{errors.password}</p>}
       </div>
-
-      <label className="flex cursor-pointer items-center gap-3">
-        <input
-          type="checkbox"
-          checked={form.remember}
-          onChange={(e) => setForm((f) => ({ ...f, remember: e.target.checked }))}
-          className="h-4.5 w-4.5 rounded border dark:border-white/20 accent-blue-500 cursor-pointer"
-          disabled={loading}
-        />
-        <span className="text-sm dark:text-slate-400">จดจำการเข้าสู่ระบบ</span>
-      </label>
 
       <button
         type="submit"
         disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
-        style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: loading ? 'none' : '0 4px 20px rgba(99,102,241,0.3)' }}
+        className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
+        style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
       >
         {loading
           ? <><Loader2 size={16} className="animate-spin" /> กำลังเข้าสู่ระบบ...</>
-          : 'เข้าสู่ระบบ'
-        }
+          : 'เข้าสู่ระบบ'}
       </button>
     </form>
   )
