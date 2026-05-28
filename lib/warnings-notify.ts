@@ -35,11 +35,11 @@ export async function notifyWarningToEmployee(
     ? `📄 ใบเตือน — ${warning.user.name}\n${warning.reason}\n\nดาวน์โหลดไฟล์:\n${fileLink}`
     : `⚠️ ใบเตือน — ${warning.user.name}\n${warning.reason}\n\nกรุณาเปิดแอพ HRFlow → เมนูใบเตือน`
 
-  await sendLineMessage(warning.userId, lineText)
+  const lineSent = await sendLineMessage(warning.userId, lineText)
 
   await prisma.warning.update({
     where: { id: warningId },
-    data: { sentToLine: true },
+    data: { sentToLine: lineSent },
   })
 
   return { fileLink }

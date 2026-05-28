@@ -186,6 +186,19 @@ async function runEnsure(): Promise<boolean> {
     ON attendance_face_logs (userId, createdAt)
   `)
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS line_link_codes (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      code TEXT NOT NULL UNIQUE,
+      expiresAt DATETIME NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS line_link_codes_user_idx ON line_link_codes (userId)
+  `)
+
   return true
 }
 

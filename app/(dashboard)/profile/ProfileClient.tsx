@@ -25,6 +25,7 @@ import {
   type ProfileFormErrors,
 } from '@/lib/profile-validators-client'
 import ProfileDataHistory, { type ProfileRecordInfo } from '@/components/profile/ProfileDataHistory'
+import LineLinkCard from '@/components/profile/LineLinkCard'
 import type { ProfileHistoryItem } from '@/lib/profile-history'
 
 const PREFIXES = ['นาย', 'นาง', 'นางสาว', 'ดร.']
@@ -349,22 +350,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
             className={fieldClass(errors.lineId)}
           />
         </FormField>
-        {(initial.lineUserId || initial.lineDisplayName) && (
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm pt-1">
-            {initial.lineUserId ? (
-              <div className="rounded-lg dark:bg-white/5 light:bg-slate-50 p-3">
-                <dt className="text-[11px] dark:text-slate-500 light:text-slate-500">LINE User ID (HR ตั้งค่า)</dt>
-                <dd className="dark:text-white/80 light:text-slate-700 mt-1 font-mono text-xs break-all">{initial.lineUserId}</dd>
-              </div>
-            ) : null}
-            {initial.lineDisplayName ? (
-              <div className="rounded-lg dark:bg-white/5 light:bg-slate-50 p-3">
-                <dt className="text-[11px] dark:text-slate-500 light:text-slate-500">ชื่อใน LINE</dt>
-                <dd className="dark:text-white/80 light:text-slate-700 mt-1">{initial.lineDisplayName}</dd>
-              </div>
-            ) : null}
-          </dl>
-        )}
+        <LineLinkCard onLinked={() => router.refresh()} />
       </section>
 
       <ProfileDataHistory record={recordInfo} history={editHistory} />

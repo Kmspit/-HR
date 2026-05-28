@@ -19,6 +19,7 @@
     "db:migrate:branches": "node scripts/migrate-turso-branches.mjs",
     "db:migrate:org": "node scripts/migrate-turso-org.mjs",
     "db:migrate:line": "node scripts/migrate-turso-line.mjs",
+    "db:migrate:line-webhook": "node scripts/migrate-turso-line-webhook.mjs",
     "db:migrate:holidays": "node scripts/migrate-turso-holidays.mjs",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",

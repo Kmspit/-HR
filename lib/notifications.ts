@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import type { NotificationType, Role } from '@prisma/client'
-import { lineNotifyTarget } from '@/lib/line-profile'
+import { pushLineText } from '@/lib/line-api'
 
 // ─── Create in-app notification ───────────────────────
 export async function createNotification(params: {
@@ -41,66 +41,48 @@ export async function notifyRole(
 
 // ─── LINE Messaging API (Messaging API — ส่งถึงคนเดียว) ──
 export async function sendLineMessage(userId: string, message: string): Promise<boolean> {
-  const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN
-  if (!accessToken) {
-    console.log('[LINE Mock] to user:', userId, '\n', message)
-    return true
-  }
-
-  // Get user's LINE ID from DB
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { lineId: true, lineUserId: true },
+    select: { lineUserId: true, lineId: true, name: true },
   })
-  const to = user ? lineNotifyTarget(user) : null
-  if (!to) {
-    console.log(`[LINE] User ${userId} has no LINE target, skipping`)
+  if (!user?.lineUserId) {
+    if (user?.lineId) {
+      console.log(
+        `[LINE] ${user.name}: มี LINE ID แต่ยังไม่ผูก OA — ให้เชื่อมที่โปรไฟล์ → ส่ง "ลิงก์ รหัส" ในแชท OA`,
+      )
+    } else {
+      console.log(`[LINE] User ${userId} ยังไม่ผูก LINE OA`)
+    }
     return false
   }
-
-  try {
-    const res = await fetch('https://api.line.me/v2/bot/message/push', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to,
-        messages: [{ type: 'text', text: message }],
-      }),
-    })
-    return res.ok
-  } catch {
-    console.error('[LINE Messaging Error]')
-    return false
-  }
+  return pushLineText(user.lineUserId, message)
 }
 
 // ─── LINE Flex Message ────────────────────────────────
 export async function sendLineFlexMessage(userId: string, altText: string, contents: object): Promise<boolean> {
-  const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN
-  if (!accessToken) {
-    console.log('[LINE Flex Mock] to user:', userId)
-    return true
-  }
-
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { lineId: true, lineUserId: true },
+    select: { lineUserId: true },
   })
-  const to = user ? lineNotifyTarget(user) : null
-  if (!to) return false
+  if (!user?.lineUserId) return false
+
+  const token =
+    process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim() ||
+    process.env.LINE_OA_ACCESS_TOKEN?.trim()
+  if (!token) {
+    console.log('[LINE Flex Mock] to', user.lineUserId)
+    return true
+  }
 
   try {
     const res = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to,
+        to: user.lineUserId,
         messages: [{ type: 'flex', altText, contents }],
       }),
     })
