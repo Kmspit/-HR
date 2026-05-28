@@ -124,6 +124,20 @@ async function runEnsure(): Promise<boolean> {
   await addUserColumnIfMissing('lineUserId', `ALTER TABLE users ADD COLUMN lineUserId TEXT`)
   await addUserColumnIfMissing('lineDisplayName', `ALTER TABLE users ADD COLUMN lineDisplayName TEXT`)
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS company_holidays (
+      id TEXT NOT NULL PRIMARY KEY,
+      holidayName TEXT NOT NULL,
+      holidayDate DATETIME NOT NULL,
+      holidayType TEXT NOT NULL,
+      repeatEveryYear INTEGER NOT NULL DEFAULT 0,
+      branchId TEXT,
+      createdById TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   for (const branchId of [HQ_BRANCH_ID, NMA_BRANCH_ID]) {
     try {
       await seedDefaultOrgStructure(prisma, branchId)

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { Loader2, Paperclip } from 'lucide-react'
+import { AlertTriangle, Loader2, Paperclip } from 'lucide-react'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { LEAVE_TYPE_OPTIONS, LEAVE_TYPE_LABELS } from '@/lib/leave-types'
@@ -21,20 +21,69 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: 'รออนุมัติ', ADMIN_APPROVED: 'ผ่าน Admin', APPROVED: 'อนุมัติแล้ว', REJECTED: 'ปฏิเสธ',
 }
 
-export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balance: Balance }) {
+type HolidayConflict = { date: string; holidayName: string; typeLabel: string }
+
+export default function LeavePanel({
+  leaves,
+  balance,
+  branchId,
+}: {
+  leaves: Leave[]
+  balance: Balance
+  branchId: string | null
+}) {
   const [tab, setTab] = useState<'request' | 'history'>('request')
   const [loading, setLoading] = useState(false)
+  const [checkingHolidays, setCheckingHolidays] = useState(false)
+  const [holidayBlock, setHolidayBlock] = useState<{
+    message: string
+    conflicts: HolidayConflict[]
+  } | null>(null)
   const [attachment, setAttachment] = useState<File | null>(null)
   const [form, setForm] = useState({ type: 'SICK', startDate: '', endDate: '', reason: '' })
   const router = useRouter()
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
+  useEffect(() => {
+    if (!form.startDate || !form.endDate) {
+      setHolidayBlock(null)
+      return
+    }
+    const t = setTimeout(async () => {
+      setCheckingHolidays(true)
+      const q = new URLSearchParams({
+        startDate: form.startDate,
+        endDate: form.endDate,
+      })
+      if (branchId) q.set('branchId', branchId)
+      const { ok, data } = await apiJson<{
+        blocked?: boolean
+        message?: string
+        conflicts?: HolidayConflict[]
+      }>(`/api/holidays/check?${q}`)
+      setCheckingHolidays(false)
+      if (ok && data.blocked) {
+        setHolidayBlock({
+          message: data.message ?? 'ช่วงวันที่มีวันหยุด',
+          conflicts: data.conflicts ?? [],
+        })
+      } else {
+        setHolidayBlock(null)
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [form.startDate, form.endDate, branchId])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.startDate || !form.endDate || !form.reason) { toast.error('กรุณากรอกข้อมูลให้ครบ'); return }
     const days = Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1
     if (days < 1) { toast.error('วันที่ไม่ถูกต้อง'); return }
+    if (holidayBlock) {
+      toast.error(holidayBlock.message)
+      return
+    }
     setLoading(true)
     try {
       const formData = new FormData()
@@ -109,6 +158,37 @@ export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balan
             </div>
           </div>
 
+          {(checkingHolidays || holidayBlock) && (
+            <div
+              className={`rounded-xl border p-3 text-sm ${
+                holidayBlock
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                  : 'border-white/10 bg-white/5 text-slate-400'
+              }`}
+            >
+              {checkingHolidays ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> กำลังตรวจสอบวันหยุด...
+                </span>
+              ) : holidayBlock ? (
+                <div>
+                  <p className="font-semibold flex items-center gap-2 text-amber-300">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    ไม่สามารถลาในวันหยุดได้
+                  </p>
+                  <p className="text-xs mt-1.5 text-amber-200/90">{holidayBlock.message}</p>
+                  <ul className="mt-2 space-y-1 text-xs text-amber-200/80">
+                    {holidayBlock.conflicts.map((c) => (
+                      <li key={c.date}>
+                        {c.date} — {c.typeLabel}: {c.holidayName}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เหตุผลการลา *</label>
             <textarea rows={3} placeholder="ระบุเหตุผล..." className={`${inputCls} resize-none py-2.5`} value={form.reason} onChange={(e) => set('reason', e.target.value)} required />
@@ -128,7 +208,7 @@ export default function LeavePanel({ leaves, balance }: { leaves: Leave[]; balan
             </label>
           </div>
 
-          <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
+          <button type="submit" disabled={loading || !!holidayBlock || checkingHolidays} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
             {loading ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</> : '📤 ส่งคำขออนุมัติ'}
           </button>
         </form>

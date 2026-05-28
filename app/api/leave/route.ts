@@ -7,6 +7,13 @@ import { apiError, runNotify } from '@/lib/api-handler'
 import { saveUpload } from '@/lib/save-upload'
 import { LEAVE_TYPE_OPTIONS } from '@/lib/leave-types'
 import type { LeaveType } from '@prisma/client'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import {
+  findLeaveHolidayConflicts,
+  formatHolidayConflictMessage,
+  loadHolidaysForBranch,
+  parseDateOnly,
+} from '@/lib/company-holidays'
 
 const leaveTypes = LEAVE_TYPE_OPTIONS.map((o) => o.value) as [LeaveType, ...LeaveType[]]
 
@@ -20,6 +27,7 @@ const leaveSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSchema()
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -52,6 +60,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: result.error.errors[0]?.message }, { status: 400 })
       }
       parsed = result.data
+    }
+
+    const start = parseDateOnly(parsed.startDate)
+    const end = parseDateOnly(parsed.endDate)
+    if (!start || !end) {
+      return NextResponse.json({ error: 'รูปแบบวันที่ไม่ถูกต้อง' }, { status: 400 })
+    }
+
+    const branchId = session.user.branchId ?? null
+    const holidays = await loadHolidaysForBranch(prisma, branchId)
+    const conflicts = findLeaveHolidayConflicts(start, end, branchId, holidays)
+    if (conflicts.length > 0) {
+      return NextResponse.json(
+        { error: formatHolidayConflictMessage(conflicts), conflicts },
+        { status: 400 },
+      )
     }
 
     const leave = await prisma.leaveRequest.create({

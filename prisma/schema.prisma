@@ -89,6 +89,13 @@ enum AuditAction {
   PASSWORD_RESET
 }
 
+enum HolidayType {
+  SATURDAY
+  SUNDAY
+  PUBLIC_HOLIDAY
+  COMPANY_HOLIDAY
+}
+
 // ── COMPANY BRANCH ──────────────────────────────
 
 model CompanyBranch {
@@ -107,8 +114,30 @@ model CompanyBranch {
   divisions   Division[]
   departments Department[]
   sections    Section[]
+  holidays    CompanyHoliday[]
 
   @@map("company_branches")
+}
+
+// ── COMPANY HOLIDAYS ───────────────────────────
+
+model CompanyHoliday {
+  id              String      @id @default(cuid())
+  holidayName     String
+  holidayDate     DateTime
+  holidayType     HolidayType
+  repeatEveryYear Boolean     @default(false)
+  branchId        String?
+  createdById     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  branch    CompanyBranch? @relation(fields: [branchId], references: [id])
+  createdBy User?          @relation("HolidayCreator", fields: [createdById], references: [id])
+
+  @@index([branchId])
+  @@index([holidayDate])
+  @@map("company_holidays")
 }
 
 // ── ORG STRUCTURE (ฝ่าย / แผนก / ส่วนงาน) ─────
@@ -228,6 +257,7 @@ model User {
   warnings        Warning[]
   warningsIssued  Warning[]           @relation("WarningsIssued")
   payrolls        Payroll[]
+  holidaysCreated CompanyHoliday[]  @relation("HolidayCreator")
   savedWorkPlaces SavedWorkPlace[]
   device          UserDevice?
 

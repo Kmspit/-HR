@@ -29,6 +29,7 @@ export default async function LeavePage() {
       <LeavePanel
         leaves={JSON.parse(JSON.stringify(myLeaves))}
         balance={JSON.parse(JSON.stringify(leaveBalance))}
+        branchId={session.user.branchId ?? null}
       />
     </div>
   )
