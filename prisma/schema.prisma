@@ -260,8 +260,45 @@ model User {
   holidaysCreated CompanyHoliday[]  @relation("HolidayCreator")
   savedWorkPlaces SavedWorkPlace[]
   device          UserDevice?
+  faceProfile     UserFaceProfile?
+  faceLogs        AttendanceFaceLog[]
 
   @@map("users")
+}
+
+// ── FACE RECOGNITION (ลงทะเบียนใบหน้า 1 ครั้ง) ──
+
+model UserFaceProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  encryptedDescriptor String
+  modelVersion        String   @default("face-api-tiny-v1")
+  sampleCount         Int      @default(1)
+  registeredAt        DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_face_profiles")
+}
+
+model AttendanceFaceLog {
+  id              String   @id @default(cuid())
+  userId          String
+  attendanceId    String?
+  action          String
+  method          String
+  matched         Boolean  @default(false)
+  matchScore      Float?
+  livenessScore   Float?
+  spoofFlags      String?
+  failureReason   String?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("attendance_face_logs")
 }
 
 // ── SAVED WORK PLACES (ชื่อสถานที่ — ไม่ผูก GPS) ──

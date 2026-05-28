@@ -155,6 +155,37 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE payrolls ADD COLUMN lateDeductionDetail TEXT`,
   )
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS user_face_profiles (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      encryptedDescriptor TEXT NOT NULL,
+      modelVersion TEXT NOT NULL DEFAULT 'face-api-tiny-v1',
+      sampleCount INTEGER NOT NULL DEFAULT 1,
+      registeredAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS attendance_face_logs (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      attendanceId TEXT,
+      action TEXT NOT NULL,
+      method TEXT NOT NULL,
+      matched INTEGER NOT NULL DEFAULT 0,
+      matchScore REAL,
+      livenessScore REAL,
+      spoofFlags TEXT,
+      failureReason TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS attendance_face_logs_user_created_idx
+    ON attendance_face_logs (userId, createdAt)
+  `)
+
   return true
 }
 

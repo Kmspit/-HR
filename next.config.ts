@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     'libsql',
     'bcryptjs',
   ],
+  transpilePackages: ['@vladmandic/face-api'],
 }
 
 export default nextConfig

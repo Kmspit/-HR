@@ -5,6 +5,7 @@ import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
+import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +16,10 @@ export async function POST(req: NextRequest) {
     if (!deviceCheck.ok) return NextResponse.json({ error: deviceCheck.error }, { status: 403 })
 
     const formData = await req.formData()
+
+    const faceBlock = await guardAttendanceFace(session.user.id, formData, 'checkout')
+    if (faceBlock) return faceBlock
+
     const photo = formData.get('photo') as File | null
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
@@ -67,6 +72,13 @@ export async function POST(req: NextRequest) {
         ...(workPlaceName ? { workPlaceName } : {}),
       },
     })
+
+    const faceLogId = (formData.get('faceLogId') as string) || null
+    if (faceLogId) {
+      await prisma.attendanceFaceLog
+        .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
+        .catch(() => {})
+    }
 
     return NextResponse.json({ success: true, attendance: updated, earlyLeaveMinutes })
   } catch (err) {

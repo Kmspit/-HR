@@ -5,6 +5,7 @@ import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
+import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest) {
     if (!deviceCheck.ok) return NextResponse.json({ error: deviceCheck.error }, { status: 403 })
 
     const formData = await req.formData()
+
+    const faceBlock = await guardAttendanceFace(session.user.id, formData, 'checkin')
+    if (faceBlock) return faceBlock
+
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
     const address = (formData.get('address') as string) || ''
@@ -92,6 +97,13 @@ export async function POST(req: NextRequest) {
         lateMinutes,
       },
     })
+
+    const faceLogId = (formData.get('faceLogId') as string) || null
+    if (faceLogId) {
+      await prisma.attendanceFaceLog
+        .update({ where: { id: faceLogId }, data: { attendanceId: attendance.id } })
+        .catch(() => {})
+    }
 
     return NextResponse.json({ success: true, attendance, isOutside, lateMinutes })
   } catch (err) {

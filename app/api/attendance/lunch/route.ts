@@ -5,6 +5,7 @@ import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
+import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,6 +17,10 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
     const action = formData.get('action') as string
+
+    const faceAction = action === 'lunch-in' ? 'lunch-in' : 'lunch-out'
+    const faceBlock = await guardAttendanceFace(session.user.id, formData, faceAction)
+    if (faceBlock) return faceBlock
     const photo = formData.get('photo') as File | null
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
@@ -59,6 +64,12 @@ export async function POST(req: NextRequest) {
         where: { id: attendance.id },
         data: { lunchOut: now, lunchOutPhotoUrl: photoUrl, ...geoPatch },
       })
+      const faceLogId = (formData.get('faceLogId') as string) || null
+      if (faceLogId) {
+        await prisma.attendanceFaceLog
+          .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
+          .catch(() => {})
+      }
       return NextResponse.json({ success: true, attendance: updated })
     }
 
@@ -73,6 +84,12 @@ export async function POST(req: NextRequest) {
       where: { id: attendance.id },
       data: { lunchIn: now, lunchInPhotoUrl: photoUrl, ...geoPatch },
     })
+    const faceLogId = (formData.get('faceLogId') as string) || null
+    if (faceLogId) {
+      await prisma.attendanceFaceLog
+        .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
+        .catch(() => {})
+    }
     return NextResponse.json({ success: true, attendance: updated })
   } catch (err) {
     return apiError(err)

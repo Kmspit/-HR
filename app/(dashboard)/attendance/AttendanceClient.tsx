@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation, ScanFace } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import CheckInPanel, { type CompanyGeofence } from '@/components/dashboard/CheckInPanel'
+import FaceRegistrationCard from '@/components/attendance/FaceRegistrationCard'
+import { apiJson } from '@/lib/client-api'
 import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
@@ -76,12 +78,24 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 type LocationType = 'company' | 'outside'
+type AttendanceMethod = 'face' | 'manual'
 
 export default function AttendanceClient({ role, companyOffice, companyGeofence, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
   const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | null>(null)
+  const [faceRegistered, setFaceRegistered] = useState(false)
+  const [attendanceMethod, setAttendanceMethod] = useState<AttendanceMethod>('manual')
+
+  useEffect(() => {
+    apiJson<{ registered?: boolean }>('/api/face/status').then(({ ok, data }) => {
+      if (ok && data.registered) {
+        setFaceRegistered(true)
+        setAttendanceMethod('face')
+      }
+    })
+  }, [refreshKey])
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(role)
   const canCheckIn = !todayRecord?.checkIn
@@ -238,6 +252,45 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
             </div>
           )}
 
+          {!faceRegistered && (
+            <FaceRegistrationCard
+              onRegistered={() => {
+                setFaceRegistered(true)
+                setAttendanceMethod('face')
+                setRefreshKey((k) => k + 1)
+              }}
+            />
+          )}
+
+          {faceRegistered && (canCheckIn || canCheckOut || lunchPanel) && (
+            <div className="flex flex-wrap gap-2 rounded-xl p-2 dark:bg-white/[0.03] light:bg-slate-100 border dark:border-white/10 light:border-slate-200">
+              <span className="text-[10px] dark:text-slate-500 light:text-slate-500 w-full px-1">วิธีลงเวลา</span>
+              <button
+                type="button"
+                onClick={() => setAttendanceMethod('face')}
+                className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+                  attendanceMethod === 'face'
+                    ? 'bg-blue-600 text-white'
+                    : 'dark:text-slate-400 light:text-slate-600 dark:hover:bg-white/5'
+                }`}
+              >
+                <ScanFace className="w-3.5 h-3.5" />
+                Face Recognition
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceMethod('manual')}
+                className={`flex-1 min-w-[120px] py-2 rounded-lg text-xs font-semibold transition ${
+                  attendanceMethod === 'manual'
+                    ? 'bg-slate-600 text-white'
+                    : 'dark:text-slate-400 light:text-slate-600 dark:hover:bg-white/5'
+                }`}
+              >
+                ถ่ายรูป (เดิม)
+              </button>
+            </div>
+          )}
+
           {lunchPanel && (
             <div className="space-y-2">
               <button
@@ -251,6 +304,8 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                 type={lunchPanel}
                 companyOffice={companyOffice}
                 companyGeofence={companyGeofence}
+                attendanceMethod={attendanceMethod}
+                faceRegistered={faceRegistered}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -359,6 +414,8 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                 locationType={selectedType}
                 companyOffice={selectedType === 'company' ? companyOffice : null}
                 companyGeofence={selectedType === 'company' ? companyGeofence : null}
+                attendanceMethod={attendanceMethod}
+                faceRegistered={faceRegistered}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -380,6 +437,8 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                 locationType={todayRecord?.isOutside ? 'outside' : 'company'}
                 companyOffice={!todayRecord?.isOutside ? companyOffice : null}
                 companyGeofence={!todayRecord?.isOutside ? companyGeofence : null}
+                attendanceMethod={attendanceMethod}
+                faceRegistered={faceRegistered}
                 onSuccess={handleSuccess}
               />
             </div>

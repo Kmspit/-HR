@@ -294,7 +294,7 @@
   /* Input */
   .input-field {
     @apply w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150
-           dark:border-white/12 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500
+           dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500
            light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-500
            focus:outline-none focus:ring-2 focus:ring-blue-500/25
            dark:focus:border-blue-500/70 dark:focus:bg-slate-900/90
@@ -312,7 +312,7 @@
   }
   .btn-secondary {
     @apply flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-all duration-150
-           dark:border-white/12 dark:bg-white/[0.06] dark:text-slate-200
+           dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200
            dark:hover:border-white/20 dark:hover:bg-white/[0.1] dark:hover:text-white
            light:border-slate-300 light:bg-white light:text-slate-700 light:shadow-sm
            light:hover:border-slate-400 light:hover:bg-slate-50 light:hover:text-slate-900
