@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyLoginCredentials } from '@/lib/login-credentials'
-import { setSessionFromUser } from '@/lib/session-token'
+import { attachSessionCookie } from '@/lib/session-token'
 import { resolvePostLoginPath } from '@/lib/post-login-path'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 const ERROR_HTTP: Record<string, number> = {
   MISSING_FIELDS: 400,
@@ -14,13 +16,38 @@ const ERROR_HTTP: Record<string, number> = {
   AUTH_SECRET_MISSING: 500,
 }
 
+async function loadUserForRedirect(userId: string, fallback: {
+  role: import('@prisma/client').Role
+  status: import('@prisma/client').UserStatus
+}) {
+  try {
+    return await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        status: true,
+        divisionId: true,
+        departmentId: true,
+        sectionId: true,
+      },
+    })
+  } catch (err) {
+    console.error('[login] loadUserForRedirect', err)
+    return {
+      role: fallback.role,
+      status: fallback.status,
+      divisionId: null,
+      departmentId: null,
+      sectionId: null,
+    }
+  }
+}
+
 /**
- * ล็อกอิน + สร้าง session + คืน URL ปลายทาง (dashboard / org-pending)
+ * ล็อกอิน + สร้าง session + คืน URL ปลายทาง
  */
 export async function POST(req: NextRequest) {
   try {
-    await ensureDbSchema().catch((err) => console.error('[login] ensureDbSchema', err))
-
     const body = await req.json().catch(() => ({}))
     const email = typeof body.email === 'string' ? body.email : ''
     const password = typeof body.password === 'string' ? body.password : ''
@@ -33,17 +60,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    await setSessionFromUser(verified.user)
-
-    const dbUser = await prisma.user.findUnique({
-      where: { id: verified.user.id },
-      select: {
-        role: true,
-        status: true,
-        divisionId: true,
-        departmentId: true,
-        sectionId: true,
-      },
+    const dbUser = await loadUserForRedirect(verified.user.id, {
+      role: verified.user.role,
+      status: verified.user.status,
     })
 
     const { path, message } = resolvePostLoginPath(
@@ -56,11 +75,13 @@ export async function POST(req: NextRequest) {
       },
     )
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       url: path,
       message,
     })
+
+    return await attachSessionCookie(response, verified.user)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[api/auth/login]', err)

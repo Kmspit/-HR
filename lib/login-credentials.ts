@@ -27,18 +27,24 @@ export async function verifyLoginCredentials(
     return { ok: false, error: 'MISSING_FIELDS' }
   }
 
-  const isEmail = raw.includes('@')
-  const user = await prisma.user.findFirst({
-    where: isEmail
-      ? { email: raw.toLowerCase() }
-      : {
-          OR: [
-            { employeeId: raw },
-            { employeeId: raw.toUpperCase() },
-            { employeeId: raw.toLowerCase() },
-          ],
-        },
-  })
+  let user
+  try {
+    const isEmail = raw.includes('@')
+    user = await prisma.user.findFirst({
+      where: isEmail
+        ? { email: raw.toLowerCase() }
+        : {
+            OR: [
+              { employeeId: raw },
+              { employeeId: raw.toUpperCase() },
+              { employeeId: raw.toLowerCase() },
+            ],
+          },
+    })
+  } catch (err) {
+    console.error('[verifyLoginCredentials] db', err)
+    return { ok: false, error: 'SERVER_ERROR' }
+  }
 
   if (!user) return { ok: false, error: 'INVALID_CREDENTIALS' }
   if (user.status === 'PENDING') return { ok: false, error: 'PENDING_APPROVAL' }
