@@ -7,11 +7,12 @@ export const LEAVE_TYPE_OPTIONS = [
   { value: 'WEDDING', label: '💒 ลาแต่งงาน', paid: true },
   { value: 'MATERNITY', label: '👶 ลาคลอด', paid: true },
   { value: 'ORDINATION', label: '🙏 ลาบวช', paid: true },
-  { value: 'SPECIAL_HOLIDAY', label: '🎉 วันหยุดพิเศษ', paid: true },
 ] as const
 
-export const LEAVE_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  LEAVE_TYPE_OPTIONS.map((o) => [o.value, o.label]),
-)
+/** ป้ายประเภทลา — รวมค่าเก่าในประวัติ (ไม่ให้ยื่นประเภทนั้นใหม่) */
+export const LEAVE_TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(LEAVE_TYPE_OPTIONS.map((o) => [o.value, o.label])),
+  SPECIAL_HOLIDAY: '🎉 วันหยุดพิเศษ',
+}
 
 export type LeaveTypeValue = (typeof LEAVE_TYPE_OPTIONS)[number]['value']
