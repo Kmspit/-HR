@@ -201,6 +201,8 @@ model User {
   startDate        DateTime?
   socialSecurity   Boolean    @default(true)
   lineId           String?
+  lineUserId       String?    @unique
+  lineDisplayName  String?
   isCoworker       Boolean    @default(false)
   approvedById     String?
   approvedAt       DateTime?

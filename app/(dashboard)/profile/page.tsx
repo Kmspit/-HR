@@ -32,6 +32,8 @@ export default async function ProfilePage() {
       startDate: true,
       socialSecurity: true,
       lineId: true,
+      lineUserId: true,
+      lineDisplayName: true,
       createdAt: true,
       branchId: true,
     },
@@ -79,6 +81,8 @@ export default async function ProfilePage() {
           startDate: user.startDate?.toISOString().slice(0, 10) ?? '',
           socialSecurity: user.socialSecurity,
           lineId: user.lineId ?? '',
+          lineUserId: user.lineUserId ?? '',
+          lineDisplayName: user.lineDisplayName ?? '',
           createdAt: user.createdAt.toISOString(),
         }}
       />

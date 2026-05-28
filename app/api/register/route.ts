@@ -6,6 +6,7 @@ import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { generateEmployeeId } from '@/lib/utils'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 
 const registerSchema = z.object({
   name:          z.string().min(2, 'กรุณากรอกชื่อ-นามสกุล'),
@@ -25,6 +26,7 @@ const registerSchema = z.object({
   socialSecurity:z.boolean().default(true),
   password:      z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'),
   branchId:      z.string().min(1, 'กรุณาเลือกสาขา'),
+  lineId:        z.string().min(1, 'กรุณากรอก LINE ID'),
 })
 
 function zodFirstError(err: z.ZodError): string {
@@ -76,6 +78,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'สาขาที่เลือกไม่ถูกต้องหรือปิดใช้งาน' }, { status: 400 })
     }
 
+    const lineParsed = parseLineFields({ lineId: data.lineId }, { requireLineId: true, allowUserId: false, allowDisplayName: false })
+    if (!lineParsed.ok) {
+      return NextResponse.json({ error: lineParsed.error }, { status: 400 })
+    }
+    const lineUnique = await assertLineFieldsUnique(lineParsed)
+    if (!lineUnique.ok) {
+      return NextResponse.json({ error: lineUnique.error }, { status: 409 })
+    }
+
     const passwordHash = await bcrypt.hash(data.password, 12)
     const employeeId   = generateEmployeeId()
 
@@ -98,6 +109,7 @@ export async function POST(req: NextRequest) {
         baseSalary:    data.baseSalary ?? null,
         startDate:     new Date(data.startDate),
         socialSecurity:data.socialSecurity,
+        lineId:          lineParsed.lineId,
       },
     })
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import type { NotificationType, Role } from '@prisma/client'
+import { lineNotifyTarget } from '@/lib/line-profile'
 
 // ─── Create in-app notification ───────────────────────
 export async function createNotification(params: {
@@ -47,9 +48,13 @@ export async function sendLineMessage(userId: string, message: string): Promise<
   }
 
   // Get user's LINE ID from DB
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { lineId: true } })
-  if (!user?.lineId) {
-    console.log(`[LINE] User ${userId} has no lineId, skipping`)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { lineId: true, lineUserId: true },
+  })
+  const to = user ? lineNotifyTarget(user) : null
+  if (!to) {
+    console.log(`[LINE] User ${userId} has no LINE target, skipping`)
     return false
   }
 
@@ -61,7 +66,7 @@ export async function sendLineMessage(userId: string, message: string): Promise<
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to: user.lineId,
+        to,
         messages: [{ type: 'text', text: message }],
       }),
     })
@@ -80,8 +85,12 @@ export async function sendLineFlexMessage(userId: string, altText: string, conte
     return true
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { lineId: true } })
-  if (!user?.lineId) return false
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { lineId: true, lineUserId: true },
+  })
+  const to = user ? lineNotifyTarget(user) : null
+  if (!to) return false
 
   try {
     const res = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -91,7 +100,7 @@ export async function sendLineFlexMessage(userId: string, altText: string, conte
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to: user.lineId,
+        to,
         messages: [{ type: 'flex', altText, contents }],
       }),
     })

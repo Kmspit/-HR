@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera, Loader2, Save, User } from 'lucide-react'
+import { Camera, Loader2, MessageCircle, Save, User } from 'lucide-react'
+import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { getInitials } from '@/lib/utils'
@@ -37,6 +38,8 @@ type ProfileData = {
   startDate: string
   socialSecurity: boolean
   lineId: string
+  lineUserId: string
+  lineDisplayName: string
   createdAt: string
 }
 
@@ -60,6 +63,7 @@ export default function ProfileClient({ initial }: Props) {
     nickname: initial.nickname,
     phone: initial.phone,
     address: initial.address,
+    lineId: initial.lineId,
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
     resolveProfileImageUrl(initial.profileImage) ??
@@ -93,6 +97,10 @@ export default function ProfileClient({ initial }: Props) {
       toast.error('เบอร์โทรต้อง 10 หลัก ขึ้นต้นด้วย 0')
       return
     }
+    if (!form.lineId.trim() || !isValidLineIdInput(form.lineId)) {
+      toast.error(lineIdHint())
+      return
+    }
     setSaving(true)
     try {
       const payload = {
@@ -102,6 +110,7 @@ export default function ProfileClient({ initial }: Props) {
         nickname: form.nickname.trim(),
         phone: form.phone,
         address: form.address.trim(),
+        lineId: form.lineId.trim(),
       }
 
       let init: RequestInit
@@ -157,7 +166,6 @@ export default function ProfileClient({ initial }: Props) {
       label: 'ประกันสังคม',
       value: initial.socialSecurity ? 'อยู่ในระบบ' : 'ไม่อยู่ในระบบ',
     },
-    { label: 'LINE ID', value: initial.lineId || '—' },
     { label: 'วันที่สมัคร', value: formatThaiDate(initial.createdAt) },
   ]
 
@@ -272,6 +280,47 @@ export default function ProfileClient({ initial }: Props) {
           />
         </div>
 
+        <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-green-400" />
+            LINE Integration
+          </h3>
+          <p className="text-[11px] text-slate-500">
+            ใช้สำหรับรับแจ้งเตือนจาก HR ในอนาคต — แก้ไข LINE ID ได้ที่นี่
+          </p>
+          <div>
+            <label className="text-xs text-white/50 block mb-1">LINE ID *</label>
+            <input
+              value={form.lineId}
+              onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
+              placeholder="@username"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+            />
+            <p className="text-[11px] text-slate-500 mt-1">{lineIdHint()}</p>
+          </div>
+          {(initial.lineUserId || initial.lineDisplayName) && (
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              {initial.lineUserId ? (
+                <div>
+                  <dt className="text-[11px] text-slate-500">LINE User ID</dt>
+                  <dd className="text-white/80 mt-0.5 font-mono text-xs break-all">{initial.lineUserId}</dd>
+                </div>
+              ) : null}
+              {initial.lineDisplayName ? (
+                <div>
+                  <dt className="text-[11px] text-slate-500">ชื่อใน LINE</dt>
+                  <dd className="text-white/80 mt-0.5">{initial.lineDisplayName}</dd>
+                </div>
+              ) : null}
+            </dl>
+          )}
+          {!initial.lineUserId && !initial.lineDisplayName && (
+            <p className="text-[11px] text-slate-600">
+              User ID / ชื่อแสดงใน LINE จะถูกตั้งโดย HR เมื่อเชื่อม Messaging API
+            </p>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={save}
@@ -288,7 +337,7 @@ export default function ProfileClient({ initial }: Props) {
       <div className="glass-card rounded-2xl p-5 md:p-6 max-w-3xl md:max-w-none">
         <h2 className="text-sm font-semibold text-white mb-4">ประวัติข้อมูลตอนสมัครบัญชี</h2>
         <p className="text-xs text-slate-500 mb-4">
-          ข้อมูลด้านล่างมาจากตอนลงทะเบียน — แก้ไขได้เฉพาะชื่อ-นามสกุล รูป เบอร์ และที่อยู่ด้านบน
+          ข้อมูลด้านล่างมาจากตอนลงทะเบียน — แก้ไขได้ที่ฟอร์มด้านบน (รวม LINE ID ในส่วน LINE Integration)
         </p>
         <dl className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
           {infoRows.map((row) => (

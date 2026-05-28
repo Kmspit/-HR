@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,8 +19,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       select: {
         id: true, name: true, email: true, employeeId: true, role: true, status: true,
         department: true, position: true, baseSalary: true, socialSecurity: true,
-        isCoworker: true, startDate: true, phone: true, lineId: true, profileImage: true,
-        prefix: true, nickname: true, birthDate: true, address: true, nationalId: true,
+        isCoworker: true, startDate: true, phone: true, lineId: true,
+        lineUserId: true, lineDisplayName: true,
+        prefix: true, nickname: true, birthDate: true, address: true, nationalId: true, profileImage: true,
       },
     })
 
@@ -39,13 +41,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params
     const body = await req.json()
+
+    const lineParsed = parseLineFields(
+      {
+        lineId: body.lineId,
+        lineUserId: body.lineUserId,
+        lineDisplayName: body.lineDisplayName,
+      },
+      { requireLineId: false },
+    )
+    if (!lineParsed.ok) {
+      return NextResponse.json({ error: lineParsed.error }, { status: 400 })
+    }
+    const lineUnique = await assertLineFieldsUnique(lineParsed, id)
+    if (!lineUnique.ok) {
+      return NextResponse.json({ error: lineUnique.error }, { status: 409 })
+    }
+
     const allowedFields = [
       'name', 'nameEn', 'nickname', 'prefix', 'phone', 'birthDate', 'address',
       'department', 'position', 'baseSalary', 'socialSecurity', 'isCoworker',
-      'startDate', 'role', 'status', 'lineId',
+      'startDate', 'role', 'status',
     ]
 
-    const data: Record<string, unknown> = {}
+    const data: Record<string, unknown> = {
+      lineId: lineParsed.lineId,
+      lineUserId: lineParsed.lineUserId,
+      lineDisplayName: lineParsed.lineDisplayName,
+    }
     for (const key of allowedFields) {
       if (key in body) data[key] = body[key]
     }

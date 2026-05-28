@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Save, ArrowLeft, User, Briefcase, DollarSign, AlertTriangle, Loader2 } from 'lucide-react'
+import { Save, ArrowLeft, User, Briefcase, DollarSign, AlertTriangle, Loader2, MessageCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -10,6 +10,7 @@ type Employee = {
   id: string; name: string; email: string; employeeId: string | null; role: string; status: string
   department: string | null; position: string | null; baseSalary: number; socialSecurity: boolean
   isCoworker: boolean; startDate: string | null; phone: string | null; lineId: string | null
+  lineUserId: string | null; lineDisplayName: string | null
   prefix: string | null; nickname: string | null; birthDate: string | null
   address: string | null; nationalId: string | null; warningCount: number
 }
@@ -27,6 +28,8 @@ export default function EmployeeEditClient({ employee }: { employee: Employee })
     prefix: employee.prefix ?? '',
     phone: employee.phone ?? '',
     lineId: employee.lineId ?? '',
+    lineUserId: employee.lineUserId ?? '',
+    lineDisplayName: employee.lineDisplayName ?? '',
     department: employee.department ?? '',
     position: employee.position ?? '',
     role: employee.role,
@@ -106,9 +109,22 @@ export default function EmployeeEditClient({ employee }: { employee: Employee })
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="โทรศัพท์" value={form.phone} onChange={(v: string) => set('phone', v)} />
-          <Input label="LINE ID" value={form.lineId} onChange={(v: string) => set('lineId', v)} placeholder="สำหรับรับแจ้งเตือน" />
+          <Input label="ที่อยู่" value={form.address} onChange={(v: string) => set('address', v)} />
         </div>
-        <Input label="ที่อยู่" value={form.address} onChange={(v: string) => set('address', v)} />
+      </section>
+
+      <section className="bg-white/5 border border-green-500/20 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-white flex items-center gap-2">
+          <MessageCircle className="w-4 h-4 text-green-400" /> LINE Integration
+        </h2>
+        <p className="text-xs text-white/40">
+          ใช้ส่งแจ้งเตือนผ่าน Messaging API — ระบบจะใช้ LINE User ID ก่อน หากไม่มีจะใช้ LINE ID
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input label="LINE ID (@username)" value={form.lineId} onChange={(v: string) => set('lineId', v)} placeholder="@kmsp.hr" />
+          <Input label="LINE User ID" value={form.lineUserId} onChange={(v: string) => set('lineUserId', v)} placeholder="Uxxxxxxxx (32 ตัว)" />
+        </div>
+        <Input label="ชื่อแสดงใน LINE" value={form.lineDisplayName} onChange={(v: string) => set('lineDisplayName', v)} placeholder="จาก webhook / ผู้ใช้" />
       </section>
 
       {/* Employment info */}

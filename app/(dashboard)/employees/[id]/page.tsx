@@ -15,6 +15,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       id: true, name: true, email: true, employeeId: true, role: true, status: true,
       department: true, position: true, baseSalary: true, socialSecurity: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
+      lineUserId: true, lineDisplayName: true,
       prefix: true, nickname: true, birthDate: true, address: true, nationalId: true,
     },
   })

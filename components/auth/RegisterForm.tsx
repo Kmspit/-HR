@@ -10,6 +10,7 @@ import {
   registerBranchLabel,
   HQ_BRANCH_ID,
 } from '@/lib/company-branches'
+import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 
 type BranchOption = {
   id: string
@@ -31,7 +32,7 @@ const STEPS = ['ข้อมูลส่วนตัว', 'ข้อมูลพ
 
 type FormData = {
   prefix: string; firstName: string; lastName: string; nickname: string
-  email: string; phone: string; birthDate: string; address: string
+  email: string; phone: string; lineId: string; birthDate: string; address: string
   nationalId: string; role: string; branchId: string
   baseSalary: string; startDate: string; socialSecurity: boolean
   password: string; confirmPassword: string
@@ -91,7 +92,7 @@ export default function RegisterForm() {
 
   const [form, setForm] = useState<FormData>({
     prefix: 'นาย', firstName: '', lastName: '', nickname: '',
-    email: '', phone: '', birthDate: '', address: '', nationalId: '',
+    email: '', phone: '', lineId: '', birthDate: '', address: '', nationalId: '',
     role: '', branchId: '', baseSalary: '', startDate: '', socialSecurity: true,
     password: '', confirmPassword: '',
   })
@@ -109,6 +110,8 @@ export default function RegisterForm() {
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
       if (!form.phone)     e.phone     = 'กรุณากรอกเบอร์โทร'
       else if (!/^0[0-9]{9}$/.test(form.phone.replace(/\D/g, ''))) e.phone = 'เบอร์ 10 หลัก เช่น 0812345678'
+      if (!form.lineId.trim()) e.lineId = 'กรุณากรอก LINE ID'
+      else if (!isValidLineIdInput(form.lineId)) e.lineId = lineIdHint()
     }
     if (s === 1) {
       if (!form.role)       e.role       = 'กรุณาเลือกตำแหน่ง'
@@ -141,6 +144,7 @@ export default function RegisterForm() {
       nickname: form.nickname.trim() || undefined,
       email: form.email.trim().toLowerCase(),
       phone,
+      lineId: form.lineId.trim(),
       birthDate: form.birthDate || undefined,
       address: form.address.trim() || undefined,
       nationalId: form.nationalId.trim() || undefined,
@@ -159,7 +163,7 @@ export default function RegisterForm() {
     const allErrors = { ...validateStep(0), ...validateStep(1), ...validateStep(2) }
     if (Object.keys(allErrors).length) {
       setErrors(allErrors)
-      const firstStep = allErrors.branchId || allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone
+      const firstStep = allErrors.branchId || allErrors.firstName || allErrors.lastName || allErrors.email || allErrors.phone || allErrors.lineId
         ? 0
         : allErrors.role || allErrors.startDate
           ? 1
@@ -300,6 +304,20 @@ export default function RegisterForm() {
               />
               {errors.phone && <p className="text-xs text-red-400">{errors.phone}</p>}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">LINE ID *</label>
+            <input
+              type="text"
+              placeholder="@username"
+              className={inputClass('lineId')}
+              value={form.lineId}
+              onChange={(e) => set('lineId', e.target.value)}
+              autoComplete="off"
+            />
+            <p className="text-[11px] text-slate-500">{lineIdHint()} — ใช้รับแจ้งเตือนจาก HR</p>
+            {errors.lineId && <p className="text-xs text-red-400">{errors.lineId}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

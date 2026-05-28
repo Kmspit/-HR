@@ -17,6 +17,7 @@
     "db:migrate:turso": "node scripts/migrate-turso-warnings.mjs",
     "db:migrate:branches": "node scripts/migrate-turso-branches.mjs",
     "db:migrate:org": "node scripts/migrate-turso-org.mjs",
+    "db:migrate:line": "node scripts/migrate-turso-line.mjs",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
