@@ -3,53 +3,63 @@
 @tailwind utilities;
 
 @layer base {
-  /* ── Dark mode (default) ── */
+  /* ── Dark mode (default) — HR SaaS tokens ── */
   :root,
   .dark {
     --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
     --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 222 47% 11%;
     --secondary-foreground: 210 40% 98%;
     --muted: 223 47% 11%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 16% 62%;
     --accent: 216 34% 17%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 221 83% 53%;
+    --border: 216 28% 22%;
+    --input: 216 28% 18%;
+    --ring: 221 83% 58%;
     --radius: 0.75rem;
+    --surface: 222 47% 7%;
+    --surface-elevated: 222 40% 11%;
+    --text-primary: 210 40% 98%;
+    --text-secondary: 215 18% 72%;
+    --text-muted: 215 14% 58%;
   }
 
-  /* ── Light mode ── */
+  /* ── Light mode — higher contrast ── */
   .light {
     --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --foreground: 222 47% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 47% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
+    --popover-foreground: 222 47% 9%;
+    --primary: 221 83% 48%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 20% 38%;
     --accent: 210 40% 94%;
     --accent-foreground: 222 47% 11%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 214 32% 86%;
+    --input: 214 32% 88%;
+    --ring: 221 83% 48%;
     --radius: 0.75rem;
+    --surface: 210 40% 98%;
+    --surface-elevated: 0 0% 100%;
+    --text-primary: 222 47% 9%;
+    --text-secondary: 215 20% 32%;
+    --text-muted: 215 16% 42%;
   }
 }
 
@@ -63,13 +73,44 @@
     background-attachment: fixed;
   }
 
+  /* Accessible focus — keyboard navigation */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .card-hover:hover {
+      transform: none !important;
+    }
+  }
+
   /* Dark mode body */
   .dark body {
-    @apply bg-[#070b14] text-slate-200 antialiased;
+    @apply bg-[#070b14] text-slate-100 antialiased;
     overflow-x: hidden;
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.05) 0%, transparent 50%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.1) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
   }
 
   @media (max-width: 768px) {
@@ -81,11 +122,11 @@
 
   /* Light mode body */
   .light body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased;
     overflow-x: hidden;
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.03) 0%, transparent 50%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(99,102,241,0.04) 0%, transparent 50%);
   }
 
   h1, h2, h3, h4 {
@@ -124,10 +165,11 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
   .glass-card {
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.18);
   }
   .glass-light {
     background: rgba(255, 255, 255, 0.04);
@@ -238,34 +280,75 @@
   .badge-violet { @apply badge bg-violet-500/15 text-violet-400 border border-violet-500/25; }
   .badge-slate { @apply badge bg-slate-500/15 text-slate-400 border border-slate-500/25; }
 
+  /* Semantic text utilities */
+  .text-theme {
+    @apply dark:text-slate-100 light:text-slate-900;
+  }
+  .text-theme-secondary {
+    @apply dark:text-slate-300 light:text-slate-700;
+  }
+  .text-theme-muted {
+    @apply dark:text-slate-400 light:text-slate-600;
+  }
+
   /* Input */
   .input-field {
-    @apply w-full rounded-xl border border-white/8 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white placeholder-slate-500
-           transition-all duration-150
-           focus:outline-none focus:border-blue-500/60 focus:bg-white/[0.06] focus:ring-2 focus:ring-blue-500/10;
+    @apply w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150
+           dark:border-white/12 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500
+           light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/25
+           dark:focus:border-blue-500/70 dark:focus:bg-slate-900/90
+           light:focus:border-blue-500 light:focus:ring-blue-500/20;
   }
 
   /* Button variants */
   .btn-primary {
     @apply flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white
-           shadow-lg shadow-blue-600/20 transition-all duration-150
+           shadow-lg shadow-blue-600/25 transition-all duration-150
            hover:bg-blue-500 hover:-translate-y-0.5 hover:shadow-blue-500/30
-           active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+           active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+           dark:focus-visible:ring-offset-slate-900 light:focus-visible:ring-offset-white;
   }
   .btn-secondary {
-    @apply flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-slate-300
-           transition-all duration-150
-           hover:border-white/20 hover:bg-white/[0.07] hover:text-white hover:-translate-y-0.5
-           active:translate-y-0;
+    @apply flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-all duration-150
+           dark:border-white/12 dark:bg-white/[0.06] dark:text-slate-200
+           dark:hover:border-white/20 dark:hover:bg-white/[0.1] dark:hover:text-white
+           light:border-slate-300 light:bg-white light:text-slate-700 light:shadow-sm
+           light:hover:border-slate-400 light:hover:bg-slate-50 light:hover:text-slate-900
+           hover:-translate-y-0.5 active:translate-y-0
+           focus-visible:ring-2 focus-visible:ring-blue-500/30;
   }
   .btn-ghost {
-    @apply flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm text-slate-400
-           transition-all duration-150 hover:bg-white/[0.05] hover:text-white;
+    @apply flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition-all duration-150
+           dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100
+           light:text-slate-600 light:hover:bg-slate-100 light:hover:text-slate-900;
   }
 
   /* Table */
-  .table-row-hover { @apply border-b border-white/[0.04] transition-colors hover:bg-white/[0.025]; }
-  .light .table-row-hover { @apply border-b border-slate-100 hover:bg-slate-50; }
+  .table-row-hover {
+    @apply border-b transition-colors
+           dark:border-white/[0.06] dark:hover:bg-white/[0.04]
+           light:border-slate-200/90 light:hover:bg-slate-50/90;
+  }
+  .hr-table {
+    @apply w-full text-sm border-collapse;
+  }
+  .hr-table thead tr {
+    @apply border-b dark:border-white/10 light:border-slate-200;
+  }
+  .hr-table thead th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+           dark:bg-slate-900/60 dark:text-slate-400
+           light:bg-slate-100 light:text-slate-600;
+  }
+  .hr-table tbody td {
+    @apply px-4 py-3 align-middle whitespace-nowrap
+           dark:text-slate-200 light:text-slate-700;
+  }
+  .hr-table tbody tr:nth-child(even) {
+    @apply dark:bg-white/[0.02] light:bg-slate-50/70;
+  }
 }
 
 /* ── Light mode component overrides ── */
@@ -277,9 +360,13 @@
 }
 
 .light .glass-card {
-  background: rgba(255, 255, 255, 0.8) !important;
+  background: #ffffff !important;
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.06) !important;
+  color: rgb(15 23 42);
 }
 
 .light .nav-active {
@@ -302,18 +389,14 @@
 .light .badge-violet { @apply bg-violet-50 text-violet-700 border-violet-200; }
 .light .badge-slate  { @apply bg-slate-100 text-slate-600 border-slate-200; }
 
-.light .input-field {
-  @apply border-slate-200 bg-white text-slate-800 placeholder-slate-400
-         focus:border-blue-400 focus:bg-white focus:ring-blue-500/15;
-}
+.light .stat-blue   { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
+.light .stat-violet { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-color: #ddd6fe; }
+.light .stat-green  { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0; }
+.light .stat-amber  { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #fde68a; }
+.light .stat-red    { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-color: #fecaca; }
 
-.light .btn-secondary {
-  @apply border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800;
-}
-
-.light .btn-ghost {
-  @apply text-slate-500 hover:bg-slate-100 hover:text-slate-800;
-}
+.dark .skeleton { @apply bg-slate-800/80; }
+.light .skeleton { @apply bg-slate-200/90; }
 
 /* ── Mobile utilities ── */
 @media (max-width: 768px) {
@@ -342,10 +425,11 @@
     content: 'เลื่อนซ้าย-ขวา →';
     display: block;
     font-size: 10px;
-    color: rgb(100 116 139);
     text-align: center;
     padding: 6px 0 2px;
   }
+  .dark .table-scroll::after { color: rgb(100 116 139); }
+  .light .table-scroll::after { color: rgb(71 85 105); }
   .table-scroll table {
     @apply min-w-[480px];
   }
@@ -365,8 +449,61 @@
   }
 }
 
-.warnings-table thead th {
-  @apply dark:bg-white/[0.03] light:bg-slate-50;
+/* Tables — shared HR data table readability */
+.warnings-table,
+.hr-table {
+  @apply w-full border-collapse text-sm;
+}
+.warnings-table thead th,
+.hr-table thead th {
+  @apply px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+         dark:bg-slate-900/55 dark:text-slate-400
+         light:bg-slate-100 light:text-slate-600;
+}
+.warnings-table tbody tr:nth-child(even),
+.hr-table tbody tr:nth-child(even),
+.glass-card table tbody tr:nth-child(even) {
+  @apply dark:bg-white/[0.025] light:bg-slate-50/80;
+}
+.warnings-table tbody td,
+.glass-card .table-scroll table tbody td {
+  @apply px-4 py-3 align-middle;
+}
+
+/* ── Light mode: fix legacy dark-only text utilities inside cards ── */
+.light .glass-card :is(h1, h2, h3, h4, p, span, label, td, th, div).text-white:not(
+    :is(button, a, .btn-primary, [class*='bg-blue-'], [class*='bg-red-'], [class*='bg-green-'], [class*='bg-amber-'])
+  ) {
+  color: rgb(15 23 42) !important;
+}
+.light .text-white\/30 { color: rgb(148 163 184) !important; }
+.light .text-white\/40 { color: rgb(100 116 139) !important; }
+.light .text-white\/50 { color: rgb(100 116 139) !important; }
+.light .text-white\/60 { color: rgb(71 85 105) !important; }
+.light .text-white\/70 { color: rgb(51 65 85) !important; }
+.light .text-white\/80 { color: rgb(30 41 59) !important; }
+.light .text-white\/90 { color: rgb(15 23 42) !important; }
+
+.light .border-white\/5 { border-color: rgb(226 232 240) !important; }
+.light .border-white\/10 { border-color: rgb(226 232 240) !important; }
+.light .border-white\/15 { border-color: rgb(203 213 225) !important; }
+.light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(241 245 249);
+}
+.light .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(226 232 240);
+}
+
+/* Native inputs in dashboard (no input-field class) */
+.light main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.light main select,
+.light main textarea {
+  color: rgb(15 23 42);
+}
+.dark main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.dark main select,
+.dark main textarea {
+  color: rgb(241 245 249);
 }
 
 /* Safe area helpers */
@@ -395,8 +532,8 @@
   color: #e2e8f0;
 }
 .light .dashboard-shell {
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 .dashboard-sidebar-slot {
   display: none;

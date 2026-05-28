@@ -22,7 +22,9 @@ export default function Topbar({ title, subtitle, actions }: Props) {
           {title}
         </h1>
         {subtitle && (
-          <p className="text-[11px] sm:text-xs text-slate-500 truncate leading-none mt-0.5">{subtitle}</p>
+          <p className="text-[11px] sm:text-xs dark:text-slate-400 light:text-slate-600 truncate leading-none mt-0.5">
+            {subtitle}
+          </p>
         )}
       </div>
       {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}

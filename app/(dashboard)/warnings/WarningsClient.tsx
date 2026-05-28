@@ -725,7 +725,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
             </p>
           </div>
           <div className="table-scroll">
-            <table className="warnings-table w-full text-sm min-w-[480px]">
+            <table className="warnings-table hr-table min-w-[480px]">
               <thead>
                 <tr className="border-b dark:border-white/10 light:border-slate-200 dark:bg-white/[0.03] light:bg-slate-50">
                   <th className={`${thCls} text-left`}>เดือน / ปี</th>
@@ -776,7 +776,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
             <p className="text-[11px] dark:text-slate-500 light:text-slate-500">เรียงจากใหม่ → เก่า</p>
           </div>
           <div className="table-scroll">
-            <table className={`warnings-table w-full text-sm ${isManager ? 'min-w-[640px]' : 'min-w-[480px]'}`}>
+            <table className={`warnings-table hr-table ${isManager ? 'min-w-[640px]' : 'min-w-[480px]'}`}>
               <thead>{historyHead}</thead>
               <tbody>{sortedHistory.map((w) => renderWarningRow(w))}</tbody>
             </table>

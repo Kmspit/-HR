@@ -11,7 +11,10 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="h-8.5 w-8.5 rounded-xl border border-white/8 bg-white/[0.03]" />
+      <div
+        className="h-8.5 w-8.5 rounded-xl border dark:border-white/8 dark:bg-white/[0.03] light:border-slate-200 light:bg-white"
+        aria-hidden
+      />
     )
   }
 
@@ -19,15 +22,20 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className={`
         relative flex h-8.5 w-8.5 items-center justify-center rounded-xl border transition-all duration-200
+        focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2
+        dark:focus-visible:ring-offset-slate-900 light:focus-visible:ring-offset-white
         ${isDark
           ? 'border-white/8 bg-white/[0.03] text-slate-400 hover:border-white/15 hover:text-yellow-300'
           : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-blue-600 shadow-sm'
         }
       `}
       title={isDark ? 'เปลี่ยนเป็นโหมดกลางวัน' : 'เปลี่ยนเป็นโหมดกลางคืน'}
+      aria-label={isDark ? 'เปลี่ยนเป็นโหมดกลางวัน' : 'เปลี่ยนเป็นโหมดกลางคืน'}
+      aria-pressed={isDark}
     >
       {isDark ? (
         /* Sun icon */

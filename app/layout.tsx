@@ -67,10 +67,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               position="top-right"
               toastOptions={{
                 classNames: {
-                  toast: 'dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 bg-white border-slate-200 text-slate-800',
-                  success: 'border-green-500/30',
-                  error: 'border-red-500/30',
-                  warning: 'border-yellow-500/30',
+                  toast:
+                    'dark:bg-slate-800 dark:border-slate-600 dark:text-slate-50 bg-white border-slate-300 text-slate-900 shadow-lg',
+                  success: 'dark:border-green-500/40 border-green-300',
+                  error: 'dark:border-red-500/40 border-red-300',
+                  warning: 'dark:border-amber-500/40 border-amber-300',
                 },
               }}
             />
