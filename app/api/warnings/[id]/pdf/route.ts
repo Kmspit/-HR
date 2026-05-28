@@ -2,12 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { saveUpload } from '@/lib/save-upload'
 import { readFile } from 'fs/promises'
 import path from 'path'
 
+function pdfHeaders(filename: string, download: boolean) {
+  return {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': download
+      ? `attachment; filename="${filename}"`
+      : `inline; filename="${filename}"`,
+    'Cache-Control': 'private, max-age=3600',
+    'X-Content-Type-Options': 'nosniff',
+  }
+}
+
+async function loadWarningPdfBuffer(warning: {
+  pdfBase64: string | null
+  fileUrl: string | null
+}): Promise<Buffer | null> {
+  if (warning.pdfBase64) {
+    return Buffer.from(warning.pdfBase64, 'base64')
+  }
+
+  if (warning.fileUrl?.startsWith('/uploads/')) {
+    try {
+      const diskPath = path.join(process.cwd(), 'public', warning.fileUrl)
+      return await readFile(diskPath)
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -28,33 +58,17 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    if (warning.pdfBase64) {
-      const buffer = Buffer.from(warning.pdfBase64, 'base64')
-      return new NextResponse(buffer, {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `inline; filename="warning-${id}.pdf"`,
-          'Cache-Control': 'private, max-age=3600',
-        },
-      })
+    const buffer = await loadWarningPdfBuffer(warning)
+    if (!buffer?.length) {
+      return NextResponse.json({ error: 'No PDF' }, { status: 404 })
     }
 
-    if (warning.fileUrl?.startsWith('/uploads/')) {
-      try {
-        const diskPath = path.join(process.cwd(), 'public', warning.fileUrl)
-        const buffer = await readFile(diskPath)
-        return new NextResponse(buffer, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `inline; filename="warning-${id}.pdf"`,
-          },
-        })
-      } catch {
-        return NextResponse.json({ error: 'File not found' }, { status: 404 })
-      }
-    }
+    const download = req.nextUrl.searchParams.get('download') === '1'
+    const filename = `warning-${id}.pdf`
 
-    return NextResponse.json({ error: 'No PDF' }, { status: 404 })
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: pdfHeaders(filename, download),
+    })
   } catch (err) {
     return apiError(err)
   }

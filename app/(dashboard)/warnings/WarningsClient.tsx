@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { WarningPdfActions } from '@/components/warnings/WarningPdfViewer'
+import { warningHasPdf } from '@/lib/warning-pdf-url'
 
 type Warning = {
   id: string
@@ -384,16 +386,12 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
           )}
         </td>
         <td className={`${tdCls} text-center`}>
-          {w.fileUrl ? (
-            <a
-              href={w.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 whitespace-nowrap"
-            >
-              <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-              PDF
-            </a>
+          {warningHasPdf(w.fileUrl) ? (
+            <WarningPdfActions
+              warningId={w.id}
+              label={`ใบเตือน — ${w.userName} (${userOrdinal})`}
+              compact
+            />
           ) : (
             <span className="text-slate-600 text-xs">—</span>
           )}

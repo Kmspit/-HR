@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
-import { warningPdfPublicUrl } from '@/lib/warning-pdf'
+import { warningPdfPublicUrl } from '@/lib/warning-pdf-url'
 
 export async function notifyWarningToEmployee(
   warningId: string,
@@ -13,7 +13,7 @@ export async function notifyWarningToEmployee(
   if (!warning) return null
 
   const base = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
-  const fileLink = warningPdfPublicUrl(warning.fileUrl, base)
+  const fileLink = warningPdfPublicUrl(warning.id, warning.fileUrl, base)
   const ordinal = options?.warningNumber ?? null
   const title = ordinal
     ? `ได้รับใบเตือน (ครั้งที่ ${ordinal})`

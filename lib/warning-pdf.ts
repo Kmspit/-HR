@@ -29,9 +29,9 @@ export async function storeWarningPdf(
   }
 }
 
-export function warningPdfPublicUrl(fileUrl: string | null, baseUrl: string): string | null {
-  if (!fileUrl) return null
-  if (fileUrl.startsWith('http') || fileUrl.startsWith('data:')) return fileUrl
-  const base = baseUrl.replace(/\/$/, '')
-  return `${base}${fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`}`
-}
+export {
+  warningPdfApiPath,
+  warningPdfDownloadPath,
+  warningHasPdf,
+  warningPdfPublicUrl,
+} from '@/lib/warning-pdf-url'
