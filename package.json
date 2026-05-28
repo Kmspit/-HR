@@ -23,7 +23,8 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:org": "tsx scripts/seed-org-structure.ts"
+    "db:seed:org": "tsx scripts/seed-org-structure.ts",
+    "db:purge-user": "node scripts/purge-user.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
