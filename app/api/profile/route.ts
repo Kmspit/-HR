@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { apiError } from '@/lib/api-handler'
+import { apiError, runNotify } from '@/lib/api-handler'
+import { createAuditLog } from '@/lib/notifications'
+import { snapshotProfileForAudit } from '@/lib/profile-history'
 import { splitDisplayName } from '@/lib/profile-name'
 import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
 import { ROLE_LABELS } from '@/lib/permissions'
@@ -247,6 +249,22 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    const beforeAudit = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        email: true,
+        phone: true,
+        name: true,
+        prefix: true,
+        nickname: true,
+        address: true,
+        birthDate: true,
+        nationalId: true,
+        lineId: true,
+        profileImage: true,
+      },
+    })
+
     let user
     try {
       user = await prisma.user.update({
@@ -264,6 +282,23 @@ export async function PATCH(req: NextRequest) {
         })
       } else {
         throw updateErr
+      }
+    }
+
+    if (beforeAudit) {
+      const afterSnap = snapshotProfileForAudit(user)
+      const beforeSnap = snapshotProfileForAudit(beforeAudit)
+      if (JSON.stringify(beforeSnap) !== JSON.stringify(afterSnap)) {
+        await runNotify(() =>
+          createAuditLog({
+            actorId: session.user.id,
+            targetId: session.user.id,
+            targetType: 'UserProfile',
+            action: 'UPDATE',
+            before: beforeSnap,
+            after: afterSnap,
+          }),
+        )
       }
     }
 

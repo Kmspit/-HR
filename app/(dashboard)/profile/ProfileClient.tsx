@@ -9,7 +9,6 @@ import {
   MessageCircle,
   Phone,
   Save,
-  Shield,
   User,
   MapPin,
 } from 'lucide-react'
@@ -25,6 +24,8 @@ import {
   validateSelfProfileForm,
   type ProfileFormErrors,
 } from '@/lib/profile-validators-client'
+import ProfileDataHistory, { type ProfileRecordInfo } from '@/components/profile/ProfileDataHistory'
+import type { ProfileHistoryItem } from '@/lib/profile-history'
 
 const PREFIXES = ['นาย', 'นาง', 'นางสาว', 'ดร.']
 
@@ -61,22 +62,17 @@ type ProfileData = {
   createdAt: string
 }
 
-type Props = { initial: ProfileData }
-
-function formatThaiDate(iso: string) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('th-TH', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+type Props = {
+  initial: ProfileData
+  recordInfo: ProfileRecordInfo
+  editHistory: ProfileHistoryItem[]
 }
 
 function fieldClass(err?: string) {
   return err ? profileInputErrorClass : profileInputClass
 }
 
-export default function ProfileClient({ initial }: Props) {
+export default function ProfileClient({ initial, recordInfo, editHistory }: Props) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
@@ -184,21 +180,6 @@ export default function ProfileClient({ initial }: Props) {
 
   const displayName = `${form.prefix}${form.firstName} ${form.lastName}`.trim()
 
-  const systemRows: { label: string; value: string }[] = [
-    { label: 'รหัสพนักงาน', value: initial.employeeId || '—' },
-    { label: 'ตำแหน่งในระบบ', value: initial.roleLabel },
-    { label: 'สาขา', value: initial.branchName },
-    { label: 'สถานะบัญชี', value: STATUS_LABELS[initial.status] ?? initial.status },
-    { label: 'แผนก', value: initial.department || '—' },
-    { label: 'ตำแหน่งงาน', value: initial.position || '—' },
-    { label: 'วันที่เริ่มงาน', value: formatThaiDate(initial.startDate) },
-    {
-      label: 'ประกันสังคม',
-      value: initial.socialSecurity ? 'อยู่ในระบบ' : 'ไม่อยู่ในระบบ',
-    },
-    { label: 'วันที่สมัคร', value: formatThaiDate(initial.createdAt) },
-  ]
-
   return (
     <div className="w-full max-w-4xl md:max-w-none p-4 md:p-8 lg:px-10 pb-28 md:pb-8 space-y-5 md:space-y-6">
       {/* Hero + avatar */}
@@ -237,12 +218,12 @@ export default function ProfileClient({ initial }: Props) {
             />
           </div>
           <div className="text-center sm:text-left min-w-0 flex-1">
-            <h2 className="text-lg md:text-xl font-bold text-white truncate">{displayName || '—'}</h2>
-            <p className="text-sm text-slate-400 mt-1 truncate">{form.email}</p>
-            <p className="text-xs text-slate-500 mt-2">
+            <h2 className="text-lg md:text-xl font-bold dark:text-white light:text-slate-900 truncate">{displayName || '—'}</h2>
+            <p className="text-sm dark:text-slate-400 light:text-slate-600 mt-1 truncate">{form.email}</p>
+            <p className="text-xs dark:text-slate-500 light:text-slate-500 mt-2">
               {initial.roleLabel} · {STATUS_LABELS[initial.status] ?? initial.status}
             </p>
-            <p className="text-[11px] text-slate-600 mt-2">
+            <p className="text-[11px] dark:text-slate-600 light:text-slate-500 mt-2">
               รูป JPG/PNG/WEBP สูงสุด 2 MB — Role/สิทธิ์แก้ได้เฉพาะ HR
             </p>
           </div>
@@ -251,7 +232,7 @@ export default function ProfileClient({ initial }: Props) {
 
       {/* Personal */}
       <section className="glass-card rounded-2xl p-5 md:p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h3 className="text-sm font-semibold dark:text-white light:text-slate-900 flex items-center gap-2">
           <User className="w-4 h-4 text-blue-400" />
           ข้อมูลส่วนตัว
         </h3>
@@ -314,7 +295,7 @@ export default function ProfileClient({ initial }: Props) {
 
       {/* Contact */}
       <section className="glass-card rounded-2xl p-5 md:p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h3 className="text-sm font-semibold dark:text-white light:text-slate-900 flex items-center gap-2">
           <Mail className="w-4 h-4 text-cyan-400" />
           ข้อมูลติดต่อ
         </h3>
@@ -356,7 +337,7 @@ export default function ProfileClient({ initial }: Props) {
 
       {/* LINE */}
       <section className="glass-card rounded-2xl p-5 md:p-6 space-y-4 border border-green-500/15">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h3 className="text-sm font-semibold dark:text-white light:text-slate-900 flex items-center gap-2">
           <MessageCircle className="w-4 h-4 text-green-400" />
           LINE Integration
         </h3>
@@ -371,36 +352,22 @@ export default function ProfileClient({ initial }: Props) {
         {(initial.lineUserId || initial.lineDisplayName) && (
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm pt-1">
             {initial.lineUserId ? (
-              <div className="rounded-lg bg-white/5 p-3">
-                <dt className="text-[11px] text-slate-500">LINE User ID (HR ตั้งค่า)</dt>
-                <dd className="text-white/80 mt-1 font-mono text-xs break-all">{initial.lineUserId}</dd>
+              <div className="rounded-lg dark:bg-white/5 light:bg-slate-50 p-3">
+                <dt className="text-[11px] dark:text-slate-500 light:text-slate-500">LINE User ID (HR ตั้งค่า)</dt>
+                <dd className="dark:text-white/80 light:text-slate-700 mt-1 font-mono text-xs break-all">{initial.lineUserId}</dd>
               </div>
             ) : null}
             {initial.lineDisplayName ? (
-              <div className="rounded-lg bg-white/5 p-3">
-                <dt className="text-[11px] text-slate-500">ชื่อใน LINE</dt>
-                <dd className="text-white/80 mt-1">{initial.lineDisplayName}</dd>
+              <div className="rounded-lg dark:bg-white/5 light:bg-slate-50 p-3">
+                <dt className="text-[11px] dark:text-slate-500 light:text-slate-500">ชื่อใน LINE</dt>
+                <dd className="dark:text-white/80 light:text-slate-700 mt-1">{initial.lineDisplayName}</dd>
               </div>
             ) : null}
           </dl>
         )}
       </section>
 
-      {/* System read-only */}
-      <section className="glass-card rounded-2xl p-5 md:p-6">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
-          <Shield className="w-4 h-4 text-amber-400" />
-          ข้อมูลระบบ (อ่านอย่างเดียว)
-        </h3>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-          {systemRows.map((row) => (
-            <div key={row.label} className="border-b border-white/5 pb-2">
-              <dt className="text-[11px] text-slate-500">{row.label}</dt>
-              <dd className="text-white/90 mt-0.5 break-words">{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      <ProfileDataHistory record={recordInfo} history={editHistory} />
 
       {/* Desktop save */}
       <div className="hidden md:flex justify-end">
@@ -416,7 +383,7 @@ export default function ProfileClient({ initial }: Props) {
       </div>
 
       {/* Mobile sticky save */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4 pt-3 border-t border-white/10 bg-slate-950/95 backdrop-blur-md safe-area-pb">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4 pt-3 border-t dark:border-white/10 light:border-slate-200 dark:bg-slate-950/95 light:bg-white/95 backdrop-blur-md safe-area-pb">
         <button
           type="button"
           onClick={save}
