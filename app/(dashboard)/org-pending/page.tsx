@@ -7,7 +7,7 @@ import Link from 'next/link'
 
 export default async function OrgPendingPage() {
   const session = await auth()
-  if (!session?.user?.id) redirect('/')
+  if (!session?.user?.id) redirect('/login')
 
   if (!needsOrgAssignment(session.user.role)) redirect('/dashboard')
 

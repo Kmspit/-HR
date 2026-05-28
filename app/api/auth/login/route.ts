@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyLoginCredentials } from '@/lib/login-credentials'
 import { attachSessionCookie } from '@/lib/session-token'
 import { resolvePostLoginPath } from '@/lib/post-login-path'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,6 +49,12 @@ async function loadUserForRedirect(userId: string, fallback: {
  */
 export async function POST(req: NextRequest) {
   try {
+    try {
+      await ensureDbSchema()
+    } catch (schemaErr) {
+      console.error('[api/auth/login] ensureDbSchema', schemaErr)
+    }
+
     const body = await req.json().catch(() => ({}))
     const email = typeof body.email === 'string' ? body.email : ''
     const password = typeof body.password === 'string' ? body.password : ''

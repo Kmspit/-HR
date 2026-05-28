@@ -42,10 +42,18 @@ export const viewport: Viewport = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+  let session = null
+  try {
+    session = await auth()
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('Dynamic server usage')) {
+      console.error('[RootLayout] auth', err)
+    }
+  }
 
   return (
-    <html lang="th" suppressHydrationWarning>
+    <html lang="th" className="dark" suppressHydrationWarning>
       <body className={`${notoSansThai.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
         <ThemeProvider>
           <SessionProvider session={session}>

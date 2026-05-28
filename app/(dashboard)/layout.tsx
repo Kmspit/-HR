@@ -6,10 +6,8 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
 import { prisma } from '@/lib/prisma'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
-import { headers } from 'next/headers'
 import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
-
-const ORG_EXEMPT_PREFIXES = ['/org-pending', '/profile']
+import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   try {
@@ -22,16 +20,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session?.user) redirect('/login')
   if (session.user.status !== 'ACTIVE') redirect(`/?status=${session.user.status.toLowerCase()}`)
 
-  const pathname = (await headers()).get('x-pathname') ?? ''
-  const orgExempt = ORG_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
-
-  // ต้องมี pathname จาก middleware — ถ้าไม่มีให้ข้าม gate เพื่อกัน redirect วนลูป
-  if (pathname && needsOrgAssignment(session.user.role) && !orgExempt) {
+  let needsOrgSetup = false
+  if (needsOrgAssignment(session.user.role)) {
     const orgUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { divisionId: true, departmentId: true, sectionId: true },
     })
-    if (!hasOrgAssignment(orgUser ?? {})) redirect('/org-pending')
+    needsOrgSetup = !hasOrgAssignment(orgUser ?? {})
   }
 
   const user = {
@@ -57,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="dashboard-main flex flex-1 flex-col min-w-0 overflow-hidden">
         <DashboardHeader user={user} unreadCount={unreadCount} />
         <main className="dashboard-main-scroll flex-1 overflow-y-auto overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+          {needsOrgSetup && <OrgSetupBanner />}
           <div className="page-enter">
             {children}
           </div>

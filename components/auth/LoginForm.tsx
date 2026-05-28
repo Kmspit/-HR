@@ -78,17 +78,19 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
       else toast.success('เข้าสู่ระบบสำเร็จ')
 
       const dest = data.url && data.url.startsWith('/') ? data.url : '/dashboard'
-      window.location.assign(dest)
+      window.location.href = dest
     } catch {
       toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่')
+    } finally {
       setLoading(false)
     }
   }
 
+  /** สไตล์คงที่บนหน้า auth — ไม่พึ่ง class dark บน html (กัน input มองไม่เห็นก่อน hydrate) */
   const inputBase =
-    'w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all dark:bg-white/[0.05] dark:text-white dark:placeholder-slate-500'
-  const inputNormal = `${inputBase} dark:border-white/10 dark:focus:border-blue-500/60 dark:focus:ring-2 dark:focus:ring-blue-500/10`
-  const inputError = `${inputBase} dark:border-red-500/50`
+    'w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all bg-white/[0.06] text-white placeholder:text-slate-500 border-white/10 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10'
+  const inputNormal = inputBase
+  const inputError = `${inputBase} border-red-500/50`
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

@@ -34,10 +34,11 @@ export function resolvePostLoginPath(user: PostLoginUser): {
   }
 
   if (needsOrgAssignment(user.role) && !hasOrgAssignment(user)) {
+    const base = ROLE_DEFAULT_ROUTE[user.role] ?? '/dashboard'
     return {
-      path: '/org-pending',
+      path: `${base}?setup=org`,
       message:
-        'เข้าสู่ระบบสำเร็จ — รอ HR กำหนดฝ่าย/แผนกก่อนใช้งานหน้าหลัก',
+        'เข้าสู่ระบบสำเร็จ — รอ HR กำหนดฝ่าย/แผนกเพื่อใช้งานครบทุกเมนู',
     }
   }
 
