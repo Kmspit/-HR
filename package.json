@@ -19,7 +19,8 @@
     "db:migrate:org": "node scripts/migrate-turso-org.mjs",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:org": "tsx scripts/seed-org-structure.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

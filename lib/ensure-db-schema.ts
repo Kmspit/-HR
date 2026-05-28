@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { DEFAULT_COMPANY_BRANCHES } from '@/lib/company-branches'
+import { DEFAULT_COMPANY_BRANCHES, HQ_BRANCH_ID, NMA_BRANCH_ID } from '@/lib/company-branches'
+import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
 
 let ensurePromise: Promise<boolean> | null = null
 
@@ -120,6 +121,14 @@ async function runEnsure(): Promise<boolean> {
   await addUserColumnIfMissing('divisionId', `ALTER TABLE users ADD COLUMN divisionId TEXT`)
   await addUserColumnIfMissing('departmentId', `ALTER TABLE users ADD COLUMN departmentId TEXT`)
   await addUserColumnIfMissing('sectionId', `ALTER TABLE users ADD COLUMN sectionId TEXT`)
+
+  for (const branchId of [HQ_BRANCH_ID, NMA_BRANCH_ID]) {
+    try {
+      await seedDefaultOrgStructure(prisma, branchId)
+    } catch (err) {
+      console.warn('[ensureDbSchema] org seed', branchId, err)
+    }
+  }
 
   return true
 }

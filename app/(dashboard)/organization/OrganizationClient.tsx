@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Layers, GitBranch, Grid3X3, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Layers, GitBranch, Grid3X3, Plus, Pencil, Trash2, Loader2, Database } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -25,6 +25,7 @@ export default function OrganizationClient({ branches }: { branches: Branch[] })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({ code: '', name: '', nameEn: '', divisionId: '', departmentId: '', isActive: true })
   const [saving, setSaving] = useState(false)
+  const [seeding, setSeeding] = useState(false)
 
   const load = useCallback(async () => {
     if (!branchId) return
@@ -104,6 +105,29 @@ export default function OrganizationClient({ branches }: { branches: Branch[] })
     }
   }
 
+  const loadDefaultStructure = async (allBranches: boolean) => {
+    const msg = allBranches
+      ? 'โหลดโครงสร้างมาตรฐาน (3 ฝ่าย · แผนก · ส่วนงาน) ให้ทุกสาขา? รายการเดิมที่มีอยู่จะถูกอัปเดตชื่อตามมาตรฐาน'
+      : 'โหลดโครงสร้างมาตรฐานให้สาขานี้? (ฝ่ายเร่งรัดหนี้สิน · กฎหมาย · สนับสนุน)'
+    if (!confirm(msg)) return
+    setSeeding(true)
+    try {
+      const { ok, data, status } = await apiJson('/api/org/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(allBranches ? { allBranches: true } : { branchId }),
+      })
+      if (!ok) {
+        toast.error(apiErrorMessage(data as Record<string, unknown>, 'โหลดไม่สำเร็จ', status))
+        return
+      }
+      toast.success('โหลดโครงสร้างมาตรฐานแล้ว')
+      load()
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   const remove = async (id: string) => {
     if (!confirm('ลบรายการนี้?')) return
     const base = tab === 'divisions' ? 'divisions' : tab === 'departments' ? 'departments' : 'sections'
@@ -116,7 +140,7 @@ export default function OrganizationClient({ branches }: { branches: Branch[] })
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl">
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
         <label className="text-xs text-slate-500 block mb-1">สาขา</label>
         <select
           value={branchId}
@@ -127,6 +151,28 @@ export default function OrganizationClient({ branches }: { branches: Branch[] })
             <option key={b.id} value={b.id} className="bg-slate-900">{b.name}</option>
           ))}
         </select>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            disabled={seeding || !branchId}
+            onClick={() => loadDefaultStructure(false)}
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+          >
+            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+            โหลดโครงสร้างมาตรฐาน (สาขานี้)
+          </button>
+          <button
+            type="button"
+            disabled={seeding}
+            onClick={() => loadDefaultStructure(true)}
+            className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-50"
+          >
+            โหลดทุกสาขา
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-600 leading-relaxed">
+          ฝ่ายเร่งรัดหนี้สิน · ฝ่ายกฎหมาย · ฝ่ายสนับสนุน — พร้อมแผนกและส่วนงานตามโครงสร้างบริษัท (ไม่ลบรายการที่ HR สร้างเอง)
+        </p>
       </div>
 
       <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5 overflow-x-auto">

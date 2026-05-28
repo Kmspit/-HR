@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import bcrypt from 'bcryptjs'
 import { DEFAULT_COMPANY_BRANCHES } from '../lib/company-branches'
+import { seedDefaultOrgStructure } from '../lib/default-org-structure'
 import { config } from 'dotenv'
 import { resolve } from 'path'
 
@@ -67,6 +68,11 @@ async function main() {
     },
   })
   console.log(`✅ Branches: ${hq.code}, ${nma.code}`)
+
+  for (const b of [hq, nma]) {
+    const org = await seedDefaultOrgStructure(prisma, b.id)
+    console.log(`✅ Org ${b.code}: ${org.divisions} ฝ่าย, ${org.departments} แผนก, ${org.sections} ส่วนงาน`)
+  }
 
   const PASS = await bcrypt.hash('demo1234', 12)
 
