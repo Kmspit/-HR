@@ -11,15 +11,15 @@ const ERROR_MESSAGES: Record<string, string> = {
   ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
   ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
   CredentialsSignin: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
-  MissingCSRF: 'เซสชันหมดอายุ กรุณารีเฟรชหน้าแล้วลองใหม่',
   SessionRequired: 'กรุณาเข้าสู่ระบบอีกครั้ง',
   SERVER_ERROR: 'ระบบขัดข้อง กรุณาลองใหม่ภายหลัง',
+  AUTH_SECRET_MISSING: 'ระบบยังไม่พร้อม กรุณาติดต่อผู้ดูแล',
 }
 
 export default function LoginForm({ initialError }: { initialError?: string | null }) {
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
-  const [form, setForm] = useState({ email: '', password: '', remember: false })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean
         error?: string
-        message?: string
+        message?: string | null
         url?: string
       }
 
@@ -74,18 +74,19 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         return
       }
 
-      toast.success('เข้าสู่ระบบสำเร็จ กำลังเปิดหน้าหลัก...')
-      window.location.href = data.url ?? '/api/auth/post-login'
+      if (data.message) toast.success(data.message)
+      else toast.success('เข้าสู่ระบบสำเร็จ')
+
+      const dest = data.url && data.url.startsWith('/') ? data.url : '/dashboard'
+      window.location.assign(dest)
     } catch {
       toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่')
       setLoading(false)
     }
   }
 
-  const inputBase = `
-    w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all
-    dark:bg-white/[0.05] dark:text-white dark:placeholder-slate-500
-  `
+  const inputBase =
+    'w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all dark:bg-white/[0.05] dark:text-white dark:placeholder-slate-500'
   const inputNormal = `${inputBase} dark:border-white/10 dark:focus:border-blue-500/60 dark:focus:ring-2 dark:focus:ring-blue-500/10`
   const inputError = `${inputBase} dark:border-red-500/50`
 

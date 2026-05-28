@@ -46,11 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, password } = parsed.data
         const result = await verifyLoginCredentials(email, password)
-
-        if (!result.ok) {
-          throw new Error(result.error)
-        }
-
+        if (!result.ok) return null
         return result.user
       },
     }),
