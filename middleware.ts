@@ -28,11 +28,14 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   const isPublic = PUBLIC_ROUTES.some((r) => pathname === r)
   const isAuth   = AUTH_ROUTES.some((r) => pathname.startsWith(r))
 
-  // Not logged in → redirect to landing
+  // Not logged in → ไปหน้า login (PC ที่เคยล็อกอินแล้วหลุด session)
   if (!session?.user) {
     if (isPublic) return NextResponse.next()
     const url = req.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/login'
+    if (pathname !== '/login') {
+      url.searchParams.set('callbackUrl', pathname)
+    }
     return NextResponse.redirect(url)
   }
 

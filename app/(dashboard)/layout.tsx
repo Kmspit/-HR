@@ -12,10 +12,14 @@ import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
 const ORG_EXEMPT_PREFIXES = ['/org-pending', '/profile']
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  await ensureDbSchema()
+  try {
+    await ensureDbSchema()
+  } catch (err) {
+    console.error('[DashboardLayout] ensureDbSchema', err)
+  }
   const session = await auth()
 
-  if (!session?.user) redirect('/')
+  if (!session?.user) redirect('/login')
   if (session.user.status !== 'ACTIVE') redirect(`/?status=${session.user.status.toLowerCase()}`)
 
   const pathname = (await headers()).get('x-pathname') ?? ''

@@ -1,15 +1,29 @@
 'use client'
 
-import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
-export default function LoginForm() {
+const ERROR_MESSAGES: Record<string, string> = {
+  PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR / Manager',
+  ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
+  ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
+  CredentialsSignin: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
+  SessionRequired: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
+}
+
+export default function LoginForm({ initialError }: { initialError?: string | null }) {
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [form, setForm] = useState({ email: '', password: '', remember: false })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (initialError && ERROR_MESSAGES[initialError]) {
+      toast.error(ERROR_MESSAGES[initialError])
+    }
+  }, [initialError])
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -37,41 +51,18 @@ export default function LoginForm() {
         redirect: false,
       })
 
-      const messages: Record<string, string> = {
-        PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR / Manager',
-        ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
-        ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
-        CredentialsSignin: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
-      }
-
       if (res?.error || !res?.ok) {
-        toast.error(messages[res?.error ?? ''] ?? 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
+        toast.error(ERROR_MESSAGES[res?.error ?? ''] ?? 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
+        setLoading(false)
         return
       }
 
-      await getSession()
+      toast.success('เข้าสู่ระบบสำเร็จ กำลังเปิดหน้าหลัก...')
 
-      const redirectRes = await fetch('/api/me/redirect', { credentials: 'include' })
-      const redirectData = (await redirectRes.json().catch(() => ({}))) as {
-        path?: string
-        message?: string | null
-      }
-
-      const dest = redirectData.path && redirectData.path !== '/login'
-        ? redirectData.path
-        : '/dashboard'
-
-      if (redirectData.message) {
-        toast.success(redirectData.message)
-      } else {
-        toast.success('เข้าสู่ระบบสำเร็จ')
-      }
-
-      // Hard navigation — ให้ cookie session พร้อมก่อนโหลด dashboard
-      window.location.assign(dest)
+      // โหลดหน้าใหม่ผ่านเซิร์ฟเวอร์ — cookie session พร้อมก่อน redirect (แก้ปัญหา PC)
+      window.location.href = '/api/auth/post-login'
     } catch {
       toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
-    } finally {
       setLoading(false)
     }
   }
@@ -103,14 +94,10 @@ export default function LoginForm() {
           className={errors.email ? inputError : inputNormal}
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          disabled={loading}
         />
         {errors.email && (
-          <p className="flex items-center gap-1 text-xs text-red-400">
-            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            {errors.email}
-          </p>
+          <p className="flex items-center gap-1 text-xs text-red-400">{errors.email}</p>
         )}
       </div>
 
@@ -131,22 +118,18 @@ export default function LoginForm() {
             className={`${errors.password ? inputError : inputNormal} pr-12`}
             value={form.password}
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            disabled={loading}
           />
           <button
             type="button"
             onClick={() => setShowPw((v) => !v)}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg transition-colors dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-white/5 light:text-slate-400 light:hover:text-slate-600 light:hover:bg-slate-100"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg transition-colors dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-white/5"
           >
             {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
         {errors.password && (
-          <p className="flex items-center gap-1 text-xs text-red-400">
-            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            {errors.password}
-          </p>
+          <p className="flex items-center gap-1 text-xs text-red-400">{errors.password}</p>
         )}
       </div>
 
@@ -155,9 +138,10 @@ export default function LoginForm() {
           type="checkbox"
           checked={form.remember}
           onChange={(e) => setForm((f) => ({ ...f, remember: e.target.checked }))}
-          className="h-4.5 w-4.5 rounded border dark:border-white/20 dark:bg-white/5 light:border-slate-300 light:bg-white accent-blue-500 cursor-pointer"
+          className="h-4.5 w-4.5 rounded border dark:border-white/20 accent-blue-500 cursor-pointer"
+          disabled={loading}
         />
-        <span className="text-sm dark:text-slate-400 light:text-slate-500">จดจำการเข้าสู่ระบบ</span>
+        <span className="text-sm dark:text-slate-400">จดจำการเข้าสู่ระบบ</span>
       </label>
 
       <button
