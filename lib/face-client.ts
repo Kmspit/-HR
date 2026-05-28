@@ -30,16 +30,51 @@ function detectorOptions() {
   return new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 })
 }
 
-export async function extractDescriptorFromVideo(
-  video: HTMLVideoElement,
-): Promise<number[] | null> {
+export type HeadPose = 'none' | 'center' | 'left' | 'right'
+
+export type FaceScanResult = {
+  descriptor: number[] | null
+  pose: HeadPose
+  score: number
+}
+
+/** ประมาณทิศทางศีรษะจาก landmark (กล้องหน้า) */
+export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceScanResult> {
   await loadFaceModels()
   const det = await faceapi!
     .detectSingleFace(video, detectorOptions())
     .withFaceLandmarks(true)
     .withFaceDescriptor()
-  if (!det?.descriptor) return null
-  return Array.from(det.descriptor as Float32Array)
+
+  if (!det?.landmarks || !det.descriptor) {
+    return { descriptor: null, pose: 'none', score: 0 }
+  }
+
+  const lm = det.landmarks
+  const leftEye = lm.getLeftEye()
+  const rightEye = lm.getRightEye()
+  const nose = lm.getNose()[3]
+
+  const eyeMidX = (leftEye[0].x + rightEye[3].x) / 2
+  const eyeDist = Math.abs(rightEye[3].x - leftEye[0].x) || 1
+  const yaw = (nose.x - eyeMidX) / eyeDist
+
+  let pose: HeadPose = 'center'
+  if (yaw > 0.14) pose = 'left'
+  else if (yaw < -0.14) pose = 'right'
+
+  return {
+    descriptor: Array.from(det.descriptor as Float32Array),
+    pose,
+    score: det.detection.score,
+  }
+}
+
+export async function extractDescriptorFromVideo(
+  video: HTMLVideoElement,
+): Promise<number[] | null> {
+  const r = await scanFaceFromVideo(video)
+  return r.descriptor
 }
 
 export type LivenessResult = {

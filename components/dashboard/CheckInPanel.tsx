@@ -5,13 +5,9 @@ import { MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation, Bookmar
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { dataUrlToBlob } from '@/lib/utils'
-import dynamic from 'next/dynamic'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import { RefreshCw, AlertCircle } from 'lucide-react'
-import type { FaceVerifyResult } from '@/components/attendance/FaceVerifyStep'
-
-const FaceVerifyStep = dynamic(() => import('@/components/attendance/FaceVerifyStep'), { ssr: false })
 
 type SavedPlace = { id: string; name: string }
 
@@ -25,15 +21,11 @@ export type CompanyGeofence = {
 
 type PanelType = 'checkin' | 'checkout' | 'lunch-out' | 'lunch-in'
 
-type AttendanceMethod = 'face' | 'manual'
-
 type Props = {
   type: PanelType
   locationType?: 'company' | 'outside'
   companyOffice?: { name: string; address: string } | null
   companyGeofence?: CompanyGeofence | null
-  attendanceMethod?: AttendanceMethod
-  faceRegistered?: boolean
   onSuccess?: () => void
 }
 
@@ -60,8 +52,6 @@ export default function CheckInPanel({
   locationType = 'company',
   companyOffice,
   companyGeofence,
-  attendanceMethod = 'manual',
-  faceRegistered = false,
   onSuccess,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -71,13 +61,9 @@ export default function CheckInPanel({
   const isOutsideType = !isLunch && locationType === 'outside'
   const isCompanyOffice = !isOutsideType && !!companyOffice
 
-  const useFaceScan =
-    attendanceMethod === 'face' && faceRegistered
-
-  const [step, setStep] = useState<'place' | 'gps' | 'face-verify' | 'camera' | 'confirm' | 'done'>(
-    isLunch ? (useFaceScan ? 'face-verify' : 'camera') : 'place',
+  const [step, setStep] = useState<'place' | 'gps' | 'camera' | 'confirm' | 'done'>(
+    isLunch ? 'camera' : 'place',
   )
-  const [faceVerify, setFaceVerify] = useState<FaceVerifyResult | null>(null)
   const [workPlaceName, setWorkPlaceName] = useState('')
   const [savePlace, setSavePlace] = useState(false)
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
@@ -174,7 +160,7 @@ export default function CheckInPanel({
         } catch {}
         setLocation({ lat, lng, address })
         setIsLoading(false)
-        setStep(useFaceScan ? 'face-verify' : 'camera')
+        setStep('camera')
       },
       () => {
         setIsLoading(false)
@@ -209,13 +195,7 @@ export default function CheckInPanel({
       const formData = new FormData()
       const blob = dataUrlToBlob(capturedPhoto)
       formData.append('photo', blob, 'face.jpg')
-      formData.append('attendanceMethod', attendanceMethod)
-      if (faceVerify) {
-        formData.append('faceDescriptor', JSON.stringify(faceVerify.descriptor))
-        formData.append('livenessScore', String(faceVerify.livenessScore))
-        formData.append('spoofFlags', faceVerify.spoofFlags)
-        if (faceVerify.logId) formData.append('faceLogId', faceVerify.logId)
-      }
+      formData.append('attendanceMethod', 'manual')
 
       if (isLunch) {
         formData.append('action', type)
@@ -351,20 +331,6 @@ export default function CheckInPanel({
             ถัดไป — ระบุ GPS
           </button>
         </div>
-      )}
-
-      {step === 'face-verify' && useFaceScan && (
-        <FaceVerifyStep
-          action={isLunch ? type : type}
-          onVerified={(result) => {
-            setFaceVerify(result)
-            setStep('camera')
-          }}
-          onCancel={() => {
-            setFaceVerify(null)
-            setStep(isLunch ? 'camera' : 'gps')
-          }}
-        />
       )}
 
       {step === 'gps' && (
