@@ -14,9 +14,9 @@ export async function POST(req: NextRequest) {
     const samples = parseSamplesFromBody(body)
     const livenessScore = Number(body.livenessScore ?? 0)
 
-    if (!samples || samples.length < 2) {
+    if (!samples || samples.length < 3) {
       return NextResponse.json(
-        { error: 'ต้องสแกนใบหน้าอย่างน้อย 2 ครั้งเพื่อลงทะเบียน' },
+        { error: 'ต้องสแกนใบหน้าครบ 3 ครั้ง (หน้าตรง / ซ้าย / ขวา) ตามขั้นตอนสอน' },
         { status: 400 },
       )
     }
