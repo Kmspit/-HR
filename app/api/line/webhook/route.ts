@@ -10,7 +10,6 @@ export async function GET() {
   const status = getLineConfigStatus()
   return NextResponse.json({
     ok: true,
-    configured: status.configured,
     webhook: true,
     ...status,
     hint: status.configured
