@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   ScanFace,
   Loader2,
@@ -8,7 +8,8 @@ import {
   RotateCcw,
   ChevronRight,
   ArrowLeft,
-  Camera,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -18,6 +19,8 @@ import {
   runLivenessCheck,
   type LivenessResult,
 } from '@/lib/face-client'
+import { useCameraStream } from '@/hooks/useCameraStream'
+import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import FaceStepGuide, { VERIFY_GUIDE_STEPS } from '@/components/attendance/FaceStepGuide'
 
 export type FaceVerifyResult = {
@@ -50,54 +53,30 @@ function phaseToGuideIndex(phase: VerifyPhase): number {
   }
 }
 
+const OVERLAY: Record<string, string> = {
+  prepare: 'เตรียมตัว — เห็นหน้าตัวเอง',
+  liveness: 'ขยับศีรษะช้า ๆ',
+  scan: 'หน้าตรง — กดสแกน',
+}
+
 export default function FaceVerifyStep({ action, onVerified, onCancel }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const [phase, setPhase] = useState<VerifyPhase>('intro')
-  const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [cameraError, setCameraError] = useState('')
   const livenessRef = useRef<LivenessResult | null>(null)
 
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
-  }, [])
-
-  const startCamera = useCallback(async () => {
-    try {
-      setCameraError('')
-      await loadFaceModels()
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      setReady(true)
-      return true
-    } catch {
-      setCameraError('เปิดกล้องไม่สำเร็จ — อนุญาตการใช้กล้องแล้วลองใหม่')
-      setReady(false)
-      return false
-    }
-  }, [])
-
   const showCamera = phase === 'prepare' || phase === 'liveness' || phase === 'scan'
-
-  useEffect(() => {
-    if (!showCamera) return
-    startCamera()
-    return () => stopCamera()
-  }, [showCamera, startCamera, stopCamera])
+  const { stream, ready, error: cameraError, retry } = useCameraStream({
+    enabled: showCamera,
+    preloadFaceModels: loadFaceModels,
+  })
 
   const runLivenessStep = async () => {
-    if (!videoRef.current) return
+    if (!videoRef.current || videoRef.current.videoWidth === 0) {
+      toast.error('กล้องยังไม่พร้อม — รอจนเห็นหน้าตัวเองในกรอบ')
+      return
+    }
     setLoading(true)
-    setPhase('liveness')
     try {
       const live = await runLivenessCheck(videoRef.current)
       livenessRef.current = live
@@ -113,7 +92,10 @@ export default function FaceVerifyStep({ action, onVerified, onCancel }: Props) 
   }
 
   const verifyNow = async () => {
-    if (!videoRef.current) return
+    if (!videoRef.current || videoRef.current.videoWidth === 0) {
+      toast.error('กล้องยังไม่พร้อม — รอจนเห็นหน้าตัวเอง')
+      return
+    }
     setLoading(true)
     try {
       const descriptor = await extractDescriptorFromVideo(videoRef.current)
@@ -141,7 +123,6 @@ export default function FaceVerifyStep({ action, onVerified, onCancel }: Props) 
         return
       }
       setPhase('done')
-      stopCamera()
       onVerified({
         descriptor,
         livenessScore: live.score,
@@ -193,151 +174,109 @@ export default function FaceVerifyStep({ action, onVerified, onCancel }: Props) 
         </div>
       )}
 
-      {phase === 'prepare' && (
+      {showCamera && (
         <div className="space-y-3">
-          <p className="text-xs text-center dark:text-slate-400 light:text-slate-600">
-            {ready ? 'กล้องพร้อม — กดถัดไปเพื่อตรวจความมีชีวิต' : 'กำลังโหลดระบบและเปิดกล้อง...'}
-          </p>
-          {showCamera && (
-            <CameraPreview
-              videoRef={videoRef}
-              ready={ready}
-              loading={loading && !ready}
-              overlayLabel="เตรียมตัว"
-            />
+          <CameraPreviewVideoWithRef
+            videoRef={videoRef}
+            stream={stream}
+            ready={ready}
+            loading={!ready && !cameraError}
+            overlayLabel={OVERLAY[phase]}
+          />
+
+          {cameraError && (
+            <div className="space-y-2">
+              <p className="text-xs text-red-400 flex items-center justify-center gap-1 text-center">
+                <AlertCircle className="w-3.5 h-3.5" /> {cameraError}
+              </p>
+              <button type="button" onClick={retry} className="btn-secondary w-full py-2 text-xs">
+                <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
+                ลองเปิดกล้องอีกครั้ง
+              </button>
+            </div>
           )}
-          {cameraError && <ErrorLine message={cameraError} />}
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setPhase('intro')} className="btn-secondary flex-1 py-2.5">
-              <ArrowLeft className="w-4 h-4 inline mr-1" />
-              ย้อนกลับ
-            </button>
-            <button
-              type="button"
-              disabled={!ready}
-              onClick={() => setPhase('liveness')}
-              className="btn-primary flex-1 py-2.5"
-            >
-              ถัดไป — ตรวจมีชีวิต
-            </button>
-          </div>
-        </div>
-      )}
 
-      {phase === 'liveness' && (
-        <div className="space-y-3">
-          <CameraPreview
-            videoRef={videoRef}
-            ready={ready}
-            loading={loading}
-            overlayLabel="ขยับศีรษะช้า ๆ"
-          />
-          {cameraError && <ErrorLine message={cameraError} />}
-          <div className="flex gap-2">
-            <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5">
-              ย้อนกลับ
-            </button>
-            <button
-              type="button"
-              onClick={runLivenessStep}
-              disabled={loading || !ready}
-              className="btn-primary flex-1 py-2.5"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-              ) : (
-                'เริ่มตรวจความมีชีวิต'
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+          {phase === 'prepare' && (
+            <>
+              <p className="text-xs text-center dark:text-slate-400 light:text-slate-600">
+                {ready ? 'เห็นหน้าตัวเองชัดแล้ว — กดถัดไป' : 'กำลังเปิดกล้อง...'}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setPhase('intro')} className="btn-secondary flex-1 py-2.5">
+                  <ArrowLeft className="w-4 h-4 inline mr-1" />
+                  ย้อนกลับ
+                </button>
+                <button
+                  type="button"
+                  disabled={!ready || !!cameraError}
+                  onClick={() => setPhase('liveness')}
+                  className="btn-primary flex-1 py-2.5"
+                >
+                  ถัดไป — ตรวจมีชีวิต
+                </button>
+              </div>
+            </>
+          )}
 
-      {phase === 'scan' && (
-        <div className="space-y-3">
-          <CameraPreview
-            videoRef={videoRef}
-            ready={ready}
-            loading={loading}
-            overlayLabel="หน้าตรง — กดสแกน"
-          />
-          <button
-            type="button"
-            onClick={verifyNow}
-            disabled={loading || !ready}
-            className="btn-primary w-full py-3 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <ScanFace className="w-4 h-4" />
-                สแกนและยืนยัน
-              </>
-            )}
-          </button>
-          <div className="flex gap-2">
-            <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5 text-xs">
-              ย้อนกลับ
-            </button>
-            <button
-              type="button"
-              onClick={runLivenessStep}
-              className="btn-secondary flex-1 py-2.5 text-xs"
-            >
-              <RotateCcw className="w-3 h-3 inline mr-1" />
-              ตรวจมีชีวิตใหม่
-            </button>
-          </div>
-          <button type="button" onClick={onCancel} className="w-full text-xs dark:text-slate-500 py-1">
-            ยกเลิก
-          </button>
+          {phase === 'liveness' && (
+            <>
+              <div className="flex gap-2">
+                <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5">
+                  ย้อนกลับ
+                </button>
+                <button
+                  type="button"
+                  onClick={runLivenessStep}
+                  disabled={loading || !ready || !!cameraError}
+                  className="btn-primary flex-1 py-2.5"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                  ) : (
+                    'เริ่มตรวจความมีชีวิต'
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+
+          {phase === 'scan' && (
+            <>
+              <button
+                type="button"
+                onClick={verifyNow}
+                disabled={loading || !ready || !!cameraError}
+                className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <ScanFace className="w-4 h-4" />
+                    สแกนและยืนยัน
+                  </>
+                )}
+              </button>
+              <div className="flex gap-2">
+                <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5 text-xs">
+                  ย้อนกลับ
+                </button>
+                <button
+                  type="button"
+                  onClick={runLivenessStep}
+                  className="btn-secondary flex-1 py-2.5 text-xs"
+                >
+                  <RotateCcw className="w-3 h-3 inline mr-1" />
+                  ตรวจมีชีวิตใหม่
+                </button>
+              </div>
+              <button type="button" onClick={onCancel} className="w-full text-xs dark:text-slate-500 py-1">
+                ยกเลิก
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
   )
-}
-
-function CameraPreview({
-  videoRef,
-  ready,
-  loading,
-  overlayLabel,
-}: {
-  videoRef: React.RefObject<HTMLVideoElement | null>
-  ready: boolean
-  loading: boolean
-  overlayLabel: string
-}) {
-  return (
-    <div className="relative mx-auto w-full max-w-[280px] aspect-[4/3] rounded-2xl overflow-hidden bg-black">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="w-full h-full object-cover scale-x-[-1]"
-      />
-      <div className="absolute inset-6 border-2 border-cyan-400/50 rounded-2xl pointer-events-none" />
-      <div className="absolute bottom-3 left-0 right-0 text-center">
-        <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-black/60 text-cyan-200">
-          {overlayLabel}
-        </span>
-      </div>
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-        </div>
-      )}
-      {!ready && !loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ErrorLine({ message }: { message: string }) {
-  return <p className="text-xs text-red-400 text-center">{message}</p>
 }

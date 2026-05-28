@@ -6,6 +6,9 @@ import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { dataUrlToBlob } from '@/lib/utils'
 import dynamic from 'next/dynamic'
+import { useCameraStream } from '@/hooks/useCameraStream'
+import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
+import { RefreshCw, AlertCircle } from 'lucide-react'
 import type { FaceVerifyResult } from '@/components/attendance/FaceVerifyStep'
 
 const FaceVerifyStep = dynamic(() => import('@/components/attendance/FaceVerifyStep'), { ssr: false })
@@ -63,7 +66,6 @@ export default function CheckInPanel({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
 
   const isLunch = type === 'lunch-out' || type === 'lunch-in'
   const isOutsideType = !isLunch && locationType === 'outside'
@@ -133,42 +135,29 @@ export default function CheckInPanel({
     if (isLunch) captureGpsQuiet()
   }, [isLunch, captureGpsQuiet])
 
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 480, height: 480 },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
-      setCameraError('')
-    } catch {
-      setCameraError('ไม่สามารถเปิดกล้องได้ — ต้องถ่ายสดจากกล้องเท่านั้น')
-    }
-  }, [])
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
-  }, [])
+  const cameraActive = step === 'camera'
+  const { stream, ready: cameraReady, error: cameraStreamError, retry: retryCamera } =
+    useCameraStream({ enabled: cameraActive })
 
   useEffect(() => {
-    if (step === 'camera') startCamera()
-    else stopCamera()
-    return () => stopCamera()
-  }, [step, startCamera, stopCamera])
+    if (cameraStreamError) setCameraError(cameraStreamError)
+    else if (cameraReady) setCameraError('')
+  }, [cameraStreamError, cameraReady])
 
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
+    if (videoRef.current.videoWidth === 0) {
+      toast.error('กล้องยังไม่พร้อม — รอจนเห็นหน้าตัวเองในกรอบ')
+      return
+    }
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')!
     canvas.width = videoRef.current.videoWidth
     canvas.height = videoRef.current.videoHeight
     ctx.drawImage(videoRef.current, 0, 0)
     setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.8))
-    stopCamera()
     setStep('confirm')
-  }, [stopCamera])
+  }, [])
 
   const getGps = () => {
     setIsLoading(true)
@@ -397,36 +386,48 @@ export default function CheckInPanel({
       {step === 'camera' && (
         <div className="flex flex-col items-center gap-3">
           <div className="text-center space-y-1">
-            <p className="text-lg font-bold text-white">ถ่ายรูปหน้าตรง</p>
-            <p className="text-xs text-slate-400">มองตรงกล้อง — ไม่ต้องหันซ้าย หันขวา หรือพยักหน้า</p>
+            <p className="text-lg font-bold dark:text-white light:text-slate-900">ถ่ายรูปหน้าตรง</p>
+            <p className="text-xs dark:text-slate-400 light:text-slate-600">
+              มองตรงกล้อง — ต้องเห็นหน้าตัวเองในกรอบก่อนกดถ่าย
+            </p>
           </div>
-          <div className="relative w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden bg-black">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-sm font-semibold text-white/90 bg-black/40 px-3 py-1 rounded-full">
-                หน้าตรง
-              </span>
-            </div>
-          </div>
+          <CameraPreviewVideoWithRef
+            videoRef={videoRef}
+            stream={stream}
+            ready={cameraReady}
+            loading={!cameraReady && !cameraStreamError}
+            overlayLabel="หน้าตรง"
+            className="max-w-[240px] aspect-square"
+          />
           <canvas ref={canvasRef} className="hidden" />
+          {cameraStreamError && (
+            <div className="w-full space-y-2">
+              <p className="text-xs text-red-400 flex items-center justify-center gap-1 text-center">
+                <AlertCircle className="w-3.5 h-3.5" /> {cameraStreamError}
+              </p>
+              <button
+                type="button"
+                onClick={retryCamera}
+                className="btn-secondary w-full py-2 text-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
+                ลองเปิดกล้องอีกครั้ง
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={capturePhoto}
-            disabled={!!cameraError}
+            disabled={!!cameraError || !cameraReady}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
             style={{ background: accentGradient }}
           >
             <Camera className="w-5 h-5" />
             ถ่ายรูป
           </button>
-          <p className="text-[10px] text-slate-500 text-center">กดปุ่มเมื่อพร้อม — ไม่มีนับถอยหลังอัตโนมัติ</p>
-          {cameraError && <p className="text-xs text-red-400 text-center">{cameraError}</p>}
+          <p className="text-[10px] dark:text-slate-500 light:text-slate-500 text-center">
+            กดปุ่มเมื่อพร้อม — ไม่มีนับถอยหลังอัตโนมัติ
+          </p>
         </div>
       )}
 

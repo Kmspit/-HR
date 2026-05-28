@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   ScanFace,
   Loader2,
@@ -9,25 +9,29 @@ import {
   Camera,
   ChevronRight,
   ArrowLeft,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { extractDescriptorFromVideo, loadFaceModels, runLivenessCheck } from '@/lib/face-client'
+import { useCameraStream } from '@/hooks/useCameraStream'
+import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import FaceStepGuide, { REGISTER_GUIDE_STEPS } from '@/components/attendance/FaceStepGuide'
 
 type Props = {
   onRegistered: () => void
 }
 
-/** 0=intro … 5=confirm, 6=done */
 type RegPhase = 'intro' | 'camera' | 'sample1' | 'sample2' | 'sample3' | 'confirm' | 'done'
 
 const SAMPLE_PHASES: RegPhase[] = ['sample1', 'sample2', 'sample3']
 
 const POSE_HINT: Record<string, string> = {
+  camera: 'ตรวจสอบกล้อง',
   sample1: 'หน้าตรง',
   sample2: 'เอียงซ้ายเล็กน้อย',
   sample3: 'เอียงขวาเล็กน้อย',
+  confirm: 'ยืนยันบันทึก',
 }
 
 function phaseToGuideIndex(phase: RegPhase): number {
@@ -51,50 +55,25 @@ function phaseToGuideIndex(phase: RegPhase): number {
 
 export default function FaceRegistrationCard({ onRegistered }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const [phase, setPhase] = useState<RegPhase>('intro')
-  const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [samples, setSamples] = useState<number[][]>([])
-  const [cameraError, setCameraError] = useState('')
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
-  }, [])
-
-  const startCamera = useCallback(async () => {
-    try {
-      setCameraError('')
-      await loadFaceModels()
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      setReady(true)
-      return true
-    } catch {
-      setCameraError('ไม่สามารถเปิดกล้องได้ — อนุญาตการใช้กล้องในเบราว์เซอร์')
-      setReady(false)
-      return false
-    }
-  }, [])
 
   const showCamera = phase !== 'intro' && phase !== 'done'
-
-  useEffect(() => {
-    if (!showCamera) return
-    startCamera()
-    return () => stopCamera()
-  }, [showCamera, startCamera, stopCamera])
+  const { stream, ready, error: cameraError, retry } = useCameraStream({
+    enabled: showCamera,
+    preloadFaceModels: loadFaceModels,
+  })
 
   const captureSample = async () => {
-    if (!videoRef.current) return
+    if (!videoRef.current) {
+      toast.error('กล้องยังไม่พร้อม — รอจนเห็นหน้าตัวเองในกรอบ')
+      return
+    }
+    if (videoRef.current.videoWidth === 0) {
+      toast.error('ภาพจากกล้องยังไม่พร้อม — รอสักครู่แล้วลองใหม่')
+      return
+    }
     setLoading(true)
     try {
       const descriptor = await extractDescriptorFromVideo(videoRef.current)
@@ -137,7 +116,6 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
       }
       toast.success('ลงทะเบียนใบหน้าเรียบร้อย')
       setPhase('done')
-      stopCamera()
       onRegistered()
     } catch (err) {
       console.error('[face-register]', err)
@@ -183,7 +161,7 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
             สอนลงทะเบียนใบหน้า (ครั้งเดียว)
           </h3>
           <p className="text-xs mt-1 dark:text-slate-400 light:text-slate-600 leading-relaxed">
-            ทำตามทีละขั้นตอนด้านล่าง — ใช้เวลาประมาณ 1–2 นาที
+            ทำตามทีละขั้นตอน — ต้องเห็นหน้าตัวเองในกรอบกล้องตลอด
           </p>
         </div>
       </div>
@@ -193,9 +171,7 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
       {phase === 'intro' && (
         <button
           type="button"
-          onClick={async () => {
-            setPhase('camera')
-          }}
+          onClick={() => setPhase('camera')}
           className="btn-primary w-full py-3 flex items-center justify-center gap-2"
         >
           เริ่มขั้นตอนที่ 1
@@ -203,52 +179,44 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
         </button>
       )}
 
-      {phase === 'camera' && (
+      {showCamera && (
         <div className="space-y-3">
-          <p className="text-xs text-center dark:text-slate-400 light:text-slate-600">
-            {ready ? 'กล้องพร้อมแล้ว — กดถัดไปเพื่อเริ่มสแกน' : 'กำลังเปิดกล้อง...'}
-          </p>
-          {cameraError && (
-            <p className="text-xs text-red-400 flex items-center justify-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" /> {cameraError}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5">
-              <ArrowLeft className="w-4 h-4 inline mr-1" />
-              ย้อนกลับ
-            </button>
-            <button
-              type="button"
-              disabled={!ready}
-              onClick={() => setPhase('sample1')}
-              className="btn-primary flex-1 py-2.5"
-            >
-              ถัดไป — สแกนครั้งที่ 1
-            </button>
-          </div>
-        </div>
-      )}
+          <CameraPreviewVideoWithRef
+            videoRef={videoRef}
+            stream={stream}
+            ready={ready}
+            loading={!ready && !cameraError}
+            overlayLabel={POSE_HINT[phase] ?? 'กล้อง'}
+          />
 
-      {showCamera && phase !== 'camera' && (
-        <div className="space-y-3">
-          <div className="relative mx-auto w-full max-w-[280px] aspect-[4/3] rounded-2xl overflow-hidden bg-black border dark:border-white/10 light:border-slate-200">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
-            <div className="absolute inset-6 border-2 border-dashed border-cyan-400/60 rounded-2xl pointer-events-none" />
-            {SAMPLE_PHASES.includes(phase) && (
-              <div className="absolute bottom-3 left-0 right-0 text-center">
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-black/60 text-cyan-200">
-                  {POSE_HINT[phase]}
-                </span>
-              </div>
-            )}
-          </div>
+          {cameraError && (
+            <div className="space-y-2">
+              <p className="text-xs text-red-400 flex items-center justify-center gap-1 text-center">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /> {cameraError}
+              </p>
+              <button type="button" onClick={retry} className="btn-secondary w-full py-2 text-xs">
+                <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
+                ลองเปิดกล้องอีกครั้ง
+              </button>
+            </div>
+          )}
+
+          {phase === 'camera' && (
+            <div className="flex gap-2">
+              <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5">
+                <ArrowLeft className="w-4 h-4 inline mr-1" />
+                ย้อนกลับ
+              </button>
+              <button
+                type="button"
+                disabled={!ready || !!cameraError}
+                onClick={() => setPhase('sample1')}
+                className="btn-primary flex-1 py-2.5"
+              >
+                ถัดไป — สแกนครั้งที่ 1
+              </button>
+            </div>
+          )}
 
           {SAMPLE_PHASES.includes(phase) && (
             <>
@@ -273,7 +241,7 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
                 <button
                   type="button"
                   onClick={captureSample}
-                  disabled={loading || !ready}
+                  disabled={loading || !ready || !!cameraError}
                   className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2"
                 >
                   {loading ? (
@@ -291,9 +259,7 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
 
           {phase === 'confirm' && (
             <div className="space-y-2">
-              <p className="text-center text-xs text-green-400">
-                ✓ สแกนครบ 3 ครั้งแล้ว
-              </p>
+              <p className="text-center text-xs text-green-400">✓ สแกนครบ 3 ครั้งแล้ว</p>
               <div className="flex gap-2">
                 <button type="button" onClick={goBack} className="btn-secondary flex-1 py-2.5">
                   สแกนใหม่ (ขั้น 3)
@@ -301,7 +267,7 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
                 <button
                   type="button"
                   onClick={finishRegistration}
-                  disabled={loading}
+                  disabled={loading || !ready}
                   className="btn-primary flex-1 py-2.5"
                 >
                   {loading ? (
@@ -312,12 +278,6 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
                 </button>
               </div>
             </div>
-          )}
-
-          {cameraError && (
-            <p className="text-xs text-red-400 flex items-center justify-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" /> {cameraError}
-            </p>
           )}
         </div>
       )}
