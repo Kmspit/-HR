@@ -26,3 +26,23 @@ export function getLineWebhookUrl(): string {
 export function isLineOaConfigured(): boolean {
   return !!getLineChannelAccessToken() && !!getLineChannelSecret()
 }
+
+/** สำหรับหน้า debug webhook — ไม่แสดงค่า secret */
+export function getLineConfigStatus() {
+  const secret =
+    !!process.env.LINE_CHANNEL_SECRET?.trim() || !!process.env.LINE_OA_CHANNEL_SECRET?.trim()
+  const token =
+    !!process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim() ||
+    !!process.env.LINE_OA_ACCESS_TOKEN?.trim()
+  return {
+    configured: secret && token,
+    hasChannelSecret: secret,
+    hasAccessToken: token,
+    webhookPath: '/api/line/webhook',
+    webhookUrl: getLineWebhookUrl(),
+    envNames: {
+      secret: 'LINE_CHANNEL_SECRET (หรือ LINE_OA_CHANNEL_SECRET)',
+      token: 'LINE_CHANNEL_ACCESS_TOKEN (หรือ LINE_OA_ACCESS_TOKEN)',
+    },
+  }
+}

@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyLineWebhookSignature, type LineWebhookBody } from '@/lib/line-api'
 import { handleLineWebhookEvent } from '@/lib/line-webhook-handlers'
-import { getLineChannelSecret, isLineOaConfigured } from '@/lib/line-config'
+import { getLineChannelSecret, getLineConfigStatus } from '@/lib/line-config'
 
 export const runtime = 'nodejs'
 
-/** LINE Platform verification (GET) */
+/** LINE Platform verification + ตรวจ env (GET) */
 export async function GET() {
+  const status = getLineConfigStatus()
   return NextResponse.json({
     ok: true,
-    configured: isLineOaConfigured(),
+    configured: status.configured,
     webhook: true,
+    ...status,
+    hint: status.configured
+      ? 'พร้อมใช้งาน — ตั้ง Webhook URL ใน LINE ตาม webhookUrl'
+      : 'ใส่ env บน Vercel (Production) แล้ว Redeploy — ดู hasChannelSecret / hasAccessToken',
   })
 }
 
