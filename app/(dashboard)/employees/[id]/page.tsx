@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
+import Topbar from '@/components/dashboard/Topbar'
 import EmployeeEditClient from './EmployeeEditClient'
 
 export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +26,10 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
   const warningCount = await prisma.warning.count({ where: { userId: id } })
 
   return (
-    <EmployeeEditClient
+    <div className="flex flex-col min-h-0">
+      <Topbar title="แก้ไขข้อมูลพนักงาน" subtitle={user.name} />
+      <EmployeeEditClient
+      currentUserId={session.user.id}
       employee={{
         ...user,
         baseSalary: user.baseSalary ?? 0,
@@ -34,5 +38,6 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
         warningCount,
       }}
     />
+    </div>
   )
 }

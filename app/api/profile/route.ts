@@ -1,243 +1,274 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { apiError } from '@/lib/api-handler'
-import { splitDisplayName, buildDisplayName, normalizeThaiPhone } from '@/lib/profile-name'
-import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
-import { ROLE_LABELS } from '@/lib/permissions'
-import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
-
-function formatDate(d: Date | null | undefined) {
-  if (!d) return null
-  return d.toISOString().slice(0, 10)
-}
-
-function serializeUser(u: {
-  id: string
-  email: string
-  employeeId: string | null
-  name: string
-  prefix: string | null
-  nickname: string | null
-  phone: string | null
-  birthDate: Date | null
-  address: string | null
-  nationalId: string | null
-  profileImage: string | null
-  role: string
-  status: string
-  department: string | null
-  position: string | null
-  baseSalary: number | null
-  startDate: Date | null
-  socialSecurity: boolean
-  lineId: string | null
-  lineUserId: string | null
-  lineDisplayName: string | null
-  createdAt: Date
-}) {
-  const { prefix, firstName, lastName } = splitDisplayName(u.name, u.prefix)
-  return {
-    id: u.id,
-    email: u.email,
-    employeeId: u.employeeId ?? '',
-    name: u.name,
-    prefix,
-    firstName,
-    lastName,
-    nickname: u.nickname ?? '',
-    phone: u.phone ?? '',
-    birthDate: formatDate(u.birthDate),
-    address: u.address ?? '',
-    nationalId: u.nationalId ?? '',
-    profileImage: u.profileImage,
-    role: u.role,
-    roleLabel: ROLE_LABELS[u.role as keyof typeof ROLE_LABELS],
-    status: u.status,
-    department: u.department ?? '',
-    position: u.position ?? '',
-    baseSalary: u.baseSalary,
-    startDate: formatDate(u.startDate),
-    socialSecurity: u.socialSecurity,
-    lineId: u.lineId ?? '',
-    lineUserId: u.lineUserId ?? '',
-    lineDisplayName: u.lineDisplayName ?? '',
-    createdAt: u.createdAt.toISOString(),
-  }
-}
-
-const PROFILE_SELECT = {
-  id: true,
-  email: true,
-  employeeId: true,
-  name: true,
-  prefix: true,
-  nickname: true,
-  phone: true,
-  birthDate: true,
-  address: true,
-  nationalId: true,
-  profileImage: true,
-  role: true,
-  status: true,
-  department: true,
-  position: true,
-  baseSalary: true,
-  startDate: true,
-  socialSecurity: true,
-  lineId: true,
-  lineUserId: true,
-  lineDisplayName: true,
-  createdAt: true,
-} as const
-
-export async function GET() {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: PROFILE_SELECT,
-    })
-    if (!user) {
-      return NextResponse.json({ error: 'ไม่พบผู้ใช้' }, { status: 404 })
-    }
-
-    return NextResponse.json({ profile: serializeUser(user) })
-  } catch (err) {
-    return apiError(err)
-  }
-}
-
-export async function PATCH(req: NextRequest) {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const contentType = req.headers.get('content-type') ?? ''
-    let prefix: string
-    let firstName: string
-    let lastName: string
-    let nickname: string | null
-    let phone: string
-    let address: string | null
-    let lineIdRaw: string | undefined
-    let avatarFile: File | null = null
-
-    if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData()
-      prefix = (formData.get('prefix') as string) || 'นาย'
-      firstName = (formData.get('firstName') as string) || ''
-      lastName = (formData.get('lastName') as string) || ''
-      nickname = (formData.get('nickname') as string) || null
-      phone = (formData.get('phone') as string) || ''
-      address = (formData.get('address') as string) || null
-      const lineField = formData.get('lineId')
-      if (lineField != null) lineIdRaw = String(lineField)
-      const file = formData.get('avatar') as File | null
-      if (file && file.size > 0) avatarFile = file
-    } else {
-      const body = await req.json()
-      prefix = body.prefix ?? 'นาย'
-      firstName = body.firstName ?? ''
-      lastName = body.lastName ?? ''
-      nickname = body.nickname ?? null
-      phone = body.phone ?? ''
-      address = body.address ?? null
-      if ('lineId' in body) lineIdRaw = body.lineId
-    }
-
-    if (!firstName.trim()) {
-      return NextResponse.json({ error: 'กรุณากรอกชื่อ' }, { status: 400 })
-    }
-
-    const phoneNorm = normalizeThaiPhone(phone)
-    if (!phoneNorm) {
-      return NextResponse.json(
-        { error: 'เบอร์โทรต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)' },
-        { status: 400 },
-      )
-    }
-
-    const dupPhone = await prisma.user.findFirst({
-      where: { phone: phoneNorm, NOT: { id: session.user.id } },
-    })
-    if (dupPhone) {
-      return NextResponse.json({ error: 'เบอร์โทรนี้มีในระบบแล้ว' }, { status: 409 })
-    }
-
-    const updateData: Record<string, unknown> = {
-      name: buildDisplayName(prefix, firstName, lastName),
-      prefix: prefix.trim(),
-      nickname: nickname?.trim() || null,
-      phone: phoneNorm,
-      address: address?.trim() || null,
-    }
-
-    if (lineIdRaw !== undefined) {
-      const lineParsed = parseLineFields(
-        { lineId: lineIdRaw },
-        { requireLineId: true, allowUserId: false, allowDisplayName: false },
-      )
-      if (!lineParsed.ok) {
-        return NextResponse.json({ error: lineParsed.error }, { status: 400 })
-      }
-      const lineUnique = await assertLineFieldsUnique(lineParsed, session.user.id)
-      if (!lineUnique.ok) {
-        return NextResponse.json({ error: lineUnique.error }, { status: 409 })
-      }
-      updateData.lineId = lineParsed.lineId
-    }
-
-    if (avatarFile) {
-      if (!isAvatarFile(avatarFile)) {
-        return NextResponse.json({ error: 'รองรับเฉพาะรูป JPG, PNG, WEBP' }, { status: 400 })
-      }
-      try {
-        const stored = await storeProfileAvatar(session.user.id, avatarFile)
-        if (!stored) {
-          return NextResponse.json({ error: 'บันทึกรูปโปรไฟล์ไม่สำเร็จ' }, { status: 500 })
-        }
-        updateData.profileImage = stored.profileImage
-        if (stored.profileImageBase64 != null) {
-          updateData.profileImageBase64 = stored.profileImageBase64
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message === 'AVATAR_TOO_LARGE') {
-          return NextResponse.json({ error: 'รูปต้องไม่เกิน 2 MB' }, { status: 400 })
-        }
-        throw e
-      }
-    }
-
-    let user
-    try {
-      user = await prisma.user.update({
-        where: { id: session.user.id },
-        data: updateData,
-        select: PROFILE_SELECT,
-      })
-    } catch (updateErr) {
-      if (avatarFile && updateData.profileImageBase64 != null) {
-        const { profileImageBase64: _drop, ...withoutB64 } = updateData
-        user = await prisma.user.update({
-          where: { id: session.user.id },
-          data: withoutB64,
-          select: PROFILE_SELECT,
-        })
-      } else {
-        throw updateErr
-      }
-    }
-
-    return NextResponse.json({ profile: serializeUser(user), message: 'บันทึกโปรไฟล์แล้ว' })
-  } catch (err) {
-    return apiError(err)
-  }
-}
-
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { apiError } from '@/lib/api-handler'
+import { splitDisplayName } from '@/lib/profile-name'
+import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
+import { ROLE_LABELS } from '@/lib/permissions'
+import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
+import { parseSelfProfileInput, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
+
+function formatDate(d: Date | null | undefined) {
+  if (!d) return null
+  return d.toISOString().slice(0, 10)
+}
+
+function serializeUser(u: {
+  id: string
+  email: string
+  employeeId: string | null
+  name: string
+  prefix: string | null
+  nickname: string | null
+  phone: string | null
+  birthDate: Date | null
+  address: string | null
+  nationalId: string | null
+  profileImage: string | null
+  role: string
+  status: string
+  department: string | null
+  position: string | null
+  baseSalary: number | null
+  startDate: Date | null
+  socialSecurity: boolean
+  lineId: string | null
+  lineUserId: string | null
+  lineDisplayName: string | null
+  createdAt: Date
+}) {
+  const { prefix, firstName, lastName } = splitDisplayName(u.name, u.prefix)
+  return {
+    id: u.id,
+    email: u.email,
+    employeeId: u.employeeId ?? '',
+    name: u.name,
+    prefix,
+    firstName,
+    lastName,
+    nickname: u.nickname ?? '',
+    phone: u.phone ?? '',
+    birthDate: formatDate(u.birthDate),
+    address: u.address ?? '',
+    nationalId: u.nationalId ?? '',
+    profileImage: u.profileImage,
+    role: u.role,
+    roleLabel: ROLE_LABELS[u.role as keyof typeof ROLE_LABELS],
+    status: u.status,
+    department: u.department ?? '',
+    position: u.position ?? '',
+    baseSalary: u.baseSalary,
+    startDate: formatDate(u.startDate),
+    socialSecurity: u.socialSecurity,
+    lineId: u.lineId ?? '',
+    lineUserId: u.lineUserId ?? '',
+    lineDisplayName: u.lineDisplayName ?? '',
+    createdAt: u.createdAt.toISOString(),
+  }
+}
+
+const PROFILE_SELECT = {
+  id: true,
+  email: true,
+  employeeId: true,
+  name: true,
+  prefix: true,
+  nickname: true,
+  phone: true,
+  birthDate: true,
+  address: true,
+  nationalId: true,
+  profileImage: true,
+  role: true,
+  status: true,
+  department: true,
+  position: true,
+  baseSalary: true,
+  startDate: true,
+  socialSecurity: true,
+  lineId: true,
+  lineUserId: true,
+  lineDisplayName: true,
+  createdAt: true,
+} as const
+
+function readProfileBody(
+  contentType: string,
+  formData: FormData | null,
+  json: Record<string, unknown> | null,
+) {
+  const get = (key: string): string | undefined => {
+    if (formData) {
+      const v = formData.get(key)
+      if (v == null) return undefined
+      return String(v)
+    }
+    if (json && key in json) return String(json[key] ?? '')
+    return undefined
+  }
+  return {
+    prefix: get('prefix'),
+    firstName: get('firstName'),
+    lastName: get('lastName'),
+    nickname: get('nickname'),
+    phone: get('phone'),
+    email: get('email'),
+    address: get('address'),
+    lineId: get('lineId'),
+    birthDate: get('birthDate'),
+    nationalId: get('nationalId'),
+    avatarFile:
+      formData && (formData.get('avatar') as File | null)?.size
+        ? (formData.get('avatar') as File)
+        : null,
+  }
+}
+
+export async function GET() {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: PROFILE_SELECT,
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'ไม่พบผู้ใช้' }, { status: 404 })
+    }
+
+    return NextResponse.json({ profile: serializeUser(user) })
+  } catch (err) {
+    return apiError(err)
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const contentType = req.headers.get('content-type') ?? ''
+    let formData: FormData | null = null
+    let json: Record<string, unknown> | null = null
+
+    if (contentType.includes('multipart/form-data')) {
+      formData = await req.formData()
+    } else {
+      json = (await req.json()) as Record<string, unknown>
+      for (const key of Object.keys(json)) {
+        if (SELF_PROFILE_FORBIDDEN.has(key)) {
+          return NextResponse.json(
+            { error: 'ไม่สามารถแก้ไขสิทธิ์หรือข้อมูลระบบได้ — ติดต่อ HR' },
+            { status: 403 },
+          )
+        }
+      }
+    }
+
+    const raw = readProfileBody(contentType, formData, json)
+    const parsed = parseSelfProfileInput({
+      prefix: raw.prefix,
+      firstName: raw.firstName,
+      lastName: raw.lastName,
+      nickname: raw.nickname ?? null,
+      phone: raw.phone,
+      email: raw.email,
+      address: raw.address ?? null,
+      birthDate: raw.birthDate ?? null,
+      nationalId: raw.nationalId ?? null,
+    })
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    }
+
+    const lineParsed = parseLineFields(
+      { lineId: raw.lineId },
+      { requireLineId: true, allowUserId: false, allowDisplayName: false },
+    )
+    if (!lineParsed.ok) {
+      return NextResponse.json({ error: lineParsed.error }, { status: 400 })
+    }
+    const lineUnique = await assertLineFieldsUnique(lineParsed, session.user.id)
+    if (!lineUnique.ok) {
+      return NextResponse.json({ error: lineUnique.error }, { status: 409 })
+    }
+
+    const dupPhone = await prisma.user.findFirst({
+      where: { phone: parsed.data.phone, NOT: { id: session.user.id } },
+    })
+    if (dupPhone) {
+      return NextResponse.json({ error: 'เบอร์โทรนี้มีในระบบแล้ว' }, { status: 409 })
+    }
+
+    const dupEmail = await prisma.user.findFirst({
+      where: { email: parsed.data.email, NOT: { id: session.user.id } },
+    })
+    if (dupEmail) {
+      return NextResponse.json({ error: 'อีเมลนี้มีในระบบแล้ว' }, { status: 409 })
+    }
+
+    if (parsed.data.nationalId) {
+      const dupId = await prisma.user.findFirst({
+        where: { nationalId: parsed.data.nationalId, NOT: { id: session.user.id } },
+      })
+      if (dupId) {
+        return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
+      }
+    }
+
+    const updateData: Record<string, unknown> = {
+      ...parsed.data,
+      lineId: lineParsed.lineId,
+    }
+
+    if (raw.avatarFile) {
+      if (!isAvatarFile(raw.avatarFile)) {
+        return NextResponse.json({ error: 'รองรับเฉพาะรูป JPG, PNG, WEBP' }, { status: 400 })
+      }
+      try {
+        const stored = await storeProfileAvatar(session.user.id, raw.avatarFile)
+        if (!stored) {
+          return NextResponse.json({ error: 'บันทึกรูปโปรไฟล์ไม่สำเร็จ' }, { status: 500 })
+        }
+        updateData.profileImage = stored.profileImage
+        if (stored.profileImageBase64 != null) {
+          updateData.profileImageBase64 = stored.profileImageBase64
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message === 'AVATAR_TOO_LARGE') {
+          return NextResponse.json({ error: 'รูปต้องไม่เกิน 2 MB' }, { status: 400 })
+        }
+        throw e
+      }
+    }
+
+    let user
+    try {
+      user = await prisma.user.update({
+        where: { id: session.user.id },
+        data: updateData,
+        select: PROFILE_SELECT,
+      })
+    } catch (updateErr) {
+      if (raw.avatarFile && updateData.profileImageBase64 != null) {
+        const { profileImageBase64: _drop, ...withoutB64 } = updateData
+        user = await prisma.user.update({
+          where: { id: session.user.id },
+          data: withoutB64,
+          select: PROFILE_SELECT,
+        })
+      } else {
+        throw updateErr
+      }
+    }
+
+    return NextResponse.json({ profile: serializeUser(user), message: 'บันทึกโปรไฟล์แล้ว' })
+  } catch (err) {
+    return apiError(err)
+  }
+}

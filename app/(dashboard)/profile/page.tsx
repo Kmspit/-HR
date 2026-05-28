@@ -58,7 +58,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="โปรไฟล์ของฉัน" subtitle="แก้ไขข้อมูลส่วนตัวและดูประวัติตอนสมัคร" />
+      <Topbar title="โปรไฟล์ของฉัน" subtitle="แก้ไขรูป ข้อมูลติดต่อ LINE และข้อมูลส่วนตัว" />
       <ProfileClient
         initial={{
           prefix,

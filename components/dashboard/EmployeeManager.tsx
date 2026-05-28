@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, CheckCircle, XCircle, Search, Layers } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, CheckCircle, XCircle, Search, Layers, Pencil } from 'lucide-react'
 import OrgAssignModal from '@/components/dashboard/OrgAssignModal'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -255,6 +256,12 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                           </button>
                         </>
                       )}
+                      <Link
+                        href={`/employees/${u.id}`}
+                        className="flex min-h-[36px] items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10 touch-manipulation"
+                      >
+                        <Pencil size={12} /> แก้ไข
+                      </Link>
                       <button type="button" onClick={() => setAssignUser(u)} className="flex min-h-[36px] items-center gap-1 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 touch-manipulation">
                         <Layers size={12} /> กำหนดฝ่าย/แผนก
                       </button>
