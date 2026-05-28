@@ -36,8 +36,10 @@ type Props = {
 }
 
 function orgLabel(u: User) {
-  if (u.division && u.orgDepartment && u.section) {
-    return `${u.division.name} / ${u.orgDepartment.name} / ${u.section.name}`
+  if (u.division && u.orgDepartment) {
+    return u.section
+      ? `${u.division.name} / ${u.orgDepartment.name} / ${u.section.name}`
+      : `${u.division.name} / ${u.orgDepartment.name}`
   }
   if (u.department) return u.department
   return '— ยังไม่กำหนด'
@@ -228,8 +230,8 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px]">
                     <p className="truncate" title={orgLabel(u)}>{orgLabel(u)}</p>
-                    {!u.sectionId && u.status === 'ACTIVE' && (
-                      <span className="text-amber-400 text-[10px]">รอกำหนดโครงสร้าง</span>
+                    {(!u.divisionId || !u.departmentId) && u.status === 'ACTIVE' && (
+                      <span className="text-amber-400 text-[10px]">รอกำหนดฝ่าย/แผนก</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">{u.branch ? `${u.branch.name} (${u.branch.code})` : '—'}</td>

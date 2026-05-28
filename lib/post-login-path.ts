@@ -37,7 +37,7 @@ export function resolvePostLoginPath(user: PostLoginUser): {
     return {
       path: '/org-pending',
       message:
-        'เข้าสู่ระบบสำเร็จ — รอ HR กำหนดฝ่าย/แผนก/ส่วนงานก่อนใช้งานหน้าหลัก',
+        'เข้าสู่ระบบสำเร็จ — รอ HR กำหนดฝ่าย/แผนกก่อนใช้งานหน้าหลัก',
     }
   }
 

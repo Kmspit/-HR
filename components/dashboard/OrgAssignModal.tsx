@@ -48,22 +48,26 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
   const filteredSections = sections.filter((s) => !departmentId || s.departmentId === departmentId)
 
   const save = async () => {
-    if (!divisionId || !departmentId || !sectionId) {
-      toast.error('เลือกฝ่าย แผนก และส่วนงานให้ครบ')
+    if (!divisionId || !departmentId) {
+      toast.error('เลือกฝ่ายและแผนก')
       return
     }
     setSaving(true)
     const { ok, data, status } = await apiJson(`/api/users/${userId}/org`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ divisionId, departmentId, sectionId }),
+      body: JSON.stringify({
+        divisionId,
+        departmentId,
+        ...(sectionId ? { sectionId } : {}),
+      }),
     })
     setSaving(false)
     if (!ok) {
       toast.error(apiErrorMessage(data as Record<string, unknown>, 'บันทึกไม่สำเร็จ', status))
       return
     }
-    toast.success('กำหนดฝ่าย/แผนก/ส่วนงานแล้ว')
+    toast.success(sectionId ? 'กำหนดฝ่าย/แผนก/ส่วนงานแล้ว' : 'กำหนดฝ่าย/แผนกแล้ว')
     onClose()
     router.refresh()
   }
@@ -100,11 +104,16 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500">ส่วนงาน *</label>
+              <label className="text-xs text-slate-500">
+                ส่วนงาน <span className="text-slate-600">(ไม่บังคับ)</span>
+              </label>
               <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!departmentId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
-                <option value="">— เลือกส่วนงาน —</option>
+                <option value="">— ไม่ระบุส่วนงาน —</option>
                 {filteredSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              {departmentId && filteredSections.length === 0 && (
+                <p className="mt-1 text-[10px] text-slate-500">แผนกนี้ไม่มีส่วนงาน — บันทึกได้โดยไม่เลือก</p>
+              )}
             </div>
           </div>
         )}
