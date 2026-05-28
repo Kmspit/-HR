@@ -5,7 +5,6 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import type { Role, UserStatus } from '@prisma/client'
 import { authConfig } from './auth.config'
-import { ensureDbSchema } from './ensure-db-schema'
 
 declare module 'next-auth' {
   interface User {
@@ -31,7 +30,7 @@ declare module 'next-auth' {
 
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(1),
 })
 
@@ -44,11 +43,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null
 
         const { email, password } = parsed.data
+        const identifier = email.trim().toLowerCase()
 
-        await ensureDbSchema()
-
-        const user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: identifier },
+              { employeeId: identifier },
+              { employeeId: email.trim() },
+            ],
+          },
         })
 
         if (!user) return null

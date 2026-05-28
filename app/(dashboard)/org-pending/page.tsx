@@ -29,9 +29,10 @@ export default async function OrgPendingPage() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15">
           <Clock className="h-7 w-7 text-amber-400" />
         </div>
-        <h1 className="text-lg font-bold text-white">รอ HR กำหนดฝ่าย / แผนก / ส่วนงาน</h1>
+        <h1 className="text-lg font-bold text-white">เข้าสู่ระบบแล้ว — รอ HR กำหนดฝ่าย / แผนก / ส่วนงาน</h1>
         <p className="text-sm text-slate-400 leading-relaxed">
-          บัญชีของคุณเปิดใช้งานแล้ว แต่ยังไม่ได้รับการกำหนดโครงสร้างองค์กร
+          รหัสผ่านถูกต้องและบัญชีเปิดใช้งานแล้ว แต่ยังไม่ได้รับการกำหนดโครงสร้างองค์กร
+          จึงยังเข้าหน้าหลักไม่ได้ชั่วคราว
           {user?.branch ? ` (สาขา: ${user.branch.name})` : ''}
           <br />
           กรุณาติดต่อ HR/Admin เพื่อกำหนดฝ่าย แผนก และส่วนงานก่อนเข้าใช้งานระบบ

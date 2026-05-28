@@ -1,13 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function LoginForm() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [form, setForm] = useState({ email: '', password: '', remember: false })
@@ -15,8 +13,11 @@ export default function LoginForm() {
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.email) e.email = 'กรุณากรอกอีเมล'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
+    const id = form.email.trim()
+    if (!id) e.email = 'กรุณากรอกอีเมลหรือรหัสพนักงาน'
+    else if (id.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)) {
+      e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
+    }
     if (!form.password) e.password = 'กรุณากรอกรหัสผ่าน'
     return e
   }
@@ -31,26 +32,43 @@ export default function LoginForm() {
 
     try {
       const res = await signIn('credentials', {
-        email: form.email.toLowerCase(),
+        email: form.email.trim(),
         password: form.password,
         redirect: false,
       })
 
-      if (res?.error) {
-        const messages: Record<string, string> = {
-          PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR / Manager',
-          ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
-          ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
-          CredentialsSignin: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
-        }
-        toast.error(messages[res.error] ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่')
-        setLoading(false)
+      const messages: Record<string, string> = {
+        PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR / Manager',
+        ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
+        ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
+        CredentialsSignin: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
+      }
+
+      if (res?.error || !res?.ok) {
+        toast.error(messages[res?.error ?? ''] ?? 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่')
         return
       }
 
-      toast.success('เข้าสู่ระบบสำเร็จ')
-      router.push('/dashboard')
-      router.refresh()
+      await getSession()
+
+      const redirectRes = await fetch('/api/me/redirect', { credentials: 'include' })
+      const redirectData = (await redirectRes.json().catch(() => ({}))) as {
+        path?: string
+        message?: string | null
+      }
+
+      const dest = redirectData.path && redirectData.path !== '/login'
+        ? redirectData.path
+        : '/dashboard'
+
+      if (redirectData.message) {
+        toast.success(redirectData.message)
+      } else {
+        toast.success('เข้าสู่ระบบสำเร็จ')
+      }
+
+      // Hard navigation — ให้ cookie session พร้อมก่อนโหลด dashboard
+      window.location.assign(dest)
     } catch {
       toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
@@ -74,15 +92,14 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Email */}
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 light:text-slate-500">
           อีเมล / รหัสพนักงาน
         </label>
         <input
           type="text"
-          autoComplete="email"
-          placeholder="name@company.com"
+          autoComplete="username"
+          placeholder="name@company.com หรือรหัสพนักงาน"
           className={errors.email ? inputError : inputNormal}
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
@@ -97,7 +114,6 @@ export default function LoginForm() {
         )}
       </div>
 
-      {/* Password */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-semibold uppercase tracking-wider dark:text-slate-400 light:text-slate-500">
@@ -134,7 +150,6 @@ export default function LoginForm() {
         )}
       </div>
 
-      {/* Remember me */}
       <label className="flex cursor-pointer items-center gap-3">
         <input
           type="checkbox"
@@ -145,7 +160,6 @@ export default function LoginForm() {
         <span className="text-sm dark:text-slate-400 light:text-slate-500">จดจำการเข้าสู่ระบบ</span>
       </label>
 
-      {/* Submit */}
       <button
         type="submit"
         disabled={loading}

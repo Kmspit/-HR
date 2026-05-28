@@ -21,7 +21,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const pathname = (await headers()).get('x-pathname') ?? ''
   const orgExempt = ORG_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
 
-  if (needsOrgAssignment(session.user.role) && !orgExempt) {
+  // ต้องมี pathname จาก middleware — ถ้าไม่มีให้ข้าม gate เพื่อกัน redirect วนลูป
+  if (pathname && needsOrgAssignment(session.user.role) && !orgExempt) {
     const orgUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { divisionId: true, departmentId: true, sectionId: true },
