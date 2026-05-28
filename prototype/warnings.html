@@ -71,7 +71,7 @@
       <div class="card-header"><span class="card-title">📅 สรุปใบเตือนรายเดือน</span></div>
       <div class="table-wrap" id="warn-summary-wrap" style="display:none;">
         <table class="warnings-table">
-          <thead><tr><th>เดือน / ปี</th><th>จำนวนใบ</th><th>พนักงานที่โดน</th></tr></thead>
+          <thead><tr><th>เดือน / ปี</th><th>ล่าสุดในเดือน</th><th>จำนวนใบ</th><th>พนักงานที่โดน</th></tr></thead>
           <tbody id="warn-summary"></tbody>
         </table>
       </div>
@@ -134,14 +134,15 @@ function renderWarnings() {
   const byMonth = {};
   warns.forEach(w => {
     const k = monthKeyFromWarning(w);
-    if (!byMonth[k]) byMonth[k] = { total: 0, employees: {} };
+    if (!byMonth[k]) byMonth[k] = { total: 0, employees: {}, latestAt: w.createdAt };
     byMonth[k].total++;
     byMonth[k].employees[w.empName] = true;
+    if (new Date(w.createdAt) > new Date(byMonth[k].latestAt)) byMonth[k].latestAt = w.createdAt;
   });
 
   const summaryWrap = document.getElementById('warn-summary-wrap');
   const summaryEl = document.getElementById('warn-summary');
-  const monthKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+  const monthKeys = Object.keys(byMonth).sort((a, b) => new Date(byMonth[b].latestAt) - new Date(byMonth[a].latestAt));
   if (!monthKeys.length) {
     summaryWrap.style.display = 'none';
     summaryEl.innerHTML = '';
@@ -152,7 +153,8 @@ function renderWarnings() {
       const empCount = Object.keys(row.employees).length;
       return `<tr>
         <td><strong>${formatMonthLabel(k)}</strong></td>
-        <td style="text-align:center;">${row.total} ใบ</td>
+        <td style="text-align:center;">${thDate(row.latestAt)}</td>
+        <td style="text-align:center;"><span class="warn-count-badge">${row.total}</span></td>
         <td style="text-align:center;">${empCount} คน</td>
       </tr>`;
     }).join('');

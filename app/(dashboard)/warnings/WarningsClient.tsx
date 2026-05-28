@@ -339,24 +339,47 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   }
 
   const summaryByMonth = useMemo(() => {
-    const map = new Map<string, { key: string; total: number; employeeIds: Set<string> }>()
+    const map = new Map<
+      string,
+      { key: string; total: number; employeeIds: Set<string>; latestAt: string }
+    >()
     for (const w of list) {
       const key = getMonthKey(w)
       const cur = map.get(key)
       if (!cur) {
-        map.set(key, { key, total: 1, employeeIds: new Set([w.userId]) })
+        map.set(key, {
+          key,
+          total: 1,
+          employeeIds: new Set([w.userId]),
+          latestAt: w.createdAt,
+        })
       } else {
         cur.total += 1
         cur.employeeIds.add(w.userId)
+        if (new Date(w.createdAt) > new Date(cur.latestAt)) {
+          cur.latestAt = w.createdAt
+        }
       }
     }
     return [...map.values()]
       .map((row) => ({ ...row, employeeCount: row.employeeIds.size }))
-      .sort((a, b) => b.key.localeCompare(a.key))
+      .sort(
+        (a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime(),
+      )
   }, [list])
 
-  const thCls = 'p-3 text-white/40 font-medium whitespace-nowrap'
-  const tdCls = 'p-3 whitespace-nowrap align-middle'
+  const formatShortDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: '2-digit',
+    })
+
+  const thCls =
+    'px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap dark:text-slate-400 light:text-slate-500'
+  const tdCls = 'px-4 py-3 align-middle text-sm whitespace-nowrap'
+  const trRowCls =
+    'table-row-hover border-b dark:border-white/[0.06] light:border-slate-100 even:dark:bg-white/[0.02] even:light:bg-slate-50/80'
 
   const renderWarningRow = (w: Warning) => {
     const userOrdinal = warningOrdinalById.get(w.id) ?? '?'
@@ -366,23 +389,44 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       year: '2-digit',
     })
     return (
-      <tr key={w.id} className="table-row-hover border-b border-white/5">
+      <tr key={w.id} className={trRowCls}>
+        <td
+          className={`${tdCls} text-center tabular-nums dark:text-slate-300 light:text-slate-600`}
+          title={new Date(w.createdAt).toLocaleString('th-TH')}
+        >
+          {dateStr}
+        </td>
         {isManager && (
-          <td className={`${tdCls} text-white font-medium max-w-[160px] truncate`} title={w.userName}>
+          <td
+            className={`${tdCls} dark:text-white light:text-slate-900 font-medium max-w-[180px] truncate`}
+            title={w.userName}
+          >
             {w.userName}
-            {w.employeeId ? ` (${w.employeeId})` : ''}
+            {w.employeeId ? (
+              <span className="block text-[11px] font-normal dark:text-slate-500 light:text-slate-500">
+                {w.employeeId}
+              </span>
+            ) : null}
           </td>
         )}
-        <td className={`${tdCls} text-center text-white/60 text-xs`}>{dateStr}</td>
-        <td className={`${tdCls} text-center text-slate-400 text-xs tabular-nums`}>ครั้งที่ {userOrdinal}</td>
-        <td className={`${tdCls} text-white/70 max-w-[200px] truncate`} title={w.reason}>
+        <td className={`${tdCls} text-center dark:text-slate-400 light:text-slate-500 tabular-nums`}>
+          ครั้งที่ {userOrdinal}
+        </td>
+        <td
+          className={`${tdCls} dark:text-slate-200 light:text-slate-700 max-w-[220px] truncate`}
+          title={w.reason}
+        >
           {w.reason}
         </td>
         <td className={`${tdCls} text-center`}>
           {w.isAuto ? (
-            <span className="text-purple-400 text-xs whitespace-nowrap">อัตโนมัติ</span>
+            <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium bg-purple-500/15 text-purple-400 light:bg-purple-50 light:text-purple-700">
+              อัตโนมัติ
+            </span>
           ) : (
-            <span className="text-blue-400 text-xs whitespace-nowrap">ด้วยตนเอง</span>
+            <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium bg-blue-500/15 text-blue-400 light:bg-blue-50 light:text-blue-700">
+              ด้วยตนเอง
+            </span>
           )}
         </td>
         <td className={`${tdCls} text-center`}>
@@ -393,7 +437,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
               compact
             />
           ) : (
-            <span className="text-slate-600 text-xs">—</span>
+            <span className="dark:text-slate-600 light:text-slate-400 text-xs">—</span>
           )}
         </td>
         {isManager && (
@@ -403,7 +447,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
               onClick={() => handleSendWarning(w.id)}
               disabled={sendingId === w.id}
               title={w.sentToLine ? 'ส่งซ้ำให้พนักงาน' : 'ส่งแจ้งเตือน + ลิงก์ไฟล์ให้พนักงาน'}
-              className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 hover:bg-blue-500/20 disabled:opacity-50 touch-manipulation"
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 light:border-blue-200 light:bg-blue-50 light:text-blue-700 hover:bg-blue-500/20 light:hover:bg-blue-100 disabled:opacity-50 touch-manipulation"
             >
               <Send className="w-3.5 h-3.5" />
               {sendingId === w.id ? '...' : w.sentToLine ? 'ส่งอีกครั้ง' : 'ส่งให้พนักงาน'}
@@ -415,9 +459,9 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   }
 
   const historyHead = (
-    <tr className="border-b border-white/10">
-      {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
+    <tr className="border-b dark:border-white/10 light:border-slate-200 dark:bg-white/[0.03] light:bg-slate-50">
       <th className={`${thCls} text-center`}>วันที่</th>
+      {isManager && <th className={`${thCls} text-left`}>พนักงาน</th>}
       <th className={`${thCls} text-center`}>ครั้งที่</th>
       <th className={`${thCls} text-left`}>เหตุผล</th>
       <th className={`${thCls} text-center`}>ประเภท</th>
@@ -672,28 +716,44 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
 
       {isManager && summaryByMonth.length > 0 && (
         <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
-          <div className="px-4 py-3 border-b border-white/10">
-            <h2 className="text-sm font-semibold text-white">สรุปใบเตือนรายเดือน</h2>
+          <div className="px-4 py-3 border-b dark:border-white/10 light:border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold dark:text-white light:text-slate-900">
+              สรุปใบเตือนรายเดือน
+            </h2>
+            <p className="text-[11px] dark:text-slate-500 light:text-slate-500">
+              เรียงตามวันที่ล่าสุดในแต่ละเดือน
+            </p>
           </div>
           <div className="table-scroll">
-            <table className="warnings-table w-full text-sm min-w-[400px]">
+            <table className="warnings-table w-full text-sm min-w-[480px]">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b dark:border-white/10 light:border-slate-200 dark:bg-white/[0.03] light:bg-slate-50">
                   <th className={`${thCls} text-left`}>เดือน / ปี</th>
+                  <th className={`${thCls} text-center`}>ล่าสุดในเดือน</th>
                   <th className={`${thCls} text-center`}>จำนวนใบ</th>
                   <th className={`${thCls} text-center`}>พนักงานที่โดน</th>
                 </tr>
               </thead>
               <tbody>
                 {summaryByMonth.map((row) => (
-                  <tr key={row.key} className="table-row-hover border-b border-white/5">
-                    <td className={`${tdCls} text-white font-medium`}>{formatMonthLabel(row.key)}</td>
+                  <tr key={row.key} className={trRowCls}>
+                    <td className={`${tdCls} dark:text-white light:text-slate-900 font-semibold`}>
+                      {formatMonthLabel(row.key)}
+                    </td>
+                    <td
+                      className={`${tdCls} text-center tabular-nums dark:text-slate-400 light:text-slate-600`}
+                      title={new Date(row.latestAt).toLocaleString('th-TH')}
+                    >
+                      {formatShortDate(row.latestAt)}
+                    </td>
                     <td className={`${tdCls} text-center`}>
-                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold border border-white/10 bg-white/5 text-slate-200">
-                        {row.total} ใบ
+                      <span className="inline-flex min-w-[3.5rem] justify-center px-2.5 py-0.5 rounded-full text-xs font-bold border dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 light:border-amber-200 light:bg-amber-50 light:text-amber-800 tabular-nums">
+                        {row.total}
                       </span>
                     </td>
-                    <td className={`${tdCls} text-center text-slate-300 tabular-nums`}>{row.employeeCount} คน</td>
+                    <td className={`${tdCls} text-center tabular-nums dark:text-slate-300 light:text-slate-700`}>
+                      {row.employeeCount} คน
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -709,10 +769,11 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         </div>
       ) : (
         <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
-          <div className="px-4 py-3 border-b border-white/10">
-            <h2 className="text-sm font-semibold text-white">
+          <div className="px-4 py-3 border-b dark:border-white/10 light:border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold dark:text-white light:text-slate-900">
               {isManager ? 'ประวัติใบเตือนทั้งหมด' : 'ประวัติใบเตือนของฉัน'}
             </h2>
+            <p className="text-[11px] dark:text-slate-500 light:text-slate-500">เรียงจากใหม่ → เก่า</p>
           </div>
           <div className="table-scroll">
             <table className={`warnings-table w-full text-sm ${isManager ? 'min-w-[640px]' : 'min-w-[480px]'}`}>

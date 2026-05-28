@@ -444,6 +444,21 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.warnings-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+.warn-count-badge {
+  display: inline-flex;
+  min-width: 2rem;
+  justify-content: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+}
 .warn-actions {
   display: inline-flex;
   align-items: center;

@@ -365,6 +365,10 @@
   }
 }
 
+.warnings-table thead th {
+  @apply dark:bg-white/[0.03] light:bg-slate-50;
+}
+
 /* Safe area helpers */
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom), 0px);
