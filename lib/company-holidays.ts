@@ -42,7 +42,7 @@ export function getHolidayForDate(
   day: Date,
   branchId: string | null,
   holidays: HolidayRecord[],
-): { name: string; type: HolidayType } | null {
+): { id: string; name: string; type: HolidayType } | null {
   const dow = new Date(day.getTime() + 7 * 60 * 60 * 1000).getUTCDay()
   const dayKey = toDateKey(day)
   const md = monthDayKey(day)
@@ -52,18 +52,18 @@ export function getHolidayForDate(
 
     if (h.holidayType === 'SATURDAY') {
       if (h.repeatEveryYear && dow === 6) {
-        return { name: h.holidayName, type: h.holidayType }
+        return { id: h.id, name: h.holidayName, type: h.holidayType }
       }
       if (!h.repeatEveryYear && toDateKey(h.holidayDate) === dayKey && dow === 6) {
-        return { name: h.holidayName, type: h.holidayType }
+        return { id: h.id, name: h.holidayName, type: h.holidayType }
       }
     }
     if (h.holidayType === 'SUNDAY') {
       if (h.repeatEveryYear && dow === 0) {
-        return { name: h.holidayName, type: h.holidayType }
+        return { id: h.id, name: h.holidayName, type: h.holidayType }
       }
       if (!h.repeatEveryYear && toDateKey(h.holidayDate) === dayKey && dow === 0) {
-        return { name: h.holidayName, type: h.holidayType }
+        return { id: h.id, name: h.holidayName, type: h.holidayType }
       }
     }
 
@@ -71,10 +71,10 @@ export function getHolidayForDate(
       const hKey = toDateKey(h.holidayDate)
       if (h.repeatEveryYear) {
         if (monthDayKey(h.holidayDate) === md) {
-          return { name: h.holidayName, type: h.holidayType }
+          return { id: h.id, name: h.holidayName, type: h.holidayType }
         }
       } else if (hKey === dayKey) {
-        return { name: h.holidayName, type: h.holidayType }
+        return { id: h.id, name: h.holidayName, type: h.holidayType }
       }
     }
   }
@@ -154,6 +154,40 @@ export function validateHolidayInput(input: {
   }
 
   return { ok: true, holidayDate: d }
+}
+
+export type CalendarHolidayCell = {
+  dateKey: string
+  id: string
+  holidayName: string
+  holidayType: HolidayType
+  typeLabel: string
+}
+
+/** แผนที่วันหยุดในเดือนที่เลือก (สำหรับปฏิทิน) */
+export function buildHolidayMapForMonth(
+  year: number,
+  month: number,
+  branchId: string | null,
+  holidays: HolidayRecord[],
+): Record<string, CalendarHolidayCell> {
+  const map: Record<string, CalendarHolidayCell> = {}
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(Date.UTC(year, month, day, 12, 0, 0))
+    const hit = getHolidayForDate(d, branchId, holidays)
+    if (hit) {
+      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      map[dateKey] = {
+        dateKey,
+        id: hit.id,
+        holidayName: hit.name,
+        holidayType: hit.type,
+        typeLabel: HOLIDAY_TYPE_LABELS[hit.type],
+      }
+    }
+  }
+  return map
 }
 
 /** โหลดกฎวันหยุดที่ใช้กับสาขา (รวมทุกสาขา) */
