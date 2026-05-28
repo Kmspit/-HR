@@ -146,5 +146,30 @@ async function runEnsure(): Promise<boolean> {
     }
   }
 
+  await addPayrollColumnIfMissing(
+    'lateBillableMinutes',
+    `ALTER TABLE payrolls ADD COLUMN lateBillableMinutes INTEGER NOT NULL DEFAULT 0`,
+  )
+  await addPayrollColumnIfMissing(
+    'lateDeductionDetail',
+    `ALTER TABLE payrolls ADD COLUMN lateDeductionDetail TEXT`,
+  )
+
   return true
+}
+
+async function payrollColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(payrolls)')
+  return rows.map((r) => r.name)
+}
+
+async function addPayrollColumnIfMissing(column: string, ddl: string) {
+  const cols = await payrollColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }

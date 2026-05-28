@@ -71,6 +71,8 @@ export default async function PayrollPage({
         lateDays: p.lateDays,
         absentDays: p.absentDays,
         lateMinutes: p.lateMinutes ?? 0,
+        lateBillableMinutes: p.lateBillableMinutes ?? p.lateMinutes ?? 0,
+        lateDeductionDetail: p.lateDeductionDetail,
         status: p.status,
         hasPayroll: true,
       }

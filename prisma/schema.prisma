@@ -542,6 +542,8 @@ model Payroll {
   lateDays        Int       @default(0)
   absentDays      Int       @default(0)
   lateMinutes     Int       @default(0)
+  lateBillableMinutes Int   @default(0)
+  lateDeductionDetail String?
   status          String    @default("DRAFT")
   slipSentAt      DateTime?
   note            String?

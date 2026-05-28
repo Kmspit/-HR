@@ -2,12 +2,24 @@
 
 import { useState } from 'react'
 import { FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
 
 type Payslip = {
-  id: string; month: number; year: number
-  baseSalary: number; lateDeduction: number; absentDeduction: number
-  unpaidLeave: number; ssDeduction: number; netSalary: number
-  lateDays: number; absentDays: number; status: string
+  id: string
+  month: number
+  year: number
+  baseSalary: number
+  lateDeduction: number
+  absentDeduction: number
+  unpaidLeave: number
+  ssDeduction: number
+  netSalary: number
+  lateDays: number
+  absentDays: number
+  lateMinutes: number
+  lateBillableMinutes?: number
+  lateDeductionDetail?: string | null
+  status: string
 }
 
 const MONTH_NAMES = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
@@ -52,7 +64,24 @@ export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
                   <Row label="เงินเดือนฐาน" value={`฿${p.baseSalary.toLocaleString()}`} />
                   <div className="border-t border-white/5 pt-2 space-y-2">
                     <p className="text-xs text-white/30 font-medium uppercase">รายการหัก</p>
-                    {p.lateDeduction > 0 && <Row label={`หักมาสาย (${p.lateDays} ครั้ง)`} value={`-฿${p.lateDeduction.toFixed(2)}`} red />}
+                    {p.lateDeduction > 0 && (
+                      <>
+                        <Row
+                          label={`หักมาสาย (${p.lateDays} วัน · ${p.lateBillableMinutes ?? p.lateMinutes} นาที)`}
+                          value={`-฿${p.lateDeduction.toFixed(2)}`}
+                          red
+                        />
+                        <div className="pl-2 border-l border-white/10">
+                          <LateDeductionDetail
+                            baseSalary={p.baseSalary}
+                            lateDeduction={p.lateDeduction}
+                            lateBillableMinutes={p.lateBillableMinutes ?? p.lateMinutes}
+                            lateDays={p.lateDays}
+                            lateDeductionDetail={p.lateDeductionDetail}
+                          />
+                        </div>
+                      </>
+                    )}
                     {p.absentDeduction > 0 && <Row label={`หักขาดงาน (${p.absentDays} วัน)`} value={`-฿${p.absentDeduction.toFixed(2)}`} red />}
                     {p.unpaidLeave > 0 && <Row label="หักลาไม่รับเงิน" value={`-฿${p.unpaidLeave.toFixed(2)}`} red />}
                     {p.ssDeduction > 0 && <Row label="ประกันสังคม (5%)" value={`-฿${p.ssDeduction.toFixed(2)}`} red />}

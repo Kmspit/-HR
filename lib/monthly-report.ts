@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { monthDateRange } from '@/lib/utils'
+import type { HolidayRecord } from '@/lib/company-holidays'
+import { buildApprovedLeaveDateSet, computeLateDeduction } from '@/lib/payroll-late-deduction'
 
 /** พนักงานที่แสดงในรายงานรายเดือน */
 const REPORT_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -8,13 +10,33 @@ const REPORT_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 export async function buildMonthlyReport(month: number, year: number, filterBranchId?: string) {
   const { start: startDate, end: endDate } = monthDateRange(month, year)
 
+  const holidayRows = await prisma.companyHoliday.findMany({
+    orderBy: [{ holidayDate: 'asc' }],
+  })
+  const holidays: HolidayRecord[] = holidayRows.map((h) => ({
+    id: h.id,
+    holidayName: h.holidayName,
+    holidayDate: h.holidayDate,
+    holidayType: h.holidayType,
+    repeatEveryYear: h.repeatEveryYear,
+    branchId: h.branchId,
+  }))
+
   const employees = await prisma.user.findMany({
     where: {
       status: 'ACTIVE',
       role: { in: [...REPORT_ROLES] },
       ...(filterBranchId ? { branchId: filterBranchId } : {}),
     },
-    select: { id: true, name: true, employeeId: true, department: true, role: true },
+    select: {
+      id: true,
+      name: true,
+      employeeId: true,
+      department: true,
+      role: true,
+      baseSalary: true,
+      branchId: true,
+    },
     orderBy: { name: 'asc' },
   })
 
@@ -42,6 +64,15 @@ export async function buildMonthlyReport(month: number, year: number, filterBran
       const workDays = attendances.filter((a) => a.checkIn).length
       const lateDays = attendances.filter((a) => a.status === 'LATE').length
       const lateMinutes = attendances.reduce((s, a) => s + (a.lateMinutes ?? 0), 0)
+
+      const leaveDateKeys = buildApprovedLeaveDateSet(leaves, startDate, endDate)
+      const lateCalc = computeLateDeduction({
+        baseSalary: emp.baseSalary ?? 0,
+        attendances,
+        leaveDateKeys,
+        holidays,
+        branchId: emp.branchId,
+      })
       const earlyLeaveDays = attendances.filter(
         (a) => a.status === 'EARLY_LEAVE' || (a.earlyLeaveMinutes ?? 0) > 0,
       ).length
@@ -56,6 +87,9 @@ export async function buildMonthlyReport(month: number, year: number, filterBran
         workDays,
         lateDays,
         lateMinutes,
+        billableLateMinutes: lateCalc.billableLateMinutes,
+        estimatedLateDeduction: lateCalc.lateDeduction,
+        payrollLateDays: lateCalc.lateDays,
         earlyLeaveDays,
         absentDays,
         leaveByType: Object.entries(leaveByType).map(([type, days]) => ({
@@ -80,11 +114,19 @@ export async function buildMonthlyReport(month: number, year: number, filterBran
     }),
   )
 
+  const lateSummary = {
+    employeesWithLate: rows.filter((r) => r.payrollLateDays > 0).length,
+    totalBillableLateMinutes: rows.reduce((s, r) => s + r.billableLateMinutes, 0),
+    totalEstimatedLateDeduction: rows.reduce((s, r) => s + r.estimatedLateDeduction, 0),
+    totalRecordedLateMinutes: rows.reduce((s, r) => s + r.lateMinutes, 0),
+  }
+
   return {
     month,
     year,
     employeeCount: rows.length,
     generatedAt: new Date().toISOString(),
+    lateSummary,
     employees: rows,
   }
 }

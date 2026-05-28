@@ -87,6 +87,8 @@ export async function GET(req: NextRequest) {
         lateDays: p.lateDays,
         absentDays: p.absentDays,
         lateMinutes: p.lateMinutes ?? 0,
+        lateBillableMinutes: p.lateBillableMinutes ?? p.lateMinutes ?? 0,
+        lateDeductionDetail: p.lateDeductionDetail,
         status: p.status,
         hasPayroll: true,
       }
@@ -108,12 +110,23 @@ export async function GET(req: NextRequest) {
       lateDays: 0,
       absentDays: 0,
       lateMinutes: 0,
+      lateBillableMinutes: 0,
+      lateDeductionDetail: null,
       status: 'PENDING',
       hasPayroll: false,
     }
   })
 
-  return NextResponse.json({ payrolls, month, year, employeeCount: employees.length })
+  const lateSummary = {
+    employeesWithLate: payrolls.filter((p) => p.lateDeduction > 0).length,
+    totalLateDeduction: payrolls.reduce((s, p) => s + p.lateDeduction, 0),
+    totalBillableLateMinutes: payrolls.reduce(
+      (s, p) => s + (p.lateBillableMinutes ?? p.lateMinutes ?? 0),
+      0,
+    ),
+  }
+
+  return NextResponse.json({ payrolls, month, year, employeeCount: employees.length, lateSummary })
 }
 
 export async function PATCH(req: NextRequest) {

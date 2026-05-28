@@ -40,6 +40,12 @@ type EmployeeRow = {
 
   lateMinutes: number
 
+  billableLateMinutes: number
+
+  estimatedLateDeduction: number
+
+  payrollLateDays: number
+
   earlyLeaveDays: number
 
   absentDays: number
@@ -57,6 +63,13 @@ type ReportData = {
   year: number
 
   employeeCount: number
+
+  lateSummary?: {
+    employeesWithLate: number
+    totalBillableLateMinutes: number
+    totalEstimatedLateDeduction: number
+    totalRecordedLateMinutes: number
+  }
 
   employees: EmployeeRow[]
 
@@ -202,6 +215,8 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
       {report && (
 
+        <>
+
         <div className="flex items-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
 
           <Users className="w-4 h-4 flex-shrink-0" />
@@ -215,6 +230,31 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
           </span>
 
         </div>
+
+        {report.lateSummary && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3 text-center">
+              <p className="text-lg font-bold text-yellow-400">{report.lateSummary.employeesWithLate}</p>
+              <p className="text-[10px] text-slate-400">พนักงานมาสาย (หักได้)</p>
+            </div>
+            <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 p-3 text-center">
+              <p className="text-lg font-bold text-orange-400">{report.lateSummary.totalBillableLateMinutes}</p>
+              <p className="text-[10px] text-slate-400">นาทีหักมาสายรวม</p>
+            </div>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center">
+              <p className="text-lg font-bold text-red-400">
+                ฿{report.lateSummary.totalEstimatedLateDeduction.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-[10px] text-slate-400">ประมาณหักมาสายรวม</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+              <p className="text-lg font-bold text-slate-300">{report.lateSummary.totalRecordedLateMinutes}</p>
+              <p className="text-[10px] text-slate-400">นาทีสายที่บันทึก (ก่อน grace)</p>
+            </div>
+          </div>
+        )}
+
+        </>
 
       )}
 

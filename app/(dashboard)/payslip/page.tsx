@@ -27,6 +27,9 @@ export default async function PayslipPage() {
         netSalary: p.netSalary,
         lateDays: p.lateDays,
         absentDays: p.absentDays,
+        lateMinutes: p.lateBillableMinutes ?? p.lateMinutes,
+        lateBillableMinutes: p.lateBillableMinutes ?? p.lateMinutes,
+        lateDeductionDetail: p.lateDeductionDetail,
         status: p.status,
       }))}
     />
