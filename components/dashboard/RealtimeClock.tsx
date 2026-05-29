@@ -9,8 +9,24 @@ export default function RealtimeClock() {
   useEffect(() => {
     const tick = () => {
       const now = new Date()
-      setTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }))
-      setDate(now.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+      setTime(
+        now.toLocaleTimeString('th-TH', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZone: 'Asia/Bangkok',
+        }),
+      )
+      setDate(
+        now.toLocaleDateString('th-TH', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'Asia/Bangkok',
+        }),
+      )
     }
     tick()
     const id = setInterval(tick, 1000)

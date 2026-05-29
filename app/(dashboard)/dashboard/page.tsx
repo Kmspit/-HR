@@ -129,7 +129,7 @@ export default async function DashboardPage({
         prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: d, lt: next }, status: 'ABSENT' }) }),
       ])
       return {
-        day: d.toLocaleDateString('th-TH', { weekday: 'short' }),
+        day: d.toLocaleDateString('th-TH', { weekday: 'short', timeZone: 'Asia/Bangkok' }),
         present, late, absent,
       }
     })
@@ -275,7 +275,11 @@ export default async function DashboardPage({
                     <p className="text-[12px] font-semibold text-slate-200 leading-tight truncate">{a.user.name}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">
                       {a.status === 'LATE' ? `มาสาย ${a.lateMinutes} นาที` : 'เช็คอินแล้ว'}
-                      {a.checkIn && ` · ${new Date(a.checkIn).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`}
+                      {a.checkIn && ` · ${new Date(a.checkIn).toLocaleTimeString('th-TH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Asia/Bangkok',
+                      })}`}
                     </p>
                   </div>
                   <span className={a.status === 'LATE' ? 'badge-yellow' : 'badge-green'} style={{ fontSize: '9px' }}>
@@ -367,7 +371,11 @@ export default async function DashboardPage({
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] font-bold text-yellow-400">+{a.lateMinutes} นาที</p>
-                    {a.checkIn && <p className="text-[9px] text-slate-600">{new Date(a.checkIn).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</p>}
+                    {a.checkIn && <p className="text-[9px] text-slate-600">{new Date(a.checkIn).toLocaleTimeString('th-TH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Asia/Bangkok',
+                      })}</p>}
                   </div>
                 </div>
               ))}

@@ -101,10 +101,19 @@ export default function AttendanceClient({ role, userId, companyOffice, companyG
 
   const formatTime = (iso: string | null) => {
     if (!iso) return '--:--'
-    return new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    return new Date(iso).toLocaleTimeString('th-TH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    })
   }
   const formatDate = (iso: string) => {
-    return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', weekday: 'short' })
+    return new Date(iso).toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      weekday: 'short',
+      timeZone: 'Asia/Bangkok',
+    })
   }
 
   const handleSuccess = () => {

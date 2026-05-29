@@ -4,6 +4,7 @@ import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { toDateKey } from '@/lib/company-holidays'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import { ATTENDANCE_COMPLETED_PATCH } from '@/lib/attendance-flow'
+import { formatDateBangkok, formatTimeBangkok } from '@/lib/datetime-bangkok'
 
 /** 0 = อาทิตย์ … 6 = เสาร์ (ตรงกับ Date.getDay()) */
 export const THAI_WEEKDAY_LABELS = [
@@ -60,15 +61,11 @@ export function formatWorkHours(minutes: number): string {
 }
 
 export function formatTimeTh(iso: string | Date | null | undefined): string {
-  if (!iso) return '—'
-  const d = typeof iso === 'string' ? new Date(iso) : iso
-  return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  return formatTimeBangkok(iso)
 }
 
 export function formatDateTh(iso: string | Date | null | undefined): string {
-  if (!iso) return '—'
-  const d = typeof iso === 'string' ? new Date(iso) : iso
-  return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDateBangkok(iso)
 }
 
 export type AttendanceWorkLogRow = {

@@ -19,7 +19,11 @@ const STEPS = [
 
 function fmt(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Bangkok',
+  })
 }
 
 export default function AttendanceTimeline({ checkIn, lunchOut, lunchIn, checkOut, workPlaceName }: Props) {

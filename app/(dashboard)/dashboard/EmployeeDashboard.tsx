@@ -57,7 +57,12 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
             </p>
             {todayRecord?.checkIn && (
               <p className="text-[10px] text-slate-500 mt-0.5">
-                เข้า {new Date(todayRecord.checkIn).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                เข้า{' '}
+                {new Date(todayRecord.checkIn).toLocaleTimeString('th-TH', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  timeZone: 'Asia/Bangkok',
+                })}
               </p>
             )}
           </div>

@@ -3,6 +3,10 @@ import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfigured } from '@/lib/line-config'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import {
+  formatDateDdMmYyyyBangkok,
+  formatTimeBangkok,
+} from '@/lib/datetime-bangkok'
+import {
   FACE_SCAN_TYPE_LABEL,
   getSignedScanImageUrlForLine,
   type FaceScanType,
@@ -44,29 +48,6 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-const BANGKOK_TZ = 'Asia/Bangkok'
-
-function formatTimeTh(d: Date): string {
-  return d.toLocaleTimeString('th-TH', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: BANGKOK_TZ,
-  })
-}
-
-function formatDateDdMmYyyy(d: Date): string {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: BANGKOK_TZ,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).formatToParts(d)
-  const day = parts.find((p) => p.type === 'day')?.value ?? '01'
-  const month = parts.find((p) => p.type === 'month')?.value ?? '01'
-  const year = parts.find((p) => p.type === 'year')?.value ?? '2026'
-  return `${day}/${month}/${year}`
-}
-
 function lateLabel(minutes: number | undefined, event: AttendanceLineEvent): string {
   if (event !== 'checkin') return '—'
   if (!minutes || minutes <= 0) return 'ไม่'
@@ -99,8 +80,8 @@ export function buildAttendanceLineMessage(params: {
       '',
       `ชื่อ: ${employeeName}`,
       employeeId ? `รหัส: ${employeeId}` : null,
-      `วันที่: ${formatDateDdMmYyyy(eventTime)}`,
-      `เวลา: ${formatTimeTh(eventTime)}`,
+      `วันที่: ${formatDateDdMmYyyyBangkok(eventTime)}`,
+      `เวลา: ${formatTimeBangkok(eventTime)}`,
       `ประเภท: ${EVENT_LABEL[event]}`,
       branchName ? `สาขา: ${branchName}` : null,
       departmentName ? `แผนก: ${departmentName}` : null,
@@ -117,8 +98,8 @@ export function buildAttendanceLineMessage(params: {
     `ชื่อ: ${employeeName}`,
     employeeId ? `รหัส: ${employeeId}` : null,
     `ประเภท: ${statusLabelForLine(event)}`,
-    `วันที่: ${formatDateDdMmYyyy(eventTime)}`,
-    `เวลา: ${formatTimeTh(eventTime)}`,
+    `วันที่: ${formatDateDdMmYyyyBangkok(eventTime)}`,
+    `เวลา: ${formatTimeBangkok(eventTime)}`,
     `มาสาย: ${lateLabel(params.lateMinutes, event)}`,
     branchName ? `สาขา: ${branchName}` : null,
     departmentName ? `แผนก: ${departmentName}` : null,

@@ -48,7 +48,11 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
                 <p className="text-[11px] font-semibold text-white truncate">{item.label}</p>
                 {item.time && (
                   <p className="text-[10px] text-slate-500 tabular-nums">
-                    {new Date(item.time).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(item.time).toLocaleTimeString('th-TH', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      timeZone: 'Asia/Bangkok',
+                    })}
                   </p>
                 )}
               </div>

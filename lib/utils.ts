@@ -1,5 +1,13 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import {
+  BANGKOK_TZ,
+  formatDateTimeBangkok,
+  formatTimeBangkok,
+  startOfTodayBangkok,
+} from '@/lib/datetime-bangkok'
+
+export { BANGKOK_TZ, startOfTodayBangkok } from '@/lib/datetime-bangkok'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -11,23 +19,16 @@ export function formatThaiDate(date: Date | string): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: BANGKOK_TZ,
   })
 }
 
 export function formatThaiDateTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('th-TH', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTimeBangkok(date)
 }
 
 export function formatTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  return formatTimeBangkok(date)
 }
 
 /** Convert canvas data URL to Blob without fetch (works in all browsers) */
@@ -40,10 +41,9 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mime })
 }
 
+/** เริ่มวันนี้ 00:00 ตามเวลาไทย (UTC+7) */
 export function startOfTodayLocal(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
+  return startOfTodayBangkok()
 }
 
 /** ช่วงวันที่เริ่ม–สิ้นเดือน (month 1–12) ตามเวลา local */
