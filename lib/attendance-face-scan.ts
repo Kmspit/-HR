@@ -8,7 +8,6 @@ import {
   getSignedUrl,
   isCloudinaryConfigured,
   loadUserImageContext,
-  requireCloudinary,
   uploadImage,
   type UserImageContext,
 } from '@/lib/cloudinary-service'
@@ -60,7 +59,10 @@ export async function saveAttendanceFaceScan(input: SaveFaceScanInput): Promise<
     return null
   }
 
-  requireCloudinary()
+  if (!isCloudinaryConfigured()) {
+    console.warn('[face-scan] Cloudinary not configured — skip image upload')
+    return null
+  }
 
   const mime = input.imageMime ?? 'image/jpeg'
   const scanTime = input.scanTime ?? new Date()
@@ -313,35 +315,45 @@ export async function recordFaceScanAndNotifyHr(params: {
   earlyLeaveMinutes?: number
 }): Promise<string | null> {
   const scores = parseScoresFromForm(params.formData)
-  const faceScanId = await persistFaceScanFromAttendanceForm({
-    formData: params.formData,
-    userId: params.userId,
-    scanType: params.scanType,
-    attendanceId: params.attendanceId,
-    faceLogId: params.faceLogId,
-    locationName: params.locationName ?? params.location,
-    address: params.address,
-    lat: params.lat,
-    lng: params.lng,
-    deviceInfo: parseDeviceInfoFromHeaders(params.req.headers),
-    confidenceScore: scores.confidenceScore ?? scores.detectionScore,
-    matchScore: scores.matchScore,
-    livenessScore: scores.livenessScore,
-    matched: true,
-  })
+  let faceScanId: string | null = null
+  try {
+    faceScanId = await persistFaceScanFromAttendanceForm({
+      formData: params.formData,
+      userId: params.userId,
+      scanType: params.scanType,
+      attendanceId: params.attendanceId,
+      faceLogId: params.faceLogId,
+      locationName: params.locationName ?? params.location,
+      address: params.address,
+      lat: params.lat,
+      lng: params.lng,
+      deviceInfo: parseDeviceInfoFromHeaders(params.req.headers),
+      confidenceScore: scores.confidenceScore ?? scores.detectionScore,
+      matchScore: scores.matchScore,
+      livenessScore: scores.livenessScore,
+      matched: true,
+    })
+  } catch (err) {
+    console.error('[face-scan-persist]', err)
+  }
 
-  const { scheduleHrAttendanceLineNotify } = await import('@/lib/attendance-line-notify')
-  scheduleHrAttendanceLineNotify({
-    event: params.event,
-    employeeUserId: params.userId,
-    attendanceId: params.attendanceId,
-    faceScanId,
-    photoUrl: params.photoUrl,
-    eventTime: params.eventTime,
-    location: params.location,
-    lateMinutes: params.lateMinutes,
-    earlyLeaveMinutes: params.earlyLeaveMinutes,
-  })
+  // ส่ง LINE HR ทันทีหลังบันทึก attendance — ไม่ throw แม้ upload รูปล้มเหลว
+  try {
+    const { scheduleHrAttendanceLineNotify } = await import('@/lib/attendance-line-notify')
+    scheduleHrAttendanceLineNotify({
+      event: params.event,
+      employeeUserId: params.userId,
+      attendanceId: params.attendanceId,
+      faceScanId,
+      photoUrl: params.photoUrl,
+      eventTime: params.eventTime,
+      location: params.location ?? params.locationName,
+      lateMinutes: params.lateMinutes,
+      earlyLeaveMinutes: params.earlyLeaveMinutes,
+    })
+  } catch (err) {
+    console.error('[attendance-line-notify-schedule]', err)
+  }
 
   return faceScanId
 }

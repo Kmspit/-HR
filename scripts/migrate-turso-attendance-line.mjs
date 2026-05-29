@@ -50,4 +50,37 @@ for (const s of sql) {
   }
 }
 
+async function columnExists(table, column) {
+  const r = await db.execute(`PRAGMA table_info(${table})`)
+  return r.rows.some((row) => row.name === column || row[1] === column)
+}
+
+const alters = [
+  ['faceScanId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN faceScanId TEXT`],
+  ['employeeId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN employeeId TEXT`],
+  ['scanType', `ALTER TABLE attendance_line_notify_logs ADD COLUMN scanType TEXT`],
+]
+
+for (const [col, ddl] of alters) {
+  try {
+    if (await columnExists('attendance_line_notify_logs', col)) {
+      console.log('skip column:', col)
+      continue
+    }
+    await db.execute(ddl)
+    console.log('OK column:', col)
+  } catch (e) {
+    console.error('FAIL', col, String(e.message ?? e))
+  }
+}
+
+try {
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS attendance_line_notify_dedup_idx ON attendance_line_notify_logs (attendanceId, eventType, status)`,
+  )
+  console.log('OK: dedup index')
+} catch (e) {
+  console.error('FAIL index', String(e.message ?? e))
+}
+
 console.log('Done.')

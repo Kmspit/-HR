@@ -316,14 +316,16 @@ model AttendanceFaceLog {
 model AttendanceLineNotifyLog {
   id             String    @id @default(cuid())
   employeeUserId String
+  employeeId     String?   // รหัสพนักงาน (EMP001)
   hrLineUserId   String
   eventType      String
+  scanType       String?   // checkin | checkout | lunch-out | lunch-in
   attendanceId   String?
   faceLogId      String?
   faceScanId     String?
   messageText    String
-  photoUrl       String?
-  status         String    @default("pending")
+  photoUrl       String?   // secure Cloudinary URL สำหรับ LINE image
+  status         String    @default("pending") // lineStatus: pending | sent | failed
   failedReason   String?
   retryCount     Int       @default(0)
   sentAt         DateTime?
@@ -332,6 +334,7 @@ model AttendanceLineNotifyLog {
 
   @@index([status, createdAt])
   @@index([employeeUserId, createdAt])
+  @@index([attendanceId, eventType, status])
   @@map("attendance_line_notify_logs")
 }
 

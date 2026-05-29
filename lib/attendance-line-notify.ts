@@ -47,12 +47,11 @@ function formatTimeTh(d: Date): string {
   return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
 }
 
-function formatDateTh(d: Date): string {
-  return d.toLocaleDateString('th-TH', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+function formatDateDdMmYyyy(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
 }
 
 function lateLabel(minutes: number | undefined, event: AttendanceLineEvent): string {
@@ -72,13 +71,14 @@ export function buildAttendanceLineMessage(params: {
   employeeName: string
   employeeId: string | null
   branchName: string | null
+  departmentName: string | null
   location: string | null
   eventTime: Date
   lateMinutes?: number
   earlyLeaveMinutes?: number
   failureDetail?: string
 }): string {
-  const { event, employeeName, employeeId, branchName, location, eventTime } = params
+  const { event, employeeName, employeeId, branchName, departmentName, location, eventTime } = params
 
   if (event === 'face_mismatch') {
     return [
@@ -86,26 +86,29 @@ export function buildAttendanceLineMessage(params: {
       '',
       `ชื่อ: ${employeeName}`,
       employeeId ? `รหัส: ${employeeId}` : null,
-      `วันที่: ${formatDateTh(eventTime)}`,
+      `วันที่: ${formatDateDdMmYyyy(eventTime)}`,
       `เวลา: ${formatTimeTh(eventTime)}`,
       `ประเภท: ${EVENT_LABEL[event]}`,
       branchName ? `สาขา: ${branchName}` : null,
+      departmentName ? `แผนก: ${departmentName}` : null,
       params.failureDetail ? `รายละเอียด: ${params.failureDetail}` : null,
     ]
       .filter(Boolean)
       .join('\n')
   }
 
-  const place = location ?? branchName ?? null
+  const place = location?.trim() || null
   return [
     'พนักงานลงเวลาแล้ว',
     '',
     `ชื่อ: ${employeeName}`,
     employeeId ? `รหัส: ${employeeId}` : null,
-    `วันที่: ${formatDateTh(eventTime)}`,
+    `ประเภท: ${statusLabelForLine(event)}`,
+    `วันที่: ${formatDateDdMmYyyy(eventTime)}`,
     `เวลา: ${formatTimeTh(eventTime)}`,
-    `สถานะ: ${statusLabelForLine(event)}`,
     `มาสาย: ${lateLabel(params.lateMinutes, event)}`,
+    branchName ? `สาขา: ${branchName}` : null,
+    departmentName ? `แผนก: ${departmentName}` : null,
     place ? `สถานที่: ${place}` : null,
     event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0
       ? `กลับก่อน: ${params.earlyLeaveMinutes} นาที`
@@ -137,9 +140,34 @@ async function loadEmployeeContext(employeeUserId: string) {
     select: {
       name: true,
       employeeId: true,
+      department: true,
       branch: { select: { name: true } },
+      orgDepartment: { select: { name: true } },
+      division: { select: { name: true } },
+      section: { select: { name: true } },
     },
   })
+}
+
+function resolveDepartmentName(
+  employee: NonNullable<Awaited<ReturnType<typeof loadEmployeeContext>>>,
+): string | null {
+  return (
+    employee.orgDepartment?.name ??
+    employee.department ??
+    employee.section?.name ??
+    employee.division?.name ??
+    null
+  )
+}
+
+/** ป้องกันส่ง LINE ซ้ำสำหรับ attendance event เดียวกัน */
+async function hasDuplicateLineNotify(attendanceId: string, eventType: string): Promise<boolean> {
+  const existing = await prisma.attendanceLineNotifyLog.findFirst({
+    where: { attendanceId, eventType, status: 'sent' },
+    select: { id: true },
+  })
+  return !!existing
 }
 
 function buildLineMessages(text: string, imageUrl: string | null): object[] {
@@ -170,8 +198,10 @@ async function pushWithRetry(
 
 async function createLogEntry(params: {
   employeeUserId: string
+  employeeCode: string | null
   hrLineUserId: string
   eventType: string
+  scanType?: string | null
   attendanceId?: string | null
   faceLogId?: string | null
   faceScanId?: string | null
@@ -181,8 +211,10 @@ async function createLogEntry(params: {
   return prisma.attendanceLineNotifyLog.create({
     data: {
       employeeUserId: params.employeeUserId,
+      employeeId: params.employeeCode ?? undefined,
       hrLineUserId: params.hrLineUserId,
       eventType: params.eventType,
+      scanType: params.scanType ?? params.eventType,
       attendanceId: params.attendanceId ?? undefined,
       faceLogId: params.faceLogId ?? undefined,
       faceScanId: params.faceScanId ?? undefined,
@@ -230,11 +262,17 @@ async function deliverToHrRecipient(params: {
     return
   }
 
+  const reason = push.error?.slice(0, 500) ?? 'unknown'
+  console.error('[attendance-line-notify] LINE push failed', {
+    logId: params.logId,
+    hrLineUserId: params.hrLineUserId,
+    reason,
+  })
   await prisma.attendanceLineNotifyLog.update({
     where: { id: params.logId },
     data: {
       status: 'failed',
-      failedReason: push.error?.slice(0, 500) ?? 'unknown',
+      failedReason: reason,
       retryCount: params.retryCountStart + LINE_RETRY,
     },
   })
@@ -255,23 +293,41 @@ export async function notifyHrAttendanceOnLine(params: {
   failureDetail?: string
 }): Promise<{ sent: number; failed: number }> {
   if (!isLineOaConfigured()) {
+    console.warn('[attendance-line-notify] LINE OA not configured — skip push')
     return { sent: 0, failed: 0 }
   }
 
   const hrUsers = await getHrLineRecipients()
   if (hrUsers.length === 0) {
+    console.warn('[attendance-line-notify] no HR/Admin with linked LINE — skip push')
     return { sent: 0, failed: 0 }
   }
 
+  if (params.attendanceId && params.event !== 'face_mismatch') {
+    const dup = await hasDuplicateLineNotify(params.attendanceId, params.event)
+    if (dup) {
+      console.info('[attendance-line-notify] duplicate skipped', {
+        attendanceId: params.attendanceId,
+        event: params.event,
+      })
+      return { sent: 0, failed: 0 }
+    }
+  }
+
   const employee = await loadEmployeeContext(params.employeeUserId)
-  if (!employee) return { sent: 0, failed: 0 }
+  if (!employee) {
+    console.warn('[attendance-line-notify] employee not found', { userId: params.employeeUserId })
+    return { sent: 0, failed: 0 }
+  }
 
   const eventTime = params.eventTime ?? new Date()
+  const departmentName = resolveDepartmentName(employee)
   const messageText = buildAttendanceLineMessage({
     event: params.event,
     employeeName: employee.name,
     employeeId: employee.employeeId,
     branchName: employee.branch?.name ?? null,
+    departmentName,
     location: params.location ?? null,
     eventTime,
     lateMinutes: params.lateMinutes,
@@ -291,8 +347,10 @@ export async function notifyHrAttendanceOnLine(params: {
   for (const hr of hrUsers) {
     const log = await createLogEntry({
       employeeUserId: params.employeeUserId,
+      employeeCode: employee.employeeId,
       hrLineUserId: hr.lineUserId,
       eventType: params.event,
+      scanType: params.event,
       attendanceId: params.attendanceId,
       faceLogId: params.faceLogId,
       faceScanId: params.faceScanId,

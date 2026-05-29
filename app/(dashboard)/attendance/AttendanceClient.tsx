@@ -264,7 +264,7 @@ export default function AttendanceClient({ role, userId, companyOffice, companyG
             <div className="flex flex-wrap items-center gap-2 px-1">
               <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
                 <ScanFace className="w-3.5 h-3.5 text-blue-400" />
-                ลงทะเบียนใบหน้าแล้ว — ทุกครั้งที่ลงเวลาต้องสแกนใบหน้า (กระพริบตา + ขยับศีรษะ)
+                ลงทะเบียนใบหน้าแล้ว — ทุกครั้งที่ลงเวลาต้องสแกนใบหน้า (มองตรงกล้อง)
               </p>
               <button
                 type="button"
