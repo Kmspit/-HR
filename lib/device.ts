@@ -1,8 +1,10 @@
 import { prisma } from '@/lib/prisma'
+import { logAccessDenied } from '@/lib/access-log'
 import type { DeviceStatus } from '@prisma/client'
 
 export async function assertDeviceAllowed(userId: string, deviceKey: string | null) {
   if (!deviceKey?.trim()) {
+    logAccessDenied('device_denied', { userId, sub: 'missing_device_key' })
     return { ok: false as const, error: 'ไม่พบรหัสอุปกรณ์ กรุณาเปิดแอปจากมือถือที่ลงทะเบียน' }
   }
 
@@ -16,6 +18,7 @@ export async function assertDeviceAllowed(userId: string, deviceKey: string | nu
   }
 
   if (existing.status === 'PENDING_RESET') {
+    logAccessDenied('device_denied', { userId, sub: 'pending_reset' })
     return { ok: false as const, error: 'รอ HR อนุมัติการเปลี่ยนเครื่อง' }
   }
 
@@ -24,6 +27,7 @@ export async function assertDeviceAllowed(userId: string, deviceKey: string | nu
       where: { userId },
       data: { status: 'PENDING_RESET', resetRequestedAt: new Date() },
     })
+    logAccessDenied('device_denied', { userId, sub: 'device_mismatch' })
     return { ok: false as const, error: 'บัญชีนี้ผูกกับมือถือเครื่องอื่นแล้ว — ส่งคำขอเปลี่ยนเครื่องแล้ว รอ HR อนุมัติ' }
   }
 

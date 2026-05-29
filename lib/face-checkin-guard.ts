@@ -6,6 +6,7 @@ import {
   verifyFaceForAttendance,
 } from '@/lib/face-attendance'
 import { notifyHrFaceMismatchOnLine } from '@/lib/attendance-line-notify'
+import { logAccessDenied } from '@/lib/access-log'
 
 /** Face gate for attendance POST — บังคับสแกนใบหน้าเมื่อลงทะเบียนแล้ว */
 export async function guardAttendanceFace(
@@ -21,6 +22,7 @@ export async function guardAttendanceFace(
   const method = (formData.get('attendanceMethod') as string) || 'manual'
 
   if (registered && method !== 'face') {
+    logAccessDenied('face_denied', { userId, action, code: 'FACE_REQUIRED' })
     return NextResponse.json(
       {
         error: 'ต้องยืนยันใบหน้าด้วยการสแกน — ไม่อนุญาตถ่ายรูปอย่างเดียว',
@@ -82,6 +84,7 @@ export async function guardAttendanceFace(
       attendanceId: null,
       spoofFlags: JSON.stringify({ flags: ['wrong_user'], submittedUserId: sessionUserId }),
     })
+    logAccessDenied('face_denied', { userId, action, code: 'WRONG_USER', submittedUserId: sessionUserId })
     return NextResponse.json(
       { error: 'ข้อมูลผู้ใช้ไม่ตรงกับ session — ห้ามสลับบัญชี', code: 'WRONG_USER' },
       { status: 403 },
@@ -100,6 +103,7 @@ export async function guardAttendanceFace(
   })
 
   if (!result.ok) {
+    logAccessDenied('face_denied', { userId, action, code: result.code })
     const mismatchCodes = ['MISMATCH', 'SPOOF', 'FACE_REQUIRED', 'WRONG_USER', 'LOW_CONFIDENCE']
     if (mismatchCodes.includes(result.code)) {
       void notifyHrFaceMismatchOnLine({

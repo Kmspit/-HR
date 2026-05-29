@@ -3,6 +3,7 @@ import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { ROUTE_PERMISSIONS, ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
+import { logAccessDenied } from '@/lib/access-log'
 import type { Role } from '@prisma/client'
 
 const { auth } = NextAuth(authConfig)
@@ -31,6 +32,7 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   // Not logged in → ไปหน้า login (PC ที่เคยล็อกอินแล้วหลุด session)
   if (!session?.user) {
     if (isPublic) return NextResponse.next()
+    logAccessDenied('missing_session', { path: pathname })
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     if (pathname !== '/login') {
@@ -44,6 +46,7 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   // Pending / disabled accounts
   if (status !== 'ACTIVE') {
     if (pathname === '/') return NextResponse.next()
+    logAccessDenied('inactive_account', { path: pathname, role, status })
     const url = req.nextUrl.clone()
     url.pathname = '/'
     url.searchParams.set('status', status.toLowerCase())
@@ -69,6 +72,7 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   if (matchedRoute) {
     const allowed = ROUTE_PERMISSIONS[matchedRoute]
     if (!allowed.includes(role)) {
+      logAccessDenied('role_denied', { path: pathname, role, matchedRoute, allowed })
       const url = req.nextUrl.clone()
       url.pathname = '/unauthorized'
       return NextResponse.redirect(url)

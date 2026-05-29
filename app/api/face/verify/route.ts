@@ -3,11 +3,13 @@ import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-handler'
 import { parseDescriptorFromBody, verifyFaceForAttendance } from '@/lib/face-attendance'
 import { notifyHrFaceMismatchOnLine } from '@/lib/attendance-line-notify'
+import { logAccessDenied } from '@/lib/access-log'
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
+      logAccessDenied('missing_session', { route: '/api/face/verify' })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -33,6 +35,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.ok) {
+      logAccessDenied('face_denied', { userId: session.user.id, action, code: result.code })
       if (['MISMATCH', 'SPOOF', 'LOW_CONFIDENCE'].includes(result.code)) {
         void notifyHrFaceMismatchOnLine({
           employeeUserId: session.user.id,
