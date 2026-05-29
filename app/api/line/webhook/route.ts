@@ -5,7 +5,6 @@ import { getLineWebhookUrl } from '@/lib/line-config'
 import {
   getLineWebhookDiagnostics,
   listLineChannelSecretCandidates,
-  resolveLineChannelAccessToken,
   verifyLineWebhookWithCandidates,
 } from '@/lib/line-credentials'
 
@@ -14,15 +13,18 @@ export const runtime = 'nodejs'
 /** LINE Platform verification + ตรวจ env (GET) */
 export async function GET() {
   const diag = await getLineWebhookDiagnostics()
-  const { token, source: tokenSource } = await resolveLineChannelAccessToken()
 
   return NextResponse.json({
     ok: true,
     webhook: true,
     configured: diag.configured,
     hasChannelSecret: diag.hasChannelSecret,
-    hasAccessToken: !!token,
-    tokenSource,
+    hasAccessToken: diag.hasAccessToken,
+    accessTokenValid: diag.accessTokenValid,
+    accessTokenSourceDetail: diag.accessTokenSourceDetail,
+    botDisplayName: diag.botDisplayName,
+    accessTokenError: diag.accessTokenError,
+    tokenSource: diag.tokenSource,
     secretCandidateCount: diag.secretCandidateCount,
     triedSecretSources: diag.triedSecretSources,
     envAndDbSecretDiffer: diag.envAndDbSecretDiffer,
@@ -34,11 +36,13 @@ export async function GET() {
     warnings: diag.warnings,
     webhookPath: '/api/line/webhook',
     webhookUrl: getLineWebhookUrl(),
-    hint: diag.secretLooksWrong
-      ? diag.fix401IfDiffer
-      : diag.configured
-        ? 'มี env ครบ — ถ้า Verify 401 ให้ Issue secret ใหม่ใน LINE (Channel เดียวกับ Webhook)'
-        : 'ใส่ LINE_CHANNEL_SECRET + LINE_CHANNEL_ACCESS_TOKEN บน Vercel (hrprogramkm)',
+    hint: diag.accessTokenValid === false
+      ? diag.accessTokenError ?? 'Access Token ไม่ถูกต้อง — Issue ใหม่ใน Messaging API'
+      : diag.secretLooksWrong
+        ? diag.fix401IfDiffer
+        : diag.configured
+          ? 'พร้อมใช้งาน — Webhook + ส่งข้อความ/ใบเตือนได้'
+          : 'ใส่ LINE_CHANNEL_SECRET + LINE_CHANNEL_ACCESS_TOKEN บน Vercel (hrprogramkm)',
     verifyHelp: {
       url: getLineWebhookUrl(),
       common401:

@@ -63,31 +63,87 @@ export async function replyLineText(replyToken: string, text: string): Promise<b
 
 export type LinePushResult = { ok: boolean; error?: string }
 
+export type LineTokenValidation = {
+  ok: boolean
+  displayName?: string
+  error?: string
+}
+
+/** ตรวจว่า access token ใช้กับ LINE API ได้ (GET /bot/info) */
+export async function validateLineAccessToken(token: string): Promise<LineTokenValidation> {
+  const sanitized = sanitizeLineAccessTokenForHeader(token)
+  if (!sanitized.ok) {
+    return { ok: false, error: sanitized.error }
+  }
+  try {
+    const res = await fetch(`${LINE_API}/info`, {
+      headers: createLineApiHeaders(sanitized.token),
+    })
+    if (res.ok) {
+      const data = (await res.json()) as { displayName?: string; userId?: string }
+      return {
+        ok: true,
+        displayName: data.displayName?.trim() || 'LINE Bot',
+      }
+    }
+    const text = await res.text()
+    return { ok: false, error: formatLineApiError(res.status, text) }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'ตรวจสอบ LINE token ไม่สำเร็จ',
+    }
+  }
+}
+
+export function formatLineApiError(status: number, body: string): string {
+  if (status === 401) {
+    return (
+      'LINE Access Token ไม่ถูกต้องหรือหมดอายุ — ไป LINE Developers → Messaging API → Issue token ใหม่ → ' +
+      'ใส่ Vercel (hrprogramkm) ชื่อ LINE_CHANNEL_ACCESS_TOKEN แล้ว Redeploy (ต้องเป็นชุดเดียวกับ Channel secret)'
+    )
+  }
+  try {
+    const j = JSON.parse(body) as { message?: string }
+    if (j.message) return `LINE API ${status}: ${j.message}`
+  } catch {
+    /* ignore */
+  }
+  return `LINE API ${status}: ${body.slice(0, 120)}`
+}
+
 export async function pushLineMessages(
   toUserId: string,
   messages: object[],
 ): Promise<LinePushResult> {
   const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
-  const { token } = await resolveLineChannelAccessToken()
-  if (!token) {
+  const resolved = await resolveLineChannelAccessToken()
+  if (!resolved.token) {
     console.log('[LINE push mock] to', toUserId, messages.length, 'messages')
     return { ok: true }
   }
-  const sanitized = sanitizeLineAccessTokenForHeader(token)
-  if (!sanitized.ok) {
-    return { ok: false, error: sanitized.error }
+  if (!resolved.token) {
+    return { ok: false, error: 'ไม่มี LINE Channel access token — ตั้งใน Vercel หรือหน้าตั้งค่า' }
+  }
+  if (!resolved.tokenValid) {
+    return {
+      ok: false,
+      error:
+        resolved.validationError ??
+        'LINE Access Token ไม่ถูกต้อง — Issue ใหม่ใน Messaging API แล้วใส่ Vercel',
+    }
   }
 
   try {
     const res = await fetch(`${LINE_API}/message/push`, {
       method: 'POST',
-      headers: createLineApiHeaders(sanitized.token),
+      headers: createLineApiHeaders(resolved.token),
       body: JSON.stringify({ to: toUserId, messages: messages.slice(0, 5) }),
     })
     if (!res.ok) {
       const text = await res.text()
       console.error('[LINE push]', res.status, text)
-      return { ok: false, error: `LINE API ${res.status}: ${text.slice(0, 200)}` }
+      return { ok: false, error: formatLineApiError(res.status, text) }
     }
     return { ok: true }
   } catch (err) {

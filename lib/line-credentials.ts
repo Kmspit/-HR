@@ -39,8 +39,11 @@ let cache: {
   at: number
   secret?: string
   token?: string
+  tokenValid?: boolean
+  botDisplayName?: string
   secretSource?: 'env' | 'database'
   tokenSource?: 'env' | 'database'
+  tokenSourceDetail?: string
 } | null = null
 
 const CACHE_MS = 45_000
@@ -88,38 +91,102 @@ export async function resolveLineChannelSecret(): Promise<{
   return { source: 'none' }
 }
 
-/** Access Token — env ก่อน แล้วค่อย company_settings */
-export async function resolveLineChannelAccessToken(): Promise<{
-  token?: string
-  source: 'env' | 'database' | 'none'
-}> {
-  const fromEnv = tokenFromEnv()
-  if (fromEnv) {
-    return { token: fromEnv, source: 'env' }
+/** รวม access token ทุกแหล่ง (ลำดับ env ก่อน DB) */
+export async function listLineAccessTokenCandidates(): Promise<
+  Array<{ token: string; source: string }>
+> {
+  const seen = new Set<string>()
+  const out: Array<{ token: string; source: string }> = []
+  const add = (raw: string | undefined | null, source: string) => {
+    const s = sanitizeLineAccessTokenForHeader(raw)
+    if (!s.ok || seen.has(s.token)) return
+    seen.add(s.token)
+    out.push({ token: s.token, source })
   }
 
-  const now = Date.now()
-  if (cache && now - cache.at < CACHE_MS && cache.token) {
-    return { token: cache.token, source: cache.tokenSource ?? 'database' }
-  }
+  add(process.env.LINE_CHANNEL_ACCESS_TOKEN, 'env:LINE_CHANNEL_ACCESS_TOKEN')
+  add(process.env.LINE_OA_ACCESS_TOKEN, 'env:LINE_OA_ACCESS_TOKEN')
 
   const row = await loadDbCredentials()
-  const fromDbRaw = normalizeLineCredential(row?.lineAccessToken)
-  const fromDb = fromDbRaw
-    ? sanitizeLineAccessTokenForHeader(fromDbRaw)
-    : { ok: false as const, error: '' }
-  if (fromDb.ok) {
-    cache = {
-      at: now,
-      token: fromDb.token,
-      secret: cache?.secret,
-      secretSource: cache?.secretSource,
-      tokenSource: 'database',
+  add(row?.lineAccessToken, 'database:company_settings')
+
+  return out
+}
+
+type TokenSource = 'env' | 'database' | 'none'
+
+/** Access Token — เลือกตัวที่ LINE API ยอมรับ (แก้ env ผิดแต่ DB ถูก) */
+export async function resolveLineChannelAccessToken(): Promise<{
+  token?: string
+  source: TokenSource
+  tokenSourceDetail?: string
+  tokenValid?: boolean
+  botDisplayName?: string
+  validationError?: string
+}> {
+  const now = Date.now()
+  if (cache?.tokenValid && cache.token && now - cache.at < CACHE_MS) {
+    return {
+      token: cache.token,
+      source: (cache.tokenSource ?? 'env') as TokenSource,
+      tokenSourceDetail: cache.tokenSourceDetail,
+      tokenValid: true,
+      botDisplayName: cache.botDisplayName,
     }
-    return { token: fromDb.token, source: 'database' }
   }
 
-  return { source: 'none' }
+  const candidates = await listLineAccessTokenCandidates()
+  if (candidates.length === 0) {
+    return { source: 'none', tokenValid: false }
+  }
+
+  const { validateLineAccessToken } = await import('@/lib/line-api')
+  let lastError: string | undefined
+
+  for (const c of candidates) {
+    const v = await validateLineAccessToken(c.token)
+    if (v.ok) {
+      const src: TokenSource = c.source.startsWith('database') ? 'database' : 'env'
+      cache = {
+        at: now,
+        token: c.token,
+        tokenValid: true,
+        botDisplayName: v.displayName,
+        tokenSource: src,
+        tokenSourceDetail: c.source,
+        secret: cache?.secret,
+        secretSource: cache?.secretSource,
+      }
+      return {
+        token: c.token,
+        source: src,
+        tokenSourceDetail: c.source,
+        tokenValid: true,
+        botDisplayName: v.displayName,
+      }
+    }
+    lastError = v.error
+    console.warn('[line-credentials] token invalid for', c.source, v.error)
+  }
+
+  const fallback = candidates[0]
+  const src: TokenSource = fallback.source.startsWith('database') ? 'database' : 'env'
+  cache = {
+    at: now,
+    token: fallback.token,
+    tokenValid: false,
+    tokenSource: src,
+    tokenSourceDetail: fallback.source,
+    secret: cache?.secret,
+    secretSource: cache?.secretSource,
+  }
+  return {
+    token: fallback.token,
+    source: src,
+    tokenSourceDetail: fallback.source,
+    tokenValid: false,
+    validationError: lastError,
+  }
 }
 
 export function clearLineCredentialsCache() {
@@ -207,7 +274,9 @@ export async function getLineWebhookDiagnostics() {
   const envFp = lineCredentialFingerprint(envSecret)
   const dbFp = lineCredentialFingerprint(dbSecret)
   const candidates = await listLineChannelSecretCandidates()
-  const { token, source: tokenSource } = await resolveLineChannelAccessToken()
+  const tokenResolve = await resolveLineChannelAccessToken()
+  const token = tokenResolve.token
+  const tokenSource = tokenResolve.source === 'none' ? undefined : tokenResolve.source
   const secretAudit = auditLineChannelSecret(envSecret ?? dbSecret)
 
   const warnings: string[] = []
@@ -217,18 +286,29 @@ export async function getLineWebhookDiagnostics() {
       'env กับหน้าตั้งค่าไม่ตรงกัน — ลบ LINE_CHANNEL_SECRET บน Vercel หรือให้ตรงกัน',
     )
   }
-  if (configuredBut401Hint(envSecret, token)) {
+  if (token && tokenResolve.tokenValid === false) {
+    warnings.push(
+      tokenResolve.validationError ??
+        'LINE Access Token ไม่ถูกต้อง — Issue ใหม่ใน Messaging API → ใส่ LINE_CHANNEL_ACCESS_TOKEN บน Vercel hrprogramkm → Redeploy',
+    )
+  }
+  if (configuredBut401Hint(envSecret, token) && tokenResolve.tokenValid) {
     warnings.push(
       'ถ้า Verify ยัง 401: ใน LINE กด Issue Channel secret ใหม่ → ใส่ Vercel hrprogramkm → Redeploy → Verify อีกครั้ง (Channel เดียวกับที่ตั้ง Webhook)',
     )
   }
 
-  const configured = candidates.length > 0 && !!token
+  const configured =
+    candidates.length > 0 && !!token && tokenResolve.tokenValid === true
 
   return {
     configured,
     hasChannelSecret: candidates.length > 0,
     hasAccessToken: !!token,
+    accessTokenValid: tokenResolve.tokenValid ?? false,
+    accessTokenSourceDetail: tokenResolve.tokenSourceDetail,
+    botDisplayName: tokenResolve.botDisplayName,
+    accessTokenError: tokenResolve.validationError,
     tokenSource,
     secretCandidateCount: candidates.length,
     triedSecretSources: candidates.map((c) => c.source),
