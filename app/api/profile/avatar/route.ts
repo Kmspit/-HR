@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { fetchImageBuffer } from '@/lib/cloudinary-service'
 
 export async function GET() {
   try {
@@ -12,23 +13,38 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { profileImageBase64: true, profileImage: true },
-    })
-
-    if (!user?.profileImageBase64) {
-      return NextResponse.json({ error: 'ไม่มีรูปโปรไฟล์' }, { status: 404 })
-    }
-
-    const buffer = Buffer.from(user.profileImageBase64, 'base64')
-    const isPng = user.profileImage?.includes('.png') || buffer[0] === 0x89
-    const contentType = isPng ? 'image/png' : 'image/jpeg'
-
-    return new NextResponse(buffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600',
+      select: {
+        profileCloudinaryPublicId: true,
+        profileImage: true,
+        profileImageBase64: true,
       },
     })
+
+    const publicId = user?.profileCloudinaryPublicId ?? user?.profileImage
+    if (publicId && publicId.includes('/')) {
+      const img = await fetchImageBuffer(publicId)
+      if (img) {
+        return new NextResponse(new Uint8Array(img.buffer), {
+          headers: {
+            'Content-Type': img.mime,
+            'Cache-Control': 'private, no-store, max-age=0',
+          },
+        })
+      }
+    }
+
+    if (user?.profileImageBase64) {
+      const buffer = Buffer.from(user.profileImageBase64, 'base64')
+      const isPng = buffer[0] === 0x89
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': isPng ? 'image/png' : 'image/jpeg',
+          'Cache-Control': 'private, max-age=3600',
+        },
+      })
+    }
+
+    return NextResponse.json({ error: 'ไม่มีรูปโปรไฟล์' }, { status: 404 })
   } catch (err) {
     return apiError(err)
   }

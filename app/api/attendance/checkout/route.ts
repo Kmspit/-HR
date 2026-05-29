@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
@@ -11,6 +10,7 @@ import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import {
   formHasFaceImage,
   recordFaceScanAndNotifyHr,
+  syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
 
 export async function POST(req: NextRequest) {
@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
     const faceBlock = await guardAttendanceFace(session.user.id, formData, 'checkout')
     if (faceBlock) return faceBlock
 
-    const photo = formData.get('photo') as File | null
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
     const address = (formData.get('address') as string) || ''
@@ -35,11 +34,6 @@ export async function POST(req: NextRequest) {
     if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้องตอนเช็คเอาท์' }, { status: 400 })
     }
-
-    const checkOutPhotoUrl =
-      photo && photo.size > 0
-        ? await saveUpload(photo, 'checkout', session.user.id)
-        : undefined
 
     const now = new Date()
     const today = startOfTodayLocal()
@@ -74,7 +68,6 @@ export async function POST(req: NextRequest) {
       where: { id: attendance.id },
       data: {
         checkOut: now,
-        checkOutPhotoUrl,
         earlyLeaveMinutes,
         status,
         checkOutLat: lat,
@@ -94,7 +87,7 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    await recordFaceScanAndNotifyHr({
+    const faceScanId = await recordFaceScanAndNotifyHr({
       req,
       formData,
       userId: session.user.id,
@@ -108,9 +101,11 @@ export async function POST(req: NextRequest) {
       address: address || null,
       lat,
       lng,
-      photoUrl: finalized.checkOutPhotoUrl,
+      photoUrl: null,
       earlyLeaveMinutes,
     })
+
+    await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'checkOutPhotoUrl')
 
     return NextResponse.json({ success: true, attendance: finalized, earlyLeaveMinutes })
   } catch (err) {

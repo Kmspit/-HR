@@ -56,6 +56,7 @@ export async function registerFaceProfile(
   userId: string,
   samples: number[][],
   livenessScore: number,
+  registrationImage?: { buffer: Buffer; mime: string } | null,
 ) {
   if (samples.length < 1) throw new Error('NO_SAMPLES')
   if (livenessScore < MIN_LIVENESS) throw new Error('LIVENESS_FAILED')
@@ -63,16 +64,60 @@ export async function registerFaceProfile(
   const merged = samples.length === 1 ? samples[0] : averageDescriptors(samples)
   const encryptedDescriptor = encryptFaceDescriptor(merged)
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { employeeId: true },
+  })
+
+  let cloudinaryPublicId: string | undefined
+  let faceImageUrl: string | undefined
+  let secureUrl: string | undefined
+
+  if (registrationImage?.buffer?.length) {
+    try {
+      const {
+        faceRegistrationFolder,
+        isCloudinaryConfigured,
+        loadUserImageContext,
+        uploadImage,
+      } = await import('@/lib/cloudinary-service')
+      if (isCloudinaryConfigured()) {
+        const ctx = await loadUserImageContext(userId)
+        const uploaded = await uploadImage(registrationImage.buffer, {
+          folder: faceRegistrationFolder(ctx),
+          publicId: 'registration',
+          mime: registrationImage.mime,
+        })
+        cloudinaryPublicId = uploaded.publicId
+        faceImageUrl = uploaded.imageUrl
+        secureUrl = uploaded.secureUrl
+      }
+    } catch (err) {
+      console.error('[face-register-image]', err)
+    }
+  }
+
   const profile = await prisma.userFaceProfile.upsert({
     where: { userId },
     create: {
       userId,
+      employeeId: user?.employeeId ?? undefined,
       encryptedDescriptor,
+      faceEmbedding: encryptedDescriptor,
+      cloudinaryPublicId,
+      faceImageUrl,
+      secureUrl,
+      isActive: true,
       sampleCount: samples.length,
       modelVersion: 'face-api-tiny-v1',
     },
     update: {
+      employeeId: user?.employeeId ?? undefined,
       encryptedDescriptor,
+      faceEmbedding: encryptedDescriptor,
+      ...(cloudinaryPublicId
+        ? { cloudinaryPublicId, faceImageUrl, secureUrl, isActive: true }
+        : {}),
       sampleCount: samples.length,
       modelVersion: 'face-api-tiny-v1',
     },

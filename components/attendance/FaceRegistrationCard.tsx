@@ -12,7 +12,13 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { loadFaceModels, scanFaceFromVideo, runLivenessCheck, livenessToFormFields } from '@/lib/face-client'
+import {
+  loadFaceModels,
+  scanFaceFromVideo,
+  runLivenessCheck,
+  livenessToFormFields,
+  captureJpegFromVideo,
+} from '@/lib/face-client'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import FaceStepGuide, { REGISTER_GUIDE_STEPS } from '@/components/attendance/FaceStepGuide'
@@ -154,6 +160,10 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
         spoofFlags = fields.spoofFlags
       }
       setHint('กำลังบันทึกลงระบบ...')
+      const registrationImageDataUrl =
+        videoRef.current && videoRef.current.videoWidth > 0
+          ? captureJpegFromVideo(videoRef.current) ?? undefined
+          : undefined
       const { ok, data, status } = await apiJson<{ success?: boolean }>('/api/face/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -161,6 +171,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
           samples: finalSamples,
           livenessScore,
           spoofFlags,
+          registrationImageBase64: registrationImageDataUrl,
         }),
       })
       if (!ok) {

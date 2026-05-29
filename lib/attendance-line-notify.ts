@@ -201,6 +201,12 @@ async function resolveLineImageUrl(params: {
     const signed = await getSignedScanImageUrlForLine(params.faceScanId)
     if (signed?.startsWith('https://')) return signed
   }
+  const path = params.photoUrl?.trim()
+  if (path && path.includes('/') && !path.startsWith('http') && !path.startsWith('/uploads')) {
+    const { getSignedUrl } = await import('@/lib/cloudinary-service')
+    const signed = getSignedUrl(path)
+    if (signed?.startsWith('https://')) return signed
+  }
   return absolutePhotoUrl(params.photoUrl)
 }
 

@@ -17,9 +17,22 @@ export async function ensureDbSchema(): Promise<boolean> {
   return ensurePromise
 }
 
+function pragmaColumnNames(rows: unknown[]): string[] {
+  return rows
+    .map((row) => {
+      if (row && typeof row === 'object') {
+        const r = row as Record<string, unknown>
+        if (typeof r.name === 'string') return r.name
+        if (Array.isArray(row) && row[1] != null) return String(row[1])
+      }
+      return ''
+    })
+    .filter(Boolean)
+}
+
 async function userColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(users)')
-  return rows.map((r) => r.name)
+  const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(users)')
+  return pragmaColumnNames(rows)
 }
 
 async function addUserColumnIfMissing(column: string, ddl: string) {
@@ -53,6 +66,14 @@ async function runEnsure(): Promise<boolean> {
   await addUserColumnIfMissing(
     'profileImageBase64',
     `ALTER TABLE users ADD COLUMN profileImageBase64 TEXT`,
+  )
+  await addUserColumnIfMissing(
+    'profileCloudinaryPublicId',
+    `ALTER TABLE users ADD COLUMN profileCloudinaryPublicId TEXT`,
+  )
+  await addUserColumnIfMissing(
+    'profileSecureUrl',
+    `ALTER TABLE users ADD COLUMN profileSecureUrl TEXT`,
   )
 
   for (const b of DEFAULT_COMPANY_BRANCHES) {
@@ -166,6 +187,18 @@ async function runEnsure(): Promise<boolean> {
       updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
+  await addUserFaceProfileColumnIfMissing('employeeId', `ALTER TABLE user_face_profiles ADD COLUMN employeeId TEXT`)
+  await addUserFaceProfileColumnIfMissing('faceEmbedding', `ALTER TABLE user_face_profiles ADD COLUMN faceEmbedding TEXT`)
+  await addUserFaceProfileColumnIfMissing(
+    'cloudinaryPublicId',
+    `ALTER TABLE user_face_profiles ADD COLUMN cloudinaryPublicId TEXT`,
+  )
+  await addUserFaceProfileColumnIfMissing('faceImageUrl', `ALTER TABLE user_face_profiles ADD COLUMN faceImageUrl TEXT`)
+  await addUserFaceProfileColumnIfMissing('secureUrl', `ALTER TABLE user_face_profiles ADD COLUMN secureUrl TEXT`)
+  await addUserFaceProfileColumnIfMissing(
+    'isActive',
+    `ALTER TABLE user_face_profiles ADD COLUMN isActive INTEGER NOT NULL DEFAULT 1`,
+  )
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS attendance_face_logs (
       id TEXT NOT NULL PRIMARY KEY,
@@ -301,7 +334,94 @@ async function runEnsure(): Promise<boolean> {
     ON attendance_face_scans (attendanceId)
   `)
 
+  await addFaceScanColumnIfMissing(
+    'storageProvider',
+    `ALTER TABLE attendance_face_scans ADD COLUMN storageProvider TEXT NOT NULL DEFAULT 'db'`,
+  )
+  await addFaceScanColumnIfMissing(
+    'objectKey',
+    `ALTER TABLE attendance_face_scans ADD COLUMN objectKey TEXT`,
+  )
+  const faceScanCloudinaryCols: [string, string][] = [
+    ['employeeId', `ALTER TABLE attendance_face_scans ADD COLUMN employeeId TEXT`],
+    ['companyId', `ALTER TABLE attendance_face_scans ADD COLUMN companyId TEXT`],
+    ['branchId', `ALTER TABLE attendance_face_scans ADD COLUMN branchId TEXT`],
+    ['cloudinaryPublicId', `ALTER TABLE attendance_face_scans ADD COLUMN cloudinaryPublicId TEXT`],
+    ['imageUrl', `ALTER TABLE attendance_face_scans ADD COLUMN imageUrl TEXT`],
+    ['secureUrl', `ALTER TABLE attendance_face_scans ADD COLUMN secureUrl TEXT`],
+    ['format', `ALTER TABLE attendance_face_scans ADD COLUMN format TEXT`],
+    ['fileSize', `ALTER TABLE attendance_face_scans ADD COLUMN fileSize INTEGER`],
+    ['width', `ALTER TABLE attendance_face_scans ADD COLUMN width INTEGER`],
+    ['height', `ALTER TABLE attendance_face_scans ADD COLUMN height INTEGER`],
+    ['faceMatched', `ALTER TABLE attendance_face_scans ADD COLUMN faceMatched INTEGER NOT NULL DEFAULT 1`],
+    ['location', `ALTER TABLE attendance_face_scans ADD COLUMN location TEXT`],
+    ['latitude', `ALTER TABLE attendance_face_scans ADD COLUMN latitude REAL`],
+    ['longitude', `ALTER TABLE attendance_face_scans ADD COLUMN longitude REAL`],
+  ]
+  for (const [col, ddl] of faceScanCloudinaryCols) {
+    await addFaceScanColumnIfMissing(col, ddl)
+  }
+
+  await addCompanySettingsColumnIfMissing(
+    'imageRetentionDays',
+    `ALTER TABLE company_settings ADD COLUMN imageRetentionDays INTEGER NOT NULL DEFAULT 90`,
+  )
+
   return true
+}
+
+async function userFaceProfileColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<unknown[]>(
+    'PRAGMA table_info(user_face_profiles)',
+  )
+  return pragmaColumnNames(rows)
+}
+
+async function addUserFaceProfileColumnIfMissing(column: string, ddl: string) {
+  const cols = await userFaceProfileColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
+}
+
+async function companySettingsColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<unknown[]>(
+    'PRAGMA table_info(company_settings)',
+  )
+  return pragmaColumnNames(rows)
+}
+
+async function addCompanySettingsColumnIfMissing(column: string, ddl: string) {
+  const cols = await companySettingsColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
+}
+
+async function faceScanColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<unknown[]>(
+    'PRAGMA table_info(attendance_face_scans)',
+  )
+  return pragmaColumnNames(rows)
+}
+
+async function addFaceScanColumnIfMissing(column: string, ddl: string) {
+  const cols = await faceScanColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }
 
 async function lineNotifyColumns(): Promise<string[]> {

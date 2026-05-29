@@ -9,7 +9,10 @@ const ALLOWED_FIELDS = [
   'sickDaysYear', 'vacationDaysYear', 'personalDaysYear',
   'lineChannelId', 'lineChannelSecret', 'lineAccessToken', 'lineNotifyToken',
   'geofenceLat', 'geofenceLng', 'geofenceRadius', 'lateDeductRate', 'absentDeductRate',
+  'imageRetentionDays',
 ] as const
+
+const RETENTION_OPTIONS = [30, 90, 180] as const
 
 export async function GET() {
   try {
@@ -35,6 +38,16 @@ export async function PATCH(req: NextRequest) {
     const data: Record<string, unknown> = {}
     for (const key of ALLOWED_FIELDS) {
       if (key in body) data[key] = body[key]
+    }
+    if ('imageRetentionDays' in data) {
+      const days = Number(data.imageRetentionDays)
+      if (!RETENTION_OPTIONS.includes(days as (typeof RETENTION_OPTIONS)[number])) {
+        return NextResponse.json(
+          { error: 'imageRetentionDays ต้องเป็น 30, 90 หรือ 180' },
+          { status: 400 },
+        )
+      }
+      data.imageRetentionDays = days
     }
 
     const settings = await prisma.companySettings.upsert({

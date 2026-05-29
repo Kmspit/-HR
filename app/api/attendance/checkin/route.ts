@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
@@ -11,6 +10,7 @@ import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import {
   formHasFaceImage,
   recordFaceScanAndNotifyHr,
+  syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
     const address = (formData.get('address') as string) || ''
-    const photo = formData.get('photo') as File | null
     const locationType = (formData.get('locationType') as string) ?? 'company'
     const workPlaceName = ((formData.get('workPlaceName') as string) || '').trim() || null
     const forceOutside = locationType === 'outside'
@@ -47,11 +46,6 @@ export async function POST(req: NextRequest) {
     if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้อง' }, { status: 400 })
     }
-
-    const photoUrl =
-      photo && photo.size > 0
-        ? await saveUpload(photo, 'checkin', session.user.id)
-        : undefined
 
     let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
     if (!settings) {
@@ -102,7 +96,6 @@ export async function POST(req: NextRequest) {
         checkInLng: lng,
         checkInAddress: address || null,
         checkInWorkPlaceName: workPlaceName,
-        photoUrl,
         isOutside,
         status,
         lateMinutes,
@@ -121,7 +114,6 @@ export async function POST(req: NextRequest) {
         checkInLng: lng,
         checkInAddress: address || null,
         checkInWorkPlaceName: workPlaceName,
-        photoUrl,
         isOutside,
         status,
         lateMinutes,
@@ -139,7 +131,7 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    await recordFaceScanAndNotifyHr({
+    const faceScanId = await recordFaceScanAndNotifyHr({
       req,
       formData,
       userId: session.user.id,
@@ -153,9 +145,11 @@ export async function POST(req: NextRequest) {
       address: address || null,
       lat,
       lng,
-      photoUrl: finalized.photoUrl,
+      photoUrl: null,
       lateMinutes,
     })
+
+    await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'photoUrl')
 
     return NextResponse.json({ success: true, attendance: finalized, isOutside, lateMinutes })
   } catch (err) {

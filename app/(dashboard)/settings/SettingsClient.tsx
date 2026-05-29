@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Save, MapPin, Clock, MessageCircle, Building2, Loader2, Send } from 'lucide-react'
+import { Save, MapPin, Clock, MessageCircle, Building2, Loader2, Send, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { KM_COMPANY } from '@/lib/company-defaults'
@@ -26,6 +26,7 @@ type Settings = {
   geofenceRadius: number
   lateDeductRate: number
   absentDeductRate: number
+  imageRetentionDays: number
 }
 
 export default function SettingsClient({ settings }: { settings: Settings | null }) {
@@ -47,6 +48,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
     geofenceRadius: settings?.geofenceRadius ?? 200,
     lateDeductRate: settings?.lateDeductRate ?? 0,
     absentDeductRate: settings?.absentDeductRate ?? 0,
+    imageRetentionDays: settings?.imageRetentionDays ?? 90,
   })
   const [saving, setSaving] = useState(false)
   const [lineTab, setLineTab] = useState<'config' | 'send'>('send')
@@ -148,6 +150,32 @@ export default function SettingsClient({ settings }: { settings: Settings | null
           <Input label="หักขาดงาน (บาท/วัน เพิ่มเติม)" value={form.absentDeductRate} onChange={(v: number) => set('absentDeductRate', v)} type="number" placeholder="0 = คิดตามฐาน" />
         </div>
         <p className="text-xs text-white/30">* ขาดงานจะหักตามอัตราเงินเดือนรายวันเสมอ ค่านี้เป็นเพิ่มเติม</p>
+      </section>
+
+      {/* Cloudinary retention */}
+      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-white flex items-center gap-2">
+          <ImageIcon className="w-4 h-4 text-cyan-400" /> เก็บรูป Cloudinary
+        </h2>
+        <p className="text-xs text-white/40">
+          ลบรูปสแกนใบหน้า / โปรไฟล์ที่เก่ากว่ากำหนดอัตโนมัติ (cron) — ใช้ signed URL เท่านั้น
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[30, 90, 180].map((days) => (
+            <button
+              key={days}
+              type="button"
+              onClick={() => set('imageRetentionDays', days)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
+                form.imageRetentionDays === days
+                  ? 'bg-cyan-600 border-cyan-500 text-white'
+                  : 'border-white/10 text-white/60 hover:bg-white/5'
+              }`}
+            >
+              {days} วัน
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Geofence */}

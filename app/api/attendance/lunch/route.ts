@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { saveUpload } from '@/lib/save-upload'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
@@ -10,6 +9,7 @@ import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import {
   formHasFaceImage,
   recordFaceScanAndNotifyHr,
+  syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
 
 export async function POST(req: NextRequest) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const faceAction = action === 'lunch-in' ? 'lunch-in' : 'lunch-out'
     const faceBlock = await guardAttendanceFace(session.user.id, formData, faceAction)
     if (faceBlock) return faceBlock
-    const photo = formData.get('photo') as File | null
+
     const lat = parseCoord(formData.get('lat'))
     const lng = parseCoord(formData.get('lng'))
     const address = (formData.get('address') as string) || ''
@@ -37,11 +37,6 @@ export async function POST(req: NextRequest) {
     if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าตรงจากกล้อง' }, { status: 400 })
     }
-
-    const photoUrl =
-      photo && photo.size > 0
-        ? await saveUpload(photo, action, session.user.id)
-        : undefined
 
     const today = startOfTodayLocal()
     const attendance = await prisma.attendance.findUnique({
@@ -67,7 +62,7 @@ export async function POST(req: NextRequest) {
       }
       const updated = await prisma.attendance.update({
         where: { id: attendance.id },
-        data: { lunchOut: now, lunchOutPhotoUrl: photoUrl, ...geoPatch },
+        data: { lunchOut: now, ...geoPatch },
       })
       const faceLogId = (formData.get('faceLogId') as string) || null
       if (faceLogId) {
@@ -76,7 +71,7 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
-      await recordFaceScanAndNotifyHr({
+      const faceScanId = await recordFaceScanAndNotifyHr({
         req,
         formData,
         userId: session.user.id,
@@ -89,8 +84,9 @@ export async function POST(req: NextRequest) {
         address: address || null,
         lat,
         lng,
-        photoUrl: finalized.lunchOutPhotoUrl,
+        photoUrl: null,
       })
+      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchOutPhotoUrl')
       return NextResponse.json({ success: true, attendance: finalized })
     }
 
@@ -103,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
-      data: { lunchIn: now, lunchInPhotoUrl: photoUrl, ...geoPatch },
+      data: { lunchIn: now, ...geoPatch },
     })
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
@@ -112,7 +108,7 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
-    await recordFaceScanAndNotifyHr({
+    const faceScanId = await recordFaceScanAndNotifyHr({
       req,
       formData,
       userId: session.user.id,
@@ -125,8 +121,9 @@ export async function POST(req: NextRequest) {
       address: address || null,
       lat,
       lng,
-      photoUrl: finalized.lunchInPhotoUrl,
+      photoUrl: null,
     })
+    await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchInPhotoUrl')
     return NextResponse.json({ success: true, attendance: finalized })
   } catch (err) {
     return apiError(err)

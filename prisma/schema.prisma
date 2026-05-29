@@ -217,8 +217,10 @@ model User {
   birthDate        DateTime?
   address          String?
   nationalId       String?    @unique
-  profileImage        String?
-  profileImageBase64  String?
+  profileImage              String?
+  profileImageBase64        String? // deprecated — migrate to Cloudinary
+  profileCloudinaryPublicId String?
+  profileSecureUrl          String?
   role             Role       @default(EMPLOYEE)
   status           UserStatus @default(PENDING)
   department       String?
@@ -268,10 +270,17 @@ model User {
 
 // ── FACE RECOGNITION (ลงทะเบียนใบหน้า 1 ครั้ง) ──
 
+// employee_face_profiles (physical table user_face_profiles — ลงทะเบียนใบหน้า)
 model UserFaceProfile {
   id                  String   @id @default(cuid())
   userId              String   @unique
+  employeeId          String?
   encryptedDescriptor String
+  faceEmbedding       String? // alias path; ใช้ encryptedDescriptor เป็นหลัก
+  cloudinaryPublicId  String?
+  faceImageUrl        String?
+  secureUrl           String?
+  isActive            Boolean  @default(true)
   modelVersion        String   @default("face-api-tiny-v1")
   sampleCount         Int      @default(1)
   registeredAt        DateTime @default(now())
@@ -279,6 +288,7 @@ model UserFaceProfile {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([employeeId])
   @@map("user_face_profiles")
 }
 
@@ -325,31 +335,49 @@ model AttendanceLineNotifyLog {
   @@map("attendance_line_notify_logs")
 }
 
-// ── ATTENDANCE FACE SCAN (รูปสแกนหน้า — เก็บใน DB ไม่ public) ──
+// ── ATTENDANCE FACE SCAN (metadata + Cloudinary — ไม่เก็บ blob ใน DB) ──
 
 model AttendanceFaceScan {
-  id              String   @id @default(cuid())
-  userId          String
-  attendanceId    String?
-  faceLogId       String?
-  scanType        String
-  scanTime        DateTime @default(now())
-  confidenceScore Float?
-  matchScore      Float?
-  livenessScore   Float?
-  matched         Boolean  @default(true)
-  imageMime       String   @default("image/jpeg")
-  imageData       String
-  locationName    String?
-  address         String?
-  lat             Float?
-  lng             Float?
-  deviceInfo      String?
-  createdAt       DateTime @default(now())
+  id                 String   @id @default(cuid())
+  userId             String
+  employeeId         String?
+  companyId          String?
+  branchId           String?
+  attendanceId       String?
+  faceLogId          String?
+  scanType           String
+  scanTime           DateTime @default(now())
+  cloudinaryPublicId String?
+  imageUrl           String?
+  secureUrl          String?
+  format             String?
+  fileSize           Int?
+  width              Int?
+  height             Int?
+  confidenceScore    Float?
+  matchScore         Float?
+  livenessScore      Float?
+  faceMatched        Boolean  @default(true)
+  matched            Boolean  @default(true)
+  storageProvider    String   @default("cloudinary")
+  objectKey          String?
+  imageMime          String   @default("image/jpeg")
+  imageData          String   @default("")
+  locationName       String?
+  location           String?
+  address            String?
+  lat                Float?
+  lng                Float?
+  latitude           Float?
+  longitude          Float?
+  deviceInfo         String?
+  createdAt          DateTime @default(now())
 
   @@index([userId, scanTime])
+  @@index([employeeId, scanTime])
   @@index([scanType, scanTime])
   @@index([attendanceId])
+  @@index([cloudinaryPublicId])
   @@map("attendance_face_scans")
 }
 
@@ -697,10 +725,11 @@ model CompanySettings {
   lineNotifyToken  String?
   geofenceLat      Float?
   geofenceLng      Float?
-  geofenceRadius   Float    @default(200)
-  lateDeductRate   Float    @default(0)
-  absentDeductRate Float    @default(0)
-  updatedAt        DateTime @updatedAt
+  geofenceRadius      Float    @default(200)
+  lateDeductRate      Float    @default(0)
+  absentDeductRate    Float    @default(0)
+  imageRetentionDays  Int      @default(90)
+  updatedAt           DateTime @updatedAt
 
   @@map("company_settings")
 }

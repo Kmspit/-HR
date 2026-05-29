@@ -87,6 +87,10 @@ function mapScan(r: {
   matchScore: number | null
   livenessScore: number | null
   matched: boolean
+  faceMatched: boolean
+  cloudinaryPublicId: string | null
+  secureUrl: string | null
+  storageProvider: string
   locationName: string | null
   address: string | null
   lat: number | null
@@ -104,6 +108,10 @@ function mapScan(r: {
     matchScore: r.matchScore,
     livenessScore: r.livenessScore,
     matched: r.matched,
+    faceMatched: r.faceMatched,
+    cloudinaryPublicId: r.cloudinaryPublicId,
+    secureUrl: r.secureUrl,
+    storageProvider: r.storageProvider,
     locationName: r.locationName,
     address: r.address,
     lat: r.lat,

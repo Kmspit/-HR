@@ -238,12 +238,15 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json({ error: 'บันทึกรูปโปรไฟล์ไม่สำเร็จ' }, { status: 500 })
         }
         updateData.profileImage = stored.profileImage
-        if (stored.profileImageBase64 != null) {
-          updateData.profileImageBase64 = stored.profileImageBase64
-        }
+        updateData.profileImageBase64 = null
+        updateData.profileCloudinaryPublicId = stored.profileCloudinaryPublicId
+        updateData.profileSecureUrl = stored.profileSecureUrl
       } catch (e) {
         if (e instanceof Error && e.message === 'AVATAR_TOO_LARGE') {
           return NextResponse.json({ error: 'รูปต้องไม่เกิน 2 MB' }, { status: 400 })
+        }
+        if (e instanceof Error && e.message === 'CLOUDINARY_NOT_CONFIGURED') {
+          return NextResponse.json({ error: 'ระบบจัดเก็บรูปยังไม่พร้อม — ติดต่อ IT' }, { status: 503 })
         }
         throw e
       }
@@ -273,16 +276,7 @@ export async function PATCH(req: NextRequest) {
         select: PROFILE_SELECT,
       })
     } catch (updateErr) {
-      if (raw.avatarFile && updateData.profileImageBase64 != null) {
-        const { profileImageBase64: _drop, ...withoutB64 } = updateData
-        user = await prisma.user.update({
-          where: { id: session.user.id },
-          data: withoutB64,
-          select: PROFILE_SELECT,
-        })
-      } else {
-        throw updateErr
-      }
+      throw updateErr
     }
 
     if (beforeAudit) {
