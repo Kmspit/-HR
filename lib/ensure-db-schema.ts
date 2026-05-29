@@ -308,6 +308,7 @@ async function runEnsure(): Promise<boolean> {
   await addLineNotifyColumnIfMissing('faceScanId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN faceScanId TEXT`)
   await addLineNotifyColumnIfMissing('employeeId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN employeeId TEXT`)
   await addLineNotifyColumnIfMissing('scanType', `ALTER TABLE attendance_line_notify_logs ADD COLUMN scanType TEXT`)
+  await addLineNotifyColumnIfMissing('imageUrl', `ALTER TABLE attendance_line_notify_logs ADD COLUMN imageUrl TEXT`)
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS attendance_line_notify_dedup_idx
     ON attendance_line_notify_logs (attendanceId, eventType, status)

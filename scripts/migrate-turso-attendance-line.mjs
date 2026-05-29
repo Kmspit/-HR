@@ -59,6 +59,7 @@ const alters = [
   ['faceScanId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN faceScanId TEXT`],
   ['employeeId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN employeeId TEXT`],
   ['scanType', `ALTER TABLE attendance_line_notify_logs ADD COLUMN scanType TEXT`],
+  ['imageUrl', `ALTER TABLE attendance_line_notify_logs ADD COLUMN imageUrl TEXT`],
 ]
 
 for (const [col, ddl] of alters) {

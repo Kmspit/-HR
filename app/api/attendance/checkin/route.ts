@@ -17,6 +17,7 @@ import {
   attendanceFlowErrorMessage,
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000
@@ -30,6 +31,7 @@ function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

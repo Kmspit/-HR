@@ -17,9 +17,11 @@ import {
   attendanceFlowErrorMessage,
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

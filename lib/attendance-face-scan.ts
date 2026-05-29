@@ -337,10 +337,10 @@ export async function recordFaceScanAndNotifyHr(params: {
     console.error('[face-scan-persist]', err)
   }
 
-  // ส่ง LINE HR ทันทีหลังบันทึก attendance — ไม่ throw แม้ upload รูปล้มเหลว
+  // ส่ง LINE HR ทันทีหลังอัปโหลด Cloudinary — ไม่ throw (attendance บันทึกแล้ว)
   try {
-    const { scheduleHrAttendanceLineNotify } = await import('@/lib/attendance-line-notify')
-    scheduleHrAttendanceLineNotify({
+    const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+    const result = await notifyHrAttendanceOnLine({
       event: params.event,
       employeeUserId: params.userId,
       attendanceId: params.attendanceId,
@@ -351,8 +351,16 @@ export async function recordFaceScanAndNotifyHr(params: {
       lateMinutes: params.lateMinutes,
       earlyLeaveMinutes: params.earlyLeaveMinutes,
     })
+    if (result.failed > 0) {
+      console.warn('[attendance-line-notify] partial LINE failure', {
+        attendanceId: params.attendanceId,
+        event: params.event,
+        sent: result.sent,
+        failed: result.failed,
+      })
+    }
   } catch (err) {
-    console.error('[attendance-line-notify-schedule]', err)
+    console.error('[attendance-line-notify]', err)
   }
 
   return faceScanId

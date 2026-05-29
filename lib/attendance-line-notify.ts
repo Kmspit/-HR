@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfigured } from '@/lib/line-config'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import {
   FACE_SCAN_TYPE_LABEL,
   getSignedScanImageUrlForLine,
@@ -161,13 +162,17 @@ function resolveDepartmentName(
   )
 }
 
-/** ป้องกันส่ง LINE ซ้ำสำหรับ attendance event เดียวกัน */
-async function hasDuplicateLineNotify(attendanceId: string, eventType: string): Promise<boolean> {
-  const existing = await prisma.attendanceLineNotifyLog.findFirst({
-    where: { attendanceId, eventType, status: 'sent' },
-    select: { id: true },
+/** ป้องกันส่ง LINE ซ้ำต่อ HR คนเดียว + event เดียวกัน */
+async function findLineNotifyLogForRecipient(
+  attendanceId: string,
+  eventType: string,
+  hrLineUserId: string,
+) {
+  return prisma.attendanceLineNotifyLog.findFirst({
+    where: { attendanceId, eventType, hrLineUserId },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, status: true, retryCount: true },
   })
-  return !!existing
 }
 
 function buildLineMessages(text: string, imageUrl: string | null): object[] {
@@ -207,7 +212,9 @@ async function createLogEntry(params: {
   faceScanId?: string | null
   messageText: string
   photoUrl?: string | null
+  imageUrl?: string | null
 }) {
+  const url = params.imageUrl ?? params.photoUrl ?? undefined
   return prisma.attendanceLineNotifyLog.create({
     data: {
       employeeUserId: params.employeeUserId,
@@ -219,7 +226,8 @@ async function createLogEntry(params: {
       faceLogId: params.faceLogId ?? undefined,
       faceScanId: params.faceScanId ?? undefined,
       messageText: params.messageText,
-      photoUrl: params.photoUrl ?? undefined,
+      photoUrl: url,
+      imageUrl: url,
       status: 'pending',
     },
   })
@@ -292,6 +300,12 @@ export async function notifyHrAttendanceOnLine(params: {
   earlyLeaveMinutes?: number
   failureDetail?: string
 }): Promise<{ sent: number; failed: number }> {
+  try {
+    await ensureDbSchema()
+  } catch (err) {
+    console.error('[attendance-line-notify] ensureDbSchema', err)
+  }
+
   if (!isLineOaConfigured()) {
     console.warn('[attendance-line-notify] LINE OA not configured — skip push')
     return { sent: 0, failed: 0 }
@@ -301,17 +315,6 @@ export async function notifyHrAttendanceOnLine(params: {
   if (hrUsers.length === 0) {
     console.warn('[attendance-line-notify] no HR/Admin with linked LINE — skip push')
     return { sent: 0, failed: 0 }
-  }
-
-  if (params.attendanceId && params.event !== 'face_mismatch') {
-    const dup = await hasDuplicateLineNotify(params.attendanceId, params.event)
-    if (dup) {
-      console.info('[attendance-line-notify] duplicate skipped', {
-        attendanceId: params.attendanceId,
-        event: params.event,
-      })
-      return { sent: 0, failed: 0 }
-    }
   }
 
   const employee = await loadEmployeeContext(params.employeeUserId)
@@ -345,28 +348,79 @@ export async function notifyHrAttendanceOnLine(params: {
   let failed = 0
 
   for (const hr of hrUsers) {
-    const log = await createLogEntry({
-      employeeUserId: params.employeeUserId,
-      employeeCode: employee.employeeId,
-      hrLineUserId: hr.lineUserId,
-      eventType: params.event,
-      scanType: params.event,
-      attendanceId: params.attendanceId,
-      faceLogId: params.faceLogId,
-      faceScanId: params.faceScanId,
-      messageText,
-      photoUrl: imageUrl ?? params.photoUrl,
-    })
+    let logId: string
+    let retryCountStart = 0
+
+    if (params.attendanceId && params.event !== 'face_mismatch') {
+      const existing = await findLineNotifyLogForRecipient(
+        params.attendanceId,
+        params.event,
+        hr.lineUserId,
+      )
+      if (existing?.status === 'sent') {
+        console.info('[attendance-line-notify] duplicate skipped', {
+          attendanceId: params.attendanceId,
+          event: params.event,
+          hrLineUserId: hr.lineUserId,
+        })
+        continue
+      }
+      if (existing && (existing.status === 'pending' || existing.status === 'failed')) {
+        logId = existing.id
+        retryCountStart = existing.retryCount
+        await prisma.attendanceLineNotifyLog.update({
+          where: { id: logId },
+          data: {
+            status: 'pending',
+            failedReason: null,
+            messageText,
+            photoUrl: imageUrl ?? params.photoUrl ?? undefined,
+            imageUrl: imageUrl ?? params.photoUrl ?? undefined,
+            faceScanId: params.faceScanId ?? undefined,
+          },
+        })
+      } else {
+        const log = await createLogEntry({
+          employeeUserId: params.employeeUserId,
+          employeeCode: employee.employeeId,
+          hrLineUserId: hr.lineUserId,
+          eventType: params.event,
+          scanType: params.event,
+          attendanceId: params.attendanceId,
+          faceLogId: params.faceLogId,
+          faceScanId: params.faceScanId,
+          messageText,
+          photoUrl: imageUrl ?? params.photoUrl,
+          imageUrl: imageUrl ?? params.photoUrl,
+        })
+        logId = log.id
+      }
+    } else {
+      const log = await createLogEntry({
+        employeeUserId: params.employeeUserId,
+        employeeCode: employee.employeeId,
+        hrLineUserId: hr.lineUserId,
+        eventType: params.event,
+        scanType: params.event,
+        attendanceId: params.attendanceId,
+        faceLogId: params.faceLogId,
+        faceScanId: params.faceScanId,
+        messageText,
+        photoUrl: imageUrl ?? params.photoUrl,
+        imageUrl: imageUrl ?? params.photoUrl,
+      })
+      logId = log.id
+    }
 
     await deliverToHrRecipient({
-      logId: log.id,
+      logId,
       hrLineUserId: hr.lineUserId,
       messages,
-      retryCountStart: 0,
+      retryCountStart,
     })
 
     const updated = await prisma.attendanceLineNotifyLog.findUnique({
-      where: { id: log.id },
+      where: { id: logId },
       select: { status: true },
     })
     if (updated?.status === 'sent') sent++
@@ -410,7 +464,7 @@ export async function retryFailedAttendanceLineNotify(logId: string): Promise<{
 
   const imageUrl = await resolveLineImageUrl({
     faceScanId: log.faceScanId,
-    photoUrl: log.photoUrl,
+    photoUrl: log.imageUrl ?? log.photoUrl,
   })
   const messages = buildLineMessages(log.messageText, imageUrl)
 

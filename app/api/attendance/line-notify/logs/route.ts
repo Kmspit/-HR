@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
         scanType: true,
         eventType: true,
         photoUrl: true,
+        imageUrl: true,
         status: true,
         sentAt: true,
         failedReason: true,
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
       logs: logs.map((l) => ({
         ...l,
         lineStatus: l.status,
+        imageUrl: l.imageUrl ?? l.photoUrl,
       })),
     })
   } catch (err) {
