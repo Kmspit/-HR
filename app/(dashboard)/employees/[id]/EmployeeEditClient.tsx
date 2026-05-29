@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   Save,
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   MessageCircle,
   Mail,
   Shield,
+  Send,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -327,6 +329,18 @@ export default function EmployeeEditClient({
             className={profileInputClass}
           />
         </FormField>
+        <Link
+          href={`/line-oa?userId=${employee.id}`}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#06C755]/15 border border-[#06C755]/30 text-[#06C755] text-sm font-semibold hover:bg-[#06C755]/25 transition"
+        >
+          <Send className="w-4 h-4" />
+          ส่งข้อความเข้า LINE
+        </Link>
+        {!form.lineUserId && (
+          <p className="text-[11px] text-amber-400">
+            ยังไม่ผูก LINE OA — พนักงานต้องสร้างรหัสที่โปรไฟล์ก่อนจึงส่งถึงได้
+          </p>
+        )}
       </section>
 
       <section className="glass-card rounded-2xl p-5 space-y-4">

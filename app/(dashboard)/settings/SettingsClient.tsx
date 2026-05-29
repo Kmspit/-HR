@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Save, MapPin, Clock, MessageCircle, Building2, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Save, MapPin, Clock, MessageCircle, Building2, Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { KM_COMPANY } from '@/lib/company-defaults'
+import LineHrSendPanel from '@/components/line/LineHrSendPanel'
 
 type Settings = {
   companyName: string
@@ -47,6 +49,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
     absentDeductRate: settings?.absentDeductRate ?? 0,
   })
   const [saving, setSaving] = useState(false)
+  const [lineTab, setLineTab] = useState<'config' | 'send'>('send')
 
   const set = (key: keyof Settings, value: any) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -167,16 +170,57 @@ export default function SettingsClient({ settings }: { settings: Settings | null
 
       {/* LINE */}
       <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold text-white flex items-center gap-2">
-          <MessageCircle className="w-4 h-4 text-green-400" /> LINE Integration
-        </h2>
-        <div className="grid grid-cols-1 gap-4">
-          <Input label="LINE Channel Access Token (Messaging API)" value={form.lineAccessToken} onChange={(v: string) => set('lineAccessToken', v)} type="password" placeholder="ดูได้ที่ LINE Developers Console" />
-          <Input label="LINE Notify Token (สำหรับ broadcast)" value={form.lineNotifyToken} onChange={(v: string) => set('lineNotifyToken', v)} type="password" />
-          <Input label="LINE Channel ID" value={form.lineChannelId} onChange={(v: string) => set('lineChannelId', v)} />
-          <Input label="LINE Channel Secret" value={form.lineChannelSecret} onChange={(v: string) => set('lineChannelSecret', v)} type="password" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-green-400" /> LINE Integration
+          </h2>
+          <Link
+            href="/line-oa"
+            className="text-xs text-blue-400 hover:underline"
+          >
+            เปิดหน้า LINE OA →
+          </Link>
         </div>
-        <p className="text-xs text-white/30">* ต้องตั้งค่า LINE ID ของพนักงานแต่ละคนด้วยถึงจะส่ง Messaging API ถึงคนนั้นได้</p>
+
+        <div className="flex rounded-xl border border-white/10 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setLineTab('send')}
+            className={`flex flex-1 items-center justify-center gap-2 py-2 text-xs font-semibold transition ${
+              lineTab === 'send' ? 'bg-[#06C755] text-white' : 'text-white/50 hover:text-white'
+            }`}
+          >
+            <Send className="w-3.5 h-3.5" />
+            ส่งเข้า LINE
+          </button>
+          <button
+            type="button"
+            onClick={() => setLineTab('config')}
+            className={`flex flex-1 items-center justify-center gap-2 py-2 text-xs font-semibold transition ${
+              lineTab === 'config' ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'
+            }`}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            ตั้งค่า API
+          </button>
+        </div>
+
+        {lineTab === 'send' ? (
+          <LineHrSendPanel compact />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4">
+              <Input label="LINE Channel Access Token (Messaging API)" value={form.lineAccessToken} onChange={(v: string) => set('lineAccessToken', v)} type="password" placeholder="ดูได้ที่ LINE Developers Console" />
+              <Input label="LINE Notify Token (สำหรับ broadcast)" value={form.lineNotifyToken} onChange={(v: string) => set('lineNotifyToken', v)} type="password" />
+              <Input label="LINE Channel ID" value={form.lineChannelId} onChange={(v: string) => set('lineChannelId', v)} />
+              <Input label="LINE Channel Secret" value={form.lineChannelSecret} onChange={(v: string) => set('lineChannelSecret', v)} type="password" />
+            </div>
+            <p className="text-xs text-white/30">
+              * Production ใช้ env บน Vercel (LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN) —
+              พนักงานต้องผูก LINE ที่โปรไฟล์ก่อนจึงส่งถึงได้
+            </p>
+          </>
+        )}
       </section>
     </div>
   )

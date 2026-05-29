@@ -17,6 +17,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/employees':         ['MANAGER_HR', 'ADMIN'],
   '/approvals':         ['MANAGER_HR', 'ADMIN'],
   '/announcements':     ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
+  '/line-oa':           ['MANAGER_HR', 'ADMIN'],
   '/warnings':          ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/rules':             ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/settings':          ['MANAGER_HR', 'ADMIN'],
