@@ -2,33 +2,44 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyLineWebhookSignature, type LineWebhookBody } from '@/lib/line-api'
 import { handleLineWebhookEvent } from '@/lib/line-webhook-handlers'
 import { getLineWebhookUrl } from '@/lib/line-config'
-import { resolveLineChannelSecret, resolveLineChannelAccessToken } from '@/lib/line-credentials'
+import {
+  getLineWebhookDiagnostics,
+  listLineChannelSecretCandidates,
+  resolveLineChannelAccessToken,
+  verifyLineWebhookWithCandidates,
+} from '@/lib/line-credentials'
 
 export const runtime = 'nodejs'
 
 /** LINE Platform verification + ตรวจ env (GET) */
 export async function GET() {
-  const { secret, source: secretSource } = await resolveLineChannelSecret()
+  const diag = await getLineWebhookDiagnostics()
   const { token, source: tokenSource } = await resolveLineChannelAccessToken()
-  const configured = !!secret && !!token
 
   return NextResponse.json({
     ok: true,
     webhook: true,
-    configured,
-    hasChannelSecret: !!secret,
+    configured: diag.configured,
+    hasChannelSecret: diag.hasChannelSecret,
     hasAccessToken: !!token,
-    secretSource,
     tokenSource,
+    secretCandidateCount: diag.secretCandidateCount,
+    triedSecretSources: diag.triedSecretSources,
+    envAndDbSecretDiffer: diag.envAndDbSecretDiffer,
+    envSecretFingerprint: diag.envSecretFingerprint,
+    dbSecretFingerprint: diag.dbSecretFingerprint,
+    fix401IfDiffer: diag.fix401IfDiffer,
     webhookPath: '/api/line/webhook',
     webhookUrl: getLineWebhookUrl(),
-    hint: configured
-      ? 'พร้อม Verify ใน LINE Developers — ใช้ Channel secret ชุดเดียวกับที่ระบบอ่านได้'
-      : 'ใส่ LINE_CHANNEL_SECRET + LINE_CHANNEL_ACCESS_TOKEN บน Vercel (โปรเจกต์ hrprogramkm) หรือบันทึกในหน้าตั้งค่า แล้ว Redeploy',
+    hint: diag.configured
+      ? diag.envAndDbSecretDiffer
+        ? 'มี secret 2 ชุดไม่ตรง — ดู fix401IfDiffer'
+        : 'พร้อม Verify — ถ้ายัง 401 ให้ Issue Channel secret ใหม่ใน LINE แล้วอัปเดต Vercel'
+      : 'ใส่ LINE_CHANNEL_SECRET + LINE_CHANNEL_ACCESS_TOKEN บน Vercel (hrprogramkm) หรือบันทึกในหน้าตั้งค่า',
     verifyHelp: {
       url: getLineWebhookUrl(),
       common401:
-        '401 = ลายเซ็นไม่ตรง — คัดลอก Channel secret ใหม่จาก LINE Developers → Basic settings → Channel secret',
+        '401 = ลายเซ็นไม่ตรงกับ Channel ใน LINE Console — Reissue secret → ใส่ Vercel → Redeploy',
     },
   })
 }
@@ -38,33 +49,43 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const signature = req.headers.get('x-line-signature')
 
-  const { secret, source } = await resolveLineChannelSecret()
-  if (!secret) {
+  const candidates = await listLineChannelSecretCandidates()
+  if (candidates.length === 0) {
     console.error('[line/webhook] missing channel secret (env + DB)')
     return NextResponse.json(
       {
         error: 'LINE not configured',
-        hint: 'ตั้ง LINE_CHANNEL_SECRET บน Vercel หรือบันทึก Channel Secret ในหน้าตั้งค่าบริษัท',
+        hint: 'ตั้ง LINE_CHANNEL_SECRET บน Vercel (hrprogramkm) หรือบันทึกในหน้าตั้งค่าบริษัท',
       },
       { status: 503 },
     )
   }
 
-  if (!verifyLineWebhookSignature(rawBody, signature, secret)) {
+  const verify = await verifyLineWebhookWithCandidates(rawBody, signature)
+  if (!verify.ok) {
+    const diag = await getLineWebhookDiagnostics()
     console.error('[line/webhook] invalid signature', {
-      secretSource: source,
+      triedSources: verify.triedSources,
       hasSignature: !!signature,
       bodyLength: rawBody.length,
+      envAndDbDiffer: diag.envAndDbSecretDiffer,
     })
     return NextResponse.json(
       {
         error: 'Invalid signature',
         hint:
-          'Channel secret ไม่ตรงกับ LINE Developers — ลบ/ใส่ใหม่ที่ Vercel (hrprogramkm) ให้ตรง Basic settings แล้ว Redeploy',
-        secretSource: source,
+          diag.envAndDbSecretDiffer
+            ? 'Vercel env กับหน้าตั้งค่าไม่ตรง — ลบ/แก้ LINE_CHANNEL_SECRET บน Vercel ให้ตรง LINE Developers แล้ว Redeploy'
+            : 'คัดลอก Channel secret ใหม่จาก LINE → Basic settings → ใส่ Vercel hrprogramkm → Redeploy',
+        triedSecretSources: verify.triedSources,
+        envAndDbSecretDiffer: diag.envAndDbSecretDiffer,
       },
       { status: 401 },
     )
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[line/webhook] signature ok via', verify.matchedSource)
   }
 
   let body: LineWebhookBody

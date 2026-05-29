@@ -1,4 +1,6 @@
+import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { verifyLineWebhookSignature } from '@/lib/line-api'
 
 /** ลบช่องว่าง/เครื่องหมายคำพูดที่ copy จาก .env หรือ Vercel ผิดรูปแบบ */
 export function normalizeLineCredential(
@@ -116,4 +118,76 @@ export async function resolveLineChannelAccessToken(): Promise<{
 
 export function clearLineCredentialsCache() {
   cache = null
+}
+
+/** ตรวจว่า env กับ DB ใช้ secret ชุดเดียวกันหรือไม่ (ไม่เปิดเผยค่าจริง) */
+export function lineCredentialFingerprint(value: string | undefined | null): string | null {
+  const n = normalizeLineCredential(value)
+  if (!n) return null
+  return crypto.createHash('sha256').update(n).digest('hex').slice(0, 12)
+}
+
+/** รวม secret ทุกแหล่ง — ใช้ตรวจลายเซ็น (กรณี env ผิดแต่ DB ถูก) */
+export async function listLineChannelSecretCandidates(): Promise<
+  Array<{ secret: string; source: string }>
+> {
+  const seen = new Set<string>()
+  const out: Array<{ secret: string; source: string }> = []
+  const add = (raw: string | undefined | null, source: string) => {
+    const s = normalizeLineCredential(raw)
+    if (!s || seen.has(s)) return
+    seen.add(s)
+    out.push({ secret: s, source })
+  }
+
+  add(process.env.LINE_CHANNEL_SECRET, 'env:LINE_CHANNEL_SECRET')
+  add(process.env.LINE_OA_CHANNEL_SECRET, 'env:LINE_OA_CHANNEL_SECRET')
+
+  const row = await loadDbCredentials()
+  add(row?.lineChannelSecret, 'database:company_settings')
+
+  return out
+}
+
+export async function verifyLineWebhookWithCandidates(
+  rawBody: string,
+  signature: string | null,
+): Promise<{ ok: boolean; matchedSource?: string; triedSources: string[] }> {
+  const candidates = await listLineChannelSecretCandidates()
+  const triedSources = candidates.map((c) => c.source)
+  if (candidates.length === 0) {
+    return { ok: false, triedSources: [] }
+  }
+  for (const c of candidates) {
+    if (verifyLineWebhookSignature(rawBody, signature, c.secret)) {
+      return { ok: true, matchedSource: c.source, triedSources }
+    }
+  }
+  return { ok: false, triedSources }
+}
+
+export async function getLineWebhookDiagnostics() {
+  const envSecret = secretFromEnv()
+  const row = await loadDbCredentials()
+  const dbSecret = normalizeLineCredential(row?.lineChannelSecret)
+  const envFp = lineCredentialFingerprint(envSecret)
+  const dbFp = lineCredentialFingerprint(dbSecret)
+  const candidates = await listLineChannelSecretCandidates()
+  const { token, source: tokenSource } = await resolveLineChannelAccessToken()
+
+  return {
+    configured: candidates.length > 0 && !!token,
+    hasChannelSecret: candidates.length > 0,
+    hasAccessToken: !!token,
+    tokenSource,
+    secretCandidateCount: candidates.length,
+    triedSecretSources: candidates.map((c) => c.source),
+    envAndDbSecretDiffer: !!(envFp && dbFp && envFp !== dbFp),
+    envSecretFingerprint: envFp,
+    dbSecretFingerprint: dbFp,
+    fix401IfDiffer:
+      envFp && dbFp && envFp !== dbFp
+        ? 'env กับ DB ไม่ตรงกัน — ลบ LINE_CHANNEL_SECRET บน Vercel หรืออัปเดตให้ตรง LINE Console แล้ว Redeploy'
+        : null,
+  }
 }
