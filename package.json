@@ -29,6 +29,7 @@
     "db:migrate:face-scans-to-r2": "node scripts/migrate-face-scans-to-r2.mjs",
     "db:migrate:face-scans-to-cloudinary": "node scripts/migrate-face-scans-to-cloudinary.mjs",
     "db:migrate:cloudinary-columns": "node scripts/migrate-turso-cloudinary-columns.mjs",
+    "cron:generate-secret": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-cron-secret.ps1",
     "db:migrate:all-images-cloudinary": "node scripts/migrate-all-images-to-cloudinary.mjs",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
