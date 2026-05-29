@@ -110,6 +110,10 @@ export default async function WarningsPage({
         description: w.description ?? '',
         fileUrl: w.fileUrl ?? null,
         sentToLine: w.sentToLine,
+        lineDeliveryStatus: w.lineDeliveryStatus ?? null,
+        lineSentAt: w.lineSentAt?.toISOString() ?? null,
+        lineUserId: w.lineUserId ?? null,
+        lineErrorMessage: w.lineErrorMessage ?? null,
         isAuto: w.isAuto,
         createdAt: w.createdAt.toISOString(),
       }))}

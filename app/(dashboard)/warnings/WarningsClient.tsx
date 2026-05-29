@@ -28,8 +28,60 @@ type Warning = {
   description: string
   fileUrl: string | null
   sentToLine: boolean
+  lineDeliveryStatus: string | null
+  lineSentAt: string | null
+  lineUserId: string | null
+  lineErrorMessage: string | null
   isAuto: boolean
   createdAt: string
+}
+
+const LINE_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  sent: {
+    label: 'ส่งแล้ว',
+    className:
+      'bg-green-500/15 text-green-400 light:bg-green-50 light:text-green-700',
+  },
+  pending: {
+    label: 'รอส่ง',
+    className:
+      'bg-amber-500/15 text-amber-400 light:bg-amber-50 light:text-amber-700',
+  },
+  failed: {
+    label: 'ส่งไม่สำเร็จ',
+    className: 'bg-red-500/15 text-red-400 light:bg-red-50 light:text-red-700',
+  },
+}
+
+function LineDeliveryBadge({ w }: { w: Warning }) {
+  const key = w.lineDeliveryStatus ?? (w.sentToLine ? 'sent' : null)
+  if (!key || !LINE_STATUS_LABEL[key]) {
+    return <span className="dark:text-slate-600 light:text-slate-400 text-xs">—</span>
+  }
+  const s = LINE_STATUS_LABEL[key]
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span
+        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.className}`}
+        title={w.lineErrorMessage ?? undefined}
+      >
+        {s.label}
+      </span>
+      {w.lineSentAt && (
+        <span className="text-[9px] dark:text-slate-500 tabular-nums">
+          {new Date(w.lineSentAt).toLocaleString('th-TH', {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          })}
+        </span>
+      )}
+      {key === 'failed' && w.lineErrorMessage && (
+        <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={w.lineErrorMessage}>
+          {w.lineErrorMessage}
+        </span>
+      )}
+    </div>
+  )
 }
 
 type Employee = {
@@ -67,6 +119,10 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
     description: String(w.description ?? ''),
     fileUrl: w.fileUrl != null ? String(w.fileUrl) : null,
     sentToLine: Boolean(w.sentToLine),
+    lineDeliveryStatus: w.lineDeliveryStatus != null ? String(w.lineDeliveryStatus) : null,
+    lineSentAt: w.lineSentAt != null ? String(w.lineSentAt) : null,
+    lineUserId: w.lineUserId != null ? String(w.lineUserId) : null,
+    lineErrorMessage: w.lineErrorMessage != null ? String(w.lineErrorMessage) : null,
     isAuto: Boolean(w.isAuto),
     createdAt: String(w.createdAt),
   }))
@@ -209,14 +265,22 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const handleSendWarning = async (warningId: string) => {
     setSendingId(warningId)
     try {
-      const { ok, data, status } = await apiJson<Record<string, unknown>>(`/api/warnings/${warningId}/send`, {
+      const { ok, data, status } = await apiJson<{
+        success?: boolean
+        lineDeliveryStatus?: string
+        lineErrorMessage?: string | null
+      }>(`/api/warnings/${warningId}/send`, {
         method: 'POST',
       })
       if (!ok) {
-        toast.error(apiErrorMessage(data, 'ส่งไม่สำเร็จ', status))
+        toast.error(apiErrorMessage(data as Record<string, unknown>, 'ส่งไม่สำเร็จ', status))
         return
       }
-      toast.success('ส่งใบเตือนให้พนักงานแล้ว (แจ้งเตือนในแอพ + LINE ถ้ามี)')
+      if (data.lineDeliveryStatus === 'sent') {
+        toast.success('ส่ง PDF ใบเตือนไป LINE พนักงานแล้ว')
+      } else {
+        toast.error(data.lineErrorMessage ?? 'ส่ง LINE ไม่สำเร็จ — ลองใหม่หรือให้พนักงานผูก LINE')
+      }
       await refreshList()
     } catch (err) {
       console.error('[warnings-send]', err)
@@ -259,11 +323,17 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       }
       const n = data.warningNumber ?? '?'
       if (sendToEmployee) {
-        toast.success(
-          pdfFile
-            ? `ออกใบเตือนครั้งที่ ${n} และส่ง PDF ให้พนักงานแล้ว`
-            : `ออกใบเตือนครั้งที่ ${n} และแจ้งพนักงานแล้ว`,
-        )
+        const line = (data as { lineDelivery?: { status?: string; errorMessage?: string | null } })
+          .lineDelivery
+        if (line?.status === 'sent') {
+          toast.success(`ออกใบเตือนครั้งที่ ${n} — สร้าง PDF และส่ง LINE แล้ว`)
+        } else if (line?.status === 'failed') {
+          toast.warning(
+            `ออกใบเตือนครั้งที่ ${n} แล้ว — PDF สร้างแล้ว แต่ส่ง LINE ไม่สำเร็จ: ${line.errorMessage ?? ''}`,
+          )
+        } else {
+          toast.success(`ออกใบเตือนครั้งที่ ${n} และแจ้งพนักงานแล้ว`)
+        }
       } else {
         toast.success(`ออกใบเตือนครั้งที่ ${n} เรียบร้อย`)
       }
@@ -440,17 +510,23 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
             <span className="dark:text-slate-600 light:text-slate-400 text-xs">—</span>
           )}
         </td>
+        <td className={`${tdCls} text-center`}>
+          <LineDeliveryBadge w={w} />
+        </td>
         {isManager && (
           <td className={`${tdCls} text-center`}>
             <button
               type="button"
               onClick={() => handleSendWarning(w.id)}
               disabled={sendingId === w.id}
-              title={w.sentToLine ? 'ส่งซ้ำให้พนักงาน' : 'ส่งแจ้งเตือน + ลิงก์ไฟล์ให้พนักงาน'}
-              className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 light:border-blue-200 light:bg-blue-50 light:text-blue-700 hover:bg-blue-500/20 light:hover:bg-blue-100 disabled:opacity-50 touch-manipulation"
+              title="ส่ง PDF ใบเตือนไป LINE พนักงาน (retry อัตโนมัติ)"
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 light:border-blue-200 light:bg-blue-50 light:text-blue-700 hover:bg-blue-500/20 light:hover:bg-blue-100 disabled:opacity-50 touch-manipulation min-h-[36px]"
             >
-              <Send className="w-3.5 h-3.5" />
-              {sendingId === w.id ? '...' : w.sentToLine ? 'ส่งอีกครั้ง' : 'ส่งให้พนักงาน'}
+              <Send className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="hidden sm:inline">
+                {sendingId === w.id ? 'กำลังส่ง...' : 'ส่งใหม่ไป LINE'}
+              </span>
+              <span className="sm:hidden">{sendingId === w.id ? '...' : 'LINE'}</span>
             </button>
           </td>
         )}
@@ -466,7 +542,8 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       <th className={`${thCls} text-left`}>เหตุผล</th>
       <th className={`${thCls} text-center`}>ประเภท</th>
       <th className={`${thCls} text-center`}>PDF</th>
-      {isManager && <th className={`${thCls} text-center`}>ส่งไฟล์</th>}
+      <th className={`${thCls} text-center`}>LINE</th>
+      {isManager && <th className={`${thCls} text-center`}>ส่ง LINE</th>}
     </tr>
   )
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { notifyWarningToEmployee } from '@/lib/warnings-notify'
+import { deliverWarningToEmployee } from '@/lib/warning-delivery'
 
 export async function POST(
   _req: NextRequest,
@@ -28,9 +28,17 @@ export async function POST(
       },
     })
 
-    const result = await notifyWarningToEmployee(id, { warningNumber })
+    const result = await deliverWarningToEmployee(id, { warningNumber })
 
-    return NextResponse.json({ success: true, fileLink: result?.fileLink ?? null })
+    return NextResponse.json({
+      success: result.ok,
+      lineDeliveryStatus: result.lineDeliveryStatus,
+      lineSentAt: result.lineSentAt,
+      lineUserId: result.lineUserId,
+      lineErrorMessage: result.lineErrorMessage,
+      signedPdfUrl: result.signedPdfUrl,
+      fileUrl: result.fileUrl,
+    })
   } catch (err) {
     return apiError(err)
   }

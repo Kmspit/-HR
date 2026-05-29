@@ -8,6 +8,29 @@ export function isPdfFile(file: File) {
 }
 
 /** บันทึก PDF — local ใช้ /public/uploads, production ใช้ API route + เก็บ base64 ใน DB */
+export async function storeWarningPdfBuffer(
+  warningId: string,
+  userId: string,
+  buffer: Buffer,
+): Promise<{ fileUrl: string; pdfBase64: string | null }> {
+  if (buffer.length > MAX_PDF_BYTES) throw new Error('PDF_TOO_LARGE')
+
+  const localPath = await saveUpload(
+    new File([new Uint8Array(buffer)], `warning-${warningId}.pdf`, { type: 'application/pdf' }),
+    'warning',
+    userId,
+  )
+  if (localPath) {
+    return { fileUrl: localPath, pdfBase64: null }
+  }
+
+  const apiPath = `/api/warnings/${warningId}/pdf`
+  return {
+    fileUrl: apiPath,
+    pdfBase64: buffer.toString('base64'),
+  }
+}
+
 export async function storeWarningPdf(
   warningId: string,
   userId: string,

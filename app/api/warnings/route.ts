@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { isPdfFile, storeWarningPdf } from '@/lib/warning-pdf'
-import { notifyWarningToEmployee } from '@/lib/warnings-notify'
+import { deliverWarningToEmployee, ensureWarningPdfStored } from '@/lib/warning-delivery'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
@@ -123,9 +123,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    try {
+      await ensureWarningPdfStored(warning.id)
+    } catch (e) {
+      console.error('[warning-pdf-auto]', e)
+    }
+
+    let delivery: Awaited<ReturnType<typeof deliverWarningToEmployee>> | null = null
     if (sendToEmployee) {
-      await notifyWarningToEmployee(warning.id, { warningNumber })
+      delivery = await deliverWarningToEmployee(warning.id, { warningNumber })
     } else {
+      await prisma.warning.update({
+        where: { id: warning.id },
+        data: { lineDeliveryStatus: null },
+      })
       await prisma.notification.create({
         data: {
           userId,
@@ -137,13 +148,26 @@ export async function POST(req: NextRequest) {
       }).catch((e) => console.error('[warning notify]', e))
     }
 
+    const final = await prisma.warning.findUnique({
+      where: { id: warning.id },
+      select: { fileUrl: true },
+    })
+
     return NextResponse.json({
-      warning: { id: warning.id, fileUrl },
+      warning: { id: warning.id, fileUrl: final?.fileUrl ?? fileUrl },
       priorCount,
       warningNumber,
       levelUsed: levelToUse,
-      fileUrl,
+      fileUrl: final?.fileUrl ?? fileUrl,
       sent: sendToEmployee,
+      lineDelivery: delivery
+        ? {
+            status: delivery.lineDeliveryStatus,
+            sentAt: delivery.lineSentAt,
+            lineUserId: delivery.lineUserId,
+            errorMessage: delivery.lineErrorMessage,
+          }
+        : null,
     })
   } catch (err) {
     return apiError(err)

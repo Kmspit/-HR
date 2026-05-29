@@ -199,7 +199,34 @@ async function runEnsure(): Promise<boolean> {
     CREATE INDEX IF NOT EXISTS line_link_codes_user_idx ON line_link_codes (userId)
   `)
 
+  await addWarningColumnIfMissing(
+    'lineDeliveryStatus',
+    `ALTER TABLE warnings ADD COLUMN lineDeliveryStatus TEXT`,
+  )
+  await addWarningColumnIfMissing('lineSentAt', `ALTER TABLE warnings ADD COLUMN lineSentAt DATETIME`)
+  await addWarningColumnIfMissing('lineUserId', `ALTER TABLE warnings ADD COLUMN lineUserId TEXT`)
+  await addWarningColumnIfMissing(
+    'lineErrorMessage',
+    `ALTER TABLE warnings ADD COLUMN lineErrorMessage TEXT`,
+  )
+
   return true
+}
+
+async function warningColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(warnings)')
+  return rows.map((r) => r.name)
+}
+
+async function addWarningColumnIfMissing(column: string, ddl: string) {
+  const cols = await warningColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }
 
 async function payrollColumns(): Promise<string[]> {

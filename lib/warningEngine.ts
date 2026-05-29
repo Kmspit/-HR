@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { sendLineMessage } from '@/lib/notifications'
+import { deliverWarningToEmployee } from '@/lib/warning-delivery'
 
 type WarningCheckResult = {
   userId: string
@@ -75,8 +75,7 @@ export async function runWarningCheck(): Promise<WarningCheckResult[]> {
     }
     const reason = reasons.join(' และ ')
 
-    // Create warning in DB
-    await prisma.warning.create({
+    const warning = await prisma.warning.create({
       data: {
         userId: emp.id,
         issuedById: emp.id, // system
@@ -86,25 +85,19 @@ export async function runWarningCheck(): Promise<WarningCheckResult[]> {
         isAuto: true,
         month,
         year,
+        lineDeliveryStatus: 'pending',
       },
     })
 
-    // In-app notification
-    await prisma.notification.create({
-      data: {
-        userId: emp.id,
-        type: 'WARNING_ISSUED',
-        title: `ได้รับใบเตือนระดับ ${triggeredRule.level}`,
-        message: reason,
-        link: '/warnings',
-      },
+    const warningNumber = await prisma.warning.count({
+      where: { userId: emp.id, createdAt: { lte: warning.createdAt } },
     })
 
-    // LINE notification
-    await sendLineMessage(
-      emp.id,
-      `⚠️ ใบเตือนระดับ ${triggeredRule.level}\n${reason}\n\nกรุณาติดต่อ HR เพื่อรับทราบ`
-    )
+    try {
+      await deliverWarningToEmployee(warning.id, { warningNumber })
+    } catch (e) {
+      console.error('[warningEngine-line]', emp.id, e)
+    }
 
     issued.push({
       userId: emp.id,

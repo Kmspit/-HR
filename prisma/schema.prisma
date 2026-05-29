@@ -534,8 +534,12 @@ model Warning {
   description String?
   fileUrl     String?
   pdfBase64   String?
-  sentToLine  Boolean  @default(false)
-  isAuto      Boolean  @default(false)
+  sentToLine           Boolean   @default(false)
+  lineDeliveryStatus   String?   // pending | sent | failed
+  lineSentAt           DateTime?
+  lineUserId           String?
+  lineErrorMessage     String?
+  isAuto               Boolean   @default(false)
   month       Int?
   year        Int?
   createdAt   DateTime @default(now())

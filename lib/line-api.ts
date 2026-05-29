@@ -51,11 +51,16 @@ export async function replyLineText(replyToken: string, text: string): Promise<b
   }
 }
 
-export async function pushLineText(toUserId: string, text: string): Promise<boolean> {
+export type LinePushResult = { ok: boolean; error?: string }
+
+export async function pushLineMessages(
+  toUserId: string,
+  messages: object[],
+): Promise<LinePushResult> {
   const token = getLineChannelAccessToken()
   if (!token) {
-    console.log('[LINE push mock] to', toUserId, '\n', text)
-    return true
+    console.log('[LINE push mock] to', toUserId, messages.length, 'messages')
+    return { ok: true }
   }
   try {
     const res = await fetch(`${LINE_API}/message/push`, {
@@ -64,19 +69,24 @@ export async function pushLineText(toUserId: string, text: string): Promise<bool
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        to: toUserId,
-        messages: [{ type: 'text', text: text.slice(0, 5000) }],
-      }),
+      body: JSON.stringify({ to: toUserId, messages: messages.slice(0, 5) }),
     })
     if (!res.ok) {
-      console.error('[LINE push]', res.status, await res.text())
+      const text = await res.text()
+      console.error('[LINE push]', res.status, text)
+      return { ok: false, error: `LINE API ${res.status}: ${text.slice(0, 200)}` }
     }
-    return res.ok
+    return { ok: true }
   } catch (err) {
+    const msg = err instanceof Error ? err.message : 'LINE push failed'
     console.error('[LINE push]', err)
-    return false
+    return { ok: false, error: msg }
   }
+}
+
+export async function pushLineText(toUserId: string, text: string): Promise<boolean> {
+  const result = await pushLineMessages(toUserId, [{ type: 'text', text: text.slice(0, 5000) }])
+  return result.ok
 }
 
 export async function getLineUserProfile(lineUserId: string): Promise<{
