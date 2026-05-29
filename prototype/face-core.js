@@ -62,11 +62,11 @@
     minBrightness: 50,     // mean luma 0..255
     maxBrightness: 240,
     minSharpness: 16,      // variance-of-Laplacian proxy (clarity)
-    minFaceRatio: 0.15,    // face shortest side / frame shortest side (distance — not too far)
-    maxFaceRatio: 0.92,    // not too close / cut off
-    maxYaw: 0.34,          // normalized head-turn (0 straight .. ~1 profile)
-    maxRoll: 16,           // head tilt in degrees (eye-line angle)
-    maxOffCenter: 0.24,    // face center offset from frame center (fraction of frame)
+    minFaceRatio: 0.13,    // face shortest side / frame shortest side (distance — not too far)
+    maxFaceRatio: 0.95,    // not too close / cut off
+    maxYaw: 0.38,          // normalized head-turn (0 straight .. ~1 profile)
+    maxRoll: 18,           // head tilt in degrees (eye-line angle)
+    maxOffCenter: 0.28,    // face center offset from frame center (fraction of frame)
     minDetScore: 0.45,     // detector confidence (face seen clearly)
     detectorInputSize: 416,
     modelUrl: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/',
