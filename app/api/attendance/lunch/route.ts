@@ -78,8 +78,10 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
+      let faceScanId: string | null = null
+      let lineNotify = { sent: 0, failed: 0 }
       try {
-        const faceScanId = await recordFaceScanAndNotifyHr({
+        const scanResult = await recordFaceScanAndNotifyHr({
           req,
           formData,
           userId: session.user.id,
@@ -94,11 +96,13 @@ export async function POST(req: NextRequest) {
           lng,
           photoUrl: null,
         })
+        faceScanId = scanResult.faceScanId
+        lineNotify = scanResult.lineNotify
         await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchOutPhotoUrl')
       } catch (err) {
         console.error('[lunch-out-face-line]', err)
       }
-      return NextResponse.json({ success: true, attendance: finalized })
+      return NextResponse.json({ success: true, attendance: finalized, faceScanId, lineNotify })
     }
 
     const updated = await prisma.attendance.update({
@@ -112,8 +116,10 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
+    let faceScanId: string | null = null
+    let lineNotify = { sent: 0, failed: 0 }
     try {
-      const faceScanId = await recordFaceScanAndNotifyHr({
+      const scanResult = await recordFaceScanAndNotifyHr({
         req,
         formData,
         userId: session.user.id,
@@ -128,11 +134,13 @@ export async function POST(req: NextRequest) {
         lng,
         photoUrl: null,
       })
+      faceScanId = scanResult.faceScanId
+      lineNotify = scanResult.lineNotify
       await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchInPhotoUrl')
     } catch (err) {
       console.error('[lunch-in-face-line]', err)
     }
-    return NextResponse.json({ success: true, attendance: finalized })
+    return NextResponse.json({ success: true, attendance: finalized, faceScanId, lineNotify })
   } catch (err) {
     return apiError(err)
   }

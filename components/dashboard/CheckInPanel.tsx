@@ -200,6 +200,17 @@ export default function CheckInPanel({
     setStep('gps')
   }
 
+  const toastLineNotifyResult = (lineNotify?: { sent?: number; failed?: number }) => {
+    if (!lineNotify) return
+    if ((lineNotify.sent ?? 0) > 0) {
+      toast.success('บันทึกรูปแล้ว — ส่งแจ้ง LINE HR อัตโนมัติแล้ว', { duration: 4000 })
+    } else if ((lineNotify.failed ?? 0) > 0) {
+      toast.warning('บันทึกลงเวลาแล้ว แต่ส่ง LINE HR ไม่สำเร็จ — HR ตรวจ log หรือ retry', {
+        duration: 5000,
+      })
+    }
+  }
+
   const submitAttendance = useCallback(
     async (payloadOverride?: FaceVerifyPayload | null, photoOverride?: string | null) => {
       const activePayload = payloadOverride ?? facePayload
@@ -246,7 +257,9 @@ export default function CheckInPanel({
             formData.append('lng', String(location.lng))
             formData.append('address', location.address)
           }
-          const { ok, data, status } = await apiJson('/api/attendance/lunch', {
+          const { ok, data, status } = await apiJson<{
+            lineNotify?: { sent?: number; failed?: number }
+          }>('/api/attendance/lunch', {
             method: 'POST',
             body: formData,
           })
@@ -257,6 +270,7 @@ export default function CheckInPanel({
           toast.success(
             type === 'lunch-out' ? 'บันทึกเริ่มพักกลางวันสำเร็จ' : 'บันทึกกลับจากพักสำเร็จ',
           )
+          if (faceRequired) toastLineNotifyResult(data.lineNotify)
         } else if (type === 'checkin') {
           if (!location) return
           formData.append('lat', String(location.lat))
@@ -264,10 +278,11 @@ export default function CheckInPanel({
           formData.append('address', location.address)
           formData.append('workPlaceName', workPlaceName.trim())
           formData.append('locationType', locationType)
-          const { ok, data, status } = await apiJson<{ lateMinutes?: number; isOutside?: boolean }>(
-            '/api/attendance/checkin',
-            { method: 'POST', body: formData },
-          )
+          const { ok, data, status } = await apiJson<{
+            lateMinutes?: number
+            isOutside?: boolean
+            lineNotify?: { sent?: number; failed?: number }
+          }>('/api/attendance/checkin', { method: 'POST', body: formData })
           if (!ok) {
             toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
             return
@@ -277,13 +292,16 @@ export default function CheckInPanel({
           } else {
             toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
           }
+          if (faceRequired) toastLineNotifyResult(data.lineNotify)
         } else {
           if (!location) return
           formData.append('lat', String(location.lat))
           formData.append('lng', String(location.lng))
           formData.append('address', location.address)
           formData.append('workPlaceName', workPlaceName.trim())
-          const { ok, data, status } = await apiJson('/api/attendance/checkout', {
+          const { ok, data, status } = await apiJson<{
+            lineNotify?: { sent?: number; failed?: number }
+          }>('/api/attendance/checkout', {
             method: 'POST',
             body: formData,
           })
@@ -292,6 +310,7 @@ export default function CheckInPanel({
             return
           }
           toast.success('เช็คเอาท์สำเร็จ')
+          if (faceRequired) toastLineNotifyResult(data.lineNotify)
         }
         setStep('done')
         onSuccess?.()
@@ -409,6 +428,9 @@ export default function CheckInPanel({
 
       {step === 'face-scan' && faceRequired && (
         <div className="space-y-2">
+          <p className="text-center text-xs text-slate-400">
+            สแกนสำเร็จ → บันทึกรูปขึ้น Cloudinary → ส่งเวลาและรูปเข้า LINE HR อัตโนมัติ (ไม่ต้องกดยืนยัน)
+          </p>
           <FaceAttendanceScan
             action={type}
             onVerified={(payload) => {

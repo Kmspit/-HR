@@ -99,8 +99,9 @@ export async function POST(req: NextRequest) {
     }
 
     let faceScanId: string | null = null
+    let lineNotify = { sent: 0, failed: 0 }
     try {
-      faceScanId = await recordFaceScanAndNotifyHr({
+      const scanResult = await recordFaceScanAndNotifyHr({
         req,
         formData,
         userId: session.user.id,
@@ -117,12 +118,20 @@ export async function POST(req: NextRequest) {
         photoUrl: null,
         earlyLeaveMinutes,
       })
+      faceScanId = scanResult.faceScanId
+      lineNotify = scanResult.lineNotify
       await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'checkOutPhotoUrl')
     } catch (err) {
       console.error('[checkout-face-line]', err)
     }
 
-    return NextResponse.json({ success: true, attendance: finalized, earlyLeaveMinutes })
+    return NextResponse.json({
+      success: true,
+      attendance: finalized,
+      earlyLeaveMinutes,
+      faceScanId,
+      lineNotify,
+    })
   } catch (err) {
     return apiError(err)
   }

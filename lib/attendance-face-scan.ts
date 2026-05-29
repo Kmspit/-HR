@@ -332,9 +332,13 @@ export async function recordFaceScanAndNotifyHr(params: {
   photoUrl?: string | null
   lateMinutes?: number
   earlyLeaveMinutes?: number
-}): Promise<string | null> {
+}): Promise<{
+  faceScanId: string | null
+  lineNotify: { sent: number; failed: number }
+}> {
   const scores = parseScoresFromForm(params.formData)
   let faceScanId: string | null = null
+  let lineNotify = { sent: 0, failed: 0 }
   try {
     faceScanId = await persistFaceScanFromAttendanceForm({
       formData: params.formData,
@@ -363,7 +367,7 @@ export async function recordFaceScanAndNotifyHr(params: {
       lineImageUrl = await getSignedScanImageUrlForLine(faceScanId)
     }
     const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-    const result = await notifyHrAttendanceOnLine({
+    lineNotify = await notifyHrAttendanceOnLine({
       event: params.event,
       employeeUserId: params.userId,
       attendanceId: params.attendanceId,
@@ -374,17 +378,17 @@ export async function recordFaceScanAndNotifyHr(params: {
       lateMinutes: params.lateMinutes,
       earlyLeaveMinutes: params.earlyLeaveMinutes,
     })
-    if (result.failed > 0) {
+    if (lineNotify.failed > 0) {
       console.warn('[attendance-line-notify] partial LINE failure', {
         attendanceId: params.attendanceId,
         event: params.event,
-        sent: result.sent,
-        failed: result.failed,
+        sent: lineNotify.sent,
+        failed: lineNotify.failed,
       })
     }
   } catch (err) {
     console.error('[attendance-line-notify]', err)
   }
 
-  return faceScanId
+  return { faceScanId, lineNotify }
 }
