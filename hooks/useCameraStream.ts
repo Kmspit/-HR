@@ -15,8 +15,8 @@ async function requestUserMedia(): Promise<MediaStream> {
 
   const videoConstraints: MediaTrackConstraints = {
     facingMode: 'user',
-    width: { ideal: 640, max: 1280 },
-    height: { ideal: 480, max: 720 },
+    width: { ideal: 1280, max: 1920 },
+    height: { ideal: 720, max: 1080 },
   }
 
   try {

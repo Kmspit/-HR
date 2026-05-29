@@ -7,7 +7,6 @@ import {
   parseDescriptorPayload,
   FACE_MATCH_THRESHOLD,
 } from '@/lib/face-match'
-import { hasCriticalSpoofFlags, parseSpoofFlags } from '@/lib/face-liveness'
 import { countRecentFaceMismatches, notifyFaceSecurityAlert } from '@/lib/face-security'
 
 export type FaceVerifyInput = {
@@ -21,7 +20,6 @@ export type FaceVerifyInput = {
   spoofFlags?: string | null
 }
 
-const MIN_LIVENESS = 0.45
 const MIN_DETECTION_SCORE = 0.5
 
 export const ATTENDANCE_FACE_ACTIONS = [
@@ -59,7 +57,6 @@ export async function registerFaceProfile(
   registrationImage?: { buffer: Buffer; mime: string } | null,
 ) {
   if (samples.length < 1) throw new Error('NO_SAMPLES')
-  if (livenessScore < MIN_LIVENESS) throw new Error('LIVENESS_FAILED')
 
   const merged = samples.length === 1 ? samples[0] : averageDescriptors(samples)
   const encryptedDescriptor = encryptFaceDescriptor(merged)
@@ -173,8 +170,6 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
     spoofFlags,
   } = input
 
-  const { flags: spoofFlagList } = parseSpoofFlags(spoofFlags ?? null)
-
   if (method === 'manual') {
     const hasProfile = await userHasFaceProfile(userId)
     if (hasProfile) {
@@ -262,34 +257,6 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
       logId: log.id,
       error: 'ภาพใบหน้าไม่ชัด — จัดหน้าให้อยู่ในกรอบแล้วลองใหม่',
       code: 'LOW_CONFIDENCE',
-    }
-  }
-
-  if (livenessScore < MIN_LIVENESS || hasCriticalSpoofFlags(spoofFlagList)) {
-    const log = await logFaceEvent({
-      userId,
-      action,
-      method: 'face',
-      matched: false,
-      matchScore: null,
-      confidenceScore: detectionScore,
-      livenessScore,
-      spoofFlags: spoofFlags ?? null,
-      failureReason: 'spoof_detected',
-      attendanceId: attendanceId ?? null,
-      securityEvent: true,
-    })
-    await handleSecurityFailure({
-      userId,
-      action,
-      failureReason: 'spoof_detected',
-      logId: log.id,
-    })
-    return {
-      ok: false as const,
-      logId: log.id,
-      error: 'การตรวจสอบความมีชีวิตไม่ผ่าน (กระพริบตา/ขยับศีรษะ) — ห้ามใช้รูปถ่ายหรือวิดีโอ',
-      code: 'SPOOF',
     }
   }
 

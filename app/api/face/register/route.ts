@@ -20,34 +20,21 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const samples = parseSamplesFromBody(body)
-    const livenessScore = Number(body.livenessScore ?? 0)
     const registrationImage = parseRegistrationImage(body as Record<string, unknown>)
 
     if (!samples || samples.length < 3) {
       return NextResponse.json(
-        { error: 'ต้องสแกนใบหน้าครบ 3 ครั้ง (หน้าตรง / ซ้าย / ขวา) ตามขั้นตอนสอน' },
+        { error: 'ต้องถ่ายใบหน้าตรงกล้องครบ 3 ภาพตามขั้นตอน' },
         { status: 400 },
       )
     }
 
-    try {
-      const profile = await registerFaceProfile(
-        session.user.id,
-        samples,
-        livenessScore,
-        registrationImage,
-      )
-      return NextResponse.json({
-        success: true,
-        registeredAt: profile.registeredAt.toISOString(),
-        sampleCount: profile.sampleCount,
-      })
-    } catch (e) {
-      if (e instanceof Error && e.message === 'LIVENESS_FAILED') {
-        return NextResponse.json({ error: 'การตรวจสอบความมีชีวิตไม่ผ่าน' }, { status: 400 })
-      }
-      throw e
-    }
+    const profile = await registerFaceProfile(session.user.id, samples, 1, registrationImage)
+    return NextResponse.json({
+      success: true,
+      registeredAt: profile.registeredAt.toISOString(),
+      sampleCount: profile.sampleCount,
+    })
   } catch (err) {
     return apiError(err)
   }

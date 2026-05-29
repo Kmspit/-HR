@@ -5,13 +5,7 @@ import { AlertCircle, Loader2, ScanFace, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
-import {
-  loadFaceModels,
-  runLivenessCheck,
-  scanFaceFromVideo,
-  livenessToFormFields,
-  captureJpegFromVideo,
-} from '@/lib/face-client'
+import { loadFaceModels, scanFaceFromVideo, captureJpegFromVideo } from '@/lib/face-client'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 export type FaceVerifyPayload = {
@@ -31,109 +25,147 @@ type Props = {
   onCancel?: () => void
 }
 
-type Phase = 'camera' | 'liveness' | 'verify' | 'done'
+// ใบหน้าต้องชัด (detector score) และมองตรงกล้อง (pose center) ต่อเนื่องเท่านี้ก่อน capture
+const ALIGN_SCORE = 0.6
+const STABLE_MS = 700
+
+const PROMPT_DEFAULT = 'กรุณาหันหน้าตรงกล้องเพื่อสแกน'
+const PROMPT_ALIGN = 'กรุณาหันหน้าตรงกล้อง'
 
 export default function FaceAttendanceScan({ action, onVerified, onCancel }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [phase, setPhase] = useState<Phase>('camera')
-  const [hint, setHint] = useState('เตรียมกล้อง — มองตรงกล้อง')
+  const [hint, setHint] = useState(PROMPT_DEFAULT)
   const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const doneRef = useRef(false)
+  const verifyingRef = useRef(false)
+  const alignedSinceRef = useRef<number | null>(null)
 
   const { stream, ready, error: cameraError, retry } = useCameraStream({
-    enabled: phase !== 'done',
+    enabled: !done,
     preloadFaceModels: loadFaceModels,
   })
 
-  const runChallenge = useCallback(async () => {
-    if (!videoRef.current || !ready) return
-    setBusy(true)
-    setPhase('liveness')
-    setHint('กระพริบตาช้า ๆ และขยับศีรษะเล็กน้อย...')
+  const verifyNow = useCallback(
+    async (descriptor: number[], score: number) => {
+      if (verifyingRef.current || doneRef.current) return
+      verifyingRef.current = true
+      setBusy(true)
+      setHint('กำลังยืนยันตัวตน...')
 
-    try {
-      const liveness = await runLivenessCheck(videoRef.current)
-      if (liveness.score < 0.45) {
-        toast.error('ตรวจสอบความมีชีวิตไม่ผ่าน — กระพริบตาและขยับหน้าเล็กน้อย ห้ามใช้รูปจอ')
-        setPhase('camera')
-        setHint('ลองใหม่: กระพริบตา + ขยับศีรษะ')
+      try {
+        const { ok, data, status } = await apiJson<{
+          success?: boolean
+          logId?: string
+          distance?: number
+          confidence?: number
+        }>('/api/face/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            descriptor,
+            detectionScore: score,
+            action,
+            method: 'face',
+          }),
+        })
+
+        if (!ok) {
+          toast.error(apiErrorMessage(data as Record<string, unknown>, 'ใบหน้าไม่ตรงกับที่ลงทะเบียน', status))
+          setHint('ใบหน้าไม่ตรง — กรุณาหันหน้าตรงกล้องอีกครั้ง')
+          alignedSinceRef.current = null
+          verifyingRef.current = false
+          setBusy(false)
+          return
+        }
+
+        const logId = (data as { logId?: string }).logId
+        if (!logId) {
+          toast.error('ไม่ได้รับ log การยืนยัน')
+          alignedSinceRef.current = null
+          verifyingRef.current = false
+          setBusy(false)
+          return
+        }
+
+        const captureImageDataUrl = videoRef.current
+          ? captureJpegFromVideo(videoRef.current) ?? undefined
+          : undefined
+        const distance = (data as { distance?: number }).distance
+        const confidence = (data as { confidence?: number }).confidence
+
+        doneRef.current = true
+        setDone(true)
+        onVerified({
+          descriptor,
+          livenessScore: 1,
+          detectionScore: score,
+          spoofFlags: '',
+          faceLogId: logId,
+          captureImageDataUrl,
+          faceMatchScore: typeof distance === 'number' ? distance : undefined,
+          faceConfidence: typeof confidence === 'number' ? confidence : undefined,
+        })
+      } catch (err) {
+        console.error('[face-scan]', err)
+        toast.error('สแกนใบหน้าไม่สำเร็จ')
+        setHint(PROMPT_DEFAULT)
+        alignedSinceRef.current = null
+        verifyingRef.current = false
         setBusy(false)
-        return
       }
+    },
+    [action, onVerified],
+  )
 
-      setPhase('verify')
-      setHint('กำลังจับใบหน้าและยืนยันตัวตน...')
-
-      const scan = await scanFaceFromVideo(videoRef.current)
-      if (!scan.descriptor || scan.score < 0.5) {
-        toast.error('ไม่พบใบหน้าที่ชัด — จัดหน้าให้อยู่ในกรอบ')
-        setPhase('camera')
-        setBusy(false)
-        return
-      }
-
-      const { livenessScore, spoofFlags } = livenessToFormFields(liveness)
-
-      const { ok, data, status } = await apiJson<{
-        success?: boolean
-        logId?: string
-        distance?: number
-        confidence?: number
-      }>('/api/face/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          descriptor: scan.descriptor,
-          livenessScore,
-          detectionScore: scan.score,
-          spoofFlags,
-          action,
-          method: 'face',
-        }),
-      })
-
-      if (!ok) {
-        toast.error(apiErrorMessage(data as Record<string, unknown>, 'ยืนยันใบหน้าไม่ผ่าน', status))
-        setPhase('camera')
-        setHint('ใบหน้าไม่ตรงหรือตรวจพบความผิดปกติ')
-        setBusy(false)
-        return
-      }
-
-      const logId = (data as { logId?: string }).logId
-      if (!logId) {
-        toast.error('ไม่ได้รับ log การยืนยัน')
-        setBusy(false)
-        return
-      }
-
-      const captureImageDataUrl = captureJpegFromVideo(videoRef.current) ?? undefined
-      const distance = (data as { distance?: number }).distance
-      const confidence = (data as { confidence?: number }).confidence
-
-      setPhase('done')
-      onVerified({
-        descriptor: scan.descriptor,
-        livenessScore,
-        detectionScore: scan.score,
-        spoofFlags,
-        faceLogId: logId,
-        captureImageDataUrl,
-        faceMatchScore: typeof distance === 'number' ? distance : undefined,
-        faceConfidence: typeof confidence === 'number' ? confidence : undefined,
-      })
-    } catch (err) {
-      console.error('[face-scan]', err)
-      toast.error('สแกนใบหน้าไม่สำเร็จ')
-      setPhase('camera')
-    } finally {
-      setBusy(false)
-    }
-  }, [ready, action, onVerified])
-
+  // ลูปอัตโนมัติ: เปิดกล้อง → ตรวจจับใบหน้า → ตรงกล้อง+ชัด → capture อัตโนมัติ → เปรียบเทียบ
   useEffect(() => {
-    if (phase !== 'camera' || !ready || busy) return
-    setHint('พร้อมแล้ว — กดปุ่มเพื่อสแกนใบหน้า (กระพริบตา + ขยับศีรษะ)')
-  }, [phase, ready, busy])
+    if (!ready || done || cameraError) return
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+
+    const tick = async () => {
+      if (cancelled || doneRef.current || verifyingRef.current) return
+      const video = videoRef.current
+      if (!video || video.readyState < 2 || video.videoWidth === 0) {
+        timer = setTimeout(() => void tick(), 400)
+        return
+      }
+
+      try {
+        const scan = await scanFaceFromVideo(video)
+        if (cancelled || doneRef.current || verifyingRef.current) return
+
+        const aligned = !!scan.descriptor && scan.score >= ALIGN_SCORE && scan.pose === 'center'
+
+        if (aligned) {
+          if (alignedSinceRef.current === null) alignedSinceRef.current = Date.now()
+          const held = Date.now() - alignedSinceRef.current
+          if (held >= STABLE_MS) {
+            void verifyNow(scan.descriptor as number[], scan.score)
+            return
+          }
+          setHint('นิ่ง ๆ ไว้ กำลังสแกน...')
+          timer = setTimeout(() => void tick(), 200)
+        } else {
+          alignedSinceRef.current = null
+          setHint(scan.descriptor ? PROMPT_ALIGN : PROMPT_DEFAULT)
+          timer = setTimeout(() => void tick(), 400)
+        }
+      } catch {
+        timer = setTimeout(() => void tick(), 600)
+      }
+    }
+
+    void tick()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [ready, done, cameraError, verifyNow])
 
   return (
     <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-3 space-y-3">
@@ -147,7 +179,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         stream={stream}
         ready={ready}
         loading={!ready && !cameraError}
-        overlayLabel={phase === 'liveness' ? 'กระพริบตา' : 'สแกนใบหน้า'}
+        overlayLabel="สแกนใบหน้า"
         className="max-w-[220px] aspect-square mx-auto"
       />
 
@@ -174,27 +206,13 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         </div>
       )}
 
-      {phase !== 'done' && (
-        <div className="flex gap-2">
-          {onCancel && (
-            <button type="button" onClick={onCancel} disabled={busy} className="btn-secondary flex-1 py-2 text-xs">
-              ยกเลิก
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={!ready || !!cameraError || busy}
-            onClick={() => void runChallenge()}
-            className="btn-primary flex-1 py-2.5 text-sm"
-          >
-            {busy ? 'กำลังตรวจสอบ...' : 'เริ่มสแกนใบหน้า'}
-          </button>
-        </div>
+      {!done && onCancel && (
+        <button type="button" onClick={onCancel} disabled={busy} className="btn-secondary w-full py-2 text-xs">
+          ยกเลิก
+        </button>
       )}
 
-      {phase === 'done' && (
-        <p className="text-center text-xs text-green-400 font-medium">✓ ยืนยันใบหน้าผ่านแล้ว</p>
-      )}
+      {done && <p className="text-center text-xs text-green-400 font-medium">✓ ยืนยันใบหน้าผ่านแล้ว</p>}
     </div>
   )
 }
