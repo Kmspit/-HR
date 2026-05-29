@@ -55,16 +55,19 @@
   // ── Config defaults ─────────────────────────────────────────────────────────
   const DEFAULTS = {
     enabled: true,
-    // confidence space (higher = more similar). distance≈0.4 -> confidence≈0.6
-    threshold: 0.6,        // accept at/above this (admin-configurable 0.55–0.65)
-    confirmFloor: 0.5,     // [confirmFloor, threshold) => ask user to confirm
-    // quality gates
-    minBrightness: 55,     // mean luma 0..255
-    maxBrightness: 235,
-    minSharpness: 18,      // variance-of-Laplacian proxy
-    minFaceRatio: 0.16,    // face box shortest side / frame shortest side
+    // confidence space (higher = more similar). distance≈0.45 -> confidence≈0.55
+    threshold: 0.55,       // accept at/above this — lowered to reduce false reject
+    confirmFloor: 0.45,    // [confirmFloor, threshold) => ask user to confirm
+    // quality + alignment gates (face must simply face the camera)
+    minBrightness: 50,     // mean luma 0..255
+    maxBrightness: 240,
+    minSharpness: 16,      // variance-of-Laplacian proxy (clarity)
+    minFaceRatio: 0.15,    // face shortest side / frame shortest side (distance — not too far)
+    maxFaceRatio: 0.92,    // not too close / cut off
     maxYaw: 0.34,          // normalized head-turn (0 straight .. ~1 profile)
-    minDetScore: 0.45,     // detector confidence
+    maxRoll: 16,           // head tilt in degrees (eye-line angle)
+    maxOffCenter: 0.24,    // face center offset from frame center (fraction of frame)
+    minDetScore: 0.45,     // detector confidence (face seen clearly)
     detectorInputSize: 416,
     modelUrl: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/',
     scriptUrl: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js',
@@ -249,6 +252,15 @@
     } catch { return 0; }
   }
 
+  /** Head roll (tilt) in degrees from the angle of the eye line. */
+  function measureRoll(landmarks) {
+    try {
+      const le = centroid(landmarks.getLeftEye());
+      const re = centroid(landmarks.getRightEye());
+      return Math.abs(Math.atan2(re.y - le.y, re.x - le.x) * 180 / Math.PI);
+    } catch { return 0; }
+  }
+
   function centroid(points) {
     let x = 0, y = 0;
     points.forEach(p => { x += p.x; y += p.y; });
@@ -265,7 +277,7 @@
     const cfg = getFaceConfig();
     const detection = det || await detectBest(input);
     const reasons = [];
-    const metrics = { brightness: 0, sharpness: 0, faceRatio: 0, yaw: 0, detScore: 0 };
+    const metrics = { brightness: 0, sharpness: 0, faceRatio: 0, yaw: 0, roll: 0, offCenter: 0, detScore: 0 };
 
     // brightness + sharpness on a downscaled copy (fast)
     const small = document.createElement('canvas');
@@ -284,13 +296,26 @@
       reasons.push('no_face');
     } else {
       metrics.detScore = detection.score;
-      const frameShort = Math.min(input.videoWidth || input.width, input.videoHeight || input.height);
+      const frameW = input.videoWidth || input.width;
+      const frameH = input.videoHeight || input.height;
+      const frameShort = Math.min(frameW, frameH);
       const faceShort = Math.min(detection.box.width, detection.box.height);
       metrics.faceRatio = frameShort ? faceShort / frameShort : 0;
       metrics.yaw = measureYaw(detection.landmarks);
-      if (detection.score < cfg.minDetScore) reasons.push('low_confidence');
-      if (metrics.faceRatio < cfg.minFaceRatio) reasons.push('face_too_small');
-      if (metrics.yaw > cfg.maxYaw) reasons.push('too_turned');
+      metrics.roll = measureRoll(detection.landmarks);
+      // face-centre offset from frame-centre (fraction of frame size)
+      const cx = detection.box.x + detection.box.width / 2;
+      const cy = detection.box.y + detection.box.height / 2;
+      const offX = frameW ? Math.abs(cx - frameW / 2) / frameW : 0;
+      const offY = frameH ? Math.abs(cy - frameH / 2) / frameH : 0;
+      metrics.offCenter = Math.max(offX, offY);
+
+      if (detection.score < cfg.minDetScore) reasons.push('low_confidence');   // not clear
+      if (metrics.faceRatio < cfg.minFaceRatio) reasons.push('face_too_small'); // too far
+      if (metrics.faceRatio > cfg.maxFaceRatio) reasons.push('face_too_close'); // too close
+      if (metrics.offCenter > cfg.maxOffCenter) reasons.push('off_center');     // not centred
+      if (metrics.roll > cfg.maxRoll) reasons.push('tilted');                   // tilted
+      if (metrics.yaw > cfg.maxYaw) reasons.push('too_turned');                 // not facing camera
     }
 
     const ok = reasons.length === 0;
@@ -298,19 +323,20 @@
   }
 
   function qualityMessage(reasons) {
-    // One friendly catch-all (per spec) + a specific hint when useful.
-    const base = 'กรุณาอยู่ในที่แสงเพียงพอ และมองกล้องตรง';
-    const specific = {
-      no_face: 'ไม่พบใบหน้าในกรอบ',
-      too_dark: 'ภาพมืดเกินไป',
-      too_bright: 'แสงจ้าเกินไป',
-      blurry: 'ภาพเบลอ กรุณาถือกล้องให้นิ่ง',
-      face_too_small: 'ใบหน้าเล็กเกินไป กรุณาเข้าใกล้กล้อง',
-      too_turned: 'หันหน้ามากเกินไป',
-      low_confidence: 'ตรวจจับใบหน้าได้ไม่ชัด',
-    };
-    const hint = reasons.map(r => specific[r]).filter(Boolean)[0];
-    return hint ? `${base} (${hint})` : base;
+    // Single, simple instruction set. Alignment problems all funnel to the
+    // "หันหน้าตรงกล้อง" message (req 4); only lighting/clarity differs.
+    const LOOK = 'กรุณาหันหน้าตรงกล้อง';
+    const LIGHT = 'กรุณาอยู่ในที่แสงเพียงพอ และมองกล้องตรง';
+    if (reasons.includes('no_face'))        return 'ไม่พบใบหน้า — ' + LOOK;
+    if (reasons.includes('face_too_small')) return 'กรุณาขยับเข้าใกล้กล้อง';
+    if (reasons.includes('face_too_close')) return 'กรุณาถอยห่างจากกล้องเล็กน้อย';
+    if (reasons.includes('off_center'))     return 'กรุณาเลื่อนใบหน้ามากลางกรอบ';
+    if (reasons.includes('tilted'))         return LOOK + ' (อย่าเอียงศีรษะ)';
+    if (reasons.includes('too_turned'))     return LOOK;
+    if (reasons.includes('low_confidence')) return LOOK;
+    if (reasons.includes('blurry'))         return 'ภาพเบลอ กรุณาถือกล้องให้นิ่ง';
+    if (reasons.includes('too_dark') || reasons.includes('too_bright')) return LIGHT;
+    return LOOK;
   }
 
   // ── Image preprocessing (req 6) ──────────────────────────────────────────────
