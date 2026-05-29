@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { toDateKey } from '@/lib/company-holidays'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
+import { ATTENDANCE_COMPLETED_PATCH } from '@/lib/attendance-flow'
 
 /** 0 = อาทิตย์ … 6 = เสาร์ (ตรงกับ Date.getDay()) */
 export const THAI_WEEKDAY_LABELS = [
@@ -170,6 +171,7 @@ export async function finalizeAttendanceRecord(attendanceId: string): Promise<At
   return prisma.attendance.update({
     where: { id: attendanceId },
     data: {
+      ...ATTENDANCE_COMPLETED_PATCH,
       dayOfWeek,
       workMinutes,
       leaveType: leaveType ?? null,

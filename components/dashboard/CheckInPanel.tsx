@@ -64,16 +64,18 @@ export default function CheckInPanel({
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const submittingRef = useRef(false)
 
   const isLunch = type === 'lunch-out' || type === 'lunch-in'
+  const isCheckout = type === 'checkout'
   const isOutsideType = !isLunch && locationType === 'outside'
   const isCompanyOffice = !isOutsideType && !!companyOffice
 
-  const initialStep: Step = isLunch
-    ? faceRequired
-      ? 'face-scan'
-      : 'camera'
-    : 'place'
+  const initialStep: Step = (() => {
+    if (isLunch) return faceRequired ? 'face-scan' : 'camera'
+    if (isCheckout) return faceRequired ? 'gps' : 'place'
+    return 'place'
+  })()
   const [step, setStep] = useState<Step>(initialStep)
   const [facePayload, setFacePayload] = useState<FaceVerifyPayload | null>(null)
   const [workPlaceName, setWorkPlaceName] = useState('')
@@ -198,101 +200,122 @@ export default function CheckInPanel({
     setStep('gps')
   }
 
-  const handleSubmit = async () => {
-    if (!capturedPhoto) return
-    if (!isLunch && !location) return
-
-    setIsLoading(true)
-    try {
-      const formData = new FormData()
-      const blob = dataUrlToBlob(capturedPhoto)
-      formData.append('photo', blob, 'face.jpg')
-      if (faceRequired) {
-        if (!facePayload) {
-          toast.error('ต้องสแกนใบหน้าก่อนลงเวลา')
-          return
-        }
-        formData.append('attendanceMethod', 'face')
-        formData.append('faceDescriptor', JSON.stringify(facePayload.descriptor))
-        formData.append('livenessScore', String(facePayload.livenessScore))
-        formData.append('detectionScore', String(facePayload.detectionScore))
-        formData.append('spoofFlags', facePayload.spoofFlags)
-        formData.append('faceLogId', facePayload.faceLogId)
-        if (facePayload.captureImageDataUrl) {
-          formData.append('faceScanImageBase64', facePayload.captureImageDataUrl)
-        }
-        if (facePayload.faceMatchScore != null) {
-          formData.append('faceMatchScore', String(facePayload.faceMatchScore))
-        }
-        if (facePayload.faceConfidence != null) {
-          formData.append('faceConfidence', String(facePayload.faceConfidence))
-        }
-        if (userId) formData.append('sessionUserId', userId)
-      } else {
-        formData.append('attendanceMethod', 'manual')
+  const submitAttendance = useCallback(
+    async (payloadOverride?: FaceVerifyPayload | null, photoOverride?: string | null) => {
+      const activePayload = payloadOverride ?? facePayload
+      const activePhoto = photoOverride ?? capturedPhoto
+      if (!activePhoto) return
+      if (!isLunch && !location) return
+      if (faceRequired && !activePayload) {
+        toast.error('ต้องสแกนใบหน้าก่อนลงเวลา')
+        return
       }
+      if (submittingRef.current) return
+      submittingRef.current = true
+      setIsLoading(true)
 
-      if (isLunch) {
-        formData.append('action', type)
-        if (location) {
+      try {
+        const formData = new FormData()
+        const blob = dataUrlToBlob(activePhoto)
+        formData.append('photo', blob, 'face.jpg')
+        if (faceRequired && activePayload) {
+          formData.append('attendanceMethod', 'face')
+          formData.append('faceDescriptor', JSON.stringify(activePayload.descriptor))
+          formData.append('livenessScore', String(activePayload.livenessScore))
+          formData.append('detectionScore', String(activePayload.detectionScore))
+          formData.append('spoofFlags', activePayload.spoofFlags)
+          formData.append('faceLogId', activePayload.faceLogId)
+          if (activePayload.captureImageDataUrl) {
+            formData.append('faceScanImageBase64', activePayload.captureImageDataUrl)
+          }
+          if (activePayload.faceMatchScore != null) {
+            formData.append('faceMatchScore', String(activePayload.faceMatchScore))
+          }
+          if (activePayload.faceConfidence != null) {
+            formData.append('faceConfidence', String(activePayload.faceConfidence))
+          }
+          if (userId) formData.append('sessionUserId', userId)
+        } else {
+          formData.append('attendanceMethod', 'manual')
+        }
+
+        if (isLunch) {
+          formData.append('action', type)
+          if (location) {
+            formData.append('lat', String(location.lat))
+            formData.append('lng', String(location.lng))
+            formData.append('address', location.address)
+          }
+          const { ok, data, status } = await apiJson('/api/attendance/lunch', {
+            method: 'POST',
+            body: formData,
+          })
+          if (!ok) {
+            toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
+            return
+          }
+          toast.success(
+            type === 'lunch-out' ? 'บันทึกเริ่มพักกลางวันสำเร็จ' : 'บันทึกกลับจากพักสำเร็จ',
+          )
+        } else if (type === 'checkin') {
+          if (!location) return
           formData.append('lat', String(location.lat))
           formData.append('lng', String(location.lng))
           formData.append('address', location.address)
-        }
-        const { ok, data, status } = await apiJson('/api/attendance/lunch', {
-          method: 'POST',
-          body: formData,
-        })
-        if (!ok) {
-          toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
-          return
-        }
-        toast.success(type === 'lunch-out' ? 'บันทึกเริ่มพักกลางวัน (ถ่ายรูปแล้ว)' : 'บันทึกกลับจากพัก (ถ่ายรูปแล้ว)')
-      } else if (type === 'checkin') {
-        if (!location) return
-        formData.append('lat', String(location.lat))
-        formData.append('lng', String(location.lng))
-        formData.append('address', location.address)
-        formData.append('workPlaceName', workPlaceName.trim())
-        formData.append('locationType', locationType)
-        const { ok, data, status } = await apiJson<{ lateMinutes?: number; isOutside?: boolean }>(
-          '/api/attendance/checkin',
-          { method: 'POST', body: formData },
-        )
-        if (!ok) {
-          toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
-          return
-        }
-        if ((data.lateMinutes ?? 0) > 0) {
-          toast.warning(`เช็คอินสำเร็จ — มาสาย ${data.lateMinutes} นาที`)
+          formData.append('workPlaceName', workPlaceName.trim())
+          formData.append('locationType', locationType)
+          const { ok, data, status } = await apiJson<{ lateMinutes?: number; isOutside?: boolean }>(
+            '/api/attendance/checkin',
+            { method: 'POST', body: formData },
+          )
+          if (!ok) {
+            toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
+            return
+          }
+          if ((data.lateMinutes ?? 0) > 0) {
+            toast.warning(`เช็คอินสำเร็จ — มาสาย ${data.lateMinutes} นาที`)
+          } else {
+            toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
+          }
         } else {
-          toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
+          if (!location) return
+          formData.append('lat', String(location.lat))
+          formData.append('lng', String(location.lng))
+          formData.append('address', location.address)
+          formData.append('workPlaceName', workPlaceName.trim())
+          const { ok, data, status } = await apiJson('/api/attendance/checkout', {
+            method: 'POST',
+            body: formData,
+          })
+          if (!ok) {
+            toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
+            return
+          }
+          toast.success('เช็คเอาท์สำเร็จ')
         }
-      } else {
-        if (!location) return
-        formData.append('lat', String(location.lat))
-        formData.append('lng', String(location.lng))
-        formData.append('address', location.address)
-        formData.append('workPlaceName', workPlaceName.trim())
-        const { ok, data, status } = await apiJson('/api/attendance/checkout', {
-          method: 'POST',
-          body: formData,
-        })
-        if (!ok) {
-          toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
-          return
-        }
-        toast.success('เช็คเอาท์สำเร็จ (ถ่ายรูปแล้ว)')
+        setStep('done')
+        onSuccess?.()
+      } catch (err) {
+        console.error('[attendance]', err)
+        toast.error('เกิดข้อผิดพลาด')
+      } finally {
+        submittingRef.current = false
+        setIsLoading(false)
       }
-      setStep('done')
-      onSuccess?.()
-    } catch (err) {
-      console.error('[attendance]', err)
-      toast.error('เกิดข้อผิดพลาด')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+    [
+      capturedPhoto,
+      facePayload,
+      faceRequired,
+      isLunch,
+      location,
+      locationType,
+      onSuccess,
+      type,
+      userId,
+      workPlaceName,
+    ],
+  )
 
   const title =
     type === 'checkin'
@@ -385,20 +408,28 @@ export default function CheckInPanel({
       )}
 
       {step === 'face-scan' && faceRequired && (
-        <FaceAttendanceScan
-          action={type}
-          onVerified={(payload) => {
-            setFacePayload(payload)
-            if (payload.captureImageDataUrl) {
-              setCapturedPhoto(payload.captureImageDataUrl)
-              setStep('confirm')
-              toast.success('ยืนยันใบหน้าและบันทึกรูปจากกล้องแล้ว — กดยืนยันลงเวลา')
-            } else {
-              setStep('camera')
-              toast.success('ยืนยันใบหน้าผ่าน — ถ่ายรูปประกอบการลงเวลา')
-            }
-          }}
-        />
+        <div className="space-y-2">
+          <FaceAttendanceScan
+            action={type}
+            onVerified={(payload) => {
+              setFacePayload(payload)
+              if (payload.captureImageDataUrl) {
+                setCapturedPhoto(payload.captureImageDataUrl)
+                toast.success('ยืนยันใบหน้าแล้ว — กำลังบันทึกลงเวลา...')
+                void submitAttendance(payload, payload.captureImageDataUrl)
+              } else {
+                setStep('camera')
+                toast.success('ยืนยันใบหน้าผ่าน — ถ่ายรูปประกอบการลงเวลา')
+              }
+            }}
+          />
+          {isLoading && (
+            <p className="text-center text-xs text-cyan-300 flex items-center justify-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              กำลังบันทึกลงเวลาและส่งแจ้ง HR...
+            </p>
+          )}
+        </div>
       )}
 
       {step === 'camera' && (
@@ -451,7 +482,7 @@ export default function CheckInPanel({
         </div>
       )}
 
-      {step === 'confirm' && (
+      {step === 'confirm' && !faceRequired && (
         <div className="space-y-3">
           {capturedPhoto && (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -492,7 +523,7 @@ export default function CheckInPanel({
             </button>
             <button
               type="button"
-              onClick={handleSubmit}
+              onClick={() => void submitAttendance()}
               disabled={isLoading}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
               style={{ background: accentGradient }}

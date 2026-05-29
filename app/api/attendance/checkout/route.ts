@@ -12,6 +12,11 @@ import {
   recordFaceScanAndNotifyHr,
   syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
+import {
+  ATTENDANCE_COMPLETED_PATCH,
+  attendanceFlowErrorMessage,
+  validateAttendanceFlow,
+} from '@/lib/attendance-flow'
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,11 +47,15 @@ export async function POST(req: NextRequest) {
       where: { userId_date: { userId: session.user.id, date: today } },
     })
 
-    if (!attendance?.checkIn) {
-      return NextResponse.json({ error: 'ยังไม่ได้เช็คอินวันนี้' }, { status: 400 })
+    const flowErr = validateAttendanceFlow(attendance, 'checkout', now)
+    if (flowErr) {
+      return NextResponse.json(
+        { error: attendanceFlowErrorMessage(flowErr), code: flowErr },
+        { status: 400 },
+      )
     }
-    if (attendance.checkOut) {
-      return NextResponse.json({ error: 'เช็คเอาท์แล้ววันนี้' }, { status: 400 })
+    if (!attendance) {
+      return NextResponse.json({ error: 'ยังไม่ได้เช็คอินวันนี้' }, { status: 400 })
     }
 
     const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
@@ -67,6 +76,7 @@ export async function POST(req: NextRequest) {
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
       data: {
+        ...ATTENDANCE_COMPLETED_PATCH,
         checkOut: now,
         earlyLeaveMinutes,
         status,
@@ -87,25 +97,29 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    const faceScanId = await recordFaceScanAndNotifyHr({
-      req,
-      formData,
-      userId: session.user.id,
-      scanType: 'checkout',
-      attendanceId: finalized.id,
-      faceLogId,
-      event: 'checkout',
-      eventTime: now,
-      location: workPlaceName ?? address ?? finalized.workPlaceName ?? null,
-      locationName: workPlaceName,
-      address: address || null,
-      lat,
-      lng,
-      photoUrl: null,
-      earlyLeaveMinutes,
-    })
-
-    await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'checkOutPhotoUrl')
+    let faceScanId: string | null = null
+    try {
+      faceScanId = await recordFaceScanAndNotifyHr({
+        req,
+        formData,
+        userId: session.user.id,
+        scanType: 'checkout',
+        attendanceId: finalized.id,
+        faceLogId,
+        event: 'checkout',
+        eventTime: now,
+        location: workPlaceName ?? address ?? finalized.workPlaceName ?? null,
+        locationName: workPlaceName,
+        address: address || null,
+        lat,
+        lng,
+        photoUrl: null,
+        earlyLeaveMinutes,
+      })
+      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'checkOutPhotoUrl')
+    } catch (err) {
+      console.error('[checkout-face-line]', err)
+    }
 
     return NextResponse.json({ success: true, attendance: finalized, earlyLeaveMinutes })
   } catch (err) {

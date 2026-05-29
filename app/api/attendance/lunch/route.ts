@@ -11,6 +11,11 @@ import {
   recordFaceScanAndNotifyHr,
   syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
+import {
+  ATTENDANCE_COMPLETED_PATCH,
+  attendanceFlowErrorMessage,
+  validateAttendanceFlow,
+} from '@/lib/attendance-flow'
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,26 +48,27 @@ export async function POST(req: NextRequest) {
       where: { userId_date: { userId: session.user.id, date: today } },
     })
 
-    if (!attendance?.checkIn) {
+    const now = new Date()
+    const flowAction = action === 'lunch-in' ? 'lunch-in' : 'lunch-out'
+    const flowErr = validateAttendanceFlow(attendance, flowAction, now)
+    if (flowErr) {
+      return NextResponse.json(
+        { error: attendanceFlowErrorMessage(flowErr), code: flowErr },
+        { status: 400 },
+      )
+    }
+    if (!attendance) {
       return NextResponse.json({ error: 'ต้องเช็คอินก่อน' }, { status: 400 })
     }
-    if (attendance.checkOut) {
-      return NextResponse.json({ error: 'เช็คเอาท์แล้ว' }, { status: 400 })
-    }
-
-    const now = new Date()
     const geoPatch =
       lat != null && lng != null
         ? { lat, lng, ...(address ? { address } : {}) }
         : {}
 
     if (action === 'lunch-out') {
-      if (attendance.lunchOut) {
-        return NextResponse.json({ error: 'บันทึกเริ่มพักกลางวันแล้ว' }, { status: 400 })
-      }
       const updated = await prisma.attendance.update({
         where: { id: attendance.id },
-        data: { lunchOut: now, ...geoPatch },
+        data: { ...ATTENDANCE_COMPLETED_PATCH, lunchOut: now, ...geoPatch },
       })
       const faceLogId = (formData.get('faceLogId') as string) || null
       if (faceLogId) {
@@ -71,35 +77,32 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
-      const faceScanId = await recordFaceScanAndNotifyHr({
-        req,
-        formData,
-        userId: session.user.id,
-        scanType: 'lunch-out',
-        attendanceId: finalized.id,
-        faceLogId,
-        event: 'lunch-out',
-        eventTime: now,
-        location: address || finalized.workPlaceName || null,
-        address: address || null,
-        lat,
-        lng,
-        photoUrl: null,
-      })
-      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchOutPhotoUrl')
+      try {
+        const faceScanId = await recordFaceScanAndNotifyHr({
+          req,
+          formData,
+          userId: session.user.id,
+          scanType: 'lunch-out',
+          attendanceId: finalized.id,
+          faceLogId,
+          event: 'lunch-out',
+          eventTime: now,
+          location: address || finalized.workPlaceName || null,
+          address: address || null,
+          lat,
+          lng,
+          photoUrl: null,
+        })
+        await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchOutPhotoUrl')
+      } catch (err) {
+        console.error('[lunch-out-face-line]', err)
+      }
       return NextResponse.json({ success: true, attendance: finalized })
-    }
-
-    if (!attendance.lunchOut) {
-      return NextResponse.json({ error: 'ยังไม่ได้เริ่มพักกลางวัน' }, { status: 400 })
-    }
-    if (attendance.lunchIn) {
-      return NextResponse.json({ error: 'บันทึกกลับจากพักแล้ว' }, { status: 400 })
     }
 
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
-      data: { lunchIn: now, ...geoPatch },
+      data: { ...ATTENDANCE_COMPLETED_PATCH, lunchIn: now, ...geoPatch },
     })
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
@@ -108,22 +111,26 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
-    const faceScanId = await recordFaceScanAndNotifyHr({
-      req,
-      formData,
-      userId: session.user.id,
-      scanType: 'lunch-in',
-      attendanceId: finalized.id,
-      faceLogId,
-      event: 'lunch-in',
-      eventTime: now,
-      location: address || finalized.workPlaceName || null,
-      address: address || null,
-      lat,
-      lng,
-      photoUrl: null,
-    })
-    await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchInPhotoUrl')
+    try {
+      const faceScanId = await recordFaceScanAndNotifyHr({
+        req,
+        formData,
+        userId: session.user.id,
+        scanType: 'lunch-in',
+        attendanceId: finalized.id,
+        faceLogId,
+        event: 'lunch-in',
+        eventTime: now,
+        location: address || finalized.workPlaceName || null,
+        address: address || null,
+        lat,
+        lng,
+        photoUrl: null,
+      })
+      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchInPhotoUrl')
+    } catch (err) {
+      console.error('[lunch-in-face-line]', err)
+    }
     return NextResponse.json({ success: true, attendance: finalized })
   } catch (err) {
     return apiError(err)

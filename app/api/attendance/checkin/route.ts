@@ -12,6 +12,11 @@ import {
   recordFaceScanAndNotifyHr,
   syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
+import {
+  ATTENDANCE_COMPLETED_PATCH,
+  attendanceFlowErrorMessage,
+  validateAttendanceFlow,
+} from '@/lib/attendance-flow'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000
@@ -47,6 +52,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้อง' }, { status: 400 })
     }
 
+    const today = startOfTodayLocal()
+    const now = new Date()
+
     let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
     if (!settings) {
       settings = await prisma.companySettings.create({ data: { id: 'singleton' } })
@@ -57,7 +65,6 @@ export async function POST(req: NextRequest) {
       isOutside = dist > (settings.geofenceRadius ?? 200)
     }
 
-    const now = new Date()
     let lateMinutes = 0
     let status: 'NORMAL' | 'LATE' = 'NORMAL'
     if (settings?.workStartTime) {
@@ -71,14 +78,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const today = startOfTodayLocal()
-
     const existing = await prisma.attendance.findUnique({
       where: { userId_date: { userId: session.user.id, date: today } },
     })
 
-    if (existing?.checkIn) {
-      return NextResponse.json({ error: 'เช็คอินแล้ววันนี้' }, { status: 400 })
+    const flowErr = validateAttendanceFlow(existing, 'checkin', now)
+    if (flowErr) {
+      return NextResponse.json(
+        { error: attendanceFlowErrorMessage(flowErr), code: flowErr },
+        { status: 400 },
+      )
     }
 
     const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
@@ -87,6 +96,7 @@ export async function POST(req: NextRequest) {
     const attendance = await prisma.attendance.upsert({
       where: { userId_date: { userId: session.user.id, date: today } },
       update: {
+        ...ATTENDANCE_COMPLETED_PATCH,
         checkIn: now,
         lat,
         lng,
@@ -103,6 +113,7 @@ export async function POST(req: NextRequest) {
         ...(leaveType ? { leaveType } : {}),
       },
       create: {
+        ...ATTENDANCE_COMPLETED_PATCH,
         userId: session.user.id,
         date: today,
         checkIn: now,
@@ -131,25 +142,29 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    const faceScanId = await recordFaceScanAndNotifyHr({
-      req,
-      formData,
-      userId: session.user.id,
-      scanType: 'checkin',
-      attendanceId: finalized.id,
-      faceLogId,
-      event: 'checkin',
-      eventTime: now,
-      location: workPlaceName ?? address ?? null,
-      locationName: workPlaceName,
-      address: address || null,
-      lat,
-      lng,
-      photoUrl: null,
-      lateMinutes,
-    })
-
-    await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'photoUrl')
+    let faceScanId: string | null = null
+    try {
+      faceScanId = await recordFaceScanAndNotifyHr({
+        req,
+        formData,
+        userId: session.user.id,
+        scanType: 'checkin',
+        attendanceId: finalized.id,
+        faceLogId,
+        event: 'checkin',
+        eventTime: now,
+        location: workPlaceName ?? address ?? null,
+        locationName: workPlaceName,
+        address: address || null,
+        lat,
+        lng,
+        photoUrl: null,
+        lateMinutes,
+      })
+      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'photoUrl')
+    } catch (err) {
+      console.error('[checkin-face-line]', err)
+    }
 
     return NextResponse.json({ success: true, attendance: finalized, isOutside, lateMinutes })
   } catch (err) {

@@ -269,6 +269,14 @@ async function runEnsure(): Promise<boolean> {
     'checkOutWorkPlaceName',
     `ALTER TABLE attendances ADD COLUMN checkOutWorkPlaceName TEXT`,
   )
+  await addAttendanceColumnIfMissing(
+    'approved',
+    `ALTER TABLE attendances ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
+  )
+  await addAttendanceColumnIfMissing(
+    'attendanceStatus',
+    `ALTER TABLE attendances ADD COLUMN attendanceStatus TEXT NOT NULL DEFAULT 'completed'`,
+  )
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS attendance_line_notify_logs (

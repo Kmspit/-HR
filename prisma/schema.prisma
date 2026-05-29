@@ -444,6 +444,10 @@ model Attendance {
   lunchInPhotoUrl  String?
   isOutside        Boolean          @default(false)
   status           AttendanceStatus @default(NORMAL)
+  /** อนุมัติอัตโนมัติหลังสแกนใบหน้าสำเร็จ — ไม่ต้องรอ HR */
+  approved         Boolean          @default(true)
+  /** completed = บันทึกลงเวลาแล้วทันที */
+  attendanceStatus String           @default("completed")
   dayOfWeek        Int?
   workMinutes      Int              @default(0)
   leaveType        LeaveType?
