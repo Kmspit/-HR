@@ -57,6 +57,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: '/attendance',         icon: 'attendance', label: 'ลงเวลางาน',           roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
       { href: '/attendance/monthly', icon: 'calendar',   label: 'บันทึกลงเวลารายเดือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/attendance/scans',     icon: 'attendance', label: 'ประวัติสแกนใบหน้า',     roles: ['MANAGER_HR', 'ADMIN'] },
       { href: '/calendar',     icon: 'calendar',   label: 'ปฏิทิน',           roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
       { href: '/leave',        icon: 'leave',       label: 'ขอลาหยุด',        roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
       { href: '/outside-work', icon: 'outside',     label: 'ออกนอกสถานที่',   roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },

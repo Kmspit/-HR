@@ -8,7 +8,10 @@ import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord, getDayOfWeekIndex } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
-import { scheduleHrAttendanceLineNotify } from '@/lib/attendance-line-notify'
+import {
+  formHasFaceImage,
+  recordFaceScanAndNotifyHr,
+} from '@/lib/attendance-face-scan'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000
@@ -41,13 +44,14 @@ export async function POST(req: NextRequest) {
     const workPlaceName = ((formData.get('workPlaceName') as string) || '').trim() || null
     const forceOutside = locationType === 'outside'
 
-    if (!photo || photo.size === 0) {
+    if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้อง' }, { status: 400 })
     }
 
-    const photoUrl = photo && photo.size > 0
-      ? await saveUpload(photo, 'checkin', session.user.id)
-      : undefined
+    const photoUrl =
+      photo && photo.size > 0
+        ? await saveUpload(photo, 'checkin', session.user.id)
+        : undefined
 
     let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
     if (!settings) {
@@ -135,13 +139,21 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    scheduleHrAttendanceLineNotify({
-      event: 'checkin',
-      employeeUserId: session.user.id,
+    await recordFaceScanAndNotifyHr({
+      req,
+      formData,
+      userId: session.user.id,
+      scanType: 'checkin',
       attendanceId: finalized.id,
-      photoUrl: finalized.photoUrl,
+      faceLogId,
+      event: 'checkin',
       eventTime: now,
       location: workPlaceName ?? address ?? null,
+      locationName: workPlaceName,
+      address: address || null,
+      lat,
+      lng,
+      photoUrl: finalized.photoUrl,
       lateMinutes,
     })
 

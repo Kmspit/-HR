@@ -310,6 +310,7 @@ model AttendanceLineNotifyLog {
   eventType      String
   attendanceId   String?
   faceLogId      String?
+  faceScanId     String?
   messageText    String
   photoUrl       String?
   status         String    @default("pending")
@@ -322,6 +323,34 @@ model AttendanceLineNotifyLog {
   @@index([status, createdAt])
   @@index([employeeUserId, createdAt])
   @@map("attendance_line_notify_logs")
+}
+
+// ── ATTENDANCE FACE SCAN (รูปสแกนหน้า — เก็บใน DB ไม่ public) ──
+
+model AttendanceFaceScan {
+  id              String   @id @default(cuid())
+  userId          String
+  attendanceId    String?
+  faceLogId       String?
+  scanType        String
+  scanTime        DateTime @default(now())
+  confidenceScore Float?
+  matchScore      Float?
+  livenessScore   Float?
+  matched         Boolean  @default(true)
+  imageMime       String   @default("image/jpeg")
+  imageData       String
+  locationName    String?
+  address         String?
+  lat             Float?
+  lng             Float?
+  deviceInfo      String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, scanTime])
+  @@index([scanType, scanTime])
+  @@index([attendanceId])
+  @@map("attendance_face_scans")
 }
 
 // ── SAVED WORK PLACES (ชื่อสถานที่ — ไม่ผูก GPS) ──

@@ -218,6 +218,15 @@ export default function CheckInPanel({
         formData.append('detectionScore', String(facePayload.detectionScore))
         formData.append('spoofFlags', facePayload.spoofFlags)
         formData.append('faceLogId', facePayload.faceLogId)
+        if (facePayload.captureImageDataUrl) {
+          formData.append('faceScanImageBase64', facePayload.captureImageDataUrl)
+        }
+        if (facePayload.faceMatchScore != null) {
+          formData.append('faceMatchScore', String(facePayload.faceMatchScore))
+        }
+        if (facePayload.faceConfidence != null) {
+          formData.append('faceConfidence', String(facePayload.faceConfidence))
+        }
         if (userId) formData.append('sessionUserId', userId)
       } else {
         formData.append('attendanceMethod', 'manual')
@@ -380,8 +389,14 @@ export default function CheckInPanel({
           action={type}
           onVerified={(payload) => {
             setFacePayload(payload)
-            setStep('camera')
-            toast.success('ยืนยันใบหน้าผ่าน — ถ่ายรูปประกอบการลงเวลา')
+            if (payload.captureImageDataUrl) {
+              setCapturedPhoto(payload.captureImageDataUrl)
+              setStep('confirm')
+              toast.success('ยืนยันใบหน้าและบันทึกรูปจากกล้องแล้ว — กดยืนยันลงเวลา')
+            } else {
+              setStep('camera')
+              toast.success('ยืนยันใบหน้าผ่าน — ถ่ายรูปประกอบการลงเวลา')
+            }
           }}
         />
       )}

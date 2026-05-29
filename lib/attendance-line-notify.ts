@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfigured } from '@/lib/line-config'
+import {
+  FACE_SCAN_TYPE_LABEL,
+  getSignedScanImageUrlForLine,
+  type FaceScanType,
+} from '@/lib/attendance-face-scan'
 
 export type AttendanceLineEvent =
   | 'checkin'
@@ -52,8 +57,14 @@ function formatDateTh(d: Date): string {
 
 function lateLabel(minutes: number | undefined, event: AttendanceLineEvent): string {
   if (event !== 'checkin') return '—'
-  if (!minutes || minutes <= 0) return 'ไม่มี'
+  if (!minutes || minutes <= 0) return 'ไม่'
   return `${minutes} นาที`
+}
+
+function statusLabelForLine(event: AttendanceLineEvent): string {
+  if (event === 'face_mismatch') return EVENT_LABEL[event]
+  const key = event as FaceScanType
+  return FACE_SCAN_TYPE_LABEL[key] ?? EVENT_LABEL[event]
 }
 
 export function buildAttendanceLineMessage(params: {
@@ -85,6 +96,7 @@ export function buildAttendanceLineMessage(params: {
       .join('\n')
   }
 
+  const place = location ?? branchName ?? null
   return [
     'พนักงานลงเวลาแล้ว',
     '',
@@ -92,10 +104,9 @@ export function buildAttendanceLineMessage(params: {
     employeeId ? `รหัส: ${employeeId}` : null,
     `วันที่: ${formatDateTh(eventTime)}`,
     `เวลา: ${formatTimeTh(eventTime)}`,
-    `สถานะ: ${EVENT_LABEL[event]}`,
-    branchName ? `สาขา: ${branchName}` : null,
-    location ? `Location: ${location}` : null,
+    `สถานะ: ${statusLabelForLine(event)}`,
     `มาสาย: ${lateLabel(params.lateMinutes, event)}`,
+    place ? `สถานที่: ${place}` : null,
     event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0
       ? `กลับก่อน: ${params.earlyLeaveMinutes} นาที`
       : null,
@@ -163,6 +174,7 @@ async function createLogEntry(params: {
   eventType: string
   attendanceId?: string | null
   faceLogId?: string | null
+  faceScanId?: string | null
   messageText: string
   photoUrl?: string | null
 }) {
@@ -173,11 +185,23 @@ async function createLogEntry(params: {
       eventType: params.eventType,
       attendanceId: params.attendanceId ?? undefined,
       faceLogId: params.faceLogId ?? undefined,
+      faceScanId: params.faceScanId ?? undefined,
       messageText: params.messageText,
       photoUrl: params.photoUrl ?? undefined,
       status: 'pending',
     },
   })
+}
+
+async function resolveLineImageUrl(params: {
+  faceScanId?: string | null
+  photoUrl?: string | null
+}): Promise<string | null> {
+  if (params.faceScanId) {
+    const signed = await getSignedScanImageUrlForLine(params.faceScanId)
+    if (signed?.startsWith('https://')) return signed
+  }
+  return absolutePhotoUrl(params.photoUrl)
 }
 
 async function deliverToHrRecipient(params: {
@@ -216,6 +240,7 @@ export async function notifyHrAttendanceOnLine(params: {
   employeeUserId: string
   attendanceId?: string | null
   faceLogId?: string | null
+  faceScanId?: string | null
   photoUrl?: string | null
   eventTime?: Date
   location?: string | null
@@ -248,7 +273,10 @@ export async function notifyHrAttendanceOnLine(params: {
     failureDetail: params.failureDetail,
   })
 
-  const imageUrl = absolutePhotoUrl(params.photoUrl)
+  const imageUrl = await resolveLineImageUrl({
+    faceScanId: params.faceScanId,
+    photoUrl: params.photoUrl,
+  })
   const messages = buildLineMessages(messageText, imageUrl)
 
   let sent = 0
@@ -261,6 +289,7 @@ export async function notifyHrAttendanceOnLine(params: {
       eventType: params.event,
       attendanceId: params.attendanceId,
       faceLogId: params.faceLogId,
+      faceScanId: params.faceScanId,
       messageText,
       photoUrl: imageUrl ?? params.photoUrl,
     })
@@ -315,7 +344,10 @@ export async function retryFailedAttendanceLineNotify(logId: string): Promise<{
   if (!log) return { ok: false, error: 'ไม่พบ log' }
   if (log.status === 'sent') return { ok: true }
 
-  const imageUrl = absolutePhotoUrl(log.photoUrl)
+  const imageUrl = await resolveLineImageUrl({
+    faceScanId: log.faceScanId,
+    photoUrl: log.photoUrl,
+  })
   const messages = buildLineMessages(log.messageText, imageUrl)
 
   await prisma.attendanceLineNotifyLog.update({
@@ -344,6 +376,7 @@ export function scheduleHrAttendanceLineNotify(params: {
   event: AttendanceLineEvent
   employeeUserId: string
   attendanceId: string
+  faceScanId?: string | null
   photoUrl?: string | null
   eventTime: Date
   location?: string | null
@@ -354,6 +387,7 @@ export function scheduleHrAttendanceLineNotify(params: {
     event: params.event,
     employeeUserId: params.employeeUserId,
     attendanceId: params.attendanceId,
+    faceScanId: params.faceScanId,
     photoUrl: params.photoUrl,
     eventTime: params.eventTime,
     location: params.location,

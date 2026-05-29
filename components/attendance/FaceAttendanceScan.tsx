@@ -10,6 +10,7 @@ import {
   runLivenessCheck,
   scanFaceFromVideo,
   livenessToFormFields,
+  captureJpegFromVideo,
 } from '@/lib/face-client'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
@@ -19,6 +20,9 @@ export type FaceVerifyPayload = {
   detectionScore: number
   spoofFlags: string
   faceLogId: string
+  captureImageDataUrl?: string
+  faceMatchScore?: number
+  faceConfidence?: number
 }
 
 type Props = {
@@ -102,6 +106,10 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         return
       }
 
+      const captureImageDataUrl = captureJpegFromVideo(videoRef.current) ?? undefined
+      const distance = (data as { distance?: number }).distance
+      const confidence = (data as { confidence?: number }).confidence
+
       setPhase('done')
       onVerified({
         descriptor: scan.descriptor,
@@ -109,6 +117,9 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         detectionScore: scan.score,
         spoofFlags,
         faceLogId: logId,
+        captureImageDataUrl,
+        faceMatchScore: typeof distance === 'number' ? distance : undefined,
+        faceConfidence: typeof confidence === 'number' ? confidence : undefined,
       })
     } catch (err) {
       console.error('[face-scan]', err)

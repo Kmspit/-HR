@@ -145,3 +145,15 @@ export function livenessToFormFields(result: LivenessResult) {
     }),
   }
 }
+
+/** จับภาพ JPEG จากวิดีโอกล้องสำหรับบันทึกสแกนใบหน้า */
+export function captureJpegFromVideo(video: HTMLVideoElement, quality = 0.82): string | null {
+  if (video.videoWidth === 0 || video.videoHeight === 0) return null
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.drawImage(video, 0, 0)
+  return canvas.toDataURL('image/jpeg', quality)
+}

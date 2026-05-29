@@ -8,7 +8,10 @@ import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
-import { scheduleHrAttendanceLineNotify } from '@/lib/attendance-line-notify'
+import {
+  formHasFaceImage,
+  recordFaceScanAndNotifyHr,
+} from '@/lib/attendance-face-scan'
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,11 +32,14 @@ export async function POST(req: NextRequest) {
     const address = (formData.get('address') as string) || ''
     const workPlaceName = ((formData.get('workPlaceName') as string) || '').trim() || null
 
-    if (!photo || photo.size === 0) {
+    if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้องตอนเช็คเอาท์' }, { status: 400 })
     }
 
-    const checkOutPhotoUrl = await saveUpload(photo, 'checkout', session.user.id)
+    const checkOutPhotoUrl =
+      photo && photo.size > 0
+        ? await saveUpload(photo, 'checkout', session.user.id)
+        : undefined
 
     const now = new Date()
     const today = startOfTodayLocal()
@@ -88,13 +94,21 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    scheduleHrAttendanceLineNotify({
-      event: 'checkout',
-      employeeUserId: session.user.id,
+    await recordFaceScanAndNotifyHr({
+      req,
+      formData,
+      userId: session.user.id,
+      scanType: 'checkout',
       attendanceId: finalized.id,
-      photoUrl: finalized.checkOutPhotoUrl,
+      faceLogId,
+      event: 'checkout',
       eventTime: now,
       location: workPlaceName ?? address ?? finalized.workPlaceName ?? null,
+      locationName: workPlaceName,
+      address: address || null,
+      lat,
+      lng,
+      photoUrl: finalized.checkOutPhotoUrl,
       earlyLeaveMinutes,
     })
 

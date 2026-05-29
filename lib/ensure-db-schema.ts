@@ -264,7 +264,62 @@ async function runEnsure(): Promise<boolean> {
     ON attendance_line_notify_logs (employeeUserId, createdAt)
   `)
 
+  await addLineNotifyColumnIfMissing('faceScanId', `ALTER TABLE attendance_line_notify_logs ADD COLUMN faceScanId TEXT`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS attendance_face_scans (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      attendanceId TEXT,
+      faceLogId TEXT,
+      scanType TEXT NOT NULL,
+      scanTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      confidenceScore REAL,
+      matchScore REAL,
+      livenessScore REAL,
+      matched INTEGER NOT NULL DEFAULT 1,
+      imageMime TEXT NOT NULL DEFAULT 'image/jpeg',
+      imageData TEXT NOT NULL,
+      locationName TEXT,
+      address TEXT,
+      lat REAL,
+      lng REAL,
+      deviceInfo TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS attendance_face_scans_user_time_idx
+    ON attendance_face_scans (userId, scanTime)
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS attendance_face_scans_type_time_idx
+    ON attendance_face_scans (scanType, scanTime)
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS attendance_face_scans_attendance_idx
+    ON attendance_face_scans (attendanceId)
+  `)
+
   return true
+}
+
+async function lineNotifyColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>(
+    'PRAGMA table_info(attendance_line_notify_logs)',
+  )
+  return rows.map((r) => r.name)
+}
+
+async function addLineNotifyColumnIfMissing(column: string, ddl: string) {
+  const cols = await lineNotifyColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }
 
 async function attendanceColumns(): Promise<string[]> {

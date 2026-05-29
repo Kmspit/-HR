@@ -7,7 +7,10 @@ import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
-import { scheduleHrAttendanceLineNotify } from '@/lib/attendance-line-notify'
+import {
+  formHasFaceImage,
+  recordFaceScanAndNotifyHr,
+} from '@/lib/attendance-face-scan'
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,14 +34,14 @@ export async function POST(req: NextRequest) {
     if (action !== 'lunch-out' && action !== 'lunch-in') {
       return NextResponse.json({ error: 'action ต้องเป็น lunch-out หรือ lunch-in' }, { status: 400 })
     }
-    if (!photo || photo.size === 0) {
+    if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าตรงจากกล้อง' }, { status: 400 })
     }
 
-    const photoUrl = await saveUpload(photo, action, session.user.id)
-    if (!photoUrl) {
-      return NextResponse.json({ error: 'บันทึกรูปไม่สำเร็จ' }, { status: 500 })
-    }
+    const photoUrl =
+      photo && photo.size > 0
+        ? await saveUpload(photo, action, session.user.id)
+        : undefined
 
     const today = startOfTodayLocal()
     const attendance = await prisma.attendance.findUnique({
@@ -73,13 +76,20 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
-      scheduleHrAttendanceLineNotify({
-        event: 'lunch-out',
-        employeeUserId: session.user.id,
+      await recordFaceScanAndNotifyHr({
+        req,
+        formData,
+        userId: session.user.id,
+        scanType: 'lunch-out',
         attendanceId: finalized.id,
-        photoUrl: finalized.lunchOutPhotoUrl,
+        faceLogId,
+        event: 'lunch-out',
         eventTime: now,
         location: address || finalized.workPlaceName || null,
+        address: address || null,
+        lat,
+        lng,
+        photoUrl: finalized.lunchOutPhotoUrl,
       })
       return NextResponse.json({ success: true, attendance: finalized })
     }
@@ -102,13 +112,20 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
-    scheduleHrAttendanceLineNotify({
-      event: 'lunch-in',
-      employeeUserId: session.user.id,
+    await recordFaceScanAndNotifyHr({
+      req,
+      formData,
+      userId: session.user.id,
+      scanType: 'lunch-in',
       attendanceId: finalized.id,
-      photoUrl: finalized.lunchInPhotoUrl,
+      faceLogId,
+      event: 'lunch-in',
       eventTime: now,
       location: address || finalized.workPlaceName || null,
+      address: address || null,
+      lat,
+      lng,
+      photoUrl: finalized.lunchInPhotoUrl,
     })
     return NextResponse.json({ success: true, attendance: finalized })
   } catch (err) {
