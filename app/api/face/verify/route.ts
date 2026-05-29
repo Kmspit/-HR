@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
       success: true,
       logId: result.logId,
       distance: result.distance,
+      confidence: 'confidence' in result ? result.confidence : null,
+      livenessScore: 'livenessScore' in result ? result.livenessScore : null,
+      detectionScore: 'detectionScore' in result ? result.detectionScore : null,
       manual: result.manual ?? false,
     })
   } catch (err) {

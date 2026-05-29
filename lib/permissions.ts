@@ -7,6 +7,7 @@ import type { Role } from '@prisma/client'
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':         ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/attendance':        ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
+  '/attendance/monthly': ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/leave':             ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/outside-work':      ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
   '/weekly-plan':       ['MANAGER_HR', 'LAWYER'],

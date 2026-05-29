@@ -104,6 +104,8 @@ export async function buildMonthlyReport(month: number, year: number, filterBran
           lunchIn: a.lunchIn?.toISOString() ?? null,
           checkOut: a.checkOut?.toISOString() ?? null,
           workPlaceName: a.workPlaceName,
+          workMinutes: a.workMinutes ?? 0,
+          leaveType: a.leaveType,
           lateMinutes: a.lateMinutes,
           earlyLeaveMinutes: a.earlyLeaveMinutes,
           status: a.status,

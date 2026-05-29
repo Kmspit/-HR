@@ -347,12 +347,23 @@ model Attendance {
   lng         Float?
   address          String?
   workPlaceName    String?
+  checkInLat           Float?
+  checkInLng           Float?
+  checkInAddress       String?
+  checkInWorkPlaceName String?
+  checkOutLat           Float?
+  checkOutLng           Float?
+  checkOutAddress       String?
+  checkOutWorkPlaceName String?
   photoUrl         String?
   checkOutPhotoUrl String?
   lunchOutPhotoUrl String?
   lunchInPhotoUrl  String?
   isOutside        Boolean          @default(false)
   status           AttendanceStatus @default(NORMAL)
+  dayOfWeek        Int?
+  workMinutes      Int              @default(0)
+  leaveType        LeaveType?
   lateMinutes      Int              @default(0)
   earlyLeaveMinutes Int             @default(0)
   note             String?

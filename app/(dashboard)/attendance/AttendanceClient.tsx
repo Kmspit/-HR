@@ -50,6 +50,7 @@ type RecentRecord = {
 
 type Props = {
   role: string
+  userId: string
   companyOffice: { name: string; address: string } | null
   companyGeofence: CompanyGeofence | null
   todayRecord: TodayRecord | null
@@ -78,12 +79,13 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 type LocationType = 'company' | 'outside'
-export default function AttendanceClient({ role, companyOffice, companyGeofence, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
+export default function AttendanceClient({ role, userId, companyOffice, companyGeofence, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
   const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | null>(null)
   const [faceRegistered, setFaceRegistered] = useState(false)
+  const [showFaceUpdate, setShowFaceUpdate] = useState(false)
 
   useEffect(() => {
     apiJson<{ registered?: boolean }>('/api/face/status').then(({ ok, data }) => {
@@ -246,20 +248,32 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
             </div>
           )}
 
-          {!faceRegistered && (
+          {(!faceRegistered || showFaceUpdate) && (
             <FaceRegistrationCard
+              allowUpdate={faceRegistered}
               onRegistered={() => {
                 setFaceRegistered(true)
+                setShowFaceUpdate(false)
                 setRefreshKey((k) => k + 1)
               }}
+              onCancelUpdate={() => setShowFaceUpdate(false)}
             />
           )}
 
-          {faceRegistered && (canCheckIn || canCheckOut || lunchPanel) && (
-            <p className="text-[11px] dark:text-slate-500 light:text-slate-500 px-1 flex items-center gap-1.5">
-              <ScanFace className="w-3.5 h-3.5 text-blue-400" />
-              ลงทะเบียนใบหน้าแล้ว — เช็คอิน: ระบุสถานที่ → GPS → ถ่ายรูป
-            </p>
+          {faceRegistered && !showFaceUpdate && (
+            <div className="flex flex-wrap items-center gap-2 px-1">
+              <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <ScanFace className="w-3.5 h-3.5 text-blue-400" />
+                ลงทะเบียนใบหน้าแล้ว — ทุกครั้งที่ลงเวลาต้องสแกนใบหน้า (กระพริบตา + ขยับศีรษะ)
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowFaceUpdate(true)}
+                className="text-[10px] text-blue-400 hover:text-blue-300 underline"
+              >
+                อัปเดตใบหน้า
+              </button>
+            </div>
           )}
 
           {lunchPanel && (
@@ -275,6 +289,8 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                 type={lunchPanel}
                 companyOffice={companyOffice}
                 companyGeofence={companyGeofence}
+                faceRequired={faceRegistered}
+                userId={userId}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -383,6 +399,8 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                 locationType={selectedType}
                 companyOffice={selectedType === 'company' ? companyOffice : null}
                 companyGeofence={selectedType === 'company' ? companyGeofence : null}
+                faceRequired={faceRegistered}
+                userId={userId}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -404,6 +422,8 @@ export default function AttendanceClient({ role, companyOffice, companyGeofence,
                 locationType={todayRecord?.isOutside ? 'outside' : 'company'}
                 companyOffice={!todayRecord?.isOutside ? companyOffice : null}
                 companyGeofence={!todayRecord?.isOutside ? companyGeofence : null}
+                faceRequired={faceRegistered}
+                userId={userId}
                 onSuccess={handleSuccess}
               />
             </div>

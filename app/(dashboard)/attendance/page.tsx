@@ -91,6 +91,7 @@ export default async function AttendancePage({
     )}
     <AttendanceClient
       role={session.user.role}
+      userId={session.user.id}
       companyOffice={
         companySettings
           ? {

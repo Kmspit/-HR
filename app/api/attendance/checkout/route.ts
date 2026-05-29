@@ -6,6 +6,8 @@ import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
+import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
+import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,6 +61,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
+
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
       data: {
@@ -66,12 +70,15 @@ export async function POST(req: NextRequest) {
         checkOutPhotoUrl,
         earlyLeaveMinutes,
         status,
-        ...(lat != null ? { lat } : {}),
-        ...(lng != null ? { lng } : {}),
-        ...(address ? { address } : {}),
-        ...(workPlaceName ? { workPlaceName } : {}),
+        checkOutLat: lat,
+        checkOutLng: lng,
+        checkOutAddress: address || null,
+        checkOutWorkPlaceName: workPlaceName,
+        ...(approvedLeave?.type ? { leaveType: approvedLeave.type } : {}),
       },
     })
+
+    const finalized = await finalizeAttendanceRecord(updated.id)
 
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
@@ -80,7 +87,7 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    return NextResponse.json({ success: true, attendance: updated, earlyLeaveMinutes })
+    return NextResponse.json({ success: true, attendance: finalized, earlyLeaveMinutes })
   } catch (err) {
     return apiError(err)
   }

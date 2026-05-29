@@ -65,7 +65,15 @@ export async function POST(req: NextRequest) {
         const [attendances, approvedLeaves, unpaidLeaves] = await Promise.all([
           prisma.attendance.findMany({
             where: { userId: emp.id, date: { gte: startDate, lte: endDate } },
-            select: { date: true, lateMinutes: true, status: true, earlyLeaveMinutes: true },
+            select: {
+              date: true,
+              lateMinutes: true,
+              status: true,
+              earlyLeaveMinutes: true,
+              workMinutes: true,
+              leaveType: true,
+              checkIn: true,
+            },
           }),
           prisma.leaveRequest.findMany({
             where: {

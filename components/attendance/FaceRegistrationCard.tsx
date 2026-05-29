@@ -12,13 +12,15 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { loadFaceModels, scanFaceFromVideo } from '@/lib/face-client'
+import { loadFaceModels, scanFaceFromVideo, runLivenessCheck, livenessToFormFields } from '@/lib/face-client'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import FaceStepGuide, { REGISTER_GUIDE_STEPS } from '@/components/attendance/FaceStepGuide'
 
 type Props = {
   onRegistered: () => void
+  allowUpdate?: boolean
+  onCancelUpdate?: () => void
 }
 
 type RegPhase = 'intro' | 'camera' | 'scan' | 'done'
@@ -51,7 +53,7 @@ function phaseToGuideIndex(poseStep: PoseStep | null, phase: RegPhase): number {
   return 5
 }
 
-export default function FaceRegistrationCard({ onRegistered }: Props) {
+export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCancelUpdate }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [phase, setPhase] = useState<RegPhase>('intro')
   const [poseStep, setPoseStep] = useState<PoseStep>('center')
@@ -135,15 +137,30 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
     if (finalSamples.length < 3 || savingRef.current) return
     savingRef.current = true
     setSaving(true)
-    setHint('กำลังบันทึกลงระบบ...')
+    setHint('ตรวจสอบความมีชีวิต...')
     try {
+      let livenessScore = 0.85
+      let spoofFlags = 'pose-guided'
+      if (videoRef.current && videoRef.current.videoWidth > 0) {
+        const liveness = await runLivenessCheck(videoRef.current)
+        if (liveness.score < 0.45) {
+          toast.error('ตรวจ liveness ไม่ผ่าน — กระพริบตาและขยับศีรษะก่อนบันทึก')
+          savingRef.current = false
+          setSaving(false)
+          return
+        }
+        const fields = livenessToFormFields(liveness)
+        livenessScore = fields.livenessScore
+        spoofFlags = fields.spoofFlags
+      }
+      setHint('กำลังบันทึกลงระบบ...')
       const { ok, data, status } = await apiJson<{ success?: boolean }>('/api/face/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           samples: finalSamples,
-          livenessScore: 0.85,
-          spoofFlags: 'pose-guided',
+          livenessScore,
+          spoofFlags,
         }),
       })
       if (!ok) {
@@ -173,14 +190,14 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
     setSaving(false)
   }
 
-  if (phase === 'done') {
+  if (phase === 'done' && !allowUpdate) {
     return (
       <div className="glass-card rounded-2xl p-4 border border-green-500/30 flex items-center gap-3">
         <CheckCircle className="w-8 h-8 text-green-400 flex-shrink-0" />
         <div>
           <p className="text-sm font-semibold dark:text-white light:text-slate-900">ลงทะเบียนใบหน้าแล้ว</p>
           <p className="text-xs dark:text-slate-400 light:text-slate-600">
-            เช็คอิน: ระบุสถานที่ → ถ่ายรูปตามปกติ
+            ลงเวลาทุกครั้งต้องสแกนใบหน้าให้ตรงกับที่ลงทะเบียน
           </p>
         </div>
       </div>
@@ -195,7 +212,7 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
         </div>
         <div>
           <h3 className="text-sm font-semibold dark:text-white light:text-slate-900">
-            สอนสแกนจดจำใบหน้า
+            {allowUpdate ? 'อัปเดตใบหน้า (1 คนต่อบัญชี)' : 'สอนสแกนจดจำใบหน้า'}
           </h3>
           <p className="text-xs mt-1 dark:text-slate-400 light:text-slate-600 leading-relaxed">
             หน้าตรง → หันซ้าย → หันขวา ระบบจับภาพให้อัตโนมัติเมื่อทำถูกท่า
@@ -206,14 +223,21 @@ export default function FaceRegistrationCard({ onRegistered }: Props) {
       <FaceStepGuide steps={REGISTER_GUIDE_STEPS} currentIndex={phaseToGuideIndex(poseStep, phase)} />
 
       {phase === 'intro' && (
-        <button
-          type="button"
-          onClick={() => setPhase('camera')}
-          className="btn-primary w-full py-3 flex items-center justify-center gap-2"
-        >
-          เริ่มสแกนจดจำใบหน้า
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        <div className="flex gap-2">
+          {allowUpdate && onCancelUpdate && (
+            <button type="button" onClick={onCancelUpdate} className="btn-secondary flex-1 py-3">
+              ยกเลิก
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setPhase('camera')}
+            className="btn-primary flex-1 py-3 flex items-center justify-center gap-2"
+          >
+            {allowUpdate ? 'เริ่มอัปเดตใบหน้า' : 'เริ่มสแกนจดจำใบหน้า'}
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {showCamera && (

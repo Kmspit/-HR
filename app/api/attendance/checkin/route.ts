@@ -6,6 +6,8 @@ import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
+import { finalizeAttendanceRecord, getDayOfWeekIndex } from '@/lib/attendance-work-log'
+import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000
@@ -80,9 +82,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'เช็คอินแล้ววันนี้' }, { status: 400 })
     }
 
+    const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
+    const leaveType = approvedLeave?.type ?? undefined
+
     const attendance = await prisma.attendance.upsert({
       where: { userId_date: { userId: session.user.id, date: today } },
-      update: { checkIn: now, lat, lng, address, workPlaceName, photoUrl, isOutside, status, lateMinutes },
+      update: {
+        checkIn: now,
+        lat,
+        lng,
+        address,
+        workPlaceName,
+        checkInLat: lat,
+        checkInLng: lng,
+        checkInAddress: address || null,
+        checkInWorkPlaceName: workPlaceName,
+        photoUrl,
+        isOutside,
+        status,
+        lateMinutes,
+        dayOfWeek: getDayOfWeekIndex(today),
+        ...(leaveType ? { leaveType } : {}),
+      },
       create: {
         userId: session.user.id,
         date: today,
@@ -91,21 +112,29 @@ export async function POST(req: NextRequest) {
         lng,
         address,
         workPlaceName,
+        checkInLat: lat,
+        checkInLng: lng,
+        checkInAddress: address || null,
+        checkInWorkPlaceName: workPlaceName,
         photoUrl,
         isOutside,
         status,
         lateMinutes,
+        dayOfWeek: getDayOfWeekIndex(today),
+        leaveType: leaveType ?? null,
       },
     })
+
+    const finalized = await finalizeAttendanceRecord(attendance.id)
 
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
       await prisma.attendanceFaceLog
-        .update({ where: { id: faceLogId }, data: { attendanceId: attendance.id } })
+        .update({ where: { id: faceLogId }, data: { attendanceId: finalized.id } })
         .catch(() => {})
     }
 
-    return NextResponse.json({ success: true, attendance, isOutside, lateMinutes })
+    return NextResponse.json({ success: true, attendance: finalized, isOutside, lateMinutes })
   } catch (err) {
     return apiError(err)
   }

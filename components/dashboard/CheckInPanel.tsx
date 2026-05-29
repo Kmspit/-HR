@@ -8,6 +8,7 @@ import { dataUrlToBlob } from '@/lib/utils'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import { RefreshCw, AlertCircle } from 'lucide-react'
+import FaceAttendanceScan, { type FaceVerifyPayload } from '@/components/attendance/FaceAttendanceScan'
 
 type SavedPlace = { id: string; name: string }
 
@@ -26,6 +27,9 @@ type Props = {
   locationType?: 'company' | 'outside'
   companyOffice?: { name: string; address: string } | null
   companyGeofence?: CompanyGeofence | null
+  /** เมื่อลงทะเบียนใบหน้าแล้ว — บังคับสแกนก่อนทุก event */
+  faceRequired?: boolean
+  userId?: string
   onSuccess?: () => void
 }
 
@@ -47,11 +51,15 @@ function CompanyGeofenceCard({ geo }: { geo: CompanyGeofence }) {
   )
 }
 
+type Step = 'place' | 'gps' | 'face-scan' | 'camera' | 'confirm' | 'done'
+
 export default function CheckInPanel({
   type,
   locationType = 'company',
   companyOffice,
   companyGeofence,
+  faceRequired = false,
+  userId = '',
   onSuccess,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -61,9 +69,13 @@ export default function CheckInPanel({
   const isOutsideType = !isLunch && locationType === 'outside'
   const isCompanyOffice = !isOutsideType && !!companyOffice
 
-  const [step, setStep] = useState<'place' | 'gps' | 'camera' | 'confirm' | 'done'>(
-    isLunch ? 'camera' : 'place',
-  )
+  const initialStep: Step = isLunch
+    ? faceRequired
+      ? 'face-scan'
+      : 'camera'
+    : 'place'
+  const [step, setStep] = useState<Step>(initialStep)
+  const [facePayload, setFacePayload] = useState<FaceVerifyPayload | null>(null)
   const [workPlaceName, setWorkPlaceName] = useState('')
   const [savePlace, setSavePlace] = useState(false)
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
@@ -160,7 +172,7 @@ export default function CheckInPanel({
         } catch {}
         setLocation({ lat, lng, address })
         setIsLoading(false)
-        setStep('camera')
+        setStep(faceRequired ? 'face-scan' : 'camera')
       },
       () => {
         setIsLoading(false)
@@ -195,7 +207,21 @@ export default function CheckInPanel({
       const formData = new FormData()
       const blob = dataUrlToBlob(capturedPhoto)
       formData.append('photo', blob, 'face.jpg')
-      formData.append('attendanceMethod', 'manual')
+      if (faceRequired) {
+        if (!facePayload) {
+          toast.error('ต้องสแกนใบหน้าก่อนลงเวลา')
+          return
+        }
+        formData.append('attendanceMethod', 'face')
+        formData.append('faceDescriptor', JSON.stringify(facePayload.descriptor))
+        formData.append('livenessScore', String(facePayload.livenessScore))
+        formData.append('detectionScore', String(facePayload.detectionScore))
+        formData.append('spoofFlags', facePayload.spoofFlags)
+        formData.append('faceLogId', facePayload.faceLogId)
+        if (userId) formData.append('sessionUserId', userId)
+      } else {
+        formData.append('attendanceMethod', 'manual')
+      }
 
       if (isLunch) {
         formData.append('action', type)
@@ -349,12 +375,25 @@ export default function CheckInPanel({
         </div>
       )}
 
+      {step === 'face-scan' && faceRequired && (
+        <FaceAttendanceScan
+          action={type}
+          onVerified={(payload) => {
+            setFacePayload(payload)
+            setStep('camera')
+            toast.success('ยืนยันใบหน้าผ่าน — ถ่ายรูปประกอบการลงเวลา')
+          }}
+        />
+      )}
+
       {step === 'camera' && (
         <div className="flex flex-col items-center gap-3">
           <div className="text-center space-y-1">
             <p className="text-lg font-bold dark:text-white light:text-slate-900">ถ่ายรูปหน้าตรง</p>
             <p className="text-xs dark:text-slate-400 light:text-slate-600">
-              มองตรงกล้อง — ต้องเห็นหน้าตัวเองในกรอบก่อนกดถ่าย
+              {facePayload
+                ? 'ถ่ายรูปหน้าตรงประกอบบันทึก (ยืนยันใบหน้าแล้ว)'
+                : 'มองตรงกล้อง — ต้องเห็นหน้าตัวเองในกรอบก่อนกดถ่าย'}
             </p>
           </div>
           <CameraPreviewVideoWithRef
@@ -428,8 +467,9 @@ export default function CheckInPanel({
             <button
               type="button"
               onClick={() => {
-                setStep('camera')
+                setStep(faceRequired ? 'face-scan' : 'camera')
                 setCapturedPhoto(null)
+                if (faceRequired) setFacePayload(null)
               }}
               className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm"
             >

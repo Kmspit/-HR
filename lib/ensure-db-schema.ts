@@ -210,7 +210,50 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE warnings ADD COLUMN lineErrorMessage TEXT`,
   )
 
+  await addAttendanceColumnIfMissing('dayOfWeek', `ALTER TABLE attendances ADD COLUMN dayOfWeek INTEGER`)
+  await addAttendanceColumnIfMissing(
+    'workMinutes',
+    `ALTER TABLE attendances ADD COLUMN workMinutes INTEGER NOT NULL DEFAULT 0`,
+  )
+  await addAttendanceColumnIfMissing('leaveType', `ALTER TABLE attendances ADD COLUMN leaveType TEXT`)
+  await addAttendanceColumnIfMissing('checkInLat', `ALTER TABLE attendances ADD COLUMN checkInLat REAL`)
+  await addAttendanceColumnIfMissing('checkInLng', `ALTER TABLE attendances ADD COLUMN checkInLng REAL`)
+  await addAttendanceColumnIfMissing(
+    'checkInAddress',
+    `ALTER TABLE attendances ADD COLUMN checkInAddress TEXT`,
+  )
+  await addAttendanceColumnIfMissing(
+    'checkInWorkPlaceName',
+    `ALTER TABLE attendances ADD COLUMN checkInWorkPlaceName TEXT`,
+  )
+  await addAttendanceColumnIfMissing('checkOutLat', `ALTER TABLE attendances ADD COLUMN checkOutLat REAL`)
+  await addAttendanceColumnIfMissing('checkOutLng', `ALTER TABLE attendances ADD COLUMN checkOutLng REAL`)
+  await addAttendanceColumnIfMissing(
+    'checkOutAddress',
+    `ALTER TABLE attendances ADD COLUMN checkOutAddress TEXT`,
+  )
+  await addAttendanceColumnIfMissing(
+    'checkOutWorkPlaceName',
+    `ALTER TABLE attendances ADD COLUMN checkOutWorkPlaceName TEXT`,
+  )
+
   return true
+}
+
+async function attendanceColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(attendances)')
+  return rows.map((r) => r.name)
+}
+
+async function addAttendanceColumnIfMissing(column: string, ddl: string) {
+  const cols = await attendanceColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }
 
 async function warningColumns(): Promise<string[]> {

@@ -6,6 +6,7 @@ import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
+import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,7 +71,8 @@ export async function POST(req: NextRequest) {
           .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
           .catch(() => {})
       }
-      return NextResponse.json({ success: true, attendance: updated })
+      const finalized = await finalizeAttendanceRecord(updated.id)
+      return NextResponse.json({ success: true, attendance: finalized })
     }
 
     if (!attendance.lunchOut) {
@@ -90,7 +92,8 @@ export async function POST(req: NextRequest) {
         .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
         .catch(() => {})
     }
-    return NextResponse.json({ success: true, attendance: updated })
+    const finalized = await finalizeAttendanceRecord(updated.id)
+    return NextResponse.json({ success: true, attendance: finalized })
   } catch (err) {
     return apiError(err)
   }

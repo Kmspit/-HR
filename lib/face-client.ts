@@ -1,6 +1,13 @@
 'use client'
 
 import type * as FaceApi from '@vladmandic/face-api'
+import {
+  computeEarFromLandmarks,
+  sampleVideoLuminance,
+  scoreLivenessSamples,
+  serializeSpoofFlags,
+  type LivenessChallengeResult,
+} from '@/lib/face-liveness'
 
 let modelsLoaded = false
 let faceapi: typeof FaceApi | null = null
@@ -38,7 +45,6 @@ export type FaceScanResult = {
   score: number
 }
 
-/** ประมาณทิศทางศีรษะจาก landmark (กล้องหน้า) */
 export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceScanResult> {
   await loadFaceModels()
   const det = await faceapi!
@@ -77,81 +83,65 @@ export async function extractDescriptorFromVideo(
   return r.descriptor
 }
 
-export type LivenessResult = {
-  score: number
-  flags: string[]
+export type LivenessResult = LivenessChallengeResult
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
 }
 
-/** Basic anti-spoof: motion between frames + luminance variance */
+/**
+ * Anti-spoof challenge: กระพริบตา + ขยับศีรษะ + ตรวจกล้องสด (~3.5 วินาที)
+ */
 export async function runLivenessCheck(video: HTMLVideoElement): Promise<LivenessResult> {
   await loadFaceModels()
   const flags: string[] = []
+  const earSamples: number[] = []
   const nosePositions: { x: number; y: number }[] = []
   const luminanceSamples: number[] = []
 
-  for (let i = 0; i < 4; i++) {
-    await sleep(400)
+  const samples = 6
+  for (let i = 0; i < samples; i++) {
+    await sleep(550)
     if (video.readyState < 2) {
       flags.push('camera_not_ready')
       continue
     }
 
-    const lum = sampleLuminance(video)
-    luminanceSamples.push(lum)
+    luminanceSamples.push(sampleVideoLuminance(video))
 
     const det = await faceapi!
       .detectSingleFace(video, detectorOptions())
       .withFaceLandmarks(true)
-    if (!det) {
+
+    if (!det?.landmarks) {
       flags.push('no_face')
       continue
     }
+
+    const ear = computeEarFromLandmarks(det.landmarks)
+    if (ear.avg > 0) earSamples.push(ear.avg)
+
     const nose = det.landmarks.getNose()[3]
     nosePositions.push({ x: nose.x, y: nose.y })
   }
 
-  if (nosePositions.length < 3) {
-    return { score: 0, flags: [...flags, 'insufficient_samples'] }
-  }
+  if (nosePositions.length < 4) flags.push('insufficient_samples')
 
-  const move = Math.hypot(
-    nosePositions[nosePositions.length - 1].x - nosePositions[0].x,
-    nosePositions[nosePositions.length - 1].y - nosePositions[0].y,
-  )
-
-  const lumRange =
-    luminanceSamples.length > 1
-      ? Math.max(...luminanceSamples) - Math.min(...luminanceSamples)
-      : 0
-
-  if (lumRange < 3) flags.push('static_frame')
-  if (move < 5) flags.push('low_motion')
-
-  let score = 0
-  if (move >= 8) score += 0.45
-  else if (move >= 5) score += 0.25
-  if (lumRange >= 4) score += 0.25
-  if (nosePositions.length >= 4) score += 0.2
-  if (!flags.includes('no_face')) score += 0.1
-
-  return { score: Math.min(1, score), flags }
+  return scoreLivenessSamples({
+    earSamples,
+    nosePositions,
+    luminanceSamples,
+    flags,
+  })
 }
 
-function sampleLuminance(video: HTMLVideoElement): number {
-  const canvas = document.createElement('canvas')
-  canvas.width = 48
-  canvas.height = 48
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return 0
-  ctx.drawImage(video, 0, 0, 48, 48)
-  const data = ctx.getImageData(0, 0, 48, 48).data
-  let sum = 0
-  for (let i = 0; i < data.length; i += 4) {
-    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+export function livenessToFormFields(result: LivenessResult) {
+  return {
+    livenessScore: result.score,
+    spoofFlags: serializeSpoofFlags(result.flags, {
+      blink: result.blinkDetected,
+      movementPx: result.movementPx,
+      liveFrames: result.liveFrames,
+    }),
   }
-  return sum / (48 * 48)
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms))
 }
