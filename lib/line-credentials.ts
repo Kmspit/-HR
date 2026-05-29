@@ -166,6 +166,34 @@ export async function verifyLineWebhookWithCandidates(
   return { ok: false, triedSources }
 }
 
+/** ตรวจรูปแบบค่าใน LINE_CHANNEL_SECRET (พบบ่อย: ใส่ Access Token ผิดช่อง) */
+export function auditLineChannelSecret(value: string | undefined): {
+  length: number
+  likelyWrong: boolean
+  warning: string | null
+} {
+  const s = normalizeLineCredential(value)
+  if (!s) {
+    return { length: 0, likelyWrong: true, warning: 'ยังไม่มี Channel secret' }
+  }
+  if (s.length > 64) {
+    return {
+      length: s.length,
+      likelyWrong: true,
+      warning:
+        'ค่ายาวผิดปกติ — มักใส่ Access Token ใน LINE_CHANNEL_SECRET แทน Channel secret (ดู Basic settings ไม่ใช่ Messaging API token)',
+    }
+  }
+  if (s.includes('/') || s.startsWith('Bearer ')) {
+    return {
+      length: s.length,
+      likelyWrong: true,
+      warning: 'รูปแบบเหมือน Access Token — ใช้ Channel secret จาก Basic settings เท่านั้น',
+    }
+  }
+  return { length: s.length, likelyWrong: false, warning: null }
+}
+
 export async function getLineWebhookDiagnostics() {
   const envSecret = secretFromEnv()
   const row = await loadDbCredentials()
@@ -174,9 +202,25 @@ export async function getLineWebhookDiagnostics() {
   const dbFp = lineCredentialFingerprint(dbSecret)
   const candidates = await listLineChannelSecretCandidates()
   const { token, source: tokenSource } = await resolveLineChannelAccessToken()
+  const secretAudit = auditLineChannelSecret(envSecret ?? dbSecret)
+
+  const warnings: string[] = []
+  if (secretAudit.warning) warnings.push(secretAudit.warning)
+  if (envFp && dbFp && envFp !== dbFp) {
+    warnings.push(
+      'env กับหน้าตั้งค่าไม่ตรงกัน — ลบ LINE_CHANNEL_SECRET บน Vercel หรือให้ตรงกัน',
+    )
+  }
+  if (configuredBut401Hint(envSecret, token)) {
+    warnings.push(
+      'ถ้า Verify ยัง 401: ใน LINE กด Issue Channel secret ใหม่ → ใส่ Vercel hrprogramkm → Redeploy → Verify อีกครั้ง (Channel เดียวกับที่ตั้ง Webhook)',
+    )
+  }
+
+  const configured = candidates.length > 0 && !!token
 
   return {
-    configured: candidates.length > 0 && !!token,
+    configured,
     hasChannelSecret: candidates.length > 0,
     hasAccessToken: !!token,
     tokenSource,
@@ -185,9 +229,19 @@ export async function getLineWebhookDiagnostics() {
     envAndDbSecretDiffer: !!(envFp && dbFp && envFp !== dbFp),
     envSecretFingerprint: envFp,
     dbSecretFingerprint: dbFp,
+    secretLength: secretAudit.length,
+    secretLooksWrong: secretAudit.likelyWrong,
     fix401IfDiffer:
       envFp && dbFp && envFp !== dbFp
         ? 'env กับ DB ไม่ตรงกัน — ลบ LINE_CHANNEL_SECRET บน Vercel หรืออัปเดตให้ตรง LINE Console แล้ว Redeploy'
-        : null,
+        : secretAudit.warning,
+    warnings,
   }
+}
+
+function configuredBut401Hint(
+  secret: string | undefined,
+  token: string | undefined,
+): boolean {
+  return !!secret && !!token
 }
