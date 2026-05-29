@@ -1,45 +1,53 @@
 import { prisma } from '@/lib/prisma'
-import { logAccessDenied } from '@/lib/access-log'
 import type { DeviceStatus } from '@prisma/client'
 
+/**
+ * ตรวจ/ผูกเครื่องสำหรับลงเวลา — อนุมัติอัตโนมัติ ไม่บล็อกรอ HR
+ * เครื่องใหม่หรือเปลี่ยน browser จะอัปเดต deviceKey ทันที
+ */
 export async function assertDeviceAllowed(userId: string, deviceKey: string | null) {
-  if (!deviceKey?.trim()) {
-    logAccessDenied('device_denied', { userId, sub: 'missing_device_key' })
-    return { ok: false as const, error: 'ไม่พบรหัสอุปกรณ์ กรุณาเปิดแอปจากมือถือที่ลงทะเบียน' }
+  const key = deviceKey?.trim()
+  if (!key) {
+    // ไม่บล็อกลงเวลา — client ควรส่ง key แล้ว แต่ถ้าขาดให้ผ่าน
+    return { ok: true as const }
   }
 
   const existing = await prisma.userDevice.findUnique({ where: { userId } })
 
   if (!existing) {
     await prisma.userDevice.create({
-      data: { userId, deviceKey: deviceKey.trim(), deviceLabel: 'Mobile' },
+      data: { userId, deviceKey: key, deviceLabel: 'Mobile', status: 'ACTIVE' },
     })
     return { ok: true as const }
   }
 
-  if (existing.status === 'PENDING_RESET') {
-    logAccessDenied('device_denied', { userId, sub: 'pending_reset' })
-    return { ok: false as const, error: 'รอ HR อนุมัติการเปลี่ยนเครื่อง' }
-  }
-
-  if (existing.deviceKey !== deviceKey.trim()) {
+  if (existing.deviceKey !== key || existing.status !== 'ACTIVE') {
     await prisma.userDevice.update({
       where: { userId },
-      data: { status: 'PENDING_RESET', resetRequestedAt: new Date() },
+      data: {
+        deviceKey: key,
+        status: 'ACTIVE',
+        resetRequestedAt: null,
+        lastSeenAt: new Date(),
+      },
     })
-    logAccessDenied('device_denied', { userId, sub: 'device_mismatch' })
-    return { ok: false as const, error: 'บัญชีนี้ผูกกับมือถือเครื่องอื่นแล้ว — ส่งคำขอเปลี่ยนเครื่องแล้ว รอ HR อนุมัติ' }
+    console.info('[device] auto-bound attendance device', { userId })
+  } else {
+    await prisma.userDevice.update({
+      where: { userId },
+      data: { lastSeenAt: new Date() },
+    })
   }
 
-  await prisma.userDevice.update({
-    where: { userId },
-    data: { lastSeenAt: new Date() },
-  })
   return { ok: true as const }
 }
 
 export async function registerDevice(userId: string, deviceKey: string, deviceLabel?: string) {
   const key = deviceKey.trim()
+  if (!key) {
+    return { status: 'ACTIVE' as DeviceStatus, message: 'ไม่พบรหัสอุปกรณ์' }
+  }
+
   const existing = await prisma.userDevice.findUnique({ where: { userId } })
 
   if (!existing) {
@@ -49,21 +57,23 @@ export async function registerDevice(userId: string, deviceKey: string, deviceLa
     return { status: 'ACTIVE' as DeviceStatus, message: 'ลงทะเบียนเครื่องสำเร็จ' }
   }
 
-  if (existing.deviceKey === key) {
+  if (existing.deviceKey !== key || existing.status !== 'ACTIVE') {
     await prisma.userDevice.update({
       where: { userId },
-      data: { lastSeenAt: new Date(), status: 'ACTIVE', resetRequestedAt: null },
+      data: {
+        deviceKey: key,
+        status: 'ACTIVE',
+        resetRequestedAt: null,
+        lastSeenAt: new Date(),
+        ...(deviceLabel ? { deviceLabel } : {}),
+      },
     })
-    return { status: 'ACTIVE' as DeviceStatus, message: 'เครื่องนี้ลงทะเบียนแล้ว' }
+    return { status: 'ACTIVE' as DeviceStatus, message: 'อัปเดตเครื่องแล้ว' }
   }
 
-  if (existing.status === 'ACTIVE') {
-    await prisma.userDevice.update({
-      where: { userId },
-      data: { status: 'PENDING_RESET', resetRequestedAt: new Date() },
-    })
-    return { status: 'PENDING_RESET' as DeviceStatus, message: 'ส่งคำขอเปลี่ยนเครื่องแล้ว รอ HR อนุมัติ' }
-  }
-
-  return { status: existing.status, message: 'รอ HR อนุมัติการเปลี่ยนเครื่อง' }
+  await prisma.userDevice.update({
+    where: { userId },
+    data: { lastSeenAt: new Date() },
+  })
+  return { status: 'ACTIVE' as DeviceStatus, message: 'เครื่องนี้ลงทะเบียนแล้ว' }
 }
