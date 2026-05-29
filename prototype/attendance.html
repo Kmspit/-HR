@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8" />
@@ -130,24 +130,14 @@
       <!-- Left: Camera View -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title" id="camera-card-title">👤 ถ่ายใบหน้า — หน้าตรง</span>
+          <span class="card-title" id="camera-card-title">👤 สแกนใบหน้า</span>
           <span class="tag blue" style="font-size:11px">กล้องกำลังทำงาน</span>
         </div>
         <div class="view-container" style="background: #000; border: none; border-radius: 16px;">
           <video id="checkin-video" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);" autoplay playsinline></video>
           <div class="scan-overlay"><div class="scan-frame"></div></div>
           <div class="face-scan"></div>
-          <div class="face-status" id="liveness-instruction">กรุณามองตรงไปที่กล้อง...</div>
-        </div>
-        <div class="checkin-steps-wrapper">
-          <div class="step-dots">
-            <div class="step-dot active" id="dot-0"></div>
-          </div>
-          <div class="step-current" id="step-current">
-            <div class="step-current-icon" id="step-current-icon">😐</div>
-            <div class="step-current-label" id="step-current-label">หน้าตรง</div>
-            <div class="step-current-num" id="step-current-num">กดปุ่มถ่ายรูปเมื่อพร้อม</div>
-          </div>
+          <div class="face-status" id="scan-status">มองกล้องตรงเพื่อสแกนใบหน้า</div>
         </div>
       </div>
 
@@ -174,8 +164,27 @@
         <div id="att-actions"></div>
         <div id="att-capture-bar" style="display:none;">
           <p class="att-panel-hint" id="att-panel-hint"></p>
-          <button id="btn-capture" type="button" class="btn-outline" style="width:100%; height:44px; font-size:15px; margin-bottom:10px;" onclick="captureFacePhoto()">📷 ถ่ายรูปหน้าตรง</button>
-          <button id="btn-submit" class="btn-primary" style="width:100%; height:48px; font-size:16px; opacity:0.5; pointer-events:none;" onclick="submitActiveAction()">บันทึก</button>
+
+          <!-- Face scan preview + confidence (req 8, 9) -->
+          <div id="face-preview-wrap" style="display:none; margin-bottom:10px;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <img id="face-preview-img" alt="ภาพที่สแกน" style="width:84px;height:84px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:var(--bg3);">
+              <div style="flex:1; min-width:0;">
+                <div id="face-decision" style="font-size:13px;font-weight:600;">—</div>
+                <div style="height:6px;border-radius:99px;background:var(--bg3);margin:8px 0 4px;overflow:hidden;"><div id="face-confidence-fill" style="height:100%;width:0;background:var(--green);transition:width .3s;"></div></div>
+                <div id="face-confidence-text" style="font-size:11px;color:var(--text3);"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mid-confidence confirmation -->
+          <div id="face-confirm-row" style="display:none; gap:8px; margin-bottom:10px;">
+            <button type="button" class="btn-outline" style="flex:1;height:42px;" onclick="rescanFace()">🔄 สแกนใหม่</button>
+            <button type="button" class="btn-primary" style="flex:1;height:42px;" onclick="confirmMidMatch()">ยืนยันการลงเวลา</button>
+          </div>
+
+          <button id="btn-rescan" type="button" class="btn-outline" style="display:none; width:100%; height:44px; font-size:15px; margin-bottom:10px;" onclick="rescanFace()">🔄 สแกนใหม่</button>
+          <button id="btn-submit" class="btn-primary" style="display:none; width:100%; height:48px; font-size:16px;" onclick="submitActiveAction()">บันทึก</button>
         </div>
       </div>
     </div>
@@ -243,6 +252,7 @@
 </nav>
 
 <script src="hr-core.js"></script>
+<script src="face-core.js"></script>
 <script>
 function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
@@ -454,8 +464,13 @@ function refreshAllMap() {
   }
 }
 
-// ── ลงเวลา 4 ขั้น (เหมือนแอปจริง) ──
-let faceCaptured = false;
+// ── ลงเวลา (face matching อย่างเดียว — ไม่มี liveness/motion) ──
+let faceCaptured = false;        // true เมื่อสแกนผ่าน (accept หรือยืนยัน mid-confidence)
+let faceMatch = null;            // ผลลัพธ์ MatchResult ล่าสุด
+let lastCapturedPhoto = null;    // ภาพคุณภาพสูงที่ใช้บันทึก (un-mirrored)
+let autoScanActive = false;      // ลูปตรวจจับ+capture อัตโนมัติกำลังทำงานอยู่
+let autoScanTimer = null;
+let matching = false;
 let activePanel = null; // checkin-company | checkin-outside | lunch-out | lunch-in | checkout
 
 const PANEL_LABELS = {
@@ -488,25 +503,17 @@ function fmtTime(iso) {
 
 function resetCaptureUI() {
   faceCaptured = false;
+  faceMatch = null;
+  lastCapturedPhoto = null;
   const submitBtn = document.getElementById('btn-submit');
-  if (submitBtn) {
-    submitBtn.style.opacity = '0.5';
-    submitBtn.style.pointerEvents = 'none';
-    submitBtn.textContent = 'บันทึก';
-    submitBtn.disabled = false;
-  }
-  document.getElementById('liveness-instruction').textContent = 'มองตรงกล้อง แล้วกดปุ่มถ่ายรูป';
-  const stepCurrent = document.getElementById('step-current');
-  if (stepCurrent) {
-    stepCurrent.innerHTML = `
-      <div class="step-current-icon" id="step-current-icon">😐</div>
-      <div class="step-current-label" id="step-current-label">หน้าตรง</div>
-      <div class="step-current-num" id="step-current-num">กดปุ่มถ่ายรูปเมื่อพร้อม</div>`;
-  }
-  document.querySelectorAll('.step-dot').forEach((dot) => {
-    dot.classList.remove('done');
-    dot.classList.add('active');
-  });
+  if (submitBtn) { submitBtn.style.display = 'none'; submitBtn.disabled = false; }
+  const rescanBtn = document.getElementById('btn-rescan');
+  if (rescanBtn) rescanBtn.style.display = 'none';
+  const previewWrap = document.getElementById('face-preview-wrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  const confirmRow = document.getElementById('face-confirm-row');
+  if (confirmRow) confirmRow.style.display = 'none';
+  setScanStatus('มองกล้องตรงเพื่อสแกนใบหน้า', 'var(--text2)');
 }
 
 function openPanel(panel) {
@@ -515,61 +522,187 @@ function openPanel(panel) {
   document.getElementById('camera-card-title').textContent = '👤 ' + meta.title;
   document.getElementById('att-capture-bar').style.display = 'block';
   document.getElementById('att-panel-hint').textContent =
-    'ถ่ายรูปหน้าตรง + ใช้ GPS ปัจจุบัน แล้วกดบันทึก';
+    'มองกล้องตรงเพื่อสแกนใบหน้า — ระบบจะบันทึกอัตโนมัติเมื่อยืนยันตัวตนสำเร็จ';
   const submitBtn = document.getElementById('btn-submit');
   submitBtn.textContent = meta.submit;
   resetCaptureUI();
   renderAttendanceUI();
+  startAutoScan();
 }
 
 function closePanel() {
+  stopAutoScan();
   activePanel = null;
   document.getElementById('att-capture-bar').style.display = 'none';
-  document.getElementById('camera-card-title').textContent = '👤 ถ่ายใบหน้า — หน้าตรง';
+  document.getElementById('camera-card-title').textContent = '👤 สแกนใบหน้า';
   resetCaptureUI();
   renderAttendanceUI();
 }
 
-function captureFacePhoto() {
+// ── AUTOMATIC FACE SCAN — face matching only, no liveness/motion ──
+// Flow: open camera -> detect face -> auto capture -> compare -> attendance success
+function setScanStatus(html, color) {
+  const el = document.getElementById('scan-status');
+  if (!el) return;
+  el.innerHTML = color ? `<span style="color:${color}">${html}</span>` : html;
+}
+
+function showFacePreview(decision, confidence, photo) {
+  const wrap = document.getElementById('face-preview-wrap');
+  wrap.style.display = 'block';
+  if (photo) document.getElementById('face-preview-img').src = photo;
+  const pct = Math.round((confidence || 0) * 100);
+  const fill = document.getElementById('face-confidence-fill');
+  fill.style.width = pct + '%';
+  const palette = { accept: 'var(--green)', confirm: 'var(--orange)', reject: 'var(--red)' };
+  const labels  = { accept: '✓ ยืนยันตัวตนสำเร็จ', confirm: '⚠ ความมั่นใจปานกลาง', reject: '✕ ไม่ผ่านการยืนยัน' };
+  fill.style.background = palette[decision] || 'var(--text3)';
+  const dec = document.getElementById('face-decision');
+  dec.textContent = labels[decision] || '—';
+  dec.style.color = palette[decision] || 'var(--text)';
+  document.getElementById('face-confidence-text').textContent = `ความมั่นใจ ${pct}%`;
+}
+
+function startAutoScan() {
+  if (typeof FaceCore === 'undefined') { setScanStatus('ระบบสแกนใบหน้ายังไม่พร้อม', 'var(--red)'); return; }
+  stopAutoScan();
+  autoScanActive = true;
+  faceCaptured = false;
+  faceMatch = null;
+  document.getElementById('face-confirm-row').style.display = 'none';
+  document.getElementById('btn-rescan').style.display = 'none';
+  document.getElementById('face-preview-wrap').style.display = 'none';
+  setScanStatus('มองกล้องตรงเพื่อสแกนใบหน้า', 'var(--text2)');
+  FaceCore.loadModels()
+    .then(() => { if (autoScanActive) autoScanTick(); })
+    .catch(err => setScanStatus('โหลดระบบสแกนไม่สำเร็จ: ' + (err?.message || err), 'var(--red)'));
+}
+
+function stopAutoScan() {
+  autoScanActive = false;
+  if (autoScanTimer) { clearTimeout(autoScanTimer); autoScanTimer = null; }
+}
+
+// Continuously look for a good-quality face; capture + match automatically.
+async function autoScanTick() {
+  if (!autoScanActive || !activePanel) return;
   const video = document.getElementById('checkin-video');
-  if (!video?.srcObject) {
-    alert('เปิดกล้องก่อน');
-    return;
+  if (!video?.srcObject) { autoScanTimer = setTimeout(autoScanTick, 500); return; }
+  try {
+    const quality = await FaceCore.assessQuality(video);
+    if (!autoScanActive) return; // may have been stopped while awaiting
+    if (quality.ok) {
+      await runMatch(video);
+    } else {
+      const noFace = quality.reasons.includes('no_face');
+      setScanStatus(noFace ? 'มองกล้องตรงเพื่อสแกนใบหน้า' : '⚠ ' + quality.message,
+                    noFace ? 'var(--text2)' : 'var(--orange)');
+      autoScanTimer = setTimeout(autoScanTick, 600);
+    }
+  } catch (err) {
+    setScanStatus('เกิดข้อผิดพลาด: ' + (err?.message || err), 'var(--red)');
+    autoScanTimer = setTimeout(autoScanTick, 1000);
   }
-  if (!activePanel) {
-    alert('เลือกประเภทการลงเวลาก่อน');
-    return;
+}
+
+async function runMatch(video) {
+  if (matching) return;
+  matching = true;
+  autoScanActive = false; // pause loop while comparing
+  setScanStatus('กำลังเทียบใบหน้า...', 'var(--text2)');
+  try {
+    // High-quality still (un-mirrored) for the saved record
+    const still = FaceCore.captureStill(video, { quality: 0.92 });
+    lastCapturedPhoto = still.dataUrl;
+    const previewShot = FaceCore.captureStill(video, { mirror: true, quality: 0.85 }).dataUrl;
+
+    const employeeId = FaceCore.getCurrentEmployeeId();
+    const result = await FaceCore.matchFace(employeeId, still.canvas, {
+      capturedImage: FaceCore.thumbnail(still.canvas, 128, 0.6),
+    });
+    faceMatch = result;
+
+    if (result.decision === 'accept') {
+      showFacePreview('accept', result.confidence, previewShot);
+      setScanStatus('✓ ' + result.message, 'var(--green)');
+      faceCaptured = true;
+      autoSubmit();
+    } else if (result.decision === 'confirm') {
+      // mid-confidence: ask instead of hard reject
+      showFacePreview('confirm', result.confidence, previewShot);
+      document.getElementById('face-confirm-row').style.display = 'flex';
+      setScanStatus('⚠ ' + result.message, 'var(--orange)');
+    } else if (result.reason === 'not_registered') {
+      // Don't break attendance for users who haven't registered a face yet.
+      showFacePreview('confirm', 0, previewShot);
+      document.getElementById('face-decision').textContent = 'ยังไม่ได้ลงทะเบียนใบหน้า';
+      document.getElementById('face-confidence-text').innerHTML =
+        'บันทึกภาพไว้แต่ยังไม่ยืนยันตัวตน · <a href="settings.html#face" style="color:var(--accent)">ลงทะเบียนใบหน้า</a>';
+      faceCaptured = true;
+      setScanStatus('⚠ ยังไม่ได้ลงทะเบียนใบหน้า — บันทึกภาพให้อัตโนมัติ', 'var(--orange)');
+      autoSubmit();
+    } else {
+      // reject: keep scanning automatically (no manual challenge needed)
+      showFacePreview('reject', result.confidence, previewShot);
+      setScanStatus('✕ ' + result.message + ' — กำลังสแกนใหม่อัตโนมัติ...', 'var(--red)');
+      document.getElementById('btn-rescan').style.display = 'block';
+      autoScanActive = true;
+      autoScanTimer = setTimeout(autoScanTick, 1300);
+    }
+  } catch (err) {
+    setScanStatus('เกิดข้อผิดพลาด: ' + (err?.message || err), 'var(--red)');
+    autoScanActive = true;
+    autoScanTimer = setTimeout(autoScanTick, 1300);
+  } finally {
+    matching = false;
   }
+}
+
+// Verified -> save automatically (the existing attendance logic is untouched).
+function autoSubmit() {
+  stopAutoScan();
+  document.getElementById('face-confirm-row').style.display = 'none';
+  document.getElementById('btn-rescan').style.display = 'none';
+  // brief pause so the user sees the success state before the record is saved
+  setTimeout(() => { if (activePanel && faceCaptured) submitActiveAction(); }, 650);
+}
+
+function confirmMidMatch() {
+  if (!faceMatch || faceMatch.decision !== 'confirm') return;
+  faceMatch.userConfirmed = true;
   faceCaptured = true;
-  document.getElementById('liveness-instruction').innerHTML =
-    "<span style='color:var(--green)'>✓ ถ่ายใบหน้าแล้ว — กดบันทึกได้</span>";
-  document.querySelectorAll('.step-dot').forEach((dot) => {
-    dot.classList.remove('active');
-    dot.classList.add('done');
-  });
-  document.getElementById('step-current').innerHTML = '<div class="step-current-done">✓ ถ่ายรูปแล้ว</div>';
-  const submitBtn = document.getElementById('btn-submit');
-  submitBtn.style.opacity = '1';
-  submitBtn.style.pointerEvents = 'auto';
+  setScanStatus('✓ ยืนยันการลงเวลาแล้ว', 'var(--green)');
+  autoSubmit();
+}
+
+function rescanFace() {
+  startAutoScan();
 }
 
 function capturePhotoDataUrl() {
+  if (lastCapturedPhoto) return lastCapturedPhoto;
+  // Fallback: capture directly if scan produced no still
   const video = document.getElementById('checkin-video');
   const canvas = document.createElement('canvas');
-  canvas.width = 120;
-  canvas.height = 90;
+  canvas.width = video.videoWidth || 480;
+  canvas.height = video.videoHeight || 360;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg');
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 function submitActiveAction() {
   if (!activePanel) return;
   if (!faceCaptured) {
-    alert('กรุณากดถ่ายรูปหน้าตรงก่อน');
+    alert('กรุณาสแกนใบหน้าเพื่อยืนยันตัวตนก่อน');
     return;
   }
   const photoUrl = capturePhotoDataUrl();
+  const faceMeta = faceMatch ? {
+    faceVerified: faceMatch.decision === 'accept' || !!faceMatch.userConfirmed,
+    faceConfidence: faceMatch.confidence,
+    faceDecision: faceMatch.userConfirmed ? 'user_confirmed' : faceMatch.decision,
+  } : { faceVerified: false, faceConfidence: null, faceDecision: 'none' };
   const now = new Date().toISOString();
   const addr = document.getElementById('gps-address')?.textContent || '';
   const office = getOfficeCoords();
@@ -619,6 +752,7 @@ function submitActiveAction() {
     mockLineNotify?.('🏁 เช็คเอาท์ ' + fmtTime(now), getCurrentUser()?.name);
   }
 
+  Object.assign(rec, faceMeta);
   saveTodayRecord(rec);
   closePanel();
   alert('บันทึกสำเร็จ');
@@ -778,13 +912,33 @@ function renderAttendanceUI() {
 
 // ── CAMERA INITIATION ──
 async function initCamera() {
+  const video = document.getElementById('checkin-video');
+  // Request higher resolution for sharper, more reliable face matching (req 11)
+  const constraints = {
+    audio: false,
+    video: {
+      facingMode: 'user',
+      width:  { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30 },
+    },
+  };
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-    document.getElementById('checkin-video').srcObject = stream;
-    document.getElementById('liveness-instruction').textContent = 'มองตรงกล้อง แล้วกดปุ่มถ่ายรูป';
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch {
+      // Fallback for devices that reject the ideal constraints
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    }
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    setScanStatus('มองกล้องตรงเพื่อสแกนใบหน้า', 'var(--text2)');
+    // Warm up models in the background so the first scan is fast
+    if (typeof FaceCore !== 'undefined') FaceCore.loadModels().catch(() => {});
   } catch (err) {
     console.error("Error accessing camera:", err);
-    document.getElementById('liveness-instruction').textContent = "ไม่สามารถเข้าถึงกล้องได้: " + err.message;
+    setScanStatus("ไม่สามารถเข้าถึงกล้องได้: " + err.message, 'var(--red)');
   }
 }
 

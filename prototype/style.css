@@ -530,81 +530,6 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
 }
 .auth-link:hover { text-decoration: underline; opacity: 0.8; }
 
-/* ── LIVENESS STEPS ENHANCEMENT ── */
-.step-pulse {
-  position: absolute; inset: 0; border: 2px solid var(--accent);
-  border-radius: inherit; animation: stepGlow 1.5s infinite;
-}
-@keyframes stepGlow { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.1); opacity: 0; } }
-
-/* ── CHECKIN STEP-BY-STEP DISPLAY ── */
-.checkin-steps-wrapper {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-.step-dots {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.step-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--border2);
-  transition: background 0.4s, box-shadow 0.4s, transform 0.4s;
-}
-.step-dot.done {
-  background: var(--accent);
-}
-.step-dot.active {
-  background: var(--accent);
-  transform: scale(1.4);
-  box-shadow: 0 0 0 4px rgba(59,130,246,0.25);
-  animation: dotPulse 1.2s ease-in-out infinite;
-}
-@keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(59,130,246,0.25); }
-  50% { box-shadow: 0 0 0 7px rgba(59,130,246,0.1); }
-}
-.step-current {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-height: 90px;
-  justify-content: center;
-}
-.step-current.fade-out {
-  animation: stepFadeOut 0.25s ease forwards;
-}
-.step-current.fade-in {
-  animation: stepFadeIn 0.35s ease forwards;
-}
-@keyframes stepFadeOut {
-  from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(-10px); }
-}
-@keyframes stepFadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.step-current-icon { font-size: 40px; line-height: 1; }
-.step-current-label {
-  font-size: 15px; font-weight: 600;
-  color: var(--text);
-}
-.step-current-num {
-  font-size: 12px;
-  color: var(--text3);
-}
-.step-current-done {
-  font-size: 28px; font-weight: 700;
-  color: var(--green);
-}
-
 /* ════════════════════════════════════════════════════════
    MOBILE RESPONSIVE — ครอบคลุมทุกหน้า
    ════════════════════════════════════════════════════════ */
@@ -739,10 +664,6 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
 
   /* Timeline */
   .tl-item     { gap: 10px; }
-
-  /* Step current display */
-  .step-current-icon { font-size: 34px; }
-  .step-current-label { font-size: 14px; }
 }
 
 /* ── Small phone (≤480px) ── */
