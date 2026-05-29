@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-handler'
 import { parseDescriptorFromBody, verifyFaceForAttendance } from '@/lib/face-attendance'
+import { notifyHrFaceMismatchOnLine } from '@/lib/attendance-line-notify'
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,6 +33,15 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.ok) {
+      if (['MISMATCH', 'SPOOF', 'LOW_CONFIDENCE'].includes(result.code)) {
+        void notifyHrFaceMismatchOnLine({
+          employeeUserId: session.user.id,
+          action,
+          faceLogId: result.logId,
+          failureReason:
+            result.code === 'MISMATCH' ? 'security_face_mismatch' : 'spoof_detected',
+        }).catch((err) => console.error('[face-verify-line]', err))
+      }
       return NextResponse.json(
         { error: result.error, code: result.code, logId: result.logId, distance: result.distance },
         { status: 403 },

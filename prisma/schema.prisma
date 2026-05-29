@@ -301,6 +301,29 @@ model AttendanceFaceLog {
   @@map("attendance_face_logs")
 }
 
+// ── ATTENDANCE LINE NOTIFY (ส่งเข้า LINE OA ของ HR) ──
+
+model AttendanceLineNotifyLog {
+  id             String    @id @default(cuid())
+  employeeUserId String
+  hrLineUserId   String
+  eventType      String
+  attendanceId   String?
+  faceLogId      String?
+  messageText    String
+  photoUrl       String?
+  status         String    @default("pending")
+  failedReason   String?
+  retryCount     Int       @default(0)
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([employeeUserId, createdAt])
+  @@map("attendance_line_notify_logs")
+}
+
 // ── SAVED WORK PLACES (ชื่อสถานที่ — ไม่ผูก GPS) ──
 
 model SavedWorkPlace {

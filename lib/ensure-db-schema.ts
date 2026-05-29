@@ -237,6 +237,33 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE attendances ADD COLUMN checkOutWorkPlaceName TEXT`,
   )
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS attendance_line_notify_logs (
+      id TEXT NOT NULL PRIMARY KEY,
+      employeeUserId TEXT NOT NULL,
+      hrLineUserId TEXT NOT NULL,
+      eventType TEXT NOT NULL,
+      attendanceId TEXT,
+      faceLogId TEXT,
+      messageText TEXT NOT NULL,
+      photoUrl TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      failedReason TEXT,
+      retryCount INTEGER NOT NULL DEFAULT 0,
+      sentAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS attendance_line_notify_status_idx
+    ON attendance_line_notify_logs (status, createdAt)
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS attendance_line_notify_employee_idx
+    ON attendance_line_notify_logs (employeeUserId, createdAt)
+  `)
+
   return true
 }
 

@@ -8,6 +8,7 @@ import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
+import { scheduleHrAttendanceLineNotify } from '@/lib/attendance-line-notify'
 
 export async function POST(req: NextRequest) {
   try {
@@ -86,6 +87,16 @@ export async function POST(req: NextRequest) {
         .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
         .catch(() => {})
     }
+
+    scheduleHrAttendanceLineNotify({
+      event: 'checkout',
+      employeeUserId: session.user.id,
+      attendanceId: finalized.id,
+      photoUrl: finalized.checkOutPhotoUrl,
+      eventTime: now,
+      location: workPlaceName ?? address ?? finalized.workPlaceName ?? null,
+      earlyLeaveMinutes,
+    })
 
     return NextResponse.json({ success: true, attendance: finalized, earlyLeaveMinutes })
   } catch (err) {

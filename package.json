@@ -23,6 +23,7 @@
     "db:migrate:warning-line": "node scripts/migrate-turso-warning-line.mjs",
     "db:migrate:holidays": "node scripts/migrate-turso-holidays.mjs",
     "db:migrate:attendance-worklog": "node scripts/migrate-turso-attendance-worklog.mjs",
+    "db:migrate:attendance-line": "node scripts/migrate-turso-attendance-line.mjs",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",

@@ -8,6 +8,7 @@ import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord, getDayOfWeekIndex } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
+import { scheduleHrAttendanceLineNotify } from '@/lib/attendance-line-notify'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000
@@ -133,6 +134,16 @@ export async function POST(req: NextRequest) {
         .update({ where: { id: faceLogId }, data: { attendanceId: finalized.id } })
         .catch(() => {})
     }
+
+    scheduleHrAttendanceLineNotify({
+      event: 'checkin',
+      employeeUserId: session.user.id,
+      attendanceId: finalized.id,
+      photoUrl: finalized.photoUrl,
+      eventTime: now,
+      location: workPlaceName ?? address ?? null,
+      lateMinutes,
+    })
 
     return NextResponse.json({ success: true, attendance: finalized, isOutside, lateMinutes })
   } catch (err) {

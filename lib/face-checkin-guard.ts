@@ -5,6 +5,7 @@ import {
   userHasFaceProfile,
   verifyFaceForAttendance,
 } from '@/lib/face-attendance'
+import { notifyHrFaceMismatchOnLine } from '@/lib/attendance-line-notify'
 
 /** Face gate for attendance POST — บังคับสแกนใบหน้าเมื่อลงทะเบียนแล้ว */
 export async function guardAttendanceFace(
@@ -99,6 +100,20 @@ export async function guardAttendanceFace(
   })
 
   if (!result.ok) {
+    const mismatchCodes = ['MISMATCH', 'SPOOF', 'FACE_REQUIRED', 'WRONG_USER', 'LOW_CONFIDENCE']
+    if (mismatchCodes.includes(result.code)) {
+      void notifyHrFaceMismatchOnLine({
+        employeeUserId: userId,
+        action,
+        faceLogId: result.logId,
+        failureReason:
+          result.code === 'MISMATCH'
+            ? 'security_face_mismatch'
+            : result.code === 'SPOOF'
+              ? 'spoof_detected'
+              : result.code,
+      }).catch((err) => console.error('[face-guard-line]', err))
+    }
     return NextResponse.json(
       {
         error: result.error,

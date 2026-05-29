@@ -7,6 +7,7 @@ import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
+import { scheduleHrAttendanceLineNotify } from '@/lib/attendance-line-notify'
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,6 +73,14 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
+      scheduleHrAttendanceLineNotify({
+        event: 'lunch-out',
+        employeeUserId: session.user.id,
+        attendanceId: finalized.id,
+        photoUrl: finalized.lunchOutPhotoUrl,
+        eventTime: now,
+        location: address || finalized.workPlaceName || null,
+      })
       return NextResponse.json({ success: true, attendance: finalized })
     }
 
@@ -93,6 +102,14 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
+    scheduleHrAttendanceLineNotify({
+      event: 'lunch-in',
+      employeeUserId: session.user.id,
+      attendanceId: finalized.id,
+      photoUrl: finalized.lunchInPhotoUrl,
+      eventTime: now,
+      location: address || finalized.workPlaceName || null,
+    })
     return NextResponse.json({ success: true, attendance: finalized })
   } catch (err) {
     return apiError(err)
