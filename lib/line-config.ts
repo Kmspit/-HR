@@ -1,11 +1,14 @@
 import { normalizeLineCredential } from '@/lib/line-credentials'
+import { sanitizeLineAccessTokenForHeader } from '@/lib/line-http-headers'
 
 /** LINE Messaging API — รองรับชื่อ env หลายแบบ (sync; webhook ใช้ resolveLineChannelSecret แทน) */
 export function getLineChannelAccessToken(): string | undefined {
-  return (
+  const raw =
     normalizeLineCredential(process.env.LINE_CHANNEL_ACCESS_TOKEN) ||
     normalizeLineCredential(process.env.LINE_OA_ACCESS_TOKEN)
-  )
+  if (!raw) return undefined
+  const s = sanitizeLineAccessTokenForHeader(raw)
+  return s.ok ? s.token : undefined
 }
 
 export function getLineChannelSecret(): string | undefined {

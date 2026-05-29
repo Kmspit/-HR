@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { getLineChannelAccessToken, getLineChannelSecret } from '@/lib/line-config'
+import { createLineApiHeaders, sanitizeLineAccessTokenForHeader } from '@/lib/line-http-headers'
 
 const LINE_API = 'https://api.line.me/v2/bot'
 
@@ -44,10 +45,7 @@ export async function replyLineText(replyToken: string, text: string): Promise<b
   try {
     const res = await fetch(`${LINE_API}/message/reply`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: createLineApiHeaders(token),
       body: JSON.stringify({
         replyToken,
         messages: [{ type: 'text', text: text.slice(0, 5000) }],
@@ -75,13 +73,15 @@ export async function pushLineMessages(
     console.log('[LINE push mock] to', toUserId, messages.length, 'messages')
     return { ok: true }
   }
+  const sanitized = sanitizeLineAccessTokenForHeader(token)
+  if (!sanitized.ok) {
+    return { ok: false, error: sanitized.error }
+  }
+
   try {
     const res = await fetch(`${LINE_API}/message/push`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: createLineApiHeaders(sanitized.token),
       body: JSON.stringify({ to: toUserId, messages: messages.slice(0, 5) }),
     })
     if (!res.ok) {
@@ -111,7 +111,7 @@ export async function getLineUserProfile(lineUserId: string): Promise<{
   if (!token) return { displayName: 'LINE User' }
   try {
     const res = await fetch(`${LINE_API}/profile/${lineUserId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: createLineApiHeaders(token),
     })
     if (!res.ok) return null
     const data = (await res.json()) as { displayName?: string; pictureUrl?: string }

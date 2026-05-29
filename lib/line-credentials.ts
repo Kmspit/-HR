@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { verifyLineWebhookSignature } from '@/lib/line-api'
+import { sanitizeLineAccessTokenForHeader } from '@/lib/line-http-headers'
 
 /** ลบช่องว่าง/เครื่องหมายคำพูดที่ copy จาก .env หรือ Vercel ผิดรูปแบบ */
 export function normalizeLineCredential(
@@ -26,10 +27,12 @@ function secretFromEnv(): string | undefined {
 }
 
 function tokenFromEnv(): string | undefined {
-  return (
+  const raw =
     normalizeLineCredential(process.env.LINE_CHANNEL_ACCESS_TOKEN) ||
     normalizeLineCredential(process.env.LINE_OA_ACCESS_TOKEN)
-  )
+  if (!raw) return undefined
+  const s = sanitizeLineAccessTokenForHeader(raw)
+  return s.ok ? s.token : undefined
 }
 
 let cache: {
@@ -101,16 +104,19 @@ export async function resolveLineChannelAccessToken(): Promise<{
   }
 
   const row = await loadDbCredentials()
-  const fromDb = normalizeLineCredential(row?.lineAccessToken)
-  if (fromDb) {
+  const fromDbRaw = normalizeLineCredential(row?.lineAccessToken)
+  const fromDb = fromDbRaw
+    ? sanitizeLineAccessTokenForHeader(fromDbRaw)
+    : { ok: false as const, error: '' }
+  if (fromDb.ok) {
     cache = {
       at: now,
-      token: fromDb,
+      token: fromDb.token,
       secret: cache?.secret,
       secretSource: cache?.secretSource,
       tokenSource: 'database',
     }
-    return { token: fromDb, source: 'database' }
+    return { token: fromDb.token, source: 'database' }
   }
 
   return { source: 'none' }

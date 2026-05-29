@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import type { NotificationType, Role } from '@prisma/client'
-import { pushLineText } from '@/lib/line-api'
+import { pushLineMessages, pushLineText } from '@/lib/line-api'
 
 // ─── Create in-app notification ───────────────────────
 export async function createNotification(params: {
@@ -66,30 +66,10 @@ export async function sendLineFlexMessage(userId: string, altText: string, conte
   })
   if (!user?.lineUserId) return false
 
-  const token =
-    process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim() ||
-    process.env.LINE_OA_ACCESS_TOKEN?.trim()
-  if (!token) {
-    console.log('[LINE Flex Mock] to', user.lineUserId)
-    return true
-  }
-
-  try {
-    const res = await fetch('https://api.line.me/v2/bot/message/push', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: user.lineUserId,
-        messages: [{ type: 'flex', altText, contents }],
-      }),
-    })
-    return res.ok
-  } catch {
-    return false
-  }
+  const result = await pushLineMessages(user.lineUserId, [
+    { type: 'flex', altText, contents },
+  ])
+  return result.ok
 }
 
 // ─── LINE Notify (broadcast — Notify token) ──────────
@@ -99,13 +79,19 @@ export async function sendLineNotify(message: string, token?: string): Promise<b
     console.log('[LINE Notify Mock]', message)
     return true
   }
+  const { sanitizeLineAccessTokenForHeader } = await import('@/lib/line-http-headers')
+  const sanitized = sanitizeLineAccessTokenForHeader(lineToken)
+  if (!sanitized.ok) {
+    console.error('[LINE Notify]', sanitized.error)
+    return false
+  }
   try {
+    const headers = new Headers()
+    headers.set('Content-Type', 'application/x-www-form-urlencoded')
+    headers.set('Authorization', `Bearer ${sanitized.token}`)
     const res = await fetch('https://notify-api.line.me/api/notify', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${lineToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers,
       body: new URLSearchParams({ message }),
     })
     return res.ok
