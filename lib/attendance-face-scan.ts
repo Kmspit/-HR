@@ -157,14 +157,33 @@ export async function getFaceScanImageBuffer(scanId: string): Promise<{
 export async function getSignedScanImageUrlForLine(scanId: string): Promise<string | null> {
   const row = await prisma.attendanceFaceScan.findUnique({
     where: { id: scanId },
-    select: { cloudinaryPublicId: true, objectKey: true, format: true },
+    select: {
+      cloudinaryPublicId: true,
+      objectKey: true,
+      format: true,
+      secureUrl: true,
+      imageUrl: true,
+    },
   })
 
   const publicId = row?.cloudinaryPublicId ?? row?.objectKey
   if (publicId) {
-    const signed = getSignedUrl(publicId, { format: row?.format ?? 'jpg' })
+    const { optimizeImage } = await import('@/lib/cloudinary-service')
+    const delivery = optimizeImage(publicId, {
+      width: 1024,
+      expiresInSec: 60 * 60,
+    })
+    if (delivery?.startsWith('https://')) return delivery
+
+    const signed = getSignedUrl(publicId, {
+      format: row?.format ?? 'jpg',
+      expiresInSec: 60 * 60,
+    })
     if (signed?.startsWith('https://')) return signed
   }
+
+  const stored = row?.secureUrl ?? row?.imageUrl
+  if (stored?.startsWith('https://')) return stored
 
   const base =
     (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '') ||
@@ -339,13 +358,17 @@ export async function recordFaceScanAndNotifyHr(params: {
 
   // ส่ง LINE HR ทันทีหลังอัปโหลด Cloudinary — ไม่ throw (attendance บันทึกแล้ว)
   try {
+    let lineImageUrl: string | null = null
+    if (faceScanId) {
+      lineImageUrl = await getSignedScanImageUrlForLine(faceScanId)
+    }
     const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
     const result = await notifyHrAttendanceOnLine({
       event: params.event,
       employeeUserId: params.userId,
       attendanceId: params.attendanceId,
       faceScanId,
-      photoUrl: params.photoUrl,
+      photoUrl: lineImageUrl ?? params.photoUrl,
       eventTime: params.eventTime,
       location: params.location ?? params.locationName,
       lateMinutes: params.lateMinutes,

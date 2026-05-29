@@ -44,15 +44,27 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+const BANGKOK_TZ = 'Asia/Bangkok'
+
 function formatTimeTh(d: Date): string {
-  return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: BANGKOK_TZ,
+  })
 }
 
 function formatDateDdMmYyyy(d: Date): string {
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = d.getFullYear()
-  return `${dd}/${mm}/${yyyy}`
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: BANGKOK_TZ,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).formatToParts(d)
+  const day = parts.find((p) => p.type === 'day')?.value ?? '01'
+  const month = parts.find((p) => p.type === 'month')?.value ?? '01'
+  const year = parts.find((p) => p.type === 'year')?.value ?? '2026'
+  return `${day}/${month}/${year}`
 }
 
 function lateLabel(minutes: number | undefined, event: AttendanceLineEvent): string {
@@ -175,16 +187,17 @@ async function findLineNotifyLogForRecipient(
   })
 }
 
-function buildLineMessages(text: string, imageUrl: string | null): object[] {
-  const messages: object[] = [{ type: 'text', text: text.slice(0, 5000) }]
-  if (imageUrl && imageUrl.startsWith('https://')) {
-    messages.push({
-      type: 'image',
-      originalContentUrl: imageUrl,
-      previewImageUrl: imageUrl,
-    })
+function buildLineTextMessage(text: string): object {
+  return { type: 'text', text: text.slice(0, 5000) }
+}
+
+function buildLineImageMessage(imageUrl: string): object | null {
+  if (!imageUrl.startsWith('https://')) return null
+  return {
+    type: 'image',
+    originalContentUrl: imageUrl,
+    previewImageUrl: imageUrl,
   }
-  return messages.slice(0, 5)
 }
 
 async function pushWithRetry(
@@ -250,37 +263,58 @@ async function resolveLineImageUrl(params: {
   return absolutePhotoUrl(params.photoUrl)
 }
 
+/** ส่งข้อความ (เวลา/รายละเอียด) ก่อน แล้วส่งรูปแยก — HR ได้เวลาแม้รูปล้ม */
 async function deliverToHrRecipient(params: {
   logId: string
   hrLineUserId: string
-  messages: object[]
+  messageText: string
+  imageUrl: string | null
   retryCountStart: number
 }): Promise<void> {
-  const push = await pushWithRetry(params.hrLineUserId, params.messages)
-  if (push.ok) {
+  const textPush = await pushWithRetry(params.hrLineUserId, [
+    buildLineTextMessage(params.messageText),
+  ])
+
+  if (!textPush.ok) {
+    const reason = textPush.error?.slice(0, 500) ?? 'LINE text push failed'
+    console.error('[attendance-line-notify] LINE text failed', {
+      logId: params.logId,
+      hrLineUserId: params.hrLineUserId,
+      reason,
+    })
     await prisma.attendanceLineNotifyLog.update({
       where: { id: params.logId },
       data: {
-        status: 'sent',
-        sentAt: new Date(),
-        failedReason: null,
+        status: 'failed',
+        failedReason: reason,
         retryCount: params.retryCountStart + LINE_RETRY,
       },
     })
     return
   }
 
-  const reason = push.error?.slice(0, 500) ?? 'unknown'
-  console.error('[attendance-line-notify] LINE push failed', {
-    logId: params.logId,
-    hrLineUserId: params.hrLineUserId,
-    reason,
-  })
+  let imageWarning: string | null = null
+  const imageMsg = params.imageUrl ? buildLineImageMessage(params.imageUrl) : null
+  if (imageMsg) {
+    const imgPush = await pushWithRetry(params.hrLineUserId, [imageMsg])
+    if (!imgPush.ok) {
+      imageWarning = `รูปส่งไม่สำเร็จ: ${imgPush.error?.slice(0, 400) ?? 'unknown'}`
+      console.warn('[attendance-line-notify] LINE image failed (text sent)', {
+        logId: params.logId,
+        imageUrl: params.imageUrl?.slice(0, 80),
+        error: imgPush.error,
+      })
+    }
+  } else if (params.imageUrl) {
+    imageWarning = 'ไม่มี URL รูปที่ LINE ใช้ได้ (ต้องเป็น https)'
+  }
+
   await prisma.attendanceLineNotifyLog.update({
     where: { id: params.logId },
     data: {
-      status: 'failed',
-      failedReason: reason,
+      status: 'sent',
+      sentAt: new Date(),
+      failedReason: imageWarning,
       retryCount: params.retryCountStart + LINE_RETRY,
     },
   })
@@ -342,8 +376,6 @@ export async function notifyHrAttendanceOnLine(params: {
     faceScanId: params.faceScanId,
     photoUrl: params.photoUrl,
   })
-  const messages = buildLineMessages(messageText, imageUrl)
-
   let sent = 0
   let failed = 0
 
@@ -415,7 +447,8 @@ export async function notifyHrAttendanceOnLine(params: {
     await deliverToHrRecipient({
       logId,
       hrLineUserId: hr.lineUserId,
-      messages,
+      messageText,
+      imageUrl,
       retryCountStart,
     })
 
@@ -466,7 +499,6 @@ export async function retryFailedAttendanceLineNotify(logId: string): Promise<{
     faceScanId: log.faceScanId,
     photoUrl: log.imageUrl ?? log.photoUrl,
   })
-  const messages = buildLineMessages(log.messageText, imageUrl)
 
   await prisma.attendanceLineNotifyLog.update({
     where: { id: logId },
@@ -476,7 +508,8 @@ export async function retryFailedAttendanceLineNotify(logId: string): Promise<{
   await deliverToHrRecipient({
     logId,
     hrLineUserId: log.hrLineUserId,
-    messages,
+    messageText: log.messageText,
+    imageUrl,
     retryCountStart: log.retryCount,
   })
 
