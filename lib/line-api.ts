@@ -3,12 +3,23 @@ import { getLineChannelAccessToken, getLineChannelSecret } from '@/lib/line-conf
 
 const LINE_API = 'https://api.line.me/v2/bot'
 
-export function verifyLineWebhookSignature(body: string, signature: string | null): boolean {
-  const secret = getLineChannelSecret()
+export function verifyLineWebhookSignature(
+  body: string,
+  signature: string | null,
+  channelSecret?: string,
+): boolean {
+  const secret = channelSecret ?? getLineChannelSecret()
   if (!secret) return false
-  if (!signature) return false
+  if (!signature?.trim()) return false
   const hash = crypto.createHmac('sha256', secret).update(body).digest('base64')
-  return hash === signature
+  try {
+    const a = Buffer.from(hash)
+    const b = Buffer.from(signature)
+    if (a.length !== b.length) return false
+    return crypto.timingSafeEqual(a, b)
+  } catch {
+    return false
+  }
 }
 
 export type LineWebhookEvent = {
@@ -24,7 +35,8 @@ export type LineWebhookBody = {
 }
 
 export async function replyLineText(replyToken: string, text: string): Promise<boolean> {
-  const token = getLineChannelAccessToken()
+  const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
+  const { token } = await resolveLineChannelAccessToken()
   if (!token) {
     console.log('[LINE reply mock]', text)
     return true
@@ -57,7 +69,8 @@ export async function pushLineMessages(
   toUserId: string,
   messages: object[],
 ): Promise<LinePushResult> {
-  const token = getLineChannelAccessToken()
+  const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
+  const { token } = await resolveLineChannelAccessToken()
   if (!token) {
     console.log('[LINE push mock] to', toUserId, messages.length, 'messages')
     return { ok: true }
@@ -93,7 +106,8 @@ export async function getLineUserProfile(lineUserId: string): Promise<{
   displayName: string
   pictureUrl?: string
 } | null> {
-  const token = getLineChannelAccessToken()
+  const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
+  const { token } = await resolveLineChannelAccessToken()
   if (!token) return { displayName: 'LINE User' }
   try {
     const res = await fetch(`${LINE_API}/profile/${lineUserId}`, {

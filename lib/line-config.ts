@@ -1,17 +1,17 @@
-/** LINE Messaging API — รองรับชื่อ env หลายแบบ */
+import { normalizeLineCredential } from '@/lib/line-credentials'
+
+/** LINE Messaging API — รองรับชื่อ env หลายแบบ (sync; webhook ใช้ resolveLineChannelSecret แทน) */
 export function getLineChannelAccessToken(): string | undefined {
   return (
-    process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim() ||
-    process.env.LINE_OA_ACCESS_TOKEN?.trim() ||
-    undefined
+    normalizeLineCredential(process.env.LINE_CHANNEL_ACCESS_TOKEN) ||
+    normalizeLineCredential(process.env.LINE_OA_ACCESS_TOKEN)
   )
 }
 
 export function getLineChannelSecret(): string | undefined {
   return (
-    process.env.LINE_CHANNEL_SECRET?.trim() ||
-    process.env.LINE_OA_CHANNEL_SECRET?.trim() ||
-    undefined
+    normalizeLineCredential(process.env.LINE_CHANNEL_SECRET) ||
+    normalizeLineCredential(process.env.LINE_OA_CHANNEL_SECRET)
   )
 }
 

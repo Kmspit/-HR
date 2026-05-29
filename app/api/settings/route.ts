@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { clearLineCredentialsCache } from '@/lib/line-credentials'
 
 const ALLOWED_FIELDS = [
   'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
@@ -41,6 +42,10 @@ export async function PATCH(req: NextRequest) {
       update: data,
       create: { id: 'singleton', ...data },
     })
+
+    if ('lineChannelSecret' in data || 'lineAccessToken' in data) {
+      clearLineCredentialsCache()
+    }
 
     return NextResponse.json({ settings })
   } catch (err) {
