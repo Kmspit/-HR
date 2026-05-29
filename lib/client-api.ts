@@ -1,9 +1,13 @@
+import { getDeviceKey } from '@/lib/client-device'
+
 type ApiResult<T> = { ok: boolean; status: number; data: T }
 
 function mergeDeviceHeaders(init?: RequestInit): Headers {
   const headers = new Headers(init?.headers)
   if (typeof window !== 'undefined') {
-    const key = localStorage.getItem('hrflow_device_id')
+    // ใช้ getDeviceKey() เพื่อสร้าง+เก็บคีย์ถาวรเสมอ (ไม่ใช่แค่ read)
+    // กัน 403 "ไม่พบรหัสอุปกรณ์" กรณี DeviceBinder ยังไม่รัน / เปิดหน้า attendance ตรง ๆ / localStorage ถูกล้าง
+    const key = getDeviceKey()
     if (key) headers.set('X-Device-Key', key)
   }
   return headers
