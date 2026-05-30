@@ -101,6 +101,18 @@ export async function POST(req: NextRequest) {
         await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchOutPhotoUrl')
       } catch (err) {
         console.error('[lunch-out-face-line]', err)
+        try {
+          const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+          lineNotify = await notifyHrAttendanceOnLine({
+            event: 'lunch-out',
+            employeeUserId: session.user.id,
+            attendanceId: finalized.id,
+            eventTime: now,
+            location: address || finalized.workPlaceName || null,
+          })
+        } catch (lineErr) {
+          console.error('[lunch-out-line-fallback]', lineErr)
+        }
       }
       return NextResponse.json({ success: true, attendance: finalized, faceScanId, lineNotify })
     }
@@ -139,6 +151,18 @@ export async function POST(req: NextRequest) {
       await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchInPhotoUrl')
     } catch (err) {
       console.error('[lunch-in-face-line]', err)
+      try {
+        const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+        lineNotify = await notifyHrAttendanceOnLine({
+          event: 'lunch-in',
+          employeeUserId: session.user.id,
+          attendanceId: finalized.id,
+          eventTime: now,
+          location: address || finalized.workPlaceName || null,
+        })
+      } catch (lineErr) {
+        console.error('[lunch-in-line-fallback]', lineErr)
+      }
     }
     return NextResponse.json({ success: true, attendance: finalized, faceScanId, lineNotify })
   } catch (err) {

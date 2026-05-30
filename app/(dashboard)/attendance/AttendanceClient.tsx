@@ -9,6 +9,7 @@ import { apiJson } from '@/lib/client-api'
 import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
+import AttendanceLocalHistory from '@/components/attendance/AttendanceLocalHistory'
 import { Coffee } from 'lucide-react'
 
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
@@ -51,6 +52,8 @@ type RecentRecord = {
 type Props = {
   role: string
   userId: string
+  userName: string
+  employeeCode: string | null
   companyOffice: { name: string; address: string } | null
   companyGeofence: CompanyGeofence | null
   todayRecord: TodayRecord | null
@@ -79,7 +82,18 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 type LocationType = 'company' | 'outside'
-export default function AttendanceClient({ role, userId, companyOffice, companyGeofence, todayRecord, recentRecords, leaveBalance, allToday }: Props) {
+export default function AttendanceClient({
+  role,
+  userId,
+  userName,
+  employeeCode,
+  companyOffice,
+  companyGeofence,
+  todayRecord,
+  recentRecords,
+  leaveBalance,
+  allToday,
+}: Props) {
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
@@ -300,6 +314,8 @@ export default function AttendanceClient({ role, userId, companyOffice, companyG
                 companyGeofence={companyGeofence}
                 faceRequired={faceRegistered}
                 userId={userId}
+                employeeName={userName}
+                employeeCode={employeeCode}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -410,6 +426,8 @@ export default function AttendanceClient({ role, userId, companyOffice, companyG
                 companyGeofence={selectedType === 'company' ? companyGeofence : null}
                 faceRequired={faceRegistered}
                 userId={userId}
+                employeeName={userName}
+                employeeCode={employeeCode}
                 onSuccess={handleSuccess}
               />
             </div>
@@ -433,10 +451,14 @@ export default function AttendanceClient({ role, userId, companyOffice, companyG
                 companyGeofence={!todayRecord?.isOutside ? companyGeofence : null}
                 faceRequired={faceRegistered}
                 userId={userId}
+                employeeName={userName}
+                employeeCode={employeeCode}
                 onSuccess={handleSuccess}
               />
             </div>
           )}
+
+          <AttendanceLocalHistory userId={userId} refreshKey={refreshKey} />
 
           {/* Done */}
           {!canCheckIn && !canCheckOut && todayRecord && (

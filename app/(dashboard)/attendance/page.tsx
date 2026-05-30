@@ -31,6 +31,11 @@ export default async function AttendancePage({
     },
   })
 
+  const profile = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { employeeId: true },
+  })
+
   const [todayRecord, recentRecords, leaveBalance] = await Promise.all([
     prisma.attendance.findUnique({
       where: { userId_date: { userId: session.user.id, date: today } },
@@ -92,6 +97,8 @@ export default async function AttendancePage({
     <AttendanceClient
       role={session.user.role}
       userId={session.user.id}
+      userName={session.user.name ?? 'พนักงาน'}
+      employeeCode={profile?.employeeId ?? null}
       companyOffice={
         companySettings
           ? {

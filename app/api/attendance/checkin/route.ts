@@ -168,6 +168,19 @@ export async function POST(req: NextRequest) {
       await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'photoUrl')
     } catch (err) {
       console.error('[checkin-face-line]', err)
+      try {
+        const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+        lineNotify = await notifyHrAttendanceOnLine({
+          event: 'checkin',
+          employeeUserId: session.user.id,
+          attendanceId: finalized.id,
+          eventTime: now,
+          location: workPlaceName ?? address ?? null,
+          lateMinutes,
+        })
+      } catch (lineErr) {
+        console.error('[checkin-line-fallback]', lineErr)
+      }
     }
 
     return NextResponse.json({
