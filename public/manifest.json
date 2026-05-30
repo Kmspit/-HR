@@ -1,0 +1,38 @@
+{
+  "name": "เค เอ็ม เซอร์วิส พลัส",
+  "short_name": "KM HR",
+  "description": "ระบบ HR สำหรับพนักงาน — บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "orientation": "portrait-primary",
+  "lang": "th",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "เช็คอิน",
+      "url": "/attendance",
+      "description": "ลงเวลาเข้างาน"
+    }
+  ],
+  "categories": ["productivity", "business"]
+}

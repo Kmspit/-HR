@@ -47,7 +47,8 @@ export type FaceScanResult = {
 
 export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceScanResult> {
   await loadFaceModels()
-  const det = await faceapi!
+  if (!faceapi) throw new Error('Face models not loaded')
+  const det = await faceapi
     .detectSingleFace(video, detectorOptions())
     .withFaceLandmarks(true)
     .withFaceDescriptor()
@@ -109,7 +110,8 @@ export async function runLivenessCheck(video: HTMLVideoElement): Promise<Livenes
 
     luminanceSamples.push(sampleVideoLuminance(video))
 
-    const det = await faceapi!
+    if (!faceapi) throw new Error('Face models not loaded')
+    const det = await faceapi
       .detectSingleFace(video, detectorOptions())
       .withFaceLandmarks(true)
 

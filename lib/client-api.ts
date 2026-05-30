@@ -33,7 +33,8 @@ export async function apiJson<T extends Record<string, unknown> = Record<string,
       }
     }
     return { ok: res.ok, status: res.status, data }
-  } catch {
+  } catch (err) {
+    console.error('[api-fetch]', String(input).slice(0, 100), err)
     return { ok: false, status: 0, data: { error: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' } as unknown as T }
   }
 }

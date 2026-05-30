@@ -27,6 +27,13 @@ export const metadata: Metadata = {
   title: { default: 'เค เอ็ม เซอร์วิส พลัส', template: '%s — เค เอ็ม เซอร์วิส พลัส' },
   description: 'ระบบ HR — บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
   icons: { icon: '/favicon.ico' },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'KM HR',
+    statusBarStyle: 'black-translucent',
+  },
+  formatDetection: { telephone: false },
 }
 
 export const viewport: Viewport = {

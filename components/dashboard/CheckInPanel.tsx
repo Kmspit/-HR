@@ -159,7 +159,11 @@ export default function CheckInPanel({
       return
     }
     const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      toast.error('กล้องไม่รองรับการถ่ายภาพในเบราว์เซอร์นี้')
+      return
+    }
     canvas.width = videoRef.current.videoWidth
     canvas.height = videoRef.current.videoHeight
     ctx.drawImage(videoRef.current, 0, 0)
