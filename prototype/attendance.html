@@ -125,6 +125,11 @@
       <div class="att-stat"><div class="att-stat-label">สถานะ</div><div class="att-stat-value" id="stat-status" style="font-size:14px;color:var(--text2)">—</div></div>
       <div class="att-stat"><div class="att-stat-label">ประเภท</div><div class="att-stat-value" id="stat-type" style="font-size:14px;color:var(--text2)">—</div></div>
     </div>
+    <!-- Offline queue indicator -->
+    <div id="offline-queue-bar" style="display:none;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--orange);display:flex;align-items:center;gap:8px;">
+      <span>📡</span>
+      <span id="offline-queue-msg">มีข้อมูลรอ sync — จะส่งอัตโนมัติเมื่อออนไลน์</span>
+    </div>
 
     <div class="main-grid" style="grid-template-columns: 1.2fr 1fr;">
       <!-- Left: Camera View -->
@@ -894,7 +899,7 @@ function renderAttendanceUI() {
           <div class="att-type-title">เช็คอิน ในบริษัท</div>
           <div class="att-type-desc">${officeName}<br><span style="color:var(--accent3);font-size:11px;">ตรวจ Geofence อัตโนมัติ</span></div>
         </button>
-        <button type="button" class="att-type-card outside" onclick="openPanel('checkin-outside')">
+        <button type="button" class="att-type-card outside" onclick="openPanel('checkin-outside')" id="btn-checkin-outside">
           <div class="att-type-icon">📍</div>
           <div class="att-type-title">เช็คอิน นอกสถานที่</div>
           <div class="att-type-desc">งานนอกบริษัท / ลูกค้า / Field<br><span style="color:var(--orange);font-size:11px;">บันทึก GPS ตำแหน่งงาน</span></div>
@@ -1235,18 +1240,44 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
   }
 }
 
+// ── OFFLINE QUEUE UI ──────────────────────────────────────────────────────────
+function updateOfflineQueueBar() {
+  const q = (typeof lsGet === 'function') ? lsGet('lineNotifyQueue', []) : [];
+  const bar = document.getElementById('offline-queue-bar');
+  const msg = document.getElementById('offline-queue-msg');
+  if (!bar) return;
+  if (q.length > 0) {
+    bar.style.display = 'flex';
+    if (msg) msg.textContent = `📡 มีข้อมูล ${q.length} รายการรอ sync LINE OA — จะส่งอัตโนมัติเมื่อออนไลน์`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
 // Flush queued LINE notifications when the device comes back online
 window.addEventListener('online', function() {
-  if (typeof flushLineQueue === 'function') flushLineQueue().catch(function(e) { console.warn('flushLineQueue:', e); });
+  if (typeof flushLineQueue === 'function') {
+    flushLineQueue()
+      .then(function() { updateOfflineQueueBar(); })
+      .catch(function(e) { console.warn('flushLineQueue:', e); });
+  }
 });
+
+window.addEventListener('offline', function() { updateOfflineQueueBar(); });
+
 // Attempt flush on load in case there are stale queued items
 if (navigator.onLine && typeof flushLineQueue === 'function') {
-  setTimeout(function() { flushLineQueue().catch(function(e) { console.warn('flushLineQueue:', e); }); }, 3000);
+  setTimeout(function() {
+    flushLineQueue()
+      .then(function() { updateOfflineQueueBar(); })
+      .catch(function(e) { console.warn('flushLineQueue:', e); });
+  }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof initRole === 'function') initRole();
   renderAttendanceUI();
+  updateOfflineQueueBar();
   initCamera();
   startRealTimeGPS();
   const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
