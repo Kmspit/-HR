@@ -25,9 +25,9 @@ type Props = {
   onCancel?: () => void
 }
 
-// ใบหน้าต้องชัด (detector score) และมองตรงกล้อง (pose center) ต่อเนื่องเท่านี้ก่อน capture
-const ALIGN_SCORE = 0.6
-const STABLE_MS = 350
+// ใบหน้าต้องชัดพอ (detector score) และมองตรงกล้อง ต่อเนื่องเท่านี้ก่อน capture
+const ALIGN_SCORE = 0.5   // ลดจาก 0.6 — ตรวจจับง่ายขึ้น ลด false-reject
+const STABLE_MS = 280     // ลดจาก 350 — capture เร็วขึ้น
 
 const PROMPT_DEFAULT = 'กรุณาหันหน้าตรงกล้องเพื่อสแกน'
 const PROMPT_ALIGN = 'กรุณาหันหน้าตรงกล้อง'

@@ -30,9 +30,9 @@ type Props = {
 type RegPhase = 'intro' | 'camera' | 'scan' | 'done'
 
 // ถ่ายใบหน้าตรงกล้องหลายภาพเพื่อทำ average embedding (ไม่มีการหันหน้า/ตรวจความมีชีวิต)
-const SAMPLE_TARGET = 3
-const STABLE_FRAMES = 2
-const SCAN_INTERVAL_MS = 700
+const SAMPLE_TARGET = 5    // เพิ่มจาก 3 — embedding เฉลี่ยแม่นยำขึ้น
+const STABLE_FRAMES = 1    // ลดจาก 2 — capture เร็วขึ้น
+const SCAN_INTERVAL_MS = 500  // ลดจาก 700 — สแกนถี่ขึ้น
 
 function phaseToGuideIndex(phase: RegPhase): number {
   if (phase === 'intro') return 0

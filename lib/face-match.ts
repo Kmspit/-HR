@@ -9,8 +9,10 @@ export function faceDescriptorDistance(a: number[], b: number[]): number {
   return Math.sqrt(sum)
 }
 
-/** Stricter than default 0.6 — tune for HR attendance */
-export const FACE_MATCH_THRESHOLD = 0.55
+/** Tuned for HR attendance — 0.62 balances accuracy vs false-reject rate.
+ *  Lower = stricter (more false rejects); higher = more permissive (more false accepts).
+ *  Face-api typical range: 0.5 (strict) – 0.7 (permissive). 0.62 is safe middle ground. */
+export const FACE_MATCH_THRESHOLD = 0.62
 
 export function isFaceMatch(distance: number, threshold = FACE_MATCH_THRESHOLD): boolean {
   return distance <= threshold

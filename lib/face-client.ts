@@ -34,7 +34,8 @@ export async function loadFaceModels(): Promise<void> {
 
 function detectorOptions() {
   if (!faceapi) throw new Error('Face models not loaded')
-  return new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 })
+  // scoreThreshold 0.4: detect faces more easily in varied lighting / distance
+  return new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 })
 }
 
 export type HeadPose = 'none' | 'center' | 'left' | 'right'
@@ -66,9 +67,10 @@ export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceSc
   const eyeDist = Math.abs(rightEye[3].x - leftEye[0].x) || 1
   const yaw = (nose.x - eyeMidX) / eyeDist
 
+  // ±0.25 allows natural head position variation (was ±0.14 — too strict)
   let pose: HeadPose = 'center'
-  if (yaw > 0.14) pose = 'left'
-  else if (yaw < -0.14) pose = 'right'
+  if (yaw > 0.25) pose = 'left'
+  else if (yaw < -0.25) pose = 'right'
 
   return {
     descriptor: Array.from(det.descriptor as Float32Array),

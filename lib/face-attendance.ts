@@ -20,7 +20,7 @@ export type FaceVerifyInput = {
   spoofFlags?: string | null
 }
 
-const MIN_DETECTION_SCORE = 0.5
+const MIN_DETECTION_SCORE = 0.4  // ลดจาก 0.5 ให้ตรงกับ detector scoreThreshold
 
 export const ATTENDANCE_FACE_ACTIONS = [
   'checkin',
