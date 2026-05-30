@@ -736,7 +736,6 @@ function submitActiveAction() {
       address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
     };
     appendHistoryRow(rec, photoUrl);
-    mockLineNotify?.('✅ เช็คอินเข้างาน ' + fmtTime(now), getCurrentUser()?.name);
   } else if (activePanel === 'checkin-outside') {
     if (rec.checkIn) { alert('เช็คอินแล้ววันนี้'); return; }
     rec = {
@@ -746,32 +745,31 @@ function submitActiveAction() {
       address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
     };
     appendHistoryRow(rec, photoUrl);
-    mockLineNotify?.('✅ เช็คอินนอกสถานที่ ' + fmtTime(now), getCurrentUser()?.name);
   } else if (activePanel === 'lunch-out') {
     if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
     if (rec.lunchOut) { alert('บันทึกเริ่มพักแล้ว'); return; }
     rec.lunchOut = now;
     rec.lunchOutPhotoUrl = photoUrl;
-    mockLineNotify?.('☕ เริ่มพักกลางวัน ' + fmtTime(now), getCurrentUser()?.name);
   } else if (activePanel === 'lunch-in') {
     if (!rec.lunchOut) { alert('ต้องเริ่มพักก่อน'); return; }
     if (rec.lunchIn) { alert('บันทึกกลับจากพักแล้ว'); return; }
     rec.lunchIn = now;
     rec.lunchInPhotoUrl = photoUrl;
-    mockLineNotify?.('☕ กลับจากพัก ' + fmtTime(now), getCurrentUser()?.name);
   } else if (activePanel === 'checkout') {
     if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
     if (rec.checkOut) { alert('เช็คเอาท์แล้ว'); return; }
     rec.checkOut = now;
     rec.checkOutPhotoUrl = photoUrl;
     updateHistoryCheckout(rec);
-    mockLineNotify?.('🏁 เช็คเอาท์ ' + fmtTime(now), getCurrentUser()?.name);
   }
 
   Object.assign(rec, faceMeta);
   saveTodayRecord(rec);
+  const _scanType = activePanel; // capture before closePanel resets it
   closePanel();
   alert('บันทึกสำเร็จ');
+  // Async: upload to Cloudinary + send LINE OA (must not block attendance save)
+  processAttendanceNotification(rec, _scanType, photoUrl).catch(function(e) { console.warn('attendance notification:', e); });
 }
 
 function formatTimesCell(rec) {
@@ -956,6 +954,110 @@ async function initCamera() {
     console.error("Error accessing camera:", err);
     setScanStatus("ไม่สามารถเข้าถึงกล้องได้: " + err.message, 'var(--red)');
   }
+}
+
+// ── LATE STATUS ───────────────────────────────────────────────────────────────
+function calcLateStatus(scanType, time) {
+  if (scanType !== 'checkin-company' && scanType !== 'checkin-outside') return 'ไม่ใช่เช็คอิน';
+  const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
+  const parts = (s.workStart || '08:00').split(':');
+  const grace = typeof s.lateGrace === 'number' ? s.lateGrace : 15;
+  const deadline = new Date(time);
+  deadline.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10) + grace, 0, 0);
+  if (time <= deadline) return 'ตรงเวลา';
+  const lateMin = Math.round((time - deadline) / 60000);
+  return 'มาสาย ' + lateMin + ' นาที';
+}
+
+// ── ATTENDANCE NOTIFICATION (Cloudinary + LINE OA) ────────────────────────────
+const ATT_SCAN_LABELS = {
+  'checkin-company':  'Check In (ในบริษัท)',
+  'checkin-outside':  'Check In (นอกสถานที่)',
+  'lunch-out':        'Lunch Start',
+  'lunch-in':         'Lunch End',
+  'checkout':         'Check Out',
+};
+const _TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const _TH_DAYS   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+
+async function processAttendanceNotification(rec, scanType, photoDataUrl) {
+  const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (!user) return;
+  const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
+
+  // Determine which timestamp this scan represents
+  const tsMap = {
+    'checkin-company': rec.checkIn, 'checkin-outside': rec.checkIn,
+    'lunch-out': rec.lunchOut, 'lunch-in': rec.lunchIn, 'checkout': rec.checkOut,
+  };
+  const ts = tsMap[scanType] ? new Date(tsMap[scanType]) : new Date();
+
+  const dateStr = ts.getDate() + ' ' + _TH_MONTHS[ts.getMonth()] + ' ' + (ts.getFullYear() + 543) +
+                  ' (' + _TH_DAYS[ts.getDay()] + ')';
+  const timeStr = ts.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const lateStatus = calcLateStatus(scanType, ts);
+  const location = rec.address
+    ? rec.address + (rec.lat ? '\n(' + rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) + ')' : '')
+    : (rec.lat ? rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) : '—');
+
+  const msgData = {
+    employeeName: user.name  || '—',
+    employeeCode: user.id    || '—',
+    scanType:     ATT_SCAN_LABELS[scanType] || scanType,
+    date:  dateStr,
+    time:  timeStr,
+    lateStatus,
+    branch:     s.branch || s.companyName || '—',
+    department: user.dept || '—',
+    location,
+  };
+
+  // Show immediate toast (visual feedback)
+  const toastMsg = ATT_SCAN_LABELS[scanType] + ' — ' + timeStr;
+  if (typeof mockLineNotify === 'function') mockLineNotify(toastMsg, user.name);
+
+  // 1. Upload face photo to Cloudinary (if configured)
+  let imageUrl = null;
+  if (photoDataUrl && s.cloudinaryCloud && s.cloudinaryPreset) {
+    try {
+      const cdnResult = await uploadToCloudinary(photoDataUrl, {
+        folder: 'hr-attendance/' + (user.id || 'unknown'),
+        tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
+      });
+      imageUrl = cdnResult.secure_url;
+      // Persist the CDN URL back into today's record
+      const stored = getTodayRecord();
+      if (stored) {
+        const fieldMap = {
+          'checkin-company': 'photoUrlCdn', 'checkin-outside': 'photoUrlCdn',
+          'lunch-out': 'lunchOutPhotoUrlCdn', 'lunch-in': 'lunchInPhotoUrlCdn',
+          'checkout': 'checkOutPhotoUrlCdn',
+        };
+        const field = fieldMap[scanType];
+        if (field) { stored[field] = imageUrl; saveTodayRecord(stored); }
+      }
+    } catch (err) {
+      console.warn('Cloudinary upload skipped:', err.message || err);
+    }
+  }
+
+  // 2. Send LINE OA message + image
+  const message = (typeof buildLineAttMsg === 'function') ? buildLineAttMsg(msgData) : JSON.stringify(msgData);
+  const lineResult = await sendLineOAMsg(message, imageUrl);
+  if (!lineResult.ok && lineResult.reason !== 'no_config') {
+    // Queue for retry when back online
+    queueLineNotification({ message, imageUrl, queuedFor: scanType, employeeId: user.id });
+    console.warn('LINE OA queued for retry — reason:', lineResult.reason);
+  }
+}
+
+// Flush queued LINE notifications when the device comes back online
+window.addEventListener('online', function() {
+  if (typeof flushLineQueue === 'function') flushLineQueue().catch(function(e) { console.warn('flushLineQueue:', e); });
+});
+// Attempt flush on load in case there are stale queued items
+if (navigator.onLine && typeof flushLineQueue === 'function') {
+  setTimeout(function() { flushLineQueue().catch(function(e) { console.warn('flushLineQueue:', e); }); }, 3000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

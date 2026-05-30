@@ -142,16 +142,18 @@
 
     <!-- 6. LINE OA -->
     <div class="settings-section">
-      <h3>💬 LINE OA Integration</h3>
+      <h3>💬 LINE OA Integration (@593qdkpk)</h3>
       <div class="settings-grid">
-        <div class="form-group" style="grid-column:1/-1"><label>Channel Access Token</label>
+        <div class="form-group" style="grid-column:1/-1"><label>LINE Notify Token <span style="font-size:11px;color:var(--text3);">(ได้จาก notify.line.me — ส่งแจ้งเตือนลงเวลาอัตโนมัติ)</span></label>
           <div style="display:flex;gap:8px;">
-            <input id="s-line-token" type="password" class="form-input" placeholder="เพิ่ม LINE Channel Access Token...">
+            <input id="s-line-token" type="password" class="form-input" placeholder="LINE Notify Token...">
             <button class="btn-outline" style="height:40px;white-space:nowrap;" onclick="testLine()">ทดสอบ</button>
           </div>
         </div>
-        <div class="form-group" style="grid-column:1/-1"><label>Webhook URL (สำหรับตั้งค่าใน LINE Developers)</label>
-          <input class="form-input" readonly value="https://your-backend.com/api/line/webhook" style="opacity:0.6;">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>LINE Relay Webhook URL <span style="font-size:11px;color:var(--text3);">(ไม่บังคับ — ใช้ถ้า CORS บล็อก LINE Notify โดยตรง)</span></label>
+          <input id="s-line-relay" type="text" class="form-input" placeholder="https://your-worker.workers.dev/line-relay">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Serverless function ที่รับ POST {token, message, imageUrl} แล้ว forward ไป LINE Notify</div>
         </div>
       </div>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;">
@@ -160,6 +162,20 @@
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-ooo" style="accent-color:var(--accent);" checked> แจ้งเมื่อมีแผนออกนอกสถานที่ใหม่</label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-warn" style="accent-color:var(--accent);" checked> ส่งใบเตือนเข้า LINE อัตโนมัติ</label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-payslip" style="accent-color:var(--accent);" checked> ส่งสลิปเงินเดือนเข้า LINE</label>
+      </div>
+    </div>
+
+    <!-- 6b. Cloudinary -->
+    <div class="settings-section">
+      <h3>☁️ Cloudinary (เก็บรูปใบหน้าตอนลงเวลา)</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>Cloud Name</label><input id="s-cloudinary-cloud" class="form-input" placeholder="your-cloud-name"></div>
+        <div class="form-group"><label>Upload Preset (Unsigned)</label><input id="s-cloudinary-preset" class="form-input" placeholder="hr_attendance"></div>
+        <div class="form-group"><label>สาขา (Branch)</label><input id="s-branch" class="form-input" placeholder="สำนักงานใหญ่"></div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text3);">
+        สร้าง <strong>Unsigned Upload Preset</strong> ใน Cloudinary Dashboard → Settings → Upload → Upload Presets<br>
+        ถ้าไม่กรอก รูปจะยังบันทึกในเครื่องได้ปกติ (ใช้ dataURL แทน Cloudinary URL)
       </div>
     </div>
 
@@ -281,7 +297,11 @@ function loadSettings() {
   document.getElementById('s-rate-late').value   = s.rateLate    ?? 200;
   document.getElementById('s-rate-absent').value = s.rateAbsent  ?? 1000;
   document.getElementById('s-ot-rate').value     = s.otRate      ?? 100;
-  document.getElementById('s-line-token').value  = s.lineToken   || '';
+  document.getElementById('s-line-token').value       = s.lineToken           || '';
+  document.getElementById('s-line-relay').value      = s.lineWebhookRelay    || '';
+  document.getElementById('s-cloudinary-cloud').value = s.cloudinaryCloud   || '';
+  document.getElementById('s-cloudinary-preset').value= s.cloudinaryPreset  || '';
+  document.getElementById('s-branch').value           = s.branch             || '';
 
   // Face recognition config
   const f = s.face || {};
@@ -319,7 +339,11 @@ function saveSettings() {
     rateLate:     parseInt(document.getElementById('s-rate-late').value)    || 200,
     rateAbsent:   parseInt(document.getElementById('s-rate-absent').value)  || 1000,
     otRate:       parseInt(document.getElementById('s-ot-rate').value)      || 100,
-    lineToken:    document.getElementById('s-line-token').value.trim(),
+    lineToken:         document.getElementById('s-line-token').value.trim(),
+    lineWebhookRelay:  document.getElementById('s-line-relay').value.trim(),
+    cloudinaryCloud:   document.getElementById('s-cloudinary-cloud').value.trim(),
+    cloudinaryPreset:  document.getElementById('s-cloudinary-preset').value.trim(),
+    branch:            document.getElementById('s-branch').value.trim(),
     notifyLeave:  document.getElementById('s-notify-leave').checked,
     notifyOOO:    document.getElementById('s-notify-ooo').checked,
     notifyWarn:   document.getElementById('s-notify-warn').checked,
@@ -345,11 +369,26 @@ function saveSettings() {
   setTimeout(() => toast.style.display = 'none', 3000);
 }
 
-function testLine() {
+async function testLine() {
   const token = document.getElementById('s-line-token').value.trim();
-  if (!token) { alert('กรุณากรอก LINE Channel Access Token ก่อน'); return; }
-  mockLineNotify('🔔 ทดสอบการเชื่อมต่อ LINE OA สำเร็จ!\nระบบ เค เอ็ม เซอร์วิส พลัส พร้อมส่งการแจ้งเตือน', 'ทุกคน');
-  alert('ส่งข้อความทดสอบไปยัง LINE แล้ว (mock)');
+  const relay  = document.getElementById('s-line-relay').value.trim();
+  if (!token) { alert('กรุณากรอก LINE Notify Token ก่อน'); return; }
+
+  // Temporarily save so sendLineOAMsg picks up the new values
+  const s = getCompanySettings();
+  s.lineToken = token;
+  s.lineWebhookRelay = relay;
+  lsSet('settings', s);
+
+  const message = '\n🔔 ทดสอบการเชื่อมต่อ LINE OA สำเร็จ!\nระบบ เค เอ็ม เซอร์วิส พลัส พร้อมส่งการแจ้งเตือนลงเวลา';
+  const result = await sendLineOAMsg(message, null);
+  if (result.ok) {
+    mockLineNotify('✓ ส่ง LINE สำเร็จ', 'ทดสอบ');
+    alert('ส่งข้อความทดสอบไปยัง LINE สำเร็จ!');
+  } else {
+    mockLineNotify('✕ LINE ส่งไม่สำเร็จ: ' + result.reason, 'ทดสอบ');
+    alert('ส่งไม่สำเร็จ: ' + result.reason + '\n\n(ถ้า CORS ขึ้น ให้ตั้ง Relay Webhook URL)');
+  }
 }
 
 function changePassword() {

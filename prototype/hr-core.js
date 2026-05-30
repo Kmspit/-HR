@@ -198,3 +198,126 @@ function openModal(html, onClose) {
 }
 
 function closeModal(bd) { if (bd) bd.remove(); }
+
+// ── CLOUDINARY UPLOAD ─────────────────────────────────────────────────────────
+
+function _dataUrlToBlob(dataUrl) {
+  const parts = dataUrl.split(',');
+  const mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+  const raw = atob(parts[1]);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+/**
+ * Uploads a dataURL to Cloudinary using an unsigned upload preset.
+ * Settings required: cloudinaryCloud, cloudinaryPreset
+ * Returns Cloudinary response JSON ({ secure_url, public_id, ... }) or throws.
+ */
+async function uploadToCloudinary(dataUrl, opts) {
+  const s = getCompanySettings();
+  const cloud = (s.cloudinaryCloud || '').trim();
+  const preset = (s.cloudinaryPreset || '').trim();
+  if (!cloud || !preset) throw new Error('Cloudinary ยังไม่ได้ตั้งค่า (cloud name / upload preset)');
+  const fd = new FormData();
+  fd.append('file', _dataUrlToBlob(dataUrl), 'face.jpg');
+  fd.append('upload_preset', preset);
+  if (opts && opts.folder) fd.append('folder', opts.folder);
+  if (opts && opts.tags)   fd.append('tags', opts.tags);
+  const res = await fetch('https://api.cloudinary.com/v1_1/' + encodeURIComponent(cloud) + '/image/upload', {
+    method: 'POST',
+    body: fd,
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '' + res.status);
+    throw new Error('Cloudinary ' + res.status + ': ' + txt);
+  }
+  return await res.json();
+}
+
+// ── LINE OA NOTIFICATION ───────────────────────────────────────────────────────
+
+const _LINE_QUEUE_KEY = 'lineNotifyQueue';
+
+/**
+ * Builds the Thai attendance notification message per the LINE OA template.
+ */
+function buildLineAttMsg(d) {
+  return '\nพนักงานลงเวลาแล้ว\n\n' +
+    'ชื่อ: ' + d.employeeName + '\n' +
+    'รหัส: ' + d.employeeCode + '\n' +
+    'ประเภท: ' + d.scanType + '\n\n' +
+    'วันที่: ' + d.date + '\n' +
+    'เวลา: ' + d.time + '\n\n' +
+    'มาสาย: ' + d.lateStatus + '\n\n' +
+    'สาขา: ' + d.branch + '\n' +
+    'แผนก: ' + d.department + '\n\n' +
+    'สถานที่:\n' + d.location;
+}
+
+/**
+ * Sends a LINE notification.
+ * Tries: (1) configured webhook relay (avoids browser CORS), (2) LINE Notify direct.
+ * Returns { ok: boolean, reason: string }.
+ */
+async function sendLineOAMsg(message, imageUrl) {
+  const s = getCompanySettings();
+  const token = (s.lineToken || '').trim();
+  const relay = (s.lineWebhookRelay || '').trim();
+
+  // 1. Webhook relay (user-hosted serverless/proxy — no CORS issue)
+  if (relay) {
+    try {
+      const res = await fetch(relay, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, message, imageUrl: imageUrl || null }),
+      });
+      if (res.ok) return { ok: true };
+    } catch {}
+  }
+
+  // 2. LINE Notify direct (works in some environments; may be CORS-blocked in others)
+  if (token) {
+    const fd = new FormData();
+    fd.append('message', message);
+    if (imageUrl) {
+      fd.append('imageFullsize', imageUrl);
+      fd.append('imageThumbnail', imageUrl);
+    }
+    try {
+      const res = await fetch('https://notify-api.line.me/api/notify', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: fd,
+      });
+      if (res.ok) return { ok: true };
+      return { ok: false, reason: 'line_' + res.status };
+    } catch (err) {
+      return { ok: false, reason: (err && err.message) || 'network_error' };
+    }
+  }
+
+  return { ok: false, reason: 'no_config' };
+}
+
+/** Saves a failed notification to the offline retry queue. */
+function queueLineNotification(item) {
+  const q = lsGet(_LINE_QUEUE_KEY, []);
+  q.push(Object.assign({}, item, { queuedAt: new Date().toISOString(), retries: 0 }));
+  lsSet(_LINE_QUEUE_KEY, q);
+}
+
+/** Retries all queued notifications. Call on 'online' event. */
+async function flushLineQueue() {
+  const q = lsGet(_LINE_QUEUE_KEY, []);
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    if ((item.retries || 0) >= 5) continue; // discard after 5 attempts
+    const result = await sendLineOAMsg(item.message, item.imageUrl || null);
+    if (!result.ok) remaining.push(Object.assign({}, item, { retries: (item.retries || 0) + 1 }));
+  }
+  lsSet(_LINE_QUEUE_KEY, remaining);
+}
