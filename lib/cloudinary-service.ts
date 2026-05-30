@@ -23,27 +23,43 @@ export type UploadImageOptions = {
 
 let configured = false
 
+function parseCloudinaryUrl(url: string): { name: string; key: string; sec: string } | null {
+  try {
+    const u = new URL(url.replace(/^cloudinary:\/\//, 'https://'))
+    const name = u.hostname
+    const key  = u.username
+    const sec  = u.password
+    if (name && key && sec) return { name, key, sec }
+  } catch {}
+  return null
+}
+
 export function isCloudinaryConfigured(): boolean {
-  return !!(
+  const hasVars = !!(
     process.env.CLOUDINARY_CLOUD_NAME?.trim() &&
     process.env.CLOUDINARY_API_KEY?.trim() &&
     process.env.CLOUDINARY_API_SECRET?.trim()
   )
+  if (hasVars) return true
+  if (process.env.CLOUDINARY_URL) return !!parseCloudinaryUrl(process.env.CLOUDINARY_URL)
+  return false
 }
 
 export function ensureCloudinaryConfig(): void {
-  if (!isCloudinaryConfigured()) {
-    throw new Error('CLOUDINARY_NOT_CONFIGURED')
+  if (!isCloudinaryConfigured()) throw new Error('CLOUDINARY_NOT_CONFIGURED')
+  if (configured) return
+
+  let name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
+  let key  = process.env.CLOUDINARY_API_KEY?.trim()
+  let sec  = process.env.CLOUDINARY_API_SECRET?.trim()
+
+  if ((!name || !key || !sec) && process.env.CLOUDINARY_URL) {
+    const parsed = parseCloudinaryUrl(process.env.CLOUDINARY_URL)
+    if (parsed) { name = name || parsed.name; key = key || parsed.key; sec = sec || parsed.sec }
   }
-  if (!configured) {
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME!.trim(),
-      api_key: process.env.CLOUDINARY_API_KEY!.trim(),
-      api_secret: process.env.CLOUDINARY_API_SECRET!.trim(),
-      secure: true,
-    })
-    configured = true
-  }
+
+  cloudinary.config({ cloud_name: name!, api_key: key!, api_secret: sec!, secure: true })
+  configured = true
 }
 
 export function requireCloudinary(): void {

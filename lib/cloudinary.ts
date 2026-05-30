@@ -31,26 +31,62 @@ type AllowedFormat = (typeof ALLOWED_FORMATS)[number]
 
 let _configured = false
 
+/**
+ * Parses CLOUDINARY_URL if the individual vars are missing.
+ * Format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+ */
+function parseCloudinaryUrl(url: string): { name: string; key: string; sec: string } | null {
+  try {
+    // Use URL API — replace "cloudinary://" with "https://" for parsing
+    const u = new URL(url.replace(/^cloudinary:\/\//, 'https://'))
+    const name = u.hostname
+    const key  = u.username
+    const sec  = u.password
+    if (name && key && sec) return { name, key, sec }
+  } catch {}
+  return null
+}
+
 function configure(): void {
   if (_configured) return
-  const name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
-  const key  = process.env.CLOUDINARY_API_KEY?.trim()
-  const sec  = process.env.CLOUDINARY_API_SECRET?.trim()
+
+  let name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
+  let key  = process.env.CLOUDINARY_API_KEY?.trim()
+  let sec  = process.env.CLOUDINARY_API_SECRET?.trim()
+
+  // Fallback: parse CLOUDINARY_URL if individual vars are missing
+  if ((!name || !key || !sec) && process.env.CLOUDINARY_URL) {
+    const parsed = parseCloudinaryUrl(process.env.CLOUDINARY_URL)
+    if (parsed) {
+      name = name || parsed.name
+      key  = key  || parsed.key
+      sec  = sec  || parsed.sec
+    }
+  }
+
   if (!name || !key || !sec) {
     throw new Error(
-      'Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.',
+      'Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME + CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET, ' +
+      'or CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME.',
     )
   }
+
   cloudinary.config({ cloud_name: name, api_key: key, api_secret: sec, secure: true })
   _configured = true
 }
 
 export function isCloudinaryConfigured(): boolean {
-  return !!(
+  const hasVars = !!(
     process.env.CLOUDINARY_CLOUD_NAME?.trim() &&
     process.env.CLOUDINARY_API_KEY?.trim() &&
     process.env.CLOUDINARY_API_SECRET?.trim()
   )
+  if (hasVars) return true
+  // Also accept CLOUDINARY_URL
+  if (process.env.CLOUDINARY_URL) {
+    return !!parseCloudinaryUrl(process.env.CLOUDINARY_URL)
+  }
+  return false
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
