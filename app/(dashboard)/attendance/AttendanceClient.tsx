@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation, ScanFace } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import CheckInPanel, { type CompanyGeofence } from '@/components/dashboard/CheckInPanel'
@@ -94,12 +95,18 @@ export default function AttendanceClient({
   leaveBalance,
   allToday,
 }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
   const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | null>(null)
   const [faceRegistered, setFaceRegistered] = useState(false)
   const [showFaceUpdate, setShowFaceUpdate] = useState(false)
+  // justCompleted: ป้องกัน double-tap ระหว่างรอ router.refresh() (isPending บาง edge case อาจไม่ครอบ)
+  const [justCompleted, setJustCompleted] = useState(false)
+  const blockCheckIn = isPending || justCompleted
 
   useEffect(() => {
     apiJson<{ registered?: boolean }>('/api/face/status').then(({ ok, data }) => {
@@ -133,8 +140,12 @@ export default function AttendanceClient({
   const handleSuccess = () => {
     setSelectedType(null)
     setLunchPanel(null)
+    setJustCompleted(true)   // ปิดปุ่ม checkin ทันที — ป้องกัน double-press บนมือถือ
     setRefreshKey((k) => k + 1)
-    setTimeout(() => window.location.reload(), 800)
+    // router.refresh() re-fetches server component data (ทำงานได้บน mobile PWA ต่างจาก window.location.reload)
+    startTransition(() => {
+      router.refresh()
+    })
   }
 
   const todayPhotos = todayRecord
@@ -334,8 +345,19 @@ export default function AttendanceClient({
             </div>
           )}
 
+          {/* ─── Loading ระหว่าง refresh ─── */}
+          {blockCheckIn && canCheckIn && (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400">
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              กำลังอัปเดตข้อมูล...
+            </div>
+          )}
+
           {/* ─── Check-in/out area ─── */}
-          {canCheckIn && !selectedType && (
+          {canCheckIn && !blockCheckIn && !selectedType && (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-white">เลือกประเภทการเช็คอิน</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -398,7 +420,7 @@ export default function AttendanceClient({
           )}
 
           {/* Check-in panel after type selected */}
-          {canCheckIn && selectedType && (
+          {canCheckIn && !blockCheckIn && selectedType && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <button onClick={() => setSelectedType(null)}
