@@ -107,27 +107,37 @@ export function buildAttendanceLineMessage(params: {
       : null
 
   const header = isOffsite ? 'พนักงานลงเวลานอกสถานที่' : 'พนักงานลงเวลาแล้ว'
-  const statusLine = isOffsite ? 'สถานะ: นอกสถานที่' : 'สถานะ: ในบริษัท'
+  const locationBlock = [
+    place,
+    mapsUrl ? `📍 ${mapsUrl}` : null,
+  ].filter(Boolean).join('\n')
 
   return [
     header,
     '',
     `ชื่อ: ${employeeName}`,
     employeeId ? `รหัส: ${employeeId}` : null,
-    `ประเภท: ${statusLabelForLine(event)}`,
-    `วันที่: ${formatDateDdMmYyyyBangkok(eventTime)}`,
-    `เวลา: ${formatTimeBangkok(eventTime)}`,
-    statusLine,
-    `มาสาย: ${lateLabel(params.lateMinutes, event)}`,
-    branchName ? `สาขา: ${branchName}` : null,
-    departmentName ? `แผนก: ${departmentName}` : null,
-    place ? `\nLocation:\n${place}` : null,
-    mapsUrl ? `Google Maps: ${mapsUrl}` : null,
+    '',
+    'ประเภท:',
+    statusLabelForLine(event),
+    '',
+    'วันที่:',
+    formatDateDdMmYyyyBangkok(eventTime),
+    '',
+    'เวลา:',
+    formatTimeBangkok(eventTime),
+    '',
+    'มาสาย:',
+    lateLabel(params.lateMinutes, event),
+    isOffsite ? '\nสถานะ: นอกสถานที่' : null,
     event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0
       ? `กลับก่อน: ${params.earlyLeaveMinutes} นาที`
       : null,
+    branchName ? `\nสาขา: ${branchName}` : null,
+    departmentName ? `แผนก/ฝ่าย: ${departmentName}` : null,
+    locationBlock ? `\nสถานที่:\n${locationBlock}` : null,
   ]
-    .filter(Boolean)
+    .filter((v) => v !== null && v !== undefined)
     .join('\n')
 }
 

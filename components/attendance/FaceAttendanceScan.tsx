@@ -27,7 +27,7 @@ type Props = {
 
 // ใบหน้าต้องชัด (detector score) และมองตรงกล้อง (pose center) ต่อเนื่องเท่านี้ก่อน capture
 const ALIGN_SCORE = 0.6
-const STABLE_MS = 700
+const STABLE_MS = 350
 
 const PROMPT_DEFAULT = 'กรุณาหันหน้าตรงกล้องเพื่อสแกน'
 const PROMPT_ALIGN = 'กรุณาหันหน้าตรงกล้อง'
