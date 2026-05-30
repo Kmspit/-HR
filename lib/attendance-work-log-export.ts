@@ -48,10 +48,18 @@ export type WorkLogExportMeta = {
   companyName?: string
 }
 
+type CsvRow = AttendanceWorkLogRow & {
+  employeeName?: string
+  employeeCode?: string | null
+}
+
 export function buildWorkLogCsv(
-  rows: AttendanceWorkLogRow[],
+  rows: CsvRow[],
   meta: WorkLogExportMeta,
+  options?: { includeEmployeeColumn?: boolean },
 ): Buffer {
+  const includeEmployee =
+    options?.includeEmployeeColumn ?? rows.some((r) => !!r.employeeName)
   const lines: string[] = []
   lines.push(`รายงานบันทึกลงเวลา,${meta.monthLabel} ${meta.year}`)
   lines.push(
@@ -59,11 +67,16 @@ export function buildWorkLogCsv(
   )
   if (meta.department) lines.push(`แผนก,${csvEscape(meta.department)}`)
   lines.push('')
-  lines.push(CSV_HEADERS.join(','))
+  const headers = includeEmployee ? ['พนักงาน', ...CSV_HEADERS] : [...CSV_HEADERS]
+  lines.push(headers.join(','))
 
   for (const r of rows) {
+    const employeeCell = includeEmployee
+      ? `${r.employeeName ?? ''}${r.employeeCode ? ` (${r.employeeCode})` : ''}`
+      : null
     lines.push(
       [
+        ...(employeeCell != null ? [employeeCell] : []),
         r.dateLabel,
         r.dayLabel,
         r.checkInTime,

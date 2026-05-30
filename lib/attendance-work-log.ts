@@ -68,6 +68,18 @@ export function formatDateTh(iso: string | Date | null | undefined): string {
   return formatDateBangkok(iso)
 }
 
+export type WorkLogSummary = {
+  present: number
+  late: number
+  leave: number
+  absent: number
+  halfDay: number
+  earlyLeave: number
+  totalWorkMinutes: number
+  totalLateMinutes: number
+  totalEarlyMinutes: number
+}
+
 export type AttendanceWorkLogRow = {
   id: string
   date: string
@@ -98,6 +110,14 @@ export type AttendanceWorkLogRow = {
   leaveTypeLabel: string | null
   note: string | null
   isOutside: boolean
+}
+
+/** แถวรายงานเมื่อดูหลายพนักงาน */
+export type AttendanceWorkLogRowWithEmployee = AttendanceWorkLogRow & {
+  employeeUserId: string
+  employeeName: string
+  employeeCode: string | null
+  userStatus?: string
 }
 
 export function attendanceToWorkLogRow(a: Attendance): AttendanceWorkLogRow {
@@ -279,7 +299,13 @@ export async function buildMonthlyWorkLog(
   })
 
   const rows = refreshed.map(attendanceToWorkLogRow)
-  const summary = {
+  const summary = summarizeWorkLogRows(rows)
+
+  return { month, year, userId, rows, summary }
+}
+
+function summarizeWorkLogRows(rows: AttendanceWorkLogRow[]): WorkLogSummary {
+  return {
     present: rows.filter((r) => r.status === 'NORMAL' || r.status === 'OT').length,
     late: rows.filter((r) => r.status === 'LATE').length,
     leave: rows.filter((r) => r.status === 'LEAVE').length,
@@ -290,8 +316,51 @@ export async function buildMonthlyWorkLog(
     totalLateMinutes: rows.reduce((s, r) => s + r.lateMinutes, 0),
     totalEarlyMinutes: rows.reduce((s, r) => s + r.earlyLeaveMinutes, 0),
   }
+}
 
-  return { month, year, userId, rows, summary }
+/** รายงานรวมทุกคนในทีม (ตามรายชื่อที่ส่งมา) */
+export async function buildMonthlyWorkLogForTeam(
+  users: { id: string; name: string; employeeId: string | null; status?: string }[],
+  month: number,
+  year: number,
+): Promise<{
+  month: number
+  year: number
+  userId: string
+  rows: AttendanceWorkLogRowWithEmployee[]
+  summary: WorkLogSummary
+  employeeCount: number
+}> {
+  const combined: AttendanceWorkLogRowWithEmployee[] = []
+
+  for (const u of users) {
+    const report = await buildMonthlyWorkLog(u.id, month, year)
+    for (const row of report.rows) {
+      combined.push({
+        ...row,
+        id: `${u.id}-${row.id}`,
+        employeeUserId: u.id,
+        employeeName: u.name,
+        employeeCode: u.employeeId,
+        userStatus: u.status,
+      })
+    }
+  }
+
+  combined.sort((a, b) => {
+    const da = a.date.localeCompare(b.date)
+    if (da !== 0) return da
+    return a.employeeName.localeCompare(b.employeeName, 'th')
+  })
+
+  return {
+    month,
+    year,
+    userId: 'all',
+    rows: combined,
+    summary: summarizeWorkLogRows(combined),
+    employeeCount: users.length,
+  }
 }
 
 /** สำหรับ payroll — นาทีทำงานรวมในเดือน */
