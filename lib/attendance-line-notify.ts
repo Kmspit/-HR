@@ -11,6 +11,7 @@ import {
   getSignedScanImageUrlForLine,
   type FaceScanType,
 } from '@/lib/attendance-face-scan'
+import { getHrLineRecipients } from '@/lib/attendance-line-recipients'
 
 export type AttendanceLineEvent =
   | 'checkin'
@@ -110,22 +111,6 @@ export function buildAttendanceLineMessage(params: {
   ]
     .filter(Boolean)
     .join('\n')
-}
-
-export async function getHrLineRecipients(): Promise<
-  { id: string; name: string; lineUserId: string }[]
-> {
-  const users = await prisma.user.findMany({
-    where: {
-      status: 'ACTIVE',
-      role: { in: ['MANAGER_HR', 'ADMIN'] },
-      lineUserId: { not: null },
-    },
-    select: { id: true, name: true, lineUserId: true },
-  })
-  return users
-    .filter((u): u is typeof u & { lineUserId: string } => !!u.lineUserId)
-    .map((u) => ({ id: u.id, name: u.name, lineUserId: u.lineUserId }))
 }
 
 async function loadEmployeeContext(employeeUserId: string) {
