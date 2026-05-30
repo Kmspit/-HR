@@ -1,6 +1,8 @@
 import { SignJWT, jwtVerify } from 'jose'
 
 const SCAN_IMAGE_TTL_SEC = 60 * 15
+/** LINE ดึงรูปช้ากว่า UI — ให้ token ยาวขึ้น */
+const SCAN_IMAGE_LINE_TTL_SEC = 60 * 60 * 2
 
 function secretKey() {
   const raw =
@@ -15,6 +17,14 @@ export async function createScanImageAccessToken(scanId: string): Promise<string
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${SCAN_IMAGE_TTL_SEC}s`)
+    .sign(secretKey())
+}
+
+export async function createScanImageAccessTokenForLine(scanId: string): Promise<string> {
+  return new SignJWT({ sid: scanId })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${SCAN_IMAGE_LINE_TTL_SEC}s`)
     .sign(secretKey())
 }
 

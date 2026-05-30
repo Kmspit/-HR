@@ -53,6 +53,29 @@ export function parseDeviceInfoFromHeaders(headers: Headers): string {
 }
 
 
+async function saveFaceScanImageToDb(
+  recordId: string,
+  buffer: Buffer,
+  mime: string,
+): Promise<boolean> {
+  const b64 = buffer.toString('base64')
+  if (b64.length > 1_400_000) {
+    console.warn('[face-scan] image too large for DB fallback', b64.length)
+    return false
+  }
+  await prisma.attendanceFaceScan.update({
+    where: { id: recordId },
+    data: {
+      storageProvider: 'db',
+      imageData: b64,
+      imageMime: mime,
+      format: mime.includes('png') ? 'png' : 'jpg',
+      fileSize: buffer.length,
+    },
+  })
+  return true
+}
+
 export async function saveAttendanceFaceScan(input: SaveFaceScanInput): Promise<string | null> {
   if (!input.imageBuffer?.length) return null
   if (input.imageBuffer.length > MAX_IMAGE_BYTES) {
@@ -60,15 +83,9 @@ export async function saveAttendanceFaceScan(input: SaveFaceScanInput): Promise<
     return null
   }
 
-  if (!isCloudinaryConfigured()) {
-    console.warn('[face-scan] Cloudinary not configured — skip image upload')
-    return null
-  }
-
   const mime = input.imageMime ?? 'image/jpeg'
   const scanTime = input.scanTime ?? new Date()
   const ctx = await loadUserImageContext(input.userId)
-  const folder = attendanceScanFolder(ctx, input.scanType)
 
   const record = await prisma.attendanceFaceScan.create({
     data: {
@@ -94,31 +111,47 @@ export async function saveAttendanceFaceScan(input: SaveFaceScanInput): Promise<
       latitude: input.lat ?? undefined,
       longitude: input.lng ?? undefined,
       deviceInfo: input.deviceInfo ?? undefined,
-      storageProvider: 'cloudinary',
+      storageProvider: 'pending',
       imageData: '',
     },
   })
 
-  const uploaded = await uploadImage(input.imageBuffer, {
-    folder,
-    publicId: `${input.scanType}_${record.id}`,
-    mime,
-  })
+  if (isCloudinaryConfigured()) {
+    try {
+      const folder = attendanceScanFolder(ctx, input.scanType)
+      const uploaded = await uploadImage(input.imageBuffer, {
+        folder,
+        publicId: `${input.scanType}_${record.id}`,
+        mime,
+      })
+      await prisma.attendanceFaceScan.update({
+        where: { id: record.id },
+        data: {
+          cloudinaryPublicId: uploaded.publicId,
+          objectKey: uploaded.publicId,
+          imageUrl: uploaded.imageUrl,
+          secureUrl: uploaded.secureUrl,
+          format: uploaded.format,
+          fileSize: uploaded.fileSize,
+          width: uploaded.width,
+          height: uploaded.height,
+          storageProvider: 'cloudinary',
+          imageData: '',
+        },
+      })
+      return record.id
+    } catch (err) {
+      console.error('[face-scan] Cloudinary upload failed — fallback to DB', err)
+    }
+  } else {
+    console.warn('[face-scan] Cloudinary not configured — store image in DB')
+  }
 
-  await prisma.attendanceFaceScan.update({
-    where: { id: record.id },
-    data: {
-      cloudinaryPublicId: uploaded.publicId,
-      objectKey: uploaded.publicId,
-      imageUrl: uploaded.imageUrl,
-      secureUrl: uploaded.secureUrl,
-      format: uploaded.format,
-      fileSize: uploaded.fileSize,
-      width: uploaded.width,
-      height: uploaded.height,
-    },
-  })
-
+  const ok = await saveFaceScanImageToDb(record.id, input.imageBuffer, mime)
+  if (!ok) {
+    await prisma.attendanceFaceScan.delete({ where: { id: record.id } }).catch(() => {})
+    return null
+  }
   return record.id
 }
 
@@ -202,6 +235,28 @@ export async function getFaceScanImageBuffer(scanId: string): Promise<{
 }
 
 export async function getSignedScanImageUrlForLine(scanId: string): Promise<string | null> {
+  const exists = await prisma.attendanceFaceScan.findUnique({
+    where: { id: scanId },
+    select: { id: true },
+  })
+  if (!exists) return null
+
+  const vercelHost = process.env.VERCEL_URL?.replace(/^https?:\/\//, '').trim()
+  const base = (
+    process.env.NEXTAUTH_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (vercelHost ? `https://${vercelHost}` : '')
+  ).replace(/\/$/, '')
+
+  /** LINE ดึงรูปผ่าน HTTPS + token — ใช้ได้ทั้ง Cloudinary และรูปใน DB */
+  if (base) {
+    const { createScanImageAccessTokenForLine, signedScanImageUrl } = await import(
+      '@/lib/attendance-scan-access'
+    )
+    const token = await createScanImageAccessTokenForLine(scanId)
+    return signedScanImageUrl(scanId, base, token)
+  }
+
   const row = await prisma.attendanceFaceScan.findUnique({
     where: { id: scanId },
     select: {
@@ -215,16 +270,15 @@ export async function getSignedScanImageUrlForLine(scanId: string): Promise<stri
 
   const publicId = row?.cloudinaryPublicId ?? row?.objectKey
   if (publicId) {
-    const { optimizeImage } = await import('@/lib/cloudinary-service')
     const delivery = optimizeImage(publicId, {
       width: 1024,
-      expiresInSec: 60 * 60,
+      expiresInSec: 60 * 60 * 2,
     })
     if (delivery?.startsWith('https://')) return delivery
 
     const signed = getSignedUrl(publicId, {
       format: row?.format ?? 'jpg',
-      expiresInSec: 60 * 60,
+      expiresInSec: 60 * 60 * 2,
     })
     if (signed?.startsWith('https://')) return signed
   }
@@ -232,12 +286,7 @@ export async function getSignedScanImageUrlForLine(scanId: string): Promise<stri
   const stored = row?.secureUrl ?? row?.imageUrl
   if (stored?.startsWith('https://')) return stored
 
-  const base =
-    (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '') ||
-    null
-  if (!base) return null
-  const token = await createScanImageAccessToken(scanId)
-  return signedScanImageUrl(scanId, base, token)
+  return null
 }
 
 export async function imageBufferFromForm(

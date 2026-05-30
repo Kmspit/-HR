@@ -119,10 +119,6 @@ export async function pushLineMessages(
   const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
   const resolved = await resolveLineChannelAccessToken()
   if (!resolved.token) {
-    console.log('[LINE push mock] to', toUserId, messages.length, 'messages')
-    return { ok: true }
-  }
-  if (!resolved.token) {
     return { ok: false, error: 'ไม่มี LINE Channel access token — ตั้งใน Vercel หรือหน้าตั้งค่า' }
   }
   if (!resolved.tokenValid) {

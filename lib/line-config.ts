@@ -30,6 +30,18 @@ export function isLineOaConfigured(): boolean {
   return !!getLineChannelAccessToken() && !!getLineChannelSecret()
 }
 
+/** ตรวจ LINE OA รวม token จาก DB (หน้าตั้งค่า) — ใช้ก่อนส่งแจ้ง HR */
+export async function isLineOaConfiguredAsync(): Promise<boolean> {
+  const { resolveLineChannelAccessToken, resolveLineChannelSecret } = await import(
+    '@/lib/line-credentials'
+  )
+  const [tokenRes, secretRes] = await Promise.all([
+    resolveLineChannelAccessToken(),
+    resolveLineChannelSecret(),
+  ])
+  return !!tokenRes.token && tokenRes.tokenValid !== false && !!secretRes.secret
+}
+
 /** สำหรับหน้า debug webhook — ไม่แสดงค่า secret */
 export function getLineConfigStatus() {
   const secret =

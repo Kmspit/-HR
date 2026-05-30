@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
-import { isLineOaConfigured } from '@/lib/line-config'
+import { isLineOaConfiguredAsync } from '@/lib/line-config'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import {
   formatDateDdMmYyyyBangkok,
@@ -321,15 +321,15 @@ export async function notifyHrAttendanceOnLine(params: {
     console.error('[attendance-line-notify] ensureDbSchema', err)
   }
 
-  if (!isLineOaConfigured()) {
+  if (!(await isLineOaConfiguredAsync())) {
     console.warn('[attendance-line-notify] LINE OA not configured — skip push')
-    return { sent: 0, failed: 0 }
+    return { sent: 0, failed: 1 }
   }
 
   const hrUsers = await getHrLineRecipients()
   if (hrUsers.length === 0) {
     console.warn('[attendance-line-notify] no HR/Admin with linked LINE — skip push')
-    return { sent: 0, failed: 0 }
+    return { sent: 0, failed: 1 }
   }
 
   const employee = await loadEmployeeContext(params.employeeUserId)

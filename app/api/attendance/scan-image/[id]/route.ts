@@ -41,7 +41,7 @@ export async function GET(
   return new NextResponse(new Uint8Array(img.buffer), {
     headers: {
       'Content-Type': img.mime,
-      'Cache-Control': 'private, no-store, max-age=0',
+      'Cache-Control': access ? 'private, max-age=3600' : 'private, no-store, max-age=0',
     },
   })
 }
