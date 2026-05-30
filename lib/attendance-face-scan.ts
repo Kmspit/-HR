@@ -7,6 +7,7 @@ import {
   fetchImageBuffer,
   getSignedUrl,
   isCloudinaryConfigured,
+  optimizeImage,
   loadUserImageContext,
   uploadImage,
   type UserImageContext,
@@ -121,6 +122,38 @@ export async function saveAttendanceFaceScan(input: SaveFaceScanInput): Promise<
   return record.id
 }
 
+export function resolveScanListImageUrl(row: {
+  id: string
+  cloudinaryPublicId: string | null
+  objectKey: string | null
+  secureUrl: string | null
+  imageUrl: string | null
+  format: string | null
+}): string {
+  const publicId = row.cloudinaryPublicId ?? row.objectKey
+  if (publicId && isCloudinaryConfigured()) {
+    const signed =
+      optimizeImage(publicId, { width: 640, expiresInSec: 60 * 60 * 6 }) ??
+      getSignedUrl(publicId, { format: row.format ?? 'jpg', expiresInSec: 60 * 60 * 6 })
+    if (signed?.startsWith('https://')) return signed
+  }
+  if (row.secureUrl?.startsWith('https://')) return row.secureUrl
+  if (row.imageUrl?.startsWith('https://')) return row.imageUrl
+  return `/api/attendance/scan-image/${row.id}`
+}
+
+async function fetchUrlImageBuffer(url: string): Promise<{ buffer: Buffer; mime: string } | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) })
+    if (!res.ok) return null
+    const mime = res.headers.get('content-type') ?? 'image/jpeg'
+    if (!mime.startsWith('image/')) return null
+    return { buffer: Buffer.from(await res.arrayBuffer()), mime }
+  } catch {
+    return null
+  }
+}
+
 export async function getFaceScanImageBuffer(scanId: string): Promise<{
   buffer: Buffer
   mime: string
@@ -130,6 +163,8 @@ export async function getFaceScanImageBuffer(scanId: string): Promise<{
     select: {
       cloudinaryPublicId: true,
       objectKey: true,
+      secureUrl: true,
+      imageUrl: true,
       imageMime: true,
       format: true,
       imageData: true,
@@ -142,6 +177,18 @@ export async function getFaceScanImageBuffer(scanId: string): Promise<{
   if (publicId) {
     const fromCloud = await fetchImageBuffer(publicId)
     if (fromCloud) return fromCloud
+    const fresh = resolveScanListImageUrl({ id: scanId, ...row })
+    if (fresh.startsWith('https://')) {
+      const fromUrl = await fetchUrlImageBuffer(fresh)
+      if (fromUrl) return fromUrl
+    }
+  }
+
+  for (const url of [row.secureUrl, row.imageUrl]) {
+    if (url?.startsWith('https://')) {
+      const fromStored = await fetchUrlImageBuffer(url)
+      if (fromStored) return fromStored
+    }
   }
 
   if (row.imageData?.length > 100 && row.storageProvider === 'db') {

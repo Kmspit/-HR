@@ -3,7 +3,11 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
-import { FACE_SCAN_TYPE_LABEL, type FaceScanType } from '@/lib/attendance-face-scan'
+import {
+  FACE_SCAN_TYPE_LABEL,
+  resolveScanListImageUrl,
+  type FaceScanType,
+} from '@/lib/attendance-face-scan'
 import { branchUserWhere, buildBranchScope, parseBranchQueryParam } from '@/lib/branch-scope'
 
 export async function GET(req: NextRequest) {
@@ -48,7 +52,6 @@ export async function GET(req: NextRequest) {
         ...(filterUserIds ? { userId: { in: filterUserIds } } : { userId: targetUserId }),
         scanTime: { gte: startDate, lte: endDate },
       },
-      orderBy: { scanTime: 'desc' },
       take: limit,
     })
 
@@ -59,10 +62,18 @@ export async function GET(req: NextRequest) {
     })
     const userMap = new Map(users.map((u) => [u.id, u]))
 
+    const sorted = [...rows].sort((a, b) => {
+      const nameA = userMap.get(a.userId)?.name ?? ''
+      const nameB = userMap.get(b.userId)?.name ?? ''
+      const byName = nameA.localeCompare(nameB, 'th')
+      if (byName !== 0) return byName
+      return b.scanTime.getTime() - a.scanTime.getTime()
+    })
+
     return NextResponse.json({
       month,
       year,
-      scans: rows.map((r) =>
+      scans: sorted.map((r) =>
         mapScan({
           ...r,
           user: userMap.get(r.userId) ?? {
@@ -89,7 +100,10 @@ function mapScan(r: {
   matched: boolean
   faceMatched: boolean
   cloudinaryPublicId: string | null
+  objectKey: string | null
+  imageUrl: string | null
   secureUrl: string | null
+  format: string | null
   storageProvider: string
   locationName: string | null
   address: string | null
@@ -118,6 +132,7 @@ function mapScan(r: {
     lng: r.lng,
     deviceInfo: r.deviceInfo,
     imageApiUrl: `/api/attendance/scan-image/${r.id}`,
+    imageDisplayUrl: resolveScanListImageUrl(r),
     employee: r.user,
   }
 }
