@@ -4,7 +4,11 @@ import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { toDateKey } from '@/lib/company-holidays'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import { ATTENDANCE_COMPLETED_PATCH } from '@/lib/attendance-flow'
-import { formatDateBangkok, formatTimeBangkok } from '@/lib/datetime-bangkok'
+import {
+  formatDateBangkok,
+  formatDateDdMmYyyyBangkok,
+  formatTimeBangkok,
+} from '@/lib/datetime-bangkok'
 
 /** 0 = อาทิตย์ … 6 = เสาร์ (ตรงกับ Date.getDay()) */
 export const THAI_WEEKDAY_LABELS = [
@@ -134,7 +138,7 @@ export function attendanceToWorkLogRow(a: Attendance): AttendanceWorkLogRow {
   return {
     id: a.id,
     date: date.toISOString(),
-    dateLabel: formatDateTh(date),
+    dateLabel: formatDateDdMmYyyyBangkok(date),
     dayOfWeek: a.dayOfWeek ?? getDayOfWeekIndex(date),
     dayLabel: THAI_WEEKDAY_LABELS[a.dayOfWeek ?? getDayOfWeekIndex(date)] ?? '',
     checkIn: a.checkIn?.toISOString() ?? null,

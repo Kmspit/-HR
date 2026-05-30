@@ -7,6 +7,7 @@ import { buildMonthlyWorkLog, buildMonthlyWorkLogForTeam } from '@/lib/attendanc
 import {
   buildWorkLogCsv,
   buildWorkLogPdf,
+  buildWorkLogXlsx,
   workLogExportFilename,
   type WorkLogExportMeta,
 } from '@/lib/attendance-work-log-export'
@@ -54,8 +55,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    if (format !== 'csv' && format !== 'pdf') {
-      return NextResponse.json({ error: 'format ต้องเป็น csv หรือ pdf' }, { status: 400 })
+    if (format !== 'csv' && format !== 'pdf' && format !== 'xlsx') {
+      return NextResponse.json({ error: 'format ต้องเป็น xlsx, csv หรือ pdf' }, { status: 400 })
     }
 
     const scope = buildBranchScope(session.user, { branchId: branchParam })
@@ -120,13 +121,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const filename = workLogExportFilename(meta, format === 'pdf' ? 'pdf' : 'csv')
-
     if (format === 'pdf') {
-      const buf = await buildWorkLogPdf(rows, meta)
+      const buf = await buildWorkLogPdf(rows, meta, { includeEmployeeColumn })
+      const filename = workLogExportFilename(meta, 'pdf')
       return new NextResponse(new Uint8Array(buf), {
         headers: {
           'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Length': String(buf.length),
+          'Cache-Control': 'no-store',
+        },
+      })
+    }
+
+    if (format === 'xlsx') {
+      const buf = await buildWorkLogXlsx(rows, meta, { includeEmployeeColumn })
+      const filename = workLogExportFilename(meta, 'xlsx')
+      return new NextResponse(new Uint8Array(buf), {
+        headers: {
+          'Content-Type':
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="${filename}"`,
           'Cache-Control': 'no-store',
         },
@@ -134,6 +148,7 @@ export async function GET(req: NextRequest) {
     }
 
     const buf = buildWorkLogCsv(rows, meta, { includeEmployeeColumn })
+    const filename = workLogExportFilename(meta, 'csv')
     return new NextResponse(new Uint8Array(buf), {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
