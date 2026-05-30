@@ -177,14 +177,26 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         ยืนยันตัวตนด้วยใบหน้า (ต้องเป็นคนเดียวกับที่ลงทะเบียน)
       </p>
 
-      <CameraPreviewVideoWithRef
-        videoRef={videoRef}
-        stream={stream}
-        ready={ready}
-        loading={!ready && !cameraError}
-        overlayLabel="สแกนใบหน้า"
-        className="max-w-[220px] aspect-square mx-auto"
-      />
+      {done ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/15">
+            <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-green-400">ยืนยันใบหน้าสำเร็จ</p>
+          <p className="text-xs text-slate-500">กำลังบันทึกลงเวลา...</p>
+        </div>
+      ) : (
+        <CameraPreviewVideoWithRef
+          videoRef={videoRef}
+          stream={stream}
+          ready={ready}
+          loading={!ready && !cameraError}
+          overlayLabel="สแกนใบหน้า"
+          className="max-w-[220px] aspect-square mx-auto"
+        />
+      )}
 
       {!done && (
         <p className="text-center text-xs text-slate-400 min-h-[2rem]">
@@ -217,7 +229,6 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         </button>
       )}
 
-      {done && <p className="text-center text-xs text-green-400 font-medium">✓ ยืนยันใบหน้าผ่านแล้ว</p>}
     </div>
   )
 }
