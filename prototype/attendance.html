@@ -768,6 +768,8 @@ function submitActiveAction() {
   const _scanType = activePanel; // capture before closePanel resets it
   closePanel();
   alert('บันทึกสำเร็จ');
+  // Save annotated photo to device (close to user gesture so Web Share works)
+  saveAttendancePhotoToDevice(photoUrl, rec, _scanType);
   // Async: upload to Cloudinary + send LINE OA (must not block attendance save)
   processAttendanceNotification(rec, _scanType, photoUrl).catch(function(e) { console.warn('attendance notification:', e); });
 }
@@ -954,6 +956,184 @@ async function initCamera() {
     console.error("Error accessing camera:", err);
     setScanStatus("ไม่สามารถเข้าถึงกล้องได้: " + err.message, 'var(--red)');
   }
+}
+
+// ── SAVE PHOTO TO DEVICE ──────────────────────────────────────────────────────
+// Creates an annotated attendance image and saves it to the user's device.
+// Called synchronously (close to user gesture) so Web Share API works on mobile.
+function saveAttendancePhotoToDevice(photoDataUrl, rec, scanType) {
+  if (!photoDataUrl) return;
+  const user  = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  const s     = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
+
+  const tsMap = {
+    'checkin-company': rec.checkIn, 'checkin-outside': rec.checkIn,
+    'lunch-out': rec.lunchOut, 'lunch-in': rec.lunchIn, 'checkout': rec.checkOut,
+  };
+  const ts = new Date(tsMap[scanType] || Date.now());
+
+  const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const TH_DAYS   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const dateStr = ts.getDate() + ' ' + TH_MONTHS[ts.getMonth()] + ' ' + (ts.getFullYear() + 543);
+  const dayStr  = TH_DAYS[ts.getDay()];
+  const timeStr = ts.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const lateStatus = (typeof calcLateStatus === 'function') ? calcLateStatus(scanType, ts) : '—';
+  const isLate     = lateStatus.includes('สาย');
+
+  const scanLabels = {
+    'checkin-company': 'Check In (ในบริษัท)',
+    'checkin-outside': 'Check In (นอกสถานที่)',
+    'lunch-out':       'Lunch Start',
+    'lunch-in':        'Lunch End',
+    'checkout':        'Check Out',
+  };
+  const scanLabel = scanLabels[scanType] || scanType;
+  const locText   = (rec.address || '').split(',')[0].trim() ||
+                    (rec.lat ? rec.lat.toFixed(5) + ', ' + rec.lng.toFixed(5) : '—');
+
+  // File name: att_checkin-company_20260530_0802.jpg
+  const dateTag = ts.toISOString().slice(0, 10).replace(/-/g, '');
+  const timeTag = timeStr.replace(/:/g, '').replace(/\s/g, '');
+  const fileName = 'att_' + scanType + '_' + dateTag + '_' + timeTag + '.jpg';
+
+  const img = new Image();
+  img.onload = function () {
+    const PW = img.width  || 480;
+    const PH = img.height || 360;
+    const FOOTER = 130;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = PW;
+    canvas.height = PH + FOOTER;
+    const ctx = canvas.getContext('2d');
+
+    // ── Face photo ──
+    ctx.drawImage(img, 0, 0, PW, PH);
+
+    // Subtle vignette on photo bottom
+    const grad = ctx.createLinearGradient(0, PH - 60, 0, PH);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(10,13,20,0.7)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, PH - 60, PW, 60);
+
+    // ── Footer background ──
+    ctx.fillStyle = '#0a0d14';
+    ctx.fillRect(0, PH, PW, FOOTER);
+
+    // Accent stripe (green = on-time, orange = late)
+    ctx.fillStyle = isLate ? '#f97316' : '#22c55e';
+    ctx.fillRect(0, PH, PW, 4);
+
+    // Font stack with Thai support
+    const FONT = '"IBM Plex Sans Thai", "Noto Sans Thai", sans-serif';
+
+    // ── Scan-type badge ──
+    const badgeColors = {
+      'checkin-company': '#3b82f6', 'checkin-outside': '#f97316',
+      'lunch-out': '#d97706', 'lunch-in': '#f59e0b', 'checkout': '#6366f1',
+    };
+    const bColor = badgeColors[scanType] || '#3b82f6';
+    ctx.fillStyle = bColor;
+    const BADGE_W = Math.min(ctx.measureText(scanLabel).width + 24, PW - 32);
+    roundRect(ctx, 16, PH + 14, BADGE_W + 16, 22, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px ' + FONT;
+    ctx.textAlign = 'left';
+    ctx.fillText(scanLabel, 24, PH + 29);
+
+    // ── Late status (right) ──
+    ctx.textAlign = 'right';
+    ctx.fillStyle = isLate ? '#f97316' : '#22c55e';
+    ctx.font = 'bold 12px ' + FONT;
+    ctx.fillText(lateStatus, PW - 16, PH + 29);
+
+    // ── Employee name ──
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = 'bold 15px ' + FONT;
+    ctx.fillText((user && user.name) || '—', 16, PH + 60);
+
+    // Employee code + dept
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px ' + FONT;
+    const meta2 = [(user && user.id) || '', (user && user.dept) || ''].filter(Boolean).join(' · ');
+    ctx.fillText(meta2, 16, PH + 76);
+
+    // ── Date + time (right) ──
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = 'bold 15px ' + FONT;
+    ctx.fillText(timeStr, PW - 16, PH + 60);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px ' + FONT;
+    ctx.fillText(dateStr + ' (' + dayStr + ')', PW - 16, PH + 76);
+
+    // ── Location ──
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '10px ' + FONT;
+    ctx.fillText('\u{1F4CD} ' + locText.substring(0, Math.floor(PW / 6.5)), 16, PH + 98);
+
+    // ── Company watermark ──
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#1e293b';
+    ctx.font = '10px ' + FONT;
+    ctx.fillText(s.companyName || 'เค เอ็ม เซอร์วิส พลัส', PW - 16, PH + 120);
+
+    const annotated = canvas.toDataURL('image/jpeg', 0.93);
+
+    // ── Try Web Share (saves to Photos on mobile) ──
+    if (navigator.share && navigator.canShare) {
+      fetch(annotated)
+        .then(r => r.blob())
+        .then(function (blob) {
+          const file = new File([blob], fileName, { type: 'image/jpeg' });
+          if (navigator.canShare({ files: [file] })) {
+            return navigator.share({
+              files: [file],
+              title: 'ลงเวลางาน — ' + scanLabel,
+              text:  (user && user.name || '') + ' ' + scanLabel + ' ' + timeStr + ' ' + dateStr,
+            });
+          }
+          throw new Error('canShare false');
+        })
+        .catch(function (err) {
+          if (err && err.name !== 'AbortError') triggerDownload(annotated, fileName);
+        });
+    } else {
+      triggerDownload(annotated, fileName);
+    }
+  };
+  img.onerror = function () { console.warn('saveAttendancePhotoToDevice: image load failed'); };
+  img.src = photoDataUrl;
+}
+
+function triggerDownload(dataUrl, fileName) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = fileName;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { a.remove(); }, 1500);
+}
+
+// Canvas rounded-rect helper (no Path2D required)
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 // ── LATE STATUS ───────────────────────────────────────────────────────────────
