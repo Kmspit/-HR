@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '3mb',
     },
   },
+  outputFileTracingIncludes: {
+    '/api/attendance/work-log/export': [
+      './assets/fonts/**/*',
+      './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
+    ],
+  },
   serverExternalPackages: [
     '@prisma/client',
     '@prisma/adapter-libsql',

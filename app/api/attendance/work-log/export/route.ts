@@ -8,9 +8,12 @@ import {
   buildWorkLogCsv,
   buildWorkLogPdf,
   buildWorkLogXlsx,
-  workLogExportFilename,
   type WorkLogExportMeta,
 } from '@/lib/attendance-work-log-export'
+import {
+  contentDispositionAttachment,
+  workLogExportFilename,
+} from '@/lib/export-download'
 import { branchUserWhere, buildBranchScope, parseBranchQueryParam } from '@/lib/branch-scope'
 import {
   ALL_EMPLOYEES_USER_ID,
@@ -127,7 +130,7 @@ export async function GET(req: NextRequest) {
       return new NextResponse(new Uint8Array(buf), {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Disposition': contentDispositionAttachment(filename),
           'Content-Length': String(buf.length),
           'Cache-Control': 'no-store',
         },
@@ -141,7 +144,7 @@ export async function GET(req: NextRequest) {
         headers: {
           'Content-Type':
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Disposition': contentDispositionAttachment(filename),
           'Cache-Control': 'no-store',
         },
       })
@@ -152,7 +155,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(new Uint8Array(buf), {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': contentDispositionAttachment(filename),
         'Cache-Control': 'no-store',
       },
     })

@@ -2,22 +2,7 @@ import ExcelJS from 'exceljs'
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import type { AttendanceWorkLogRow } from '@/lib/attendance-work-log'
-
-const THAI_FONT_URL =
-  'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-thai@5.2.8/files/noto-sans-thai-400-normal.ttf'
-
-let cachedThaiFontBytes: ArrayBuffer | null = null
-
-async function loadThaiFontBytes(): Promise<ArrayBuffer> {
-  if (cachedThaiFontBytes) return cachedThaiFontBytes
-  const res = await fetch(THAI_FONT_URL, { signal: AbortSignal.timeout(25_000) })
-  if (!res.ok) throw new Error('โหลดฟอนต์ไทยสำหรับ PDF ไม่สำเร็จ')
-  cachedThaiFontBytes = await res.arrayBuffer()
-  if (cachedThaiFontBytes.byteLength < 1000) {
-    throw new Error('ฟอนต์ไทยไม่สมบูรณ์')
-  }
-  return cachedThaiFontBytes
-}
+import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 
 const EXPORT_HEADERS = [
   'วันที่',
@@ -224,7 +209,7 @@ export async function buildWorkLogPdf(
 
   const pdf = await PDFDocument.create()
   pdf.registerFontkit(fontkit)
-  const fontBytes = await loadThaiFontBytes()
+  const fontBytes = await loadThaiPdfFontBytes()
   const font = await pdf.embedFont(fontBytes)
 
   const pageW = 1190
@@ -304,16 +289,4 @@ export async function buildWorkLogPdf(
     throw new Error('สร้าง PDF ไม่สมบูรณ์')
   }
   return buf
-}
-
-export function workLogExportFilename(
-  meta: WorkLogExportMeta,
-  ext: 'xlsx' | 'csv' | 'pdf',
-): string {
-  const raw = meta.employeeId ?? meta.employeeName
-  const slug = raw
-    .replace(/[^\w\u0E00-\u0E7F-]+/g, '_')
-    .replace(/_+/g, '_')
-    .slice(0, 40) || 'report'
-  return `attendance-${meta.year}-${String(meta.month).padStart(2, '0')}-${slug}.${ext}`
 }

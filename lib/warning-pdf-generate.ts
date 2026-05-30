@@ -1,18 +1,6 @@
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
-
-const THAI_FONT_URL =
-  'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-thai@5.2.8/files/noto-sans-thai-400-normal.ttf'
-
-let cachedThaiFontBytes: ArrayBuffer | null = null
-
-async function loadThaiFontBytes(): Promise<ArrayBuffer> {
-  if (cachedThaiFontBytes) return cachedThaiFontBytes
-  const res = await fetch(THAI_FONT_URL)
-  if (!res.ok) throw new Error('โหลดฟอนต์ไทยสำหรับ PDF ไม่สำเร็จ')
-  cachedThaiFontBytes = await res.arrayBuffer()
-  return cachedThaiFontBytes
-}
+import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 
 export type WarningPdfInput = {
   companyName: string
@@ -30,7 +18,7 @@ export type WarningPdfInput = {
 export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<Buffer> {
   const pdf = await PDFDocument.create()
   pdf.registerFontkit(fontkit)
-  const thaiBytes = await loadThaiFontBytes()
+  const thaiBytes = await loadThaiPdfFontBytes()
   const font = await pdf.embedFont(thaiBytes)
   const fontBold = font
   const page = pdf.addPage([595, 842])
