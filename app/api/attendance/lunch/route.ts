@@ -8,6 +8,7 @@ import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import {
   formHasFaceImage,
+  imageBufferFromForm,
   recordFaceScanAndNotifyHr,
   syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
+      const preReadImage = await imageBufferFromForm(formData).catch(() => null)
       after(async () => {
         try {
           const scanResult = await recordFaceScanAndNotifyHr({
@@ -95,6 +97,7 @@ export async function POST(req: NextRequest) {
             lng,
             photoUrl: null,
             isOutside: finalized.isOutside,
+            preReadImage,
           })
           await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'lunchOutPhotoUrl')
         } catch (err) {
@@ -130,6 +133,7 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
+    const preReadImage = await imageBufferFromForm(formData).catch(() => null)
     after(async () => {
       try {
         const scanResult = await recordFaceScanAndNotifyHr({
@@ -147,6 +151,7 @@ export async function POST(req: NextRequest) {
           lng,
           photoUrl: null,
           isOutside: finalized.isOutside,
+          preReadImage,
         })
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'lunchInPhotoUrl')
       } catch (err) {

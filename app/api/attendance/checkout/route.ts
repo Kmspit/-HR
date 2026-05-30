@@ -9,6 +9,7 @@ import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import {
   formHasFaceImage,
+  imageBufferFromForm,
   recordFaceScanAndNotifyHr,
   syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
+    const preReadImage = await imageBufferFromForm(formData).catch(() => null)
+
     after(async () => {
       try {
         const scanResult = await recordFaceScanAndNotifyHr({
@@ -117,6 +120,7 @@ export async function POST(req: NextRequest) {
           photoUrl: null,
           earlyLeaveMinutes,
           isOutside: finalized.isOutside,
+          preReadImage,
         })
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'checkOutPhotoUrl')
       } catch (err) {

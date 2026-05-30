@@ -9,6 +9,7 @@ import { finalizeAttendanceRecord, getDayOfWeekIndex } from '@/lib/attendance-wo
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import {
   formHasFaceImage,
+  imageBufferFromForm,
   recordFaceScanAndNotifyHr,
   syncAttendancePhotoFromFaceScan,
 } from '@/lib/attendance-face-scan'
@@ -143,6 +144,9 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
+    // Pre-read image buffer BEFORE after() — formData File may expire post-response
+    const preReadImage = await imageBufferFromForm(formData).catch(() => null)
+
     // Run Cloudinary upload + LINE notification AFTER response is sent (non-blocking)
     after(async () => {
       try {
@@ -163,6 +167,7 @@ export async function POST(req: NextRequest) {
           photoUrl: null,
           lateMinutes,
           isOutside,
+          preReadImage,
         })
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'photoUrl')
       } catch (err) {

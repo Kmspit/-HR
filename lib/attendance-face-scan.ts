@@ -349,8 +349,10 @@ export async function persistFaceScanFromAttendanceForm(params: {
   matchScore?: number | null
   livenessScore?: number | null
   matched?: boolean
+  /** Pre-read image buffer — ใช้เมื่อ formData File อาจ expire หลัง response (เช่น after() callback) */
+  preReadImage?: { buffer: Buffer; mime: string } | null
 }): Promise<string | null> {
-  const img = await imageBufferFromForm(params.formData)
+  const img = params.preReadImage ?? await imageBufferFromForm(params.formData)
   if (!img) return null
 
   return saveAttendanceFaceScan({
@@ -440,6 +442,8 @@ export async function recordFaceScanAndNotifyHr(params: {
   lateMinutes?: number
   earlyLeaveMinutes?: number
   isOutside?: boolean
+  /** Pre-read image — ป้องกัน formData File expire ใน after() */
+  preReadImage?: { buffer: Buffer; mime: string } | null
 }): Promise<{
   faceScanId: string | null
   lineNotify: { sent: number; failed: number }
@@ -450,6 +454,7 @@ export async function recordFaceScanAndNotifyHr(params: {
   try {
     faceScanId = await persistFaceScanFromAttendanceForm({
       formData: params.formData,
+      preReadImage: params.preReadImage,
       userId: params.userId,
       scanType: params.scanType,
       attendanceId: params.attendanceId,
