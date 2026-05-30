@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
@@ -78,47 +78,45 @@ export async function POST(req: NextRequest) {
           .catch(() => {})
       }
       const finalized = await finalizeAttendanceRecord(updated.id)
-      let faceScanId: string | null = null
-      let lineNotify = { sent: 0, failed: 0 }
-      try {
-        const scanResult = await recordFaceScanAndNotifyHr({
-          req,
-          formData,
-          userId: session.user.id,
-          scanType: 'lunch-out',
-          attendanceId: finalized.id,
-          faceLogId,
-          event: 'lunch-out',
-          eventTime: now,
-          location: address || finalized.workPlaceName || null,
-          address: address || null,
-          lat,
-          lng,
-          photoUrl: null,
-          isOutside: finalized.isOutside,
-        })
-        faceScanId = scanResult.faceScanId
-        lineNotify = scanResult.lineNotify
-        await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchOutPhotoUrl')
-      } catch (err) {
-        console.error('[lunch-out-face-line]', err)
+      after(async () => {
         try {
-          const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-          lineNotify = await notifyHrAttendanceOnLine({
-            event: 'lunch-out',
-            employeeUserId: session.user.id,
+          const scanResult = await recordFaceScanAndNotifyHr({
+            req,
+            formData,
+            userId: session.user.id,
+            scanType: 'lunch-out',
             attendanceId: finalized.id,
+            faceLogId,
+            event: 'lunch-out',
             eventTime: now,
             location: address || finalized.workPlaceName || null,
-            isOutside: finalized.isOutside,
+            address: address || null,
             lat,
             lng,
+            photoUrl: null,
+            isOutside: finalized.isOutside,
           })
-        } catch (lineErr) {
-          console.error('[lunch-out-line-fallback]', lineErr)
+          await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'lunchOutPhotoUrl')
+        } catch (err) {
+          console.error('[lunch-out-bg]', err)
+          try {
+            const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+            await notifyHrAttendanceOnLine({
+              event: 'lunch-out',
+              employeeUserId: session.user.id,
+              attendanceId: finalized.id,
+              eventTime: now,
+              location: address || finalized.workPlaceName || null,
+              isOutside: finalized.isOutside,
+              lat,
+              lng,
+            })
+          } catch (lineErr) {
+            console.error('[lunch-out-line-fallback]', lineErr)
+          }
         }
-      }
-      return NextResponse.json({ success: true, attendance: finalized, faceScanId, lineNotify })
+      })
+      return NextResponse.json({ success: true, attendance: finalized })
     }
 
     const updated = await prisma.attendance.update({
@@ -132,47 +130,45 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
     const finalized = await finalizeAttendanceRecord(updated.id)
-    let faceScanId: string | null = null
-    let lineNotify = { sent: 0, failed: 0 }
-    try {
-      const scanResult = await recordFaceScanAndNotifyHr({
-        req,
-        formData,
-        userId: session.user.id,
-        scanType: 'lunch-in',
-        attendanceId: finalized.id,
-        faceLogId,
-        event: 'lunch-in',
-        eventTime: now,
-        location: address || finalized.workPlaceName || null,
-        address: address || null,
-        lat,
-        lng,
-        photoUrl: null,
-        isOutside: finalized.isOutside,
-      })
-      faceScanId = scanResult.faceScanId
-      lineNotify = scanResult.lineNotify
-      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'lunchInPhotoUrl')
-    } catch (err) {
-      console.error('[lunch-in-face-line]', err)
+    after(async () => {
       try {
-        const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-        lineNotify = await notifyHrAttendanceOnLine({
-          event: 'lunch-in',
-          employeeUserId: session.user.id,
+        const scanResult = await recordFaceScanAndNotifyHr({
+          req,
+          formData,
+          userId: session.user.id,
+          scanType: 'lunch-in',
           attendanceId: finalized.id,
+          faceLogId,
+          event: 'lunch-in',
           eventTime: now,
           location: address || finalized.workPlaceName || null,
-          isOutside: finalized.isOutside,
+          address: address || null,
           lat,
           lng,
+          photoUrl: null,
+          isOutside: finalized.isOutside,
         })
-      } catch (lineErr) {
-        console.error('[lunch-in-line-fallback]', lineErr)
+        await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'lunchInPhotoUrl')
+      } catch (err) {
+        console.error('[lunch-in-bg]', err)
+        try {
+          const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+          await notifyHrAttendanceOnLine({
+            event: 'lunch-in',
+            employeeUserId: session.user.id,
+            attendanceId: finalized.id,
+            eventTime: now,
+            location: address || finalized.workPlaceName || null,
+            isOutside: finalized.isOutside,
+            lat,
+            lng,
+          })
+        } catch (lineErr) {
+          console.error('[lunch-in-line-fallback]', lineErr)
+        }
       }
-    }
-    return NextResponse.json({ success: true, attendance: finalized, faceScanId, lineNotify })
+    })
+    return NextResponse.json({ success: true, attendance: finalized })
   } catch (err) {
     return apiError(err)
   }

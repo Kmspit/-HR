@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
@@ -143,57 +143,54 @@ export async function POST(req: NextRequest) {
         .catch(() => {})
     }
 
-    let faceScanId: string | null = null
-    let lineNotify = { sent: 0, failed: 0 }
-    try {
-      const scanResult = await recordFaceScanAndNotifyHr({
-        req,
-        formData,
-        userId: session.user.id,
-        scanType: 'checkin',
-        attendanceId: finalized.id,
-        faceLogId,
-        event: 'checkin',
-        eventTime: now,
-        location: workPlaceName ?? address ?? null,
-        locationName: workPlaceName,
-        address: address || null,
-        lat,
-        lng,
-        photoUrl: null,
-        lateMinutes,
-        isOutside,
-      })
-      faceScanId = scanResult.faceScanId
-      lineNotify = scanResult.lineNotify
-      await syncAttendancePhotoFromFaceScan(finalized.id, faceScanId, 'photoUrl')
-    } catch (err) {
-      console.error('[checkin-face-line]', err)
+    // Run Cloudinary upload + LINE notification AFTER response is sent (non-blocking)
+    after(async () => {
       try {
-        const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-        lineNotify = await notifyHrAttendanceOnLine({
-          event: 'checkin',
-          employeeUserId: session.user.id,
+        const scanResult = await recordFaceScanAndNotifyHr({
+          req,
+          formData,
+          userId: session.user.id,
+          scanType: 'checkin',
           attendanceId: finalized.id,
+          faceLogId,
+          event: 'checkin',
           eventTime: now,
           location: workPlaceName ?? address ?? null,
-          lateMinutes,
-          isOutside,
+          locationName: workPlaceName,
+          address: address || null,
           lat,
           lng,
+          photoUrl: null,
+          lateMinutes,
+          isOutside,
         })
-      } catch (lineErr) {
-        console.error('[checkin-line-fallback]', lineErr)
+        await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'photoUrl')
+      } catch (err) {
+        console.error('[checkin-bg]', err)
+        try {
+          const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+          await notifyHrAttendanceOnLine({
+            event: 'checkin',
+            employeeUserId: session.user.id,
+            attendanceId: finalized.id,
+            eventTime: now,
+            location: workPlaceName ?? address ?? null,
+            lateMinutes,
+            isOutside,
+            lat,
+            lng,
+          })
+        } catch (lineErr) {
+          console.error('[checkin-line-fallback]', lineErr)
+        }
       }
-    }
+    })
 
     return NextResponse.json({
       success: true,
       attendance: finalized,
       isOutside,
       lateMinutes,
-      faceScanId,
-      lineNotify,
     })
   } catch (err) {
     return apiError(err)
