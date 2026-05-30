@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
           lat,
           lng,
           photoUrl: null,
+          isOutside: finalized.isOutside,
         })
         faceScanId = scanResult.faceScanId
         lineNotify = scanResult.lineNotify
@@ -109,6 +110,9 @@ export async function POST(req: NextRequest) {
             attendanceId: finalized.id,
             eventTime: now,
             location: address || finalized.workPlaceName || null,
+            isOutside: finalized.isOutside,
+            lat,
+            lng,
           })
         } catch (lineErr) {
           console.error('[lunch-out-line-fallback]', lineErr)
@@ -145,6 +149,7 @@ export async function POST(req: NextRequest) {
         lat,
         lng,
         photoUrl: null,
+        isOutside: finalized.isOutside,
       })
       faceScanId = scanResult.faceScanId
       lineNotify = scanResult.lineNotify
@@ -159,6 +164,9 @@ export async function POST(req: NextRequest) {
           attendanceId: finalized.id,
           eventTime: now,
           location: address || finalized.workPlaceName || null,
+          isOutside: finalized.isOutside,
+          lat,
+          lng,
         })
       } catch (lineErr) {
         console.error('[lunch-in-line-fallback]', lineErr)

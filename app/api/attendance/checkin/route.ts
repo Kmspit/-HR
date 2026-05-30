@@ -162,6 +162,7 @@ export async function POST(req: NextRequest) {
         lng,
         photoUrl: null,
         lateMinutes,
+        isOutside,
       })
       faceScanId = scanResult.faceScanId
       lineNotify = scanResult.lineNotify
@@ -177,6 +178,9 @@ export async function POST(req: NextRequest) {
           eventTime: now,
           location: workPlaceName ?? address ?? null,
           lateMinutes,
+          isOutside,
+          lat,
+          lng,
         })
       } catch (lineErr) {
         console.error('[checkin-line-fallback]', lineErr)

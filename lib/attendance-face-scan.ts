@@ -439,6 +439,7 @@ export async function recordFaceScanAndNotifyHr(params: {
   photoUrl?: string | null
   lateMinutes?: number
   earlyLeaveMinutes?: number
+  isOutside?: boolean
 }): Promise<{
   faceScanId: string | null
   lineNotify: { sent: number; failed: number }
@@ -484,6 +485,9 @@ export async function recordFaceScanAndNotifyHr(params: {
       location: params.location ?? params.locationName,
       lateMinutes: params.lateMinutes,
       earlyLeaveMinutes: params.earlyLeaveMinutes,
+      isOutside: params.isOutside,
+      lat: params.lat,
+      lng: params.lng,
     })
     if (lineNotify.failed > 0) {
       console.warn('[attendance-line-notify] partial LINE failure', {

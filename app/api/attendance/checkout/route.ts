@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
         lng,
         photoUrl: null,
         earlyLeaveMinutes,
+        isOutside: finalized.isOutside,
       })
       faceScanId = scanResult.faceScanId
       lineNotify = scanResult.lineNotify
@@ -132,6 +133,9 @@ export async function POST(req: NextRequest) {
           eventTime: now,
           location: workPlaceName ?? address ?? finalized.workPlaceName ?? null,
           earlyLeaveMinutes,
+          isOutside: finalized.isOutside,
+          lat,
+          lng,
         })
       } catch (lineErr) {
         console.error('[checkout-line-fallback]', lineErr)

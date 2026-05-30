@@ -61,6 +61,10 @@ function statusLabelForLine(event: AttendanceLineEvent): string {
   return FACE_SCAN_TYPE_LABEL[key] ?? EVENT_LABEL[event]
 }
 
+function googleMapsLink(lat: number, lng: number): string {
+  return `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`
+}
+
 export function buildAttendanceLineMessage(params: {
   event: AttendanceLineEvent
   employeeName: string
@@ -72,8 +76,12 @@ export function buildAttendanceLineMessage(params: {
   lateMinutes?: number
   earlyLeaveMinutes?: number
   failureDetail?: string
+  isOutside?: boolean
+  lat?: number | null
+  lng?: number | null
 }): string {
   const { event, employeeName, employeeId, branchName, departmentName, location, eventTime } = params
+  const isOffsite = params.isOutside === true
 
   if (event === 'face_mismatch') {
     return [
@@ -93,18 +101,28 @@ export function buildAttendanceLineMessage(params: {
   }
 
   const place = location?.trim() || null
+  const mapsUrl =
+    params.lat != null && params.lng != null
+      ? googleMapsLink(params.lat, params.lng)
+      : null
+
+  const header = isOffsite ? 'พนักงานลงเวลานอกสถานที่' : 'พนักงานลงเวลาแล้ว'
+  const statusLine = isOffsite ? 'สถานะ: นอกสถานที่' : 'สถานะ: ในบริษัท'
+
   return [
-    'พนักงานลงเวลาแล้ว',
+    header,
     '',
     `ชื่อ: ${employeeName}`,
     employeeId ? `รหัส: ${employeeId}` : null,
     `ประเภท: ${statusLabelForLine(event)}`,
     `วันที่: ${formatDateDdMmYyyyBangkok(eventTime)}`,
     `เวลา: ${formatTimeBangkok(eventTime)}`,
+    statusLine,
     `มาสาย: ${lateLabel(params.lateMinutes, event)}`,
     branchName ? `สาขา: ${branchName}` : null,
     departmentName ? `แผนก: ${departmentName}` : null,
-    place ? `สถานที่: ${place}` : null,
+    place ? `\nLocation:\n${place}` : null,
+    mapsUrl ? `Google Maps: ${mapsUrl}` : null,
     event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0
       ? `กลับก่อน: ${params.earlyLeaveMinutes} นาที`
       : null,
@@ -299,6 +317,9 @@ export async function notifyHrAttendanceOnLine(params: {
   lateMinutes?: number
   earlyLeaveMinutes?: number
   failureDetail?: string
+  isOutside?: boolean
+  lat?: number | null
+  lng?: number | null
 }): Promise<{ sent: number; failed: number }> {
   try {
     await ensureDbSchema()
@@ -336,6 +357,9 @@ export async function notifyHrAttendanceOnLine(params: {
     lateMinutes: params.lateMinutes,
     earlyLeaveMinutes: params.earlyLeaveMinutes,
     failureDetail: params.failureDetail,
+    isOutside: params.isOutside,
+    lat: params.lat,
+    lng: params.lng,
   })
 
   const imageUrl = await resolveLineImageUrl({
