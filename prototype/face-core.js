@@ -159,9 +159,11 @@
       await injectScript(cfg.scriptUrl);
       if (!window.faceapi) throw new Error('faceapi ไม่พร้อมใช้งาน');
       const url = cfg.modelUrl;
-      await faceapi.nets.tinyFaceDetector.loadFromUri(url);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(url);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(url);
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(url),
+        faceapi.nets.faceLandmark68Net.loadFromUri(url),
+        faceapi.nets.faceRecognitionNet.loadFromUri(url),
+      ]);
       _ready = true;
       return true;
     })().catch(err => {

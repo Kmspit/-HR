@@ -89,16 +89,25 @@ function lsGet(key, fallback = []) {
 
 function lsSet(key, value) {
   localStorage.setItem('hrflow_' + key, JSON.stringify(value));
+  if (key === 'settings') _settingsCache = null; // invalidate on save
 }
 
+// Cache parsed settings for 5 s — avoids repeated JSON.parse on every GPS tick
+let _settingsCache = null;
+let _settingsCacheAt = 0;
+
 function getCompanySettings() {
-  return lsGet('settings', {
+  const now = Date.now();
+  if (_settingsCache && now - _settingsCacheAt < 5000) return _settingsCache;
+  _settingsCache = lsGet('settings', {
     companyName: 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
     lat: 13.7563, lng: 100.5018, radius: 200,
     workStart: '08:00', workEnd: '17:00', lateGrace: 15,
     sickDays: 30, vacDays: 10, personalDays: 3,
     lineToken: '',
   });
+  _settingsCacheAt = now;
+  return _settingsCache;
 }
 
 function getEmployees() {
