@@ -95,6 +95,9 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         const distance = (data as { distance?: number }).distance
         const confidence = (data as { confidence?: number }).confidence
 
+        verifyingRef.current = false
+        setBusy(false)
+        setHint('✓ ยืนยันสำเร็จ — กำลังบันทึกลงเวลา...')
         doneRef.current = true
         setDone(true)
         onVerified({
@@ -183,16 +186,18 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         className="max-w-[220px] aspect-square mx-auto"
       />
 
-      <p className="text-center text-xs text-slate-400 min-h-[2rem]">
-        {busy ? (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            {hint}
-          </span>
-        ) : (
-          hint
-        )}
-      </p>
+      {!done && (
+        <p className="text-center text-xs text-slate-400 min-h-[2rem]">
+          {busy ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {hint}
+            </span>
+          ) : (
+            hint
+          )}
+        </p>
+      )}
 
       {cameraError && (
         <div className="space-y-2">
