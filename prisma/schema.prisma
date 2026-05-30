@@ -443,6 +443,10 @@ model Attendance {
   checkOutPhotoUrl String?
   lunchOutPhotoUrl String?
   lunchInPhotoUrl  String?
+  /// Cloudinary public_id of the latest attendance photo (checkin by default)
+  imagePublicId    String? @map("image_public_id")
+  /// Cloudinary secure_url of the latest attendance photo
+  imageUrl         String? @map("image_url")
   isOutside        Boolean          @default(false)
   status           AttendanceStatus @default(NORMAL)
   /** อนุมัติอัตโนมัติหลังสแกนใบหน้าสำเร็จ — ไม่ต้องรอ HR */

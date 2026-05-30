@@ -400,13 +400,24 @@ export async function syncAttendancePhotoFromFaceScan(
   if (!faceScanId) return null
   const scan = await prisma.attendanceFaceScan.findUnique({
     where: { id: faceScanId },
-    select: { cloudinaryPublicId: true },
+    select: { cloudinaryPublicId: true, secureUrl: true, imageUrl: true },
   })
   const publicId = scan?.cloudinaryPublicId
   if (!publicId) return null
+
+  const imageUrl = scan.secureUrl ?? scan.imageUrl ?? null
+
+  // Sync photo URL + Cloudinary image_public_id / image_url to Attendance row
+  const updateData: Record<string, string | null> = { [field]: publicId }
+  // Only populate top-level image fields for the checkin photo (first scan)
+  if (field === 'photoUrl') {
+    updateData.imagePublicId = publicId
+    updateData.imageUrl = imageUrl
+  }
+
   await prisma.attendance.update({
     where: { id: attendanceId },
-    data: { [field]: publicId },
+    data: updateData,
   })
   return publicId
 }

@@ -79,6 +79,7 @@ function employeeFolderKey(ctx: UserImageContext): string {
 export function attendanceScanFolder(
   ctx: UserImageContext,
   scanType: string,
+  scanTime?: Date,
 ): string {
   const emp = employeeFolderKey(ctx)
   const map: Record<string, string> = {
@@ -90,7 +91,9 @@ export function attendanceScanFolder(
     lunch_end: 'lunch-end',
   }
   const sub = map[scanType] ?? scanType
-  return `${ROOT}/attendance/${emp}/${sub}`
+  // Include date segment: attendance/{employeeId}/{YYYY-MM-DD}/{type}
+  const dateStr = (scanTime ?? new Date()).toISOString().slice(0, 10)
+  return `${ROOT}/attendance/${emp}/${dateStr}/${sub}`
 }
 
 export function profileFolder(ctx: UserImageContext): string {
@@ -114,12 +117,24 @@ export async function uploadImage(
   const mime = options.mime ?? 'image/jpeg'
   const dataUri = `data:${mime};base64,${buffer.toString('base64')}`
 
+  // Security: validate before upload
+  const MAX_BYTES = 5 * 1024 * 1024
+  if (buffer.length > MAX_BYTES) {
+    throw new Error(`Image size ${(buffer.length / 1024 / 1024).toFixed(1)} MB exceeds 5 MB limit.`)
+  }
+  const ext = mime.split('/')[1]?.toLowerCase().replace('jpeg', 'jpg')
+  const ALLOWED = ['jpg', 'png', 'webp']
+  if (!ALLOWED.includes(ext)) {
+    throw new Error(`Unsupported format "${mime}". Accepted: jpg, jpeg, png, webp.`)
+  }
+
   const result = await cloudinary.uploader.upload(dataUri, {
     folder: options.folder,
     public_id: options.publicId,
     resource_type: options.resourceType ?? 'image',
     type: 'authenticated',
-    overwrite: true,
+    overwrite: false, // prevent overwriting existing files
+    allowed_formats: ALLOWED,
   })
 
   return {

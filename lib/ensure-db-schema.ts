@@ -243,6 +243,10 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE warnings ADD COLUMN lineErrorMessage TEXT`,
   )
 
+  // Cloudinary image fields (req: image_public_id, image_url)
+  await addAttendanceColumnIfMissing('image_public_id', `ALTER TABLE attendances ADD COLUMN image_public_id TEXT`)
+  await addAttendanceColumnIfMissing('image_url', `ALTER TABLE attendances ADD COLUMN image_url TEXT`)
+
   await addAttendanceColumnIfMissing('dayOfWeek', `ALTER TABLE attendances ADD COLUMN dayOfWeek INTEGER`)
   await addAttendanceColumnIfMissing(
     'workMinutes',
