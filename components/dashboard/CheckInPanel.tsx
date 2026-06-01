@@ -224,7 +224,15 @@ export default function CheckInPanel({
       return
     }
     if ((lineNotify.sent ?? 0) > 0) {
-      toast.success('บันทึกแล้ว · ส่งแจ้ง LINE HR แล้ว', { duration: 4500 })
+      toast.success('บันทึกแล้ว · ส่งแจ้ง LINE HR แล้ว', {
+        duration: 5000,
+        action: {
+          label: 'เปิด LINE',
+          onClick: () => {
+            window.open('https://line.me/R/ti/p/@593qdkpk', '_blank', 'noopener,noreferrer')
+          },
+        },
+      })
     } else if ((lineNotify.failed ?? 0) > 0) {
       toast.warning('บันทึกลงเวลาแล้ว แต่ส่ง LINE HR ไม่สำเร็จ — ให้ HR ผูก LINE OA ที่โปรไฟล์', {
         duration: 5500,
