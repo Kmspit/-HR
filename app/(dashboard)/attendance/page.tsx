@@ -5,6 +5,11 @@ import { redirect } from 'next/navigation'
 import AttendanceClient from './AttendanceClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import {
+  findActiveAttendanceSession,
+  findTodayAttendanceSessions,
+  pickDisplaySessionForDay,
+} from '@/lib/attendance-session'
 import { Suspense } from 'react'
 
 export default async function AttendancePage({
@@ -36,14 +41,13 @@ export default async function AttendancePage({
     select: { employeeId: true },
   })
 
-  const [todayRecord, recentRecords, leaveBalance] = await Promise.all([
-    prisma.attendance.findUnique({
-      where: { userId_date: { userId: session.user.id, date: today } },
-    }),
+  const [activeSession, todaySessions, recentRecords, leaveBalance] = await Promise.all([
+    findActiveAttendanceSession(session.user.id, today),
+    findTodayAttendanceSessions(session.user.id, today),
     prisma.attendance.findMany({
-      where: { userId: session.user.id },
-      orderBy: { date: 'desc' },
-      take: 15,
+      where: { userId: session.user.id, checkIn: { not: null } },
+      orderBy: [{ date: 'desc' }, { sessionIndex: 'desc' }],
+      take: 20,
     }),
     prisma.leaveBalance.findUnique({
       where: { userId_year: { userId: session.user.id, year: new Date().getFullYear() } },
@@ -72,7 +76,11 @@ export default async function AttendancePage({
         where: { date: today },
       }),
     ])
-    const attByUser = new Map(records.map((r) => [r.userId, r]))
+    const attByUser = new Map<string, ReturnType<typeof pickDisplaySessionForDay>>()
+    for (const uid of new Set(records.map((r) => r.userId))) {
+      const userSessions = records.filter((r) => r.userId === uid)
+      attByUser.set(uid, pickDisplaySessionForDay(userSessions))
+    }
     allToday = employees.map((emp) => {
       const a = attByUser.get(emp.id)
       return {
@@ -118,28 +126,42 @@ export default async function AttendancePage({
             }
           : null
       }
-      todayRecord={todayRecord ? {
-        id: todayRecord.id,
-        checkIn: todayRecord.checkIn?.toISOString() ?? null,
-        checkOut: todayRecord.checkOut?.toISOString() ?? null,
-        lunchOut: todayRecord.lunchOut?.toISOString() ?? null,
-        lunchIn: todayRecord.lunchIn?.toISOString() ?? null,
-        status: todayRecord.status,
-        lateMinutes: todayRecord.lateMinutes ?? 0,
-        earlyLeaveMinutes: todayRecord.earlyLeaveMinutes ?? 0,
-        isOutside: todayRecord.isOutside ?? false,
-        address: todayRecord.address ?? null,
-        workPlaceName: todayRecord.workPlaceName ?? null,
-        photoUrl: todayRecord.photoUrl ?? null,
-        checkOutPhotoUrl: todayRecord.checkOutPhotoUrl ?? null,
-        lunchOutPhotoUrl: todayRecord.lunchOutPhotoUrl ?? null,
-        lunchInPhotoUrl: todayRecord.lunchInPhotoUrl ?? null,
-        lat: todayRecord.lat ?? null,
-        lng: todayRecord.lng ?? null,
+      todayRecord={activeSession ? {
+        id: activeSession.id,
+        sessionIndex: activeSession.sessionIndex,
+        checkIn: activeSession.checkIn?.toISOString() ?? null,
+        checkOut: activeSession.checkOut?.toISOString() ?? null,
+        lunchOut: activeSession.lunchOut?.toISOString() ?? null,
+        lunchIn: activeSession.lunchIn?.toISOString() ?? null,
+        status: activeSession.status,
+        lateMinutes: activeSession.lateMinutes ?? 0,
+        earlyLeaveMinutes: activeSession.earlyLeaveMinutes ?? 0,
+        isOutside: activeSession.isOutside ?? false,
+        address: activeSession.address ?? null,
+        workPlaceName: activeSession.workPlaceName ?? null,
+        photoUrl: activeSession.photoUrl ?? null,
+        checkOutPhotoUrl: activeSession.checkOutPhotoUrl ?? null,
+        lunchOutPhotoUrl: activeSession.lunchOutPhotoUrl ?? null,
+        lunchInPhotoUrl: activeSession.lunchInPhotoUrl ?? null,
+        lat: activeSession.lat ?? null,
+        lng: activeSession.lng ?? null,
       } : null}
+      todaySessions={todaySessions.map((r) => ({
+        id: r.id,
+        sessionIndex: r.sessionIndex,
+        checkIn: r.checkIn?.toISOString() ?? null,
+        checkOut: r.checkOut?.toISOString() ?? null,
+        lunchOut: r.lunchOut?.toISOString() ?? null,
+        lunchIn: r.lunchIn?.toISOString() ?? null,
+        status: r.status,
+        isOutside: r.isOutside ?? false,
+        workPlaceName: r.workPlaceName ?? null,
+      }))}
+      completedSessionsToday={todaySessions.filter((s) => s.checkIn && s.checkOut).length}
       recentRecords={recentRecords.map((r) => ({
         id: r.id,
         date: r.date.toISOString(),
+        sessionIndex: r.sessionIndex,
         checkIn: r.checkIn?.toISOString() ?? null,
         checkOut: r.checkOut?.toISOString() ?? null,
         lunchOut: r.lunchOut?.toISOString() ?? null,

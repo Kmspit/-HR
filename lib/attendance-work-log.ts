@@ -88,6 +88,8 @@ export type AttendanceWorkLogRow = {
   id: string
   date: string
   dateLabel: string
+  sessionIndex: number
+  sessionLabel: string
   dayOfWeek: number
   dayLabel: string
   checkIn: string | null
@@ -139,6 +141,8 @@ export function attendanceToWorkLogRow(a: Attendance): AttendanceWorkLogRow {
     id: a.id,
     date: date.toISOString(),
     dateLabel: formatDateDdMmYyyyBangkok(date),
+    sessionIndex: a.sessionIndex ?? 1,
+    sessionLabel: (a.sessionIndex ?? 1) > 1 ? `รอบ ${a.sessionIndex}` : 'รอบหลัก',
     dayOfWeek: a.dayOfWeek ?? getDayOfWeekIndex(date),
     dayLabel: THAI_WEEKDAY_LABELS[a.dayOfWeek ?? getDayOfWeekIndex(date)] ?? '',
     checkIn: a.checkIn?.toISOString() ?? null,
@@ -230,32 +234,37 @@ export async function syncApprovedLeaveAttendance(
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const day = new Date(d)
       day.setHours(0, 0, 0, 0)
-      const existing = await prisma.attendance.findUnique({
-        where: { userId_date: { userId, date: day } },
+      const hasCheckIn = await prisma.attendance.findFirst({
+        where: { userId, date: day, checkIn: { not: null } },
       })
-      if (existing?.checkIn) {
-        if (!existing.leaveType) {
+      if (hasCheckIn) {
+        if (!hasCheckIn.leaveType) {
           await prisma.attendance.update({
-            where: { id: existing.id },
+            where: { id: hasCheckIn.id },
             data: { leaveType: leave.type },
           })
         }
         continue
       }
-      await prisma.attendance.upsert({
-        where: { userId_date: { userId, date: day } },
-        create: {
+      const leaveRow = await prisma.attendance.findFirst({
+        where: { userId, date: day, sessionIndex: 1, checkIn: null },
+      })
+      if (leaveRow) {
+        await prisma.attendance.update({
+          where: { id: leaveRow.id },
+          data: { status: 'LEAVE', leaveType: leave.type, dayOfWeek: getDayOfWeekIndex(day) },
+        })
+        continue
+      }
+      await prisma.attendance.create({
+        data: {
           userId,
           date: day,
+          sessionIndex: 1,
           status: 'LEAVE',
           leaveType: leave.type,
           dayOfWeek: getDayOfWeekIndex(day),
           workMinutes: 0,
-        },
-        update: {
-          status: 'LEAVE',
-          leaveType: leave.type,
-          dayOfWeek: getDayOfWeekIndex(day),
         },
       })
     }
@@ -290,7 +299,7 @@ export async function buildMonthlyWorkLog(
 
   const records = await prisma.attendance.findMany({
     where: { userId, date: { gte: startDate, lte: endDate } },
-    orderBy: { date: 'asc' },
+    orderBy: [{ date: 'asc' }, { sessionIndex: 'asc' }],
   })
 
   for (const r of records) {
@@ -299,7 +308,7 @@ export async function buildMonthlyWorkLog(
 
   const refreshed = await prisma.attendance.findMany({
     where: { userId, date: { gte: startDate, lte: endDate } },
-    orderBy: { date: 'asc' },
+    orderBy: [{ date: 'asc' }, { sessionIndex: 'asc' }],
   })
 
   const rows = refreshed.map(attendanceToWorkLogRow)
@@ -309,15 +318,47 @@ export async function buildMonthlyWorkLog(
 }
 
 function summarizeWorkLogRows(rows: AttendanceWorkLogRow[]): WorkLogSummary {
+  const byDate = new Map<string, AttendanceWorkLogRow[]>()
+  for (const r of rows) {
+    const key = r.date.slice(0, 10)
+    const list = byDate.get(key) ?? []
+    list.push(r)
+    byDate.set(key, list)
+  }
+
+  let present = 0
+  let late = 0
+  let leave = 0
+  let absent = 0
+  let halfDay = 0
+  let earlyLeave = 0
+
+  for (const dayRows of byDate.values()) {
+    const hasLeaveOnly = dayRows.every((r) => r.status === 'LEAVE' && !r.checkIn)
+    const worked = dayRows.some((r) => r.checkIn)
+    if (hasLeaveOnly) {
+      leave += 1
+      continue
+    }
+    if (worked) {
+      present += 1
+      if (dayRows.some((r) => r.status === 'LATE')) late += 1
+      if (dayRows.some((r) => r.status === 'HALF_DAY')) halfDay += 1
+      if (dayRows.some((r) => r.status === 'EARLY_LEAVE')) earlyLeave += 1
+    } else if (dayRows.some((r) => r.status === 'ABSENT')) {
+      absent += 1
+    }
+  }
+
   return {
-    present: rows.filter((r) => r.status === 'NORMAL' || r.status === 'OT').length,
-    late: rows.filter((r) => r.status === 'LATE').length,
-    leave: rows.filter((r) => r.status === 'LEAVE').length,
-    absent: rows.filter((r) => r.status === 'ABSENT').length,
-    halfDay: rows.filter((r) => r.status === 'HALF_DAY').length,
-    earlyLeave: rows.filter((r) => r.status === 'EARLY_LEAVE').length,
+    present,
+    late,
+    leave,
+    absent,
+    halfDay,
+    earlyLeave,
     totalWorkMinutes: rows.reduce((s, r) => s + r.workMinutes, 0),
-    totalLateMinutes: rows.reduce((s, r) => s + r.lateMinutes, 0),
+    totalLateMinutes: rows.reduce((s, r) => s + (r.sessionIndex === 1 ? r.lateMinutes : 0), 0),
     totalEarlyMinutes: rows.reduce((s, r) => s + r.earlyLeaveMinutes, 0),
   }
 }

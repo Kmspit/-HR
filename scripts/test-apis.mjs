@@ -24,10 +24,11 @@ try {
   console.log('user:', user.email, user.id)
 
   const today = todayLocal()
-  const existing = await prisma.attendance.findUnique({
-    where: { userId_date: { userId: user.id, date: today } },
+  const existing = await prisma.attendance.findFirst({
+    where: { userId: user.id, date: today, checkIn: { not: null }, checkOut: null },
+    orderBy: { sessionIndex: 'desc' },
   })
-  console.log('existing attendance:', existing?.id, 'checkIn:', existing?.checkIn, 'checkOut:', existing?.checkOut)
+  console.log('active session:', existing?.id, 'sessionIndex:', existing?.sessionIndex, 'checkIn:', existing?.checkIn)
 
   if (existing?.checkIn && !existing?.checkOut) {
     const updated = await prisma.attendance.update({
@@ -36,12 +37,16 @@ try {
     })
     console.log('checkout ok:', updated.id)
   } else if (!existing?.checkIn) {
-    const created = await prisma.attendance.upsert({
-      where: { userId_date: { userId: user.id, date: today } },
-      update: { checkIn: new Date(), lat: 13.75, lng: 100.5, address: 'test', status: 'NORMAL', lateMinutes: 0, isOutside: false },
-      create: {
+    const maxIdx = await prisma.attendance.aggregate({
+      where: { userId: user.id, date: today },
+      _max: { sessionIndex: true },
+    })
+    const sessionIndex = (maxIdx._max.sessionIndex ?? 0) + 1
+    const created = await prisma.attendance.create({
+      data: {
         userId: user.id,
         date: today,
+        sessionIndex,
         checkIn: new Date(),
         lat: 13.75,
         lng: 100.5,

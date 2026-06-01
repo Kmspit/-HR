@@ -313,18 +313,15 @@ async function sendLineOAMsg(message, imageUrl) {
     console.warn('[LINE] server relay failed', err);
   }
 
-  // 2. Cloudflare Worker relay — Messaging API หรือ LINE Notify
+  // 2. Make.com relay — ส่ง lineBody เป็น JSON string สำเร็จรูป
   if (relay) {
     try {
       const res = await fetch(relay, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accessToken: token,
-          messages,
-          message,
-          imageUrl: imageUrl || null,
           token,
+          lineBody: JSON.stringify({ messages }),
         }),
       });
       if (res.ok) return { ok: true, via: 'relay' };

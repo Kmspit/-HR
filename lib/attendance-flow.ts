@@ -10,7 +10,7 @@ export const ATTENDANCE_COMPLETED_PATCH = {
 
 const FLOW_ERROR: Record<string, string> = {
   NO_CHECKIN:      'ต้องเช็คอินก่อน',
-  ALREADY_CHECKIN: 'เช็คอินแล้ววันนี้',
+  ALREADY_CHECKIN: 'มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อนเริ่มรอบใหม่',
   ALREADY_CHECKOUT: 'เช็คเอาท์แล้ววันนี้',
   NEED_LUNCH_OUT:  'ต้องเริ่มพักกลางวันก่อน',
   ALREADY_LUNCH_OUT: 'บันทึกเริ่มพักกลางวันแล้ว',
@@ -25,7 +25,7 @@ export function attendanceFlowErrorMessage(code: string): string {
 /**
  * ตรวจลำดับ: Check In → Lunch Start → Lunch End → Check Out
  * - ไม่มี scan cooldown (สแกนซ้ำได้ไม่จำกัดครั้งถ้าล้มเหลว)
- * - ป้องกัน duplicate ระดับวัน (ALREADY_*) เท่านั้น
+ * - ป้องกัน duplicate ระดับรอบงาน (ALREADY_* ต่อ session ที่ยังไม่ checkout)
  * คืน error code หรือ null ถ้าผ่าน
  */
 export function validateAttendanceFlow(

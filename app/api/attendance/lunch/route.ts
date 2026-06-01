@@ -17,6 +17,7 @@ import {
   attendanceFlowErrorMessage,
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
+import { findActiveAttendanceSession } from '@/lib/attendance-session'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 export async function POST(req: NextRequest) {
@@ -46,9 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const today = startOfTodayLocal()
-    const attendance = await prisma.attendance.findUnique({
-      where: { userId_date: { userId: session.user.id, date: today } },
-    })
+    const attendance = await findActiveAttendanceSession(session.user.id, today)
 
     const now = new Date()
     const flowAction = action === 'lunch-in' ? 'lunch-in' : 'lunch-out'

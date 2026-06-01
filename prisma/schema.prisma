@@ -423,6 +423,8 @@ model Attendance {
   id          String           @id @default(cuid())
   userId      String
   date        DateTime
+  /** รอบการทำงานในวันเดียวกัน (1 = เข้างานครั้งแรก, 2 = ออกไปลูกค้าแล้วกลับมา ฯลฯ) */
+  sessionIndex Int             @default(1)
   checkIn     DateTime?
   checkOut    DateTime?
   lunchOut    DateTime?
@@ -465,7 +467,7 @@ model Attendance {
 
   user User @relation(fields: [userId], references: [id])
 
-  @@unique([userId, date])
+  @@unique([userId, date, sessionIndex])
   @@map("attendances")
 }
 

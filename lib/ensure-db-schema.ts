@@ -281,6 +281,11 @@ async function runEnsure(): Promise<boolean> {
     'attendanceStatus',
     `ALTER TABLE attendances ADD COLUMN attendanceStatus TEXT NOT NULL DEFAULT 'completed'`,
   )
+  await addAttendanceColumnIfMissing(
+    'sessionIndex',
+    `ALTER TABLE attendances ADD COLUMN sessionIndex INTEGER NOT NULL DEFAULT 1`,
+  )
+  await migrateAttendanceMultiSessionUnique()
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS attendance_line_notify_logs (
@@ -507,4 +512,39 @@ async function addPayrollColumnIfMissing(column: string, ddl: string) {
     const msg = err instanceof Error ? err.message : String(err)
     if (!msg.includes('duplicate column')) throw err
   }
+}
+
+/** รองรับหลายรอบเช็คอินต่อวัน — เปลี่ยน unique จาก (userId,date) เป็น (userId,date,sessionIndex) */
+async function migrateAttendanceMultiSessionUnique() {
+  const cols = await attendanceColumns()
+  if (!cols.includes('sessionIndex')) return
+
+  const indexes = await prisma.$queryRawUnsafe<{ name: string; sql: string }[]>(
+    `SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'attendances'`,
+  )
+  const hasNew = indexes.some(
+    (i) =>
+      i.name.includes('userId_date_sessionIndex') ||
+      (i.sql?.includes('sessionIndex') && i.sql?.includes('UNIQUE')),
+  )
+  if (hasNew) return
+
+  const oldUnique = indexes.find(
+    (i) =>
+      i.name.includes('userId_date') &&
+      !i.name.includes('sessionIndex') &&
+      i.sql?.toUpperCase().includes('UNIQUE'),
+  )
+  if (oldUnique) {
+    try {
+      await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "${oldUnique.name}"`)
+    } catch (err) {
+      console.warn('[ensureDbSchema] drop old attendance unique', err)
+    }
+  }
+
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
+    ON attendances (userId, date, sessionIndex)
+  `)
 }

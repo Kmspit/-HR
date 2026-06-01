@@ -18,6 +18,10 @@ import {
   attendanceFlowErrorMessage,
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
+import {
+  findActiveAttendanceSession,
+  getNextSessionIndex,
+} from '@/lib/attendance-session'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -80,11 +84,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const existing = await prisma.attendance.findUnique({
-      where: { userId_date: { userId: session.user.id, date: today } },
-    })
+    const activeSession = await findActiveAttendanceSession(session.user.id, today)
 
-    const flowErr = validateAttendanceFlow(existing, 'checkin', now)
+    const flowErr = validateAttendanceFlow(activeSession, 'checkin', now)
     if (flowErr) {
       return NextResponse.json(
         { error: attendanceFlowErrorMessage(flowErr), code: flowErr },
@@ -92,39 +94,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const sessionIndex = await getNextSessionIndex(session.user.id, today)
+    const isFirstSessionOfDay = sessionIndex === 1
+
     const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
     const leaveType = approvedLeave?.type ?? undefined
 
-    const attendance = await prisma.attendance.upsert({
-      where: { userId_date: { userId: session.user.id, date: today } },
-      update: {
-        ...ATTENDANCE_COMPLETED_PATCH,
-        checkIn: now,
-        checkOut: null,
-        lunchOut: null,
-        lunchIn: null,
-        photoUrl: null,
-        checkOutPhotoUrl: null,
-        lunchOutPhotoUrl: null,
-        lunchInPhotoUrl: null,
-        lat,
-        lng,
-        address,
-        workPlaceName,
-        checkInLat: lat,
-        checkInLng: lng,
-        checkInAddress: address || null,
-        checkInWorkPlaceName: workPlaceName,
-        isOutside,
-        status,
-        lateMinutes,
-        dayOfWeek: getDayOfWeekIndex(today),
-        ...(leaveType ? { leaveType } : {}),
-      },
-      create: {
+    const attendance = await prisma.attendance.create({
+      data: {
         ...ATTENDANCE_COMPLETED_PATCH,
         userId: session.user.id,
         date: today,
+        sessionIndex,
         checkIn: now,
         lat,
         lng,
@@ -135,8 +116,8 @@ export async function POST(req: NextRequest) {
         checkInAddress: address || null,
         checkInWorkPlaceName: workPlaceName,
         isOutside,
-        status,
-        lateMinutes,
+        status: isFirstSessionOfDay ? status : 'NORMAL',
+        lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
         dayOfWeek: getDayOfWeekIndex(today),
         leaveType: leaveType ?? null,
       },
@@ -202,7 +183,8 @@ export async function POST(req: NextRequest) {
       success: true,
       attendance: finalized,
       isOutside,
-      lateMinutes,
+      lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
+      sessionIndex,
     })
   } catch (err) {
     return apiError(err)

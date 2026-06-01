@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import { ROLE_LABELS } from '@/lib/permissions'
 import { formatThaiDate } from '@/lib/utils'
+import { findActiveAttendanceSession, findTodayAttendanceSessions } from '@/lib/attendance-session'
 import type { Role } from '@prisma/client'
 
 type Props = {
@@ -15,10 +16,9 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [todayRecord, leaveBalance, unreadCount, pendingLeave] = await Promise.all([
-    prisma.attendance.findUnique({
-      where: { userId_date: { userId, date: today } },
-    }),
+  const [activeSession, todaySessions, leaveBalance, unreadCount, pendingLeave] = await Promise.all([
+    findActiveAttendanceSession(userId, today),
+    findTodayAttendanceSessions(userId, today),
     prisma.leaveBalance.findUnique({
       where: { userId_year: { userId, year: new Date().getFullYear() } },
     }),
@@ -26,11 +26,13 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
     prisma.leaveRequest.count({ where: { userId, status: 'PENDING' } }),
   ])
 
-  const checkedIn = Boolean(todayRecord?.checkIn)
-  const checkedOut = Boolean(todayRecord?.checkOut)
+  const checkedIn = Boolean(activeSession?.checkIn)
+  const checkedOut = Boolean(activeSession?.checkOut)
+  const completedRounds = todaySessions.filter((s) => s.checkIn && s.checkOut).length
+  const firstCheckInToday = todaySessions.find((s) => s.checkIn)?.checkIn ?? null
 
   const quickActions = [
-    { href: '/attendance', label: 'ลงเวลางาน', sub: checkedIn ? (checkedOut ? 'เสร็จแล้ววันนี้' : 'เช็คเอาท์ได้') : 'เช็คอินได้', gradient: 'from-cyan-500 to-blue-500', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+    { href: '/attendance', label: 'ลงเวลางาน', sub: checkedIn ? (checkedOut ? 'เสร็จแล้ววันนี้' : 'เช็คเอาท์ได้') : completedRounds > 0 ? `เริ่มรอบที่ ${completedRounds + 1}` : 'เช็คอินได้', gradient: 'from-cyan-500 to-blue-500', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
     { href: '/leave', label: 'ขอลาหยุด', sub: pendingLeave > 0 ? `รออนุมัติ ${pendingLeave}` : 'ยื่นคำขอลา', gradient: 'from-violet-500 to-purple-500', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
     { href: '/outside-work', label: 'ออกนอกสถานที่', sub: 'ขออนุมัติ', gradient: 'from-orange-500 to-amber-500', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
     { href: '/payslip', label: 'สลิปเงินเดือน', sub: 'ดูสลิป', gradient: 'from-emerald-500 to-teal-500', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
@@ -53,12 +55,12 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
           <div className="glass-card card-hover rounded-2xl p-3.5" style={{ animationDelay: '0ms' }}>
             <p className="text-[10px] text-slate-500">สถานะวันนี้</p>
             <p className="mt-1 text-lg font-bold text-white">
-              {!checkedIn ? 'ยังไม่เช็คอิน' : checkedOut ? 'เสร็จสิ้น' : 'กำลังทำงาน'}
+              {!checkedIn ? (completedRounds > 0 ? `รอบ ${completedRounds} เสร็จแล้ว` : 'ยังไม่เช็คอิน') : checkedOut ? 'เสร็จสิ้น' : 'กำลังทำงาน'}
             </p>
-            {todayRecord?.checkIn && (
+            {firstCheckInToday && (
               <p className="text-[10px] text-slate-500 mt-0.5">
                 เข้า{' '}
-                {new Date(todayRecord.checkIn).toLocaleTimeString('th-TH', {
+                {new Date(firstCheckInToday).toLocaleTimeString('th-TH', {
                   hour: '2-digit',
                   minute: '2-digit',
                   timeZone: 'Asia/Bangkok',
