@@ -248,6 +248,8 @@ async function uploadToCloudinary(dataUrl, opts) {
 // ── LINE OA NOTIFICATION ───────────────────────────────────────────────────────
 
 const _LINE_QUEUE_KEY = 'lineNotifyQueue';
+const DEFAULT_LINE_OA_ID = '@593qdkpk';
+const DEFAULT_LINE_NOTIFY_API = 'https://hrflow-app-gamma.vercel.app';
 
 /**
  * Builds the Thai attendance notification message per the LINE OA template.
@@ -265,10 +267,23 @@ function buildLineAttMsg(d) {
     'สถานที่:\n' + d.location;
 }
 
+/** Base URL ของแอป Next.js สำหรับส่ง LINE ผ่าน server (หลีกเลี่ยง CORS) */
+function getLineNotifyApiBase() {
+  const s = getCompanySettings();
+  if (s.lineNotifyApiBase) return String(s.lineNotifyApiBase).replace(/\/$/, '');
+  if (typeof location !== 'undefined') {
+    const host = location.hostname;
+    if (host.includes('hrflow-app') || host.includes('hrprogramkm') || host.includes('app-hr-km')) {
+      return location.origin.replace(/\/prototype.*$/, '');
+    }
+  }
+  return DEFAULT_LINE_NOTIFY_API;
+}
+
 /**
  * Sends a LINE notification.
- * Tries: (1) configured webhook relay (avoids browser CORS), (2) LINE Notify direct.
- * Returns { ok: boolean, reason: string }.
+ * Order: (1) server API on hrflow-app, (2) Cloudflare relay, (3) direct (CORS มักล้ม)
+ * Returns { ok: boolean, reason?: string, sent?: number }.
  */
 async function sendLineOAMsg(message, imageUrl) {
   const s = getCompanySettings();
@@ -280,19 +295,43 @@ async function sendLineOAMsg(message, imageUrl) {
     messages.push({ type: 'image', originalContentUrl: imageUrl, previewImageUrl: imageUrl });
   }
 
-  // 1. Webhook relay (Cloudflare Worker — รูปแบบ { token, message, imageUrl })
+  // 1. Server-side relay (ใช้ token บน Vercel — ไม่มี CORS)
+  try {
+    const apiBase = getLineNotifyApiBase();
+    const res = await fetch(apiBase + '/api/line/prototype-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, imageUrl: imageUrl || null }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data.ok) return { ok: true, sent: data.sent, via: 'server' };
+      if (data.reason === 'no_hr_linked') return { ok: false, reason: 'no_hr_linked' };
+      if (data.reason === 'line_not_configured') return { ok: false, reason: 'no_config' };
+    }
+  } catch (err) {
+    console.warn('[LINE] server relay failed', err);
+  }
+
+  // 2. Cloudflare Worker relay — Messaging API หรือ LINE Notify
   if (relay) {
     try {
       const res = await fetch(relay, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, message, imageUrl: imageUrl || null }),
+        body: JSON.stringify({
+          accessToken: token,
+          messages,
+          message,
+          imageUrl: imageUrl || null,
+          token,
+        }),
       });
-      if (res.ok) return { ok: true };
+      if (res.ok) return { ok: true, via: 'relay' };
     } catch {}
   }
 
-  // 2. LINE Messaging API direct (อาจถูก CORS บล็อกใน browser)
+  // 3. LINE Messaging API direct (มักถูก CORS บล็อกใน browser)
   if (token) {
     try {
       const res = await fetch('https://api.line.me/v2/bot/message/broadcast', {
@@ -303,7 +342,7 @@ async function sendLineOAMsg(message, imageUrl) {
         },
         body: JSON.stringify({ messages }),
       });
-      if (res.ok) return { ok: true };
+      if (res.ok) return { ok: true, via: 'direct' };
       return { ok: false, reason: 'line_' + res.status };
     } catch (err) {
       return { ok: false, reason: (err && err.message) || 'network_error' };
@@ -333,13 +372,35 @@ async function flushLineQueue() {
   lsSet(_LINE_QUEUE_KEY, remaining);
 }
 
-/** เปิดแชท LINE OA (@593qdkpk) — ใช้หลังสร้างรหัสผูกบัญชี */
+/** เปิดแชท LINE OA (@593qdkpk) — ใช้หลังสแกน/ผูกบัญชี */
 function openLineOaChat(basicId) {
-  const id = String(basicId || '@593qdkpk').replace(/^@/, '');
+  const id = String(basicId || DEFAULT_LINE_OA_ID).replace(/^@/, '');
   const url = 'https://line.me/R/ti/p/@' + encodeURIComponent(id);
   if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
     window.location.href = url;
   } else {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
+}
+
+/**
+ * หลังสแกนลงเวลา — แจ้งผล + เปิด LINE OA ให้ผู้ใช้เห็นแชท/แจ้งเตือน
+ */
+function showLineAfterScan(lineResult, scanLabel) {
+  const sent = lineResult && lineResult.ok;
+  const reason = lineResult && lineResult.reason;
+  let msg = sent
+    ? '✓ ส่งแจ้งเตือนไป LINE HR แล้ว'
+    : reason === 'no_hr_linked'
+      ? '⚠ HR ยังไม่ได้ผูก LINE OA — เปิด LINE เพื่อเพิ่มเพื่อนและผูกบัญชี'
+      : reason === 'no_config'
+        ? '⚠ ยังไม่ตั้งค่า LINE บนเซิร์ฟเวอร์'
+        : '⚠ ส่ง LINE ไม่สำเร็จ — เปิด LINE OA เพื่อตรวจสอบ';
+
+  if (typeof mockLineNotify === 'function') {
+    mockLineNotify((scanLabel ? scanLabel + '\n' : '') + msg, sent ? 'LINE HR' : 'LINE OA');
+  }
+
+  const goLine = confirm(msg + '\n\nต้องการเปิดแอป LINE OA (@593qdkpk) ตอนนี้หรือไม่?');
+  if (goLine) openLineOaChat(DEFAULT_LINE_OA_ID);
 }

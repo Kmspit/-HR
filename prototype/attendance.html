@@ -777,10 +777,13 @@ function submitActiveAction() {
   const _scanType = activePanel; // capture before closePanel resets it
   closePanel();
   alert('บันทึกสำเร็จ');
-  // Save annotated photo to device (close to user gesture so Web Share works)
   saveAttendancePhotoToDevice(photoUrl, rec, _scanType);
-  // Async: upload to Cloudinary + send LINE OA (must not block attendance save)
-  processAttendanceNotification(rec, _scanType, photoUrl).catch(function(e) { console.warn('attendance notification:', e); });
+  const scanLabel = (typeof ATT_SCAN_LABELS !== 'undefined' && ATT_SCAN_LABELS[_scanType]) || _scanType;
+  processAttendanceNotification(rec, _scanType, photoUrl)
+    .then(function(lineResult) {
+      if (typeof showLineAfterScan === 'function') showLineAfterScan(lineResult, scanLabel);
+    })
+    .catch(function(e) { console.warn('attendance notification:', e); });
 }
 
 function formatTimesCell(rec) {
@@ -1201,11 +1204,8 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
     location,
   };
 
-  // Show immediate toast (visual feedback)
-  const toastMsg = ATT_SCAN_LABELS[scanType] + ' — ' + timeStr;
-  if (typeof mockLineNotify === 'function') mockLineNotify(toastMsg, user.name);
-
-  // 1. Upload face photo to Cloudinary (if configured)
+  // Show immediate toast (visual feedback) — รายละเอียดเต็มหลังส่ง LINE ใน showLineAfterScan
+  const scanLabel = ATT_SCAN_LABELS[scanType] || scanType;
   let imageUrl = null;
   if (photoDataUrl && s.cloudinaryCloud && s.cloudinaryPreset) {
     try {
@@ -1234,10 +1234,10 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
   const message = (typeof buildLineAttMsg === 'function') ? buildLineAttMsg(msgData) : JSON.stringify(msgData);
   const lineResult = await sendLineOAMsg(message, imageUrl);
   if (!lineResult.ok && lineResult.reason !== 'no_config') {
-    // Queue for retry when back online
     queueLineNotification({ message, imageUrl, queuedFor: scanType, employeeId: user.id });
     console.warn('LINE OA queued for retry — reason:', lineResult.reason);
   }
+  return lineResult;
 }
 
 // ── OFFLINE QUEUE UI ──────────────────────────────────────────────────────────

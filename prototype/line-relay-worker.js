@@ -1,35 +1,21 @@
 /**
- * Cloudflare Worker — LINE Notify Relay
- * Deploy ที่ workers.cloudflare.com (ฟรี 100,000 req/วัน)
- *
- * วิธี deploy:
- *  1. เปิด https://workers.cloudflare.com  → Sign in / สมัครฟรี
- *  2. Dashboard → Workers & Pages → Create Worker
- *  3. วาง code นี้ลงใน editor แล้วกด Deploy
- *  4. Copy URL ของ Worker (เช่น https://line-relay.YOUR-NAME.workers.dev)
- *  5. วาง URL นั้นใน Settings → LINE Relay Webhook URL
+ * Cloudflare Worker — LINE Relay (Notify + Messaging API)
  *
  * Request format (JSON POST):
- *   { token: "LINE_NOTIFY_TOKEN", message: "ข้อความ", imageUrl: "https://..." | null }
+ *   Messaging API: { accessToken, messages: [{type,text},...] }
+ *   LINE Notify:     { token, message, imageUrl }
  */
 
-const ALLOWED_ORIGIN = '*'; // เปลี่ยนเป็น domain จริงเพื่อความปลอดภัย เช่น 'https://your-app.vercel.app'
+const ALLOWED_ORIGIN = '*';
 
 export default {
-  async fetch(request, env) {
-    // Handle CORS preflight
+  async fetch(request) {
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders(),
-      });
+      return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
     if (request.method !== 'POST') {
-      return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
-        status: 405,
-        headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
-      });
+      return jsonResp({ ok: false, error: 'Method not allowed' }, 405);
     }
 
     let body;
@@ -39,12 +25,37 @@ export default {
       return jsonResp({ ok: false, error: 'Invalid JSON' }, 400);
     }
 
-    const { token, message, imageUrl } = body;
-    if (!token || !message) {
-      return jsonResp({ ok: false, error: 'token and message are required' }, 400);
+    const accessToken = body.accessToken || body.token;
+    const messages = body.messages;
+
+    // LINE Messaging API (Channel Access Token)
+    if (accessToken && Array.isArray(messages) && messages.length) {
+      let lineRes;
+      try {
+        lineRes = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ messages }),
+        });
+      } catch (err) {
+        return jsonResp({ ok: false, error: 'LINE API unreachable: ' + err.message }, 502);
+      }
+      const lineBody = await lineRes.text().catch(() => '');
+      if (!lineRes.ok) {
+        return jsonResp({ ok: false, error: 'LINE error ' + lineRes.status, detail: lineBody }, lineRes.status);
+      }
+      return jsonResp({ ok: true, via: 'messaging_api' });
     }
 
-    // Forward to LINE Notify
+    // LINE Notify (legacy)
+    const { message, imageUrl } = body;
+    if (!accessToken || !message) {
+      return jsonResp({ ok: false, error: 'accessToken+messages or token+message required' }, 400);
+    }
+
     const fd = new FormData();
     fd.append('message', message);
     if (imageUrl) {
@@ -56,7 +67,7 @@ export default {
     try {
       lineRes = await fetch('https://notify-api.line.me/api/notify', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
+        headers: { Authorization: 'Bearer ' + accessToken },
         body: fd,
       });
     } catch (err) {
@@ -68,7 +79,7 @@ export default {
       return jsonResp({ ok: false, error: 'LINE error ' + lineRes.status, detail: lineBody }, lineRes.status);
     }
 
-    return jsonResp({ ok: true, status: lineRes.status });
+    return jsonResp({ ok: true, via: 'line_notify' });
   },
 };
 
