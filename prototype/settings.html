@@ -144,16 +144,16 @@
     <div class="settings-section">
       <h3>💬 LINE OA Integration (@593qdkpk)</h3>
       <div class="settings-grid">
-        <div class="form-group" style="grid-column:1/-1"><label>LINE Notify Token <span style="font-size:11px;color:var(--text3);">(ได้จาก notify.line.me — ส่งแจ้งเตือนลงเวลาอัตโนมัติ)</span></label>
+        <div class="form-group" style="grid-column:1/-1"><label>LINE Channel Access Token <span style="font-size:11px;color:var(--text3);">(ได้จาก developers.line.biz → Messaging API → Channel access token)</span></label>
           <div style="display:flex;gap:8px;">
-            <input id="s-line-token" type="password" class="form-input" placeholder="LINE Notify Token...">
+            <input id="s-line-token" type="password" class="form-input" placeholder="Channel Access Token...">
             <button class="btn-outline" style="height:40px;white-space:nowrap;" onclick="testLine()">ทดสอบ</button>
           </div>
         </div>
         <div class="form-group" style="grid-column:1/-1">
           <label>LINE Relay Webhook URL <span style="font-size:11px;color:var(--text3);">(ไม่บังคับ — ใช้ถ้า CORS บล็อก LINE Notify โดยตรง)</span></label>
           <input id="s-line-relay" type="text" class="form-input" placeholder="https://your-worker.workers.dev/line-relay">
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Serverless function ที่รับ POST {token, message, imageUrl} แล้ว forward ไป LINE Notify</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Make.com webhook ที่รับ POST {token, messages} แล้ว forward ไป LINE Messaging API</div>
         </div>
       </div>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;">

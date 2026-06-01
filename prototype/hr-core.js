@@ -275,31 +275,33 @@ async function sendLineOAMsg(message, imageUrl) {
   const token = (s.lineToken || '').trim();
   const relay = (s.lineWebhookRelay || '').trim();
 
-  // 1. Webhook relay (user-hosted serverless/proxy — no CORS issue)
+  const messages = [{ type: 'text', text: message }];
+  if (imageUrl) {
+    messages.push({ type: 'image', originalContentUrl: imageUrl, previewImageUrl: imageUrl });
+  }
+
+  // 1. Webhook relay (Make.com — ไม่มี CORS)
   if (relay) {
     try {
       const res = await fetch(relay, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, message, imageUrl: imageUrl || null }),
+        body: JSON.stringify({ token, lineBody: JSON.stringify({ messages }) }),
       });
       if (res.ok) return { ok: true };
     } catch {}
   }
 
-  // 2. LINE Notify direct (works in some environments; may be CORS-blocked in others)
+  // 2. LINE Messaging API direct (อาจถูก CORS บล็อกใน browser)
   if (token) {
-    const fd = new FormData();
-    fd.append('message', message);
-    if (imageUrl) {
-      fd.append('imageFullsize', imageUrl);
-      fd.append('imageThumbnail', imageUrl);
-    }
     try {
-      const res = await fetch('https://notify-api.line.me/api/notify', {
+      const res = await fetch('https://api.line.me/v2/bot/message/broadcast', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: fd,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+        },
+        body: JSON.stringify({ messages }),
       });
       if (res.ok) return { ok: true };
       return { ok: false, reason: 'line_' + res.status };
