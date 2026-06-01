@@ -97,6 +97,23 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 type LocationType = 'company' | 'outside'
+
+type AttendanceAction = 'checkin' | 'lunch-out' | 'lunch-in' | 'checkout'
+
+const ACTION_STEPS: { key: AttendanceAction; label: string; short: string }[] = [
+  { key: 'checkin', label: 'เช็คอิน', short: '1' },
+  { key: 'lunch-out', label: 'พักกลางวัน', short: '2' },
+  { key: 'lunch-in', label: 'เลิกพักกลางวัน', short: '3' },
+  { key: 'checkout', label: 'เช็คเอาท์', short: '4' },
+]
+
+const ACTION_STYLE: Record<AttendanceAction, { grad: string; icon: string }> = {
+  checkin: { grad: 'linear-gradient(135deg,#06b6d4,#3b82f6)', icon: '🟢' },
+  'lunch-out': { grad: 'linear-gradient(135deg,#f59e0b,#ea580c)', icon: '☕' },
+  'lunch-in': { grad: 'linear-gradient(135deg,#eab308,#f59e0b)', icon: '🔔' },
+  checkout: { grad: 'linear-gradient(135deg,#3b82f6,#6366f1)', icon: '🔵' },
+}
+
 export default function AttendanceClient({
   role,
   userId,
@@ -117,6 +134,7 @@ export default function AttendanceClient({
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
+  const [checkinLocationType, setCheckinLocationType] = useState<LocationType>('company')
   const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | 'checkout' | null>(null)
   const [faceRegistered, setFaceRegistered] = useState(false)
   const [showFaceUpdate, setShowFaceUpdate] = useState(false)
@@ -130,17 +148,48 @@ export default function AttendanceClient({
     })
   }, [refreshKey])
 
+  useEffect(() => {
+    if (!isPending) setJustCompleted(false)
+  }, [todayRecord?.id, todayRecord?.checkIn, todayRecord?.lunchOut, todayRecord?.lunchIn, todayRecord?.checkOut, isPending])
+
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(role)
-  /** รอบที่กำลังทำงาน — null = เช็คอินรอบใหม่ได้ */
   const canCheckIn = !todayRecord?.checkIn
   const canCheckOut = !!todayRecord?.checkIn && !todayRecord?.checkOut
   const canLunchOut = !!todayRecord?.checkIn && !todayRecord?.lunchOut && !todayRecord?.checkOut
   const canLunchIn = !!todayRecord?.lunchOut && !todayRecord?.lunchIn && !todayRecord?.checkOut
   const nextSessionNumber = (completedSessionsToday || todaySessions.filter((s) => s.checkIn && s.checkOut).length) + 1
 
-  const startNewRound = () => {
-    setJustCompleted(false)
-    setSelectedType('company')
+  const nextAction: AttendanceAction | null =
+    canCheckIn && !blockCheckIn ? 'checkin'
+    : canLunchOut ? 'lunch-out'
+    : canLunchIn ? 'lunch-in'
+    : canCheckOut ? 'checkout'
+    : null
+
+  const stepDone = (key: AttendanceAction) => {
+    if (!todayRecord) return false
+    if (key === 'checkin') return !!todayRecord.checkIn
+    if (key === 'lunch-out') return !!todayRecord.lunchOut
+    if (key === 'lunch-in') return !!todayRecord.lunchIn
+    if (key === 'checkout') return !!todayRecord.checkOut
+    return false
+  }
+
+  const scanOpen = !!(selectedType || lunchPanel)
+
+  const handleMainAction = () => {
+    if (isPending || !nextAction || !faceRegistered) return
+    if (nextAction === 'checkin') {
+      setSelectedType(checkinLocationType)
+      setLunchPanel(null)
+    } else {
+      setSelectedType(null)
+      setLunchPanel(nextAction)
+    }
+  }
+
+  const closeScan = () => {
+    setSelectedType(null)
     setLunchPanel(null)
   }
 
@@ -281,55 +330,104 @@ export default function AttendanceClient({
             />
           )}
 
-          {/* ── 4 Action Buttons ── */}
-          {!lunchPanel && !selectedType && (
-            <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { key: 'checkin',   label: 'เช็คอิน',        time: todayRecord?.checkIn,   active: canCheckIn && !blockCheckIn, done: !!todayRecord?.checkIn,  grad: 'linear-gradient(135deg,#06b6d4,#3b82f6)', icon: '🟢' },
-                { key: 'lunch-out', label: 'พักกลางวัน',     time: todayRecord?.lunchOut,  active: canLunchOut,                  done: !!todayRecord?.lunchOut, grad: 'linear-gradient(135deg,#f59e0b,#ea580c)', icon: '🟡' },
-                { key: 'lunch-in',  label: 'เลิกพักกลางวัน', time: todayRecord?.lunchIn,   active: canLunchIn,                   done: !!todayRecord?.lunchIn,  grad: 'linear-gradient(135deg,#eab308,#f59e0b)', icon: '🟠' },
-                { key: 'checkout',  label: 'เช็คเอาท์',      time: todayRecord?.checkOut,  active: canCheckOut,                  done: !!todayRecord?.checkOut, grad: 'linear-gradient(135deg,#3b82f6,#6366f1)', icon: '🔵' },
-              ].map((btn) => (
-                <button
-                  key={btn.key}
-                  type="button"
-                  disabled={!btn.active && !btn.done}
-                  onClick={() => {
-                    if (!btn.active) return
-                    if (btn.key === 'checkin') setSelectedType('company')
-                    else setLunchPanel(btn.key as 'lunch-out' | 'lunch-in' | 'checkout')
-                  }}
-                  className={`relative flex flex-col items-center justify-center gap-1.5 rounded-2xl py-5 px-3 text-center transition-all active:scale-95 ${
-                    btn.done ? 'cursor-default' : btn.active ? 'hover:-translate-y-0.5 hover:shadow-lg' : 'opacity-30 cursor-not-allowed'
-                  }`}
-                  style={{
-                    background: btn.done ? btn.grad.replace('135deg', '135deg').replace('#', 'rgba(').replace(/,#[^)]+/, ',0.1)').replace('rgba(','rgba(') : btn.active ? btn.grad : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${btn.done ? 'rgba(255,255,255,0.2)' : btn.active ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'}`,
-                    opacity: btn.done ? 0.7 : 1,
-                  }}
-                >
-                  <span className="text-xl">{btn.done ? '✅' : btn.icon}</span>
-                  <span className={`text-xs font-bold ${btn.done ? 'text-white/80' : btn.active ? 'text-white' : 'text-slate-500'}`}>
-                    {btn.label}
-                  </span>
-                  <span className="text-[10px] text-white/50">
-                    {btn.done ? formatTime(btn.time ?? null) : btn.active ? 'กดเพื่อสแกน' : '—'}
-                  </span>
-                </button>
-              ))}
+          {/* ── ปุ่มเดียว — เปลี่ยนตามลำดับ 1→2→3→4 ── */}
+          {!scanOpen && nextAction && faceRegistered && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-1 px-1">
+                {ACTION_STEPS.map((step, i) => {
+                  const done = stepDone(step.key)
+                  const current = step.key === nextAction
+                  return (
+                    <div key={step.key} className="flex flex-1 flex-col items-center gap-1 min-w-0">
+                      <div
+                        className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
+                          done ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
+                          : current ? 'bg-blue-600 text-white ring-2 ring-blue-400/50 scale-110'
+                          : 'bg-white/5 text-slate-600'
+                        }`}
+                      >
+                        {done ? '✓' : step.short}
+                      </div>
+                      <span className={`text-[9px] text-center leading-tight truncate w-full ${
+                        current ? 'text-white font-semibold' : done ? 'text-green-400/80' : 'text-slate-600'
+                      }`}>
+                        {step.label}
+                      </span>
+                      {i < ACTION_STEPS.length - 1 && (
+                        <div className="absolute hidden" aria-hidden />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {nextAction === 'checkin' && (
+                <div className="flex gap-2">
+                  {(['company', 'outside'] as LocationType[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setCheckinLocationType(t)}
+                      className={`flex-1 rounded-xl py-2 text-xs font-semibold transition ${
+                        checkinLocationType === t
+                          ? t === 'company'
+                            ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/40'
+                            : 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/40'
+                          : 'bg-white/5 text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      {t === 'company' ? '🏢 ในบริษัท' : '📍 นอกสถานที่'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {completedSessionsToday > 0 && nextAction === 'checkin' && (
+                <p className="text-center text-[11px] text-slate-500">
+                  รอบที่ {nextSessionNumber} · เสร็จแล้ว {completedSessionsToday} รอบวันนี้
+                </p>
+              )}
+
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleMainAction}
+                className="w-full flex flex-col items-center justify-center gap-1 rounded-2xl py-5 px-4 text-white font-bold transition-all active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50"
+                style={{
+                  background: ACTION_STYLE[nextAction].grad,
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                <span className="text-2xl">{ACTION_STYLE[nextAction].icon}</span>
+                <span className="text-base">{ACTION_STEPS.find((s) => s.key === nextAction)?.label}</span>
+                <span className="text-[11px] font-normal text-white/70">กดเพื่อสแกนใบหน้า</span>
+              </button>
             </div>
           )}
 
           {/* Scan panel */}
-          {(lunchPanel || selectedType) && (
+          {scanOpen && (
             <div className="space-y-2">
-              <button type="button" onClick={() => { setLunchPanel(null); setSelectedType(null) }}
+              <button type="button" onClick={closeScan}
                 className="text-xs text-slate-400 hover:text-white flex items-center gap-1">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
                 </svg>
                 ยกเลิก
               </button>
+              {selectedType && (
+                <CheckInPanel
+                  type="checkin"
+                  locationType={selectedType}
+                  companyOffice={selectedType === 'company' ? companyOffice : null}
+                  companyGeofence={selectedType === 'company' ? companyGeofence : null}
+                  faceRequired={faceRegistered}
+                  userId={userId}
+                  employeeName={userName}
+                  employeeCode={employeeCode}
+                  onSuccess={handleSuccess}
+                />
+              )}
               {lunchPanel && (
                 <CheckInPanel
                   type={lunchPanel === 'checkout' ? 'checkout' : lunchPanel}
@@ -347,9 +445,9 @@ export default function AttendanceClient({
           )}
 
 
-          {/* รอบที่เสร็จแล้ววันนี้ — เริ่มรอบใหม่ได้ */}
-          {!todayRecord?.checkIn && completedSessionsToday > 0 && !selectedType && !lunchPanel && (
-            <div className="rounded-2xl p-4 space-y-3"
+          {/* รอบที่เสร็จแล้ววันนี้ */}
+          {!todayRecord?.checkIn && completedSessionsToday > 0 && !scanOpen && (
+            <div className="rounded-2xl p-4 space-y-2"
               style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
               <p className="text-xs font-semibold text-green-400">
                 ✅ บันทึกครบ {completedSessionsToday} รอบแล้ววันนี้
@@ -360,11 +458,6 @@ export default function AttendanceClient({
                   {s.isOutside ? ' · นอกสถานที่' : ' · ในบริษัท'}
                 </p>
               ))}
-              <button type="button" onClick={startNewRound}
-                className="w-full h-11 rounded-xl text-sm font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)' }}>
-                🔄 เริ่มรอบที่ {nextSessionNumber} (เช็คอินใหม่)
-              </button>
             </div>
           )}
 
@@ -405,33 +498,6 @@ export default function AttendanceClient({
               </div>
             </div>
           )}
-
-          {/* Check-in panel after type selected */}
-          {canCheckIn && !blockCheckIn && selectedType && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setSelectedType(null)}
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition-colors">
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  เปลี่ยนประเภท
-                </button>
-              </div>
-              <CheckInPanel
-                type="checkin"
-                locationType={selectedType}
-                companyOffice={selectedType === 'company' ? companyOffice : null}
-                companyGeofence={selectedType === 'company' ? companyGeofence : null}
-                faceRequired={faceRegistered}
-                userId={userId}
-                employeeName={userName}
-                employeeCode={employeeCode}
-                onSuccess={handleSuccess}
-              />
-            </div>
-          )}
-
 
           <AttendanceLocalHistory userId={userId} refreshKey={refreshKey} />
 
