@@ -498,13 +498,43 @@ function todayStorageKey() {
   return `hrflow_today_${user?.email || 'guest'}_${day}`;
 }
 
+/** @returns {{ sessions: object[] }} */
+function getTodayData() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(todayStorageKey()) || 'null');
+    if (raw && Array.isArray(raw.sessions)) return raw;
+    // migrate รูปแบบเก่า (record เดียวต่อวัน)
+    if (raw && raw.checkIn) {
+      return { sessions: [{ sessionIndex: 1, ...raw }] };
+    }
+    return { sessions: [] };
+  } catch { return { sessions: [] }; }
+}
+
+function saveTodayData(data) {
+  localStorage.setItem(todayStorageKey(), JSON.stringify(data));
+}
+
+/** รอบที่ยังไม่เช็คเอาท์ */
+function getActiveSession() {
+  const data = getTodayData();
+  return data.sessions.find(s => s.checkIn && !s.checkOut) || null;
+}
+
+function getCompletedSessions() {
+  return getTodayData().sessions.filter(s => s.checkIn && s.checkOut);
+}
+
 function getTodayRecord() {
-  try { return JSON.parse(localStorage.getItem(todayStorageKey()) || 'null'); }
-  catch { return null; }
+  return getActiveSession();
 }
 
 function saveTodayRecord(rec) {
-  localStorage.setItem(todayStorageKey(), JSON.stringify(rec));
+  const data = getTodayData();
+  const idx = data.sessions.findIndex(s => s.sessionIndex === rec.sessionIndex);
+  if (idx >= 0) data.sessions[idx] = rec;
+  else data.sessions.push(rec);
+  saveTodayData(data);
 }
 
 function fmtTime(iso) {
@@ -733,7 +763,9 @@ function submitActiveAction() {
   const office = getOfficeCoords();
   const dist = calculateDistance(userCoords.lat, userCoords.lng, office.lat, office.lng);
   const inRange = dist <= office.radius;
-  let rec = getTodayRecord() || {};
+  let rec = getActiveSession();
+  const completedCount = getCompletedSessions().length;
+  const nextSessionIndex = completedCount + (rec ? 0 : 1);
 
   const user = getCurrentUser();
   const s = getCompanySettings();
@@ -749,9 +781,10 @@ function submitActiveAction() {
   };
 
   if (activePanel === 'checkin-company') {
-    if (rec.checkIn) { alert('เช็คอินแล้ววันนี้'); return; }
+    if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อนเริ่มรอบใหม่'); return; }
     if (!inRange) { alert('อยู่นอกรัศมีสำนักงาน — ใช้เช็คอินนอกสถานที่แทน'); return; }
     rec = {
+      sessionIndex: getTodayData().sessions.length + 1,
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
       isOutside: false, workPlaceName: 'สำนักงาน',
       photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
@@ -759,8 +792,9 @@ function submitActiveAction() {
     };
     appendHistoryRow(rec, photoUrl);
   } else if (activePanel === 'checkin-outside') {
-    if (rec.checkIn) { alert('เช็คอินแล้ววันนี้'); return; }
+    if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อนเริ่มรอบใหม่'); return; }
     rec = {
+      sessionIndex: getTodayData().sessions.length + 1,
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
       isOutside: true, workPlaceName: 'นอกสถานที่',
       photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
@@ -768,7 +802,7 @@ function submitActiveAction() {
     };
     appendHistoryRow(rec, photoUrl);
   } else if (activePanel === 'lunch-out') {
-    if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
+    if (!rec?.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
     if (rec.lunchOut) { alert('บันทึกเริ่มพักแล้ว'); return; }
     rec.lunchOut = now;
     rec.lunchOutPhotoUrl = photoUrl;
@@ -868,18 +902,20 @@ function renderPhotos(rec) {
 }
 
 function renderAttendanceUI() {
-  const rec = getTodayRecord();
+  const rec = getActiveSession();
+  const completed = getCompletedSessions();
   const canCheckIn = !rec?.checkIn;
   const canCheckOut = !!rec?.checkIn && !rec?.checkOut;
   const canLunchOut = !!rec?.checkIn && !rec?.lunchOut && !rec?.checkOut;
   const canLunchIn = !!rec?.lunchOut && !rec?.lunchIn && !rec?.checkOut;
-  const allDone = !!rec?.checkIn && !!rec?.checkOut;
+  const firstCheckIn = getTodayData().sessions.find(s => s.checkIn);
+  const lastCheckOut = [...getTodayData().sessions].reverse().find(s => s.checkOut);
 
-  document.getElementById('stat-checkin').textContent = fmtTime(rec?.checkIn);
-  document.getElementById('stat-checkout').textContent = fmtTime(rec?.checkOut);
+  document.getElementById('stat-checkin').textContent = fmtTime(firstCheckIn?.checkIn || rec?.checkIn);
+  document.getElementById('stat-checkout').textContent = fmtTime(rec?.checkOut || lastCheckOut?.checkOut);
   document.getElementById('stat-status').textContent = rec
-    ? (allDone ? 'ครบวัน' : rec.checkIn ? 'กำลังทำงาน' : '—')
-    : 'ยังไม่เช็คอิน';
+    ? (rec.checkIn ? 'กำลังทำงาน · รอบ ' + (rec.sessionIndex || 1) : '—')
+    : (completed.length ? `เสร็จ ${completed.length} รอบ` : 'ยังไม่เช็คอิน');
   document.getElementById('stat-status').style.color = rec?.checkIn ? 'var(--green)' : 'var(--text3)';
   document.getElementById('stat-type').textContent = rec
     ? (rec.isOutside ? 'นอกสถานที่' : 'ในบริษัท')
@@ -908,7 +944,14 @@ function renderAttendanceUI() {
   if (canCheckIn) {
     const settings = typeof getCompanySettings === 'function' ? getCompanySettings() : {};
     const officeName = settings.companyName || 'สำนักงาน';
-    html += `<p style="font-size:14px;font-weight:600;margin:0 0 10px;">เลือกประเภทการเช็คอิน</p>
+    const roundLabel = completed.length ? `เริ่มรอบที่ ${completed.length + 1}` : 'เลือกประเภทการเช็คอิน';
+    if (completed.length) {
+      html += `<div class="att-done-msg" style="margin-bottom:12px;">✓ บันทึกครบ ${completed.length} รอบแล้ววันนี้</div>`;
+      completed.forEach(s => {
+        html += `<p style="font-size:12px;color:var(--text3);margin:0 0 6px;">รอบ ${s.sessionIndex}: ${fmtTime(s.checkIn)} — ${fmtTime(s.checkOut)}</p>`;
+      });
+    }
+    html += `<p style="font-size:14px;font-weight:600;margin:0 0 10px;">${roundLabel}</p>
       <div class="att-type-grid">
         <button type="button" class="att-type-card company" onclick="openPanel('checkin-company')">
           <div class="att-type-icon">🏢</div>
@@ -942,10 +985,6 @@ function renderAttendanceUI() {
       <p style="font-size:14px;font-weight:600;margin:0 0 8px;">เช็คเอาท์ ${badge}</p>
       <button type="button" class="btn-primary" style="width:100%;height:48px;" onclick="openPanel('checkout')">บันทึกเช็คเอาท์ (ถ่ายรูป)</button>
     </div>`;
-  }
-
-  if (allDone) {
-    html = `<div class="att-done-msg">✓ ลงเวลาครบวันนี้แล้ว (เช็คอิน · พัก · เช็คเอาท์ตามที่บันทึก)</div>`;
   }
 
   actions.innerHTML = html;
