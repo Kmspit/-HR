@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>พนักงาน — เค เอ็ม เซอร์วิส พลัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div><div class="logo-badge">จำกัด</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item active"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">จัดการพนักงาน <span class="topbar-subtitle">/ รายชื่อทั้งหมด</span></div>
+    <div class="topbar-actions">
+      <button class="btn-primary" onclick="openEmpModal(null)">+ เพิ่มพนักงาน</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Stats -->
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+      <div class="stat-card blue"><div class="stat-value" id="stat-total">—</div><div class="stat-label">พนักงานทั้งหมด</div></div>
+      <div class="stat-card green"><div class="stat-value" id="stat-sso-in">—</div><div class="stat-label">อยู่ในประกันสังคม</div></div>
+      <div class="stat-card yellow"><div class="stat-value" id="stat-sso-out">—</div><div class="stat-label">นอกประกันสังคม</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-cowork">—</div><div class="stat-label">Coworker / ฟรีแลนซ์</div></div>
+    </div>
+
+    <!-- Filters -->
+    <section class="filter-card" style="margin-bottom:20px;">
+      <div class="form-group">
+        <label>ค้นหา</label>
+        <input id="f-search" type="text" class="form-input" placeholder="ชื่อ, อีเมล..." oninput="renderEmpTable()">
+      </div>
+      <div class="form-group">
+        <label>แผนก</label>
+        <select id="f-dept" class="form-input" onchange="renderEmpTable()">
+          <option value="">ทุกแผนก</option>
+          <option>HR</option><option>IT</option><option>Legal</option><option>Marketing</option><option>Design</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ประกันสังคม</label>
+        <select id="f-sso" class="form-input" onchange="renderEmpTable()">
+          <option value="">ทุกสถานะ</option>
+          <option value="IN_SSO">อยู่ในระบบ</option>
+          <option value="OUT_SSO">นอกระบบ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ประเภท</label>
+        <select id="f-type" class="form-input" onchange="renderEmpTable()">
+          <option value="">ทุกประเภท</option>
+          <option value="normal">พนักงานประจำ</option>
+          <option value="cowork">Coworker</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">👥 รายชื่อพนักงาน</span>
+        <span id="emp-count" class="tag"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ตำแหน่ง</th><th>ประกันสังคม</th><th>ประเภท</th><th>LINE ID</th><th>เงินเดือน</th><th>จัดการ</th></tr></thead>
+          <tbody id="emp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+const ROLE_LABELS = { MANAGER_HR:'ผู้จัดการ/HR', ADMIN:'Admin', EMPLOYEE:'พนักงาน', LAWYER:'ทนายความ' };
+
+function renderEmpTable() {
+  const search = document.getElementById('f-search').value.toLowerCase();
+  const dept   = document.getElementById('f-dept').value;
+  const sso    = document.getElementById('f-sso').value;
+  const type   = document.getElementById('f-type').value;
+
+  let emps = getEmployees();
+  if (search) emps = emps.filter(e => e.name.toLowerCase().includes(search) || e.email.toLowerCase().includes(search));
+  if (dept)   emps = emps.filter(e => e.dept === dept);
+  if (sso)    emps = emps.filter(e => e.sso === sso);
+  if (type === 'cowork')  emps = emps.filter(e => e.isCoworker);
+  if (type === 'normal')  emps = emps.filter(e => !e.isCoworker);
+
+  document.getElementById('emp-count').textContent = `${emps.length} คน`;
+
+  const all = getEmployees();
+  document.getElementById('stat-total').textContent   = all.length;
+  document.getElementById('stat-sso-in').textContent  = all.filter(e=>e.sso==='IN_SSO').length;
+  document.getElementById('stat-sso-out').textContent = all.filter(e=>e.sso==='OUT_SSO').length;
+  document.getElementById('stat-cowork').textContent  = all.filter(e=>e.isCoworker).length;
+
+  const tb = document.getElementById('emp-tbody');
+  if (!emps.length) { tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text3)">ไม่พบพนักงาน</td></tr>`; return; }
+
+  tb.innerHTML = emps.map(e => `
+    <tr>
+      <td>
+        <div class="emp-cell">
+          <div class="emp-av">${e.name.slice(0,2)}</div>
+          <div>
+            <div>${e.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${e.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>${e.dept || '—'}</td>
+      <td>${roleBadge(e.role)}</td>
+      <td>
+        <button onclick="toggleSSO('${e.id}')" style="background:${e.sso==='IN_SSO'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${e.sso==='IN_SSO'?'var(--green)':'var(--red)'};border:1px solid ${e.sso==='IN_SSO'?'var(--green)':'var(--red)'};border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;">
+          ${e.sso==='IN_SSO'?'✓ อยู่ในระบบ':'✗ นอกระบบ'}
+        </button>
+      </td>
+      <td>${e.isCoworker ? '<span class="tag purple">Coworker</span>' : '<span class="tag">ประจำ</span>'}</td>
+      <td style="font-size:12px;color:var(--text3)">${e.lineId || '—'}</td>
+      <td style="font-size:13px;">${(e.baseSalary||0).toLocaleString()} ฿</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn-sm" onclick="openEmpModal('${e.id}')">แก้ไข</button>
+        <button class="btn-sm" style="color:var(--red);" onclick="deleteEmp('${e.id}')">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+
+function toggleSSO(id) {
+  const emps = getEmployees();
+  const emp  = emps.find(e => e.id === id);
+  if (!emp) return;
+  emp.sso = emp.sso === 'IN_SSO' ? 'OUT_SSO' : 'IN_SSO';
+  lsSet('employees', emps);
+  renderEmpTable();
+}
+
+function deleteEmp(id) {
+  if (!confirm('ต้องการลบพนักงานนี้?')) return;
+  lsSet('employees', getEmployees().filter(e => e.id !== id));
+  renderEmpTable();
+}
+
+function openEmpModal(id) {
+  const emps = getEmployees();
+  const emp  = id ? emps.find(e => e.id === id) : null;
+  const title = emp ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่';
+
+  const bd = openModal(`
+    <h3>👤 ${title}</h3>
+    <div class="form-group" style="margin-bottom:14px"><label>ชื่อ-นามสกุล *</label><input id="m-name" class="form-input" value="${emp?.name||''}"></div>
+    <div class="form-group" style="margin-bottom:14px"><label>อีเมล *</label><input id="m-email" type="email" class="form-input" value="${emp?.email||''}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="form-group"><label>ตำแหน่ง</label>
+        <select id="m-role" class="form-input">
+          <option value="EMPLOYEE" ${emp?.role==='EMPLOYEE'?'selected':''}>พนักงาน</option>
+          <option value="ADMIN"    ${emp?.role==='ADMIN'?'selected':''}>Admin</option>
+          <option value="LAWYER"   ${emp?.role==='LAWYER'?'selected':''}>ทนายความ</option>
+          <option value="MANAGER_HR" ${emp?.role==='MANAGER_HR'?'selected':''}>ผู้จัดการ/HR</option>
+        </select>
+      </div>
+      <div class="form-group"><label>แผนก</label>
+        <select id="m-dept" class="form-input">
+          <option ${emp?.dept==='HR'?'selected':''}>HR</option>
+          <option ${emp?.dept==='IT'?'selected':''}>IT</option>
+          <option ${emp?.dept==='Legal'?'selected':''}>Legal</option>
+          <option ${emp?.dept==='Marketing'?'selected':''}>Marketing</option>
+          <option ${emp?.dept==='Design'?'selected':''}>Design</option>
+          <option ${emp?.dept==='Finance'?'selected':''}>Finance</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="form-group"><label>ประกันสังคม</label>
+        <select id="m-sso" class="form-input">
+          <option value="IN_SSO"  ${emp?.sso==='IN_SSO'?'selected':''}>อยู่ในระบบ</option>
+          <option value="OUT_SSO" ${emp?.sso==='OUT_SSO'?'selected':''}>นอกระบบ</option>
+        </select>
+      </div>
+      <div class="form-group"><label>เงินเดือนฐาน (฿)</label>
+        <input id="m-salary" type="number" class="form-input" value="${emp?.baseSalary||25000}">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:14px"><label>LINE ID</label><input id="m-line" class="form-input" value="${emp?.lineId||''}" placeholder="กรอก LINE ID..."></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+      <input type="checkbox" id="m-cowork" ${emp?.isCoworker?'checked':''} style="accent-color:var(--accent2);">
+      <label for="m-cowork" style="font-size:13px;cursor:pointer;">เป็น Coworker / ฟรีแลนซ์ / Part-time</label>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="flex:1" onclick="saveEmp('${id||''}')">💾 บันทึก</button>
+      <button class="btn-outline" style="flex:1" onclick="this.closest('.modal-backdrop').remove()">ยกเลิก</button>
+    </div>
+  `);
+  window._empModalBd = bd;
+}
+
+function saveEmp(id) {
+  const name   = document.getElementById('m-name').value.trim();
+  const email  = document.getElementById('m-email').value.trim();
+  if (!name || !email) { alert('กรุณากรอกชื่อและอีเมล'); return; }
+
+  const emps = getEmployees();
+  const data = {
+    id: id || uid(), name, email,
+    role:       document.getElementById('m-role').value,
+    dept:       document.getElementById('m-dept').value,
+    sso:        document.getElementById('m-sso').value,
+    baseSalary: parseFloat(document.getElementById('m-salary').value)||0,
+    lineId:     document.getElementById('m-line').value.trim(),
+    isCoworker: document.getElementById('m-cowork').checked,
+  };
+
+  if (id) {
+    const idx = emps.findIndex(e => e.id === id);
+    if (idx >= 0) emps[idx] = data;
+  } else {
+    emps.push(data);
+  }
+
+  lsSet('employees', emps);
+  if (window._empModalBd) window._empModalBd.remove();
+  renderEmpTable();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  renderEmpTable();
+});
+</script>
+</body>
+</html>

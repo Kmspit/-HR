@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>ตั้งค่า — เค เอ็ม เซอร์วิส พลัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+.settings-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--r2); padding: 24px; margin-bottom: 20px; }
+.settings-section h3 { font-size: 15px; font-weight: 700; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+.settings-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 520px) { .settings-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px) { .settings-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } }
+
+/* Face recognition */
+.face-slider-row { display:flex; align-items:center; gap:12px; }
+.face-slider-row input[type=range] { flex:1; accent-color: var(--accent); }
+.face-slider-val { min-width:54px; text-align:center; font-weight:700; color:var(--accent); font-size:14px; }
+.face-reg-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; margin-top:14px; }
+.face-reg-slot { border:1px solid var(--border); border-radius:12px; padding:10px; text-align:center; background:var(--bg2); }
+.face-reg-slot.done { border-color:var(--green); }
+.face-reg-thumb { width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--text3); margin-bottom:8px; }
+.face-reg-slot .lbl { font-size:12px; font-weight:600; }
+.face-reg-slot .hint { font-size:10px; color:var(--text3); margin:3px 0 8px; line-height:1.3; min-height:26px; }
+#reg-video { width:100%; max-width:360px; border-radius:12px; background:#000; transform:scaleX(-1); }
+.face-log-table { width:100%; border-collapse:collapse; font-size:12px; }
+.face-log-table th, .face-log-table td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+.face-log-thumb { width:34px; height:34px; border-radius:6px; object-fit:cover; background:var(--bg3); }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div><div class="logo-badge">จำกัด</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item active"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ตั้งค่าระบบ <span class="topbar-subtitle">/ Company Settings</span></div>
+    <div class="topbar-actions">
+      <button class="btn-primary" onclick="saveSettings()">💾 บันทึกทั้งหมด</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- 1. Company info -->
+    <div class="settings-section">
+      <h3>🏢 ข้อมูลบริษัท</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>ชื่อบริษัท</label><input id="s-company" class="form-input" placeholder="ชื่อบริษัท..."></div>
+        <div class="form-group"><label>ที่อยู่</label><input id="s-address" class="form-input" placeholder="ที่อยู่..."></div>
+        <div class="form-group"><label>เบอร์โทรศัพท์</label><input id="s-phone" class="form-input" placeholder="02-xxx-xxxx"></div>
+        <div class="form-group"><label>อีเมลบริษัท</label><input id="s-email" type="email" class="form-input" placeholder="hr@company.com"></div>
+      </div>
+    </div>
+
+    <!-- 2. Geofence -->
+    <div class="settings-section">
+      <h3>📍 Geofence (พิกัดสำนักงาน)</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>Latitude</label><input id="s-lat" type="number" step="0.0001" class="form-input" placeholder="13.7563"></div>
+        <div class="form-group"><label>Longitude</label><input id="s-lng" type="number" step="0.0001" class="form-input" placeholder="100.5018"></div>
+        <div class="form-group"><label>รัศมี (เมตร)</label><input id="s-radius" type="number" class="form-input" placeholder="200"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3);">การเช็คอินจะถือว่า "ในสำนักงาน" เมื่ออยู่ในรัศมีที่กำหนด</div>
+    </div>
+
+    <!-- 3. Work hours -->
+    <div class="settings-section">
+      <h3>⏰ เวลาทำงาน</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>เวลาเข้างาน</label><input id="s-work-start" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาออกงาน</label><input id="s-work-end" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาพักเที่ยง (เริ่ม)</label><input id="s-break-start" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาพักเที่ยง (สิ้นสุด)</label><input id="s-break-end" type="time" class="form-input"></div>
+        <div class="form-group"><label>ผ่อนผันมาสาย (นาที)</label><input id="s-late-grace" type="number" class="form-input" placeholder="15"></div>
+      </div>
+    </div>
+
+    <!-- 4. Leave policy -->
+    <div class="settings-section">
+      <h3>📅 นโยบายวันลา (ต่อปี/คน)</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>ลาป่วย (วัน)</label><input id="s-sick" type="number" class="form-input"></div>
+        <div class="form-group"><label>ลาพักร้อน (วัน)</label><input id="s-vac" type="number" class="form-input"></div>
+        <div class="form-group"><label>ลากิจ (วัน)</label><input id="s-personal" type="number" class="form-input"></div>
+        <div class="form-group"><label>ลาคลอด (วัน)</label><input id="s-mat" type="number" class="form-input" value="98"></div>
+        <div class="form-group"><label>ลาพักร้อนสะสมสูงสุด (วัน)</label><input id="s-max-carry" type="number" class="form-input" value="5"></div>
+      </div>
+    </div>
+
+    <!-- 5. Payroll -->
+    <div class="settings-section">
+      <h3>💰 ตั้งค่าเงินเดือน</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>วันจ่ายเงินเดือน (วันที่ของเดือน)</label><input id="s-pay-day" type="number" min="1" max="31" class="form-input"></div>
+        <div class="form-group"><label>อัตราหักมาสาย (฿/ครั้ง)</label><input id="s-rate-late" type="number" class="form-input"></div>
+        <div class="form-group"><label>อัตราหักขาดงาน (฿/วัน)</label><input id="s-rate-absent" type="number" class="form-input"></div>
+        <div class="form-group"><label>ค่าล่วงเวลา (฿/ชั่วโมง)</label><input id="s-ot-rate" type="number" class="form-input"></div>
+      </div>
+    </div>
+
+    <!-- 6. LINE OA -->
+    <div class="settings-section">
+      <h3>💬 LINE OA Integration (@593qdkpk)</h3>
+      <div class="settings-grid">
+        <div class="form-group" style="grid-column:1/-1"><label>LINE Notify Token <span style="font-size:11px;color:var(--text3);">(ได้จาก notify.line.me — ส่งแจ้งเตือนลงเวลาอัตโนมัติ)</span></label>
+          <div style="display:flex;gap:8px;">
+            <input id="s-line-token" type="password" class="form-input" placeholder="LINE Notify Token...">
+            <button class="btn-outline" style="height:40px;white-space:nowrap;" onclick="testLine()">ทดสอบ</button>
+          </div>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>LINE Relay Webhook URL <span style="font-size:11px;color:var(--text3);">(ไม่บังคับ — ใช้ถ้า CORS บล็อก LINE Notify โดยตรง)</span></label>
+          <input id="s-line-relay" type="text" class="form-input" placeholder="https://your-worker.workers.dev/line-relay">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Serverless function ที่รับ POST {token, message, imageUrl} แล้ว forward ไป LINE Notify</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div style="font-weight:600;color:var(--text2);">การแจ้งเตือนอัตโนมัติที่เปิดใช้:</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-leave" style="accent-color:var(--accent);" checked> แจ้งเมื่อมีคำขอลาใหม่</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-ooo" style="accent-color:var(--accent);" checked> แจ้งเมื่อมีแผนออกนอกสถานที่ใหม่</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-warn" style="accent-color:var(--accent);" checked> ส่งใบเตือนเข้า LINE อัตโนมัติ</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="s-notify-payslip" style="accent-color:var(--accent);" checked> ส่งสลิปเงินเดือนเข้า LINE</label>
+      </div>
+    </div>
+
+    <!-- 6b. Cloudinary -->
+    <div class="settings-section">
+      <h3>☁️ Cloudinary (เก็บรูปใบหน้าตอนลงเวลา)</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>Cloud Name</label><input id="s-cloudinary-cloud" class="form-input" placeholder="your-cloud-name"></div>
+        <div class="form-group"><label>Upload Preset (Unsigned)</label><input id="s-cloudinary-preset" class="form-input" placeholder="hr_attendance"></div>
+        <div class="form-group"><label>สาขา (Branch)</label><input id="s-branch" class="form-input" placeholder="สำนักงานใหญ่"></div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--text3);">
+        สร้าง <strong>Unsigned Upload Preset</strong> ใน Cloudinary Dashboard → Settings → Upload → Upload Presets<br>
+        ถ้าไม่กรอก รูปจะยังบันทึกในเครื่องได้ปกติ (ใช้ dataURL แทน Cloudinary URL)
+      </div>
+    </div>
+
+    <!-- 7. Face Recognition -->
+    <div class="settings-section" id="face">
+      <h3>👤 ระบบจดจำใบหน้า (Face Recognition)</h3>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:16px;">
+        <input type="checkbox" id="s-face-enabled" style="accent-color:var(--accent);" checked> เปิดใช้การยืนยันตัวตนด้วยใบหน้าตอนลงเวลา
+      </label>
+
+      <!-- Admin-only threshold tuning (req 3) -->
+      <div class="role-admin-only">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>ค่าความมั่นใจขั้นต่ำที่ผ่าน (Accept Threshold) — แนะนำ 0.55–0.65</label>
+          <div class="face-slider-row">
+            <input type="range" id="s-face-threshold" min="0.40" max="0.80" step="0.01" value="0.60" oninput="syncFaceSliders()">
+            <span class="face-slider-val" id="s-face-threshold-val">0.60</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">ค่าสูง = เข้มงวด (false reject มากขึ้น) · ค่าต่ำ = ผ่อนปรน (false accept มากขึ้น)</div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>ระดับ "ถามยืนยัน" ขั้นต่ำ (Confirm Floor) — ต่ำกว่านี้จะปฏิเสธทันที</label>
+          <div class="face-slider-row">
+            <input type="range" id="s-face-confirm" min="0.30" max="0.70" step="0.01" value="0.50" oninput="syncFaceSliders()">
+            <span class="face-slider-val" id="s-face-confirm-val">0.50</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">ช่วงระหว่าง Confirm Floor ถึง Accept Threshold = ระบบจะ "ถามยืนยัน" แทนการปฏิเสธ</div>
+        </div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label>Model URL (ขั้นสูง)</label>
+          <input id="s-face-model-url" class="form-input" placeholder="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/">
+        </div>
+        <button class="btn-outline" type="button" onclick="testFaceModels()" style="margin-bottom:6px;">🧪 ทดสอบโหลดโมเดล</button>
+        <span id="face-model-status" style="font-size:12px;color:var(--text3);margin-left:8px;"></span>
+      </div>
+
+      <!-- Per-user registration (req 4, 5) -->
+      <div style="border-top:1px solid var(--border);margin-top:18px;padding-top:18px;">
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px;">ลงทะเบียนใบหน้าของฉัน (หลายภาพ)</div>
+        <div id="face-reg-status" style="font-size:12px;color:var(--text3);margin-bottom:12px;">ถ่ายภาพหน้าตรงอย่างน้อย 3–5 ภาพ เพื่อสร้างเทมเพลตเฉลี่ยที่แม่นยำขึ้น (มองกล้องตรงทุกครั้ง)</div>
+
+        <video id="reg-video" autoplay playsinline muted style="display:none;"></video>
+        <div id="reg-instruction" style="font-size:12px;color:var(--accent3);margin:8px 0;display:none;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-outline" type="button" id="reg-cam-btn" onclick="startRegCamera()">📷 เปิดกล้องลงทะเบียน</button>
+          <button class="btn-outline" type="button" onclick="clearMyFace()" style="color:var(--red);border-color:var(--red);">🗑️ ลบใบหน้าที่ลงทะเบียน</button>
+        </div>
+
+        <div class="face-reg-grid" id="face-reg-grid"></div>
+      </div>
+
+      <!-- Debug log viewer (req 8) -->
+      <div style="border-top:1px solid var(--border);margin-top:18px;padding-top:18px;" class="role-admin-only">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-weight:600;font-size:14px;">บันทึกการสแกน (Debug Log)</div>
+          <button class="btn-outline" type="button" onclick="clearFaceLogs()" style="height:30px;font-size:12px;">ล้าง log</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="face-log-table" id="face-log-table">
+            <thead><tr><th>เวลา</th><th>ภาพ</th><th>ผล</th><th>conf.</th><th>dist.</th><th>thr.</th><th>เหตุผล</th><th>matched</th></tr></thead>
+            <tbody id="face-log-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Session / Account -->
+    <div class="settings-section">
+      <h3>👤 บัญชีผู้ใช้</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn-outline" onclick="changePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
+        <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="logout()">🚪 ออกจากระบบ</button>
+        <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="clearAllData()">⚠️ ล้างข้อมูล Demo ทั้งหมด</button>
+      </div>
+    </div>
+
+    <div id="save-toast" style="display:none; background:rgba(34,197,94,0.12); border:1px solid var(--green); border-radius:var(--r); padding:12px 18px; font-size:13px; color:var(--green);">
+      ✓ บันทึกการตั้งค่าเรียบร้อยแล้ว
+    </div>
+
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item active"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script src="face-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+function loadSettings() {
+  const s = getCompanySettings();
+  document.getElementById('s-company').value     = s.companyName || 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด';
+  document.getElementById('s-address').value     = s.address     || '';
+  document.getElementById('s-phone').value       = s.phone       || '';
+  document.getElementById('s-email').value       = s.companyEmail|| '';
+  document.getElementById('s-lat').value         = s.lat         ?? 13.7563;
+  document.getElementById('s-lng').value         = s.lng         ?? 100.5018;
+  document.getElementById('s-radius').value      = s.radius      ?? 200;
+  document.getElementById('s-work-start').value  = s.workStart   || '08:00';
+  document.getElementById('s-work-end').value    = s.workEnd     || '17:00';
+  document.getElementById('s-break-start').value = s.breakStart  || '12:00';
+  document.getElementById('s-break-end').value   = s.breakEnd    || '13:00';
+  document.getElementById('s-late-grace').value  = s.lateGrace   ?? 15;
+  document.getElementById('s-sick').value        = s.sickDays    ?? 30;
+  document.getElementById('s-vac').value         = s.vacDays     ?? 10;
+  document.getElementById('s-personal').value    = s.personalDays?? 3;
+  document.getElementById('s-pay-day').value     = s.payDay      ?? 30;
+  document.getElementById('s-rate-late').value   = s.rateLate    ?? 200;
+  document.getElementById('s-rate-absent').value = s.rateAbsent  ?? 1000;
+  document.getElementById('s-ot-rate').value     = s.otRate      ?? 100;
+  document.getElementById('s-line-token').value       = s.lineToken           || '';
+  document.getElementById('s-line-relay').value      = s.lineWebhookRelay    || '';
+  document.getElementById('s-cloudinary-cloud').value = s.cloudinaryCloud   || '';
+  document.getElementById('s-cloudinary-preset').value= s.cloudinaryPreset  || '';
+  document.getElementById('s-branch').value           = s.branch             || '';
+
+  // Face recognition config
+  const f = s.face || {};
+  const fd = (typeof FaceCore !== 'undefined') ? FaceCore.DEFAULTS : { enabled:true, threshold:0.6, confirmFloor:0.5, modelUrl:'' };
+  document.getElementById('s-face-enabled').checked   = f.enabled !== false;
+  document.getElementById('s-face-threshold').value   = f.threshold    ?? fd.threshold;
+  document.getElementById('s-face-confirm').value     = f.confirmFloor ?? fd.confirmFloor;
+  document.getElementById('s-face-model-url').value   = f.modelUrl     || fd.modelUrl;
+  syncFaceSliders();
+}
+
+function syncFaceSliders() {
+  document.getElementById('s-face-threshold-val').textContent = parseFloat(document.getElementById('s-face-threshold').value).toFixed(2);
+  document.getElementById('s-face-confirm-val').textContent   = parseFloat(document.getElementById('s-face-confirm').value).toFixed(2);
+}
+
+function saveSettings() {
+  const s = {
+    companyName:  document.getElementById('s-company').value.trim(),
+    address:      document.getElementById('s-address').value.trim(),
+    phone:        document.getElementById('s-phone').value.trim(),
+    companyEmail: document.getElementById('s-email').value.trim(),
+    lat:          parseFloat(document.getElementById('s-lat').value)        || 13.7563,
+    lng:          parseFloat(document.getElementById('s-lng').value)        || 100.5018,
+    radius:       parseInt(document.getElementById('s-radius').value)       || 200,
+    workStart:    document.getElementById('s-work-start').value,
+    workEnd:      document.getElementById('s-work-end').value,
+    breakStart:   document.getElementById('s-break-start').value,
+    breakEnd:     document.getElementById('s-break-end').value,
+    lateGrace:    parseInt(document.getElementById('s-late-grace').value)   || 15,
+    sickDays:     parseInt(document.getElementById('s-sick').value)         || 30,
+    vacDays:      parseInt(document.getElementById('s-vac').value)          || 10,
+    personalDays: parseInt(document.getElementById('s-personal').value)     || 3,
+    payDay:       parseInt(document.getElementById('s-pay-day').value)      || 30,
+    rateLate:     parseInt(document.getElementById('s-rate-late').value)    || 200,
+    rateAbsent:   parseInt(document.getElementById('s-rate-absent').value)  || 1000,
+    otRate:       parseInt(document.getElementById('s-ot-rate').value)      || 100,
+    lineToken:         document.getElementById('s-line-token').value.trim(),
+    lineWebhookRelay:  document.getElementById('s-line-relay').value.trim(),
+    cloudinaryCloud:   document.getElementById('s-cloudinary-cloud').value.trim(),
+    cloudinaryPreset:  document.getElementById('s-cloudinary-preset').value.trim(),
+    branch:            document.getElementById('s-branch').value.trim(),
+    notifyLeave:  document.getElementById('s-notify-leave').checked,
+    notifyOOO:    document.getElementById('s-notify-ooo').checked,
+    notifyWarn:   document.getElementById('s-notify-warn').checked,
+    notifyPayslip:document.getElementById('s-notify-payslip').checked,
+  };
+
+  // Preserve any non-UI face fields, then overwrite the configurable ones
+  const prevFace = getCompanySettings().face || {};
+  let threshold = parseFloat(document.getElementById('s-face-threshold').value) || 0.6;
+  let confirmFloor = parseFloat(document.getElementById('s-face-confirm').value) || 0.5;
+  if (confirmFloor > threshold) confirmFloor = threshold; // floor cannot exceed accept
+  s.face = Object.assign({}, prevFace, {
+    enabled:      document.getElementById('s-face-enabled').checked,
+    threshold:    threshold,
+    confirmFloor: confirmFloor,
+    modelUrl:     document.getElementById('s-face-model-url').value.trim() || prevFace.modelUrl || undefined,
+  });
+
+  lsSet('settings', s);
+
+  const toast = document.getElementById('save-toast');
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+async function testLine() {
+  const token = document.getElementById('s-line-token').value.trim();
+  const relay  = document.getElementById('s-line-relay').value.trim();
+  if (!token) { alert('กรุณากรอก LINE Notify Token ก่อน'); return; }
+
+  // Temporarily save so sendLineOAMsg picks up the new values
+  const s = getCompanySettings();
+  s.lineToken = token;
+  s.lineWebhookRelay = relay;
+  lsSet('settings', s);
+
+  const message = '\n🔔 ทดสอบการเชื่อมต่อ LINE OA สำเร็จ!\nระบบ เค เอ็ม เซอร์วิส พลัส พร้อมส่งการแจ้งเตือนลงเวลา';
+  const result = await sendLineOAMsg(message, null);
+  if (result.ok) {
+    mockLineNotify('✓ ส่ง LINE สำเร็จ', 'ทดสอบ');
+    alert('ส่งข้อความทดสอบไปยัง LINE สำเร็จ!');
+  } else {
+    mockLineNotify('✕ LINE ส่งไม่สำเร็จ: ' + result.reason, 'ทดสอบ');
+    alert('ส่งไม่สำเร็จ: ' + result.reason + '\n\n(ถ้า CORS ขึ้น ให้ตั้ง Relay Webhook URL)');
+  }
+}
+
+function changePassword() {
+  const np = prompt('รหัสผ่านใหม่:');
+  if (np && np.length >= 6) alert('เปลี่ยนรหัสผ่านเรียบร้อย (demo — ไม่มีผลจริง)');
+  else if (np) alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+}
+
+function logout() {
+  if (confirm('ต้องการออกจากระบบ?')) {
+    localStorage.removeItem('hrflow_user');
+    window.location.href = 'login.html';
+  }
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ ล้างข้อมูล Demo ทั้งหมด? (ไม่สามารถกู้คืนได้)')) return;
+  ['employees','leaves','warnings','announcements','weeklyPlans','attendances','settings'].forEach(k => localStorage.removeItem('hrflow_' + k));
+  alert('ล้างข้อมูลเรียบร้อยแล้ว');
+  loadSettings();
+}
+
+// ── FACE: model test ──
+async function testFaceModels() {
+  const status = document.getElementById('face-model-status');
+  // persist the model URL first so loadModels() picks it up
+  const url = document.getElementById('s-face-model-url').value.trim();
+  if (url) { const s = getCompanySettings(); s.face = Object.assign({}, s.face, { modelUrl: url }); lsSet('settings', s); }
+  status.textContent = '⏳ กำลังโหลดโมเดล...';
+  status.style.color = 'var(--text3)';
+  try {
+    await FaceCore.loadModels();
+    status.textContent = '✓ โหลดโมเดลสำเร็จ พร้อมใช้งาน';
+    status.style.color = 'var(--green)';
+  } catch (err) {
+    status.textContent = '✕ โหลดไม่สำเร็จ: ' + (err?.message || err);
+    status.style.color = 'var(--red)';
+  }
+}
+
+// ── FACE: registration (multi-angle, average template) ──
+let regStream = null;
+let regCurrentAngle = null;
+
+function renderFaceRegGrid() {
+  const grid = document.getElementById('face-reg-grid');
+  if (!grid || typeof FaceCore === 'undefined') return;
+  const empId = FaceCore.getCurrentEmployeeId();
+  const profile = empId ? FaceCore.getProfile(empId) : null;
+  const byAngle = {};
+  (profile?.samples || []).forEach(s => { byAngle[s.angle] = s; });
+
+  grid.innerHTML = FaceCore.REGISTRATION_ANGLES.map(a => {
+    const s = byAngle[a.key];
+    return `<div class="face-reg-slot ${s ? 'done' : ''}">
+      <div class="face-reg-thumb">${s ? `<img src="${s.image}" alt="" style="width:100%;height:100%;border-radius:8px;object-fit:cover;">` : a.icon}</div>
+      <div class="lbl">${a.label}</div>
+      <div class="hint">${a.hint}</div>
+      <button class="btn-outline" type="button" style="width:100%;height:34px;font-size:12px;" onclick="captureRegAngle('${a.key}')">${s ? '🔄 ถ่ายใหม่' : '📷 ถ่าย'}</button>
+    </div>`;
+  }).join('');
+
+  const count = profile?.samples?.length || 0;
+  const ok = FaceCore.hasProfile(empId);
+  const st = document.getElementById('face-reg-status');
+  st.innerHTML = `ลงทะเบียนแล้ว <strong style="color:${ok ? 'var(--green)' : 'var(--orange)'}">${count}/${FaceCore.REGISTRATION_ANGLES.length}</strong> ภาพ` +
+    (ok ? ' · <span style="color:var(--green)">พร้อมใช้ยืนยันตัวตน ✓</span>' : ` · ต้องการอย่างน้อย ${FaceCore.MIN_SAMPLES} ภาพ`);
+}
+
+async function startRegCamera() {
+  const video = document.getElementById('reg-video');
+  try {
+    regStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+    });
+    video.srcObject = regStream;
+    video.style.display = 'block';
+    await video.play().catch(() => {});
+    document.getElementById('reg-cam-btn').textContent = '✓ กล้องพร้อม — มองกล้องตรงแล้วกดถ่าย';
+    if (typeof FaceCore !== 'undefined') FaceCore.loadModels().catch(() => {});
+  } catch (err) {
+    alert('ไม่สามารถเปิดกล้องได้: ' + err.message);
+  }
+}
+
+async function captureRegAngle(angleKey) {
+  const video = document.getElementById('reg-video');
+  if (!regStream || !video.srcObject) { alert('กรุณากด"เปิดกล้องลงทะเบียน"ก่อน'); return; }
+  const empId = FaceCore.getCurrentEmployeeId();
+  if (!empId) { alert('ไม่พบรหัสพนักงาน กรุณาเข้าสู่ระบบใหม่'); return; }
+
+  const instr = document.getElementById('reg-instruction');
+  instr.style.display = 'block';
+  instr.textContent = '⏳ กำลังประมวลผล...';
+  try {
+    // capture an un-mirrored still so it matches the scan orientation
+    const still = FaceCore.captureStill(video, { quality: 0.92 });
+    const res = await FaceCore.registerSample(empId, angleKey, still.canvas);
+    instr.style.color = 'var(--green)';
+    instr.textContent = `✓ บันทึกภาพแล้ว (${res.sampleCount} ภาพ)`;
+    renderFaceRegGrid();
+  } catch (err) {
+    instr.style.color = 'var(--orange)';
+    instr.textContent = '⚠ ' + (err?.message || err);
+  }
+}
+
+function clearMyFace() {
+  if (typeof FaceCore === 'undefined') return;
+  const empId = FaceCore.getCurrentEmployeeId();
+  if (!empId) return;
+  if (!confirm('ลบใบหน้าที่ลงทะเบียนทั้งหมดของฉัน?')) return;
+  FaceCore.removeProfile(empId);
+  renderFaceRegGrid();
+}
+
+// ── FACE: debug log viewer ──
+function renderFaceLogs() {
+  const body = document.getElementById('face-log-body');
+  if (!body || typeof FaceCore === 'undefined') return;
+  const logs = FaceCore.getScanLogs().slice(0, 40);
+  const decColor = { accept: 'var(--green)', confirm: 'var(--orange)', reject: 'var(--red)' };
+  if (!logs.length) { body.innerHTML = '<tr><td colspan="8" style="color:var(--text3);">ยังไม่มีบันทึกการสแกน</td></tr>'; return; }
+  body.innerHTML = logs.map(l => {
+    const t = new Date(l.ts).toLocaleString('th-TH', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return `<tr>
+      <td>${t}</td>
+      <td>${l.capturedImage ? `<img class="face-log-thumb" src="${l.capturedImage}" alt="">` : '—'}</td>
+      <td style="color:${decColor[l.decision] || 'var(--text)'};font-weight:600;">${l.decision}</td>
+      <td>${l.confidence ?? '—'}</td>
+      <td>${l.distance ?? '—'}</td>
+      <td>${l.threshold ?? '—'}</td>
+      <td>${l.reason || '—'}</td>
+      <td>${l.matchedEmployeeId || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearFaceLogs() {
+  if (typeof FaceCore === 'undefined') return;
+  if (!confirm('ล้างบันทึกการสแกนทั้งหมด?')) return;
+  FaceCore.clearScanLogs();
+  renderFaceLogs();
+}
+
+// stop the registration camera when leaving the page
+window.addEventListener('beforeunload', () => { if (regStream) regStream.getTracks().forEach(t => t.stop()); });
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  loadSettings();
+  renderFaceRegGrid();
+  renderFaceLogs();
+});
+</script>
+</body>
+</html>

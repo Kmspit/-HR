@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>เงินเดือน — เค เอ็ม เซอร์วิส พลัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+@media print {
+  .sidebar, .topbar, .mobile-nav, .topbar-actions, .no-print { display: none !important; }
+  .main { margin: 0 !important; }
+  .content { padding: 0 !important; }
+  body { background: white !important; color: black !important; }
+  .card { border: 1px solid #ddd !important; background: white !important; }
+  table th, table td { color: black !important; border-color: #ccc !important; }
+}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div><div class="logo-badge">จำกัด</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item active"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">จัดการเงินเดือน <span class="topbar-subtitle">/ คำนวณและอนุมัติ</span></div>
+    <div class="topbar-actions no-print" style="display:flex;gap:8px;">
+      <select id="pay-month" class="form-input" style="height:36px;font-size:12px;width:90px;" onchange="calcPayroll()"></select>
+      <select id="pay-year"  class="form-input" style="height:36px;font-size:12px;width:80px;" onchange="calcPayroll()"></select>
+      <button class="btn-outline" style="height:36px;font-size:12px;" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn-outline" style="height:36px;font-size:12px;" onclick="window.print()">🖨 Print PDF</button>
+      <button class="btn-primary" style="height:36px;font-size:12px;" onclick="sendAllLine()">💬 ส่งสลิป LINE</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Summary stats -->
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+      <div class="stat-card green"><div class="stat-value" id="stat-gross">—</div><div class="stat-label">ยอดรวมก่อนหัก (฿)</div></div>
+      <div class="stat-card red"><div class="stat-value" id="stat-deduct">—</div><div class="stat-label">ยอดหักรวม (฿)</div></div>
+      <div class="stat-card blue"><div class="stat-value" id="stat-net">—</div><div class="stat-label">ยอดจ่ายสุทธิ (฿)</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-emp-count">—</div><div class="stat-label">จำนวนพนักงาน</div></div>
+    </div>
+
+    <!-- Deduction config -->
+    <div class="card no-print" style="margin-bottom:20px;">
+      <div class="card-header"><span class="card-title">⚙️ อัตราหัก (ต่อครั้ง)</span></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;align-items:center;">
+        <div class="form-group" style="margin:0;"><label style="font-size:12px;">มาสาย (฿/ครั้ง)</label><input id="rate-late" type="number" class="form-input" style="width:100px;height:32px;" value="200" oninput="calcPayroll()"></div>
+        <div class="form-group" style="margin:0;"><label style="font-size:12px;">ขาดงาน (฿/วัน)</label><input id="rate-absent" type="number" class="form-input" style="width:100px;height:32px;" value="1000" oninput="calcPayroll()"></div>
+        <div class="form-group" style="margin:0;"><label style="font-size:12px;">ลาไม่รับค่าจ้าง (฿/วัน)</label><input id="rate-unpaid" type="number" class="form-input" style="width:110px;height:32px;" value="800" oninput="calcPayroll()"></div>
+        <div style="color:var(--text3);font-size:12px;">ประกันสังคม 5% หักอัตโนมัติ (max 750 ฿)</div>
+      </div>
+    </div>
+
+    <!-- Payroll table -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">💵 ตารางเงินเดือน</span></div>
+      <div class="table-wrap">
+        <table id="payroll-table">
+          <thead>
+            <tr>
+              <th>พนักงาน</th><th>แผนก</th><th>เงินเดือนฐาน</th>
+              <th>มาสาย (ครั้ง)</th><th>ขาดงาน (วัน)</th><th>ลาไม่จ่าย</th>
+              <th>โบนัส</th><th>หัก SSO</th><th>หักรวม</th><th>สุทธิ</th><th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="payroll-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item active"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+let payrollData = [];
+
+function fmt(n) { return Math.round(n).toLocaleString('th-TH'); }
+
+function calcPayroll() {
+  const month = parseInt(document.getElementById('pay-month').value);
+  const year  = parseInt(document.getElementById('pay-year').value);
+  const rateLate   = parseFloat(document.getElementById('rate-late').value)   || 200;
+  const rateAbsent = parseFloat(document.getElementById('rate-absent').value) || 1000;
+  const rateUnpaid = parseFloat(document.getElementById('rate-unpaid').value) || 800;
+
+  const emps   = getEmployees();
+  const leaves = getLeaveRequests().filter(l => l.status === 'FINAL_APPROVED');
+  const atts   = getAttendances();
+
+  // Count workdays in month
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  payrollData = emps.map(emp => {
+    // Count late days this month
+    const lateCount = atts.filter(a => {
+      const d = new Date(a.checkIn);
+      return a.empName === emp.name && a.isLate && d.getMonth()+1 === month && d.getFullYear() === year;
+    }).length;
+
+    // Count unpaid leave days
+    const unpaidDays = leaves.filter(l => {
+      return l.empName === emp.name && l.type === 'UNPAID';
+    }).reduce((sum, l) => {
+      const s = new Date(l.startDate), e = new Date(l.endDate);
+      const ms = Math.max(0, e - s) / 86400000 + 1;
+      return sum + ms;
+    }, 0);
+
+    // Count absent days (simplistic: days without attendance record this month)
+    const checkedDays = atts.filter(a => {
+      const d = new Date(a.checkIn);
+      return a.empName === emp.name && d.getMonth()+1 === month && d.getFullYear() === year;
+    }).length;
+    const workdays = Math.round(daysInMonth * 5/7); // approx
+    const absentDays = Math.max(0, workdays - checkedDays);
+
+    const base    = emp.baseSalary || 0;
+    const sso     = emp.sso === 'IN_SSO' ? Math.min(750, base * 0.05) : 0;
+    const deductLate   = lateCount   * rateLate;
+    const deductAbsent = absentDays  * rateAbsent;
+    const deductUnpaid = unpaidDays  * rateUnpaid;
+    const totalDeduct  = sso + deductLate + deductAbsent + deductUnpaid;
+    const bonus   = 0; // can be edited inline
+    const net     = base - totalDeduct + bonus;
+
+    return { ...emp, lateCount, absentDays, unpaidDays, sso, deductLate, deductAbsent, deductUnpaid, totalDeduct, bonus, net, base };
+  });
+
+  renderPayrollTable();
+  updateStats();
+}
+
+function renderPayrollTable() {
+  const tb = document.getElementById('payroll-tbody');
+  tb.innerHTML = payrollData.map((p, i) => `
+    <tr>
+      <td><div class="emp-cell"><div class="emp-av">${p.name.slice(0,2)}</div><div>${p.name}</div></div></td>
+      <td>${p.dept||'—'}</td>
+      <td>${fmt(p.base)} ฿</td>
+      <td style="color:${p.lateCount>0?'var(--orange)':'var(--text)'}">${p.lateCount} ครั้ง</td>
+      <td style="color:${p.absentDays>0?'var(--red)':'var(--text)'}">${p.absentDays} วัน</td>
+      <td>${p.unpaidDays} วัน</td>
+      <td>
+        <input type="number" value="${p.bonus}" style="width:80px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text);font-size:12px;"
+          onchange="payrollData[${i}].bonus=parseFloat(this.value)||0; updateStats();">
+      </td>
+      <td style="color:var(--text3)">${fmt(p.sso)} ฿</td>
+      <td style="color:var(--red)">${fmt(p.totalDeduct)} ฿</td>
+      <td style="font-weight:700;color:var(--green)">${fmt(p.net)} ฿</td>
+      <td>
+        <button class="btn-sm" onclick="sendSlipLine('${p.name}', ${p.net})">💬 LINE</button>
+      </td>
+    </tr>`).join('');
+}
+
+function updateStats() {
+  const gross   = payrollData.reduce((s,p) => s + p.base, 0);
+  const deduct  = payrollData.reduce((s,p) => s + p.totalDeduct, 0);
+  const net     = payrollData.reduce((s,p) => s + p.net + (p.bonus||0), 0);
+  document.getElementById('stat-gross').textContent     = fmt(gross);
+  document.getElementById('stat-deduct').textContent    = fmt(deduct);
+  document.getElementById('stat-net').textContent       = fmt(net);
+  document.getElementById('stat-emp-count').textContent = payrollData.length;
+}
+
+function sendSlipLine(name, net) {
+  const month = document.getElementById('pay-month').value;
+  const year  = document.getElementById('pay-year').value;
+  mockLineNotify(`🧾 สลิปเงินเดือน\nพนักงาน: ${name}\nเดือน: ${month}/${year}\nยอดสุทธิ: ${fmt(net)} ฿\n\nติดต่อ HR หากมีข้อสงสัย`, name);
+}
+
+function sendAllLine() {
+  payrollData.forEach(p => sendSlipLine(p.name, p.net + (p.bonus||0)));
+  alert(`ส่งสลิปเงินเดือนผ่าน LINE ครบทุกคนแล้ว (${payrollData.length} คน)`);
+}
+
+function exportCSV() {
+  const month = document.getElementById('pay-month').value;
+  const year  = document.getElementById('pay-year').value;
+  const header = 'ชื่อ,แผนก,เงินเดือนฐาน,มาสาย(ครั้ง),ขาดงาน(วัน),ลาไม่จ่าย,โบนัส,หัก SSO,หักรวม,สุทธิ';
+  const rows = payrollData.map(p =>
+    [p.name, p.dept, p.base, p.lateCount, p.absentDays, p.unpaidDays, p.bonus||0, Math.round(p.sso), Math.round(p.totalDeduct), Math.round(p.net+(p.bonus||0))].join(',')
+  );
+  const csv = '\uFEFF' + [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `payroll_${month}_${year}.csv`;
+  a.click();
+}
+
+function initMonthYear() {
+  const now = new Date();
+  const monthSel = document.getElementById('pay-month');
+  const yearSel  = document.getElementById('pay-year');
+  const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  months.forEach((m, i) => { const o = document.createElement('option'); o.value=i+1; o.textContent=m; if(i===now.getMonth()) o.selected=true; monthSel.appendChild(o); });
+  for (let y = now.getFullYear(); y >= now.getFullYear()-3; y--) { const o = document.createElement('option'); o.value=y; o.textContent=y+543; yearSel.appendChild(o); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  initMonthYear();
+  calcPayroll();
+});
+</script>
+</body>
+</html>

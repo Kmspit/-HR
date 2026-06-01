@@ -1,0 +1,1383 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>เค เอ็ม เซอร์วิส พลัส — ระบบ HR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #0a0d14;
+  --bg2: #0f1520;
+  --bg3: #151c2c;
+  --card: #111827;
+  --card2: #1a2236;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #3b82f6;
+  --accent2: #6366f1;
+  --accent3: #06b6d4;
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --orange: #f97316;
+  --purple: #8b5cf6;
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --glow: rgba(59,130,246,0.15);
+  --r: 12px;
+  --r2: 16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family: 'IBM Plex Sans Thai', sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:99px}
+
+/* ── GRID NOISE ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.4;
+}
+
+/* ── LAYOUT ── */
+.shell{display:flex;min-height:100vh;position:relative;z-index:1}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:240px;flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;
+  transition:.3s;z-index:100;
+}
+.sidebar-logo{
+  padding:24px 20px 20px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.logo-mark{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:grid;place-items:center;font-size:18px;flex-shrink:0;
+  box-shadow:0 0 20px var(--glow);
+}
+.logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:-.5px}
+.logo-badge{font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:99px;font-weight:600;letter-spacing:.5px}
+
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-section{margin-bottom:6px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--text3);padding:8px 10px 4px;text-transform:uppercase}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:9px;
+  cursor:pointer;transition:.15s;
+  font-size:13.5px;color:var(--text2);
+  position:relative;
+}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{
+  background:linear-gradient(90deg,rgba(59,130,246,.18),rgba(59,130,246,.06));
+  color:var(--accent);
+  border-left:2px solid var(--accent);
+}
+.nav-item .icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{
+  margin-left:auto;background:var(--red);color:#fff;
+  font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center;
+}
+.nav-badge.green{background:var(--green)}
+.nav-badge.yellow{background:var(--yellow);color:#000}
+
+.sidebar-footer{
+  padding:12px 10px 20px;
+  border-top:1px solid var(--border);
+}
+.user-card{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:10px;
+  background:var(--card);cursor:pointer;
+}
+.avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  display:grid;place-items:center;font-weight:700;font-size:13px;flex-shrink:0;
+}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:11px;color:var(--text3)}
+.status-dot{width:8px;height:8px;background:var(--green);border-radius:50%;flex-shrink:0;box-shadow:0 0 6px var(--green)}
+
+/* ── MAIN ── */
+.main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:60px;
+  background:rgba(10,13,20,.85);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 24px;gap:16px;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;flex:1}
+.topbar-subtitle{font-size:12px;color:var(--text3);font-weight:400}
+
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.btn-icon{
+  width:36px;height:36px;border-radius:8px;
+  background:var(--card);border:1px solid var(--border);
+  display:grid;place-items:center;cursor:pointer;
+  font-size:16px;color:var(--text2);transition:.15s;position:relative;
+}
+.btn-icon:hover{background:var(--card2);color:var(--text)}
+.notif-dot{
+  width:7px;height:7px;background:var(--red);border-radius:50%;
+  position:absolute;top:7px;right:7px;border:1.5px solid var(--bg);
+}
+.btn-primary{
+  height:36px;padding:0 16px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:8px;
+  font-size:13px;font-weight:600;cursor:pointer;transition:.15s;
+  font-family: inherit;
+  display:flex;align-items:center;gap:6px;
+  box-shadow:0 0 20px rgba(59,130,246,.3);
+}
+.btn-primary:hover{background:#2563eb;box-shadow:0 0 30px rgba(59,130,246,.4)}
+
+/* ── CONTENT ── */
+.content{padding:24px;flex:1}
+
+/* ── HERO STRIP ── */
+.hero-strip{
+  background:linear-gradient(135deg,#1a2a4a 0%,#0f1e3a 50%,#0d1829 100%);
+  border:1px solid rgba(59,130,246,.2);
+  border-radius:var(--r2);
+  padding:20px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;
+  position:relative;overflow:hidden;
+}
+.hero-strip::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:200px;height:200px;
+  background:radial-gradient(circle,rgba(59,130,246,.15),transparent 70%);
+  border-radius:50%;
+}
+.hero-text h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:4px}
+.hero-text p{font-size:13px;color:var(--text2)}
+.hero-time{text-align:right}
+.hero-clock{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--accent);letter-spacing:-1px;line-height:1}
+.hero-date{font-size:12px;color:var(--text3);margin-top:4px}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  padding:18px 20px;
+  position:relative;overflow:hidden;
+  cursor:pointer;transition:.2s;
+}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.stat-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:var(--accent-c,var(--accent));opacity:.6;
+}
+.stat-card.green{--accent-c:var(--green)}
+.stat-card.red{--accent-c:var(--red)}
+.stat-card.yellow{--accent-c:var(--yellow)}
+.stat-card.purple{--accent-c:var(--purple)}
+
+.stat-icon{
+  width:38px;height:38px;border-radius:10px;
+  background:var(--accent-bg,rgba(59,130,246,.12));
+  display:grid;place-items:center;font-size:18px;margin-bottom:12px;
+}
+.stat-card.green .stat-icon{--accent-bg:rgba(16,185,129,.12)}
+.stat-card.red .stat-icon{--accent-bg:rgba(239,68,68,.12)}
+.stat-card.yellow .stat-icon{--accent-bg:rgba(245,158,11,.12)}
+.stat-card.purple .stat-icon{--accent-bg:rgba(139,92,246,.12)}
+
+.stat-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1}
+.stat-label{font-size:12px;color:var(--text3);margin-top:5px}
+.stat-delta{
+  position:absolute;top:16px;right:16px;
+  font-size:11px;font-weight:600;padding:3px 7px;
+  border-radius:99px;
+}
+.stat-delta.up{background:rgba(16,185,129,.15);color:var(--green)}
+.stat-delta.down{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* ── MAIN GRID ── */
+.main-grid{display:grid;grid-template-columns:1fr 1fr 340px;gap:14px;margin-bottom:20px}
+
+/* ── CARD BASE ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.card-action{font-size:12px;color:var(--accent);cursor:pointer}
+.card-action:hover{text-decoration:underline}
+
+/* ── ATTENDANCE CHART ── */
+.chart-wrap{height:150px;display:flex;align-items:flex-end;gap:6px;padding-top:8px}
+.bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-stack{width:100%;border-radius:4px 4px 0 0;transition:.5s;position:relative}
+.bar-label{font-size:10px;color:var(--text3)}
+.legend{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.leg-dot{width:8px;height:8px;border-radius:50%}
+
+/* ── ATTENDANCE LIST ── */
+.att-list{display:flex;flex-direction:column;gap:8px}
+.att-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;background:var(--bg3);border-radius:10px;
+}
+.att-av{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--c1,#3b82f6),var(--c2,#6366f1));
+  display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;
+}
+.att-name{font-size:13px;font-weight:500;flex:1}
+.att-dept{font-size:11px;color:var(--text3)}
+.att-time{font-size:12px;color:var(--text2);text-align:right}
+.tag{
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;
+}
+.tag.green{background:rgba(16,185,129,.15);color:var(--green)}
+.tag.red{background:rgba(239,68,68,.15);color:var(--red)}
+.tag.yellow{background:rgba(245,158,11,.15);color:var(--yellow)}
+.tag.blue{background:rgba(59,130,246,.15);color:var(--accent)}
+.tag.purple{background:rgba(139,92,246,.15);color:var(--purple)}
+.tag.orange{background:rgba(249,115,22,.15);color:var(--orange)}
+
+/* ── LEAVE APPROVALS ── */
+.leave-list{display:flex;flex-direction:column;gap:8px}
+.leave-row{
+  padding:12px;background:var(--bg3);border-radius:10px;
+  border-left:3px solid var(--lc,var(--accent));
+}
+.leave-row.sick{--lc:var(--red)}
+.leave-row.annual{--lc:var(--green)}
+.leave-row.personal{--lc:var(--yellow)}
+.leave-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.leave-name{font-size:13px;font-weight:600}
+.leave-type{font-size:11px;color:var(--text3)}
+.leave-dates{font-size:12px;color:var(--text2);margin-bottom:8px}
+.leave-actions{display:flex;gap:6px}
+.btn-sm{
+  height:26px;padding:0 12px;border-radius:6px;
+  font-size:11px;font-weight:600;cursor:pointer;border:none;
+  font-family: inherit;transition:.15s;
+}
+.btn-approve{background:rgba(16,185,129,.15);color:var(--green)}
+.btn-approve:hover{background:rgba(16,185,129,.25)}
+.btn-reject{background:rgba(239,68,68,.12);color:var(--red)}
+.btn-reject:hover{background:rgba(239,68,68,.22)}
+
+/* ── QUICK ACTIONS ── */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.qa-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 16px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s;
+}
+.qa-item:hover{background:var(--card2);border-color:var(--border2)}
+.qa-icon{font-size:22px;flex-shrink:0}
+.qa-label{font-size:13px;font-weight:600}
+.qa-sub{font-size:11px;color:var(--text3)}
+
+/* ── EMPLOYEE TABLE ── */
+.table-wrap{overflow-x:auto;margin-bottom:20px}
+table{width:100%;border-collapse:separate;border-spacing:0 4px}
+thead th{
+  font-size:11px;font-weight:600;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--text3);
+  padding:8px 14px;text-align:left;
+}
+tbody tr{background:var(--card);cursor:pointer;transition:.15s}
+tbody tr:hover{background:var(--card2)}
+tbody td{padding:12px 14px;font-size:13px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+tbody td:first-child{border-left:1px solid var(--border);border-radius:10px 0 0 10px}
+tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10px 0}
+.emp-cell{display:flex;align-items:center;gap:10px}
+.emp-av{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--c1,#3b82f6),var(--c2,#6366f1));
+  display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0;
+}
+.emp-name-txt{font-weight:500}
+.emp-id{font-size:11px;color:var(--text3)}
+
+/* ── BOTTOM GRID ── */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+
+/* ── PAYROLL CHART ── */
+.salary-bars{display:flex;flex-direction:column;gap:8px}
+.salary-row-item{display:flex;align-items:center;gap:10px}
+.salary-dept{font-size:12px;color:var(--text2);width:90px;flex-shrink:0}
+.salary-track{flex:1;height:8px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.salary-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:.8s}
+.salary-amt{font-size:12px;color:var(--text2);width:70px;text-align:right;flex-shrink:0}
+
+/* ── TIMELINE ── */
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:12px;padding-bottom:14px;position:relative}
+.tl-item:not(:last-child)::before{
+  content:'';position:absolute;left:11px;top:22px;bottom:0;
+  width:1px;background:var(--border);
+}
+.tl-dot{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--bg3);border:2px solid var(--dot-c,var(--accent));
+  display:grid;place-items:center;font-size:10px;flex-shrink:0;margin-top:1px;
+  color:var(--dot-c,var(--accent));
+}
+.tl-item.warn .tl-dot{--dot-c:var(--red)}
+.tl-item.check .tl-dot{--dot-c:var(--green)}
+.tl-item.leave .tl-dot{--dot-c:var(--yellow)}
+.tl-body{flex:1}
+.tl-title{font-size:13px;font-weight:500}
+.tl-meta{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* ── MINI CALENDAR ── */
+.mini-cal{padding:0}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-month{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.cal-btn{
+  width:26px;height:26px;border-radius:6px;background:var(--bg3);
+  border:none;color:var(--text2);cursor:pointer;font-size:13px;transition:.15s;
+}
+.cal-btn:hover{background:var(--card2);color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-head{font-size:10px;font-weight:600;color:var(--text3);text-align:center;padding:3px 0}
+.cal-day{
+  aspect-ratio:1;display:grid;place-items:center;
+  border-radius:6px;font-size:12px;cursor:pointer;transition:.15s;
+  position:relative;
+}
+.cal-day:hover{background:var(--card2)}
+.cal-day.today{background:var(--accent);color:#fff;font-weight:700}
+.cal-day.has-event::after{
+  content:'';position:absolute;bottom:3px;
+  width:4px;height:4px;border-radius:50%;background:var(--green);
+}
+.cal-day.has-leave::after{background:var(--yellow)}
+.cal-day.other-month{color:var(--text3);opacity:.4}
+.cal-legend{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+/* ── LINE NOTIFICATION CARD ── */
+.line-card{
+  background:linear-gradient(135deg,#06c755 0%,#00a843 100%);
+  border-radius:var(--r2);padding:20px;
+  display:flex;align-items:center;gap:16px;cursor:pointer;transition:.15s;
+}
+.line-card:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(6,199,85,.3)}
+.line-icon{font-size:40px;flex-shrink:0}
+.line-body h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff}
+.line-body p{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
+.line-status{margin-left:auto;font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 10px;border-radius:99px;font-weight:600}
+
+/* ── ANNOUNCEMENT FEED ── */
+.ann-list{display:flex;flex-direction:column;gap:8px}
+.ann-item{
+  display:flex;gap:10px;padding:10px 12px;
+  background:var(--bg3);border-radius:10px;cursor:pointer;transition:.15s;
+}
+.ann-item:hover{background:var(--card2)}
+.ann-icon-wrap{
+  width:36px;height:36px;border-radius:9px;
+  background:var(--ann-bg,rgba(59,130,246,.12));
+  display:grid;place-items:center;font-size:17px;flex-shrink:0;
+}
+.ann-item.holiday .ann-icon-wrap{--ann-bg:rgba(245,158,11,.12)}
+.ann-item.policy .ann-icon-wrap{--ann-bg:rgba(139,92,246,.12)}
+.ann-item.payroll .ann-icon-wrap{--ann-bg:rgba(16,185,129,.12)}
+.ann-body{flex:1}
+.ann-title{font-size:13px;font-weight:500}
+.ann-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.ann-unread{
+  width:8px;height:8px;background:var(--accent);border-radius:50%;
+  flex-shrink:0;margin-top:5px;
+}
+
+/* ── GPS / MAP PLACEHOLDER ── */
+.map-box{
+  height:160px;background:var(--bg3);border-radius:10px;
+  display:grid;place-items:center;font-size:13px;color:var(--text3);
+  position:relative;overflow:hidden;margin-bottom:12px;
+}
+.map-box::before{
+  content:'';position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(255,255,255,.02) 31px),
+    repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(255,255,255,.02) 31px);
+}
+.map-pin{position:absolute;font-size:28px;filter:drop-shadow(0 2px 8px rgba(59,130,246,.8))}
+.map-pulse{
+  position:absolute;width:60px;height:60px;border-radius:50%;
+  border:2px solid rgba(59,130,246,.4);animation:pulse 2s infinite;
+}
+@keyframes pulse{
+  0%{transform:scale(.6);opacity:.8}
+  100%{transform:scale(2);opacity:0}
+}
+.gps-detail{display:flex;gap:8px;font-size:12px;color:var(--text2)}
+.gps-chip{
+  background:var(--bg3);border:1px solid var(--border);
+  padding:4px 10px;border-radius:99px;display:flex;align-items:center;gap:4px;
+}
+
+/* ── FACE RECOGNITION ── */
+.face-box{
+  aspect-ratio:4/3;max-height:180px;background:var(--bg3);
+  border-radius:10px;display:grid;place-items:center;
+  position:relative;overflow:hidden;
+}
+.face-frame{
+  width:100px;height:120px;border-radius:50%;
+  border:2px dashed rgba(59,130,246,.5);
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;position:relative;
+}
+.face-scan{
+  position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  animation:scan 2s ease-in-out infinite;
+}
+@keyframes scan{0%{top:0;opacity:0}20%{opacity:1}80%{opacity:1}100%{top:100%;opacity:0}}
+.face-corners{position:absolute;inset:-2px;border-radius:50%}
+.face-status{
+  position:absolute;bottom:12px;left:0;right:0;text-align:center;
+  font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.5px;
+}
+
+/* ── ROLE BADGES ── */
+.role-hr{background:rgba(59,130,246,.15);color:var(--accent)}
+.role-emp{background:rgba(16,185,129,.15);color:var(--green)}
+.role-admin{background:rgba(139,92,246,.15);color:var(--purple)}
+.role-lawyer{background:rgba(245,158,11,.15);color:var(--yellow)}
+
+/* ── CHECKIN CARD ── */
+.checkin-card{
+  background:linear-gradient(135deg,#1a2a4a,#0d1829);
+  border:1px solid rgba(59,130,246,.2);
+  border-radius:var(--r2);padding:20px;margin-bottom:14px;
+}
+.checkin-steps{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.step{
+  flex:1;min-width:70px;background:var(--bg3);border-radius:9px;
+  padding:10px 8px;text-align:center;border:1px solid var(--border);transition:.2s;
+}
+.step.done{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--green)}
+.step.active{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.4);color:var(--accent);animation:stepPulse 1.5s infinite}
+@keyframes stepPulse{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.3)}50%{box-shadow:0 0 0 6px rgba(59,130,246,0)}}
+.step-icon{font-size:18px;margin-bottom:4px}
+.step-label{font-size:10px;font-weight:600}
+
+/* ── WARNING CARD ── */
+.warn-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px;background:rgba(239,68,68,.05);
+  border:1px solid rgba(239,68,68,.15);
+  border-radius:10px;margin-bottom:8px;
+}
+.warn-count{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(239,68,68,.15);color:var(--red);
+  display:grid;place-items:center;font-family:'Syne',sans-serif;
+  font-size:16px;font-weight:800;flex-shrink:0;
+}
+.warn-name{font-size:13px;font-weight:500}
+.warn-reason{font-size:11px;color:var(--text3)}
+.warn-btn{
+  margin-left:auto;background:transparent;border:1px solid var(--red);
+  color:var(--red);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;
+  font-family: inherit;transition:.15s;flex-shrink:0;
+}
+.warn-btn:hover{background:rgba(239,68,68,.1)}
+
+/* ── MOBILE NAV ── */
+.mobile-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:rgba(10,13,20,.95);backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);
+  padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  z-index:200;
+}
+.mobile-nav-grid{display:flex;justify-content:space-around}
+.mnav-item{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 10px;border-radius:8px;cursor:pointer;transition:.15s;
+  color:var(--text3);font-size:10px;
+}
+.mnav-item.active{color:var(--accent)}
+.mnav-item .icon{font-size:20px}
+
+/* ── HAMBURGER ── */
+.hamburger{
+  display:none;width:36px;height:36px;border-radius:8px;
+  background:var(--card);border:1px solid var(--border);
+  cursor:pointer;place-items:center;font-size:18px;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.content > *{animation:fadeUp .4s ease both}
+.content > *:nth-child(1){animation-delay:.05s}
+.content > *:nth-child(2){animation-delay:.1s}
+.content > *:nth-child(3){animation-delay:.15s}
+.content > *:nth-child(4){animation-delay:.2s}
+.content > *:nth-child(5){animation-delay:.25s}
+.content > *:nth-child(6){animation-delay:.3s}
+.content > *:nth-child(7){animation-delay:.35s}
+
+/* ── OVERLAY ── */
+.overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  backdrop-filter:blur(4px);z-index:90;
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){
+  .main-grid{grid-template-columns:1fr 1fr}
+  .main-grid > :nth-child(3){display:none}
+}
+@media(max-width:900px){
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .main-grid{grid-template-columns:1fr}
+  .bottom-grid{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .hamburger{display:grid}
+  .mobile-nav{display:block}
+  .content{padding-bottom:80px}
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .hero-strip{flex-direction:column;align-items:flex-start;gap:12px}
+  .hero-time{text-align:left}
+  .qa-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .content{padding:14px}
+  .topbar{padding:0 14px}
+  .topbar-title{font-size:15px}
+}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⚡</div>
+    <div>
+      <div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div>
+      <div class="logo-badge">จำกัด</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <div class="nav-section">
+      <div class="nav-label">หลัก</div>
+      <a href="index.html" class="nav-item active">
+        <span class="icon">📊</span> แดชบอร์ด
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item active">
+        <span class="icon">⏱️</span> ลงเวลางาน
+        <span class="nav-badge green">3</span>
+      </a>
+      <a href="attendance-history.html" class="nav-item">
+        <span class="icon">📜</span> ประวัติลงเวลา
+      </a>
+      <a href="leave.html" class="nav-item">
+        <span class="icon">📅</span> ขอลาหยุด
+        <span class="nav-badge">5</span>
+      </a>
+      <a href="out-of-office.html" class="nav-item">
+        <span class="icon">🚗</span> ออกนอกสถานที่
+        <span class="nav-badge yellow">2</span>
+      </a>
+      <a href="calendar.html" class="nav-item">
+        <span class="icon">🗓️</span> ปฏิทิน
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item">
+        <span class="icon">👥</span> พนักงาน
+      </a>
+      <a href="payroll.html" class="nav-item">
+        <span class="icon">💰</span> เงินเดือน
+      </a>
+      <a href="payslip.html" class="nav-item">
+        <span class="icon">🧾</span> สลิปเงินเดือน
+      </a>
+      <a href="reports.html" class="nav-item">
+        <span class="icon">📈</span> รีพอร์ท
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item">
+        <span class="icon">📢</span> ประกาศ
+        <span class="nav-badge green">2</span>
+      </a>
+      <a href="warnings.html" class="nav-item">
+        <span class="icon">⚠️</span> ใบเตือน
+        <span class="nav-badge">3</span>
+      </a>
+      <a href="line-oa.html" class="nav-item">
+        <span class="icon">💬</span> LINE OA
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info">
+        <div class="user-name">สมหญิง ประสาน</div>
+        <div class="user-role">Manager / HR</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title" id="page-title">
+      แดชบอร์ด <span class="topbar-subtitle">/ ภาพรวมองค์กร</span>
+    </div>
+    <div class="topbar-actions">
+      <div class="btn-icon" title="ค้นหา">🔍</div>
+      <div class="btn-icon" title="แจ้งเตือน">
+        🔔<div class="notif-dot"></div>
+      </div>
+      <div class="btn-icon" title="Dark Mode">🌙</div>
+      <a href="attendance.html" class="btn-primary" style="text-decoration:none">⏱ เช็คอิน</a>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="content" id="main-content">
+
+    <!-- HERO -->
+    <div class="hero-strip">
+      <div class="hero-text">
+        <h2>สวัสดีตอนเช้า, คุณสมหญิง 👋</h2>
+        <p>วันนี้มีพนักงาน 3 คนรออนุมัติลา · มีใบเตือนค้างอยู่ 2 ใบ · Payroll รอดำเนินการ</p>
+      </div>
+      <div class="hero-time">
+        <div class="hero-clock" id="clock">08:47:23</div>
+        <div class="hero-date" id="datestr">จันทร์ที่ 25 พฤษภาคม 2569</div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value">248</div>
+        <div class="stat-label">พนักงานทั้งหมด</div>
+        <div class="stat-delta up">+3 เดือนนี้</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value">221</div>
+        <div class="stat-label">เข้างานวันนี้</div>
+        <div class="stat-delta up">89.1%</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon">❌</div>
+        <div class="stat-value">12</div>
+        <div class="stat-label">ขาด/ลาวันนี้</div>
+        <div class="stat-delta down">+2 เมื่อวาน</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-icon">⏰</div>
+        <div class="stat-value">15</div>
+        <div class="stat-label">มาสายวันนี้</div>
+        <div class="stat-delta down">6.0%</div>
+      </div>
+    </div>
+
+    <!-- SECOND STAT ROW -->
+    <div class="stat-grid" style="margin-bottom:20px">
+      <div class="stat-card purple">
+        <div class="stat-icon">🚗</div>
+        <div class="stat-value">8</div>
+        <div class="stat-label">ออกนอกสถานที่</div>
+        <div class="stat-delta up">รออนุมัติ 2</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value">5</div>
+        <div class="stat-label">คำขอลารออนุมัติ</div>
+        <div class="stat-delta down">เร่งด่วน 2</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value">4.2M</div>
+        <div class="stat-label">ยอดเงินเดือนเดือนนี้</div>
+        <div class="stat-delta up">+1.2%</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-value">3</div>
+        <div class="stat-label">ใบเตือนค้างอยู่</div>
+        <div class="stat-delta down">ต้องดำเนินการ</div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+
+      <!-- ATTENDANCE CHART -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 ภาพรวมการเข้างาน (7 วัน)</span>
+          <span class="card-action" onclick="alert('ดูรายละเอียด')">ดูทั้งหมด →</span>
+        </div>
+        <div class="chart-wrap" id="chart"></div>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--accent)"></div> เข้างาน</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--yellow)"></div> มาสาย</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--red)"></div> ขาด/ลา</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div> OT</div>
+        </div>
+      </div>
+
+      <!-- LEAVE APPROVALS -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 รออนุมัติลา</span>
+          <span class="card-action">ดูทั้งหมด →</span>
+        </div>
+        <div class="leave-list">
+          <div class="leave-row sick">
+            <div class="leave-top">
+              <span class="leave-name">สมชาย รักงาน</span>
+              <span class="tag red">ลาป่วย</span>
+            </div>
+            <div class="leave-dates">📅 25 – 26 พ.ค. 2569 (2 วัน)</div>
+            <div class="leave-actions">
+              <button class="btn-sm btn-approve" onclick="approve(this)">✓ อนุมัติ</button>
+              <button class="btn-sm btn-reject" onclick="reject(this)">✗ ไม่อนุมัติ</button>
+              <button class="btn-sm" style="background:var(--bg3);color:var(--text2)" onclick="alert('ดูรายละเอียด')">รายละเอียด</button>
+            </div>
+          </div>
+          <div class="leave-row annual">
+            <div class="leave-top">
+              <span class="leave-name">มาลี สวยงาม</span>
+              <span class="tag green">ลาพักร้อน</span>
+            </div>
+            <div class="leave-dates">📅 28 พ.ค. – 1 มิ.ย. 2569 (5 วัน)</div>
+            <div class="leave-actions">
+              <button class="btn-sm btn-approve" onclick="approve(this)">✓ อนุมัติ</button>
+              <button class="btn-sm btn-reject" onclick="reject(this)">✗ ไม่อนุมัติ</button>
+              <button class="btn-sm" style="background:var(--bg3);color:var(--text2)">รายละเอียด</button>
+            </div>
+          </div>
+          <div class="leave-row personal">
+            <div class="leave-top">
+              <span class="leave-name">ประสิทธิ์ ดีมาก</span>
+              <span class="tag yellow">ลากิจ</span>
+            </div>
+            <div class="leave-dates">📅 27 พ.ค. 2569 (1 วัน)</div>
+            <div class="leave-actions">
+              <button class="btn-sm btn-approve" onclick="approve(this)">✓ อนุมัติ</button>
+              <button class="btn-sm btn-reject" onclick="reject(this)">✗ ไม่อนุมัติ</button>
+              <button class="btn-sm" style="background:var(--bg3);color:var(--text2)">รายละเอียด</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- MINI CALENDAR -->
+        <div class="card mini-cal" style="padding:18px">
+          <div class="cal-nav">
+            <button class="cal-btn">‹</button>
+            <span class="cal-month">พฤษภาคม 2569</span>
+            <button class="cal-btn">›</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-legend">
+            <div class="leg"><div class="leg-dot" style="background:var(--accent)"></div> วันนี้</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--green)"></div> มาทำงาน</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--yellow)"></div> ลา</div>
+          </div>
+        </div>
+
+        <!-- ACTIVITY TIMELINE -->
+        <div class="card" style="padding:18px">
+          <div class="card-header">
+            <span class="card-title">🕐 กิจกรรมล่าสุด</span>
+          </div>
+          <div class="timeline">
+            <div class="tl-item check">
+              <div class="tl-dot">✓</div>
+              <div class="tl-body">
+                <div class="tl-title">สมชาย เช็คอิน</div>
+                <div class="tl-meta">08:02 · ในบริษัท · GPS ✓</div>
+              </div>
+            </div>
+            <div class="tl-item leave">
+              <div class="tl-dot">!</div>
+              <div class="tl-body">
+                <div class="tl-title">มาลี ขอลาพักร้อน</div>
+                <div class="tl-meta">07:45 · รออนุมัติ</div>
+              </div>
+            </div>
+            <div class="tl-item warn">
+              <div class="tl-dot">⚠</div>
+              <div class="tl-body">
+                <div class="tl-title">ประสิทธิ์ มาสาย 18 นาที</div>
+                <div class="tl-meta">08:48 · ครั้งที่ 4 เดือนนี้</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot">📋</div>
+              <div class="tl-body">
+                <div class="tl-title">ทนายปิยะ ส่งแผนงานสัปดาห์</div>
+                <div class="tl-meta">เมื่อวาน · รอ Admin ตรวจ</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="qa-grid">
+      <div class="qa-item" onclick="alert('เพิ่มพนักงาน')">
+        <div class="qa-icon">➕</div>
+        <div>
+          <div class="qa-label">เพิ่มพนักงานใหม่</div>
+          <div class="qa-sub">กรอกข้อมูลและตั้งสิทธิ์</div>
+        </div>
+      </div>
+      <div class="qa-item" onclick="alert('Export รีพอร์ท')">
+        <div class="qa-icon">📊</div>
+        <div>
+          <div class="qa-label">Export รีพอร์ทเดือนนี้</div>
+          <div class="qa-sub">Excel · PDF · ส่งฝ่ายการเงิน</div>
+        </div>
+      </div>
+      <div class="qa-item" onclick="alert('คำนวณเงินเดือน')">
+        <div class="qa-icon">💰</div>
+        <div>
+          <div class="qa-label">Run Payroll พ.ค. 2569</div>
+          <div class="qa-sub">คำนวณอัตโนมัติ · สลิป PDF</div>
+        </div>
+      </div>
+      <div class="qa-item" onclick="alert('ส่งประกาศ')">
+        <div class="qa-icon">📢</div>
+        <div>
+          <div class="qa-label">ส่งประกาศบริษัท</div>
+          <div class="qa-sub">LINE OA + In-App Push</div>
+        </div>
+      </div>
+      <div class="qa-item" onclick="alert('แผนงานนอกสถานที่')">
+        <div class="qa-icon">🗺️</div>
+        <div>
+          <div class="qa-label">อนุมัติแผนงานนอกสถานที่</div>
+          <div class="qa-sub">2 รายการรอ</div>
+        </div>
+      </div>
+      <div class="qa-item" onclick="alert('ออกใบเตือน')">
+        <div class="qa-icon">⚠️</div>
+        <div>
+          <div class="qa-label">ออกใบเตือนพนักงาน</div>
+          <div class="qa-sub">Warning Letter System</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPLOYEE TABLE -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">👥 พนักงาน — มาสายวันนี้</span>
+        <span class="card-action">ดูทั้งหมด →</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>พนักงาน</th>
+              <th>แผนก</th>
+              <th>Role</th>
+              <th>เข้างาน</th>
+              <th>สถานะ</th>
+              <th>ใบเตือน</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="emp-cell">
+                <div class="emp-av" style="--c1:#3b82f6;--c2:#6366f1">สช</div>
+                <div><div class="emp-name-txt">สมชาย รักงาน</div><div class="emp-id">EMP-0042</div></div>
+              </div></td>
+              <td><span style="color:var(--text2);font-size:12px">IT</span></td>
+              <td><span class="tag role-emp">Employee</span></td>
+              <td><span style="font-size:12px">08:48</span></td>
+              <td><span class="tag yellow">มาสาย 18 นาที</span></td>
+              <td><span class="tag red">3 ใบ</span></td>
+              <td><button class="btn-sm" style="background:var(--card2);color:var(--text2)" onclick="alert('แก้ไขข้อมูล')">แก้ไข</button></td>
+            </tr>
+            <tr>
+              <td><div class="emp-cell">
+                <div class="emp-av" style="--c1:#f59e0b;--c2:#f97316">มส</div>
+                <div><div class="emp-name-txt">มานะ สู้งาน</div><div class="emp-id">EMP-0078</div></div>
+              </div></td>
+              <td><span style="color:var(--text2);font-size:12px">กฎหมาย</span></td>
+              <td><span class="tag role-lawyer">Lawyer</span></td>
+              <td><span style="font-size:12px">09:05</span></td>
+              <td><span class="tag orange">มาสาย 35 นาที</span></td>
+              <td><span class="tag red">5 ใบ</span></td>
+              <td><button class="btn-sm" style="background:var(--card2);color:var(--text2)">แก้ไข</button></td>
+            </tr>
+            <tr>
+              <td><div class="emp-cell">
+                <div class="emp-av" style="--c1:#10b981;--c2:#06b6d4">ปด</div>
+                <div><div class="emp-name-txt">ปริญญา ดีใจ</div><div class="emp-id">EMP-0015</div></div>
+              </div></td>
+              <td><span style="color:var(--text2);font-size:12px">บัญชี</span></td>
+              <td><span class="tag role-admin">Admin</span></td>
+              <td><span style="font-size:12px">08:55</span></td>
+              <td><span class="tag yellow">มาสาย 25 นาที</span></td>
+              <td><span class="tag blue">1 ใบ</span></td>
+              <td><button class="btn-sm" style="background:var(--card2);color:var(--text2)">แก้ไข</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BOTTOM GRID -->
+    <div class="bottom-grid">
+
+      <!-- PAYROLL BARS -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">💰 เงินเดือนรายแผนก (พ.ค.)</span>
+          <span class="card-action">Export Excel</span>
+        </div>
+        <div class="salary-bars">
+          <div class="salary-row-item">
+            <div class="salary-dept">IT</div>
+            <div class="salary-track"><div class="salary-fill" style="width:82%"></div></div>
+            <div class="salary-amt">1.24M</div>
+          </div>
+          <div class="salary-row-item">
+            <div class="salary-dept">กฎหมาย</div>
+            <div class="salary-track"><div class="salary-fill" style="width:71%"></div></div>
+            <div class="salary-amt">1.08M</div>
+          </div>
+          <div class="salary-row-item">
+            <div class="salary-dept">บัญชี</div>
+            <div class="salary-track"><div class="salary-fill" style="width:55%"></div></div>
+            <div class="salary-amt">0.84M</div>
+          </div>
+          <div class="salary-row-item">
+            <div class="salary-dept">ขาย</div>
+            <div class="salary-track"><div class="salary-fill" style="width:65%"></div></div>
+            <div class="salary-amt">0.98M</div>
+          </div>
+          <div class="salary-row-item">
+            <div class="salary-dept">HR</div>
+            <div class="salary-track"><div class="salary-fill" style="width:38%"></div></div>
+            <div class="salary-amt">0.06M</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">รวมทั้งหมด</span>
+          <span style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--green)">4,200,000 ฿</span>
+        </div>
+      </div>
+
+      <!-- WARNINGS + LINE -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚠️ ใบเตือนล่าสุด</span>
+            <span class="card-action">ดูทั้งหมด →</span>
+          </div>
+          <div class="warn-item">
+            <div class="warn-count">5</div>
+            <div>
+              <div class="warn-name">มานะ สู้งาน</div>
+              <div class="warn-reason">มาสายเกิน 5 ครั้ง · ต้องออกใบเตือน</div>
+            </div>
+            <button class="warn-btn" onclick="alert('ออกใบเตือน')">ออกใบเตือน</button>
+          </div>
+          <div class="warn-item">
+            <div class="warn-count">3</div>
+            <div>
+              <div class="warn-name">สมชาย รักงาน</div>
+              <div class="warn-reason">มาสาย 3 ครั้งต่อเนื่อง</div>
+            </div>
+            <button class="warn-btn" onclick="alert('ดูรายละเอียด')">รายละเอียด</button>
+          </div>
+        </div>
+
+        <!-- LINE OA -->
+        <div class="line-card" onclick="alert('เชื่อม LINE OA')">
+          <div class="line-icon">💬</div>
+          <div class="line-body">
+            <h3>LINE OA เชื่อมต่อแล้ว</h3>
+            <p>ส่งแจ้งเตือนอัตโนมัติ · เงินเดือน · ใบเตือน · ประกาศ</p>
+          </div>
+          <div class="line-status">✓ Active</div>
+        </div>
+
+        <!-- ANNOUNCEMENTS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📢 ประกาศล่าสุด</span>
+            <button class="btn-primary" style="height:28px;padding:0 12px;font-size:11px" onclick="alert('ส่งประกาศ')">+ ส่งประกาศ</button>
+          </div>
+          <div class="ann-list">
+            <div class="ann-item payroll">
+              <div class="ann-icon-wrap">💰</div>
+              <div class="ann-body">
+                <div class="ann-title">เงินเดือนเดือน พ.ค. จะโอนวันที่ 30</div>
+                <div class="ann-sub">24 พ.ค. 2569 · อ่านแล้ว 218/248</div>
+              </div>
+            </div>
+            <div class="ann-item holiday">
+              <div class="ann-icon-wrap">🎉</div>
+              <div class="ann-body">
+                <div class="ann-title">วันหยุดพิเศษ 2 มิถุนายน 2569</div>
+                <div class="ann-sub">20 พ.ค. 2569 · อ่านแล้ว 234/248</div>
+              </div>
+              <div class="ann-unread"></div>
+            </div>
+            <div class="ann-item policy">
+              <div class="ann-icon-wrap">📋</div>
+              <div class="ann-body">
+                <div class="ann-title">อัปเดตนโยบายการแต่งกาย</div>
+                <div class="ann-sub">18 พ.ค. 2569 · อ่านแล้ว 198/248</div>
+              </div>
+              <div class="ann-unread"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GPS + FACE RECOGNITION PANEL -->
+    <div class="bottom-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📍 GPS เช็คอินล่าสุด</span>
+          <span class="card-action">ดูแผนที่เต็ม →</span>
+        </div>
+        <div class="map-box">
+          <div class="map-pulse"></div>
+          <div class="map-pin">📍</div>
+          <span style="position:absolute;bottom:10px;right:10px;font-size:10px;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:99px">🗺 กรุงเทพมหานคร</span>
+        </div>
+        <div class="gps-detail">
+          <div class="gps-chip">📍 13.7563° N, 100.5018° E</div>
+          <div class="gps-chip" style="color:var(--green)">✓ ในรัศมีบริษัท</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">👤 Face Recognition</span>
+          <span class="tag green" style="font-size:11px">พร้อม</span>
+        </div>
+        <div class="face-box">
+          <div class="face-frame">
+            👤
+            <div class="face-scan"></div>
+          </div>
+          <div class="face-status">มองกล้องตรงเพื่อสแกนใบหน้า</div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text3);text-align:center;">
+          ยืนยันตัวตนด้วยการจับคู่ใบหน้าอัตโนมัติ
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item active"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<!-- ══════════════ CHECK-IN MODAL ══════════════ -->
+<div class="modal-overlay" id="checkin-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="topbar-title">⏱ ระบบลงเวลางาน <span class="topbar-subtitle">/ ยืนยันตัวตน</span></div>
+      <div class="modal-close" onclick="closeCheckinModal()">×</div>
+    </div>
+    <div class="modal-body">
+      <!-- Left: Face Recognition -->
+      <div>
+        <div class="card-title" style="margin-bottom:10px">👤 สแกนใบหน้า</div>
+        <div class="view-container">
+          <video id="video-feed" class="video-feed" autoplay playsinline muted style="transform:scaleX(-1);"></video>
+          <div class="scan-overlay"><div class="scan-frame"></div></div>
+          <div class="face-scan"></div>
+        </div>
+        <div style="margin-top:15px;font-size:13px;color:var(--text2);text-align:center;">มองกล้องตรงเพื่อสแกนใบหน้า</div>
+      </div>
+      <!-- Right: GPS Map -->
+      <div>
+        <div class="card-title" style="margin-bottom:10px">📍 ตำแหน่งปัจจุบัน (GPS)</div>
+        <div class="view-container">
+          <iframe width="100%" height="100%" frameborder="0" style="border:0" src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d15502.822364736173!2d100.5018!3d13.7563!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sth!4v1621812345678!5m2!1sth!2sth" allowfullscreen></iframe>
+        </div>
+        <div class="gps-detail" style="margin-top:15px">
+          <div class="gps-chip" style="color:var(--green)">✓ อยู่ในรัศมีที่กำหนด</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 24px;"><div id="checkin-face-status" style="font-size:13px;color:var(--text2);min-height:20px;"></div></div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeCheckinModal()">ยกเลิก</button>
+      <button class="btn-primary" id="checkin-verify-btn" onclick="verifyAndCheckin()">🔍 สแกนใบหน้า & ลงเวลา</button>
+    </div>
+  </div>
+</div>
+
+<script src="hr-core.js"></script>
+<script src="face-core.js"></script>
+<script>
+// ── CLOCK ──
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+tick();setInterval(tick,1000);
+
+// ── SIDEBAR ──
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').style.display='block';
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').style.display='none';
+}
+function setActive(el,title){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').innerHTML=title+' <span class="topbar-subtitle">/ ภาพรวม</span>';
+  closeSidebar();
+}
+
+// ── BAR CHART ──
+const days=['จ','อ','พ','พฤ','ศ','ส','อา'];
+const data=[
+  [210,10,8,5],[198,14,12,8],[222,8,6,12],[215,12,10,6],
+  [205,18,14,4],[198,20,16,7],[221,15,12,9]
+];
+const maxVal=250;
+const chartEl=document.getElementById('chart');
+data.forEach((d,i)=>{
+  const g=document.createElement('div');
+  g.className='bar-group';
+  const total=d.reduce((a,b)=>a+b,0);
+  const colors=['var(--accent)','var(--yellow)','var(--red)','var(--purple)'];
+  const stack=document.createElement('div');
+  stack.style.cssText='width:100%;display:flex;flex-direction:column-reverse;border-radius:4px;overflow:hidden;height:'+(total/maxVal*130)+'px';
+  d.forEach((v,j)=>{
+    const b=document.createElement('div');
+    b.className='bar-stack';
+    b.style.cssText='height:'+(v/total*100)+'%;background:'+colors[j]+';opacity:'+(j===0?.9:.75);
+    stack.appendChild(b);
+  });
+  g.innerHTML='';
+  g.appendChild(stack);
+  const lbl=document.createElement('div');
+  lbl.className='bar-label';
+  lbl.textContent=days[i];
+  g.appendChild(lbl);
+  chartEl.appendChild(g);
+});
+
+// ── MINI CALENDAR ──
+const heads=['อา','จ','อ','พ','พฤ','ศ','ส'];
+const grid=document.getElementById('cal-grid');
+heads.forEach(h=>{
+  const d=document.createElement('div');d.className='cal-head';d.textContent=h;grid.appendChild(d);
+});
+// May 2026 starts Thursday (offset 4)
+const offset=4,days31=31;
+for(let i=0;i<offset;i++){const d=document.createElement('div');d.className='cal-day other-month';d.textContent=27+i;grid.appendChild(d);}
+for(let d=1;d<=days31;d++){
+  const el=document.createElement('div');
+  el.className='cal-day'+(d===25?' today':'');
+  if([1,5,8,12,15,19,22].includes(d)) el.classList.add('has-event');
+  if([3,10,17,24].includes(d)) el.classList.add('has-leave');
+  el.textContent=d;
+  grid.appendChild(el);
+}
+
+// ── APPROVE / REJECT ──
+function approve(btn){
+  const row=btn.closest('.leave-row');
+  row.style.opacity='.4';row.style.pointerEvents='none';
+  btn.textContent='✓ อนุมัติแล้ว';btn.style.background='rgba(16,185,129,.3)';
+  setTimeout(()=>row.remove(),1200);
+}
+function reject(btn){
+  const row=btn.closest('.leave-row');
+  row.style.opacity='.4';row.style.pointerEvents='none';
+  setTimeout(()=>row.remove(),800);
+}
+
+// ── MODAL LOGIC ──
+let camStream = null;
+function showCheckin(){
+  document.getElementById('checkin-modal').style.display = 'flex';
+  startCamera();
+}
+
+async function startCamera() {
+  const video = document.getElementById('video-feed');
+  const status = document.getElementById('checkin-face-status');
+  if (status) status.textContent = '';
+  try {
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+    } catch {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    }
+    video.srcObject = camStream;
+    await video.play().catch(() => {});
+    if (typeof FaceCore !== 'undefined') FaceCore.loadModels().catch(() => {});
+  } catch (err) {
+    console.error("Error accessing camera:", err);
+    alert("ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการเข้าถึง");
+  }
+}
+
+// Real face verification on the dashboard, then route to the authoritative
+// check-in page (attendance.html) which owns GPS + record keeping.
+async function verifyAndCheckin() {
+  const video = document.getElementById('video-feed');
+  const status = document.getElementById('checkin-face-status');
+  const btn = document.getElementById('checkin-verify-btn');
+  if (!video?.srcObject) { alert('เปิดกล้องก่อน'); return; }
+  if (typeof FaceCore === 'undefined') { window.location.href = 'attendance.html'; return; }
+
+  btn.disabled = true;
+  const setMsg = (t, c) => { status.textContent = t; status.style.color = c || 'var(--text2)'; };
+  try {
+    setMsg('⏳ กำลังเตรียมระบบ...', 'var(--text2)');
+    await FaceCore.loadModels();
+
+    setMsg('กำลังตรวจสอบคุณภาพภาพ...', 'var(--text2)');
+    const quality = await FaceCore.assessQuality(video);
+    if (!quality.ok) { setMsg('⚠ ' + quality.message, 'var(--orange)'); return; }
+
+    setMsg('กำลังเทียบใบหน้า...', 'var(--text2)');
+    const still = FaceCore.captureStill(video, { quality: 0.92 });
+    const empId = FaceCore.getCurrentEmployeeId();
+    const result = await FaceCore.matchFace(empId, still.canvas, {
+      capturedImage: FaceCore.thumbnail(still.canvas, 128, 0.6),
+    });
+
+    if (result.decision === 'accept' || result.userConfirmed) {
+      setMsg('✓ ยืนยันตัวตนสำเร็จ — กำลังไปหน้าลงเวลา...', 'var(--green)');
+      setTimeout(() => { window.location.href = 'attendance.html'; }, 700);
+    } else if (result.decision === 'confirm') {
+      setMsg(`⚠ ${result.message}`, 'var(--orange)');
+      if (confirm('ความมั่นใจปานกลาง — ยืนยันการลงเวลาและไปหน้าลงเวลาหรือไม่?')) {
+        window.location.href = 'attendance.html';
+      }
+    } else if (result.reason === 'not_registered') {
+      setMsg('ยังไม่ได้ลงทะเบียนใบหน้า — ไปลงทะเบียนที่หน้าตั้งค่า', 'var(--orange)');
+      if (confirm('ยังไม่ได้ลงทะเบียนใบหน้า ต้องการไปหน้าตั้งค่าเพื่อลงทะเบียนหรือไม่?')) {
+        window.location.href = 'settings.html#face';
+      }
+    } else {
+      setMsg('✕ ' + result.message + ' — กรุณาสแกนใหม่', 'var(--red)');
+    }
+  } catch (err) {
+    console.error('verify error', err);
+    setMsg('เกิดข้อผิดพลาด: ' + (err?.message || err), 'var(--red)');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function closeCheckinModal() {
+  document.getElementById('checkin-modal').style.display = 'none';
+  const status = document.getElementById('checkin-face-status');
+  if (status) status.textContent = '';
+  if (camStream) {
+    camStream.getTracks().forEach(track => track.stop());
+  }
+}
+</script>
+<script src="dev-banner.js"></script>
+</body>
+</html>

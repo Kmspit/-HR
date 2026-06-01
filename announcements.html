@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>ประกาศ — เค เอ็ม เซอร์วิส พลัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+.ann-card { border: 1px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 14px; display: flex; gap: 16px; align-items: flex-start; }
+.ann-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; background: var(--bg2); }
+.ann-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.ann-body-text { font-size: 13px; color: var(--text2); line-height: 1.7; white-space: pre-wrap; }
+.ann-meta { font-size: 11px; color: var(--text3); margin-top: 8px; display: flex; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div><div class="logo-badge">จำกัด</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item active"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ประกาศบริษัท <span class="topbar-subtitle">/ ข่าวสารและการแจ้งเตือน</span></div>
+    <div class="topbar-actions">
+      <button class="btn-primary role-hr-admin-only" onclick="openAnnModal()">📢 สร้างประกาศ</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Filter bar -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+      <select id="ann-filter" class="form-input" style="height:36px;font-size:12px;width:140px;" onchange="renderAnn()">
+        <option value="">ทุกประเภท</option>
+        <option value="ทุกคน">ทุกคน</option>
+        <option value="MANAGER_HR">ผู้จัดการ/HR</option>
+        <option value="ADMIN">Admin</option>
+        <option value="EMPLOYEE">พนักงาน</option>
+        <option value="LAWYER">ทนายความ</option>
+      </select>
+      <input id="ann-search" class="form-input" style="height:36px;font-size:12px;width:220px;" placeholder="ค้นหาประกาศ..." oninput="renderAnn()">
+    </div>
+
+    <div id="ann-list"></div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+const ICONS = ['📢','💰','🎉','⚠️','📋','🏖️','🔔','📅','💬','🚀'];
+const ICON_COLORS = { '📢':'rgba(59,130,246,0.15)', '💰':'rgba(34,197,94,0.15)', '🎉':'rgba(234,179,8,0.15)', '⚠️':'rgba(239,68,68,0.15)', '📋':'rgba(107,114,128,0.15)' };
+
+function renderAnn() {
+  const filter = document.getElementById('ann-filter').value;
+  const search = document.getElementById('ann-search').value.toLowerCase();
+
+  // Seed default announcements if empty
+  let anns = getAnnouncements();
+  if (!anns.length) {
+    anns = [
+      { id:'a1', title:'เงินเดือนเดือน พ.ค. จะโอนวันที่ 30 นี้', body:'ขอให้พนักงานทุกคนตรวจสอบความถูกต้องของวันลาภายในวันที่ 28', icon:'💰', target:'ทุกคน', author:'ฝ่ายการเงิน', sentToLine:true, createdAt: new Date(Date.now()-86400000*2).toISOString() },
+      { id:'a2', title:'ประกาศวันหยุดพิเศษประจำปี', body:'บริษัทประกาศหยุดเพิ่มในวันที่ 2 มิถุนายน 2569 เนื่องในโอกาสพิเศษ', icon:'🎉', target:'ทุกคน', author:'HR', sentToLine:false, createdAt: new Date(Date.now()-86400000*5).toISOString() },
+    ];
+    lsSet('announcements', anns);
+  }
+
+  const user = getCurrentUser();
+  let visible = anns.filter(a => {
+    const matchTarget = !a.target || a.target === 'ทุกคน' || a.target === user?.role;
+    return matchTarget;
+  });
+  if (filter) visible = visible.filter(a => a.target === filter || (!a.target && filter === 'ทุกคน'));
+  if (search) visible = visible.filter(a => a.title.toLowerCase().includes(search) || a.body.toLowerCase().includes(search));
+
+  const listEl = document.getElementById('ann-list');
+  if (!visible.length) { listEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">ไม่มีประกาศ</div>`; return; }
+
+  const isHR = user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN');
+
+  listEl.innerHTML = visible.slice().reverse().map(a => `
+    <div class="ann-card">
+      <div class="ann-icon" style="background:${ICON_COLORS[a.icon]||'rgba(59,130,246,0.1)'}">${a.icon||'📢'}</div>
+      <div style="flex:1;">
+        <div class="ann-title">${a.title}</div>
+        <div class="ann-body-text">${a.body}</div>
+        <div class="ann-meta">
+          <span>เผยแพร่โดย: ${a.author}</span>
+          <span>${thDate(a.createdAt)}</span>
+          <span>ถึง: ${a.target || 'ทุกคน'}</span>
+          ${a.sentToLine ? '<span style="color:#06C755;">💬 ส่ง LINE แล้ว</span>' : ''}
+        </div>
+      </div>
+      ${isHR ? `<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+        ${!a.sentToLine ? `<button class="btn-sm" style="color:#06C755;" onclick="broadcastLine('${a.id}')">💬 ส่ง LINE</button>` : ''}
+        <button class="btn-sm" style="color:var(--red);" onclick="deleteAnn('${a.id}')">ลบ</button>
+      </div>` : ''}
+    </div>`).join('');
+}
+
+function broadcastLine(id) {
+  const anns = getAnnouncements();
+  const a = anns.find(x => x.id === id);
+  if (!a) return;
+  a.sentToLine = true;
+  lsSet('announcements', anns);
+  mockLineNotify(`📢 ประกาศจาก ${a.author}\n\n${a.title}\n\n${a.body}`, a.target || 'ทุกคน');
+  renderAnn();
+}
+
+function deleteAnn(id) {
+  if (!confirm('ต้องการลบประกาศนี้?')) return;
+  lsSet('announcements', getAnnouncements().filter(a => a.id !== id));
+  renderAnn();
+}
+
+function openAnnModal() {
+  const user = getCurrentUser();
+  const bd = openModal(`
+    <h3>📢 สร้างประกาศใหม่</h3>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>หัวข้อประกาศ *</label>
+      <input id="a-title" class="form-input" placeholder="หัวข้อ...">
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>เนื้อหา *</label>
+      <textarea id="a-body" class="form-input" style="height:120px;padding:10px" placeholder="เนื้อหาประกาศ..."></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="form-group"><label>กลุ่มเป้าหมาย</label>
+        <select id="a-target" class="form-input">
+          <option value="ทุกคน">ทุกคน</option>
+          <option value="MANAGER_HR">ผู้จัดการ/HR</option>
+          <option value="ADMIN">Admin</option>
+          <option value="EMPLOYEE">พนักงาน</option>
+          <option value="LAWYER">ทนายความ</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ไอคอน</label>
+        <select id="a-icon" class="form-input">
+          ${ICONS.map(ic => `<option value="${ic}">${ic}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+      <input type="checkbox" id="a-line" checked style="accent-color:#06C755;">
+      <label for="a-line" style="font-size:13px;cursor:pointer;">💬 ส่งแจ้งเตือนไปยัง LINE OA ทันที</label>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="flex:1;" onclick="saveAnn()">📢 เผยแพร่ประกาศ</button>
+      <button class="btn-outline" style="flex:1;" onclick="this.closest('.modal-backdrop').remove()">ยกเลิก</button>
+    </div>
+  `);
+  window._annModalBd = bd;
+}
+
+function saveAnn() {
+  const user   = getCurrentUser();
+  const title  = document.getElementById('a-title').value.trim();
+  const body   = document.getElementById('a-body').value.trim();
+  const target = document.getElementById('a-target').value;
+  const icon   = document.getElementById('a-icon').value;
+  const sendLine = document.getElementById('a-line').checked;
+
+  if (!title || !body) { alert('กรุณากรอกหัวข้อและเนื้อหา'); return; }
+
+  const ann = { id: uid(), title, body, icon, target, author: user?.name || 'HR', sentToLine: sendLine, createdAt: new Date().toISOString() };
+  const anns = getAnnouncements();
+  anns.push(ann);
+  lsSet('announcements', anns);
+
+  if (sendLine) mockLineNotify(`📢 ประกาศจาก ${ann.author}\n\n${title}\n\n${body}`, target);
+
+  if (window._annModalBd) window._annModalBd.remove();
+  renderAnn();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  renderAnn();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>ใบเตือน — เค เอ็ม เซอร์วิส พลัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+.emp-picker{border:1px solid var(--border2);border-radius:12px;background:var(--bg2);overflow:hidden}
+.emp-picker-search{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.emp-picker-search input{flex:1;background:transparent;border:0;color:var(--text);font-size:13px;outline:none}
+.emp-picker select{width:100%;background:transparent;border:0;color:var(--text);padding:12px;font-size:13px;outline:none}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div><div class="logo-badge">จำกัด</div></div></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
+    <div class="nav-section"><div class="nav-label">การทำงาน</div>
+      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
+      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
+      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
+      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
+      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
+      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
+      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
+      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
+      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
+      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
+      <a href="warnings.html" class="nav-item active"><span class="icon">⚠️</span> ใบเตือน</a>
+      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
+    </div>
+    <div class="nav-section"><div class="nav-label">ระบบ</div>
+      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
+      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info"><div class="user-name">—</div><div class="user-role">—</div></div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <div class="topbar-title">ใบเตือนพนักงาน <span class="topbar-subtitle">/ ระบบลงโทษทางวินัย</span></div>
+    <div class="topbar-actions">
+      <button class="btn-primary" style="background:var(--red);border-color:var(--red);" onclick="openIssueModal()">⚠️ ออกใบเตือนใหม่</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="card" style="margin-bottom:20px;" id="warn-summary-card">
+      <div class="card-header"><span class="card-title">📅 สรุปใบเตือนรายเดือน</span></div>
+      <div class="table-wrap" id="warn-summary-wrap" style="display:none;">
+        <table class="warnings-table">
+          <thead><tr><th>เดือน / ปี</th><th>ล่าสุดในเดือน</th><th>จำนวนใบ</th><th>พนักงานที่โดน</th></tr></thead>
+          <tbody id="warn-summary"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 ประวัติใบเตือน</span></div>
+      <div class="table-wrap">
+        <table class="warnings-table">
+          <thead><tr><th>วันที่</th><th>พนักงาน</th><th>ครั้งที่</th><th>เหตุผล</th><th>ประเภท</th><th>PDF</th><th>จัดการ</th></tr></thead>
+          <tbody id="warn-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="settings.html" class="mnav-item"><span class="icon">⚙️</span>ตั้งค่า</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script>
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+const MONTH_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function monthKeyFromWarning(w) {
+  const d = new Date(w.createdAt);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function formatMonthLabel(key) {
+  const [y, m] = key.split('-');
+  return (MONTH_TH[parseInt(m, 10)] || m) + ' ' + (parseInt(y, 10) + 543);
+}
+
+function warningOrdinalMap(warns) {
+  const sorted = warns.slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const byId = {};
+  const count = {};
+  sorted.forEach(w => {
+    const name = w.empName;
+    count[name] = (count[name] || 0) + 1;
+    byId[w.id] = count[name];
+  });
+  return byId;
+}
+
+function renderWarnings() {
+  const warns = getWarnings().slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const ordinals = warningOrdinalMap(getWarnings());
+
+  const byMonth = {};
+  warns.forEach(w => {
+    const k = monthKeyFromWarning(w);
+    if (!byMonth[k]) byMonth[k] = { total: 0, employees: {}, latestAt: w.createdAt };
+    byMonth[k].total++;
+    byMonth[k].employees[w.empName] = true;
+    if (new Date(w.createdAt) > new Date(byMonth[k].latestAt)) byMonth[k].latestAt = w.createdAt;
+  });
+
+  const summaryWrap = document.getElementById('warn-summary-wrap');
+  const summaryEl = document.getElementById('warn-summary');
+  const monthKeys = Object.keys(byMonth).sort((a, b) => new Date(byMonth[b].latestAt) - new Date(byMonth[a].latestAt));
+  if (!monthKeys.length) {
+    summaryWrap.style.display = 'none';
+    summaryEl.innerHTML = '';
+  } else {
+    summaryWrap.style.display = '';
+    summaryEl.innerHTML = monthKeys.map(k => {
+      const row = byMonth[k];
+      const empCount = Object.keys(row.employees).length;
+      return `<tr>
+        <td><strong>${formatMonthLabel(k)}</strong></td>
+        <td style="text-align:center;">${thDate(row.latestAt)}</td>
+        <td style="text-align:center;"><span class="warn-count-badge">${row.total}</span></td>
+        <td style="text-align:center;">${empCount} คน</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const tb = document.getElementById('warn-tbody');
+  if (!warns.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text3)">ยังไม่มีประวัติ</td></tr>`;
+    return;
+  }
+  tb.innerHTML = warns.map(w => {
+    const n = ordinals[w.id] || '—';
+    const typeLabel = w.isAuto ? 'อัตโนมัติ' : 'ด้วยตนเอง';
+    const pdf = w.fileUrl ? `<a href="${w.fileUrl}" target="_blank" rel="noopener" style="color:var(--red)">PDF</a>` : '—';
+    return `<tr>
+      <td>${thDate(w.createdAt)}</td>
+      <td><strong>${w.empName}</strong></td>
+      <td style="text-align:center;">ครั้งที่ ${n}</td>
+      <td class="cell-ellipsis" title="${w.reason}">${w.reason}</td>
+      <td style="text-align:center;">${typeLabel}</td>
+      <td style="text-align:center;">${pdf}</td>
+      <td><span class="warn-actions">
+        <button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${w.empName}', ${n})">💬 LINE</button>
+        <button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="deleteWarning('${w.id}')">ลบ</button>
+      </span></td>
+    </tr>`;
+  }).join('');
+}
+
+function sendWarnLine(name, count) {
+  mockLineNotify(`⚠️ ใบเตือนพนักงาน\nชื่อ: ${name}\nครั้งที่ ${count}\nกรุณาติดต่อ HR ภายใน 3 วันทำการ`, name);
+}
+
+function deleteWarning(id) {
+  if (!confirm('ต้องการลบใบเตือนนี้?')) return;
+  lsSet('warnings', getWarnings().filter(w => w.id !== id));
+  renderWarnings();
+}
+
+function filterEmpOptions() {
+  const q = (document.getElementById('w-emp-search').value || '').toLowerCase();
+  const sel = document.getElementById('w-emp');
+  const emps = getEmployees();
+  const filtered = !q ? emps : emps.filter(e =>
+    e.name.toLowerCase().includes(q) ||
+    (e.dept || '').toLowerCase().includes(q) ||
+    (e.id || '').toLowerCase().includes(q)
+  );
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— เลือกพนักงานจากรายการ —</option>' +
+    filtered.map(e => `<option value="${e.name}">${e.name} (${e.dept || 'ไม่ระบุแผนก'})</option>`).join('');
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
+function openIssueModal() {
+  const emps = getEmployees();
+  const bd = openModal(`
+    <h3>⚠️ ออกใบเตือนพนักงาน</h3>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>เลือกพนักงาน *</label>
+      <div class="emp-picker">
+        <div class="emp-picker-search">
+          <span>🔍</span>
+          <input type="search" id="w-emp-search" placeholder="ค้นหาชื่อพนักงาน รหัส หรือแผนก..." oninput="filterEmpOptions()">
+        </div>
+        <select id="w-emp" class="form-input" style="border:0;border-radius:0">
+          <option value="">— เลือกพนักงานจากรายการ —</option>
+          ${emps.map(e => `<option value="${e.name}">${e.name} (${e.dept || 'ไม่ระบุแผนก'})</option>`).join('')}
+        </select>
+      </div>
+      <p style="font-size:10px;color:var(--text3);margin-top:6px">ดึงจากข้อมูลพนักงานในระบบ · ${emps.length} คน</p>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>เหตุผล *</label>
+      <textarea id="w-reason" class="form-input" style="height:80px;padding:10px" placeholder="ระบุเหตุผลการออกใบเตือน..."></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>ไฟล์ใบเตือน (PDF)</label>
+      <input type="file" id="w-pdf" accept="application/pdf,.pdf" class="form-input">
+      <p style="font-size:10px;color:var(--text3);margin-top:4px">ไม่บังคับ — สูงสุด 10 MB</p>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="w-send" checked> ส่งแจ้งพนักงานทันที (LINE)
+    </label>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);" onclick="issueWarning()">⚠️ ออกใบเตือน</button>
+      <button class="btn-outline" style="flex:1" onclick="this.closest('.modal-backdrop').remove()">ยกเลิก</button>
+    </div>
+  `);
+  window._warnModalBd = bd;
+}
+
+function issueWarning() {
+  const empName = document.getElementById('w-emp').value;
+  const reason  = document.getElementById('w-reason').value.trim();
+  const send    = document.getElementById('w-send').checked;
+  const pdfIn   = document.getElementById('w-pdf');
+  if (!empName || !reason) { alert('กรุณาเลือกพนักงานและระบุเหตุผล'); return; }
+
+  const warns = getWarnings();
+  const prior = warns.filter(w => w.empName === empName);
+  const cumulative = prior.length + 1;
+
+  const warn = {
+    id: uid(),
+    empName,
+    reason,
+    cumulative,
+    isAuto: false,
+    fileUrl: null,
+    createdAt: new Date().toISOString()
+  };
+  if (pdfIn.files && pdfIn.files[0]) {
+    const f = pdfIn.files[0];
+    if (!f.name.toLowerCase().endsWith('.pdf')) { alert('กรุณาเลือกไฟล์ PDF'); return; }
+    warn.fileUrl = '#pdf-' + warn.id;
+    warn._pdfName = f.name;
+  }
+  warns.push(warn);
+  lsSet('warnings', warns);
+
+  if (send) {
+    const pdfNote = warn.fileUrl ? '\nมีไฟล์ PDF แนบ' : '';
+    mockLineNotify(`⚠️ คุณได้รับใบเตือน\nเหตุผล: ${reason}\nครั้งที่ ${cumulative}${pdfNote}\n\nกรุณาพบ HR ภายใน 3 วันทำการ`, empName);
+  }
+
+  if (window._warnModalBd) window._warnModalBd.remove();
+  renderWarnings();
+
+  if (cumulative >= 3) alert(`⚠️ ${empName} สะสมใบเตือนถึง ${cumulative} ครั้ง! กรุณาพิจารณาดำเนินการเพิ่มเติม`);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initRole();
+  renderWarnings();
+});
+</script>
+</body>
+</html>

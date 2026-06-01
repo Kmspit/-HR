@@ -1,0 +1,11 @@
+แอปจริง (Next.js) อยู่ที่โฟลเดอร์นี้:
+  C:\Users\teerasak\Desktop\hrflow-app
+
+เปิด Terminal แล้วรัน:
+  cd C:\Users\teerasak\Desktop\hrflow-app
+  npm run dev
+
+เปิดเบราว์เซอร์: http://localhost:3000
+ล็อกอิน: employee@demo.com / demo1234
+
+โฟลเดอร์ appHrKm นี้เป็น HTML ตัวอย่างเท่านั้น — รัน npm run dev ที่นี่ไม่ได้
