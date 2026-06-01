@@ -257,40 +257,127 @@ export default function AttendanceClient({
             />
           )}
 
-          {(canLunchOut || canLunchIn || canCheckOut) && !lunchPanel && (
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                {canLunchOut && (
-                  <button
-                    type="button"
-                    onClick={() => setLunchPanel('lunch-out')}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/90 text-white text-sm font-semibold"
-                  >
-                    <Coffee className="w-4 h-4" />
-                    เริ่มพักกลางวัน
-                  </button>
-                )}
-                {canLunchIn && (
-                  <button
-                    type="button"
-                    onClick={() => setLunchPanel('lunch-in')}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/80 text-white text-sm font-semibold"
-                  >
-                    <Coffee className="w-4 h-4" />
-                    สิ้นพักกลางวัน
-                  </button>
-                )}
+          {/* ── Attendance Time Actions ── */}
+          {!lunchPanel && !selectedType && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-400 px-0.5">การลงเวลา</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Check In */}
+                {(() => {
+                  const done = !!todayRecord?.checkIn
+                  const active = canCheckIn && !blockCheckIn
+                  return (
+                    <button
+                      type="button"
+                      disabled={!active}
+                      onClick={() => active && setSelectedType('company')}
+                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
+                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
+                      }`}
+                      style={{
+                        background: done ? 'rgba(34,197,94,0.08)' : active ? 'linear-gradient(135deg,rgba(6,182,212,0.15),rgba(59,130,246,0.1))' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${done ? 'rgba(34,197,94,0.25)' : active ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                      }}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${done ? 'bg-green-500/20' : 'bg-cyan-500/20'}`}>
+                        {done ? <CheckCircle className="w-4.5 h-4.5 text-green-400" /> : <Clock className="w-4.5 h-4.5 text-cyan-400" />}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${done ? 'text-green-400' : active ? 'text-white' : 'text-slate-500'}`}>เช็คอิน</p>
+                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.checkIn) : 'Check In'}</p>
+                      </div>
+                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-green-400" />}
+                    </button>
+                  )
+                })()}
+
+                {/* Start Lunch */}
+                {(() => {
+                  const done = !!todayRecord?.lunchOut
+                  const active = canLunchOut
+                  return (
+                    <button
+                      type="button"
+                      disabled={!active}
+                      onClick={() => active && setLunchPanel('lunch-out')}
+                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
+                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
+                      }`}
+                      style={{
+                        background: done ? 'rgba(245,158,11,0.08)' : active ? 'linear-gradient(135deg,rgba(245,158,11,0.15),rgba(234,179,8,0.1))' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${done ? 'rgba(245,158,11,0.25)' : active ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                      }}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${done ? 'bg-amber-500/20' : 'bg-amber-500/20'}`}>
+                        <Coffee className={`w-4.5 h-4.5 ${done ? 'text-amber-400' : active ? 'text-amber-400' : 'text-slate-600'}`} />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${done ? 'text-amber-400' : active ? 'text-white' : 'text-slate-500'}`}>เริ่มพักกลางวัน</p>
+                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.lunchOut) : 'Start Lunch'}</p>
+                      </div>
+                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-amber-400" />}
+                    </button>
+                  )
+                })()}
+
+                {/* End Lunch */}
+                {(() => {
+                  const done = !!todayRecord?.lunchIn
+                  const active = canLunchIn
+                  return (
+                    <button
+                      type="button"
+                      disabled={!active}
+                      onClick={() => active && setLunchPanel('lunch-in')}
+                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
+                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
+                      }`}
+                      style={{
+                        background: done ? 'rgba(245,158,11,0.08)' : active ? 'linear-gradient(135deg,rgba(234,179,8,0.15),rgba(245,158,11,0.1))' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${done ? 'rgba(245,158,11,0.25)' : active ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                      }}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-500/20`}>
+                        <Coffee className={`w-4.5 h-4.5 ${done ? 'text-yellow-400' : active ? 'text-yellow-300' : 'text-slate-600'}`} />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${done ? 'text-yellow-400' : active ? 'text-white' : 'text-slate-500'}`}>หมดพักกลางวัน</p>
+                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.lunchIn) : 'End Lunch'}</p>
+                      </div>
+                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-yellow-400" />}
+                    </button>
+                  )
+                })()}
+
+                {/* Check Out */}
+                {(() => {
+                  const done = !!todayRecord?.checkOut
+                  const active = canCheckOut
+                  return (
+                    <button
+                      type="button"
+                      disabled={!active}
+                      onClick={() => active && setLunchPanel('checkout')}
+                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
+                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
+                      }`}
+                      style={{
+                        background: done ? 'rgba(59,130,246,0.08)' : active ? 'linear-gradient(135deg,rgba(59,130,246,0.15),rgba(99,102,241,0.1))' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${done ? 'rgba(59,130,246,0.25)' : active ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                      }}
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20`}>
+                        <CheckCircle className={`w-4.5 h-4.5 ${done ? 'text-blue-400' : active ? 'text-blue-400' : 'text-slate-600'}`} />
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${done ? 'text-blue-400' : active ? 'text-white' : 'text-slate-500'}`}>เช็คเอาท์</p>
+                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.checkOut) : 'Check Out'}</p>
+                      </div>
+                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-400" />}
+                    </button>
+                  )
+                })()}
               </div>
-              {canCheckOut && (
-                <button
-                  type="button"
-                  onClick={() => setLunchPanel('checkout')}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600/90 text-white text-sm font-semibold"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  เช็คเอาท์ (สแกนใบหน้า)
-                </button>
-              )}
             </div>
           )}
 
@@ -359,8 +446,8 @@ export default function AttendanceClient({
           )}
 
           {/* ─── Loading ระหว่าง refresh ─── */}
-          {blockCheckIn && canCheckIn && (
-            <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-400">
+          {blockCheckIn && (
+            <div className="flex items-center justify-center gap-2 py-4 text-sm text-slate-400">
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -369,66 +456,21 @@ export default function AttendanceClient({
             </div>
           )}
 
-          {/* ─── Check-in/out area ─── */}
-          {canCheckIn && !blockCheckIn && !selectedType && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-white">เลือกประเภทการเช็คอิน</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* In-company */}
-                <button
-                  onClick={() => setSelectedType('company')}
-                  className="group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-                  style={{
-                    background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(59,130,246,0.08))',
-                    border: '1px solid rgba(6,182,212,0.25)',
-                    boxShadow: '0 4px 20px rgba(6,182,212,0.08)',
-                  }}
-                >
-                  <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20 blur-2xl"
-                    style={{ background: 'radial-gradient(circle,#06b6d4,transparent)' }} />
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl"
-                    style={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)', boxShadow: '0 4px 12px rgba(6,182,212,0.35)' }}>
-                    <Building2 className="w-5 h-5 text-white" />
-                  </div>
-                  <p className="font-bold text-white">เช็คอิน ในบริษัท</p>
-                  <p className="mt-1 text-xs text-slate-300 line-clamp-2">
-                    {companyOffice?.name ?? 'สำนักงาน'}
-                  </p>
-                  {companyOffice?.address && (
-                    <p className="mt-1 text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
-                      {companyOffice.address}
-                    </p>
-                  )}
-                  <div className="mt-3 flex items-center gap-1 text-[11px] text-cyan-400">
-                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                    ตรวจสอบ Geofence อัตโนมัติ
-                  </div>
-                </button>
+          {/* Check-in location selector */}
+          {canCheckIn && !blockCheckIn && selectedType === null && false && null}
 
-                {/* Outside */}
-                <button
-                  onClick={() => setSelectedType('outside')}
-                  className="group relative overflow-hidden rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-                  style={{
-                    background: 'linear-gradient(135deg,rgba(249,115,22,0.12),rgba(239,68,68,0.08))',
-                    border: '1px solid rgba(249,115,22,0.25)',
-                    boxShadow: '0 4px 20px rgba(249,115,22,0.08)',
-                  }}
-                >
-                  <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-20 blur-2xl"
-                    style={{ background: 'radial-gradient(circle,#f97316,transparent)' }} />
-                  <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl"
-                    style={{ background: 'linear-gradient(135deg,#f97316,#ef4444)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}>
-                    <Navigation className="w-5 h-5 text-white" />
-                  </div>
-                  <p className="font-bold text-white">เช็คอิน นอกสถานที่</p>
-                  <p className="mt-1 text-xs text-slate-400">สำหรับงานนอกบริษัท / ลูกค้า / Field</p>
-                  <div className="mt-3 flex items-center gap-1 text-[11px] text-orange-400">
-                    <div className="h-1.5 w-1.5 rounded-full bg-orange-400" />
-                    บันทึก GPS ตำแหน่งงาน
-                  </div>
-                </button>
-              </div>
+          {canCheckIn && !blockCheckIn && !selectedType && !lunchPanel && (
+            <div className="flex gap-2 mt-1">
+              <button onClick={() => setSelectedType('company')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-cyan-400 hover:bg-cyan-500/10 transition"
+                style={{ border: '1px dashed rgba(6,182,212,0.3)' }}>
+                <Building2 className="w-3.5 h-3.5" /> ในบริษัท
+              </button>
+              <button onClick={() => setSelectedType('outside')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-orange-400 hover:bg-orange-500/10 transition"
+                style={{ border: '1px dashed rgba(249,115,22,0.3)' }}>
+                <Navigation className="w-3.5 h-3.5" /> นอกสถานที่
+              </button>
             </div>
           )}
 
