@@ -257,129 +257,112 @@ export default function AttendanceClient({
             />
           )}
 
-          {/* ── Attendance Time Actions ── */}
-          {!lunchPanel && !selectedType && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-400 px-0.5">การลงเวลา</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* Check In */}
-                {(() => {
-                  const done = !!todayRecord?.checkIn
-                  const active = canCheckIn && !blockCheckIn
-                  return (
-                    <button
-                      type="button"
-                      disabled={!active}
-                      onClick={() => active && setSelectedType('company')}
-                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
-                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
-                      }`}
-                      style={{
-                        background: done ? 'rgba(34,197,94,0.08)' : active ? 'linear-gradient(135deg,rgba(6,182,212,0.15),rgba(59,130,246,0.1))' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${done ? 'rgba(34,197,94,0.25)' : active ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                      }}
-                    >
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${done ? 'bg-green-500/20' : 'bg-cyan-500/20'}`}>
-                        {done ? <CheckCircle className="w-4.5 h-4.5 text-green-400" /> : <Clock className="w-4.5 h-4.5 text-cyan-400" />}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${done ? 'text-green-400' : active ? 'text-white' : 'text-slate-500'}`}>เช็คอิน</p>
-                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.checkIn) : 'Check In'}</p>
-                      </div>
-                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-green-400" />}
-                    </button>
-                  )
-                })()}
+          {/* ── Single Progressive Action Button ── */}
+          {(() => {
+            // Determine next action
+            type NextAction = 'checkin' | 'lunch-out' | 'lunch-in' | 'checkout' | 'done'
+            const nextAction: NextAction =
+              !todayRecord?.checkIn ? 'checkin' :
+              !todayRecord?.lunchOut && !todayRecord?.checkOut ? 'lunch-out' :
+              todayRecord?.lunchOut && !todayRecord?.lunchIn && !todayRecord?.checkOut ? 'lunch-in' :
+              !todayRecord?.checkOut ? 'checkout' : 'done'
 
-                {/* Start Lunch */}
-                {(() => {
-                  const done = !!todayRecord?.lunchOut
-                  const active = canLunchOut
-                  return (
-                    <button
-                      type="button"
-                      disabled={!active}
-                      onClick={() => active && setLunchPanel('lunch-out')}
-                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
-                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
-                      }`}
-                      style={{
-                        background: done ? 'rgba(245,158,11,0.08)' : active ? 'linear-gradient(135deg,rgba(245,158,11,0.15),rgba(234,179,8,0.1))' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${done ? 'rgba(245,158,11,0.25)' : active ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                      }}
-                    >
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${done ? 'bg-amber-500/20' : 'bg-amber-500/20'}`}>
-                        <Coffee className={`w-4.5 h-4.5 ${done ? 'text-amber-400' : active ? 'text-amber-400' : 'text-slate-600'}`} />
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${done ? 'text-amber-400' : active ? 'text-white' : 'text-slate-500'}`}>เริ่มพักกลางวัน</p>
-                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.lunchOut) : 'Start Lunch'}</p>
-                      </div>
-                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-amber-400" />}
-                    </button>
-                  )
-                })()}
+            const cfg: Record<Exclude<NextAction,'done'>, { label: string; sub: string; grad: string; border: string; shadow: string }> = {
+              'checkin':   { label: 'เช็คอิน',         sub: 'Check In',       grad: 'linear-gradient(135deg,#06b6d4,#3b82f6)', border: 'rgba(6,182,212,0.4)',   shadow: 'rgba(6,182,212,0.35)' },
+              'lunch-out': { label: 'เริ่มพักกลางวัน', sub: 'Start Lunch',    grad: 'linear-gradient(135deg,#f59e0b,#ea580c)', border: 'rgba(245,158,11,0.4)',  shadow: 'rgba(245,158,11,0.3)' },
+              'lunch-in':  { label: 'หมดพักกลางวัน',  sub: 'End Lunch',      grad: 'linear-gradient(135deg,#eab308,#f59e0b)', border: 'rgba(234,179,8,0.4)',   shadow: 'rgba(234,179,8,0.3)'  },
+              'checkout':  { label: 'เช็คเอาท์',       sub: 'Check Out',      grad: 'linear-gradient(135deg,#3b82f6,#6366f1)', border: 'rgba(59,130,246,0.4)',  shadow: 'rgba(59,130,246,0.3)' },
+            }
 
-                {/* End Lunch */}
-                {(() => {
-                  const done = !!todayRecord?.lunchIn
-                  const active = canLunchIn
-                  return (
-                    <button
-                      type="button"
-                      disabled={!active}
-                      onClick={() => active && setLunchPanel('lunch-in')}
-                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
-                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
-                      }`}
-                      style={{
-                        background: done ? 'rgba(245,158,11,0.08)' : active ? 'linear-gradient(135deg,rgba(234,179,8,0.15),rgba(245,158,11,0.1))' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${done ? 'rgba(245,158,11,0.25)' : active ? 'rgba(234,179,8,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                      }}
-                    >
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-500/20`}>
-                        <Coffee className={`w-4.5 h-4.5 ${done ? 'text-yellow-400' : active ? 'text-yellow-300' : 'text-slate-600'}`} />
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${done ? 'text-yellow-400' : active ? 'text-white' : 'text-slate-500'}`}>หมดพักกลางวัน</p>
-                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.lunchIn) : 'End Lunch'}</p>
-                      </div>
-                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-yellow-400" />}
-                    </button>
-                  )
-                })()}
+            const isOpen = lunchPanel === nextAction || (nextAction === 'checkin' && (selectedType !== null))
 
-                {/* Check Out */}
-                {(() => {
-                  const done = !!todayRecord?.checkOut
-                  const active = canCheckOut
-                  return (
-                    <button
-                      type="button"
-                      disabled={!active}
-                      onClick={() => active && setLunchPanel('checkout')}
-                      className={`relative flex flex-col items-start gap-1.5 rounded-2xl p-4 text-left transition-all ${
-                        done ? 'opacity-60 cursor-default' : active ? 'hover:-translate-y-0.5 hover:shadow-lg active:scale-95' : 'opacity-30 cursor-not-allowed'
-                      }`}
-                      style={{
-                        background: done ? 'rgba(59,130,246,0.08)' : active ? 'linear-gradient(135deg,rgba(59,130,246,0.15),rgba(99,102,241,0.1))' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${done ? 'rgba(59,130,246,0.25)' : active ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                      }}
-                    >
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20`}>
-                        <CheckCircle className={`w-4.5 h-4.5 ${done ? 'text-blue-400' : active ? 'text-blue-400' : 'text-slate-600'}`} />
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${done ? 'text-blue-400' : active ? 'text-white' : 'text-slate-500'}`}>เช็คเอาท์</p>
-                        <p className="text-[10px] text-slate-500">{done ? formatTime(todayRecord!.checkOut) : 'Check Out'}</p>
-                      </div>
-                      {done && <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-400" />}
-                    </button>
-                  )
-                })()}
+            if (nextAction === 'done') return (
+              <div className="flex flex-col items-center gap-2 rounded-2xl py-6"
+                style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                <CheckCircle className="w-8 h-8 text-green-400" />
+                <p className="font-bold text-white text-sm">เช็คอิน-เช็คเอาท์ครบแล้ววันนี้</p>
+                <p className="text-xs text-slate-500">{formatTime(todayRecord!.checkIn)} — {formatTime(todayRecord!.checkOut)} น.</p>
               </div>
-            </div>
-          )}
+            )
+
+            const c = cfg[nextAction]
+            return (
+              <div className="space-y-3">
+                {/* Main action button */}
+                {!isOpen && (
+                  <button
+                    type="button"
+                    disabled={blockCheckIn}
+                    onClick={() => {
+                      if (blockCheckIn) return
+                      if (nextAction === 'checkin') setSelectedType('company')
+                      else setLunchPanel(nextAction as 'lunch-out'|'lunch-in'|'checkout')
+                    }}
+                    className="w-full flex items-center justify-between rounded-2xl px-5 py-4 transition-all active:scale-95 disabled:opacity-50"
+                    style={{ background: c.grad, boxShadow: `0 8px 24px ${c.shadow}` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                        <ScanFace className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-white text-base leading-tight">{c.label}</p>
+                        <p className="text-white/70 text-xs">{c.sub} · สแกนใบหน้า</p>
+                      </div>
+                    </div>
+                    {blockCheckIn
+                      ? <svg className="w-5 h-5 text-white/60 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                      : <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                    }
+                  </button>
+                )}
+
+                {/* Location picker for checkin */}
+                {nextAction === 'checkin' && selectedType === null && isOpen === false && false}
+                {nextAction === 'checkin' && !selectedType && (
+                  <div className="flex gap-2">
+                    <button onClick={() => setSelectedType('company')}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/15 transition"
+                      style={{ border: '1px solid rgba(6,182,212,0.25)' }}>
+                      <Building2 className="w-3.5 h-3.5" /> ในบริษัท
+                    </button>
+                    <button onClick={() => setSelectedType('outside')}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold text-orange-400 bg-orange-500/10 hover:bg-orange-500/15 transition"
+                      style={{ border: '1px solid rgba(249,115,22,0.25)' }}>
+                      <Navigation className="w-3.5 h-3.5" /> นอกสถานที่
+                    </button>
+                  </div>
+                )}
+
+                {/* Cancel button when panel open */}
+                {isOpen && (
+                  <button type="button"
+                    onClick={() => { setLunchPanel(null); setSelectedType(null) }}
+                    className="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    ยกเลิก
+                  </button>
+                )}
+
+                {/* Lunch / checkout scan panel */}
+                {lunchPanel === nextAction && (
+                  <CheckInPanel
+                    type={lunchPanel === 'checkout' ? 'checkout' : lunchPanel}
+                    locationType={lunchPanel === 'checkout' ? (todayRecord?.isOutside ? 'outside' : 'company') : undefined}
+                    companyOffice={companyOffice}
+                    companyGeofence={companyGeofence}
+                    faceRequired={faceRegistered}
+                    userId={userId}
+                    employeeName={userName}
+                    employeeCode={employeeCode}
+                    onSuccess={handleSuccess}
+                  />
+                )}
+              </div>
+            )
+          })()}
 
           {(!faceRegistered || showFaceUpdate) && (
             <FaceRegistrationCard
@@ -397,38 +380,12 @@ export default function AttendanceClient({
             <div className="flex flex-wrap items-center gap-2 px-1">
               <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
                 <ScanFace className="w-3.5 h-3.5 text-blue-400" />
-                ลงทะเบียนใบหน้าแล้ว — ทุกครั้งที่ลงเวลาต้องสแกนใบหน้า (มองตรงกล้อง)
+                ลงทะเบียนใบหน้าแล้ว — สแกนใบหน้าตรงกล้องเพื่อลงเวลา
               </p>
-              <button
-                type="button"
-                onClick={() => setShowFaceUpdate(true)}
-                className="text-[10px] text-blue-400 hover:text-blue-300 underline"
-              >
+              <button type="button" onClick={() => setShowFaceUpdate(true)}
+                className="text-[10px] text-blue-400 hover:text-blue-300 underline">
                 อัปเดตใบหน้า
               </button>
-            </div>
-          )}
-
-          {lunchPanel && (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setLunchPanel(null)}
-                className="text-xs text-slate-400 hover:text-white"
-              >
-                ← ยกเลิก
-              </button>
-              <CheckInPanel
-                type={lunchPanel === 'checkout' ? 'checkout' : lunchPanel}
-                locationType={lunchPanel === 'checkout' ? (todayRecord?.isOutside ? 'outside' : 'company') : undefined}
-                companyOffice={lunchPanel === 'checkout' && !todayRecord?.isOutside ? companyOffice : companyOffice}
-                companyGeofence={lunchPanel === 'checkout' && !todayRecord?.isOutside ? companyGeofence : companyGeofence}
-                faceRequired={faceRegistered}
-                userId={userId}
-                employeeName={userName}
-                employeeCode={employeeCode}
-                onSuccess={handleSuccess}
-              />
             </div>
           )}
 
@@ -445,35 +402,6 @@ export default function AttendanceClient({
             </div>
           )}
 
-          {/* ─── Loading ระหว่าง refresh ─── */}
-          {blockCheckIn && (
-            <div className="flex items-center justify-center gap-2 py-4 text-sm text-slate-400">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-              กำลังอัปเดตข้อมูล...
-            </div>
-          )}
-
-          {/* Check-in location selector */}
-          {canCheckIn && !blockCheckIn && selectedType === null && false && null}
-
-          {canCheckIn && !blockCheckIn && !selectedType && !lunchPanel && (
-            <div className="flex gap-2 mt-1">
-              <button onClick={() => setSelectedType('company')}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-cyan-400 hover:bg-cyan-500/10 transition"
-                style={{ border: '1px dashed rgba(6,182,212,0.3)' }}>
-                <Building2 className="w-3.5 h-3.5" /> ในบริษัท
-              </button>
-              <button onClick={() => setSelectedType('outside')}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-orange-400 hover:bg-orange-500/10 transition"
-                style={{ border: '1px dashed rgba(249,115,22,0.3)' }}>
-                <Navigation className="w-3.5 h-3.5" /> นอกสถานที่
-              </button>
-            </div>
-          )}
-
           {/* Check-in panel after type selected */}
           {canCheckIn && !blockCheckIn && selectedType && (
             <div className="space-y-3">
@@ -485,16 +413,6 @@ export default function AttendanceClient({
                   </svg>
                   เปลี่ยนประเภท
                 </button>
-                <div className={`ml-auto flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  selectedType === 'company'
-                    ? 'bg-cyan-500/15 text-cyan-400'
-                    : 'bg-orange-500/15 text-orange-400'
-                }`}>
-                  {selectedType === 'company'
-                    ? <><Building2 className="w-3 h-3" /> ในบริษัท</>
-                    : <><Navigation className="w-3 h-3" /> นอกสถานที่</>
-                  }
-                </div>
               </div>
               <CheckInPanel
                 type="checkin"
