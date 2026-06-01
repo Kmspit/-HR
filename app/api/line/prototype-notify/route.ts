@@ -54,11 +54,6 @@ export async function POST(req: NextRequest) {
       return json({ ok: false, error: 'message required' }, 400, origin)
     }
 
-    const hrUsers = await getHrLineRecipients()
-    if (hrUsers.length === 0) {
-      return json({ ok: false, reason: 'no_hr_linked', sent: 0, failed: 1 }, 200, origin)
-    }
-
     const messages: Array<{ type: string; text?: string; originalContentUrl?: string; previewImageUrl?: string }> = [
       { type: 'text', text: message.slice(0, 5000) },
     ]
@@ -71,15 +66,32 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    let sent = 0
-    let failed = 0
-    for (const hr of hrUsers) {
-      const result = await pushLineMessages(hr.lineUserId, messages)
-      if (result.ok) sent += 1
-      else failed += 1
+    // Try push to HR users first, fallback to broadcast
+    const hrUsers = await getHrLineRecipients()
+    if (hrUsers.length > 0) {
+      let sent = 0, failed = 0
+      for (const hr of hrUsers) {
+        const result = await pushLineMessages(hr.lineUserId, messages)
+        if (result.ok) sent += 1
+        else failed += 1
+      }
+      return json({ ok: sent > 0, sent, failed }, 200, origin)
     }
 
-    return json({ ok: sent > 0, sent, failed }, 200, origin)
+    // Fallback: broadcast to all followers
+    const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
+    const resolved = await resolveLineChannelAccessToken()
+    if (!resolved.token) {
+      return json({ ok: false, reason: 'no_token', sent: 0, failed: 1 }, 200, origin)
+    }
+    const res = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + resolved.token },
+      body: JSON.stringify({ messages }),
+    })
+    if (res.ok) return json({ ok: true, sent: 1, via: 'broadcast' }, 200, origin)
+    const errText = await res.text().catch(() => String(res.status))
+    return json({ ok: false, reason: 'broadcast_failed', detail: errText }, 200, origin)
   } catch (err) {
     console.error('[line/prototype-notify]', err)
     return json({ ok: false, reason: 'server_error' }, 500, origin)
