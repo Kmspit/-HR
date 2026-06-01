@@ -343,10 +343,6 @@ export async function notifyHrAttendanceOnLine(params: {
   }
 
   const hrUsers = await getHrLineRecipients()
-  if (hrUsers.length === 0) {
-    console.warn('[attendance-line-notify] no HR/Admin with linked LINE — skip push')
-    return { sent: 0, failed: 1 }
-  }
 
   const employee = await loadEmployeeContext(params.employeeUserId)
   if (!employee) {
@@ -458,6 +454,27 @@ export async function notifyHrAttendanceOnLine(params: {
     })
     if (updated?.status === 'sent') sent++
     else failed++
+  }
+
+  // Broadcast fallback — ถ้าไม่มี HR linked หรือทุกคน fail
+  if (hrUsers.length === 0 || (sent === 0 && failed > 0)) {
+    try {
+      const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
+      const resolved = await resolveLineChannelAccessToken()
+      if (resolved.token) {
+        const msgs: object[] = [{ type: 'text', text: messageText }]
+        if (imageUrl) msgs.push({ type: 'image', originalContentUrl: imageUrl, previewImageUrl: imageUrl })
+        const res = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + resolved.token },
+          body: JSON.stringify({ messages: msgs }),
+        })
+        if (res.ok) { sent = 1; failed = 0 }
+        else console.warn('[attendance-line-notify] broadcast fallback failed', res.status)
+      }
+    } catch (err) {
+      console.error('[attendance-line-notify] broadcast fallback error', err)
+    }
   }
 
   return { sent, failed }
