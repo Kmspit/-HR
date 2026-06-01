@@ -1204,8 +1204,6 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
     location,
   };
 
-  // Show immediate toast (visual feedback) — รายละเอียดเต็มหลังส่ง LINE ใน showLineAfterScan
-  const scanLabel = ATT_SCAN_LABELS[scanType] || scanType;
   let imageUrl = null;
   if (photoDataUrl && s.cloudinaryCloud && s.cloudinaryPreset) {
     try {
