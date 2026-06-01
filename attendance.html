@@ -735,6 +735,19 @@ function submitActiveAction() {
   const inRange = dist <= office.radius;
   let rec = getTodayRecord() || {};
 
+  const user = getCurrentUser();
+  const s = getCompanySettings();
+  const lateStatus = (typeof calcLateStatus === 'function') ? calcLateStatus(activePanel, new Date()) : '—';
+  const deviceInfo = navigator.userAgent || '—';
+  const baseFields = {
+    address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
+    branch: s.branch || s.companyName || '—',
+    department: user?.dept || '—',
+    isLate: lateStatus.includes('สาย'),
+    lateStatus,
+    deviceInfo,
+  };
+
   if (activePanel === 'checkin-company') {
     if (rec.checkIn) { alert('เช็คอินแล้ววันนี้'); return; }
     if (!inRange) { alert('อยู่นอกรัศมีสำนักงาน — ใช้เช็คอินนอกสถานที่แทน'); return; }
@@ -742,7 +755,7 @@ function submitActiveAction() {
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
       isOutside: false, workPlaceName: 'สำนักงาน',
       photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
-      address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
+      ...baseFields,
     };
     appendHistoryRow(rec, photoUrl);
   } else if (activePanel === 'checkin-outside') {
@@ -751,7 +764,7 @@ function submitActiveAction() {
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
       isOutside: true, workPlaceName: 'นอกสถานที่',
       photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
-      address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
+      ...baseFields,
     };
     appendHistoryRow(rec, photoUrl);
   } else if (activePanel === 'lunch-out') {
@@ -1193,22 +1206,27 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
     : (rec.lat ? rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) : '—');
 
   const msgData = {
-    employeeName: user.name  || '—',
-    employeeCode: user.id    || '—',
-    scanType:     ATT_SCAN_LABELS[scanType] || scanType,
-    date:  dateStr,
-    time:  timeStr,
+    employeeName:  user.name  || '—',
+    employeeCode:  user.id    || '—',
+    scanType:      ATT_SCAN_LABELS[scanType] || scanType,
+    date:          dateStr,
+    time:          timeStr,
     lateStatus,
-    branch:     s.branch || s.companyName || '—',
-    department: user.dept || '—',
+    branch:        s.branch || s.companyName || '—',
+    department:    user.dept || '—',
+    faceVerified:  rec.faceVerified || false,
     location,
   };
 
   let imageUrl = null;
   if (photoDataUrl && s.cloudinaryCloud && s.cloudinaryPreset) {
     try {
+      const folderMap = {
+        'checkin-company': 'checkin', 'checkin-outside': 'checkin',
+        'lunch-out': 'lunch-out', 'lunch-in': 'lunch-in', 'checkout': 'checkout',
+      };
       const cdnResult = await uploadToCloudinary(photoDataUrl, {
-        folder: 'hr-attendance/' + (user.id || 'unknown'),
+        folder: 'attendance/' + (user.id || 'unknown') + '/' + (folderMap[scanType] || scanType),
         tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
       });
       imageUrl = cdnResult.secure_url;

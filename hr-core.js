@@ -260,10 +260,11 @@ function buildLineAttMsg(d) {
     'รหัส: ' + d.employeeCode + '\n' +
     'ประเภท: ' + d.scanType + '\n\n' +
     'วันที่: ' + d.date + '\n' +
-    'เวลา: ' + d.time + '\n\n' +
+    'เวลา: ' + d.time + '\n' +
     'มาสาย: ' + d.lateStatus + '\n\n' +
     'สาขา: ' + d.branch + '\n' +
-    'แผนก: ' + d.department + '\n\n' +
+    'แผนก: ' + d.department + '\n' +
+    'ยืนยันใบหน้า: ' + (d.faceVerified ? '✓ ผ่าน' : '—') + '\n\n' +
     'สถานที่:\n' + d.location;
 }
 
