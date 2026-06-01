@@ -34,7 +34,8 @@ export function validateAttendanceFlow(
   _now = new Date(),
 ): string | null {
   if (action === 'checkin') {
-    if (att?.checkIn) return 'ALREADY_CHECKIN'
+    // อนุญาตให้ check-in ใหม่ได้ถ้า checkout แล้ว (เริ่ม session ใหม่)
+    if (att?.checkIn && !att?.checkOut) return 'ALREADY_CHECKIN'
     return null
   }
 

@@ -100,6 +100,13 @@ export async function POST(req: NextRequest) {
       update: {
         ...ATTENDANCE_COMPLETED_PATCH,
         checkIn: now,
+        checkOut: null,
+        lunchOut: null,
+        lunchIn: null,
+        photoUrl: null,
+        checkOutPhotoUrl: null,
+        lunchOutPhotoUrl: null,
+        lunchInPhotoUrl: null,
         lat,
         lng,
         address,

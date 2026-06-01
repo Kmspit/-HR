@@ -277,11 +277,19 @@ export default function AttendanceClient({
             const isOpen = lunchPanel === nextAction || (nextAction === 'checkin' && (selectedType !== null))
 
             if (nextAction === 'done') return (
-              <div className="flex flex-col items-center gap-2 rounded-2xl py-6"
+              <div className="flex flex-col items-center gap-3 rounded-2xl py-6"
                 style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
                 <CheckCircle className="w-8 h-8 text-green-400" />
-                <p className="font-bold text-white text-sm">เช็คอิน-เช็คเอาท์ครบแล้ววันนี้</p>
+                <p className="font-bold text-white text-sm">เช็คอิน-เช็คเอาท์ครบแล้ว</p>
                 <p className="text-xs text-slate-500">{formatTime(todayRecord!.checkIn)} — {formatTime(todayRecord!.checkOut)} น.</p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedType('company')}
+                  className="mt-1 flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white bg-white/10 hover:bg-white/15 transition"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  ลงเวลาอีกครั้ง (เซสชันใหม่)
+                </button>
               </div>
             )
 
