@@ -101,7 +101,7 @@ export default function AttendanceClient({
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
-  const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | null>(null)
+  const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | 'checkout' | null>(null)
   const [faceRegistered, setFaceRegistered] = useState(false)
   const [showFaceUpdate, setShowFaceUpdate] = useState(false)
   // justCompleted: ป้องกัน double-tap ระหว่างรอ router.refresh() (isPending บาง edge case อาจไม่ครอบ)
@@ -257,26 +257,38 @@ export default function AttendanceClient({
             />
           )}
 
-          {(canLunchOut || canLunchIn) && !lunchPanel && (
-            <div className="flex gap-2">
-              {canLunchOut && (
+          {(canLunchOut || canLunchIn || canCheckOut) && !lunchPanel && (
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                {canLunchOut && (
+                  <button
+                    type="button"
+                    onClick={() => setLunchPanel('lunch-out')}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/90 text-white text-sm font-semibold"
+                  >
+                    <Coffee className="w-4 h-4" />
+                    เริ่มพักกลางวัน
+                  </button>
+                )}
+                {canLunchIn && (
+                  <button
+                    type="button"
+                    onClick={() => setLunchPanel('lunch-in')}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/80 text-white text-sm font-semibold"
+                  >
+                    <Coffee className="w-4 h-4" />
+                    สิ้นพักกลางวัน
+                  </button>
+                )}
+              </div>
+              {canCheckOut && (
                 <button
                   type="button"
-                  onClick={() => setLunchPanel('lunch-out')}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/90 text-white text-sm font-semibold"
+                  onClick={() => setLunchPanel('checkout')}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600/90 text-white text-sm font-semibold"
                 >
-                  <Coffee className="w-4 h-4" />
-                  เริ่มพักกลางวัน (ถ่ายรูป)
-                </button>
-              )}
-              {canLunchIn && (
-                <button
-                  type="button"
-                  onClick={() => setLunchPanel('lunch-in')}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/80 text-white text-sm font-semibold"
-                >
-                  <Coffee className="w-4 h-4" />
-                  สิ้นพักกลางวัน (ถ่ายรูป)
+                  <CheckCircle className="w-4 h-4" />
+                  เช็คเอาท์ (สแกนใบหน้า)
                 </button>
               )}
             </div>
@@ -320,9 +332,10 @@ export default function AttendanceClient({
                 ← ยกเลิก
               </button>
               <CheckInPanel
-                type={lunchPanel}
-                companyOffice={companyOffice}
-                companyGeofence={companyGeofence}
+                type={lunchPanel === 'checkout' ? 'checkout' : lunchPanel}
+                locationType={lunchPanel === 'checkout' ? (todayRecord?.isOutside ? 'outside' : 'company') : undefined}
+                companyOffice={lunchPanel === 'checkout' && !todayRecord?.isOutside ? companyOffice : companyOffice}
+                companyGeofence={lunchPanel === 'checkout' && !todayRecord?.isOutside ? companyGeofence : companyGeofence}
                 faceRequired={faceRegistered}
                 userId={userId}
                 employeeName={userName}
@@ -455,30 +468,6 @@ export default function AttendanceClient({
             </div>
           )}
 
-          {/* Checkout */}
-          {canCheckOut && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-white flex items-center gap-2">
-                <span className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${
-                  todayRecord?.isOutside ? 'bg-orange-500/15 text-orange-400' : 'bg-cyan-500/15 text-cyan-400'
-                }`}>
-                  {todayRecord?.isOutside ? <><Navigation className="w-3 h-3" /> นอกสถานที่</> : <><Building2 className="w-3 h-3" /> ในบริษัท</>}
-                </span>
-                เช็คเอาท์
-              </p>
-              <CheckInPanel
-                type="checkout"
-                locationType={todayRecord?.isOutside ? 'outside' : 'company'}
-                companyOffice={!todayRecord?.isOutside ? companyOffice : null}
-                companyGeofence={!todayRecord?.isOutside ? companyGeofence : null}
-                faceRequired={faceRegistered}
-                userId={userId}
-                employeeName={userName}
-                employeeCode={employeeCode}
-                onSuccess={handleSuccess}
-              />
-            </div>
-          )}
 
           <AttendanceLocalHistory userId={userId} refreshKey={refreshKey} />
 
