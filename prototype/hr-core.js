@@ -280,13 +280,13 @@ async function sendLineOAMsg(message, imageUrl) {
     messages.push({ type: 'image', originalContentUrl: imageUrl, previewImageUrl: imageUrl });
   }
 
-  // 1. Webhook relay (Make.com — ไม่มี CORS)
+  // 1. Webhook relay (Cloudflare Worker — รูปแบบ { token, message, imageUrl })
   if (relay) {
     try {
       const res = await fetch(relay, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lineBody: JSON.stringify({ messages }) }),
+        body: JSON.stringify({ token, message, imageUrl: imageUrl || null }),
       });
       if (res.ok) return { ok: true };
     } catch {}
@@ -331,4 +331,15 @@ async function flushLineQueue() {
     if (!result.ok) remaining.push(Object.assign({}, item, { retries: (item.retries || 0) + 1 }));
   }
   lsSet(_LINE_QUEUE_KEY, remaining);
+}
+
+/** เปิดแชท LINE OA (@593qdkpk) — ใช้หลังสร้างรหัสผูกบัญชี */
+function openLineOaChat(basicId) {
+  const id = String(basicId || '@593qdkpk').replace(/^@/, '');
+  const url = 'https://line.me/R/ti/p/@' + encodeURIComponent(id);
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
 }

@@ -153,7 +153,10 @@
         <div class="form-group" style="grid-column:1/-1">
           <label>LINE Relay Webhook URL <span style="font-size:11px;color:var(--text3);">(ไม่บังคับ — ใช้ถ้า CORS บล็อก LINE Notify โดยตรง)</span></label>
           <input id="s-line-relay" type="text" class="form-input" placeholder="https://your-worker.workers.dev/line-relay">
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Make.com webhook ที่รับ POST {token, messages} แล้ว forward ไป LINE Messaging API</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Cloudflare Worker รับ POST {token, message, imageUrl} แล้ว forward ไป LINE Notify</div>
+        </div>
+        <div style="grid-column:1/-1;margin-top:4px;">
+          <button type="button" class="btn-outline" style="height:40px;background:#06c75522;border-color:#06c75555;color:#06c755;" onclick="openLineOaChat('@593qdkpk')">💬 เปิด LINE OA (@593qdkpk)</button>
         </div>
       </div>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;">
