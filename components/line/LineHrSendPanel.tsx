@@ -129,7 +129,7 @@ export default function LineHrSendPanel({
   if (!meta?.configured) {
     return (
       <p className="text-xs dark:text-amber-400/90 light:text-amber-700 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
-        ตั้งค่า LINE Channel Secret + Access Token ใน Vercel (โปรเจกต์ hrprogramkm) แล้ว Redeploy
+        ตั้งค่า LINE Channel Secret + Access Token ใน Vercel (โปรเจกต์ hrflow-app) แล้ว Redeploy
         ก่อนส่งข้อความ
       </p>
     )
@@ -157,6 +157,12 @@ export default function LineHrSendPanel({
           คัดลอก
         </button>
       </div>
+      {meta.webhookUrl.includes('hrprogramkm') && (
+        <p className="text-[11px] text-amber-400/90 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+          Webhook ชี้ hrprogramkm — ให้ตั้งใน LINE Console เป็น{' '}
+          <strong>https://hrflow-app-gamma.vercel.app/api/line/webhook</strong> แล้วกด Verify
+        </p>
+      )}
 
       <div className="flex rounded-xl border dark:border-white/10 light:border-slate-200 overflow-hidden">
         {(

@@ -214,20 +214,32 @@ export default function CheckInPanel({
 
   const toastLineNotifyResult = (lineNotify?: { sent?: number; failed?: number }) => {
     if (!lineNotify) {
-      toast.info('บันทึกลงเวลาแล้ว — ยังไม่ส่ง LINE (ตรวจการเชื่อมต่อ LINE OA)', {
-        duration: 4000,
+      toast.info('บันทึกลงเวลาแล้ว — ยังไม่ส่ง LINE (HR ต้องผูก LINE OA ที่โปรไฟล์)', {
+        duration: 5000,
+        action: {
+          label: 'ผูก LINE',
+          onClick: () => { window.location.href = '/profile' },
+        },
       })
       return
     }
     if ((lineNotify.sent ?? 0) > 0) {
-      toast.success('บันทึกแล้ว · เก็บในเครื่อง · ส่งแจ้ง LINE HR แล้ว', { duration: 4500 })
+      toast.success('บันทึกแล้ว · ส่งแจ้ง LINE HR แล้ว', { duration: 4500 })
     } else if ((lineNotify.failed ?? 0) > 0) {
-      toast.warning('บันทึกลงเวลาและเครื่องแล้ว แต่ส่ง LINE HR ไม่สำเร็จ', {
-        duration: 5000,
+      toast.warning('บันทึกลงเวลาแล้ว แต่ส่ง LINE HR ไม่สำเร็จ — ให้ HR ผูก LINE OA ที่โปรไฟล์', {
+        duration: 5500,
+        action: {
+          label: 'โปรไฟล์',
+          onClick: () => { window.location.href = '/profile' },
+        },
       })
     } else {
-      toast.info('บันทึกแล้ว — HR ยังไม่ได้รับ LINE (ตรวจว่า HR ผูก LINE OA แล้ว)', {
-        duration: 4500,
+      toast.info('บันทึกแล้ว — HR ยังไม่ได้รับ LINE (ให้ HR ผูก LINE OA ที่โปรไฟล์)', {
+        duration: 5000,
+        action: {
+          label: 'ผูก LINE',
+          onClick: () => { window.location.href = '/profile' },
+        },
       })
     }
   }
