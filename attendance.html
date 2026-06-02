@@ -229,6 +229,15 @@
       <div id="emp-location-list" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
     </div>
 
+    <!-- รายงานมาสาย (HR/Admin เท่านั้น) -->
+    <div class="card role-hr-admin-only" id="late-report-card" style="margin-top:20px;">
+      <div class="card-header">
+        <span class="card-title">⏰ รายงานการมาสาย</span>
+        <button class="btn-outline" style="height:30px;font-size:12px;" onclick="renderLateReport()">🔄 รีเฟรช</button>
+      </div>
+      <div id="late-report-container" style="min-height:60px;"></div>
+    </div>
+
     <!-- History Section (ตารางประวัติแบบ Real-time) -->
     <div class="card" style="margin-top: 20px;">
       <div class="card-header">
@@ -571,7 +580,8 @@ const PANEL_LABELS = {
 
 function todayStorageKey() {
   const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
-  const day = new Date().toISOString().slice(0, 10);
+  // ใช้วันที่ตามเวลาไทย (Asia/Bangkok) — en-CA ให้ YYYY-MM-DD format
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
   return `hrflow_today_${user?.email || 'guest'}_${day}`;
 }
 
@@ -846,14 +856,18 @@ function submitActiveAction() {
 
   const user = getCurrentUser();
   const s = getCompanySettings();
-  const lateStatus = (typeof calcLateStatus === 'function') ? calcLateStatus(activePanel, new Date()) : '—';
+  const lateInfo = (typeof calcLateInfo === 'function')
+    ? calcLateInfo(activePanel, new Date())
+    : { isLate: false, lateMinutes: 0, lateStatus: '—', checkInTime: null };
   const deviceInfo = navigator.userAgent || '—';
   const baseFields = {
     address: addr, lat: userCoords.lat, lng: userCoords.lng, status: 'NORMAL',
     branch: s.branch || s.companyName || '—',
     department: user?.dept || '—',
-    isLate: lateStatus.includes('สาย'),
-    lateStatus,
+    isLate: lateInfo.isLate,
+    lateMinutes: lateInfo.lateMinutes,
+    lateStatus: lateInfo.lateStatus,
+    checkInTime: lateInfo.checkInTime,
     deviceInfo,
   };
 
@@ -895,8 +909,15 @@ function submitActiveAction() {
   } else if (activePanel === 'checkout') {
     if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
     if (rec.checkOut) { alert('เช็คเอาท์แล้ว'); return; }
+    const coInfo = (typeof calcCheckoutInfo === 'function')
+      ? calcCheckoutInfo('checkout', new Date())
+      : { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: 'เลิกงานปกติ', checkOutTime: null };
     rec.checkOut = now;
     rec.checkOutPhotoUrl = photoUrl;
+    rec.checkOutTime = coInfo.checkOutTime;
+    rec.earlyLeave = coInfo.earlyLeave;
+    rec.earlyLeaveMinutes = coInfo.earlyLeaveMinutes;
+    rec.workStatus = coInfo.workStatus;
     updateHistoryCheckout(rec);
   }
 
@@ -958,10 +979,26 @@ function renderTimeline(rec) {
   steps.forEach((s, i) => {
     const done = !!rec[s.key];
     const isLast = i === steps.length - 1;
+    // badge มาสาย/ตรงเวลา (checkIn) และ กลับก่อน/ปกติ (checkOut)
+    let statusBadge = '';
+    if (s.key === 'checkIn' && done) {
+      if (rec.isLate) {
+        statusBadge = `<span class="tag orange" style="font-size:10px;margin-left:6px;">มาสาย ${rec.lateMinutes || 0} นาที</span>`;
+      } else if (rec.checkInTime) {
+        statusBadge = `<span class="tag green" style="font-size:10px;margin-left:6px;">ตรงเวลา</span>`;
+      }
+    }
+    if (s.key === 'checkOut' && done) {
+      if (rec.earlyLeave) {
+        statusBadge = `<span class="tag orange" style="font-size:10px;margin-left:6px;">กลับก่อน ${rec.earlyLeaveMinutes || 0} นาที</span>`;
+      } else if (rec.checkOutTime) {
+        statusBadge = `<span class="tag green" style="font-size:10px;margin-left:6px;">เลิกงานปกติ</span>`;
+      }
+    }
     html += `<div class="att-tl-row">
       <div class="att-tl-dot ${s.amber ? 'amber' : ''} ${done ? 'done' : ''}"><span></span>${!isLast ? '<div class="att-tl-line' + (done ? ' done' : '') + '"></div>' : ''}</div>
       <div style="padding-bottom:${isLast ? 0 : 16}px;">
-        <div style="font-size:13px;font-weight:600;color:${done ? 'var(--text)' : 'var(--text3)'}">${s.label}</div>
+        <div style="font-size:13px;font-weight:600;color:${done ? 'var(--text)' : 'var(--text3)'};">${s.label}${statusBadge}</div>
         <div style="font-size:18px;font-weight:700;color:${done ? s.color : 'var(--text3)'}">${fmtTime(rec[s.key])}</div>
       </div></div>`;
   });
@@ -1276,16 +1313,62 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // ── LATE STATUS ───────────────────────────────────────────────────────────────
-function calcLateStatus(scanType, time) {
-  if (scanType !== 'checkin-company' && scanType !== 'checkin-outside') return 'ไม่ใช่เช็คอิน';
+// คืนข้อมูลมาสายแบบ structured — timezone: Asia/Bangkok (UTC+7)
+function calcLateInfo(scanType, time) {
+  const notCheckin = scanType !== 'checkin-company' && scanType !== 'checkin-outside';
+  if (notCheckin) return { isLate: false, lateMinutes: 0, lateStatus: 'ไม่ใช่เช็คอิน', checkInTime: null };
+
   const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
-  const parts = (s.workStart || '08:00').split(':');
-  const grace = typeof s.lateGrace === 'number' ? s.lateGrace : 15;
-  const deadline = new Date(time);
-  deadline.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10) + grace, 0, 0);
-  if (time <= deadline) return 'ตรงเวลา';
-  const lateMin = Math.round((time - deadline) / 60000);
-  return 'มาสาย ' + lateMin + ' นาที';
+  const workStartStr = s.workStart || '08:30';
+  const parts = workStartStr.split(':');
+  const workH = parseInt(parts[0], 10);
+  const workM = parseInt(parts[1], 10);
+
+  // แปลงเป็นเวลาไทย (Asia/Bangkok) เพื่อคำนวณถูกต้องทุก timezone
+  const bkk = new Date(time.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const deadline = new Date(bkk);
+  deadline.setHours(workH, workM, 0, 0);
+
+  const isLate = bkk > deadline;
+  const lateMinutes = isLate ? Math.round((bkk.getTime() - deadline.getTime()) / 60000) : 0;
+  const lateStatus = isLate ? ('มาสาย ' + lateMinutes + ' นาที') : 'ตรงเวลา';
+  const checkInTime = bkk.toLocaleTimeString('th-TH', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
+  });
+
+  return { isLate, lateMinutes, lateStatus, checkInTime };
+}
+
+function calcLateStatus(scanType, time) {
+  return calcLateInfo(scanType, time).lateStatus;
+}
+
+// ── CHECKOUT STATUS ─────────────────────────────────────────────────────────
+// คืนข้อมูลกลับก่อนเวลาแบบ structured — timezone: Asia/Bangkok
+function calcCheckoutInfo(scanType, time) {
+  if (scanType !== 'checkout') {
+    return { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: 'ไม่ใช่เช็คเอาท์', checkOutTime: null };
+  }
+
+  const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
+  const workEndStr = s.workEnd || '17:30';
+  const parts = workEndStr.split(':');
+  const workH = parseInt(parts[0], 10);
+  const workM = parseInt(parts[1], 10);
+
+  // Asia/Bangkok timezone
+  const bkk = new Date(time.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const deadline = new Date(bkk);
+  deadline.setHours(workH, workM, 0, 0);
+
+  const earlyLeave = bkk < deadline;
+  const earlyLeaveMinutes = earlyLeave ? Math.round((deadline.getTime() - bkk.getTime()) / 60000) : 0;
+  const workStatus = earlyLeave ? ('กลับก่อนเวลา ' + earlyLeaveMinutes + ' นาที') : 'เลิกงานปกติ';
+  const checkOutTime = bkk.toLocaleTimeString('th-TH', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
+  });
+
+  return { earlyLeave, earlyLeaveMinutes, workStatus, checkOutTime };
 }
 
 // ── ATTENDANCE NOTIFICATION (Cloudinary + LINE OA) ────────────────────────────
@@ -1314,7 +1397,17 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
   const dateStr = ts.getDate() + ' ' + _TH_MONTHS[ts.getMonth()] + ' ' + (ts.getFullYear() + 543) +
                   ' (' + _TH_DAYS[ts.getDay()] + ')';
   const timeStr = ts.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const lateStatus = calcLateStatus(scanType, ts);
+  // ข้อมูลมาสาย (เฉพาะ checkin)
+  const lateInfoNotify = (scanType === 'checkin-company' || scanType === 'checkin-outside')
+    ? (typeof calcLateInfo === 'function' ? calcLateInfo(scanType, ts) : { isLate: false, lateMinutes: 0, lateStatus: '—' })
+    : { isLate: false, lateMinutes: 0, lateStatus: 'ไม่ใช่เช็คอิน' };
+  const lateStatus = lateInfoNotify.lateStatus;
+
+  // ข้อมูลกลับก่อนเวลา (เฉพาะ checkout)
+  const checkoutInfoNotify = (scanType === 'checkout')
+    ? (typeof calcCheckoutInfo === 'function' ? calcCheckoutInfo('checkout', ts) : { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: '—' })
+    : { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: '—' };
+
   const location = rec.address
     ? rec.address + (rec.lat ? '\n(' + rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) + ')' : '')
     : (rec.lat ? rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) : '—');
@@ -1326,6 +1419,10 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
     date:          dateStr,
     time:          timeStr,
     lateStatus,
+    lateMinutes:        lateInfoNotify.lateMinutes,
+    earlyLeave:         checkoutInfoNotify.earlyLeave,
+    earlyLeaveMinutes:  checkoutInfoNotify.earlyLeaveMinutes,
+    workStatus:         checkoutInfoNotify.workStatus,
     branch:        s.branch || s.companyName || '—',
     department:    user.dept || '—',
     faceVerified:  rec.faceVerified || false,
@@ -1368,6 +1465,61 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
     console.warn('LINE OA queued for retry — reason:', lineResult.reason);
   }
   return lineResult;
+}
+
+// ── LATE REPORT (HR/Admin) ────────────────────────────────────────────────────
+function getLateHistory() {
+  const records = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('hrflow_today_')) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!data || !Array.isArray(data.sessions)) continue;
+      const dateMatch = key.match(/(\d{4}-\d{2}-\d{2})$/);
+      const dateKey = dateMatch ? dateMatch[1] : null;
+      data.sessions.forEach(function(s) {
+        if (!s.checkIn || !s.isLate) return;
+        records.push({
+          dateKey:     dateKey,
+          checkInTime: s.checkInTime || fmtTime(s.checkIn),
+          lateMinutes: s.lateMinutes || 0,
+          lateStatus:  s.lateStatus  || 'มาสาย',
+          isOutside:   s.isOutside,
+          sessionIdx:  s.sessionIndex || 1,
+        });
+      });
+    } catch { /* skip malformed */ }
+  }
+  records.sort(function(a, b) { return (b.dateKey || '').localeCompare(a.dateKey || ''); });
+  return records;
+}
+
+function renderLateReport() {
+  const container = document.getElementById('late-report-container');
+  if (!container) return;
+  const records = getLateHistory();
+  if (!records.length) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px;">ไม่มีประวัติมาสาย</div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>วันที่</th><th>รอบ</th><th>เวลาเช็คอิน</th><th>สาย (นาที)</th><th>ประเภท</th></tr></thead>
+        <tbody>
+          ${records.map(function(r) {
+            return '<tr>' +
+              '<td>' + (r.dateKey || '—') + '</td>' +
+              '<td style="text-align:center;">' + r.sessionIdx + '</td>' +
+              '<td><span style="color:var(--orange);font-weight:600;">' + r.checkInTime + '</span></td>' +
+              '<td><span class="tag orange">' + r.lateMinutes + ' นาที</span></td>' +
+              '<td>' + (r.isOutside ? '<span class="tag orange">นอกสถานที่</span>' : '<span class="tag blue">ในบริษัท</span>') + '</td>' +
+              '</tr>';
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ── MIDNIGHT RESET ────────────────────────────────────────────────────────────
@@ -1446,6 +1598,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   if (user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN')) {
     setTimeout(refreshAllMap, 1500);
+    renderLateReport();
   }
 });
 </script>

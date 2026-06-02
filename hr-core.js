@@ -102,7 +102,7 @@ function getCompanySettings() {
   _settingsCache = lsGet('settings', {
     companyName: 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
     lat: 13.7563, lng: 100.5018, radius: 200,
-    workStart: '08:00', workEnd: '17:00', lateGrace: 15,
+    workStart: '08:30', workEnd: '17:30', lateGrace: 0,
     sickDays: 30, vacDays: 10, personalDays: 3,
     lineToken: '',
   });
@@ -255,17 +255,53 @@ const DEFAULT_LINE_NOTIFY_API = 'https://hrflow-app-gamma.vercel.app';
  * Builds the Thai attendance notification message per the LINE OA template.
  */
 function buildLineAttMsg(d) {
-  return '\nพนักงานลงเวลาแล้ว\n\n' +
-    'ชื่อ: ' + d.employeeName + '\n' +
-    'รหัส: ' + d.employeeCode + '\n' +
-    'ประเภท: ' + d.scanType + '\n\n' +
-    'วันที่: ' + d.date + '\n' +
-    'เวลา: ' + d.time + '\n' +
-    'มาสาย: ' + d.lateStatus + '\n\n' +
-    'สาขา: ' + d.branch + '\n' +
-    'แผนก: ' + d.department + '\n' +
-    'ยืนยันใบหน้า: ' + (d.faceVerified ? '✓ ผ่าน' : '—') + '\n\n' +
-    'สถานที่:\n' + d.location;
+  const isCheckin = d.scanType && (
+    d.scanType.includes('Check In') || d.scanType.includes('เข้างาน') ||
+    d.scanType.includes('checkin')
+  );
+  const lines = [
+    '\nพนักงานลงเวลาแล้ว',
+    '',
+    'ชื่อ: ' + d.employeeName,
+    d.employeeCode ? 'รหัส: ' + d.employeeCode : null,
+    '',
+    'ประเภท:',
+    d.scanType,
+    '',
+    'วันที่:',
+    d.date,
+    '',
+    'เวลา:',
+    d.time,
+  ];
+
+  if (isCheckin) {
+    const lateMin = typeof d.lateMinutes === 'number' ? d.lateMinutes : 0;
+    const isLate  = lateMin > 0;
+    lines.push('', 'สถานะ:', isLate ? 'มาสาย' : 'ตรงเวลา');
+    if (isLate) { lines.push('', 'สาย:', lateMin + ' นาที'); }
+  }
+
+  const isCheckout = d.scanType && (
+    d.scanType.includes('Check Out') || d.scanType.includes('ออกงาน') ||
+    d.scanType.includes('checkout')
+  );
+  if (isCheckout) {
+    const earlyMin = typeof d.earlyLeaveMinutes === 'number' ? d.earlyLeaveMinutes : 0;
+    const isEarly  = earlyMin > 0;
+    lines.push('', 'สถานะ:', isEarly ? 'กลับก่อนเวลา' : 'เลิกงานปกติ');
+    if (isEarly) { lines.push('', 'กลับก่อน:', earlyMin + ' นาที'); }
+  }
+
+  lines.push(
+    '',
+    'สาขา: ' + (d.branch || '—'),
+    'แผนก: ' + (d.department || '—'),
+    'ยืนยันใบหน้า: ' + (d.faceVerified ? '✓ ผ่าน' : '—'),
+  );
+  if (d.location) { lines.push('', 'สถานที่:', d.location); }
+
+  return lines.filter(function(l) { return l !== null; }).join('\n');
 }
 
 /** Base URL ของแอป Next.js สำหรับส่ง LINE ผ่าน server (หลีกเลี่ยง CORS) */
