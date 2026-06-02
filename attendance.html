@@ -626,7 +626,7 @@ function saveTodayRecord(rec) {
 
 function fmtTime(iso) {
   if (!iso) return '--:--';
-  return new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
 }
 
 function resetCaptureUI() {
@@ -1150,9 +1150,11 @@ function saveAttendancePhotoToDevice(photoDataUrl, rec, scanType) {
 
   const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const TH_DAYS   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-  const dateStr = ts.getDate() + ' ' + TH_MONTHS[ts.getMonth()] + ' ' + (ts.getFullYear() + 543);
-  const dayStr  = TH_DAYS[ts.getDay()];
-  const timeStr = ts.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  // ใช้ Bangkok timezone ตลอดสำหรับ annotation บนรูป
+  const bkkTs = new Date(ts.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const dateStr = bkkTs.getDate() + ' ' + TH_MONTHS[bkkTs.getMonth()] + ' ' + (bkkTs.getFullYear() + 543);
+  const dayStr  = TH_DAYS[bkkTs.getDay()];
+  const timeStr = ts.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Bangkok' });
 
   const lateStatus = (typeof calcLateStatus === 'function') ? calcLateStatus(scanType, ts) : '—';
   const isLate     = lateStatus.includes('สาย');
