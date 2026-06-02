@@ -512,12 +512,27 @@ const ACTION_FLOW = [
   { key: 'checkout', label: 'เช็คเอาท์', panel: 'checkout', cls: 'checkout', icon: '🔵' },
 ];
 
+function isDayAttendanceComplete() {
+  return getTodayData().sessions.some(s => s.checkIn && s.checkOut);
+}
+
+function getTodayDisplayRecord() {
+  const active = getActiveSession();
+  if (active) return active;
+  const sessions = getTodayData().sessions.filter(s => s.checkIn);
+  return sessions.length ? sessions[sessions.length - 1] : null;
+}
+
 function getNextActionKey() {
+  if (isDayAttendanceComplete()) return null;
   const rec = getActiveSession();
-  if (!rec?.checkIn) return 'checkin';
+  if (!rec?.checkIn) {
+    if (getTodayData().sessions.some(s => s.checkIn)) return null;
+    return 'checkin';
+  }
   if (!rec.lunchOut && !rec.checkOut) return 'lunch-out';
   if (rec.lunchOut && !rec.lunchIn && !rec.checkOut) return 'lunch-in';
-  if (rec.checkIn && !rec.checkOut) return 'checkout';
+  if (!rec.checkOut) return 'checkout';
   return null;
 }
 
@@ -535,10 +550,10 @@ function openNextActionPanel() {
   if (!next) return;
   if (next === 'checkin') {
     openPanel(checkinLocationMode === 'outside' ? 'checkin-outside' : 'checkin-company');
-  } else {
-    const step = ACTION_FLOW.find(s => s.key === next);
-    if (step?.panel) openPanel(step.panel);
+    return;
   }
+  const step = ACTION_FLOW.find(s => s.key === next);
+  if (step?.panel) openPanel(step.panel);
 }
 
 function setCheckinLocation(mode) {
@@ -843,7 +858,9 @@ function submitActiveAction() {
   };
 
   if (activePanel === 'checkin-company') {
-    if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อนเริ่มรอบใหม่'); return; }
+    if (isDayAttendanceComplete()) { alert('ลงเวลาครบแล้ววันนี้'); return; }
+    if (getTodayData().sessions.some(s => s.checkIn)) { alert('เช็คอินแล้ววันนี้'); return; }
+    if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อน'); return; }
     if (!inRange) { alert('อยู่นอกรัศมีสำนักงาน — ใช้เช็คอินนอกสถานที่แทน'); return; }
     rec = {
       sessionIndex: getTodayData().sessions.length + 1,
@@ -854,7 +871,9 @@ function submitActiveAction() {
     };
     appendHistoryRow(rec, photoUrl);
   } else if (activePanel === 'checkin-outside') {
-    if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อนเริ่มรอบใหม่'); return; }
+    if (isDayAttendanceComplete()) { alert('ลงเวลาครบแล้ววันนี้'); return; }
+    if (getTodayData().sessions.some(s => s.checkIn)) { alert('เช็คอินแล้ววันนี้'); return; }
+    if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อน'); return; }
     rec = {
       sessionIndex: getTodayData().sessions.length + 1,
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
@@ -964,16 +983,18 @@ function renderPhotos(rec) {
 }
 
 function renderAttendanceUI() {
-  const rec = getActiveSession();
-  const completed = getCompletedSessions();
+  const rec = getTodayDisplayRecord();
+  const dayComplete = isDayAttendanceComplete();
   const firstCheckIn = getTodayData().sessions.find(s => s.checkIn);
   const lastCheckOut = [...getTodayData().sessions].reverse().find(s => s.checkOut);
 
   document.getElementById('stat-checkin').textContent = fmtTime(firstCheckIn?.checkIn || rec?.checkIn);
   document.getElementById('stat-checkout').textContent = fmtTime(rec?.checkOut || lastCheckOut?.checkOut);
-  document.getElementById('stat-status').textContent = rec
-    ? (rec.checkIn ? 'กำลังทำงาน · รอบ ' + (rec.sessionIndex || 1) : '—')
-    : (completed.length ? `เสร็จ ${completed.length} รอบ` : 'ยังไม่เช็คอิน');
+  document.getElementById('stat-status').textContent = dayComplete
+    ? 'ลงเวลาครบแล้ว'
+    : rec?.checkIn
+      ? 'กำลังทำงาน'
+      : 'ยังไม่เช็คอิน';
   document.getElementById('stat-status').style.color = rec?.checkIn ? 'var(--green)' : 'var(--text3)';
   document.getElementById('stat-type').textContent = rec
     ? (rec.isOutside ? 'นอกสถานที่' : 'ในบริษัท')
@@ -1000,7 +1021,21 @@ function renderAttendanceUI() {
   let html = '';
   const nextKey = getNextActionKey();
 
-  if (nextKey) {
+  if (dayComplete && rec) {
+    html += '<div class="att-step-row">';
+    ACTION_FLOW.forEach((step) => {
+      html += `<div class="att-step">
+        <div class="att-step-dot done">✓</div>
+        <div class="att-step-label done">${step.label}</div>
+      </div>`;
+    });
+    html += '</div>';
+    html += `<button type="button" class="btn-main-action" disabled style="opacity:.65;cursor:not-allowed;background:rgba(255,255,255,.08);color:var(--text2);">
+      <span style="font-size:22px;">✅</span>
+      <span>ลงเวลาครบแล้ว</span>
+      <span style="font-size:11px;font-weight:400;opacity:.85;">${fmtTime(rec.checkIn)} — ${fmtTime(rec.checkOut)} น.</span>
+    </button>`;
+  } else if (nextKey) {
     html += '<div class="att-step-row">';
     ACTION_FLOW.forEach((step) => {
       const done = stepDoneKey(step.key, rec);
@@ -1013,12 +1048,6 @@ function renderAttendanceUI() {
     html += '</div>';
 
     if (nextKey === 'checkin') {
-      if (completed.length) {
-        html += `<div class="att-done-msg" style="margin-bottom:10px;">✓ บันทึกครบ ${completed.length} รอบแล้ว · เริ่มรอบที่ ${completed.length + 1}</div>`;
-        completed.forEach(s => {
-          html += `<p style="font-size:11px;color:var(--text3);margin:0 0 4px;">รอบ ${s.sessionIndex}: ${fmtTime(s.checkIn)} — ${fmtTime(s.checkOut)}</p>`;
-        });
-      }
       html += `<div class="att-loc-toggle">
         <button type="button" class="${checkinLocationMode === 'company' ? 'active company' : ''}" onclick="setCheckinLocation('company')">🏢 ในบริษัท</button>
         <button type="button" class="${checkinLocationMode === 'outside' ? 'active outside' : ''}" onclick="setCheckinLocation('outside')">📍 นอกสถานที่</button>
@@ -1029,10 +1058,8 @@ function renderAttendanceUI() {
     html += `<button type="button" class="btn-main-action ${stepMeta?.cls || ''}" onclick="openNextActionPanel()">
       <span style="font-size:22px;">${stepMeta?.icon || ''}</span>
       <span>${stepMeta?.label || ''}</span>
-      <span style="font-size:11px;font-weight:400;opacity:.85;">กดเพื่อสแกนใบหน้า</span>
+      <span style="font-size:11px;font-weight:400;opacity:.85;">กดเพื่อสแกนใบหน้า — เปิดกล้องอัตโนมัติ</span>
     </button>`;
-  } else if (completed.length) {
-    html += `<div class="att-done-msg">✓ ลงเวลาครบ ${completed.length} รอบวันนี้แล้ว</div>`;
   }
 
   actions.innerHTML = html;
@@ -1343,6 +1370,38 @@ async function processAttendanceNotification(rec, scanType, photoDataUrl) {
   return lineResult;
 }
 
+// ── MIDNIGHT RESET ────────────────────────────────────────────────────────────
+// รีเซ็ต state การสแกนในหน่วยความจำทุกเที่ยงคืน — ข้อมูล localStorage ไม่ถูกแตะ
+// (key วันใหม่ hrflow_today_*_YYYY-MM-DD เริ่มว่างเปล่าโดยอัตโนมัติ)
+function msUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  return midnight - now;
+}
+
+function midnightReset() {
+  stopAutoScan();
+  faceCaptured = false;
+  faceMatch = null;
+  lastCapturedPhoto = null;
+  activePanel = null;
+  checkinLocationMode = 'company';
+
+  const captureBar = document.getElementById('att-capture-bar');
+  if (captureBar) captureBar.style.display = 'none';
+  const titleEl = document.getElementById('camera-card-title');
+  if (titleEl) titleEl.textContent = '👤 สแกนใบหน้า';
+  resetCaptureUI();
+  renderAttendanceUI();
+
+  scheduleMidnightReset();
+}
+
+function scheduleMidnightReset() {
+  setTimeout(midnightReset, msUntilMidnight());
+}
+
 // ── OFFLINE QUEUE UI ──────────────────────────────────────────────────────────
 function updateOfflineQueueBar() {
   const q = (typeof lsGet === 'function') ? lsGet('lineNotifyQueue', []) : [];
@@ -1383,6 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateOfflineQueueBar();
   initCamera();
   startRealTimeGPS();
+  scheduleMidnightReset();
   const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
   if (user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN')) {
     setTimeout(refreshAllMap, 1500);
