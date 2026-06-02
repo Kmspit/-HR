@@ -105,6 +105,7 @@ function getCompanySettings() {
     workStart: '08:30', workEnd: '17:30', lateGrace: 0,
     sickDays: 30, vacDays: 10, personalDays: 3,
     lineToken: '',
+    lineNotifyToken: '', // LINE Notify token — ส่งตรงหา HR 1:1 หรือกลุ่ม
   });
   _settingsCacheAt = now;
   return _settingsCache;
@@ -309,13 +310,41 @@ function buildLineAttMsg(d) {
 function getLineNotifyApiBase() {
   const s = getCompanySettings();
   if (s.lineNotifyApiBase) return String(s.lineNotifyApiBase).replace(/\/$/, '');
-  if (typeof location !== 'undefined') {
-    const host = location.hostname;
-    if (host.includes('hrflow-app') || host.includes('hrprogramkm') || host.includes('app-hr-km')) {
-      return location.origin.replace(/\/prototype.*$/, '');
-    }
+  if (typeof location !== 'undefined' && location.protocol !== 'file:') {
+    // ถ้า serve ผ่าน HTTP/HTTPS (Vercel, localhost ฯลฯ) — ใช้ same origin เสมอ
+    return location.origin.replace(/\/prototype.*$/, '');
   }
   return DEFAULT_LINE_NOTIFY_API;
+}
+
+/**
+ * LINE Notify — ส่งตรงไปยัง HR 1:1 หรือกลุ่ม โดยไม่ต้อง link account
+ * token รับได้จาก https://notify-bot.line.me/th/ → My page → Generate token
+ */
+async function sendLineNotify(message, notifyToken, imageUrl) {
+  const tok = (notifyToken || '').trim();
+  if (!tok) return { ok: false, reason: 'no_notify_token' };
+  const body = new URLSearchParams();
+  body.set('message', '\n' + String(message).slice(0, 999));
+  if (imageUrl && imageUrl.startsWith('https://')) {
+    body.set('imageThumbnail', imageUrl);
+    body.set('imageFullsize',  imageUrl);
+  }
+  try {
+    const res = await fetch('https://notify-api.line.me/api/notify', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + tok,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+    if (res.ok) return { ok: true, via: 'line-notify' };
+    const j = await res.json().catch(() => ({}));
+    return { ok: false, reason: 'notify_' + res.status, detail: j.message };
+  } catch (err) {
+    return { ok: false, reason: (err && err.message) || 'network_error' };
+  }
 }
 
 /**
@@ -327,10 +356,18 @@ async function sendLineOAMsg(message, imageUrl) {
   const s = getCompanySettings();
   const token = (s.lineToken || '').trim();
   const relay = (s.lineWebhookRelay || '').trim();
+  const notifyToken = (s.lineNotifyToken || '').trim();
 
   const messages = [{ type: 'text', text: message }];
   if (imageUrl) {
     messages.push({ type: 'image', originalContentUrl: imageUrl, previewImageUrl: imageUrl });
+  }
+
+  // 0. LINE Notify (ส่งตรงไปหา HR โดยไม่ต้อง link account — ไม่มี CORS)
+  if (notifyToken) {
+    const nr = await sendLineNotify(message, notifyToken, imageUrl);
+    if (nr.ok) return nr;
+    console.warn('[LINE Notify] failed:', nr.reason, nr.detail || '');
   }
 
   // 1. Server-side relay (ใช้ token บน Vercel — ไม่มี CORS)
