@@ -143,7 +143,7 @@ export function buildAttendanceLineMessage(params: {
     event === 'checkin' && params.lateMinutes && params.lateMinutes > 0 ? 'สาย:' : null,
     event === 'checkin' && params.lateMinutes && params.lateMinutes > 0
       ? lateMinutesLabel(params.lateMinutes) : null,
-    isOffsite ? '\nสถานะ: นอกสถานที่' : null,
+    isOffsite ? '\nสถานที่ทำงาน: นอกสถานที่' : null,
     // สถานะเลิกงาน (เฉพาะ checkout)
     event === 'checkout' ? '' : null,
     event === 'checkout' ? 'สถานะ:' : null,

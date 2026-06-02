@@ -21,6 +21,7 @@ import {
 } from '@/lib/attendance-flow'
 import {
   findActiveAttendanceSession,
+  getNextSessionIndex,
   hasCheckInToday,
 } from '@/lib/attendance-session'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
@@ -101,8 +102,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const sessionIndex = 1
-    const isFirstSessionOfDay = true
+    const sessionIndex = await getNextSessionIndex(session.user.id, today)
+    const isFirstSessionOfDay = sessionIndex === 1
 
     const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
     const leaveType = approvedLeave?.type ?? undefined
