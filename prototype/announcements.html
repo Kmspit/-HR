@@ -69,7 +69,7 @@
 
   <main class="content">
     <!-- Filter bar -->
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
       <select id="ann-filter" class="form-input" style="height:36px;font-size:12px;width:140px;" onchange="renderAnn()">
         <option value="">ทุกประเภท</option>
         <option value="ทุกคน">ทุกคน</option>
@@ -78,7 +78,11 @@
         <option value="EMPLOYEE">พนักงาน</option>
         <option value="LAWYER">ทนายความ</option>
       </select>
-      <input id="ann-search" class="form-input" style="height:36px;font-size:12px;width:220px;" placeholder="ค้นหาประกาศ..." oninput="renderAnn()">
+      <select id="ann-month-filter" class="form-input" style="height:36px;font-size:12px;width:160px;" onchange="renderAnn()">
+        <option value="">ทุกเดือน</option>
+      </select>
+      <input id="ann-search" class="form-input" style="height:36px;font-size:12px;width:200px;" placeholder="ค้นหาประกาศ..." oninput="renderAnn()">
+      <button class="btn-outline" style="height:36px;font-size:12px;" onclick="showAnnArchive()">🗂️ Archive</button>
     </div>
 
     <div id="ann-list"></div>
@@ -122,7 +126,9 @@ function renderAnn() {
     const matchTarget = !a.target || a.target === 'ทุกคน' || a.target === user?.role;
     return matchTarget;
   });
+  const monthFilter = document.getElementById('ann-month-filter')?.value || '';
   if (filter) visible = visible.filter(a => a.target === filter || (!a.target && filter === 'ทุกคน'));
+  if (monthFilter) visible = visible.filter(a => (a.createdAt || '').startsWith(monthFilter));
   if (search) visible = visible.filter(a => a.title.toLowerCase().includes(search) || a.body.toLowerCase().includes(search));
 
   const listEl = document.getElementById('ann-list');
@@ -221,14 +227,82 @@ function saveAnn() {
   anns.push(ann);
   lsSet('announcements', anns);
 
-  if (sendLine) mockLineNotify(`📢 ประกาศจาก ${ann.author}\n\n${title}\n\n${body}`, target);
+  const annMsg = `📢 ประกาศจาก ${ann.author}\n\n${title}\n\n${body}\n\nถึง: ${target}`;
+  if (sendLine) {
+    mockLineNotify(annMsg, target);
+    if (typeof sendLineOAMsg === 'function') sendLineOAMsg(annMsg, null).catch(() => {});
+  }
 
   if (window._annModalBd) window._annModalBd.remove();
   renderAnn();
 }
 
+function populateMonthFilter() {
+  const anns = getAnnouncements();
+  const months = new Set();
+  anns.forEach(function(a) {
+    if (a.createdAt) months.add(a.createdAt.slice(0, 7)); // YYYY-MM
+  });
+  const sel = document.getElementById('ann-month-filter');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">ทุกเดือน</option>';
+  [...months].sort().reverse().forEach(function(m) {
+    const d = new Date(m + '-01');
+    const label = d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', timeZone: 'Asia/Bangkok' });
+    sel.innerHTML += `<option value="${m}">${label}</option>`;
+  });
+  sel.value = current;
+}
+
+function showAnnArchive() {
+  const anns = getAnnouncements();
+  // group by month
+  const byMonth = {};
+  anns.forEach(function(a) {
+    const m = (a.createdAt || '').slice(0, 7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(a);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+  if (!months.length) { alert('ยังไม่มีประกาศในระบบ'); return; }
+  openModal(`
+    <h3>🗂️ Archive ประกาศทั้งหมด</h3>
+    ${months.map(function(m) {
+      const d = new Date(m + '-01');
+      const label = d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', timeZone: 'Asia/Bangkok' });
+      return `<div style="margin-bottom:16px;">
+        <div style="font-weight:700;color:var(--accent3);margin-bottom:8px;">${label} (${byMonth[m].length} ประกาศ)</div>
+        ${byMonth[m].map(function(a) {
+          return `<div style="padding:8px 12px;background:var(--bg2);border-radius:8px;margin-bottom:6px;font-size:13px;">
+            <span style="margin-right:8px;">${a.icon || '📢'}</span>
+            <strong>${a.title}</strong>
+            <span style="color:var(--text3);margin-left:8px;font-size:11px;">โดย ${a.author} · ${a.target}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}
+    <button class="btn-outline" style="width:100%;" onclick="this.closest('.modal-backdrop').remove()">ปิด</button>
+  `);
+}
+
+// auto-archive: ย้ายประกาศเก่ากว่า 60 วันเป็น archived
+function autoArchiveOldAnn() {
+  const anns = getAnnouncements();
+  const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
+  let changed = false;
+  anns.forEach(function(a) {
+    if (!a.archived && new Date(a.createdAt).getTime() < cutoff) {
+      a.archived = true; changed = true;
+    }
+  });
+  if (changed) lsSet('announcements', anns);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initRole();
+  autoArchiveOldAnn();
+  populateMonthFilter();
   renderAnn();
 });
 </script>

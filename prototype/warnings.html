@@ -168,7 +168,9 @@ function renderWarnings() {
   tb.innerHTML = warns.map(w => {
     const n = ordinals[w.id] || '—';
     const typeLabel = w.isAuto ? 'อัตโนมัติ' : 'ด้วยตนเอง';
-    const pdf = w.fileUrl ? `<a href="${w.fileUrl}" target="_blank" rel="noopener" style="color:var(--red)">PDF</a>` : '—';
+    const pdf = w._pdfData
+      ? `<button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="viewWarnPdf('${w.id}')">📄 ดู PDF</button>`
+      : (w.fileUrl && w.fileUrl !== '#pdf-'+w.id ? `<a href="${w.fileUrl}" target="_blank" style="color:var(--red)">PDF</a>` : '—');
     return `<tr>
       <td>${thDate(w.createdAt)}</td>
       <td><strong>${w.empName}</strong></td>
@@ -247,7 +249,17 @@ function openIssueModal() {
   window._warnModalBd = bd;
 }
 
-function issueWarning() {
+// อ่านไฟล์เป็น base64 DataURL
+function readFileAsDataUrl(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function issueWarning() {
   const empName = document.getElementById('w-emp').value;
   const reason  = document.getElementById('w-reason').value.trim();
   const send    = document.getElementById('w-send').checked;
@@ -265,26 +277,54 @@ function issueWarning() {
     cumulative,
     isAuto: false,
     fileUrl: null,
+    _pdfName: null,
+    _pdfData: null,
     createdAt: new Date().toISOString()
   };
+
+  // อ่าน PDF เป็น base64 เพื่อให้ preview ได้
   if (pdfIn.files && pdfIn.files[0]) {
     const f = pdfIn.files[0];
     if (!f.name.toLowerCase().endsWith('.pdf')) { alert('กรุณาเลือกไฟล์ PDF'); return; }
-    warn.fileUrl = '#pdf-' + warn.id;
-    warn._pdfName = f.name;
+    try {
+      warn._pdfData = await readFileAsDataUrl(f);
+      warn._pdfName = f.name;
+    } catch { warn._pdfName = f.name; }
   }
+
   warns.push(warn);
   lsSet('warnings', warns);
 
   if (send) {
-    const pdfNote = warn.fileUrl ? '\nมีไฟล์ PDF แนบ' : '';
-    mockLineNotify(`⚠️ คุณได้รับใบเตือน\nเหตุผล: ${reason}\nครั้งที่ ${cumulative}${pdfNote}\n\nกรุณาพบ HR ภายใน 3 วันทำการ`, empName);
+    const pdfNote = warn._pdfData ? '\nมีไฟล์ PDF แนบ' : '';
+    const warnMsg = `⚠️ คุณได้รับใบเตือน\nชื่อ: ${empName}\nเหตุผล: ${reason}\nครั้งที่ ${cumulative}${pdfNote}\n\nกรุณาพบ HR ภายใน 3 วันทำการ`;
+    mockLineNotify(warnMsg, empName);
+    if (typeof sendLineOAMsg === 'function') sendLineOAMsg(warnMsg, null).catch(() => {});
   }
 
   if (window._warnModalBd) window._warnModalBd.remove();
   renderWarnings();
 
   if (cumulative >= 3) alert(`⚠️ ${empName} สะสมใบเตือนถึง ${cumulative} ครั้ง! กรุณาพิจารณาดำเนินการเพิ่มเติม`);
+}
+
+function viewWarnPdf(id) {
+  const warns = getWarnings();
+  const w = warns.find(x => x.id === id);
+  if (!w || !w._pdfData) { alert('ไม่พบไฟล์ PDF'); return; }
+  const fname = w._pdfName || 'warning.pdf';
+  openModal(`
+    <h3>📄 ${fname}</h3>
+    <p style="font-size:12px;color:var(--text3);margin:0 0 10px;">ใบเตือน: ${w.empName} · ครั้งที่ ${w.cumulative}</p>
+    <div style="width:100%;height:65vh;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+      <iframe src="${w._pdfData}" style="width:100%;height:100%;border:none;" title="${fname}"></iframe>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <a href="${w._pdfData}" download="${fname}" class="btn-primary" style="flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;height:40px;border-radius:10px;">⬇️ ดาวน์โหลด</a>
+      <a href="${w._pdfData}" target="_blank" class="btn-outline" style="flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;height:40px;border-radius:10px;">🔍 เปิดเต็มจอ</a>
+      <button class="btn-outline" style="flex:1;" onclick="this.closest('.modal-backdrop').remove()">ปิด</button>
+    </div>
+  `);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
