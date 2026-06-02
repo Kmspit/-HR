@@ -87,6 +87,26 @@ export async function handleLineWebhookEvent(event: LineWebhookEvent): Promise<v
     return
   }
 
+  // HR Admin ส่ง "user-id" → ระบบตอบด้วย LINE User ID ของตัวเอง (สำหรับตั้งค่า ATTENDANCE_LINE_NOTIFY_TARGETS)
+  if (lower === 'user-id' || lower === 'userid' || lower === 'รหัสไลน์') {
+    await replyLineText(
+      replyToken,
+      [
+        '📱 LINE User ID ของคุณ:',
+        '',
+        lineUserId,
+        '',
+        'คัดลอก ID นี้ไปใส่ใน Vercel:',
+        'Settings → Environment Variables',
+        'ชื่อ: ATTENDANCE_LINE_NOTIFY_TARGETS',
+        'ค่า: ' + lineUserId,
+        '',
+        '(หลังบันทึกแล้วระบบจะ push ตรงมาหาคุณ)',
+      ].join('\n'),
+    )
+    return
+  }
+
   const code = extractLinkCodeFromMessage(text)
   if (code) {
     const result = await linkLineUserWithCode(lineUserId, code)
