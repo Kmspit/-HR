@@ -7,6 +7,35 @@ import { useRouter } from 'next/navigation'
 import { apiJson } from '@/lib/client-api'
 import { formatThaiDateTime } from '@/lib/utils'
 
+function useNotifCount(initial: number) {
+  const [count, setCount] = useState(initial)
+
+  useEffect(() => {
+    let es: EventSource | null = null
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+    const connect = () => {
+      es = new EventSource('/api/announcements/sse')
+      es.addEventListener('notification', (e) => {
+        const data = JSON.parse(e.data) as { count: number }
+        setCount(data.count)
+      })
+      es.onerror = () => {
+        es?.close()
+        retryTimer = setTimeout(connect, 8000)
+      }
+    }
+
+    connect()
+    return () => {
+      es?.close()
+      if (retryTimer) clearTimeout(retryTimer)
+    }
+  }, [])
+
+  return [count, setCount] as const
+}
+
 const TYPE_ICONS: Record<string, string> = {
   LEAVE_REQUEST: '📅', LEAVE_APPROVED: '✅', LEAVE_REJECTED: '❌',
   OUTSIDE_REQUEST: '🚗', OUTSIDE_APPROVED: '✅', OUTSIDE_REJECTED: '❌',
@@ -35,7 +64,7 @@ type Props = {
 export default function NotificationBell({ initialCount }: Props) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<Notif[]>([])
-  const [count, setCount] = useState(initialCount)
+  const [count, setCount] = useNotifCount(initialCount)
   const [loaded, setLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)

@@ -723,18 +723,22 @@ model CompanyRule {
 // ── ANNOUNCEMENTS ───────────────────────────────
 
 model Announcement {
-  id          String   @id @default(cuid())
-  title       String
-  body        String
-  type        String   @default("GENERAL")
-  targetType  String   @default("ALL")
-  targetIds   String?
-  publishAt   DateTime @default(now())
-  readByIds   String?
-  isArchived  Boolean  @default(false)
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  title              String
+  body               String
+  type               String   @default("GENERAL")
+  targetType         String   @default("ALL")
+  targetIds          String?
+  publishAt          DateTime @default(now())
+  readByIds          String?
+  isArchived         Boolean  @default(false)
+  createdById        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  attachmentName     String?
+  attachmentUrl      String?
+  attachmentType     String?
+  attachmentPublicId String?
 
   @@index([createdAt])
   @@index([isArchived, publishAt])
