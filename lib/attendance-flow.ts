@@ -10,7 +10,8 @@ export const ATTENDANCE_COMPLETED_PATCH = {
 
 const FLOW_ERROR: Record<string, string> = {
   NO_CHECKIN:      'ต้องเช็คอินก่อน',
-  ALREADY_CHECKIN: 'มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อนเริ่มรอบใหม่',
+  ALREADY_CHECKIN: 'มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อน',
+  ALREADY_CHECKIN_TODAY: 'เช็คอินแล้ววันนี้ — ไม่สามารถเช็คอินซ้ำได้',
   ALREADY_CHECKOUT: 'เช็คเอาท์แล้ววันนี้',
   NEED_LUNCH_OUT:  'ต้องเริ่มพักกลางวันก่อน',
   ALREADY_LUNCH_OUT: 'บันทึกเริ่มพักกลางวันแล้ว',

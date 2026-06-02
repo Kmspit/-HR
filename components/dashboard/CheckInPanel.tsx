@@ -37,6 +37,8 @@ type Props = {
   employeeName?: string
   employeeCode?: string | null
   onSuccess?: () => void
+  /** เปิดกล้อง/GPS อัตโนมัติเมื่อแผงโหลด (ไม่มี liveness/motion challenge) */
+  quickStart?: boolean
 }
 
 function CompanyGeofenceCard({ geo }: { geo: CompanyGeofence }) {
@@ -69,6 +71,7 @@ export default function CheckInPanel({
   employeeName = '',
   employeeCode = null,
   onSuccess,
+  quickStart = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -195,6 +198,30 @@ export default function CheckInPanel({
       { enableHighAccuracy: true, timeout: 10000 },
     )
   }
+
+  const quickStartDoneRef = useRef(false)
+  useEffect(() => {
+    if (!quickStart || !faceRequired || quickStartDoneRef.current) return
+    quickStartDoneRef.current = true
+    if (isLunch) {
+      setStep('face-scan')
+      return
+    }
+    if (type === 'checkin') {
+      if (isCompanyOffice && companyOffice) {
+        setWorkPlaceName(companyOffice.name)
+      } else {
+        setWorkPlaceName((prev) => prev || 'นอกสถานที่')
+      }
+      setStep('gps')
+      getGps()
+      return
+    }
+    if (type === 'checkout') {
+      setStep('gps')
+      getGps()
+    }
+  }, [quickStart, faceRequired, isLunch, type, isCompanyOffice, companyOffice])
 
   const goPlaceNext = async () => {
     const name = isCompanyOffice && companyOffice ? companyOffice.name : workPlaceName.trim()

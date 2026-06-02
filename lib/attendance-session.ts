@@ -43,6 +43,27 @@ export function pickDisplaySessionForDay(sessions: Attendance[]): Attendance | n
   return sessions.reduce((a, b) => (a.sessionIndex >= b.sessionIndex ? a : b))
 }
 
+/** แถวที่ใช้แสดง UI วันนี้ — รอบที่ยังไม่จบ หรือรอบล่าสุดที่เช็คเอาท์แล้ว (จำสถานะหลัง refresh) */
+export async function findTodayAttendanceForDisplay(
+  userId: string,
+  date: Date,
+): Promise<Attendance | null> {
+  const active = await findActiveAttendanceSession(userId, date)
+  if (active) return active
+  return prisma.attendance.findFirst({
+    where: { userId, date, checkIn: { not: null } },
+    orderBy: { sessionIndex: 'desc' },
+  })
+}
+
+export async function hasCheckInToday(userId: string, date: Date): Promise<boolean> {
+  const row = await prisma.attendance.findFirst({
+    where: { userId, date, checkIn: { not: null } },
+    select: { id: true },
+  })
+  return !!row
+}
+
 export function sumDayWorkMinutes(sessions: Pick<Attendance, 'workMinutes' | 'checkIn' | 'checkOut' | 'lunchOut' | 'lunchIn'>[]): number {
   return sessions.reduce((sum, s) => {
     if (s.workMinutes > 0) return sum + s.workMinutes

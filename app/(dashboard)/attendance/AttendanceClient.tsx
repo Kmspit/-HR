@@ -11,7 +11,11 @@ import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
 import AttendanceLocalHistory from '@/components/attendance/AttendanceLocalHistory'
-import { Coffee } from 'lucide-react'
+import {
+  getAttendanceProgress,
+  ACTION_LABELS,
+  type AttendanceAction,
+} from '@/lib/attendance-progress'
 
 const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
 
@@ -60,18 +64,7 @@ type Props = {
   companyOffice: { name: string; address: string } | null
   companyGeofence: CompanyGeofence | null
   todayRecord: TodayRecord | null
-  todaySessions?: {
-    id: string
-    sessionIndex: number
-    checkIn: string | null
-    checkOut: string | null
-    lunchOut: string | null
-    lunchIn: string | null
-    status: string
-    isOutside: boolean
-    workPlaceName: string | null
-  }[]
-  completedSessionsToday?: number
+  dayComplete?: boolean
   recentRecords: RecentRecord[]
   leaveBalance: { sick: number; vacation: number; personal: number } | null
   allToday: {
@@ -98,13 +91,11 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 
 type LocationType = 'company' | 'outside'
 
-type AttendanceAction = 'checkin' | 'lunch-out' | 'lunch-in' | 'checkout'
-
 const ACTION_STEPS: { key: AttendanceAction; label: string; short: string }[] = [
-  { key: 'checkin', label: 'เช็คอิน', short: '1' },
-  { key: 'lunch-out', label: 'พักกลางวัน', short: '2' },
-  { key: 'lunch-in', label: 'เลิกพักกลางวัน', short: '3' },
-  { key: 'checkout', label: 'เช็คเอาท์', short: '4' },
+  { key: 'checkin', label: ACTION_LABELS.checkin, short: '1' },
+  { key: 'lunch-out', label: ACTION_LABELS['lunch-out'], short: '2' },
+  { key: 'lunch-in', label: ACTION_LABELS['lunch-in'], short: '3' },
+  { key: 'checkout', label: ACTION_LABELS.checkout, short: '4' },
 ]
 
 const ACTION_STYLE: Record<AttendanceAction, { grad: string; icon: string }> = {
@@ -122,8 +113,7 @@ export default function AttendanceClient({
   companyOffice,
   companyGeofence,
   todayRecord,
-  todaySessions = [],
-  completedSessionsToday = 0,
+  dayComplete: dayCompleteProp = false,
   recentRecords,
   leaveBalance,
   allToday,
@@ -153,18 +143,19 @@ export default function AttendanceClient({
   }, [todayRecord?.id, todayRecord?.checkIn, todayRecord?.lunchOut, todayRecord?.lunchIn, todayRecord?.checkOut, isPending])
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(role)
-  const canCheckIn = !todayRecord?.checkIn
-  const canCheckOut = !!todayRecord?.checkIn && !todayRecord?.checkOut
-  const canLunchOut = !!todayRecord?.checkIn && !todayRecord?.lunchOut && !todayRecord?.checkOut
-  const canLunchIn = !!todayRecord?.lunchOut && !todayRecord?.lunchIn && !todayRecord?.checkOut
-  const nextSessionNumber = (completedSessionsToday || todaySessions.filter((s) => s.checkIn && s.checkOut).length) + 1
-
+  const progress = getAttendanceProgress(
+    todayRecord
+      ? {
+          checkIn: todayRecord.checkIn,
+          checkOut: todayRecord.checkOut,
+          lunchOut: todayRecord.lunchOut,
+          lunchIn: todayRecord.lunchIn,
+        }
+      : null,
+  )
+  const dayComplete = dayCompleteProp || progress.dayComplete
   const nextAction: AttendanceAction | null =
-    canCheckIn && !blockCheckIn ? 'checkin'
-    : canLunchOut ? 'lunch-out'
-    : canLunchIn ? 'lunch-in'
-    : canCheckOut ? 'checkout'
-    : null
+    dayComplete || blockCheckIn ? null : progress.nextAction
 
   const stepDone = (key: AttendanceAction) => {
     if (!todayRecord) return false
@@ -331,6 +322,35 @@ export default function AttendanceClient({
           )}
 
           {/* ── ปุ่มเดียว — เปลี่ยนตามลำดับ 1→2→3→4 ── */}
+          {!scanOpen && dayComplete && faceRegistered && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-1 px-1">
+                {ACTION_STEPS.map((step) => (
+                  <div key={step.key} className="flex flex-1 flex-col items-center gap-1 min-w-0">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold bg-green-500/20 text-green-400 ring-1 ring-green-500/40">
+                      ✓
+                    </div>
+                    <span className="text-[9px] text-center text-green-400/80 truncate w-full">{step.label}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled
+                className="w-full flex flex-col items-center justify-center gap-1 rounded-2xl py-5 px-4 text-slate-400 font-bold cursor-not-allowed opacity-70"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <span className="text-2xl">✅</span>
+                <span className="text-base">ลงเวลาครบแล้ว</span>
+                <span className="text-[11px] font-normal text-slate-500">
+                  {todayRecord?.checkIn && todayRecord?.checkOut
+                    ? `${formatTime(todayRecord.checkIn)} — ${formatTime(todayRecord.checkOut)} น.`
+                    : 'พรุ่งนี้จึงจะลงเวลาใหม่ได้'}
+                </span>
+              </button>
+            </div>
+          )}
+
           {!scanOpen && nextAction && faceRegistered && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-1 px-1">
@@ -382,12 +402,6 @@ export default function AttendanceClient({
                 </div>
               )}
 
-              {completedSessionsToday > 0 && nextAction === 'checkin' && (
-                <p className="text-center text-[11px] text-slate-500">
-                  รอบที่ {nextSessionNumber} · เสร็จแล้ว {completedSessionsToday} รอบวันนี้
-                </p>
-              )}
-
               <button
                 type="button"
                 disabled={isPending}
@@ -422,6 +436,7 @@ export default function AttendanceClient({
                   companyOffice={selectedType === 'company' ? companyOffice : null}
                   companyGeofence={selectedType === 'company' ? companyGeofence : null}
                   faceRequired={faceRegistered}
+                  quickStart
                   userId={userId}
                   employeeName={userName}
                   employeeCode={employeeCode}
@@ -435,6 +450,7 @@ export default function AttendanceClient({
                   companyOffice={companyOffice}
                   companyGeofence={companyGeofence}
                   faceRequired={faceRegistered}
+                  quickStart
                   userId={userId}
                   employeeName={userName}
                   employeeCode={employeeCode}
@@ -444,22 +460,6 @@ export default function AttendanceClient({
             </div>
           )}
 
-
-          {/* รอบที่เสร็จแล้ววันนี้ */}
-          {!todayRecord?.checkIn && completedSessionsToday > 0 && !scanOpen && (
-            <div className="rounded-2xl p-4 space-y-2"
-              style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
-              <p className="text-xs font-semibold text-green-400">
-                ✅ บันทึกครบ {completedSessionsToday} รอบแล้ววันนี้
-              </p>
-              {todaySessions.filter((s) => s.checkOut).map((s) => (
-                <p key={s.id} className="text-[11px] text-slate-500">
-                  รอบ {s.sessionIndex}: {formatTime(s.checkIn)} — {formatTime(s.checkOut)} น.
-                  {s.isOutside ? ' · นอกสถานที่' : ' · ในบริษัท'}
-                </p>
-              ))}
-            </div>
-          )}
 
           {(!faceRegistered || showFaceUpdate) && (
             <FaceRegistrationCard

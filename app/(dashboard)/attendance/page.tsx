@@ -6,10 +6,10 @@ import AttendanceClient from './AttendanceClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import {
-  findActiveAttendanceSession,
-  findTodayAttendanceSessions,
+  findTodayAttendanceForDisplay,
   pickDisplaySessionForDay,
 } from '@/lib/attendance-session'
+import { getAttendanceProgress } from '@/lib/attendance-progress'
 import { Suspense } from 'react'
 
 export default async function AttendancePage({
@@ -41,9 +41,8 @@ export default async function AttendancePage({
     select: { employeeId: true },
   })
 
-  const [activeSession, todaySessions, recentRecords, leaveBalance] = await Promise.all([
-    findActiveAttendanceSession(session.user.id, today),
-    findTodayAttendanceSessions(session.user.id, today),
+  const [displaySession, recentRecords, leaveBalance] = await Promise.all([
+    findTodayAttendanceForDisplay(session.user.id, today),
     prisma.attendance.findMany({
       where: { userId: session.user.id, checkIn: { not: null } },
       orderBy: [{ date: 'desc' }, { sessionIndex: 'desc' }],
@@ -126,38 +125,27 @@ export default async function AttendancePage({
             }
           : null
       }
-      todayRecord={activeSession ? {
-        id: activeSession.id,
-        sessionIndex: activeSession.sessionIndex,
-        checkIn: activeSession.checkIn?.toISOString() ?? null,
-        checkOut: activeSession.checkOut?.toISOString() ?? null,
-        lunchOut: activeSession.lunchOut?.toISOString() ?? null,
-        lunchIn: activeSession.lunchIn?.toISOString() ?? null,
-        status: activeSession.status,
-        lateMinutes: activeSession.lateMinutes ?? 0,
-        earlyLeaveMinutes: activeSession.earlyLeaveMinutes ?? 0,
-        isOutside: activeSession.isOutside ?? false,
-        address: activeSession.address ?? null,
-        workPlaceName: activeSession.workPlaceName ?? null,
-        photoUrl: activeSession.photoUrl ?? null,
-        checkOutPhotoUrl: activeSession.checkOutPhotoUrl ?? null,
-        lunchOutPhotoUrl: activeSession.lunchOutPhotoUrl ?? null,
-        lunchInPhotoUrl: activeSession.lunchInPhotoUrl ?? null,
-        lat: activeSession.lat ?? null,
-        lng: activeSession.lng ?? null,
+      todayRecord={displaySession ? {
+        id: displaySession.id,
+        sessionIndex: displaySession.sessionIndex,
+        checkIn: displaySession.checkIn?.toISOString() ?? null,
+        checkOut: displaySession.checkOut?.toISOString() ?? null,
+        lunchOut: displaySession.lunchOut?.toISOString() ?? null,
+        lunchIn: displaySession.lunchIn?.toISOString() ?? null,
+        status: displaySession.status,
+        lateMinutes: displaySession.lateMinutes ?? 0,
+        earlyLeaveMinutes: displaySession.earlyLeaveMinutes ?? 0,
+        isOutside: displaySession.isOutside ?? false,
+        address: displaySession.address ?? null,
+        workPlaceName: displaySession.workPlaceName ?? null,
+        photoUrl: displaySession.photoUrl ?? null,
+        checkOutPhotoUrl: displaySession.checkOutPhotoUrl ?? null,
+        lunchOutPhotoUrl: displaySession.lunchOutPhotoUrl ?? null,
+        lunchInPhotoUrl: displaySession.lunchInPhotoUrl ?? null,
+        lat: displaySession.lat ?? null,
+        lng: displaySession.lng ?? null,
       } : null}
-      todaySessions={todaySessions.map((r) => ({
-        id: r.id,
-        sessionIndex: r.sessionIndex,
-        checkIn: r.checkIn?.toISOString() ?? null,
-        checkOut: r.checkOut?.toISOString() ?? null,
-        lunchOut: r.lunchOut?.toISOString() ?? null,
-        lunchIn: r.lunchIn?.toISOString() ?? null,
-        status: r.status,
-        isOutside: r.isOutside ?? false,
-        workPlaceName: r.workPlaceName ?? null,
-      }))}
-      completedSessionsToday={todaySessions.filter((s) => s.checkIn && s.checkOut).length}
+      dayComplete={getAttendanceProgress(displaySession).dayComplete}
       recentRecords={recentRecords.map((r) => ({
         id: r.id,
         date: r.date.toISOString(),

@@ -20,7 +20,7 @@ import {
 } from '@/lib/attendance-flow'
 import {
   findActiveAttendanceSession,
-  getNextSessionIndex,
+  hasCheckInToday,
 } from '@/lib/attendance-session'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
@@ -84,6 +84,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (await hasCheckInToday(session.user.id, today)) {
+      return NextResponse.json(
+        { error: attendanceFlowErrorMessage('ALREADY_CHECKIN_TODAY'), code: 'ALREADY_CHECKIN_TODAY' },
+        { status: 400 },
+      )
+    }
+
     const activeSession = await findActiveAttendanceSession(session.user.id, today)
 
     const flowErr = validateAttendanceFlow(activeSession, 'checkin', now)
@@ -94,8 +101,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const sessionIndex = await getNextSessionIndex(session.user.id, today)
-    const isFirstSessionOfDay = sessionIndex === 1
+    const sessionIndex = 1
+    const isFirstSessionOfDay = true
 
     const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
     const leaveType = approvedLeave?.type ?? undefined
