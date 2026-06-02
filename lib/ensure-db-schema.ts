@@ -391,6 +391,29 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE company_settings ADD COLUMN imageRetentionDays INTEGER NOT NULL DEFAULT 90`,
   )
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT NOT NULL PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'GENERAL',
+      targetType TEXT NOT NULL DEFAULT 'ALL',
+      targetIds TEXT,
+      publishAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      readByIds TEXT,
+      isArchived INTEGER NOT NULL DEFAULT 0,
+      createdById TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS announcements_created_idx ON announcements (createdAt)
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS announcements_archived_publish_idx ON announcements (isArchived, publishAt)
+  `)
+
   return true
 }
 

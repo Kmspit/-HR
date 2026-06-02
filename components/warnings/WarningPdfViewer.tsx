@@ -1,12 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Download, ExternalLink, FileText, Loader2, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Download, ExternalLink, FileText, Loader2, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  warningPdfApiPath,
-  warningPdfDownloadPath,
-} from '@/lib/warning-pdf-url'
+import { warningPdfApiPath, warningPdfDownloadPath } from '@/lib/warning-pdf-url'
 
 type Props = {
   warningId: string
@@ -15,22 +12,32 @@ type Props = {
   onClose: () => void
 }
 
+const ZOOM_STEPS = [50, 75, 100, 125, 150, 175, 200]
+
 export default function WarningPdfViewer({ warningId, title, open, onClose }: Props) {
   const viewUrl = warningPdfApiPath(warningId)
   const downloadUrl = warningPdfDownloadPath(warningId)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [zoomIdx, setZoomIdx] = useState(2) // default 100%
+  const [fullscreen, setFullscreen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const zoom = ZOOM_STEPS[zoomIdx]
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
     setLoadError(false)
+    setZoomIdx(2)
   }, [open, warningId])
 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') { if (fullscreen) setFullscreen(false); else onClose() }
+      if (e.key === '+' || e.key === '=') setZoomIdx((i) => Math.min(i + 1, ZOOM_STEPS.length - 1))
+      if (e.key === '-') setZoomIdx((i) => Math.max(i - 1, 0))
     }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
@@ -39,7 +46,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [open, onClose])
+  }, [open, onClose, fullscreen])
 
   const openNewTab = useCallback(() => {
     window.open(viewUrl, '_blank', 'noopener,noreferrer')
@@ -66,6 +73,8 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
 
   if (!open) return null
 
+  const iframeScale = zoom / 100
+
   return (
     <div
       className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
@@ -75,21 +84,56 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
       onClick={onClose}
     >
       <div
-        className="flex flex-col w-full sm:max-w-4xl max-h-[100dvh] sm:max-h-[92dvh] rounded-t-2xl sm:rounded-2xl border border-white/10 bg-slate-900 shadow-2xl overflow-hidden"
+        ref={containerRef}
+        className={`flex flex-col bg-slate-900 border border-white/10 shadow-2xl overflow-hidden transition-all duration-200 ${
+          fullscreen
+            ? 'fixed inset-0 z-[90] rounded-none'
+            : 'w-full sm:max-w-4xl max-h-[100dvh] sm:max-h-[92dvh] rounded-t-2xl sm:rounded-2xl'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 shrink-0">
-          <FileText className="w-5 h-5 text-red-400 shrink-0" />
+        {/* Header */}
+        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10 shrink-0 flex-wrap sm:flex-nowrap">
+          <FileText className="w-4 h-4 text-red-400 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">
-              {title ?? 'ใบเตือน PDF'}
-            </p>
-            <p className="text-[10px] text-slate-500">ดูตัวอย่าง · ดาวน์โหลด · เปิดแท็บใหม่</p>
+            <p className="text-sm font-semibold text-white truncate">{title ?? 'ใบเตือน PDF'}</p>
           </div>
+
+          {/* Zoom controls — hidden on mobile (iframes don't zoom well there) */}
+          <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg border border-white/10 bg-white/[0.03]">
+            <button
+              type="button"
+              onClick={() => setZoomIdx((i) => Math.max(i - 1, 0))}
+              disabled={zoomIdx === 0}
+              className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 touch-manipulation"
+              title="ซูมออก (−)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-xs text-slate-300 w-10 text-center tabular-nums">{zoom}%</span>
+            <button
+              type="button"
+              onClick={() => setZoomIdx((i) => Math.min(i + 1, ZOOM_STEPS.length - 1))}
+              disabled={zoomIdx === ZOOM_STEPS.length - 1}
+              className="p-0.5 text-slate-400 hover:text-white disabled:opacity-30 touch-manipulation"
+              title="ซูมเข้า (+)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setFullscreen((f) => !f)}
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:bg-white/5 touch-manipulation"
+            title="เต็มจอ"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             onClick={openNewTab}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:bg-white/5 touch-manipulation"
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:bg-white/5 touch-manipulation"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             แท็บใหม่
@@ -97,7 +141,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
           <button
             type="button"
             onClick={downloadPdf}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 touch-manipulation"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 touch-manipulation"
           >
             <Download className="w-3.5 h-3.5" />
             ดาวน์โหลด
@@ -105,70 +149,67 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/10 text-slate-400 touch-manipulation"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 touch-manipulation"
             aria-label="ปิด"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="sm:hidden flex gap-2 px-4 py-2 border-b border-white/5 shrink-0">
-          <button
-            type="button"
-            onClick={openNewTab}
-            className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-slate-200 touch-manipulation"
-          >
+        {/* Mobile action bar */}
+        <div className="sm:hidden flex gap-2 px-3 py-2 border-b border-white/5 shrink-0">
+          <button type="button" onClick={openNewTab}
+            className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-semibold text-slate-200 touch-manipulation">
             เปิดแท็บใหม่
           </button>
-          <button
-            type="button"
-            onClick={downloadPdf}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600/90 text-xs font-semibold text-white touch-manipulation"
-          >
+          <button type="button" onClick={downloadPdf}
+            className="flex-1 py-2.5 rounded-xl bg-blue-600/90 text-xs font-semibold text-white touch-manipulation">
             ดาวน์โหลด
           </button>
         </div>
 
-        <div className="relative flex-1 min-h-[50dvh] sm:min-h-[60vh] bg-slate-950">
+        {/* PDF area */}
+        <div className="relative flex-1 min-h-[55dvh] sm:min-h-[60vh] bg-slate-950 overflow-auto">
           {loading && !loadError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 z-10 pointer-events-none">
               <Loader2 className="w-8 h-8 animate-spin" />
               <p className="text-xs">กำลังโหลด PDF...</p>
             </div>
           )}
+
           {loadError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm text-slate-300">เปิดตัวอย่างในเบราว์เซอร์นี้ไม่ได้</p>
-              <p className="text-xs text-slate-500">ลองเปิดแท็บใหม่หรือดาวน์โหลดไฟล์</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                <button
-                  type="button"
-                  onClick={openNewTab}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-sm font-semibold text-white"
-                >
+              <p className="text-xs text-slate-500">กรุณาใช้ปุ่ม "เปิดแท็บใหม่" หรือ "ดาวน์โหลด"</p>
+              <div className="flex flex-wrap gap-2 justify-center mt-1">
+                <button type="button" onClick={openNewTab}
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-sm font-semibold text-white">
                   เปิดแท็บใหม่
                 </button>
-                <button
-                  type="button"
-                  onClick={downloadPdf}
-                  className="px-4 py-2 rounded-xl border border-white/10 text-sm text-slate-200"
-                >
+                <button type="button" onClick={downloadPdf}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-sm text-slate-200">
                   ดาวน์โหลด
                 </button>
               </div>
             </div>
           ) : (
-            <iframe
-              key={warningId}
-              title={title ?? 'PDF preview'}
-              src={viewUrl}
-              className="absolute inset-0 h-full w-full border-0 bg-white"
-              onLoad={() => setLoading(false)}
-              onError={() => {
-                setLoading(false)
-                setLoadError(true)
+            <div
+              className="origin-top-left transition-transform duration-150"
+              style={{
+                transform: `scale(${iframeScale})`,
+                width: `${100 / iframeScale}%`,
+                height: `${100 / iframeScale}%`,
               }}
-            />
+            >
+              <iframe
+                key={`${warningId}-${zoom}`}
+                title={title ?? 'PDF preview'}
+                src={viewUrl}
+                className="absolute inset-0 h-full w-full border-0 bg-white"
+                onLoad={() => setLoading(false)}
+                onError={() => { setLoading(false); setLoadError(true) }}
+              />
+            </div>
           )}
         </div>
       </div>

@@ -75,6 +75,7 @@ enum NotificationType {
   WEEKLY_PLAN_DUE
   WEEKLY_PLAN_APPROVED
   DEVICE_RESET_REQUEST
+  ANNOUNCEMENT
   SYSTEM
 }
 
@@ -717,6 +718,27 @@ model CompanyRule {
   updatedAt   DateTime @updatedAt
 
   @@map("company_rules")
+}
+
+// ── ANNOUNCEMENTS ───────────────────────────────
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  type        String   @default("GENERAL")
+  targetType  String   @default("ALL")
+  targetIds   String?
+  publishAt   DateTime @default(now())
+  readByIds   String?
+  isArchived  Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([isArchived, publishAt])
+  @@map("announcements")
 }
 
 // ── COMPANY SETTINGS ────────────────────────────
