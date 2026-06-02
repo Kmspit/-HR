@@ -191,7 +191,7 @@ function renderLeaveBalances() {
   `;
 }
 
-function submitLeave() {
+async function submitLeave() {
   const user = getCurrentUser();
   const type   = document.getElementById('f-type').value;
   const start  = document.getElementById('f-start').value;
@@ -200,7 +200,8 @@ function submitLeave() {
   if (!start || !end || !reason) { alert('กรุณากรอกข้อมูลให้ครบ'); return; }
   if (new Date(end) < new Date(start)) { alert('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม'); return; }
 
-  const req = { id: uid(), empName: user.name, userId: user.email, type, startDate: start, endDate: end, reason, status: 'PENDING', createdAt: new Date().toISOString() };
+  const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
+  const req = { id: uid(), empName: user.name, userId: user.email, type, startDate: start, endDate: end, days, reason, status: 'PENDING', createdAt: new Date().toISOString() };
   const list = getLeaveRequests();
   list.push(req);
   lsSet('leaves', list);
@@ -208,7 +209,26 @@ function submitLeave() {
   document.getElementById('f-start').value = '';
   document.getElementById('f-end').value   = '';
   document.getElementById('f-reason').value = '';
-  const leaveMsg = `📅 คำขอลาใหม่\nพนักงาน: ${user.name}\nประเภท: ${TYPE_LABELS[type]}\nช่วงวัน: ${thDate(start)} – ${thDate(end)}\nเหตุผล: ${reason}\nเวลาส่ง: ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`;
+
+  // ส่งเข้า database ผ่าน bridge API → ขึ้นในหน้าอนุมัติของ HR
+  const apiBase = (typeof location !== 'undefined' && location.protocol !== 'file:')
+    ? location.origin.replace(/\/prototype.*$/, '')
+    : 'https://hrflow-app-gamma.vercel.app';
+  fetch(apiBase + '/api/leave/prototype', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeEmail: user.email, type, startDate: start, endDate: end, days, reason }),
+  }).then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        console.info('[leave] บันทึกลง database แล้ว id:', d.id);
+      } else {
+        console.warn('[leave] database save skipped:', d.reason || d.error);
+      }
+    })
+    .catch(function(e) { console.warn('[leave] API error:', e.message); });
+
+  const leaveMsg = `📅 คำขอลาใหม่\nพนักงาน: ${user.name}\nประเภท: ${TYPE_LABELS[type]}\nช่วงวัน: ${thDate(start)} – ${thDate(end)} (${days} วัน)\nเหตุผล: ${reason}\nเวลาส่ง: ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`;
   mockLineNotify(leaveMsg, 'Admin / HR');
   if (typeof sendLineOAMsg === 'function') sendLineOAMsg(leaveMsg, null).catch(() => {});
   renderAll();
