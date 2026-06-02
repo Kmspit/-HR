@@ -66,7 +66,28 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Try push to HR users first, fallback to broadcast
+    // 0. LINE Notify — ส่งตรงหา HR 1:1 หรือกลุ่ม (ไม่ต้อง link account)
+    const lineNotifyToken = process.env.LINE_NOTIFY_TOKEN?.trim()
+    if (lineNotifyToken) {
+      const notifyBody = new URLSearchParams()
+      notifyBody.set('message', '\n' + message.slice(0, 999))
+      if (imageUrl) {
+        notifyBody.set('imageThumbnail', imageUrl)
+        notifyBody.set('imageFullsize', imageUrl)
+      }
+      const notifyRes = await fetch('https://notify-api.line.me/api/notify', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + lineNotifyToken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: notifyBody.toString(),
+      })
+      if (notifyRes.ok) return json({ ok: true, sent: 1, via: 'line-notify' }, 200, origin)
+      console.warn('[prototype-notify] LINE Notify failed', notifyRes.status)
+    }
+
+    // 1. Push to linked HR users
     const hrUsers = await getHrLineRecipients()
     if (hrUsers.length > 0) {
       let sent = 0, failed = 0
@@ -78,7 +99,7 @@ export async function POST(req: NextRequest) {
       return json({ ok: sent > 0, sent, failed }, 200, origin)
     }
 
-    // Fallback: broadcast to all followers
+    // 2. Fallback: broadcast to all OA followers
     const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
     const resolved = await resolveLineChannelAccessToken()
     if (!resolved.token) {
