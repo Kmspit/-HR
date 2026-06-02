@@ -229,11 +229,15 @@
       <div id="emp-location-list" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
     </div>
 
-    <!-- รายงานมาสาย (HR/Admin เท่านั้น) -->
+    <!-- รายงานมาสาย + Export + Manual Edit (HR/Admin เท่านั้น) -->
     <div class="card role-hr-admin-only" id="late-report-card" style="margin-top:20px;">
       <div class="card-header">
         <span class="card-title">⏰ รายงานการมาสาย</span>
-        <button class="btn-outline" style="height:30px;font-size:12px;" onclick="renderLateReport()">🔄 รีเฟรช</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-outline" style="height:30px;font-size:12px;" onclick="exportAttendanceCSV()">📥 Export CSV</button>
+          <button class="btn-outline" style="height:30px;font-size:12px;" onclick="openManualEditModal()">✏️ แก้ไข Manual</button>
+          <button class="btn-outline" style="height:30px;font-size:12px;" onclick="renderLateReport()">🔄 รีเฟรช</button>
+        </div>
       </div>
       <div id="late-report-container" style="min-height:60px;"></div>
     </div>
@@ -290,6 +294,16 @@
 <script>
 function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
+
+// ── XSS PROTECTION ─────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 // ── LEAFLET MAP + REAL-TIME GPS ──
 let userCoords   = { lat: 13.7563, lng: 100.5018 };
@@ -482,7 +496,7 @@ function refreshAllMap() {
     } else {
       allMarkersMap[loc.name] = L.marker([loc.lat, loc.lng], { icon })
         .addTo(allMap)
-        .bindPopup(`<b>👤 ${loc.name}</b><br>${loc.dept||''}<br>${loc.addr||''}<br><small>อัปเดต: ${since}</small>`);
+        .bindPopup(`<b>👤 ${escapeHtml(loc.name)}</b><br>${escapeHtml(loc.dept||'')}<br>${escapeHtml(loc.addr||'')}<br><small>อัปเดต: ${escapeHtml(since)}</small>`);
     }
 
     // Sidebar location card
@@ -490,9 +504,9 @@ function refreshAllMap() {
       <div style="border:1px solid var(--border);border-radius:var(--r);padding:10px;display:flex;align-items:center;gap:10px;">
         <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
         <div>
-          <div style="font-size:13px;font-weight:600;">${loc.name}</div>
+          <div style="font-size:13px;font-weight:600;">${escapeHtml(loc.name)}</div>
           <div style="font-size:11px;color:var(--text3);">${loc.inRange ? '✓ ในสำนักงาน' : '⚠ นอกสำนักงาน'}</div>
-          <div style="font-size:10px;color:var(--text3);">อัปเดต ${since}</div>
+          <div style="font-size:10px;color:var(--text3);">อัปเดต ${escapeHtml(since)}</div>
         </div>
       </div>`;
   });
@@ -513,6 +527,7 @@ let matching = false;
 const STABLE_MS = 250;           // อยู่ตรงกล้องนิ่งต่อเนื่องเท่านี้ก่อน capture อัตโนมัติ
 let activePanel = null; // checkin-company | checkin-outside | lunch-out | lunch-in | checkout
 let checkinLocationMode = 'company'; // company | outside — ใช้ตอนขั้นเช็คอิน
+let _submitting = false; // ป้องกัน double-tap / race condition
 
 const ACTION_FLOW = [
   { key: 'checkin', label: 'เช็คอิน', panelCompany: 'checkin-company', panelOutside: 'checkin-outside', cls: 'checkin', icon: '🟢' },
@@ -599,7 +614,56 @@ function getTodayData() {
 }
 
 function saveTodayData(data) {
-  localStorage.setItem(todayStorageKey(), JSON.stringify(data));
+  try {
+    localStorage.setItem(todayStorageKey(), JSON.stringify(data));
+  } catch (e) {
+    if (e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+      // พื้นที่เต็ม — ลบ log เก่าก่อนแล้ว retry
+      _cleanOldAttendanceLogs();
+      try {
+        localStorage.setItem(todayStorageKey(), JSON.stringify(data));
+      } catch {
+        // ยัง fail — แจ้ง user และ queue ไว้
+        _showStorageWarning();
+        _pendingAttendanceData = data; // เก็บใน memory ชั่วคราว
+      }
+    } else {
+      console.error('saveTodayData error:', e);
+    }
+  }
+}
+
+let _pendingAttendanceData = null;
+
+function _cleanOldAttendanceLogs() {
+  // ลบ key hrflow_today_ ที่เก่ากว่า 30 วัน
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(cutoff);
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('hrflow_today_')) continue;
+    const m = key.match(/(\d{4}-\d{2}-\d{2})$/);
+    if (m && m[1] < cutoffKey) toRemove.push(key);
+  }
+  toRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  // ลบ faceScanLogs ที่สะสมเยอะ
+  try {
+    const logs = JSON.parse(localStorage.getItem('hrflow_faceScanLogs') || '[]');
+    if (logs.length > 50) localStorage.setItem('hrflow_faceScanLogs', JSON.stringify(logs.slice(0, 50)));
+  } catch {}
+}
+
+function _showStorageWarning() {
+  const bar = document.getElementById('offline-queue-bar');
+  const msg = document.getElementById('offline-queue-msg');
+  if (bar && msg) {
+    bar.style.display = 'flex';
+    bar.style.background = 'rgba(239,68,68,.1)';
+    bar.style.borderColor = 'rgba(239,68,68,.3)';
+    msg.textContent = '⚠️ พื้นที่จัดเก็บเต็ม ข้อมูลถูกเก็บชั่วคราว — กรุณาล้างแคชเบราว์เซอร์';
+  }
 }
 
 /** รอบที่ยังไม่เช็คเอาท์ */
@@ -694,6 +758,7 @@ function showFacePreview(decision, confidence, photo) {
 function startAutoScan() {
   if (typeof FaceCore === 'undefined') { setScanStatus('ระบบสแกนใบหน้ายังไม่พร้อม', 'var(--red)'); return; }
   stopAutoScan();
+  startFaceScanTimeout(); // [7] timeout guard
   autoScanActive = true;
   faceCaptured = false;
   faceMatch = null;
@@ -711,6 +776,7 @@ function stopAutoScan() {
   autoScanActive = false;
   alignedSince = null;
   if (autoScanTimer) { clearTimeout(autoScanTimer); autoScanTimer = null; }
+  clearFaceScanTimeout(); // [7] clear timeout on stop
 }
 
 // Continuously check face alignment; once the face faces the camera and is
@@ -835,10 +901,16 @@ function capturePhotoDataUrl() {
 
 function submitActiveAction() {
   if (!activePanel) return;
+  if (_submitting) return; // double-tap guard
   if (!faceCaptured) {
     alert('กรุณาสแกนใบหน้าเพื่อยืนยันตัวตนก่อน');
     return;
   }
+  _submitting = true;
+  // แสดง loading state บนปุ่ม submit
+  const submitBtn = document.getElementById('btn-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'กำลังบันทึกข้อมูล...'; }
+  try {
   const photoUrl = capturePhotoDataUrl();
   const faceMeta = faceMatch ? {
     faceVerified: faceMatch.decision === 'accept' || !!faceMatch.userConfirmed,
@@ -928,11 +1000,24 @@ function submitActiveAction() {
   alert('บันทึกสำเร็จ');
   saveAttendancePhotoToDevice(photoUrl, rec, _scanType);
   const scanLabel = (typeof ATT_SCAN_LABELS !== 'undefined' && ATT_SCAN_LABELS[_scanType]) || _scanType;
+  clearFaceScanTimeout(); // [7] scan succeeded, clear timeout
   processAttendanceNotification(rec, _scanType, photoUrl)
     .then(function(lineResult) {
+      showAttendanceSaveResult(true, lineResult, scanLabel); // [8] offline status
       if (typeof showLineAfterScan === 'function') showLineAfterScan(lineResult, scanLabel);
     })
-    .catch(function(e) { console.warn('attendance notification:', e); });
+    .catch(function(e) {
+      console.warn('attendance notification:', e);
+      showAttendanceSaveResult(true, null, scanLabel); // [8] att ok, LINE failed
+    });
+  } catch (err) {
+    console.error('submitActiveAction error:', err);
+    alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+  } finally {
+    _submitting = false;
+    const submitBtn2 = document.getElementById('btn-submit');
+    if (submitBtn2) submitBtn2.disabled = false;
+  }
 }
 
 function formatTimesCell(rec) {
@@ -951,11 +1036,13 @@ function appendHistoryRow(rec, photoUrl) {
   tr.dataset.todayRow = '1';
   tr.style.animation = 'fadeUp 0.5s ease both';
   const placeTag = rec.isOutside ? '<span class="tag orange">นอกสถานที่</span>' : '<span class="tag blue">ในบริษัท</span>';
+  // photoUrl ถูก sanitize ด้วย encodeURI เพื่อป้องกัน data URL injection
+  const safePhoto = photoUrl ? encodeURI(photoUrl).replace(/'/g, '%27') : '';
   tr.innerHTML = `
-    <td>${formattedDate}</td>
-    <td><div class="emp-av" style="border-radius:6px;background:url('${photoUrl}') center/cover;"></div></td>
-    <td>${formatTimesCell(rec)}</td>
-    <td><div style="font-size:11px;color:var(--text3);">${rec.lat?.toFixed(6)}, ${rec.lng?.toFixed(6)}</div>${placeTag}</td>
+    <td>${escapeHtml(formattedDate)}</td>
+    <td><div class="emp-av" style="border-radius:6px;background:url('${safePhoto}') center/cover;"></div></td>
+    <td>${escapeHtml(formatTimesCell(rec))}</td>
+    <td><div style="font-size:11px;color:var(--text3);">${escapeHtml((rec.lat?.toFixed(6) || '') + ', ' + (rec.lng?.toFixed(6) || ''))}</div>${placeTag}</td>
     <td><span class="tag green">ปกติ</span></td>`;
   tbody.insertBefore(tr, tbody.firstChild);
 }
@@ -1103,6 +1190,18 @@ function renderAttendanceUI() {
 }
 
 // ── CAMERA INITIATION ──
+let _cameraStream = null; // track active stream for cleanup
+
+function cleanupCamera() {
+  if (_cameraStream) {
+    _cameraStream.getTracks().forEach(function(t) { try { t.stop(); } catch {} });
+    _cameraStream = null;
+  }
+  const video = document.getElementById('checkin-video');
+  if (video) { video.srcObject = null; }
+  stopAutoScan();
+}
+
 async function initCamera() {
   const video = document.getElementById('checkin-video');
   // Request higher resolution for sharper, more reliable face matching (req 11)
@@ -1123,6 +1222,7 @@ async function initCamera() {
       // Fallback for devices that reject the ideal constraints
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
     }
+    _cameraStream = stream;
     video.srcObject = stream;
     await video.play().catch(() => {});
     setScanStatus('มองกล้องตรงเพื่อสแกนใบหน้า', 'var(--text2)');
@@ -1524,6 +1624,243 @@ function renderLateReport() {
     </div>`;
 }
 
+// ── [5] EXPORT CSV (HR/Admin) ─────────────────────────────────────────────────
+function getAllAttendanceData() {
+  const rows = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('hrflow_today_')) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!data || !Array.isArray(data.sessions)) continue;
+      const m = key.match(/hrflow_today_(.+)_(\d{4}-\d{2}-\d{2})$/);
+      const email = m ? m[1] : '—';
+      const dateKey = m ? m[2] : '—';
+      data.sessions.forEach(function(s) {
+        rows.push({
+          date: dateKey, email,
+          sessionIndex: s.sessionIndex || 1,
+          checkIn:  s.checkIn  ? fmtTime(s.checkIn)  : '—',
+          lunchOut: s.lunchOut ? fmtTime(s.lunchOut) : '—',
+          lunchIn:  s.lunchIn  ? fmtTime(s.lunchIn)  : '—',
+          checkOut: s.checkOut ? fmtTime(s.checkOut) : '—',
+          isLate:   s.isLate ? 'ใช่' : 'ไม่',
+          lateMinutes:      s.lateMinutes || 0,
+          earlyLeave:       s.earlyLeave ? 'ใช่' : 'ไม่',
+          earlyLeaveMinutes: s.earlyLeaveMinutes || 0,
+          workStatus:  s.workStatus  || '—',
+          lateStatus:  s.lateStatus  || '—',
+          address:     s.address || '—',
+          branch:      s.branch  || '—',
+          department:  s.department || '—',
+          isOutside:   s.isOutside ? 'นอกสถานที่' : 'ในบริษัท',
+          faceVerified: s.faceVerified ? 'ผ่าน' : 'ไม่ผ่าน',
+        });
+      });
+    } catch {}
+  }
+  rows.sort(function(a, b) { return (b.date + b.email).localeCompare(a.date + a.email); });
+  return rows;
+}
+
+function exportAttendanceCSV() {
+  const rows = getAllAttendanceData();
+  if (!rows.length) { alert('ไม่มีข้อมูลสำหรับ Export'); return; }
+  const headers = ['วันที่','อีเมล','รอบ','เช็คอิน','พักออก','พักกลับ','เช็คเอาท์',
+    'มาสาย','สาย(นาที)','กลับก่อน','กลับก่อน(นาที)','สถานะเลิกงาน','สถานะมาสาย',
+    'ที่อยู่','สาขา','แผนก','ประเภทสถานที่','ยืนยันใบหน้า'];
+  const csvRows = [headers.join(',')];
+  rows.forEach(function(r) {
+    csvRows.push([
+      r.date, r.email, r.sessionIndex,
+      r.checkIn, r.lunchOut, r.lunchIn, r.checkOut,
+      r.isLate, r.lateMinutes, r.earlyLeave, r.earlyLeaveMinutes,
+      r.workStatus, r.lateStatus,
+      '"' + (r.address || '').replace(/"/g, '""') + '"',
+      r.branch, r.department, r.isOutside, r.faceVerified,
+    ].join(','));
+  });
+  const bom = '﻿'; // UTF-8 BOM for Excel Thai support
+  const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'attendance_' + new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date()) + '.csv';
+  a.click();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+}
+
+// ── [6] HR MANUAL EDIT ATTENDANCE ─────────────────────────────────────────────
+function openManualEditModal() {
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  if (!user || (user.role !== 'MANAGER_HR' && user.role !== 'ADMIN')) {
+    alert('เฉพาะ HR/Admin เท่านั้น'); return;
+  }
+  const allKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('hrflow_today_')) allKeys.push(k);
+  }
+  allKeys.sort().reverse();
+
+  const options = allKeys.slice(0, 30).map(function(k) {
+    const m = k.match(/hrflow_today_(.+)_(\d{4}-\d{2}-\d{2})$/);
+    return `<option value="${escapeHtml(k)}">${escapeHtml(m ? m[2] + ' — ' + m[1] : k)}</option>`;
+  }).join('');
+
+  const modalHtml = `
+    <h3>✏️ แก้ไข Attendance Manual</h3>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:6px;">เลือกวัน / User</label>
+      <select id="me-key-select" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);" onchange="loadManualEditSessions()">
+        <option value="">— เลือก —</option>${options}
+      </select>
+    </div>
+    <div id="me-sessions-wrap" style="margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn-outline" onclick="document.querySelector('.modal-backdrop').remove()">ปิด</button>
+    </div>`;
+  if (typeof openModal === 'function') openModal(modalHtml);
+}
+
+function loadManualEditSessions() {
+  const sel = document.getElementById('me-key-select');
+  const wrap = document.getElementById('me-sessions-wrap');
+  if (!sel || !wrap || !sel.value) { if (wrap) wrap.innerHTML = ''; return; }
+  try {
+    const data = JSON.parse(localStorage.getItem(sel.value) || '{"sessions":[]}');
+    if (!data.sessions.length) { wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;">ไม่มี session</p>'; return; }
+    wrap.innerHTML = data.sessions.map(function(s, idx) {
+      const fields = ['checkIn','lunchOut','lunchIn','checkOut'];
+      const labels = { checkIn: 'เช็คอิน', lunchOut: 'พักออก', lunchIn: 'พักกลับ', checkOut: 'เช็คเอาท์' };
+      const inputs = fields.map(function(f) {
+        const val = s[f] ? new Date(s[f]).toISOString().slice(0,16) : '';
+        return `<div style="flex:1;min-width:140px;"><label style="font-size:11px;color:var(--text3);">${labels[f]}</label>
+          <input type="datetime-local" id="me-${idx}-${f}" value="${escapeHtml(val)}"
+            style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;"></div>`;
+      }).join('');
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">รอบ ${s.sessionIndex || idx+1}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">${inputs}</div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;color:var(--text3);">เหตุผลการแก้ไข</label>
+          <input type="text" id="me-${idx}-reason" placeholder="ระบุเหตุผล..."
+            style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;">
+        </div>
+        <button class="btn-primary" style="height:34px;font-size:12px;" onclick="applyManualEdit('${escapeHtml(sel.value)}',${idx})">💾 บันทึก</button>
+      </div>`;
+    }).join('');
+  } catch { wrap.innerHTML = '<p style="color:var(--red);font-size:13px;">โหลดข้อมูลไม่สำเร็จ</p>'; }
+}
+
+function applyManualEdit(storageKey, sessionIdx) {
+  try {
+    const data = JSON.parse(localStorage.getItem(storageKey) || '{"sessions":[]}');
+    const s = data.sessions[sessionIdx];
+    if (!s) { alert('ไม่พบ session'); return; }
+    const editorUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    const oldValue = JSON.stringify({ checkIn: s.checkIn, lunchOut: s.lunchOut, lunchIn: s.lunchIn, checkOut: s.checkOut });
+    ['checkIn','lunchOut','lunchIn','checkOut'].forEach(function(f) {
+      const el = document.getElementById('me-' + sessionIdx + '-' + f);
+      if (el && el.value) s[f] = new Date(el.value).toISOString();
+      else if (el && !el.value) s[f] = null;
+    });
+    const reasonEl = document.getElementById('me-' + sessionIdx + '-reason');
+    const reason = reasonEl ? reasonEl.value.trim() : '';
+    // audit log
+    if (!s.auditLog) s.auditLog = [];
+    s.auditLog.push({
+      editedBy: editorUser?.email || '—',
+      editedAt: new Date().toISOString(),
+      oldValue,
+      newValue: JSON.stringify({ checkIn: s.checkIn, lunchOut: s.lunchOut, lunchIn: s.lunchIn, checkOut: s.checkOut }),
+      reason,
+    });
+    data.sessions[sessionIdx] = s;
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    alert('บันทึกสำเร็จ — ระบบบันทึก audit log แล้ว');
+    renderAttendanceUI();
+  } catch (e) { alert('เกิดข้อผิดพลาด: ' + e.message); }
+}
+
+// ── [7] FACE MATCHING TIMEOUT ─────────────────────────────────────────────────
+const FACE_SCAN_TIMEOUT_MS = 12000; // 12 วินาที
+let _faceTimeoutTimer = null;
+
+function startFaceScanTimeout() {
+  clearFaceScanTimeout();
+  _faceTimeoutTimer = setTimeout(function() {
+    if (!autoScanActive && !matching) return;
+    stopAutoScan();
+    matching = false;
+    setScanStatus('⏱ สแกนใช้เวลานานเกินไป กรุณากดสแกนใหม่', 'var(--orange)');
+    const rescanBtn = document.getElementById('btn-rescan');
+    if (rescanBtn) rescanBtn.style.display = 'block';
+  }, FACE_SCAN_TIMEOUT_MS);
+}
+
+function clearFaceScanTimeout() {
+  if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
+}
+
+// ── [8] OFFLINE CHECKIN STATUS — แยก Attendance vs LINE ──────────────────────
+function showAttendanceSaveResult(attOk, lineResult, scanLabel) {
+  const bar = document.getElementById('offline-queue-bar');
+  const msg = document.getElementById('offline-queue-msg');
+  if (!bar || !msg) return;
+  if (!attOk) {
+    bar.style.display = 'flex';
+    bar.style.background = 'rgba(239,68,68,.1)';
+    bar.style.borderColor = 'rgba(239,68,68,.3)';
+    msg.textContent = '❌ บันทึกข้อมูล Attendance ไม่สำเร็จ';
+    return;
+  }
+  const lineOk = lineResult && lineResult.ok;
+  const lineNoConf = lineResult && lineResult.reason === 'no_config';
+  if (!lineOk && !lineNoConf) {
+    bar.style.display = 'flex';
+    bar.style.background = 'rgba(6,182,212,.08)';
+    bar.style.borderColor = 'rgba(6,182,212,.25)';
+    msg.textContent = '✓ บันทึก Attendance สำเร็จ · LINE: รอส่ง (จะ retry อัตโนมัติ)';
+  }
+  updateOfflineQueueBar();
+}
+
+// ── [10] GPS LIVE LOCATION TTL (24h) ─────────────────────────────────────────
+function cleanExpiredGpsLocations() {
+  try {
+    const locs = JSON.parse(localStorage.getItem('hrflow_liveLocations') || '{}');
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 ชั่วโมง
+    let changed = false;
+    Object.keys(locs).forEach(function(k) {
+      if (!locs[k].updatedAt || new Date(locs[k].updatedAt).getTime() < cutoff) {
+        delete locs[k]; changed = true;
+      }
+    });
+    if (changed) localStorage.setItem('hrflow_liveLocations', JSON.stringify(locs));
+  } catch {}
+}
+
+// ── [11] FACE PROFILE BACKUP WARNING ─────────────────────────────────────────
+function checkFaceProfileIntegrity() {
+  if (typeof FaceCore === 'undefined') return;
+  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+  if (!user) return;
+  const empId = FaceCore.resolveEmployeeId ? FaceCore.resolveEmployeeId(user) : null;
+  if (!empId) return;
+  const hasProfile = FaceCore.hasProfile && FaceCore.hasProfile(empId);
+  if (!hasProfile) {
+    const bar = document.getElementById('offline-queue-bar');
+    const msg = document.getElementById('offline-queue-msg');
+    if (bar && msg) {
+      bar.style.display = 'flex';
+      bar.style.background = 'rgba(249,115,22,.1)';
+      bar.style.borderColor = 'rgba(249,115,22,.3)';
+      msg.innerHTML = '⚠️ ยังไม่ได้ลงทะเบียนใบหน้า — <a href="settings.html#face" style="color:var(--accent);text-decoration:underline;">ลงทะเบียนที่นี่</a>';
+    }
+  }
+}
+
 // ── MIDNIGHT RESET ────────────────────────────────────────────────────────────
 // รีเซ็ต state การสแกนในหน่วยความจำทุกเที่ยงคืน — ข้อมูล localStorage ไม่ถูกแตะ
 // (key วันใหม่ hrflow_today_*_YYYY-MM-DD เริ่มว่างเปล่าโดยอัตโนมัติ)
@@ -1602,6 +1939,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(refreshAllMap, 1500);
     renderLateReport();
   }
+
+  // Release camera when leaving page or hiding tab
+  window.addEventListener('beforeunload', cleanupCamera);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden' && !activePanel) cleanupCamera();
+  });
+
+  cleanExpiredGpsLocations(); // [10] GPS TTL cleanup
+  setTimeout(checkFaceProfileIntegrity, 2000); // [11] face backup check
 });
 </script>
 </body>
