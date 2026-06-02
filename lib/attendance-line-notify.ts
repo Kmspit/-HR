@@ -49,10 +49,19 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-function lateLabel(minutes: number | undefined, event: AttendanceLineEvent): string {
-  if (event !== 'checkin') return '—'
-  if (!minutes || minutes <= 0) return 'ไม่'
+function lateStatusLabel(minutes: number | undefined): string {
+  if (!minutes || minutes <= 0) return 'ตรงเวลา'
+  return 'มาสาย'
+}
+
+function lateMinutesLabel(minutes: number | undefined): string {
+  if (!minutes || minutes <= 0) return '—'
   return `${minutes} นาที`
+}
+
+function checkoutStatusLabel(earlyLeaveMinutes: number | undefined): string {
+  if (!earlyLeaveMinutes || earlyLeaveMinutes <= 0) return 'เลิกงานปกติ'
+  return 'กลับก่อนเวลา'
 }
 
 function statusLabelForLine(event: AttendanceLineEvent): string {
@@ -110,7 +119,7 @@ export function buildAttendanceLineMessage(params: {
   const locationBlock = [
     place,
     mapsUrl ? `📍 ${mapsUrl}` : null,
-  ].filter(Boolean).join('\n')
+  ].filter((v): v is string => Boolean(v)).join('\n')
 
   return [
     header,
@@ -126,18 +135,28 @@ export function buildAttendanceLineMessage(params: {
     '',
     'เวลา:',
     formatTimeBangkok(eventTime),
-    '',
-    'มาสาย:',
-    lateLabel(params.lateMinutes, event),
+    // สถานะมาสาย (เฉพาะ checkin)
+    event === 'checkin' ? '' : null,
+    event === 'checkin' ? 'สถานะ:' : null,
+    event === 'checkin' ? lateStatusLabel(params.lateMinutes) : null,
+    event === 'checkin' && params.lateMinutes && params.lateMinutes > 0 ? '' : null,
+    event === 'checkin' && params.lateMinutes && params.lateMinutes > 0 ? 'สาย:' : null,
+    event === 'checkin' && params.lateMinutes && params.lateMinutes > 0
+      ? lateMinutesLabel(params.lateMinutes) : null,
     isOffsite ? '\nสถานะ: นอกสถานที่' : null,
+    // สถานะเลิกงาน (เฉพาะ checkout)
+    event === 'checkout' ? '' : null,
+    event === 'checkout' ? 'สถานะ:' : null,
+    event === 'checkout' ? checkoutStatusLabel(params.earlyLeaveMinutes) : null,
+    event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0 ? '' : null,
+    event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0 ? 'กลับก่อน:' : null,
     event === 'checkout' && params.earlyLeaveMinutes && params.earlyLeaveMinutes > 0
-      ? `กลับก่อน: ${params.earlyLeaveMinutes} นาที`
-      : null,
+      ? `${params.earlyLeaveMinutes} นาที` : null,
     branchName ? `\nสาขา: ${branchName}` : null,
     departmentName ? `แผนก/ฝ่าย: ${departmentName}` : null,
     locationBlock ? `\nสถานที่:\n${locationBlock}` : null,
   ]
-    .filter((v) => v !== null && v !== undefined)
+    .filter((v): v is string => v !== null && v !== undefined)
     .join('\n')
 }
 

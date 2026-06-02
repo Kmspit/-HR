@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
+import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
@@ -63,9 +64,9 @@ export async function POST(req: NextRequest) {
     let earlyLeaveMinutes = 0
     let status = attendance.status
     if (settings?.workEndTime) {
-      const [h, m] = settings.workEndTime.split(':').map(Number)
-      const workEnd = new Date(now)
-      workEnd.setHours(h, m, 0, 0)
+      // สร้าง workEnd ในเวลาไทย (Asia/Bangkok, UTC+7) — ป้องกัน server timezone ผิด
+      const dateKey = bangkokDateKey(now)
+      const workEnd = new Date(`${dateKey}T${settings.workEndTime}:00+07:00`)
       if (now < workEnd) {
         earlyLeaveMinutes = Math.floor((workEnd.getTime() - now.getTime()) / 60000)
         status = 'EARLY_LEAVE'

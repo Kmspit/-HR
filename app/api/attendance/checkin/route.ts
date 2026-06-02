@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
+import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord, getDayOfWeekIndex } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
@@ -74,12 +75,11 @@ export async function POST(req: NextRequest) {
     let lateMinutes = 0
     let status: 'NORMAL' | 'LATE' = 'NORMAL'
     if (settings?.workStartTime) {
-      const [h, m] = settings.workStartTime.split(':').map(Number)
-      const grace = settings.lateGraceMin ?? 15
-      const workStart = new Date(now)
-      workStart.setHours(h, m + grace, 0, 0)
-      if (now > workStart) {
-        lateMinutes = Math.floor((now.getTime() - workStart.getTime()) / 60000)
+      // สร้าง deadline 08:30 ในเวลาไทย (Asia/Bangkok, UTC+7) โดยใช้ ISO string +07:00
+      const dateKey = bangkokDateKey(now) // YYYY-MM-DD ตามเวลาไทย
+      const deadline = new Date(`${dateKey}T${settings.workStartTime}:00+07:00`)
+      if (now > deadline) {
+        lateMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000)
         status = 'LATE'
       }
     }
