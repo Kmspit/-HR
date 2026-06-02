@@ -150,6 +150,23 @@
             <button class="btn-outline" style="height:40px;white-space:nowrap;" onclick="testLine()">ทดสอบ</button>
           </div>
         </div>
+        <!-- LINE Notify — ส่งตรงหา HR 1:1 หรือกลุ่ม (แนะนำ) -->
+        <div class="form-group" style="grid-column:1/-1;background:rgba(6,199,85,.06);border:1px solid rgba(6,199,85,.25);border-radius:10px;padding:14px;">
+          <label style="font-weight:700;color:#06c755;">LINE Notify Token <span style="font-size:11px;font-weight:400;color:var(--text3);">(แนะนำ — ส่งตรงหา HR โดยไม่ต้อง link account)</span></label>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <input id="s-line-notify-token" type="password" class="form-input" placeholder="LINE Notify Token...">
+            <button class="btn-outline" style="height:40px;white-space:nowrap;border-color:#06c755;color:#06c755;" onclick="testLineNotify()">ทดสอบ</button>
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.8;background:var(--bg2);border-radius:8px;padding:10px;">
+            <strong>วิธีรับ LINE Notify Token (HR KM Connect):</strong><br>
+            1) เปิด <a href="https://notify-bot.line.me/th/" target="_blank" style="color:var(--accent);">notify-bot.line.me/th/</a> → Login ด้วยบัญชี LINE<br>
+            2) กด <strong>"My page"</strong> → <strong>"Generate token"</strong><br>
+            3) ตั้งชื่อ: <em>HR KM Connect</em><br>
+            4) เลือก: <strong>"1:1 chat with LINE Notify"</strong> หรือกลุ่ม "HR KM Connect"<br>
+            5) คัดลอก token → วางในช่องด้านบน → บันทึก
+          </div>
+        </div>
+
         <div class="form-group" style="grid-column:1/-1">
           <label>LINE Relay Webhook URL <span style="font-size:11px;color:var(--text3);">(ไม่บังคับ — ใช้ถ้า CORS บล็อก LINE Notify โดยตรง)</span></label>
           <input id="s-line-relay" type="text" class="form-input" placeholder="https://your-worker.workers.dev/line-relay">
@@ -300,8 +317,9 @@ function loadSettings() {
   document.getElementById('s-rate-late').value   = s.rateLate    ?? 200;
   document.getElementById('s-rate-absent').value = s.rateAbsent  ?? 1000;
   document.getElementById('s-ot-rate').value     = s.otRate      ?? 100;
-  document.getElementById('s-line-token').value       = s.lineToken           || '';
-  document.getElementById('s-line-relay').value      = s.lineWebhookRelay    || '';
+  document.getElementById('s-line-notify-token').value = s.lineNotifyToken    || '';
+  document.getElementById('s-line-token').value        = s.lineToken          || '';
+  document.getElementById('s-line-relay').value        = s.lineWebhookRelay   || '';
   document.getElementById('s-cloudinary-cloud').value = s.cloudinaryCloud   || '';
   document.getElementById('s-cloudinary-preset').value= s.cloudinaryPreset  || '';
   document.getElementById('s-branch').value           = s.branch             || '';
@@ -342,6 +360,7 @@ function saveSettings() {
     rateLate:     parseInt(document.getElementById('s-rate-late').value)    || 200,
     rateAbsent:   parseInt(document.getElementById('s-rate-absent').value)  || 1000,
     otRate:       parseInt(document.getElementById('s-ot-rate').value)      || 100,
+    lineNotifyToken:   document.getElementById('s-line-notify-token').value.trim(),
     lineToken:         document.getElementById('s-line-token').value.trim(),
     lineWebhookRelay:  document.getElementById('s-line-relay').value.trim(),
     cloudinaryCloud:   document.getElementById('s-cloudinary-cloud').value.trim(),
@@ -370,6 +389,31 @@ function saveSettings() {
   const toast = document.getElementById('save-toast');
   toast.style.display = 'block';
   setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+async function testLineNotify() {
+  const tok = document.getElementById('s-line-notify-token').value.trim();
+  if (!tok) { alert('กรุณากรอก LINE Notify Token ก่อน'); return; }
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  try {
+    const body = new URLSearchParams();
+    body.set('message', '\n🧪 ทดสอบ LINE Notify จาก HR KM Connect\nระบบลงเวลาพร้อมส่งแจ้งเตือนแล้ว ✓');
+    const res = await fetch('https://notify-api.line.me/api/notify', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    if (res.ok) {
+      alert('✓ LINE Notify ส่งสำเร็จ! ตรวจสอบการแจ้งเตือนใน LINE ของคุณ');
+      // บันทึก token ทันที
+      const s = getCompanySettings(); s.lineNotifyToken = tok; lsSet('settings', s);
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert('✗ ส่งไม่สำเร็จ: ' + (j.message || res.status) + '\nตรวจสอบ token อีกครั้ง');
+    }
+  } catch (e) { alert('✗ เกิดข้อผิดพลาด: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'ทดสอบ'; }
 }
 
 async function testLine() {
