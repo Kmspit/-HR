@@ -208,7 +208,9 @@ function submitLeave() {
   document.getElementById('f-start').value = '';
   document.getElementById('f-end').value   = '';
   document.getElementById('f-reason').value = '';
-  mockLineNotify(`📅 คำขอลาใหม่\nพนักงาน: ${user.name}\nประเภท: ${TYPE_LABELS[type]}\nช่วงวัน: ${thDate(start)} – ${thDate(end)}\nเหตุผล: ${reason}`, 'Admin / HR');
+  const leaveMsg = `📅 คำขอลาใหม่\nพนักงาน: ${user.name}\nประเภท: ${TYPE_LABELS[type]}\nช่วงวัน: ${thDate(start)} – ${thDate(end)}\nเหตุผล: ${reason}\nเวลาส่ง: ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`;
+  mockLineNotify(leaveMsg, 'Admin / HR');
+  if (typeof sendLineOAMsg === 'function') sendLineOAMsg(leaveMsg, null).catch(() => {});
   renderAll();
   switchTab('tab-history', document.querySelectorAll('.tab-btn')[1]);
   alert('ส่งคำขอลาเรียบร้อยแล้ว กรุณารอ Admin อนุมัติ');

@@ -696,8 +696,16 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
     </div>
     <div class="topbar-actions">
       <div class="btn-icon" title="ค้นหา">🔍</div>
-      <div class="btn-icon" title="แจ้งเตือน">
-        🔔<div class="notif-dot"></div>
+      <div class="btn-icon" title="แจ้งเตือน" onclick="toggleNotifPanel()" id="notif-bell" style="position:relative;cursor:pointer;">
+        🔔<div class="notif-dot" id="notif-dot"></div>
+      </div>
+      <!-- Notification panel -->
+      <div id="notif-panel" style="display:none;position:fixed;top:56px;right:16px;width:320px;max-height:420px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.35);z-index:2000;padding:0;">
+        <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;font-size:14px;">การแจ้งเตือน</span>
+          <button onclick="markAllNotifRead()" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;">อ่านทั้งหมด</button>
+        </div>
+        <div id="notif-list" style="padding:8px 0;"></div>
       </div>
       <div class="btn-icon" title="Dark Mode">🌙</div>
       <a href="attendance.html" class="btn-primary" style="text-decoration:none">⏱ เช็คอิน</a>
@@ -797,7 +805,7 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
       <div class="card">
         <div class="card-header">
           <span class="card-title">📋 รออนุมัติลา</span>
-          <span class="card-action">ดูทั้งหมด →</span>
+          <a href="leave.html" class="card-action" style="text-decoration:none;">ดูทั้งหมด →</a>
         </div>
         <div class="leave-list">
           <div class="leave-row sick">
@@ -1280,15 +1288,90 @@ for(let d=1;d<=days31;d++){
 // ── APPROVE / REJECT ──
 function approve(btn){
   const row=btn.closest('.leave-row');
+  const name=(row.querySelector('.leave-name')||{}).textContent||'พนักงาน';
+  const tag=(row.querySelector('.tag')||{}).textContent||'ลา';
+  const dates=(row.querySelector('.leave-dates')||{}).textContent||'';
   row.style.opacity='.4';row.style.pointerEvents='none';
   btn.textContent='✓ อนุมัติแล้ว';btn.style.background='rgba(16,185,129,.3)';
+  // ส่ง LINE notification จริง
+  if(typeof sendLineOAMsg==='function') {
+    sendLineOAMsg('✅ HR อนุมัติใบลา\nพนักงาน: '+name+'\nประเภท: '+tag+'\n'+dates, null).catch(()=>{});
+  }
+  pushNotification({ icon:'✅', title:'อนุมัติใบลา '+name, body:tag+' '+dates, link:'leave.html' });
   setTimeout(()=>row.remove(),1200);
 }
 function reject(btn){
   const row=btn.closest('.leave-row');
+  const name=(row.querySelector('.leave-name')||{}).textContent||'พนักงาน';
   row.style.opacity='.4';row.style.pointerEvents='none';
+  if(typeof sendLineOAMsg==='function') {
+    sendLineOAMsg('❌ HR ไม่อนุมัติใบลาของ '+name, null).catch(()=>{});
+  }
+  pushNotification({ icon:'❌', title:'ไม่อนุมัติใบลา '+name, body:'', link:'leave.html' });
   setTimeout(()=>row.remove(),800);
 }
+
+// ── NOTIFICATION SYSTEM ──
+const _NOTIF_KEY = 'hrflow_notifications';
+function getNotifications() { return (typeof lsGet==='function')?lsGet('notifications',[]):JSON.parse(localStorage.getItem('hrflow_notifications')||'[]'); }
+function saveNotifications(n) { if(typeof lsSet==='function') lsSet('notifications',n); else localStorage.setItem('hrflow_notifications',JSON.stringify(n)); }
+function pushNotification(item) {
+  const list=getNotifications();
+  list.unshift({ id:Date.now().toString(36), ...item, read:false, createdAt:new Date().toISOString() });
+  saveNotifications(list.slice(0,50));
+  renderNotifDot();
+}
+function renderNotifDot() {
+  const unread=getNotifications().filter(n=>!n.read).length;
+  const dot=document.getElementById('notif-dot');
+  if(dot) dot.style.display=unread>0?'block':'none';
+}
+function renderNotifList() {
+  const list=getNotifications();
+  const el=document.getElementById('notif-list');
+  if(!el) return;
+  if(!list.length){ el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">ไม่มีการแจ้งเตือน</div>'; return; }
+  el.innerHTML=list.slice(0,20).map(n=>`
+    <div onclick="openNotifItem('${n.id}')" style="padding:10px 16px;cursor:pointer;background:${n.read?'':'rgba(59,130,246,.06)'};border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;">
+      <span style="font-size:18px;flex-shrink:0;">${n.icon||'🔔'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:${n.read?'400':'600'};color:var(--text);">${escapeHtmlDash(n.title)}</div>
+        ${n.body?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${escapeHtmlDash(n.body)}</div>`:''}
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">${thDate&&thDate(n.createdAt)||n.createdAt}</div>
+      </div>
+    </div>`).join('');
+}
+function escapeHtmlDash(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function openNotifItem(id) {
+  const list=getNotifications();
+  const n=list.find(x=>x.id===id);
+  if(!n) return;
+  n.read=true;
+  saveNotifications(list);
+  renderNotifDot();
+  renderNotifList();
+  if(n.link) window.location.href=n.link;
+}
+function markAllNotifRead() {
+  const list=getNotifications().map(n=>({...n,read:true}));
+  saveNotifications(list);
+  renderNotifDot();
+  renderNotifList();
+}
+function toggleNotifPanel() {
+  const panel=document.getElementById('notif-panel');
+  if(!panel) return;
+  const visible=panel.style.display==='block';
+  panel.style.display=visible?'none':'block';
+  if(!visible) renderNotifList();
+}
+document.addEventListener('click', function(e) {
+  const panel=document.getElementById('notif-panel');
+  const bell=document.getElementById('notif-bell');
+  if(panel&&panel.style.display==='block'&&!panel.contains(e.target)&&!bell.contains(e.target)) {
+    panel.style.display='none';
+  }
+});
 
 // ── MODAL LOGIC ──
 let camStream = null;
@@ -1377,6 +1460,15 @@ function closeCheckinModal() {
     camStream.getTracks().forEach(track => track.stop());
   }
 }
+
+// init
+if (typeof initRole === 'function') initRole();
+renderNotifDot();
+// push welcome notification for pending items
+(function() {
+  const leaves = (typeof getLeaveRequests === 'function') ? getLeaveRequests().filter(r => r.status === 'PENDING') : [];
+  if (leaves.length) pushNotification({ icon: '📅', title: `ใบลารออนุมัติ ${leaves.length} รายการ`, body: '', link: 'leave.html' });
+})();
 </script>
 </body>
 </html>

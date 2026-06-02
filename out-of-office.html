@@ -245,7 +245,9 @@ function submitPlan() {
   plans.push(plan);
   lsSet('weeklyPlans', plans);
 
-  mockLineNotify(`🚗 แผนงานใหม่รอการอนุมัติ\nทนายความ: ${user.name}\nอาทิตย์: ${thDate(weekDate)}\nวัตถุประสงค์: ${purpose}\nสถานที่: ${location}`, 'Admin / HR');
+  const oooMsg = `🚗 แบบฟอร์มออกนอกสถานที่ใหม่\nชื่อ: ${user.name}\nอาทิตย์: ${thDate(weekDate)}\nวัตถุประสงค์: ${purpose}\nสถานที่: ${location}\nเวลาส่ง: ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}`;
+  mockLineNotify(oooMsg, 'Admin / HR');
+  if (typeof sendLineOAMsg === 'function') sendLineOAMsg(oooMsg, null).catch(() => {});
   renderAll();
   switchTab('tab-myplans', document.querySelectorAll('.tab-btn')[1]);
   alert('ส่งแผนงานเรียบร้อยแล้ว');

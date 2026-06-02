@@ -1114,12 +1114,20 @@ function renderAttendanceUI() {
 
   document.getElementById('stat-checkin').textContent = fmtTime(firstCheckIn?.checkIn || rec?.checkIn);
   document.getElementById('stat-checkout').textContent = fmtTime(rec?.checkOut || lastCheckOut?.checkOut);
-  document.getElementById('stat-status').textContent = dayComplete
-    ? 'ลงเวลาครบแล้ว'
-    : rec?.checkIn
-      ? 'กำลังทำงาน'
-      : 'ยังไม่เช็คอิน';
-  document.getElementById('stat-status').style.color = rec?.checkIn ? 'var(--green)' : 'var(--text3)';
+  // สถานะแบบละเอียดตามขั้นตอน
+  let stepStatus = 'ยังไม่เช็คอิน';
+  let stepColor  = 'var(--text3)';
+  if (dayComplete || rec?.checkOut) {
+    stepStatus = '✅ เช็คเอาท์แล้ว'; stepColor = 'var(--accent)';
+  } else if (rec?.checkIn && rec?.lunchOut && rec?.lunchIn) {
+    stepStatus = '🔔 กลับจากพักแล้ว'; stepColor = 'var(--green)';
+  } else if (rec?.checkIn && rec?.lunchOut && !rec?.lunchIn) {
+    stepStatus = '☕ กำลังพักกลางวัน'; stepColor = 'var(--orange)';
+  } else if (rec?.checkIn) {
+    stepStatus = '🟢 เช็คอินแล้ว'; stepColor = 'var(--green)';
+  }
+  document.getElementById('stat-status').textContent = stepStatus;
+  document.getElementById('stat-status').style.color  = stepColor;
   document.getElementById('stat-type').textContent = rec
     ? (rec.isOutside ? 'นอกสถานที่' : 'ในบริษัท')
     : '—';
