@@ -11,7 +11,11 @@ import {
   resolveFilterBranchId,
   parseBranchQueryParam,
 } from '@/lib/branch-scope'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { canApproveWarning } from '@/lib/rbac'
+import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import { Suspense } from 'react'
+import type { Role } from '@prisma/client'
 
 export default async function WarningsPage({
   searchParams,
@@ -21,19 +25,16 @@ export default async function WarningsPage({
   const session = await auth()
   if (!session?.user?.id) redirect('/')
 
+  await ensureDbSchema().catch(() => {})
+  archiveExpiredWarnings().catch(() => {})
+
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
-  const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+  const isManager = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN'].includes(session.user.role)
+  const canApprove = canApproveWarning(session.user.role as Role)
   const filterBranch = resolveFilterBranchId(scope)
 
-  type WarningRow = Awaited<
-    ReturnType<
-      typeof prisma.warning.findMany<{
-        include: { user: { select: { name: true; employeeId: true; department: true } } }
-      }>
-    >
-  >
   type EmployeeRow = {
     id: string
     name: string
@@ -42,7 +43,13 @@ export default async function WarningsPage({
     _count: { warnings: number }
   }
 
-  let warnings: WarningRow
+  let warnings: Awaited<ReturnType<typeof prisma.warning.findMany<{
+    include: {
+      user: { select: { name: true; employeeId: true; department: true; position: true } }
+      approvedBy: { select: { id: true; name: true } }
+      rejectedBy: { select: { id: true; name: true } }
+    }
+  }>>>
   let employees: EmployeeRow[]
 
   try {
@@ -50,9 +57,11 @@ export default async function WarningsPage({
       prisma.warning.findMany({
         where: isManager
           ? (filterBranch ? { user: { branchId: filterBranch } } : {})
-          : { userId: session.user.id },
+          : { userId: session.user.id, status: 'APPROVED' },
         include: {
-          user: { select: { name: true, employeeId: true, department: true } },
+          user:       { select: { name: true, employeeId: true, department: true, position: true } },
+          approvedBy: { select: { id: true, name: true } },
+          rejectedBy: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 100,
@@ -89,7 +98,7 @@ export default async function WarningsPage({
         title="ใบเตือน"
         subtitle={
           isManager
-            ? 'ออกใบเตือน · แนบ PDF · ส่งให้พนักงาน'
+            ? 'ออกใบเตือน · อนุมัติใบเตือนอัตโนมัติ · แนบ PDF'
             : 'ประวัติใบเตือนของตัวเอง'
         }
       />
@@ -99,32 +108,43 @@ export default async function WarningsPage({
         </Suspense>
       )}
       <WarningsClient
-      isManager={isManager}
-      warnings={warnings.map((w) => ({
-        id: w.id,
-        userId: w.userId,
-        userName: w.user.name,
-        userDept: w.user.department ?? '',
-        employeeId: w.user.employeeId ?? '',
-        reason: w.reason,
-        description: w.description ?? '',
-        fileUrl: w.fileUrl ?? null,
-        sentToLine: w.sentToLine,
-        lineDeliveryStatus: w.lineDeliveryStatus ?? null,
-        lineSentAt: w.lineSentAt?.toISOString() ?? null,
-        lineUserId: w.lineUserId ?? null,
-        lineErrorMessage: w.lineErrorMessage ?? null,
-        isAuto: w.isAuto,
-        createdAt: w.createdAt.toISOString(),
-      }))}
-      employees={employees.map((e) => ({
-        id: e.id,
-        name: e.name,
-        department: e.department ?? '',
-        employeeId: e.employeeId ?? '',
-        warningCount: e._count.warnings,
-      }))}
-    />
+        isManager={isManager}
+        canApprove={canApprove}
+        warnings={warnings.map((w) => ({
+          id: w.id,
+          userId: w.userId,
+          userName: w.user.name,
+          userDept: w.user.department ?? '',
+          userPosition: w.user.position ?? '',
+          employeeId: w.user.employeeId ?? '',
+          reason: w.reason,
+          description: w.description ?? '',
+          fileUrl: w.fileUrl ?? null,
+          sentToLine: w.sentToLine,
+          lineDeliveryStatus: w.lineDeliveryStatus ?? null,
+          lineSentAt: w.lineSentAt?.toISOString() ?? null,
+          lineUserId: w.lineUserId ?? null,
+          lineErrorMessage: w.lineErrorMessage ?? null,
+          isAuto: w.isAuto,
+          month: w.month ?? null,
+          year: w.year ?? null,
+          lateCount: (w as unknown as { lateCount?: number }).lateCount ?? null,
+          status: (w as unknown as { status?: string }).status ?? 'APPROVED',
+          expiredAt: (w as unknown as { expiredAt?: Date }).expiredAt?.toISOString() ?? null,
+          approvedAt: (w as unknown as { approvedAt?: Date }).approvedAt?.toISOString() ?? null,
+          approvedByName: w.approvedBy?.name ?? null,
+          rejectedByName: w.rejectedBy?.name ?? null,
+          rejectedReason: (w as unknown as { rejectedReason?: string }).rejectedReason ?? null,
+          createdAt: w.createdAt.toISOString(),
+        }))}
+        employees={employees.map((e) => ({
+          id: e.id,
+          name: e.name,
+          department: e.department ?? '',
+          employeeId: e.employeeId ?? '',
+          warningCount: e._count.warnings,
+        }))}
+      />
     </div>
   )
 }

@@ -23,6 +23,7 @@ type Warning = {
   userId: string
   userName: string
   userDept: string
+  userPosition: string
   employeeId: string
   reason: string
   description: string
@@ -33,7 +34,24 @@ type Warning = {
   lineUserId: string | null
   lineErrorMessage: string | null
   isAuto: boolean
+  month: number | null
+  year: number | null
+  lateCount: number | null
+  status: string
+  expiredAt: string | null
+  approvedAt: string | null
+  approvedByName: string | null
+  rejectedByName: string | null
+  rejectedReason: string | null
   createdAt: string
+}
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  PENDING_APPROVAL: { label: 'รออนุมัติ',  cls: 'bg-amber-500/20 text-amber-400' },
+  APPROVED:         { label: 'อนุมัติแล้ว', cls: 'bg-green-500/20 text-green-400' },
+  REJECTED:         { label: 'ปฏิเสธแล้ว',  cls: 'bg-red-500/20 text-red-400' },
+  ARCHIVED:         { label: 'เก็บถาวร',    cls: 'bg-slate-500/20 text-slate-400' },
+  DRAFT:            { label: 'ร่าง',         cls: 'bg-blue-500/20 text-blue-400' },
 }
 
 const LINE_STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -104,6 +122,7 @@ function formatEmployeeLabel(e: Employee) {
 
 type Props = {
   isManager: boolean
+  canApprove: boolean
   warnings: Warning[]
   employees: Employee[]
 }
@@ -114,6 +133,7 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
     userId: String(w.userId),
     userName: (w.user as { name?: string })?.name ?? '',
     userDept: (w.user as { department?: string })?.department ?? '',
+    userPosition: (w.user as { position?: string })?.position ?? '',
     employeeId: (w.user as { employeeId?: string })?.employeeId ?? '',
     reason: String(w.reason),
     description: String(w.description ?? ''),
@@ -124,6 +144,15 @@ function mapWarningsFromApi(raw: Array<Record<string, unknown>>): Warning[] {
     lineUserId: w.lineUserId != null ? String(w.lineUserId) : null,
     lineErrorMessage: w.lineErrorMessage != null ? String(w.lineErrorMessage) : null,
     isAuto: Boolean(w.isAuto),
+    month: w.month != null ? Number(w.month) : null,
+    year: w.year != null ? Number(w.year) : null,
+    lateCount: w.lateCount != null ? Number(w.lateCount) : null,
+    status: w.status != null ? String(w.status) : 'APPROVED',
+    expiredAt: w.expiredAt != null ? String(w.expiredAt) : null,
+    approvedAt: w.approvedAt != null ? String(w.approvedAt) : null,
+    approvedByName: (w.approvedBy as { name?: string })?.name ?? null,
+    rejectedByName: (w.rejectedBy as { name?: string })?.name ?? null,
+    rejectedReason: w.rejectedReason != null ? String(w.rejectedReason) : null,
     createdAt: String(w.createdAt),
   }))
 }
@@ -144,7 +173,7 @@ async function loadEmployeesFromApi(): Promise<Employee[] | null> {
   return null
 }
 
-export default function WarningsClient({ isManager, warnings, employees }: Props) {
+export default function WarningsClient({ isManager, canApprove, warnings, employees }: Props) {
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ userId: '', reason: '', description: '' })
@@ -158,6 +187,7 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
   const [submitting, setSubmitting] = useState(false)
   const [runningCron, setRunningCron] = useState(false)
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const [actingId, setActingId] = useState<string | null>(null)
   const [list, setList] = useState(warnings)
   const [employeeStats, setEmployeeStats] = useState<{
     total: number
@@ -354,6 +384,39 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
     }
   }
 
+  const approveWarning = async (id: string) => {
+    setActingId(id)
+    try {
+      const { ok, data, status } = await apiJson(`/api/warnings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'APPROVE' }),
+      })
+      if (!ok) { toast.error(apiErrorMessage(data as Record<string, unknown>, 'อนุมัติไม่สำเร็จ', status)); return }
+      toast.success('อนุมัติใบเตือนแล้ว — พนักงานจะได้รับแจ้งเตือน')
+      setList((prev) => prev.map((w) => w.id === id ? { ...w, status: 'APPROVED', approvedAt: new Date().toISOString() } : w))
+      await refreshList()
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setActingId(null) }
+  }
+
+  const rejectWarning = async (id: string) => {
+    const reason = window.prompt('ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ):') ?? ''
+    setActingId(id)
+    try {
+      const { ok, data, status } = await apiJson(`/api/warnings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'REJECT', rejectedReason: reason }),
+      })
+      if (!ok) { toast.error(apiErrorMessage(data as Record<string, unknown>, 'ปฏิเสธไม่สำเร็จ', status)); return }
+      toast.success('ปฏิเสธใบเตือนแล้ว')
+      setList((prev) => prev.map((w) => w.id === id ? { ...w, status: 'REJECTED' } : w))
+      await refreshList()
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setActingId(null) }
+  }
+
   const runCron = async () => {
     setRunningCron(true)
     try {
@@ -500,6 +563,16 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
           )}
         </td>
         <td className={`${tdCls} text-center`}>
+          {(() => {
+            const b = STATUS_BADGE[w.status] ?? STATUS_BADGE.APPROVED
+            return (
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${b.cls}`}>
+                {b.label}
+              </span>
+            )
+          })()}
+        </td>
+        <td className={`${tdCls} text-center`}>
           {warningHasPdf(w.fileUrl) ? (
             <WarningPdfActions
               warningId={w.id}
@@ -515,19 +588,42 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
         </td>
         {isManager && (
           <td className={`${tdCls} text-center`}>
-            <button
-              type="button"
-              onClick={() => handleSendWarning(w.id)}
-              disabled={sendingId === w.id}
-              title="ส่ง PDF ใบเตือนไป LINE พนักงาน (retry อัตโนมัติ)"
-              className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 light:border-blue-200 light:bg-blue-50 light:text-blue-700 hover:bg-blue-500/20 light:hover:bg-blue-100 disabled:opacity-50 touch-manipulation min-h-[36px]"
-            >
-              <Send className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="hidden sm:inline">
-                {sendingId === w.id ? 'กำลังส่ง...' : 'ส่งใหม่ไป LINE'}
-              </span>
-              <span className="sm:hidden">{sendingId === w.id ? '...' : 'LINE'}</span>
-            </button>
+            {w.status === 'PENDING_APPROVAL' && canApprove ? (
+              <div className="flex gap-1 justify-center">
+                <button
+                  type="button"
+                  onClick={() => approveWarning(w.id)}
+                  disabled={actingId === w.id}
+                  className="inline-flex items-center gap-1 rounded-lg bg-green-600/80 hover:bg-green-500 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
+                >
+                  {actingId === w.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓ อนุมัติ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => rejectWarning(w.id)}
+                  disabled={actingId === w.id}
+                  className="inline-flex items-center gap-1 rounded-lg bg-red-600/60 hover:bg-red-500 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
+                >
+                  ✗
+                </button>
+              </div>
+            ) : w.status === 'APPROVED' ? (
+              <button
+                type="button"
+                onClick={() => handleSendWarning(w.id)}
+                disabled={sendingId === w.id}
+                title="ส่ง PDF ใบเตือนไป LINE พนักงาน (retry อัตโนมัติ)"
+                className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 light:border-blue-200 light:bg-blue-50 light:text-blue-700 hover:bg-blue-500/20 light:hover:bg-blue-100 disabled:opacity-50 touch-manipulation min-h-[36px]"
+              >
+                <Send className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline">
+                  {sendingId === w.id ? 'กำลังส่ง...' : 'ส่งใหม่ไป LINE'}
+                </span>
+                <span className="sm:hidden">{sendingId === w.id ? '...' : 'LINE'}</span>
+              </button>
+            ) : (
+              <span className="dark:text-slate-600 light:text-slate-400 text-xs">—</span>
+            )}
           </td>
         )}
       </tr>
@@ -541,14 +637,57 @@ export default function WarningsClient({ isManager, warnings, employees }: Props
       <th className={`${thCls} text-center`}>ครั้งที่</th>
       <th className={`${thCls} text-left`}>เหตุผล</th>
       <th className={`${thCls} text-center`}>ประเภท</th>
+      <th className={`${thCls} text-center`}>สถานะ</th>
       <th className={`${thCls} text-center`}>PDF</th>
       <th className={`${thCls} text-center`}>LINE</th>
-      {isManager && <th className={`${thCls} text-center`}>ส่ง LINE</th>}
+      {isManager && <th className={`${thCls} text-center`}>{canApprove ? 'อนุมัติ / ส่ง LINE' : 'ส่ง LINE'}</th>}
     </tr>
   )
 
+  const pendingWarnings = list.filter((w) => w.status === 'PENDING_APPROVAL')
+
   return (
     <div className="p-4 md:p-6 space-y-5">
+
+      {/* Pending approval banner */}
+      {canApprove && pendingWarnings.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+          <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm mb-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            รออนุมัติใบเตือน {pendingWarnings.length} รายการ
+          </div>
+          <div className="space-y-2">
+            {pendingWarnings.map((w) => (
+              <div key={w.id} className="flex items-center justify-between gap-3 flex-wrap rounded-xl bg-slate-900/60 px-3 py-2">
+                <div className="text-sm">
+                  <span className="font-medium text-white">{w.userName}</span>
+                  {w.userDept && <span className="text-slate-400 text-xs ml-1">— {w.userDept}</span>}
+                  <p className="text-xs text-slate-400 mt-0.5">{w.reason}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => approveWarning(w.id)}
+                    disabled={actingId === w.id}
+                    className="flex items-center gap-1 rounded-xl bg-green-600 hover:bg-green-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {actingId === w.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} อนุมัติ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => rejectWarning(w.id)}
+                    disabled={actingId === w.id}
+                    className="flex items-center gap-1 rounded-xl bg-red-600/70 hover:bg-red-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    ✗ ปฏิเสธ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-end flex-wrap gap-3">
         {isManager && (
           <div className="flex gap-2">

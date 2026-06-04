@@ -278,8 +278,10 @@ model User {
   auditLogs       AuditLog[]          @relation("AuditUser")
   auditActions    AuditLog[]          @relation("AuditActor")
   leaveBalances   LeaveBalance[]
-  warnings        Warning[]
-  warningsIssued  Warning[]           @relation("WarningsIssued")
+  warnings         Warning[]
+  warningsIssued   Warning[]           @relation("WarningsIssued")
+  warningsApproved Warning[]           @relation("WarningApprovedBy")
+  warningsRejected Warning[]           @relation("WarningRejectedBy")
   payrolls        Payroll[]
   holidaysCreated CompanyHoliday[]  @relation("HolidayCreator")
   savedWorkPlaces     SavedWorkPlace[]
@@ -680,10 +682,24 @@ model Warning {
   isAuto               Boolean   @default(false)
   month       Int?
   year        Int?
+  // ── approval flow ────────────────────────────────
+  // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | ARCHIVED
+  status         String    @default("APPROVED")
+  expiredAt      DateTime?  // auto: createdAt + 12 months
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectedById   String?
+  rejectedAt     DateTime?
+  rejectedReason String?
+  archivedAt     DateTime?
+  approvalNote   String?
+  lateCount      Int?       // late occurrences that triggered this auto-warning
   createdAt   DateTime @default(now())
 
-  user     User @relation(fields: [userId], references: [id])
-  issuedBy User @relation("WarningsIssued", fields: [issuedById], references: [id])
+  user       User  @relation(fields: [userId], references: [id])
+  issuedBy   User  @relation("WarningsIssued",    fields: [issuedById],   references: [id])
+  approvedBy User? @relation("WarningApprovedBy", fields: [approvedById], references: [id])
+  rejectedBy User? @relation("WarningRejectedBy", fields: [rejectedById], references: [id])
 
   @@map("warnings")
 }

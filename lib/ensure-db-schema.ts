@@ -242,6 +242,20 @@ async function runEnsure(): Promise<boolean> {
     'lineErrorMessage',
     `ALTER TABLE warnings ADD COLUMN lineErrorMessage TEXT`,
   )
+  // ── Auto-warning approval flow columns ──
+  await addWarningColumnIfMissing(
+    'status',
+    `ALTER TABLE warnings ADD COLUMN status TEXT NOT NULL DEFAULT 'APPROVED'`,
+  )
+  await addWarningColumnIfMissing('expiredAt', `ALTER TABLE warnings ADD COLUMN expiredAt DATETIME`)
+  await addWarningColumnIfMissing('approvedById', `ALTER TABLE warnings ADD COLUMN approvedById TEXT`)
+  await addWarningColumnIfMissing('approvedAt', `ALTER TABLE warnings ADD COLUMN approvedAt DATETIME`)
+  await addWarningColumnIfMissing('rejectedById', `ALTER TABLE warnings ADD COLUMN rejectedById TEXT`)
+  await addWarningColumnIfMissing('rejectedAt', `ALTER TABLE warnings ADD COLUMN rejectedAt DATETIME`)
+  await addWarningColumnIfMissing('rejectedReason', `ALTER TABLE warnings ADD COLUMN rejectedReason TEXT`)
+  await addWarningColumnIfMissing('archivedAt', `ALTER TABLE warnings ADD COLUMN archivedAt DATETIME`)
+  await addWarningColumnIfMissing('approvalNote', `ALTER TABLE warnings ADD COLUMN approvalNote TEXT`)
+  await addWarningColumnIfMissing('lateCount', `ALTER TABLE warnings ADD COLUMN lateCount INTEGER`)
 
   // Cloudinary image fields (req: image_public_id, image_url)
   await addAttendanceColumnIfMissing('image_public_id', `ALTER TABLE attendances ADD COLUMN image_public_id TEXT`)

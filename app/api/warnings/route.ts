@@ -4,34 +4,58 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { isPdfFile, storeWarningPdf } from '@/lib/warning-pdf'
 import { deliverWarningToEmployee, ensureWarningPdfStored } from '@/lib/warning-delivery'
+import { canApproveWarning, canManageUsers } from '@/lib/rbac'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { archiveExpiredWarnings } from '@/lib/warning-auto'
+import type { Role } from '@prisma/client'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const role = session.user.role as Role
+    const isHR = canManageUsers(role)
+    const canApprove = canApproveWarning(role)
+
     const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('userId')
-    const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+    const targetUserId = searchParams.get('userId')
+    const statusFilter  = searchParams.get('status')
 
-    const where = isManager
-      ? userId
-        ? { userId }
-        : {}
-      : { userId: session.user.id }
+    // Lazily archive expired warnings
+    archiveExpiredWarnings().catch(() => {})
 
+    if (isHR || canApprove) {
+      const where: Record<string, unknown> = {}
+      if (statusFilter) where.status = statusFilter
+      if (targetUserId) where.userId = targetUserId
+
+      const warnings = await prisma.warning.findMany({
+        where,
+        include: {
+          user:       { select: { id: true, name: true, employeeId: true, department: true, position: true } },
+          issuedBy:   { select: { id: true, name: true } },
+          approvedBy: { select: { id: true, name: true } },
+          rejectedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      })
+      return NextResponse.json({ warnings })
+    }
+
+    // Employee: only their own APPROVED warnings
     const warnings = await prisma.warning.findMany({
-      where,
+      where: { userId: session.user.id, status: 'APPROVED' },
       include: {
-        user: { select: { name: true, employeeId: true, department: true } },
-        issuedBy: { select: { name: true } },
+        user:     { select: { id: true, name: true, employeeId: true, department: true } },
+        issuedBy: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
     })
-
     return NextResponse.json({ warnings })
   } catch (err) {
     return apiError(err)
@@ -86,6 +110,9 @@ export async function POST(req: NextRequest) {
     const warningNumber = priorCount + 1
 
     const now = new Date()
+    const expiredAt = new Date(now)
+    expiredAt.setMonth(expiredAt.getMonth() + 12)
+
     const warning = await prisma.warning.create({
       data: {
         userId,
@@ -98,6 +125,10 @@ export async function POST(req: NextRequest) {
         isAuto: false,
         month: now.getMonth() + 1,
         year: now.getFullYear(),
+        status: 'APPROVED',
+        expiredAt,
+        approvedById: session.user.id,
+        approvedAt: now,
       },
     })
 

@@ -250,6 +250,17 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    // Auto-warning: check late count after LATE check-in
+    if (isFirstSessionOfDay && status === 'LATE') {
+      const uidForWarning = session.user.id
+      after(async () => {
+        const { checkAndCreateAutoWarning } = await import('@/lib/warning-auto')
+        await checkAndCreateAutoWarning(uidForWarning).catch((err) =>
+          console.error('[warning-auto]', err),
+        )
+      })
+    }
+
     return NextResponse.json({
       success: true,
       attendance: finalized,
