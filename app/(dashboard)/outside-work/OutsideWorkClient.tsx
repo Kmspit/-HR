@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Clock, User, Loader2, History } from 'lucide-react'
+import { MapPin, Clock, Loader2, History, CheckCircle2, Edit3, X, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -24,25 +24,117 @@ type Request = {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-yellow-500/20 text-yellow-400',
+  PENDING:        'bg-yellow-500/20 text-yellow-400',
   ADMIN_APPROVED: 'bg-blue-500/20 text-blue-400',
-  APPROVED: 'bg-green-500/20 text-green-400',
-  REJECTED: 'bg-red-500/20 text-red-400',
+  APPROVED:       'bg-green-500/20 text-green-400',
+  REJECTED:       'bg-red-500/20 text-red-400',
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'รอ Admin',
-  ADMIN_APPROVED: 'รอ Manager',
-  APPROVED: 'อนุมัติแล้ว',
-  REJECTED: 'ปฏิเสธแล้ว',
+  PENDING:        'รอ Admin',
+  ADMIN_APPROVED: 'รอ Final Approve',
+  APPROVED:       'อนุมัติแล้ว',
+  REJECTED:       'ปฏิเสธแล้ว',
 }
 
 type Props = {
   canViewAll: boolean
+  canApproveOutside: boolean
   requests: Request[]
 }
 
-export default function OutsideWorkClient({ canViewAll, requests: init }: Props) {
+function EditPlaceModal({
+  requestId,
+  currentPlace,
+  currentNote,
+  currentStartTime,
+  currentEndTime,
+  onClose,
+  onSaved,
+}: {
+  requestId: string
+  currentPlace: string
+  currentNote: string
+  currentStartTime: string
+  currentEndTime: string
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [place, setPlace] = useState(currentPlace)
+  const [note, setNote] = useState(currentNote)
+  const [startTime, setStartTime] = useState(currentStartTime)
+  const [endTime, setEndTime] = useState(currentEndTime)
+  const [saving, setSaving] = useState(false)
+
+  const save = async () => {
+    if (!place.trim()) { toast.error('กรุณาระบุสถานที่'); return }
+    setSaving(true)
+    try {
+      const { ok, data, status } = await apiJson(`/api/outside-work/${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ place, note, startTime, endTime }),
+      })
+      if (!ok) { toast.error(apiErrorMessage(data, 'บันทึกไม่สำเร็จ', status)); return }
+      toast.success('แก้ไขสถานที่เรียบร้อย')
+      onSaved()
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setSaving(false) }
+  }
+
+  const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-white/10 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-white">แก้ไขรายละเอียด (HR)</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">สถานที่ *</label>
+            <input value={place} onChange={(e) => setPlace(e.target.value)} className={inputCls} placeholder="ชื่อสถานที่" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">เวลาออก</label>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">เวลากลับ</label>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">หมายเหตุ HR</label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="(ถ้ามี)" />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm">
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function OutsideWorkClient({ canViewAll, canApproveOutside, requests: init }: Props) {
   const [tab, setTab] = useState<'request' | 'history'>('request')
   const [form, setForm] = useState({
     date: '',
@@ -54,6 +146,8 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
     note: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [requests, setRequests] = useState<Request[]>(init)
   const router = useRouter()
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
@@ -65,7 +159,7 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
     }
     setSubmitting(true)
     try {
-      const { ok, data, status } = await apiJson('/api/outside-work', {
+      const { ok, data, status } = await apiJson<{ request: Request }>('/api/outside-work', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -74,7 +168,7 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
         toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
         return
       }
-      toast.success('ส่งคำขอแล้ว รอ Admin ตรวจสอบ')
+      toast.success('ส่งคำขอแล้ว รอ Approver ตรวจสอบ')
       setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '' })
       router.refresh()
       setTab('history')
@@ -86,19 +180,38 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
     }
   }
 
+  const handleSaved = () => {
+    setEditingId(null)
+    router.refresh()
+  }
+
   const inputCls =
     'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
 
+  const editingRequest = editingId ? requests.find((r) => r.id === editingId) : null
+
   return (
     <div className="p-4 md:p-5 space-y-5 max-w-full overflow-x-hidden">
+      {editingRequest && (
+        <EditPlaceModal
+          requestId={editingRequest.id}
+          currentPlace={editingRequest.place}
+          currentNote={editingRequest.note}
+          currentStartTime={editingRequest.startTime}
+          currentEndTime={editingRequest.endTime}
+          onClose={() => setEditingId(null)}
+          onSaved={handleSaved}
+        />
+      )}
+
       <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5">
         {[
           { id: 'request' as const, label: '📝 ขอออกนอกสถานที่' },
           {
             id: 'history' as const,
             label: canViewAll
-              ? `📜 ประวัติทุกคน (${init.length})`
-              : `📜 ประวัติของฉัน (${init.length})`,
+              ? `📜 ประวัติทุกคน (${requests.length})`
+              : `📜 ประวัติของฉัน (${requests.length})`,
           },
         ].map((t) => (
           <button
@@ -116,10 +229,13 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
 
       {tab === 'request' && (
         <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-5 space-y-4">
-          <h3 className="font-semibold text-white text-[15px]">แบบฟอร์มขอออกนอกสถานที่</h3>
-          <p className="text-xs text-slate-500 -mt-2">
-            ส่งคำขอแล้วตรวจสอบสถานะได้ที่แท็บประวัติ · ขั้นตอน Admin → ผู้จัดการ/HR
-          </p>
+          <div>
+            <h3 className="font-semibold text-white text-[15px]">แบบฟอร์มขอออกนอกสถานที่</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              หลังอนุมัติแล้วสามารถเช็คอินนอกบริษัทได้ · กฎสาย: เช็คอินหลัง 09:00 = สาย
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: 'วันที่ *', key: 'date' as const, type: 'date' },
@@ -137,6 +253,7 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
               </div>
             ))}
           </div>
+
           {[
             { label: 'สถานที่ปฏิบัติงาน *', key: 'place' as const, placeholder: 'ชื่อสถานที่ / ที่อยู่' },
             { label: 'วัตถุประสงค์ *', key: 'purpose' as const, placeholder: 'เหตุผล / ภารกิจ' },
@@ -153,6 +270,7 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
               />
             </div>
           ))}
+
           <button
             type="button"
             onClick={submit}
@@ -174,16 +292,22 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
         <div className="space-y-3">
           {canViewAll && (
             <p className="text-xs text-slate-500 px-1">
-              แสดงคำขอออกนอกสถานที่ของพนักงานทุกคนที่เคยยื่นในระบบ (เรียงจากล่าสุด)
+              แสดงคำขอออกนอกสถานที่ของพนักงาน · เรียงจากล่าสุด
             </p>
           )}
-          {!canViewAll && init.length > 0 && (
-            <p className="text-xs text-slate-500 px-1">แสดงเฉพาะคำขอที่คุณยื่นเอง</p>
-          )}
-          {init.map((r) => (
-            <div key={r.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
+          {requests.map((r) => (
+            <div
+              key={r.id}
+              className={`rounded-2xl border p-4 transition ${
+                r.status === 'APPROVED'
+                  ? 'border-green-500/30 bg-green-500/5'
+                  : r.status === 'REJECTED'
+                    ? 'border-red-500/20 bg-slate-900'
+                    : 'border-white/5 bg-slate-900'
+              }`}
+            >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-1.5">
                   {canViewAll && (
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-xs font-bold text-blue-400">
@@ -197,19 +321,39 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
                       </div>
                     </div>
                   )}
+
+                  {/* Approved badge */}
+                  {r.status === 'APPROVED' && (
+                    <div className="flex items-center gap-1.5 rounded-lg bg-green-500/15 border border-green-500/30 px-2.5 py-1.5 w-fit">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                      <span className="text-xs font-semibold text-green-400">อนุมัติแล้ว — เช็คอินนอกบริษัทได้</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 text-white font-medium">
                     <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
                     <span className="truncate">{r.place}</span>
+                    {canApproveOutside && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(r.id)}
+                        title="แก้ไขสถานที่ (HR)"
+                        className="ml-1 text-slate-500 hover:text-blue-400 flex-shrink-0"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <p className="text-slate-400 text-sm mt-1">{r.purpose}</p>
-                  {r.client && <p className="text-slate-500 text-xs mt-0.5">ลูกค้า: {r.client}</p>}
-                  {r.note && <p className="text-slate-500 text-xs mt-0.5">หมายเหตุ: {r.note}</p>}
-                  <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500">
+
+                  <p className="text-slate-400 text-sm">{r.purpose}</p>
+                  {r.client && <p className="text-slate-500 text-xs">ลูกค้า: {r.client}</p>}
+                  {r.note && <p className="text-slate-500 text-xs">หมายเหตุ: {r.note}</p>}
+
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                     <span>
                       {new Date(r.date).toLocaleDateString('th-TH', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        timeZone: 'Asia/Bangkok',
                       })}
                     </span>
                     <span className="flex items-center gap-1">
@@ -219,12 +363,12 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
                     <span>
                       ยื่น{' '}
                       {new Date(r.createdAt).toLocaleDateString('th-TH', {
-                        day: 'numeric',
-                        month: 'short',
+                        day: 'numeric', month: 'short',
                       })}
                     </span>
                   </div>
                 </div>
+
                 <span
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex-shrink-0 ${
                     STATUS_STYLE[r.status] ?? 'bg-slate-700 text-slate-400'
@@ -235,7 +379,8 @@ export default function OutsideWorkClient({ canViewAll, requests: init }: Props)
               </div>
             </div>
           ))}
-          {init.length === 0 && (
+
+          {requests.length === 0 && (
             <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center text-slate-500">
               <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p className="text-sm">{canViewAll ? 'ยังไม่มีคำขอออกนอกสถานที่ในระบบ' : 'ยังไม่มีประวัติคำขอของคุณ'}</p>

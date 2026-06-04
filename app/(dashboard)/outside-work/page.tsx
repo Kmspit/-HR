@@ -6,6 +6,8 @@ import OutsideWorkClient from './OutsideWorkClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { Suspense } from 'react'
+import { hasPermission } from '@/lib/rbac'
+import type { Role } from '@prisma/client'
 
 export default async function OutsideWorkPage({
   searchParams,
@@ -17,7 +19,8 @@ export default async function OutsideWorkPage({
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
-  const canViewAll = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+  const canViewAll = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'MANAGER', 'TEAM_LEADER'].includes(session.user.role)
+  const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
 
@@ -51,6 +54,7 @@ export default async function OutsideWorkPage({
       )}
       <OutsideWorkClient
         canViewAll={canViewAll}
+        canApproveOutside={canApproveOutside}
         requests={requests.map((r) => ({
           id: r.id,
           userId: r.userId,

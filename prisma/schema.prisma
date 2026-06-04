@@ -484,10 +484,11 @@ model Attendance {
   leaveType        LeaveType?
   lateMinutes      Int              @default(0)
   earlyLeaveMinutes Int             @default(0)
-  checkInDistanceM  Float?   // distance from company geofence center at check-in (meters)
-  gpsAccuracy       Float?   // GPS accuracy in meters as reported by device
-  gpsFlags          String?  // comma-separated spoof/quality flags for HR review
-  deviceInfo        String?  // JSON { ua, platform, isMobile }
+  checkInDistanceM     Float?   // distance from company geofence center at check-in (meters)
+  gpsAccuracy          Float?   // GPS accuracy in meters as reported by device
+  gpsFlags             String?  // comma-separated spoof/quality flags for HR review
+  deviceInfo           String?  // JSON { ua, platform, isMobile }
+  outsideWorkRequestId String?  // approved OutsideWorkRequest that authorized this outside check-in
   note             String?
   editedById  String?
   createdAt   DateTime         @default(now())

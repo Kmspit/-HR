@@ -26,6 +26,7 @@ import {
 } from '@/lib/attendance-session'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
+import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
 
 export async function POST(req: NextRequest) {
   try {
@@ -102,11 +103,39 @@ export async function POST(req: NextRequest) {
       checkInDistanceM = haversineDistanceMeters(lat, lng, settings.geofenceLat, settings.geofenceLng)
     }
 
+    // Outside work: ตรวจสอบใบอนุมัติออกนอกสถานที่สำหรับวันนี้
+    let approvedOutsideWork = null
+    let outsideWorkRequestId: string | null = null
+
+    if (forceOutside) {
+      approvedOutsideWork = await findApprovedOutsideWorkForDate(session.user.id, today)
+      outsideWorkRequestId = approvedOutsideWork?.id ?? null
+
+      // ถ้า geofence ตั้งค่าไว้ → ต้องมีใบอนุมัติจึงเช็คอินนอกบริษัทได้
+      if (!outsideWorkRequestId && settings.geofenceLat != null && settings.geofenceLng != null) {
+        return NextResponse.json(
+          {
+            error: 'ต้องมีใบอนุมัติออกนอกสถานที่สำหรับวันนี้จึงเช็คอินนอกบริษัทได้',
+            code: 'OUTSIDE_WORK_NOT_APPROVED',
+          },
+          { status: 403 },
+        )
+      }
+    }
+
+    const dateKey = bangkokDateKey(now)
     let lateMinutes = 0
     let status: 'NORMAL' | 'LATE' = 'NORMAL'
-    if (settings?.workStartTime) {
-      // สร้าง deadline 08:30 ในเวลาไทย (Asia/Bangkok, UTC+7) โดยใช้ ISO string +07:00
-      const dateKey = bangkokDateKey(now) // YYYY-MM-DD ตามเวลาไทย
+
+    if (forceOutside && outsideWorkRequestId) {
+      // งานนอกสถานที่: สายหลัง 09:00
+      const outsideDeadline = new Date(`${dateKey}T${OUTSIDE_WORK_LATE_TIME}:00+07:00`)
+      if (now > outsideDeadline) {
+        lateMinutes = Math.floor((now.getTime() - outsideDeadline.getTime()) / 60000)
+        status = 'LATE'
+      }
+    } else if (!forceOutside && settings?.workStartTime) {
+      // เช็คอินในบริษัท: สายตาม workStartTime (ค่าตั้งต้น 08:30)
       const deadline = new Date(`${dateKey}T${settings.workStartTime}:00+07:00`)
       if (now > deadline) {
         lateMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000)
@@ -157,6 +186,7 @@ export async function POST(req: NextRequest) {
         gpsAccuracy,
         gpsFlags,
         deviceInfo: serverDeviceInfo,
+        outsideWorkRequestId,
         status: isFirstSessionOfDay ? status : 'NORMAL',
         lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
         dayOfWeek: getDayOfWeekIndex(today),
@@ -224,6 +254,8 @@ export async function POST(req: NextRequest) {
       success: true,
       attendance: finalized,
       isOutside,
+      outsideWorkApproved: !!outsideWorkRequestId,
+      outsidePlace: approvedOutsideWork?.place ?? null,
       lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
       sessionIndex,
     })

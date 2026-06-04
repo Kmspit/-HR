@@ -301,6 +301,10 @@ async function runEnsure(): Promise<boolean> {
     'deviceInfo',
     `ALTER TABLE attendances ADD COLUMN deviceInfo TEXT`,
   )
+  await addAttendanceColumnIfMissing(
+    'outsideWorkRequestId',
+    `ALTER TABLE attendances ADD COLUMN outsideWorkRequestId TEXT`,
+  )
   await migrateAttendanceMultiSessionUnique()
 
   await prisma.$executeRawUnsafe(`

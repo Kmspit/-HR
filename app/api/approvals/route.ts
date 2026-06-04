@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineNotify, createAuditLog } from '@/lib/notifications'
 import { headers } from 'next/headers'
 import { apiError, runNotify } from '@/lib/api-handler'
+import { hasPermission } from '@/lib/rbac'
+import type { Role } from '@prisma/client'
 
 type ApprovalBody = {
   type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN'
@@ -18,9 +20,11 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { role, id: actorId } = session.user
-  if (role !== 'ADMIN' && role !== 'MANAGER_HR') {
-    return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-  }
+
+  // Base check: leave + weekly plan require ADMIN or MANAGER_HR
+  // Outside work: any role with approve_outside_work permission (checked inside handler)
+  const isHrAdmin = role === 'ADMIN' || role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN'
+  const canApproveOutside = hasPermission(role as Role, 'approve_outside_work')
 
   const body: ApprovalBody = await req.json()
   const ip = (await headers()).get('x-forwarded-for') ?? 'unknown'
@@ -30,6 +34,7 @@ export async function POST(req: NextRequest) {
 
   // ── LEAVE REQUEST ─────────────────────────────────────
   if (body.type === 'LEAVE') {
+    if (!isHrAdmin) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     const leave = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })
     if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -97,28 +102,74 @@ export async function POST(req: NextRequest) {
 
   // ── OUTSIDE WORK ─────────────────────────────────────
   if (body.type === 'OUTSIDE') {
+    if (!canApproveOutside) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+
     const req_ = await prisma.outsideWorkRequest.findUnique({ where: { id: body.requestId } })
     if (!req_) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    if (step === 1 && req_.status !== 'PENDING') {
-      return NextResponse.json({ error: 'คำขอนี้ไม่อยู่ในขั้นตอน Admin แล้ว' }, { status: 400 })
-    }
-    if (step === 2 && req_.status !== 'ADMIN_APPROVED') {
-      return NextResponse.json({ error: 'ต้องให้ Admin อนุมัติก่อน' }, { status: 400 })
+    if (req_.status === 'APPROVED' || req_.status === 'REJECTED') {
+      return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
     }
 
-    const newStatus = body.action === 'REJECT' ? 'REJECTED' : step === 1 ? 'ADMIN_APPROVED' : 'APPROVED'
+    let newStatus: 'ADMIN_APPROVED' | 'APPROVED' | 'REJECTED'
+    if (body.action === 'REJECT') {
+      newStatus = 'REJECTED'
+    } else if (isHrAdmin && req_.status === 'PENDING') {
+      // ADMIN/MANAGER_HR/HR ทำ step 1: PENDING → ADMIN_APPROVED (รอ final)
+      newStatus = 'ADMIN_APPROVED'
+    } else {
+      // Final approval: ADMIN_APPROVED → APPROVED (หรือ MANAGER/TEAM_LEADER ทำ direct)
+      newStatus = 'APPROVED'
+    }
+
     await prisma.outsideWorkRequest.update({ where: { id: body.requestId }, data: { status: newStatus } })
-    await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step, ip, outsideRequestId: body.requestId } })
 
-    await runNotify(() => createNotification({ userId: req_.userId, type: newStatus === 'APPROVED' ? 'OUTSIDE_APPROVED' : 'OUTSIDE_REJECTED', title: newStatus === 'APPROVED' ? '✅ อนุมัติออกนอกสถานที่' : '❌ ปฏิเสธออกนอกสถานที่', message: body.reason ?? '', link: '/outside-work' }))
-    await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] ออกนอกสถานที่: ${newStatus}`))
+    const approvalStep = req_.status === 'PENDING' ? 1 : 2
+    await prisma.approvalHistory.create({
+      data: {
+        approvedById: actorId,
+        action:       body.action,
+        reason:       body.reason,
+        step:         approvalStep,
+        ip,
+        outsideRequestId: body.requestId,
+      },
+    })
+
+    await runNotify(() =>
+      createAuditLog({
+        actorId,
+        targetId:   body.requestId,
+        targetType: 'OutsideWorkRequest',
+        action:     body.action === 'APPROVE' ? 'APPROVE' : 'REJECT',
+        before:     { status: req_.status },
+        after:      { status: newStatus },
+        ip,
+      }),
+    )
+
+    await runNotify(() =>
+      createNotification({
+        userId: req_.userId,
+        type:    newStatus === 'APPROVED' ? 'OUTSIDE_APPROVED' : newStatus === 'REJECTED' ? 'OUTSIDE_REJECTED' : 'OUTSIDE_REQUEST',
+        title:   newStatus === 'APPROVED' ? '✅ อนุมัติออกนอกสถานที่แล้ว' : newStatus === 'REJECTED' ? '❌ ปฏิเสธออกนอกสถานที่' : '⏳ คำขอออกนอกสถานที่รอ Final Approve',
+        message: body.reason ?? '',
+        link:    '/outside-work',
+      }),
+    )
+
+    await runNotify(() =>
+      sendLineNotify(
+        `\n🔔 [เค เอ็ม เซอร์วิส พลัส] ออกนอกสถานที่: ${newStatus === 'APPROVED' ? 'อนุมัติแล้ว' : newStatus === 'REJECTED' ? 'ปฏิเสธ' : 'รอ Final'}`,
+      ),
+    )
 
     return NextResponse.json({ success: true, newStatus })
   }
 
   // ── WEEKLY PLAN ──────────────────────────────────────
   if (body.type === 'WEEKLY_PLAN') {
+    if (!isHrAdmin) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     const plan = await prisma.weeklyLawyerPlan.findUnique({ where: { id: body.requestId } })
     if (!plan) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
