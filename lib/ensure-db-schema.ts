@@ -522,6 +522,58 @@ async function runEnsure(): Promise<boolean> {
     )
   `)
 
+  // ── Leave request: approval chain columns (added in db43056, no prior patch) ──
+  await addLeaveRequestColumnIfMissing('chainConfigId',    `ALTER TABLE leave_requests ADD COLUMN chainConfigId TEXT`)
+  await addLeaveRequestColumnIfMissing('currentStepOrder', `ALTER TABLE leave_requests ADD COLUMN currentStepOrder INTEGER NOT NULL DEFAULT 0`)
+
+  // ── Approval chain tables (created by prisma db push in db43056 — ensure they exist) ──
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS approval_chain_configs (
+      id TEXT NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      isDefault INTEGER NOT NULL DEFAULT 0,
+      createdById TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS approval_chain_steps (
+      id TEXT NOT NULL PRIMARY KEY,
+      chainId TEXT NOT NULL,
+      stepOrder INTEGER NOT NULL,
+      stepName TEXT NOT NULL,
+      approverRole TEXT,
+      approverId TEXT,
+      canSkip INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(chainId, stepOrder)
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS leave_approval_steps (
+      id TEXT NOT NULL PRIMARY KEY,
+      leaveRequestId TEXT NOT NULL,
+      chainStepId TEXT NOT NULL,
+      stepOrder INTEGER NOT NULL,
+      stepName TEXT NOT NULL,
+      approverRole TEXT,
+      approverId TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      actorId TEXT,
+      comment TEXT,
+      ip TEXT,
+      actedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS leave_approval_steps_request_idx ON leave_approval_steps (leaveRequestId)
+  `)
+
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS role_permissions (
@@ -732,6 +784,22 @@ async function migrateAttendanceMultiSessionUnique() {
     CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
     ON attendances (userId, date, sessionIndex)
   `)
+}
+
+async function leaveRequestColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(leave_requests)')
+  return pragmaColumnNames(rows)
+}
+
+async function addLeaveRequestColumnIfMissing(column: string, ddl: string) {
+  const cols = await leaveRequestColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }
 
 async function announcementColumns(): Promise<string[]> {
