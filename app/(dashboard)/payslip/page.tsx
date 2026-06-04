@@ -10,7 +10,7 @@ export default async function PayslipPage() {
   const payrolls = await prisma.payroll.findMany({
     where: { userId: session.user.id, status: { in: ['APPROVED', 'SENT'] } },
     orderBy: [{ year: 'desc' }, { month: 'desc' }],
-    take: 24,
+    take: 36,
   })
 
   return (
@@ -24,6 +24,7 @@ export default async function PayslipPage() {
         absentDeduction: p.absentDeduction,
         unpaidLeave: p.unpaidLeave,
         ssDeduction: p.socialSecurity,
+        taxDeduction: (p as unknown as { taxDeduction?: number }).taxDeduction ?? 0,
         netSalary: p.netSalary,
         lateDays: p.lateDays,
         absentDays: p.absentDays,

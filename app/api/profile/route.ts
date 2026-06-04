@@ -25,6 +25,7 @@ function serializeUser(u: {
   phone: string | null
   birthDate: Date | null
   address: string | null
+  addressIdCard: string | null
   nationalId: string | null
   profileImage: string | null
   role: string
@@ -52,6 +53,7 @@ function serializeUser(u: {
     phone: u.phone ?? '',
     birthDate: formatDate(u.birthDate),
     address: u.address ?? '',
+    addressIdCard: u.addressIdCard ?? '',
     nationalId: u.nationalId ?? '',
     profileImage: u.profileImage,
     role: u.role,
@@ -79,6 +81,7 @@ const PROFILE_SELECT = {
   phone: true,
   birthDate: true,
   address: true,
+  addressIdCard: true,
   nationalId: true,
   profileImage: true,
   role: true,
@@ -116,6 +119,7 @@ function readProfileBody(
     phone: get('phone'),
     email: get('email'),
     address: get('address'),
+    addressIdCard: get('addressIdCard'),
     lineId: get('lineId'),
     birthDate: get('birthDate'),
     nationalId: get('nationalId'),
@@ -181,6 +185,7 @@ export async function PATCH(req: NextRequest) {
       phone: raw.phone,
       email: raw.email,
       address: raw.address ?? null,
+      addressIdCard: raw.addressIdCard ?? null,
       birthDate: raw.birthDate ?? null,
       nationalId: raw.nationalId ?? null,
     })

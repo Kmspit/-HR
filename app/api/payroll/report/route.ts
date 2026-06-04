@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = branchNestedUserWhere(scope)
 
-  const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+  const isManager = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'].includes(session.user.role)
 
   if (userId && userId !== session.user.id && !isManager) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -83,6 +83,8 @@ export async function GET(req: NextRequest) {
         absentDeduction: p.absentDeduction,
         unpaidLeave: p.unpaidLeave,
         ssDeduction: p.socialSecurity,
+        taxDeduction: (p as unknown as { taxDeduction?: number }).taxDeduction ?? 0,
+        taxDetail: (p as unknown as { taxDetail?: string }).taxDetail ?? null,
         netSalary: p.netSalary,
         lateDays: p.lateDays,
         absentDays: p.absentDays,
@@ -90,6 +92,7 @@ export async function GET(req: NextRequest) {
         lateBillableMinutes: p.lateBillableMinutes ?? p.lateMinutes ?? 0,
         lateDeductionDetail: p.lateDeductionDetail,
         status: p.status,
+        note: p.note,
         hasPayroll: true,
       }
     }
@@ -106,6 +109,8 @@ export async function GET(req: NextRequest) {
       absentDeduction: 0,
       unpaidLeave: 0,
       ssDeduction: 0,
+      taxDeduction: 0,
+      taxDetail: null,
       netSalary: 0,
       lateDays: 0,
       absentDays: 0,
@@ -113,6 +118,7 @@ export async function GET(req: NextRequest) {
       lateBillableMinutes: 0,
       lateDeductionDetail: null,
       status: 'PENDING',
+      note: null,
       hasPayroll: false,
     }
   })
@@ -131,11 +137,69 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
+  if (!session?.user?.id || !['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id, status } = await req.json()
-  const payroll = await prisma.payroll.update({ where: { id }, data: { status } })
+  const { id, status, note } = await req.json()
+  const updateData: Record<string, unknown> = { status }
+  if (note !== undefined) updateData.note = note
+  if (status === 'APPROVED') {
+    updateData.approvedById = session.user.id
+    updateData.approvedAt = new Date()
+  }
+  const payroll = await prisma.payroll.update({ where: { id }, data: updateData })
+
+  if (status === 'APPROVED') {
+    const taxRaw = (payroll as unknown as { taxDetail?: string }).taxDetail
+    if (taxRaw) {
+      try {
+        const td = JSON.parse(taxRaw) as {
+          annualGross?: number
+          incomeDeduction?: number
+          personalAllowance?: number
+          taxableIncome?: number
+          annualTax?: number
+          monthlyWithholding?: number
+        }
+        await prisma.taxHistory.upsert({
+          where: { userId_month_year: { userId: payroll.userId, month: payroll.month, year: payroll.year } },
+          create: {
+            userId: payroll.userId,
+            month: payroll.month,
+            year: payroll.year,
+            annualGross: td.annualGross ?? 0,
+            incomeDeduction: td.incomeDeduction ?? 0,
+            personalAllowance: td.personalAllowance ?? 0,
+            taxableIncome: td.taxableIncome ?? 0,
+            annualTax: td.annualTax ?? 0,
+            monthlyTax: td.monthlyWithholding ?? 0,
+          },
+          update: {
+            annualGross: td.annualGross ?? 0,
+            incomeDeduction: td.incomeDeduction ?? 0,
+            personalAllowance: td.personalAllowance ?? 0,
+            taxableIncome: td.taxableIncome ?? 0,
+            annualTax: td.annualTax ?? 0,
+            monthlyTax: td.monthlyWithholding ?? 0,
+          },
+        })
+      } catch { /* ignore tax history errors — non-critical */ }
+    }
+
+    try {
+      await prisma.salarySlip.upsert({
+        where: { payrollId: payroll.id },
+        create: {
+          payrollId: payroll.id,
+          userId: payroll.userId,
+          month: payroll.month,
+          year: payroll.year,
+        },
+        update: { issuedAt: new Date() },
+      })
+    } catch { /* ignore slip errors — non-critical */ }
+  }
+
   return NextResponse.json({ payroll })
 }

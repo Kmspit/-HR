@@ -27,6 +27,7 @@ import {
   profileInputClass,
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
+import { EMPLOYEE_TYPES } from '@/lib/rbac'
 
 type Employee = {
   id: string
@@ -35,6 +36,7 @@ type Employee = {
   employeeId: string | null
   role: string
   status: string
+  employeeType: string | null
   department: string | null
   position: string | null
   baseSalary: number
@@ -49,16 +51,32 @@ type Employee = {
   nickname: string | null
   birthDate: string | null
   address: string | null
+  addressIdCard: string | null
   nationalId: string | null
   warningCount: number
 }
 
-const ROLES = ['EMPLOYEE', 'MANAGER_HR', 'ADMIN', 'LAWYER']
+const ROLES = [
+  'EMPLOYEE',
+  'LAWYER',
+  'ENFORCEMENT',
+  'TEAM_LEADER',
+  'MANAGER',
+  'HR',
+  'MANAGER_HR',
+  'ADMIN',
+  'SUPER_ADMIN',
+]
 const ROLE_LABELS: Record<string, string> = {
-  EMPLOYEE: 'พนักงาน',
-  MANAGER_HR: 'HR/ผู้จัดการ',
-  ADMIN: 'Admin',
-  LAWYER: 'ทนาย',
+  EMPLOYEE:    'พนักงาน',
+  LAWYER:      'ทนายความ',
+  ENFORCEMENT: 'เจ้าหน้าที่บังคับคดี',
+  TEAM_LEADER: 'หัวหน้าทีม',
+  MANAGER:     'ผู้จัดการ',
+  HR:          'ฝ่ายบุคคล (HR)',
+  MANAGER_HR:  'ผู้จัดการ / HR',
+  ADMIN:       'Admin',
+  SUPER_ADMIN: 'Super Admin',
 }
 const STATUS_LIST = ['ACTIVE', 'PENDING', 'DISABLED', 'REJECTED']
 const STATUS_LABELS: Record<string, string> = {
@@ -92,12 +110,14 @@ export default function EmployeeEditClient({
     position: employee.position ?? '',
     role: employee.role,
     status: employee.status,
+    employeeType: employee.employeeType ?? 'permanent_employee',
     baseSalary: employee.baseSalary,
     socialSecurity: employee.socialSecurity,
     isCoworker: employee.isCoworker,
     startDate: employee.startDate ? employee.startDate.substring(0, 10) : '',
     birthDate: employee.birthDate ? employee.birthDate.substring(0, 10) : '',
     address: employee.address ?? '',
+    addressIdCard: employee.addressIdCard ?? '',
     nationalId: employee.nationalId ?? '',
   })
   const [errors, setErrors] = useState<FormErrors>({})
@@ -140,6 +160,7 @@ export default function EmployeeEditClient({
         prefix: form.prefix.trim() || null,
         phone: form.phone,
         address: form.address.trim() || null,
+        addressIdCard: form.addressIdCard.trim() || null,
         birthDate: form.birthDate || null,
         nationalId: form.nationalId.replace(/\D/g, '') || null,
         lineId: form.lineId,
@@ -147,6 +168,7 @@ export default function EmployeeEditClient({
         lineDisplayName: form.lineDisplayName,
         department: form.department,
         position: form.position,
+        employeeType: form.employeeType,
         baseSalary: form.baseSalary,
         socialSecurity: form.socialSecurity,
         isCoworker: form.isCoworker,
@@ -290,11 +312,21 @@ export default function EmployeeEditClient({
             />
           </FormField>
         </div>
-        <FormField label="ที่อยู่">
+        <FormField label="ที่อยู่ปัจจุบัน">
           <textarea
             value={form.address}
             onChange={(e) => set('address', e.target.value)}
             rows={2}
+            placeholder="บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด"
+            className={`${profileInputClass} resize-none`}
+          />
+        </FormField>
+        <FormField label="ที่อยู่ตามบัตรประชาชน">
+          <textarea
+            value={form.addressIdCard}
+            onChange={(e) => set('addressIdCard', e.target.value)}
+            rows={2}
+            placeholder="ที่อยู่ตามบัตรประชาชน (ถ้าต่างจากที่อยู่ปัจจุบัน)"
             className={`${profileInputClass} resize-none`}
           />
         </FormField>
@@ -405,6 +437,19 @@ export default function EmployeeEditClient({
               onChange={(e) => set('startDate', e.target.value)}
               className={profileInputClass}
             />
+          </FormField>
+          <FormField label="ประเภทพนักงาน">
+            <select
+              value={form.employeeType}
+              onChange={(e) => set('employeeType', e.target.value)}
+              className={profileInputClass}
+            >
+              {EMPLOYEE_TYPES.map((t) => (
+                <option key={t.value} value={t.value} className="bg-slate-900">
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </FormField>
         </div>
         <div className="flex flex-wrap gap-4">

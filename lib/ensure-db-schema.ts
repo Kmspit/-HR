@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_COMPANY_BRANCHES, HQ_BRANCH_ID, NMA_BRANCH_ID } from '@/lib/company-branches'
 import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
+import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 
 let ensurePromise: Promise<boolean> | null = null
 
@@ -63,6 +64,10 @@ async function runEnsure(): Promise<boolean> {
   `)
 
   await addUserColumnIfMissing('branchId', `ALTER TABLE users ADD COLUMN branchId TEXT`)
+  await addUserColumnIfMissing('addressIdCard', `ALTER TABLE users ADD COLUMN addressIdCard TEXT`)
+  await addUserColumnIfMissing('employeeType', `ALTER TABLE users ADD COLUMN employeeType TEXT DEFAULT 'permanent_employee'`)
+  await addUserColumnIfMissing('managerId', `ALTER TABLE users ADD COLUMN managerId TEXT`)
+  await addUserColumnIfMissing('teamLeaderId', `ALTER TABLE users ADD COLUMN teamLeaderId TEXT`)
   await addUserColumnIfMissing(
     'profileImageBase64',
     `ALTER TABLE users ADD COLUMN profileImageBase64 TEXT`,
@@ -174,6 +179,22 @@ async function runEnsure(): Promise<boolean> {
   await addPayrollColumnIfMissing(
     'lateDeductionDetail',
     `ALTER TABLE payrolls ADD COLUMN lateDeductionDetail TEXT`,
+  )
+  await addPayrollColumnIfMissing(
+    'taxDeduction',
+    `ALTER TABLE payrolls ADD COLUMN taxDeduction REAL NOT NULL DEFAULT 0`,
+  )
+  await addPayrollColumnIfMissing(
+    'taxDetail',
+    `ALTER TABLE payrolls ADD COLUMN taxDetail TEXT`,
+  )
+  await addPayrollColumnIfMissing(
+    'approvedById',
+    `ALTER TABLE payrolls ADD COLUMN approvedById TEXT`,
+  )
+  await addPayrollColumnIfMissing(
+    'approvedAt',
+    `ALTER TABLE payrolls ADD COLUMN approvedAt DATETIME`,
   )
 
   await prisma.$executeRawUnsafe(`
@@ -430,6 +451,64 @@ async function runEnsure(): Promise<boolean> {
   )
 
   await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS salary_slips (
+      id TEXT NOT NULL PRIMARY KEY,
+      payrollId TEXT NOT NULL UNIQUE,
+      userId TEXT NOT NULL,
+      month INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      pdfBase64 TEXT,
+      issuedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(userId, month, year)
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS tax_history (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      month INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      annualGross REAL NOT NULL DEFAULT 0,
+      incomeDeduction REAL NOT NULL DEFAULT 0,
+      personalAllowance REAL NOT NULL DEFAULT 0,
+      taxableIncome REAL NOT NULL DEFAULT 0,
+      annualTax REAL NOT NULL DEFAULT 0,
+      monthlyTax REAL NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(userId, month, year)
+    )
+  `)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS probation_evaluations (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      result TEXT NOT NULL DEFAULT 'PENDING',
+      notes TEXT,
+      evaluatedById TEXT,
+      evaluatedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS document_requests (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      type TEXT NOT NULL,
+      purpose TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      notes TEXT,
+      handledById TEXT,
+      handledAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS leave_policies (
       id TEXT NOT NULL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -442,6 +521,27 @@ async function runEnsure(): Promise<boolean> {
       updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS role_permissions (
+      id TEXT NOT NULL PRIMARY KEY,
+      role TEXT NOT NULL,
+      permission TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(role, permission)
+    )
+  `)
+  // Seed default role permissions (INSERT OR IGNORE = idempotent, won't overwrite custom ones)
+  const seeds = getDefaultRolePermissionSeed()
+  for (const { role, permission } of seeds) {
+    const id = `${role}_${permission}`
+    await prisma.$executeRaw`
+      INSERT OR IGNORE INTO role_permissions (id, role, permission, createdAt, updatedAt)
+      VALUES (${id}, ${role}, ${permission}, datetime('now'), datetime('now'))
+    `
+  }
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS announcements (

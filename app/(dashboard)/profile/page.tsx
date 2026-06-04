@@ -48,6 +48,8 @@ export default async function ProfilePage() {
 
       address: true,
 
+      addressIdCard: true,
+
       nationalId: true,
 
       profileImage: true,
@@ -167,6 +169,8 @@ export default async function ProfilePage() {
           phone: user.phone ?? '',
 
           address: user.address ?? '',
+
+          addressIdCard: user.addressIdCard ?? '',
 
           profileImage: user.profileImage,
 

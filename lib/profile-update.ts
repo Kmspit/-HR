@@ -54,6 +54,7 @@ export type SelfProfileInput = {
   phone?: string
   email?: string
   address?: string | null
+  addressIdCard?: string | null
   lineId?: string
   birthDate?: string | null
   nationalId?: string | null
@@ -69,6 +70,7 @@ export type ParsedSelfProfile =
         phone: string
         email: string
         address: string | null
+        addressIdCard: string | null
         birthDate: Date | null
         nationalId: string | null
       }
@@ -109,6 +111,7 @@ export function parseSelfProfileInput(input: SelfProfileInput): ParsedSelfProfil
       phone,
       email,
       address: input.address?.trim() || null,
+      addressIdCard: input.addressIdCard?.trim() || null,
       birthDate: birthParsed,
       nationalId,
     },

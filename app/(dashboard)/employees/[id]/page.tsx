@@ -14,10 +14,11 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
     where: { id },
     select: {
       id: true, name: true, email: true, employeeId: true, role: true, status: true,
+      employeeType: true,
       department: true, position: true, baseSalary: true, socialSecurity: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
       lineUserId: true, lineDisplayName: true,
-      prefix: true, nickname: true, birthDate: true, address: true, nationalId: true,
+      prefix: true, nickname: true, birthDate: true, address: true, addressIdCard: true, nationalId: true,
     },
   })
 
@@ -35,6 +36,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
         baseSalary: user.baseSalary ?? 0,
         startDate: user.startDate?.toISOString() ?? null,
         birthDate: user.birthDate?.toISOString() ?? null,
+        employeeType: user.employeeType ?? 'permanent_employee',
         warningCount,
       }}
     />

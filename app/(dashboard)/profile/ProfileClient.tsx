@@ -45,6 +45,7 @@ type ProfileData = {
   phone: string
   email: string
   address: string
+  addressIdCard: string
   birthDate: string
   nationalId: string
   profileImage: string | null
@@ -84,6 +85,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
     email: initial.email,
     phone: initial.phone,
     address: initial.address,
+    addressIdCard: initial.addressIdCard,
     birthDate: initial.birthDate,
     nationalId: initial.nationalId,
     lineId: initial.lineId,
@@ -134,6 +136,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
         email: form.email.trim().toLowerCase(),
         phone: form.phone,
         address: form.address.trim(),
+        addressIdCard: form.addressIdCard.trim(),
         birthDate: form.birthDate || '',
         nationalId: form.nationalId.replace(/\D/g, ''),
         lineId: form.lineId.trim(),
@@ -323,13 +326,26 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
             </div>
           </FormField>
         </div>
-        <FormField label="ที่อยู่">
+        <FormField label="ที่อยู่ปัจจุบัน">
           <div className="relative">
             <MapPin className="absolute left-3 top-3 w-4 h-4 text-slate-500 pointer-events-none" />
             <textarea
               value={form.address}
               onChange={(e) => set('address', e.target.value)}
               rows={2}
+              placeholder="บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์"
+              className={`${profileInputClass} pl-10 resize-none`}
+            />
+          </div>
+        </FormField>
+        <FormField label="ที่อยู่ตามบัตรประชาชน">
+          <div className="relative">
+            <MapPin className="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+            <textarea
+              value={form.addressIdCard}
+              onChange={(e) => set('addressIdCard', e.target.value)}
+              rows={2}
+              placeholder="ที่อยู่ตามบัตรประชาชน (ถ้าต่างจากที่อยู่ปัจจุบัน)"
               className={`${profileInputClass} pl-10 resize-none`}
             />
           </div>

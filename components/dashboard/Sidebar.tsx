@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import NavLink from './NavLink'
 import { usePathname } from 'next/navigation'
-import { cn, getInitials } from '@/lib/utils'
-import { ROLE_LABELS, ROLE_ICONS } from '@/lib/permissions'
+import { cn } from '@/lib/utils'
 import type { Role } from '@prisma/client'
 
 /* ── SVG Icon components ── */
@@ -55,27 +54,29 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'การทำงาน',
     items: [
-      { href: '/attendance',         icon: 'attendance', label: 'ลงเวลางาน',           roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/attendance/monthly', icon: 'calendar',   label: 'บันทึกลงเวลารายเดือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/attendance/scans',     icon: 'attendance', label: 'ประวัติสแกนใบหน้า',     roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/calendar',     icon: 'calendar',   label: 'ปฏิทิน',           roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/leave',        icon: 'leave',       label: 'ขอลาหยุด',        roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/outside-work', icon: 'outside',     label: 'ออกนอกสถานที่',   roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/weekly-plan',  icon: 'plan',        label: 'แผนงานสัปดาห์',   roles: ['MANAGER_HR', 'LAWYER'] },
+      { href: '/attendance',         icon: 'attendance', label: 'ลงเวลางาน',             roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/attendance/monthly', icon: 'calendar',   label: 'บันทึกลงเวลารายเดือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/attendance/scans',   icon: 'attendance', label: 'ประวัติสแกนใบหน้า',     roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] },
+      { href: '/calendar',     icon: 'calendar',   label: 'ปฏิทิน',            roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/leave',        icon: 'leave',       label: 'ขอลาหยุด',         roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/outside-work', icon: 'outside',     label: 'ออกนอกสถานที่',    roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/weekly-plan',  icon: 'plan',        label: 'แผนงานสัปดาห์',    roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER'] },
     ],
   },
   {
     title: 'HR จัดการ',
     items: [
-      { href: '/employees', icon: 'employees', label: 'พนักงาน',       roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/branches',      icon: 'settings',  label: 'จัดการสาขา',       roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/organization', icon: 'employees', label: 'ฝ่าย/แผนก/ส่วนงาน', roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/payroll',   icon: 'payroll',   label: 'เงินเดือน',     roles: ['MANAGER_HR'] },
-      { href: '/reports',   icon: 'calendar',  label: 'รายงานรายเดือน', roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/payslip',   icon: 'payslip',   label: 'สลิปเงินเดือน', roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/approvals', icon: 'approvals', label: 'อนุมัติ',        roles: ['MANAGER_HR', 'ADMIN'] },
-      { href: '/warnings',  icon: 'warnings',  label: 'ใบเตือน',        roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-      { href: '/rules',     icon: 'rules',     label: 'กฎระเบียบ',      roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+      { href: '/employees',    icon: 'employees', label: 'พนักงาน',            roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] },
+      { href: '/branches',     icon: 'settings',  label: 'จัดการสาขา',         roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN'] },
+      { href: '/organization', icon: 'employees', label: 'ฝ่าย/แผนก/ส่วนงาน', roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN'] },
+      { href: '/payroll',      icon: 'payroll',   label: 'เงินเดือน',          roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR'] },
+      { href: '/reports',      icon: 'calendar',  label: 'รายงานรายเดือน',     roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] },
+      { href: '/payslip',      icon: 'payslip',   label: 'สลิปเงินเดือน',      roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/approvals',    icon: 'approvals', label: 'อนุมัติ',             roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] },
+      { href: '/probation',    icon: 'plan',      label: 'ประเมินทดลองงาน',    roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'MANAGER'] },
+      { href: '/documents',    icon: 'plan',      label: 'ขอเอกสาร',            roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/warnings',     icon: 'warnings',  label: 'ใบเตือน',             roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
+      { href: '/rules',        icon: 'rules',     label: 'กฎระเบียบ',           roles: ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT'] },
     ],
   },
   {
@@ -179,22 +180,6 @@ export default function Sidebar({ user, onClose }: Props) {
         ))}
       </nav>
 
-      {/* User card — info only; logout is in top header */}
-      <div className="p-3">
-        <div className="mx-4 h-px dark:bg-gradient-to-r dark:from-transparent dark:via-white/6 dark:to-transparent light:bg-slate-100 mb-3" />
-        <div className="flex items-center gap-2.5 rounded-xl p-2.5 dark:bg-white/[0.03] light:bg-slate-50">
-          <div
-            className="flex h-8.5 w-8.5 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' }}
-          >
-            {getInitials(user.name)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold dark:text-slate-200 light:text-slate-800 leading-tight">{user.name}</p>
-            <p className="truncate text-[10px] dark:text-slate-500 light:text-slate-400 mt-0.5">{ROLE_ICONS[user.role]} {ROLE_LABELS[user.role]}</p>
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }

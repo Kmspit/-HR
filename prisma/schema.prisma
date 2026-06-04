@@ -28,8 +28,14 @@ enum AppPermission {
   approve_leave
   approve_warning
   approve_outside_work
+  approve_weekly_plan
   manage_attendance
   manage_leave_balance
+  manage_payroll
+  manage_employees
+  view_team_only
+  view_all_dashboard
+  override_attendance
   payroll_access
 }
 
@@ -238,11 +244,15 @@ model User {
   phone            String?    @unique
   birthDate        DateTime?
   address          String?
+  addressIdCard    String?
   nationalId       String?    @unique
   profileImage              String?
   profileImageBase64        String? // deprecated — migrate to Cloudinary
   profileCloudinaryPublicId String?
   profileSecureUrl          String?
+  employeeType     String?    @default("permanent_employee")
+  managerId        String?
+  teamLeaderId     String?
   role             Role       @default(EMPLOYEE)
   status           UserStatus @default(PENDING)
   department       String?
@@ -269,6 +279,10 @@ model User {
   section         Section?            @relation(fields: [sectionId], references: [id])
   approvedBy      User?               @relation("UserApproval", fields: [approvedById], references: [id])
   approvedUsers   User[]              @relation("UserApproval")
+  manager         User?               @relation("UserManager", fields: [managerId], references: [id])
+  managedUsers    User[]              @relation("UserManager")
+  teamLeader      User?               @relation("UserTeamLeader", fields: [teamLeaderId], references: [id])
+  teamMembers     User[]              @relation("UserTeamLeader")
   attendances     Attendance[]
   leaveRequests   LeaveRequest[]
   outsideRequests OutsideWorkRequest[]
@@ -290,6 +304,12 @@ model User {
   faceLogs            AttendanceFaceLog[]
   chainStepsAssigned  ApprovalChainStep[] @relation("ChainStepApprover")
   leaveStepActions    LeaveApprovalStep[] @relation("LeaveStepActor")
+  salarySlips         SalarySlip[]
+  taxHistories        TaxHistory[]
+  probationEvaluation      ProbationEvaluation?
+  probationEvaluationsGiven ProbationEvaluation[] @relation("ProbationEvaluator")
+  documentRequests         DocumentRequest[]
+  documentRequestsHandled  DocumentRequest[]      @relation("DocumentHandler")
 
   @@map("users")
 }
@@ -739,16 +759,101 @@ model Payroll {
   lateMinutes     Int       @default(0)
   lateBillableMinutes Int   @default(0)
   lateDeductionDetail String?
+  taxDeduction    Float     @default(0)
+  taxDetail       String?   // JSON: { annualGross, taxableIncome, annualTax, monthlyWithholding }
   status          String    @default("DRAFT")
   slipSentAt      DateTime?
+  approvedById    String?
+  approvedAt      DateTime?
   note            String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  salarySlip SalarySlip?
 
   @@unique([userId, month, year])
   @@map("payrolls")
+}
+
+// ── SALARY SLIPS ────────────────────────────────
+
+model SalarySlip {
+  id        String   @id @default(cuid())
+  payrollId String   @unique
+  userId    String
+  month     Int
+  year      Int
+  pdfBase64 String?
+  issuedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, month, year])
+  @@map("salary_slips")
+}
+
+// ── TAX HISTORY ──────────────────────────────────
+
+model TaxHistory {
+  id                String   @id @default(cuid())
+  userId            String
+  month             Int
+  year              Int
+  annualGross       Float
+  incomeDeduction   Float
+  personalAllowance Float
+  taxableIncome     Float
+  annualTax         Float
+  monthlyTax        Float
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, month, year])
+  @@map("tax_history")
+}
+
+// ── PROBATION EVALUATION ─────────────────────────
+
+model ProbationEvaluation {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  result        String    @default("PENDING")
+  notes         String?
+  evaluatedById String?
+  evaluatedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evaluatedBy User? @relation("ProbationEvaluator", fields: [evaluatedById], references: [id])
+
+  @@map("probation_evaluations")
+}
+
+// ── DOCUMENT REQUESTS ────────────────────────────
+
+model DocumentRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String
+  purpose     String?
+  status      String    @default("PENDING")
+  notes       String?
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("DocumentHandler", fields: [handledById], references: [id])
+
+  @@map("document_requests")
 }
 
 // ── COMPANY RULES ───────────────────────────────

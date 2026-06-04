@@ -13,7 +13,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
     const { id } = await params
     const isSelf = id === session.user.id
-    const isManager = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+    const isManager = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'].includes(session.user.role)
     if (!isSelf && !isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const user = await prisma.user.findUnique({
@@ -25,6 +25,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
         employeeId: true,
         role: true,
         status: true,
+        employeeType: true,
+        managerId: true,
+        teamLeaderId: true,
         department: true,
         position: true,
         baseSalary: true,
@@ -39,6 +42,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
         nickname: true,
         birthDate: true,
         address: true,
+        addressIdCard: true,
         nationalId: true,
         profileImage: true,
       },
@@ -54,7 +58,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
+    if (!session?.user?.id || !['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -151,8 +155,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       'nickname',
       'prefix',
       'address',
+      'addressIdCard',
       'department',
       'position',
+      'employeeType',
+      'managerId',
+      'teamLeaderId',
       'baseSalary',
       'socialSecurity',
       'isCoworker',

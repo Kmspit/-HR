@@ -11,24 +11,33 @@ import {
 // ROUTE PERMISSIONS — which roles can access each path
 // ─────────────────────────────────────────────────────
 
-// Roles with access to every page (HR-level and above)
 const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT']
 const HR_ROLES:  Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR']
 const MGR_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'MANAGER']
 const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
+// Roles that can view/approve weekly plans
+const WEEKLY_PLAN_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER']
+
+// Roles that can view attendance scan history (own team or all)
+const SCAN_HISTORY_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+
+// Roles that can manage employees data
+const EMPLOYEE_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
+
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
   '/attendance':         ALL_ROLES,
   '/attendance/monthly': ALL_ROLES,
+  '/attendance/scans':   SCAN_HISTORY_ROLES,
   '/leave':              ALL_ROLES,
   '/outside-work':       ALL_ROLES,
-  '/weekly-plan':        [...HR_ROLES, 'LAWYER'],
+  '/weekly-plan':        WEEKLY_PLAN_ROLES,
   '/calendar':           ALL_ROLES,
   '/payroll':            HR_ROLES,
   '/reports':            [...MGR_ROLES, 'ADMIN'],
   '/payslip':            ALL_ROLES,
-  '/employees':          [...MGR_ROLES, 'ADMIN'],
+  '/employees':          EMPLOYEE_MGMT_ROLES,
   '/approvals':          APPR_ROLES,
   '/announcements':      ALL_ROLES,
   '/line-oa':            [...HR_ROLES, 'ADMIN'],
@@ -40,6 +49,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/branches':           [...HR_ROLES, 'ADMIN'],
   '/organization':       [...HR_ROLES, 'ADMIN'],
   '/org-pending':        ALL_ROLES,
+  '/probation':          [...HR_ROLES, 'MANAGER'],
+  '/documents':          ALL_ROLES,
+  '/unauthorized':       ALL_ROLES,
 }
 
 // Default redirect after login per role
@@ -59,7 +71,7 @@ export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN:  'Super Admin',
   MANAGER_HR:   'ผู้จัดการ / HR',
-  HR:           'HR',
+  HR:           'ฝ่ายบุคคล (HR)',
   MANAGER:      'ผู้จัดการ',
   TEAM_LEADER:  'หัวหน้าทีม',
   ADMIN:        'Admin',
@@ -98,11 +110,9 @@ export const ROLE_ICONS: Record<Role, string> = {
 
 export function canAccess(role: Role, path: string): boolean {
   const allowed = ROUTE_PERMISSIONS[path]
-  if (!allowed) return true // unregistered paths are public
+  if (!allowed) return true
   return allowed.includes(role)
 }
-
-// Legacy helpers — now delegate to lib/rbac.ts for correctness
 
 export function isManagerOrHR(role: Role): boolean {
   return role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN'
@@ -117,7 +127,6 @@ export function canApproveStep1(role: Role): boolean {
 }
 
 export function canApproveStep2(role: Role): boolean {
-  // Final approval (step 2) requires payroll-level or HR role
   return hasPermission(role, 'payroll_access') || role === 'MANAGER_HR' || role === 'SUPER_ADMIN' || role === 'HR'
 }
 

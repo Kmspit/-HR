@@ -10,6 +10,7 @@ import {
   computeLateDeduction,
   serializeLateDeductionDetail,
 } from '@/lib/payroll-late-deduction'
+import { computeMonthlyTax } from '@/lib/payroll-tax'
 import type { HolidayRecord } from '@/lib/company-holidays'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -17,10 +18,12 @@ const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 const SS_RATE = 0.05
 const SS_MAX = 750
 
+const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'] as const
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
+    if (!session?.user?.id || !(GENERATE_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -124,13 +127,17 @@ export async function POST(req: NextRequest) {
           ssDeduction = Math.min(baseSalary * SS_RATE, SS_MAX)
         }
 
+        const taxResult = computeMonthlyTax(baseSalary)
+        const taxDeduction = taxResult.monthlyWithholding
+
         const netSalary =
           baseSalary -
           lateDeduction -
           absentDeduction -
           unpaidLeaveDeduction -
           earlyLeaveDeduction -
-          ssDeduction
+          ssDeduction -
+          taxDeduction
 
         const payload = {
           baseSalary,
@@ -138,6 +145,8 @@ export async function POST(req: NextRequest) {
           absentDeduction,
           unpaidLeave: unpaidLeaveDeduction,
           socialSecurity: ssDeduction,
+          taxDeduction,
+          taxDetail: JSON.stringify(taxResult),
           netSalary,
           lateDays: late.lateDays,
           absentDays,
