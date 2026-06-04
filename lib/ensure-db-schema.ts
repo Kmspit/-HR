@@ -556,7 +556,11 @@ async function runEnsure(): Promise<boolean> {
       isArchived INTEGER NOT NULL DEFAULT 0,
       createdById TEXT NOT NULL,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      attachmentName TEXT,
+      attachmentUrl TEXT,
+      attachmentType TEXT,
+      attachmentPublicId TEXT
     )
   `)
   await prisma.$executeRawUnsafe(`
@@ -565,6 +569,12 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS announcements_archived_publish_idx ON announcements (isArchived, publishAt)
   `)
+
+  // Announcement attachment columns (added in Announcement System V2)
+  await addAnnouncementColumnIfMissing('attachmentName',     `ALTER TABLE announcements ADD COLUMN attachmentName TEXT`)
+  await addAnnouncementColumnIfMissing('attachmentUrl',      `ALTER TABLE announcements ADD COLUMN attachmentUrl TEXT`)
+  await addAnnouncementColumnIfMissing('attachmentType',     `ALTER TABLE announcements ADD COLUMN attachmentType TEXT`)
+  await addAnnouncementColumnIfMissing('attachmentPublicId', `ALTER TABLE announcements ADD COLUMN attachmentPublicId TEXT`)
 
   return true
 }
@@ -722,4 +732,20 @@ async function migrateAttendanceMultiSessionUnique() {
     CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
     ON attendances (userId, date, sessionIndex)
   `)
+}
+
+async function announcementColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(announcements)')
+  return pragmaColumnNames(rows)
+}
+
+async function addAnnouncementColumnIfMissing(column: string, ddl: string) {
+  const cols = await announcementColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
 }
