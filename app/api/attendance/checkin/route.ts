@@ -25,16 +25,7 @@ import {
   hasCheckInToday,
 } from '@/lib/attendance-session'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
-function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371000
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLng = ((lng2 - lng1) * Math.PI) / 180
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
+import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,6 +46,13 @@ export async function POST(req: NextRequest) {
     const locationType = (formData.get('locationType') as string) ?? 'company'
     const workPlaceName = ((formData.get('workPlaceName') as string) || '').trim() || null
     const forceOutside = locationType === 'outside'
+    const gpsAccuracy = parseFloat((formData.get('gpsAccuracy') as string) ?? '') || null
+    const deviceInfoRaw = (formData.get('deviceInfo') as string) || null
+    const deviceInfo = deviceInfoRaw ? deviceInfoRaw.slice(0, 500) : null
+
+    // Extract device info from User-Agent header as authoritative source
+    const ua = req.headers.get('user-agent') ?? ''
+    const serverDeviceInfo = deviceInfo ?? JSON.stringify({ ua: ua.slice(0, 300) })
 
     if (!formHasFaceImage(formData)) {
       return NextResponse.json({ error: 'ต้องถ่ายรูปหน้าสดจากกล้อง' }, { status: 400 })
@@ -67,10 +65,41 @@ export async function POST(req: NextRequest) {
     if (!settings) {
       settings = await prisma.companySettings.create({ data: { id: 'singleton' } })
     }
+
     let isOutside = forceOutside
-    if (!forceOutside && settings.geofenceLat != null && settings.geofenceLng != null && lat != null && lng != null) {
-      const dist = getDistanceMeters(lat, lng, settings.geofenceLat, settings.geofenceLng)
-      isOutside = dist > (settings.geofenceRadius ?? 200)
+    let checkInDistanceM: number | null = null
+    let gpsFlags: string | null = null
+
+    if (!forceOutside && settings.geofenceLat != null && settings.geofenceLng != null) {
+      if (lat == null || lng == null) {
+        return NextResponse.json(
+          { error: 'กรุณาเปิด GPS ก่อนเช็คอินในบริษัท', code: 'GPS_REQUIRED' },
+          { status: 400 },
+        )
+      }
+      const radiusM = settings.geofenceRadius ?? 200
+      const distanceM = haversineDistanceMeters(lat, lng, settings.geofenceLat, settings.geofenceLng)
+      checkInDistanceM = distanceM
+      isOutside = distanceM > radiusM
+
+      // GPS spoof detection — flags stored for HR review, does NOT block check-in
+      const spoofFlagList = detectGpsSpoofFlags({ lat, lng, accuracy: gpsAccuracy, distanceM })
+      if (spoofFlagList.length > 0) gpsFlags = spoofFlagList.join(',')
+
+      // Enforce geofence: block company check-in if outside radius
+      if (isOutside) {
+        return NextResponse.json(
+          {
+            error: `อยู่นอกรัศมีสำนักงาน — ห่าง ${Math.round(distanceM)} เมตร (รัศมีที่อนุญาต ${radiusM} เมตร)`,
+            distanceM: Math.round(distanceM),
+            radiusM,
+            code: 'OUTSIDE_GEOFENCE',
+          },
+          { status: 403 },
+        )
+      }
+    } else if (forceOutside && settings.geofenceLat != null && settings.geofenceLng != null && lat != null && lng != null) {
+      checkInDistanceM = haversineDistanceMeters(lat, lng, settings.geofenceLat, settings.geofenceLng)
     }
 
     let lateMinutes = 0
@@ -124,6 +153,10 @@ export async function POST(req: NextRequest) {
         checkInAddress: address || null,
         checkInWorkPlaceName: workPlaceName,
         isOutside,
+        checkInDistanceM,
+        gpsAccuracy,
+        gpsFlags,
+        deviceInfo: serverDeviceInfo,
         status: isFirstSessionOfDay ? status : 'NORMAL',
         lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
         dayOfWeek: getDayOfWeekIndex(today),

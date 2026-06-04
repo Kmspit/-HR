@@ -285,6 +285,22 @@ async function runEnsure(): Promise<boolean> {
     'sessionIndex',
     `ALTER TABLE attendances ADD COLUMN sessionIndex INTEGER NOT NULL DEFAULT 1`,
   )
+  await addAttendanceColumnIfMissing(
+    'checkInDistanceM',
+    `ALTER TABLE attendances ADD COLUMN checkInDistanceM REAL`,
+  )
+  await addAttendanceColumnIfMissing(
+    'gpsAccuracy',
+    `ALTER TABLE attendances ADD COLUMN gpsAccuracy REAL`,
+  )
+  await addAttendanceColumnIfMissing(
+    'gpsFlags',
+    `ALTER TABLE attendances ADD COLUMN gpsFlags TEXT`,
+  )
+  await addAttendanceColumnIfMissing(
+    'deviceInfo',
+    `ALTER TABLE attendances ADD COLUMN deviceInfo TEXT`,
+  )
   await migrateAttendanceMultiSessionUnique()
 
   await prisma.$executeRawUnsafe(`

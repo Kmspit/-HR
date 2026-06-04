@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation, BookmarkPlus, Camera } from 'lucide-react'
+import { MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation, BookmarkPlus, Camera, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { dataUrlToBlob } from '@/lib/utils'
@@ -13,6 +13,7 @@ import {
   saveAttendanceToLocalDevice,
   type LocalAttendanceEvent,
 } from '@/lib/attendance-local-log'
+import { haversineDistanceMeters } from '@/lib/gps-fence'
 
 type SavedPlace = { id: string; name: string }
 
@@ -92,7 +93,8 @@ export default function CheckInPanel({
   const [workPlaceName, setWorkPlaceName] = useState('')
   const [savePlace, setSavePlace] = useState(false)
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([])
-  const [location, setLocation] = useState<{ lat: number; lng: number; address: string } | null>(null)
+  const [location, setLocation] = useState<{ lat: number; lng: number; address: string; accuracy?: number } | null>(null)
+  const [geofenceDenied, setGeofenceDenied] = useState<{ distanceM: number; radiusM: number } | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [cameraError, setCameraError] = useState('')
@@ -126,7 +128,7 @@ export default function CheckInPanel({
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords
         let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
         try {
           const res = await fetch(
@@ -135,7 +137,7 @@ export default function CheckInPanel({
           const data = await res.json()
           address = data.display_name ?? address
         } catch {}
-        setLocation({ lat, lng, address })
+        setLocation({ lat, lng, address, accuracy })
       },
       () => {},
       { enableHighAccuracy: true, timeout: 10000 },
@@ -176,9 +178,10 @@ export default function CheckInPanel({
 
   const getGps = () => {
     setIsLoading(true)
+    setGeofenceDenied(null)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords
         let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
         try {
           const res = await fetch(
@@ -187,13 +190,25 @@ export default function CheckInPanel({
           const data = await res.json()
           address = data.display_name ?? address
         } catch {}
-        setLocation({ lat, lng, address })
+
+        // Client-side geofence check for company check-in
+        if (type === 'checkin' && locationType === 'company' && companyGeofence) {
+          const distanceM = haversineDistanceMeters(lat, lng, companyGeofence.lat, companyGeofence.lng)
+          if (distanceM > companyGeofence.radiusM) {
+            setLocation({ lat, lng, address, accuracy })
+            setGeofenceDenied({ distanceM, radiusM: companyGeofence.radiusM })
+            setIsLoading(false)
+            return
+          }
+        }
+
+        setLocation({ lat, lng, address, accuracy })
         setIsLoading(false)
         setStep(faceRequired ? 'face-scan' : 'camera')
       },
       () => {
         setIsLoading(false)
-        toast.error('เปิด GPS ไม่ได้')
+        toast.error('เปิด GPS ไม่ได้ — กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์')
       },
       { enableHighAccuracy: true, timeout: 10000 },
     )
@@ -381,6 +396,17 @@ export default function CheckInPanel({
           formData.append('address', location.address)
           formData.append('workPlaceName', workPlaceName.trim())
           formData.append('locationType', locationType)
+          if (location.accuracy != null) {
+            formData.append('gpsAccuracy', String(location.accuracy))
+          }
+          try {
+            const deviceInfo = JSON.stringify({
+              ua: (navigator.userAgent || '').slice(0, 200),
+              platform: navigator.platform || '',
+              isMobile: /Android|iPhone|iPad/i.test(navigator.userAgent || ''),
+            })
+            formData.append('deviceInfo', deviceInfo)
+          } catch {}
           const { ok, data, status } = await apiJson<{
             lateMinutes?: number
             isOutside?: boolean
@@ -534,17 +560,69 @@ export default function CheckInPanel({
 
       {step === 'gps' && (
         <div className="flex flex-col items-center gap-3 py-2">
-          <p className="text-xs text-slate-400 text-center">บันทึกพิกัด GPS จริง ณ ขณะลงเวลา</p>
-          <button
-            type="button"
-            onClick={getGps}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: accentGradient }}
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-            ระบุตำแหน่ง GPS
-          </button>
+          {/* Geofence denied — show error + retry */}
+          {geofenceDenied ? (
+            <div className="w-full rounded-xl border border-red-500/40 bg-red-500/10 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-400">อยู่นอกรัศมีสำนักงาน</p>
+                  <p className="text-xs text-slate-300 mt-1">
+                    ห่างจากสำนักงาน{' '}
+                    <span className="font-bold text-white">{Math.round(geofenceDenied.distanceM)} เมตร</span>
+                    {' '}— รัศมีที่อนุญาต{' '}
+                    <span className="font-bold text-white">{geofenceDenied.radiusM} เมตร</span>
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    กรุณาเข้ามาในรัศมีสำนักงานก่อนเช็คอิน
+                  </p>
+                </div>
+              </div>
+              {location && (
+                <p className="text-[10px] text-slate-500 font-mono break-all">
+                  พิกัด: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                  {location.accuracy != null && ` · ความแม่นยำ ±${Math.round(location.accuracy)} ม.`}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={getGps}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: accentGradient }}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                ตรวจสอบตำแหน่งอีกครั้ง
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* GPS capturing / ready */}
+              {location && type === 'checkin' && locationType === 'company' && companyGeofence && !isLoading && (
+                <div className="w-full rounded-xl border border-green-500/30 bg-green-500/8 px-3.5 py-2.5 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-green-400">อยู่ในรัศมีสำนักงาน</p>
+                    <p className="text-[11px] text-slate-400">
+                      ห่าง {Math.round(haversineDistanceMeters(location.lat, location.lng, companyGeofence.lat, companyGeofence.lng))} ม.
+                      {location.accuracy != null && ` · ±${Math.round(location.accuracy)} ม.`}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-slate-400 text-center">บันทึกพิกัด GPS จริง ณ ขณะลงเวลา</p>
+              <button
+                type="button"
+                onClick={getGps}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: accentGradient }}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                {isLoading ? 'กำลังรับตำแหน่ง...' : 'ระบุตำแหน่ง GPS'}
+              </button>
+            </>
+          )}
         </div>
       )}
 
