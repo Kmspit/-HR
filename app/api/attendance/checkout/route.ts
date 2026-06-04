@@ -125,22 +125,11 @@ export async function POST(req: NextRequest) {
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'checkOutPhotoUrl')
       } catch (err) {
         console.error('[checkout-bg]', err)
-        try {
-          const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-          await notifyHrAttendanceOnLine({
-            event: 'checkout',
-            employeeUserId: session.user.id,
-            attendanceId: finalized.id,
-            eventTime: now,
-            location: workPlaceName ?? address ?? finalized.workPlaceName ?? null,
-            earlyLeaveMinutes,
-            isOutside: finalized.isOutside,
-            lat,
-            lng,
-          })
-        } catch (lineErr) {
-          console.error('[checkout-line-fallback]', lineErr)
-        }
+        // [DISABLED] LINE attendance fallback — ปิดพร้อมกับ attendance-face-scan.ts
+        // try {
+        //   const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+        //   await notifyHrAttendanceOnLine({ event: 'checkout', ... })
+        // } catch (lineErr) { ... }
       }
     })
 

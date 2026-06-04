@@ -81,3 +81,21 @@ export function getInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2)
 }
+
+/** แปลงนาทีมาสายเป็น "15 นาที" หรือ "1 ชั่วโมง 15 นาที" */
+export function formatLateMinutes(minutes: number): string {
+  if (minutes <= 0) return '—'
+  if (minutes < 60) return `${minutes} นาที`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h} ชั่วโมง ${m} นาที` : `${h} ชั่วโมง`
+}
+
+/** แปลงนาทีมาสายแบบย่อ สำหรับ UI คับแคบ: "15น" หรือ "1ช25น" */
+export function formatLateMinutesShort(minutes: number): string {
+  if (minutes <= 0) return '—'
+  if (minutes < 60) return `${minutes}น`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}ช${m}น` : `${h}ช`
+}

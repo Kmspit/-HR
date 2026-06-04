@@ -1,6 +1,7 @@
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
+import { formatLateMinutes } from '@/lib/utils'
 
 export type SalarySlipInput = {
   companyName: string
@@ -99,7 +100,7 @@ export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buf
   y -= 20
 
   if (input.lateDeduction > 0) {
-    row(`หักมาสาย (${input.lateDays} วัน · ${input.lateMinutes} นาที)`, `-฿${fmt(input.lateDeduction)}`, y, c.red)
+    row(`หักมาสาย (${input.lateDays} วัน · ${formatLateMinutes(input.lateMinutes)})`, `-฿${fmt(input.lateDeduction)}`, y, c.red)
     y -= 16
   }
   if (input.absentDeduction > 0) {

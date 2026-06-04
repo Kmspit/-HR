@@ -56,7 +56,10 @@ function lateStatusLabel(minutes: number | undefined): string {
 
 function lateMinutesLabel(minutes: number | undefined): string {
   if (!minutes || minutes <= 0) return '—'
-  return `${minutes} นาที`
+  if (minutes < 60) return `${minutes} นาที`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h} ชั่วโมง ${m} นาที` : `${h} ชั่วโมง`
 }
 
 function checkoutStatusLabel(earlyLeaveMinutes: number | undefined): string {

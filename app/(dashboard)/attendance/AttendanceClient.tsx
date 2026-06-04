@@ -11,6 +11,7 @@ import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
 import AttendanceLocalHistory from '@/components/attendance/AttendanceLocalHistory'
+import { formatLateMinutes, formatLateMinutesShort } from '@/lib/utils'
 import {
   getAttendanceProgress,
   ACTION_LABELS,
@@ -257,7 +258,7 @@ export default function AttendanceClient({
               <p className="text-[10px] text-slate-500 mb-1">เช็คอิน</p>
               <p className="text-lg font-bold text-green-400">{formatTime(todayRecord?.checkIn ?? null)}</p>
               {(todayRecord?.lateMinutes ?? 0) > 0 && (
-                <p className="text-[10px] text-yellow-400 mt-0.5">สาย {todayRecord!.lateMinutes} นาที</p>
+                <p className="text-[10px] text-yellow-400 mt-0.5">สาย {formatLateMinutes(todayRecord!.lateMinutes)}</p>
               )}
             </div>
             <div className="rounded-xl p-3 text-center"
@@ -556,7 +557,7 @@ export default function AttendanceClient({
                       <td className="p-3 text-center">
                         <span className={`text-xs font-semibold ${s.color}`}>{s.label}</span>
                         {r.lateMinutes > 0 && (
-                          <span className="ml-1 text-[10px] text-yellow-400">+{r.lateMinutes}น</span>
+                          <span className="ml-1 text-[10px] text-yellow-400">+{formatLateMinutesShort(r.lateMinutes)}</span>
                         )}
                       </td>
                       <td className="p-3 text-center">

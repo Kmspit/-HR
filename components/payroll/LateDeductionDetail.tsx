@@ -8,6 +8,7 @@ import {
   type LateDeductionLine,
   parseLateDeductionDetail,
 } from '@/lib/payroll-late-deduction'
+import { formatLateMinutes } from '@/lib/utils'
 
 type Props = {
   baseSalary: number
@@ -56,7 +57,7 @@ export default function LateDeductionDetail({
           ยกเว้น {PAYROLL_LATE_GRACE_MINUTES} นาที/วัน · ไม่หักวันลาอนุมัติ · ไม่หักวันหยุด
         </p>
         <p className="text-yellow-300 font-semibold pt-1">
-          รวมหัก ฿{lateDeduction.toFixed(2)} ({lateBillableMinutes} นาที · {lateDays} วัน)
+          รวมหัก ฿{lateDeduction.toFixed(2)} ({formatLateMinutes(lateBillableMinutes)} · {lateDays} วัน)
         </p>
       </div>
 

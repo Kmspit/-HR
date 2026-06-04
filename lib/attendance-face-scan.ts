@@ -473,7 +473,10 @@ export async function recordFaceScanAndNotifyHr(params: {
     console.error('[face-scan-persist]', err)
   }
 
-  // ส่ง LINE HR ทันทีหลังอัปโหลด Cloudinary — ไม่ throw (attendance บันทึกแล้ว)
+  // [DISABLED] LINE attendance notifications (check-in/out/lunch) ปิดแล้ว
+  // ระบบ LINE OA ยังทำงาน — เฉพาะ warning notifications เท่านั้นที่ส่ง
+  // หากต้องการเปิดใหม่: ลบ comment นี้และปลด block ด้านล่าง
+  /*
   try {
     let lineImageUrl: string | null = null
     if (faceScanId) {
@@ -494,17 +497,10 @@ export async function recordFaceScanAndNotifyHr(params: {
       lat: params.lat,
       lng: params.lng,
     })
-    if (lineNotify.failed > 0) {
-      console.warn('[attendance-line-notify] partial LINE failure', {
-        attendanceId: params.attendanceId,
-        event: params.event,
-        sent: lineNotify.sent,
-        failed: lineNotify.failed,
-      })
-    }
   } catch (err) {
     console.error('[attendance-line-notify]', err)
   }
+  */
 
   return { faceScanId, lineNotify }
 }

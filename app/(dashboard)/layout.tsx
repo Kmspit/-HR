@@ -43,8 +43,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="dashboard-shell flex min-h-[100dvh] dark:bg-[#070b14] light:bg-slate-100/80">
       <DeviceBinder />
-      {/* Desktop sidebar */}
-      <div className="dashboard-sidebar-slot hidden md:flex md:w-56 md:flex-shrink-0">
+      {/* Desktop sidebar — width controlled by Sidebar itself (collapsed vs expanded) */}
+      <div className="dashboard-sidebar-slot hidden md:flex md:flex-shrink-0">
         <Sidebar user={user} />
       </div>
 
