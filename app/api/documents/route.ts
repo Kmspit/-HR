@@ -5,7 +5,7 @@ import { apiError } from '@/lib/api-handler'
 
 const HR_ROLES = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN'] as const
 
-export const DOC_TYPE_LABELS: Record<string, string> = {
+const DOC_TYPE_LABELS: Record<string, string> = {
   EMPLOYMENT_CERT: 'หนังสือรับรองการทำงาน',
   SALARY_CERT: 'หนังสือรับรองเงินเดือน',
   CONTRACT_COPY: 'สำเนาสัญญาจ้างงาน',
