@@ -410,6 +410,24 @@ async function runEnsure(): Promise<boolean> {
     'imageRetentionDays',
     `ALTER TABLE company_settings ADD COLUMN imageRetentionDays INTEGER NOT NULL DEFAULT 90`,
   )
+  await addCompanySettingsColumnIfMissing(
+    'probationMonths',
+    `ALTER TABLE company_settings ADD COLUMN probationMonths INTEGER NOT NULL DEFAULT 3`,
+  )
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS leave_policies (
+      id TEXT NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL,
+      role TEXT,
+      isDefault INTEGER NOT NULL DEFAULT 0,
+      sickDays INTEGER NOT NULL DEFAULT 30,
+      vacationDays INTEGER NOT NULL DEFAULT 6,
+      personalDays INTEGER NOT NULL DEFAULT 3,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS announcements (

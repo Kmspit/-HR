@@ -15,6 +15,7 @@ import {
   parseDateOnly,
 } from '@/lib/company-holidays'
 import { getDefaultChain, applyChainToLeave } from '@/lib/approval-chain'
+import { createAuditLog } from '@/lib/notifications'
 
 const leaveTypes = LEAVE_TYPE_OPTIONS.map((o) => o.value) as [LeaveType, ...LeaveType[]]
 
@@ -79,6 +80,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const isOrdination = parsed.type === 'ORDINATION'
+    const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
+
     const leave = await prisma.leaveRequest.create({
       data: {
         userId: session.user.id,
@@ -88,16 +92,38 @@ export async function POST(req: NextRequest) {
         days: parsed.days,
         reason: parsed.reason,
         attachmentUrl,
-        status: 'PENDING',
+        // ลาบวช: อนุมัติอัตโนมัติทันที ไม่ต้องรอ Approver
+        status: isOrdination ? 'APPROVED' : 'PENDING',
       },
       include: { user: { select: { name: true } } },
     })
+
+    if (isOrdination) {
+      // บันทึก audit log สำหรับการอนุมัติอัตโนมัติ
+      await createAuditLog({
+        actorId:    session.user.id,
+        targetId:   leave.id,
+        targetType: 'LeaveRequest',
+        action:     'APPROVE',
+        before:     { status: 'PENDING' },
+        after:      { status: 'APPROVED', autoApproved: true, type: 'ORDINATION' },
+        ip,
+      })
+      // แจ้ง HR ว่ามีการลาบวชอัตโนมัติ
+      await runNotify(() =>
+        notifyRole('MANAGER_HR', 'LEAVE_APPROVED', '🙏 ลาบวชอัตโนมัติ',
+          `${leave.user.name} ลาบวช ${parsed.days} วัน (อนุมัติอัตโนมัติ)`, '/approvals'),
+      )
+      await runNotify(() =>
+        sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] 🙏 ลาบวชอัตโนมัติ\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
+      )
+      return NextResponse.json({ success: true, id: leave.id, autoApproved: true, chainApplied: false })
+    }
 
     // Apply approval chain if a default one is configured
     const defaultChain = await getDefaultChain(prisma)
     if (defaultChain) {
       await applyChainToLeave(prisma, leave.id, defaultChain.id)
-      // Notify the first step approvers
       const firstStep = defaultChain.steps[0]
       if (firstStep?.approverRole) {
         await runNotify(() =>

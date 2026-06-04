@@ -875,7 +875,24 @@ model CompanySettings {
   lateDeductRate      Float    @default(0)
   absentDeductRate    Float    @default(0)
   imageRetentionDays  Int      @default(90)
+  probationMonths     Int      @default(3) // ช่วงทดลองงาน (เดือน) — ไม่มีพักร้อน
   updatedAt           DateTime @updatedAt
 
   @@map("company_settings")
+}
+
+// ── LEAVE POLICY (กำหนดวันลาตามตำแหน่ง/role) ────────
+
+model LeavePolicy {
+  id            String  @id @default(cuid())
+  name          String
+  role          Role?   // null = default policy ใช้กับทุก role ที่ไม่มี policy เฉพาะ
+  isDefault     Boolean @default(false)
+  sickDays      Int     @default(30)
+  vacationDays  Int     @default(6)
+  personalDays  Int     @default(3)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("leave_policies")
 }
