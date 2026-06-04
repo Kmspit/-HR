@@ -39,9 +39,13 @@ type FormData = {
 }
 
 const ROLES = [
-  { value: 'EMPLOYEE', label: '👤 พนักงาน', desc: 'เข้าออกงาน, ขอลา, ดูสลิป' },
-  { value: 'ADMIN',    label: '🔧 Admin',   desc: 'ดูแลระบบ + อนุมัติขั้น 1' },
-  { value: 'LAWYER',   label: '⚖️ ทนายความ', desc: 'ส่งแผนงานรายสัปดาห์' },
+  { value: 'EMPLOYEE',    label: '👤 พนักงาน',               desc: 'เข้าออกงาน, ขอลา, ดูสลิป' },
+  { value: 'HR',          label: '🏢 HR',                    desc: 'บริหารพนักงาน, อนุมัติการลา, ดูเงินเดือน' },
+  { value: 'MANAGER',     label: '💼 ผู้จัดการ',              desc: 'อนุมัติการลา, ตักเตือน, ดูแลทีม' },
+  { value: 'TEAM_LEADER', label: '👥 หัวหน้าทีม',             desc: 'อนุมัติการลา, อนุมัติงานนอกสถานที่' },
+  { value: 'ENFORCEMENT', label: '🛡️ เจ้าหน้าที่บังคับคดี',  desc: 'ออกใบตักเตือน, รายงานการบังคับคดี' },
+  { value: 'LAWYER',      label: '⚖️ ทนายความ',              desc: 'ส่งแผนงานรายสัปดาห์' },
+  { value: 'ADMIN',       label: '🔧 Admin',                 desc: 'ดูแลระบบ + อนุมัติขั้น 1' },
 ]
 
 export default function RegisterForm() {
@@ -148,7 +152,7 @@ export default function RegisterForm() {
       birthDate: form.birthDate || undefined,
       address: form.address.trim() || undefined,
       nationalId: form.nationalId.trim() || undefined,
-      role: form.role as 'EMPLOYEE' | 'ADMIN' | 'LAWYER',
+      role: form.role as 'EMPLOYEE' | 'HR' | 'MANAGER' | 'TEAM_LEADER' | 'ENFORCEMENT' | 'LAWYER' | 'ADMIN',
       branchId: form.branchId,
       baseSalary: baseSalaryNum != null && !Number.isNaN(baseSalaryNum) ? baseSalaryNum : null,
       startDate: form.startDate,
@@ -394,7 +398,7 @@ export default function RegisterForm() {
             <p>ชื่อ: {form.prefix}{form.firstName} {form.lastName} ({form.nickname || '-'})</p>
             <p>อีเมล: {form.email}</p>
             <p>สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'}</p>
-            <p>ตำแหน่ง: {ROLES.find(r => r.value === form.role)?.label ?? '-'}</p>
+            <p>ตำแหน่ง/Role: {ROLES.find(r => r.value === form.role)?.label ?? '-'}</p>
           </div>
 
           <div className="space-y-1.5">

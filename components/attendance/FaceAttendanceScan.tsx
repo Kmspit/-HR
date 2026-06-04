@@ -5,7 +5,17 @@ import { AlertCircle, Loader2, ScanFace, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
-import { loadFaceModels, scanFaceFromVideo, captureJpegFromVideo } from '@/lib/face-client'
+import {
+  loadFaceModels,
+  scanFaceFromVideo,
+  captureJpegFromVideo,
+} from '@/lib/face-client'
+import {
+  scoreLivenessSamples,
+  serializeSpoofFlags,
+  type LivenessChallengeResult,
+} from '@/lib/face-liveness'
+import { sampleVideoLuminance } from '@/lib/face-liveness'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 export type FaceVerifyPayload = {
@@ -27,7 +37,7 @@ type Props = {
 
 // ใบหน้าต้องชัดพอ (detector score) และมองตรงกล้อง ต่อเนื่องเท่านี้ก่อน capture
 const ALIGN_SCORE = 0.5   // ลดจาก 0.6 — ตรวจจับง่ายขึ้น ลด false-reject
-const STABLE_MS = 280     // ลดจาก 350 — capture เร็วขึ้น
+const STABLE_MS = 900     // เพิ่มจาก 280 → 900 ms เพื่อเก็บ ~4 samples สำหรับ liveness
 
 const PROMPT_DEFAULT = 'กรุณาหันหน้าตรงกล้องเพื่อสแกน'
 const PROMPT_ALIGN = 'กรุณาหันหน้าตรงกล้อง'
@@ -42,17 +52,28 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   const verifyingRef = useRef(false)
   const alignedSinceRef = useRef<number | null>(null)
 
+  // Liveness data accumulators — filled during stable alignment window
+  const earSamplesRef = useRef<number[]>([])
+  const nosePosRef = useRef<{ x: number; y: number }[]>([])
+  const lumSamplesRef = useRef<number[]>([])
+
   const { stream, ready, error: cameraError, retry } = useCameraStream({
     enabled: !done,
     preloadFaceModels: loadFaceModels,
   })
 
   const verifyNow = useCallback(
-    async (descriptor: number[], score: number) => {
+    async (descriptor: number[], score: number, liveness: LivenessChallengeResult) => {
       if (verifyingRef.current || doneRef.current) return
       verifyingRef.current = true
       setBusy(true)
       setHint('กำลังยืนยันตัวตน...')
+
+      const spoofFlagsStr = serializeSpoofFlags(liveness.flags, {
+        blink: liveness.blinkDetected,
+        movementPx: liveness.movementPx,
+        liveFrames: liveness.liveFrames,
+      })
 
       try {
         const { ok, data, status } = await apiJson<{
@@ -66,6 +87,8 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           body: JSON.stringify({
             descriptor,
             detectionScore: score,
+            livenessScore: liveness.score,
+            spoofFlags: spoofFlagsStr,
             action,
             method: 'face',
           }),
@@ -75,6 +98,9 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           toast.error(apiErrorMessage(data as Record<string, unknown>, 'ใบหน้าไม่ตรงกับที่ลงทะเบียน', status))
           setHint('ใบหน้าไม่ตรง — กรุณาหันหน้าตรงกล้องอีกครั้ง')
           alignedSinceRef.current = null
+          earSamplesRef.current = []
+          nosePosRef.current = []
+          lumSamplesRef.current = []
           verifyingRef.current = false
           setBusy(false)
           return
@@ -102,9 +128,9 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         setDone(true)
         onVerified({
           descriptor,
-          livenessScore: 1,
+          livenessScore: liveness.score,
           detectionScore: score,
-          spoofFlags: '',
+          spoofFlags: spoofFlagsStr,
           faceLogId: logId,
           captureImageDataUrl,
           faceMatchScore: typeof distance === 'number' ? distance : undefined,
@@ -144,16 +170,38 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         const aligned = !!scan.descriptor && scan.score >= ALIGN_SCORE && scan.pose === 'center'
 
         if (aligned) {
-          if (alignedSinceRef.current === null) alignedSinceRef.current = Date.now()
+          if (alignedSinceRef.current === null) {
+            // Reset liveness accumulators when stable alignment starts
+            alignedSinceRef.current = Date.now()
+            earSamplesRef.current = []
+            nosePosRef.current = []
+            lumSamplesRef.current = []
+          }
+
+          // Accumulate liveness data on every tick during stable window
+          if (scan.earAvg > 0) earSamplesRef.current.push(scan.earAvg)
+          if (scan.nosePt) nosePosRef.current.push(scan.nosePt)
+          if (video.videoWidth > 0) lumSamplesRef.current.push(sampleVideoLuminance(video))
+
           const held = Date.now() - alignedSinceRef.current
           if (held >= STABLE_MS) {
-            void verifyNow(scan.descriptor as number[], scan.score)
+            const liveness = scoreLivenessSamples({
+              earSamples: earSamplesRef.current,
+              nosePositions: nosePosRef.current,
+              luminanceSamples: lumSamplesRef.current,
+              flags: [],
+            })
+            void verifyNow(scan.descriptor as number[], scan.score, liveness)
             return
           }
-          setHint('นิ่ง ๆ ไว้ กำลังสแกน...')
+          const pct = Math.min(100, Math.round((held / STABLE_MS) * 100))
+          setHint(`นิ่ง ๆ ไว้ กำลังสแกน... ${pct}%`)
           timer = setTimeout(() => void tick(), 200)
         } else {
           alignedSinceRef.current = null
+          earSamplesRef.current = []
+          nosePosRef.current = []
+          lumSamplesRef.current = []
           setHint(scan.descriptor ? PROMPT_ALIGN : PROMPT_DEFAULT)
           timer = setTimeout(() => void tick(), 400)
         }

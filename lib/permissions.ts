@@ -1,62 +1,95 @@
 import type { Role } from '@prisma/client'
+import {
+  canAccessApprovals,
+  canManageUsers,
+  canAccessPayroll,
+  canManageAttendance,
+  hasPermission,
+} from '@/lib/rbac'
 
 // ─────────────────────────────────────────────────────
 // ROUTE PERMISSIONS — which roles can access each path
 // ─────────────────────────────────────────────────────
 
+// Roles with access to every page (HR-level and above)
+const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT']
+const HR_ROLES:  Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR']
+const MGR_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'MANAGER']
+const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
-  '/dashboard':         ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/attendance':        ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/attendance/monthly': ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/leave':             ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/outside-work':      ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/weekly-plan':       ['MANAGER_HR', 'LAWYER'],
-  '/calendar':          ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/payroll':           ['MANAGER_HR'],
-  '/reports':           ['MANAGER_HR', 'ADMIN'],
-  '/payslip':           ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/employees':         ['MANAGER_HR', 'ADMIN'],
-  '/approvals':         ['MANAGER_HR', 'ADMIN'],
-  '/announcements':     ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/line-oa':           ['MANAGER_HR', 'ADMIN'],
-  '/warnings':          ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/rules':             ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/settings':          ['MANAGER_HR', 'ADMIN'],
-  '/notifications':     ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/profile':           ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
-  '/branches':          ['MANAGER_HR', 'ADMIN'],
-  '/organization':      ['MANAGER_HR', 'ADMIN'],
-  '/org-pending':       ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'],
+  '/dashboard':          ALL_ROLES,
+  '/attendance':         ALL_ROLES,
+  '/attendance/monthly': ALL_ROLES,
+  '/leave':              ALL_ROLES,
+  '/outside-work':       ALL_ROLES,
+  '/weekly-plan':        [...HR_ROLES, 'LAWYER'],
+  '/calendar':           ALL_ROLES,
+  '/payroll':            HR_ROLES,
+  '/reports':            [...MGR_ROLES, 'ADMIN'],
+  '/payslip':            ALL_ROLES,
+  '/employees':          [...MGR_ROLES, 'ADMIN'],
+  '/approvals':          APPR_ROLES,
+  '/announcements':      ALL_ROLES,
+  '/line-oa':            [...HR_ROLES, 'ADMIN'],
+  '/warnings':           ALL_ROLES,
+  '/rules':              ALL_ROLES,
+  '/settings':           [...HR_ROLES, 'ADMIN'],
+  '/notifications':      ALL_ROLES,
+  '/profile':            ALL_ROLES,
+  '/branches':           [...HR_ROLES, 'ADMIN'],
+  '/organization':       [...HR_ROLES, 'ADMIN'],
+  '/org-pending':        ALL_ROLES,
 }
 
 // Default redirect after login per role
 export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
-  MANAGER_HR: '/dashboard',
-  ADMIN:      '/dashboard',
-  EMPLOYEE:   '/dashboard',
-  LAWYER:     '/dashboard',
+  SUPER_ADMIN:  '/dashboard',
+  MANAGER_HR:   '/dashboard',
+  HR:           '/dashboard',
+  MANAGER:      '/dashboard',
+  TEAM_LEADER:  '/dashboard',
+  ADMIN:        '/dashboard',
+  EMPLOYEE:     '/dashboard',
+  LAWYER:       '/dashboard',
+  ENFORCEMENT:  '/dashboard',
 }
 
 // Role display names (Thai)
 export const ROLE_LABELS: Record<Role, string> = {
-  MANAGER_HR: 'ผู้จัดการ / HR',
-  ADMIN:      'Admin',
-  EMPLOYEE:   'พนักงาน',
-  LAWYER:     'ทนายความ',
+  SUPER_ADMIN:  'Super Admin',
+  MANAGER_HR:   'ผู้จัดการ / HR',
+  HR:           'HR',
+  MANAGER:      'ผู้จัดการ',
+  TEAM_LEADER:  'หัวหน้าทีม',
+  ADMIN:        'Admin',
+  EMPLOYEE:     'พนักงาน',
+  LAWYER:       'ทนายความ',
+  ENFORCEMENT:  'เจ้าหน้าที่บังคับคดี',
 }
 
 export const ROLE_COLORS: Record<Role, string> = {
-  MANAGER_HR: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  ADMIN:      'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  EMPLOYEE:   'bg-green-500/20 text-green-400 border-green-500/30',
-  LAWYER:     'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  SUPER_ADMIN:  'bg-red-500/20 text-red-400 border-red-500/30',
+  MANAGER_HR:   'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  HR:           'bg-violet-500/20 text-violet-400 border-violet-500/30',
+  MANAGER:      'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+  TEAM_LEADER:  'bg-sky-500/20 text-sky-400 border-sky-500/30',
+  ADMIN:        'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  EMPLOYEE:     'bg-green-500/20 text-green-400 border-green-500/30',
+  LAWYER:       'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  ENFORCEMENT:  'bg-orange-500/20 text-orange-400 border-orange-500/30',
 }
 
 export const ROLE_ICONS: Record<Role, string> = {
-  MANAGER_HR: '👔',
-  ADMIN:      '🔧',
-  EMPLOYEE:   '👤',
-  LAWYER:     '⚖️',
+  SUPER_ADMIN:  '🔑',
+  MANAGER_HR:   '👔',
+  HR:           '🏢',
+  MANAGER:      '💼',
+  TEAM_LEADER:  '👥',
+  ADMIN:        '🔧',
+  EMPLOYEE:     '👤',
+  LAWYER:       '⚖️',
+  ENFORCEMENT:  '🛡️',
 }
 
 // ─────────────────────────────────────────────────────
@@ -69,35 +102,39 @@ export function canAccess(role: Role, path: string): boolean {
   return allowed.includes(role)
 }
 
+// Legacy helpers — now delegate to lib/rbac.ts for correctness
+
 export function isManagerOrHR(role: Role): boolean {
-  return role === 'MANAGER_HR'
+  return role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN'
 }
 
 export function isAdmin(role: Role): boolean {
-  return role === 'ADMIN'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
 }
 
 export function canApproveStep1(role: Role): boolean {
-  return role === 'ADMIN' || role === 'MANAGER_HR'
+  return canAccessApprovals(role)
 }
 
 export function canApproveStep2(role: Role): boolean {
-  return role === 'MANAGER_HR'
+  // Final approval (step 2) requires payroll-level or HR role
+  return hasPermission(role, 'payroll_access') || role === 'MANAGER_HR' || role === 'SUPER_ADMIN' || role === 'HR'
 }
 
 export function canManageEmployees(role: Role): boolean {
-  return role === 'MANAGER_HR'
+  return canManageUsers(role)
 }
 
-/** อนุมัติ/ปฏิเสธบัญชีพนักงานที่สมัครใหม่ (รออนุมัติ) */
 export function canApproveAccounts(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'ADMIN'
+  return canManageUsers(role)
 }
 
-export function canViewAllAttendance(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'ADMIN'
-}
+export { canViewAllAttendance, canManageAttendance as canEditAttendance } from '@/lib/rbac'
 
 export function canViewPayroll(role: Role): boolean {
-  return role === 'MANAGER_HR'
+  return canAccessPayroll(role)
 }
+
+// Re-export for convenience
+export { hasPermission, hasAnyPermission, getRolePermissions } from '@/lib/rbac'
+export type { AppPermission } from '@/lib/rbac'

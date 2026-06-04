@@ -44,6 +44,8 @@ export type FaceScanResult = {
   descriptor: number[] | null
   pose: HeadPose
   score: number
+  earAvg: number                            // Eye Aspect Ratio — used for blink detection
+  nosePt: { x: number; y: number } | null  // Nose tip — used for head-movement liveness
 }
 
 export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceScanResult> {
@@ -55,13 +57,14 @@ export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceSc
     .withFaceDescriptor()
 
   if (!det?.landmarks || !det.descriptor) {
-    return { descriptor: null, pose: 'none', score: 0 }
+    return { descriptor: null, pose: 'none', score: 0, earAvg: 0, nosePt: null }
   }
 
   const lm = det.landmarks
   const leftEye = lm.getLeftEye()
   const rightEye = lm.getRightEye()
-  const nose = lm.getNose()[3]
+  const noseArr = lm.getNose()
+  const nose = noseArr[3] ?? noseArr[0]
 
   const eyeMidX = (leftEye[0].x + rightEye[3].x) / 2
   const eyeDist = Math.abs(rightEye[3].x - leftEye[0].x) || 1
@@ -72,10 +75,14 @@ export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceSc
   if (yaw > 0.25) pose = 'left'
   else if (yaw < -0.25) pose = 'right'
 
+  const ear = computeEarFromLandmarks(lm)
+
   return {
     descriptor: Array.from(det.descriptor as Float32Array),
     pose,
     score: det.detection.score,
+    earAvg: ear.avg,
+    nosePt: nose ? { x: nose.x, y: nose.y } : null,
   }
 }
 

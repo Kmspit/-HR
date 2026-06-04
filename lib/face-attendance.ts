@@ -3,11 +3,18 @@ import { decryptFaceDescriptor, encryptFaceDescriptor } from '@/lib/face-crypto'
 import {
   averageDescriptors,
   faceDescriptorDistance,
+  getSimilarityPct,
   isFaceMatch,
   parseDescriptorPayload,
   FACE_MATCH_THRESHOLD,
 } from '@/lib/face-match'
 import { countRecentFaceMismatches, notifyFaceSecurityAlert } from '@/lib/face-security'
+import { hasCriticalSpoofFlags, parseSpoofFlags } from '@/lib/face-liveness'
+
+/** Minimum liveness score required for attendance actions (0–1 scale).
+ *  Clients that skip liveness detection must send score > 0 to bypass this gate.
+ *  Score 0 is treated as "not provided" and will be rejected. */
+const LIVENESS_MIN_SCORE = 0.45
 
 export type FaceVerifyInput = {
   userId: string
@@ -260,6 +267,57 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
     }
   }
 
+  // ── Spoof flag gate ──────────────────────────────────────────────────────
+  if (spoofFlags) {
+    const { flags } = parseSpoofFlags(spoofFlags)
+    if (hasCriticalSpoofFlags(flags)) {
+      const log = await logFaceEvent({
+        userId,
+        action,
+        method: 'face',
+        matched: false,
+        matchScore: null,
+        confidenceScore: detectionScore,
+        livenessScore,
+        spoofFlags,
+        failureReason: 'spoof_detected',
+        attendanceId: attendanceId ?? null,
+        securityEvent: true,
+      })
+      await handleSecurityFailure({ userId, action, failureReason: 'spoof_detected', logId: log.id })
+      return {
+        ok: false as const,
+        logId: log.id,
+        error: 'ตรวจพบความผิดปกติ — กรุณาใช้กล้องสดและกระพริบตา',
+        code: 'SPOOF',
+      }
+    }
+  }
+
+  // ── Liveness gate ────────────────────────────────────────────────────────
+  // livenessScore = 0 means the client did not run a liveness check at all → reject
+  if (livenessScore < LIVENESS_MIN_SCORE) {
+    const log = await logFaceEvent({
+      userId,
+      action,
+      method: 'face',
+      matched: false,
+      matchScore: null,
+      confidenceScore: detectionScore,
+      livenessScore,
+      spoofFlags: spoofFlags ?? JSON.stringify({ flags: ['liveness_not_run'] }),
+      failureReason: 'liveness_fail',
+      attendanceId: attendanceId ?? null,
+      securityEvent: true,
+    })
+    return {
+      ok: false as const,
+      logId: log.id,
+      error: 'การยืนยันตัวตนล้มเหลว — กรุณากระพริบตาและขยับศีรษะเล็กน้อยระหว่างสแกน',
+      code: 'LIVENESS_FAIL',
+    }
+  }
+
   const profile = await prisma.userFaceProfile.findUnique({ where: { userId } })
   if (!profile) {
     const log = await logFaceEvent({
@@ -330,16 +388,18 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
       distance,
     })
     const attempts = await countRecentFaceMismatches(userId)
+    const similarityPct = getSimilarityPct(distance)
     return {
       ok: false as const,
       logId: log.id,
       error:
         attempts >= 2
-          ? 'ใบหน้าไม่ตรงกับที่ลงทะเบียน — ตรวจพบความผิดปกติซ้ำ กรุณาติดต่อ HR'
-          : 'ใบหน้าไม่ตรงกับที่ลงทะเบียน — ห้ามให้ผู้อื่นสแกนแทน',
+          ? `ใบหน้าไม่ตรงกับที่ลงทะเบียน (${similarityPct}%) — ตรวจพบความผิดปกติซ้ำ กรุณาติดต่อ HR`
+          : `ใบหน้าไม่ตรงกับที่ลงทะเบียน (${similarityPct}%) — ต้องการอย่างน้อย 90%`,
       code: 'MISMATCH',
       distance,
       confidence,
+      similarityPct,
     }
   }
 

@@ -9,10 +9,15 @@ export function faceDescriptorDistance(a: number[], b: number[]): number {
   return Math.sqrt(sum)
 }
 
-/** Tuned for HR attendance — 0.62 balances accuracy vs false-reject rate.
- *  Lower = stricter (more false rejects); higher = more permissive (more false accepts).
- *  Face-api typical range: 0.5 (strict) – 0.7 (permissive). 0.62 is safe middle ground. */
-export const FACE_MATCH_THRESHOLD = 0.62
+/** Strict threshold: distance ≤ 0.45 ≈ cosine-similarity ≥ 90% on L2-normalised 128-d vectors.
+ *  Previous value 0.62 (~81%) allowed cross-person matches; tightened to block imposters. */
+export const FACE_MATCH_THRESHOLD = 0.45
+
+/** Returns similarity percentage (0–100) from Euclidean distance.
+ *  Formula: cosine-similarity = 1 - (d² / 2), works for unit vectors. */
+export function getSimilarityPct(distance: number): number {
+  return Math.round(Math.max(0, (1 - (distance * distance) / 2) * 100))
+}
 
 export function isFaceMatch(distance: number, threshold = FACE_MATCH_THRESHOLD): boolean {
   return distance <= threshold

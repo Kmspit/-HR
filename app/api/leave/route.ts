@@ -14,6 +14,7 @@ import {
   loadHolidaysForBranch,
   parseDateOnly,
 } from '@/lib/company-holidays'
+import { getDefaultChain, applyChainToLeave } from '@/lib/approval-chain'
 
 const leaveTypes = LEAVE_TYPE_OPTIONS.map((o) => o.value) as [LeaveType, ...LeaveType[]]
 
@@ -92,17 +93,32 @@ export async function POST(req: NextRequest) {
       include: { user: { select: { name: true } } },
     })
 
-    await runNotify(() =>
-      notifyRole('ADMIN', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
-    )
-    await runNotify(() =>
-      notifyRole('MANAGER_HR', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
-    )
+    // Apply approval chain if a default one is configured
+    const defaultChain = await getDefaultChain(prisma)
+    if (defaultChain) {
+      await applyChainToLeave(prisma, leave.id, defaultChain.id)
+      // Notify the first step approvers
+      const firstStep = defaultChain.steps[0]
+      if (firstStep?.approverRole) {
+        await runNotify(() =>
+          notifyRole(firstStep.approverRole!, 'LEAVE_REQUEST', '📅 คำขอลาใหม่ — รออนุมัติขั้น 1', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
+        )
+      }
+    } else {
+      // Legacy 2-step: notify ADMIN and MANAGER_HR as before
+      await runNotify(() =>
+        notifyRole('ADMIN', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
+      )
+      await runNotify(() =>
+        notifyRole('MANAGER_HR', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
+      )
+    }
+
     await runNotify(() =>
       sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
     )
 
-    return NextResponse.json({ success: true, id: leave.id })
+    return NextResponse.json({ success: true, id: leave.id, chainApplied: !!defaultChain })
   } catch (err) {
     return apiError(err)
   }

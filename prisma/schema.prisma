@@ -13,10 +13,31 @@ datasource db {
 // ── ENUMS ───────────────────────────────────────
 
 enum Role {
-  MANAGER_HR
-  ADMIN
-  EMPLOYEE
-  LAWYER
+  SUPER_ADMIN  // highest privilege — can do everything
+  MANAGER_HR   // legacy HR manager (backward compat)
+  HR           // HR administrator
+  MANAGER      // department manager — can approve leave/warnings
+  TEAM_LEADER  // team lead — limited approvals
+  ADMIN        // system admin
+  EMPLOYEE     // regular employee
+  LAWYER       // legal / weekly plans
+  ENFORCEMENT  // enforcement officer — can issue warnings
+}
+
+enum AppPermission {
+  approve_leave
+  approve_warning
+  approve_outside_work
+  manage_attendance
+  manage_leave_balance
+  payroll_access
+}
+
+enum ApprovalStepStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SKIPPED
 }
 
 enum UserStatus {
@@ -261,10 +282,12 @@ model User {
   warningsIssued  Warning[]           @relation("WarningsIssued")
   payrolls        Payroll[]
   holidaysCreated CompanyHoliday[]  @relation("HolidayCreator")
-  savedWorkPlaces SavedWorkPlace[]
-  device          UserDevice?
-  faceProfile     UserFaceProfile?
-  faceLogs        AttendanceFaceLog[]
+  savedWorkPlaces     SavedWorkPlace[]
+  device              UserDevice?
+  faceProfile         UserFaceProfile?
+  faceLogs            AttendanceFaceLog[]
+  chainStepsAssigned  ApprovalChainStep[] @relation("ChainStepApprover")
+  leaveStepActions    LeaveApprovalStep[] @relation("LeaveStepActor")
 
   @@map("users")
 }
@@ -475,20 +498,24 @@ model Attendance {
 // ── LEAVE ───────────────────────────────────────
 
 model LeaveRequest {
-  id            String        @id @default(cuid())
-  userId        String
-  type          LeaveType
-  startDate     DateTime
-  endDate       DateTime
-  days          Int
-  reason        String
-  attachmentUrl String?
-  status        RequestStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  userId           String
+  type             LeaveType
+  startDate        DateTime
+  endDate          DateTime
+  days             Int
+  reason           String
+  attachmentUrl    String?
+  status           RequestStatus @default(PENDING)
+  chainConfigId    String?       // null = legacy 2-step flow
+  currentStepOrder Int           @default(0) // 0 = legacy, 1+ = active chain step
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  user      User              @relation(fields: [userId], references: [id])
-  approvals ApprovalHistory[]
+  user         User                @relation(fields: [userId], references: [id])
+  approvals    ApprovalHistory[]
+  chainConfig  ApprovalChainConfig? @relation("LeaveChain", fields: [chainConfigId], references: [id])
+  stepLogs     LeaveApprovalStep[]
 
   @@map("leave_requests")
 }
@@ -743,6 +770,80 @@ model Announcement {
   @@index([createdAt])
   @@index([isArchived, publishAt])
   @@map("announcements")
+}
+
+// ── APPROVAL CHAIN (multi-step leave workflow) ───
+
+model ApprovalChainConfig {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false) // auto-apply to new leave requests
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps         ApprovalChainStep[]
+  leaveRequests LeaveRequest[]      @relation("LeaveChain")
+
+  @@map("approval_chain_configs")
+}
+
+model ApprovalChainStep {
+  id           String   @id @default(cuid())
+  chainId      String
+  stepOrder    Int      // 1, 2, 3 …
+  stepName     String   // "หัวหน้าทีม", "ผู้จัดการ", "HR อนุมัติ"
+  approverRole Role?    // role ที่มีสิทธิ์อนุมัติขั้นนี้ (null = ใช้ approverId แทน)
+  approverId   String?  // ระบุ user เฉพาะเจาะจง (optional override)
+  canSkip      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  chain      ApprovalChainConfig @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  approver   User?               @relation("ChainStepApprover", fields: [approverId], references: [id])
+  stepLogs   LeaveApprovalStep[]
+
+  @@unique([chainId, stepOrder])
+  @@map("approval_chain_steps")
+}
+
+// approval_steps table — instance per leave request (tracks status per step)
+model LeaveApprovalStep {
+  id              String             @id @default(cuid())
+  leaveRequestId  String
+  chainStepId     String
+  stepOrder       Int
+  stepName        String
+  approverRole    Role?
+  approverId      String?
+  status          ApprovalStepStatus @default(PENDING)
+  actorId         String?            // user who acted
+  comment         String?
+  ip              String?
+  actedAt         DateTime?
+  createdAt       DateTime           @default(now())
+
+  leaveRequest  LeaveRequest      @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  chainStep     ApprovalChainStep @relation(fields: [chainStepId], references: [id])
+  actor         User?             @relation("LeaveStepActor", fields: [actorId], references: [id])
+
+  @@index([leaveRequestId])
+  @@map("leave_approval_steps")
+}
+
+// ── ROLE PERMISSIONS (RBAC) ─────────────────────
+
+model RolePermission {
+  id         String        @id @default(cuid())
+  role       Role
+  permission AppPermission
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([role, permission])
+  @@map("role_permissions")
 }
 
 // ── COMPANY SETTINGS ────────────────────────────
