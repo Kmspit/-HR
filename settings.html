@@ -152,19 +152,17 @@
         </div>
         <!-- วิธีรับการแจ้งเตือนผ่าน LINE Messaging API -->
         <div class="form-group" style="grid-column:1/-1;background:rgba(6,199,85,.06);border:1px solid rgba(6,199,85,.25);border-radius:10px;padding:14px;">
-          <div style="font-weight:700;color:#06c755;margin-bottom:10px;">📱 วิธีรับแจ้งเตือนลงเวลาใน LINE (HR KM Connect)</div>
+          <div style="font-weight:700;color:#06c755;margin-bottom:10px;">📱 วิธีรับแจ้งเตือนใบเตือนใน LINE (HR KM Connect)</div>
           <div style="font-size:12px;color:var(--text2);line-height:1.9;background:var(--bg2);border-radius:8px;padding:12px;">
             <span style="color:var(--red);font-size:11px;">⚠️ LINE Notify ปิดบริการแล้ว (มี.ค. 2568) — ใช้ Messaging API แทน</span><br><br>
             <strong style="color:var(--text);">✅ Option A — Broadcast (เร็วที่สุด, ไม่ต้อง config เพิ่ม):</strong><br>
             &nbsp;&nbsp;1) HR เปิด LINE → เพิ่มเพื่อน: <strong>@593qdkpk</strong><br>
-            &nbsp;&nbsp;2) ระบบ broadcast ไปหาทุก follower อัตโนมัติ ✓<br><br>
+            &nbsp;&nbsp;2) ระบบ broadcast ใบเตือนไปหาทุก follower อัตโนมัติ ✓<br><br>
             <strong style="color:var(--text);">⭐ Option B — Push 1:1 โดยตรง (แนะนำ):</strong><br>
             &nbsp;&nbsp;1) HR เพิ่มเพื่อน <strong>@593qdkpk</strong> ใน LINE<br>
             &nbsp;&nbsp;2) ส่งข้อความ: <code style="background:var(--bg3);padding:2px 8px;border-radius:4px;font-size:13px;">user-id</code><br>
             &nbsp;&nbsp;3) บอท reply กลับด้วย User ID (เริ่มด้วย <code style="background:var(--bg3);padding:1px 5px;border-radius:3px;">U...</code>)<br>
-            &nbsp;&nbsp;4) เปิด <strong>Vercel</strong> → Project Settings → Environment Variables → เพิ่ม:<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;<code style="background:var(--bg3);padding:2px 8px;border-radius:4px;">ATTENDANCE_LINE_NOTIFY_TARGETS = U...(User ID)</code><br>
-            &nbsp;&nbsp;5) Redeploy → ระบบ push ตรงมาที่ HR ✓
+            &nbsp;&nbsp;4) ตั้งค่า User ID บน Vercel Environment Variables แล้ว Redeploy ✓
           </div>
         </div>
 
@@ -294,9 +292,6 @@
 <script src="hr-core.js"></script>
 <script src="face-core.js"></script>
 <script>
-function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
-function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
-
 function loadSettings() {
   const s = getCompanySettings();
   document.getElementById('s-company').value     = s.companyName || 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด';
@@ -401,7 +396,7 @@ async function testLine() {
   s.lineWebhookRelay = relay;
   lsSet('settings', s);
 
-  const message = '\n🔔 ทดสอบการเชื่อมต่อ LINE OA สำเร็จ!\nระบบ เค เอ็ม เซอร์วิส พลัส พร้อมส่งการแจ้งเตือนลงเวลา';
+  const message = '\n🔔 ทดสอบการเชื่อมต่อ LINE OA สำเร็จ!\nระบบ เค เอ็ม เซอร์วิส พลัส พร้อมส่งแจ้งเตือนใบเตือน';
   const result = await sendLineOAMsg(message, null);
   if (result.ok) {
     mockLineNotify('✓ ส่ง LINE สำเร็จ', 'ทดสอบ');

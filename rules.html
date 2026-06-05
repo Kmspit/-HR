@@ -76,9 +76,6 @@
 
 <script src="hr-core.js"></script>
 <script>
-function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
-function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
-
 const RULES_KEY = 'companyRules';
 function getRules() { return lsGet(RULES_KEY, []); }
 function saveRules(r) { lsSet(RULES_KEY, r); }
