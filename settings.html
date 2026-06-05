@@ -109,11 +109,13 @@
     <div class="settings-section">
       <h3>⏰ เวลาทำงาน</h3>
       <div class="settings-grid">
-        <div class="form-group"><label>เวลาเข้างาน</label><input id="s-work-start" type="time" class="form-input"></div>
+        <div class="form-group"><label>เวลาเข้างาน</label><input id="s-work-start" type="time" class="form-input" oninput="updateLateGraceHint()"></div>
         <div class="form-group"><label>เวลาออกงาน</label><input id="s-work-end" type="time" class="form-input"></div>
         <div class="form-group"><label>เวลาพักเที่ยง (เริ่ม)</label><input id="s-break-start" type="time" class="form-input"></div>
         <div class="form-group"><label>เวลาพักเที่ยง (สิ้นสุด)</label><input id="s-break-end" type="time" class="form-input"></div>
-        <div class="form-group"><label>ผ่อนผันมาสาย (นาที)</label><input id="s-late-grace" type="number" class="form-input" placeholder="15"></div>
+        <div class="form-group"><label>ผ่อนผันมาสาย (นาที)</label><input id="s-late-grace" type="number" class="form-input" placeholder="5" min="0" oninput="updateLateGraceHint()">
+          <p id="s-late-grace-hint" style="font-size:10px;color:var(--text3);margin-top:4px;">เช่น เข้างาน 08:30 + 5 นาที = ไม่สายจนถึง 08:35</p>
+        </div>
       </div>
     </div>
 
@@ -301,11 +303,12 @@ function loadSettings() {
   document.getElementById('s-lat').value         = s.lat         ?? 13.7563;
   document.getElementById('s-lng').value         = s.lng         ?? 100.5018;
   document.getElementById('s-radius').value      = s.radius      ?? 200;
-  document.getElementById('s-work-start').value  = s.workStart   || '08:00';
+  document.getElementById('s-work-start').value  = s.workStart   || '08:30';
   document.getElementById('s-work-end').value    = s.workEnd     || '17:00';
   document.getElementById('s-break-start').value = s.breakStart  || '12:00';
   document.getElementById('s-break-end').value   = s.breakEnd    || '13:00';
-  document.getElementById('s-late-grace').value  = s.lateGrace   ?? 15;
+  document.getElementById('s-late-grace').value  = s.lateGrace   ?? 5;
+  updateLateGraceHint();
   document.getElementById('s-sick').value        = s.sickDays    ?? 30;
   document.getElementById('s-vac').value         = s.vacDays     ?? 10;
   document.getElementById('s-personal').value    = s.personalDays?? 3;
@@ -334,6 +337,22 @@ function syncFaceSliders() {
   document.getElementById('s-face-confirm-val').textContent   = parseFloat(document.getElementById('s-face-confirm').value).toFixed(2);
 }
 
+function updateLateGraceHint() {
+  const hint = document.getElementById('s-late-grace-hint');
+  const startEl = document.getElementById('s-work-start');
+  const graceEl = document.getElementById('s-late-grace');
+  if (!hint || !startEl || !graceEl) return;
+  const start = startEl.value || '08:30';
+  const grace = parseInt(graceEl.value, 10);
+  const g = Number.isFinite(grace) ? grace : 5;
+  const parts = start.split(':');
+  const ref = new Date();
+  ref.setHours(parseInt(parts[0], 10) || 8, parseInt(parts[1], 10) || 30, 0, 0);
+  ref.setMinutes(ref.getMinutes() + g);
+  const deadline = ref.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  hint.textContent = 'เช่น เข้างาน ' + start + ' + ' + g + ' นาที = ไม่สายจนถึง ' + deadline;
+}
+
 function saveSettings() {
   const s = {
     companyName:  document.getElementById('s-company').value.trim(),
@@ -347,7 +366,7 @@ function saveSettings() {
     workEnd:      document.getElementById('s-work-end').value,
     breakStart:   document.getElementById('s-break-start').value,
     breakEnd:     document.getElementById('s-break-end').value,
-    lateGrace:    parseInt(document.getElementById('s-late-grace').value)   || 15,
+    lateGrace:    parseInt(document.getElementById('s-late-grace').value)   || 5,
     sickDays:     parseInt(document.getElementById('s-sick').value)         || 30,
     vacDays:      parseInt(document.getElementById('s-vac').value)          || 10,
     personalDays: parseInt(document.getElementById('s-personal').value)     || 3,

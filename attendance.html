@@ -23,8 +23,10 @@
 .gps-blink { width:10px; height:10px; border-radius:50%; background:var(--green); animation:gpsBlink 1.5s ease-in-out infinite; flex-shrink:0; }
 @keyframes gpsBlink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
 .att-status-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
-@media (min-width:640px){ .att-status-grid { grid-template-columns:repeat(4,1fr); } }
+@media (min-width:640px){ .att-status-grid { grid-template-columns:repeat(3,1fr); } }
+@media (min-width:900px){ .att-status-grid { grid-template-columns:repeat(5,1fr); } }
 .att-stat { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:12px; text-align:center; }
+.att-stat-timer { border-color:rgba(16,185,129,.3); background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(59,130,246,.06)); }
 .att-stat-label { font-size:10px; color:var(--text3); margin-bottom:4px; }
 .att-stat-value { font-size:18px; font-weight:700; }
 .att-timeline { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r2); padding:16px; margin-top:16px; }
@@ -140,10 +142,20 @@
 
   <main class="content">
     <div class="att-status-grid" id="att-status-grid">
+      <div class="att-stat att-stat-timer">
+        <div class="att-stat-label" id="stat-timer-label">เวลาทำงาน</div>
+        <div class="att-stat-value" id="stat-work-timer" style="font-size:15px;color:var(--green);line-height:1.3;">—</div>
+      </div>
       <div class="att-stat"><div class="att-stat-label">เช็คอิน</div><div class="att-stat-value" id="stat-checkin" style="color:var(--green)">--:--</div></div>
       <div class="att-stat"><div class="att-stat-label">เช็คเอาท์</div><div class="att-stat-value" id="stat-checkout" style="color:var(--accent)">--:--</div></div>
       <div class="att-stat"><div class="att-stat-label">สถานะ</div><div class="att-stat-value" id="stat-status" style="font-size:14px;color:var(--text2)">—</div></div>
       <div class="att-stat"><div class="att-stat-label">ประเภท</div><div class="att-stat-value" id="stat-type" style="font-size:14px;color:var(--text2)">—</div></div>
+    </div>
+    <div id="daily-summary-card" class="card" style="display:none;margin-bottom:14px;border-color:rgba(16,185,129,.25);background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(59,130,246,.05));">
+      <div class="card-header" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:0;">
+        <span class="card-title">📋 สรุปการทำงานวันนี้</span>
+      </div>
+      <div id="daily-summary-body" style="padding:16px 18px;font-size:13px;line-height:1.9;color:var(--text2);"></div>
     </div>
     <!-- Offline queue indicator -->
     <div id="offline-queue-bar" style="display:none;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--orange);display:flex;align-items:center;gap:8px;">
@@ -250,12 +262,13 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>วันที่</th><th>รูปถ่าย</th><th>เวลา (เข้า · พัก · ออก)</th><th>พิกัด & สถานที่</th><th>สถานะ</th></tr></thead>
+          <thead><tr><th>วันที่</th><th>รูปถ่าย</th><th>เวลา (เข้า · พัก · ออก)</th><th>ทำงานจริง</th><th>พิกัด & สถานที่</th><th>สถานะ</th></tr></thead>
           <tbody id="attendance-body">
             <tr>
               <td>25 พ.ค. 69</td>
               <td><div class="emp-av" style="border-radius: 6px; background: url('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop') center/cover;"></div></td>
               <td>08:02 / 17:05</td>
+              <td><span class="tag green" style="font-size:11px;">8 ชั่วโมง 03 นาที</span></td>
               <td>
                 <div style="font-size: 11px; color: var(--text3);">13.7563, 100.5018</div>
                 <span class="tag blue">สำนักงานใหญ่</span>
@@ -266,6 +279,7 @@
               <td>24 พ.ค. 69</td>
               <td><div class="emp-av" style="border-radius: 6px; background: url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop') center/cover;"></div></td>
               <td>08:48 / 18:30</td>
+              <td><span class="tag green" style="font-size:11px;">8 ชั่วโมง 42 นาที</span></td>
               <td>
                 <div style="font-size: 11px; color: var(--text3);">13.7563, 100.5018</div>
                 <span class="tag blue">สำนักงานใหญ่</span>
@@ -991,10 +1005,29 @@ function submitActiveAction() {
   }
 
   Object.assign(rec, faceMeta);
+  if (typeof syncWorkTimeFields === 'function') syncWorkTimeFields(rec);
   saveTodayRecord(rec);
   const _scanType = activePanel; // capture before closePanel resets it
+  const _wasCheckout = _scanType === 'checkout';
   closePanel();
-  alert('บันทึกสำเร็จ');
+  if (_scanType === 'checkin-company' || _scanType === 'checkin-outside') {
+    if (rec.isLate && typeof maybeCreateLateWarningDraft === 'function') {
+      const draft = maybeCreateLateWarningDraft(user);
+      if (draft) {
+        alert('บันทึกสำเร็จ — มาสาย ' + formatLateLabel(rec.lateMinutes || 0) +
+          '\n\n⚠️ มาสายครบ ' + (draft.lateCount || LATE_WARN_THRESHOLD) + ' ครั้งในเดือนนี้\nระบบสร้าง Draft ใบเตือน รออนุมัติจาก ' + (draft.approver || 'ท.เฉลิม (CEO)'));
+      } else {
+        alert('บันทึกสำเร็จ' + (rec.isLate ? ' — ' + (rec.lateStatus || formatLateLabel(rec.lateMinutes || 0)) : ''));
+      }
+    } else {
+      alert('บันทึกสำเร็จ' + (rec.isLate ? ' — ' + (rec.lateStatus || '') : ''));
+    }
+  } else if (_wasCheckout) {
+    renderDailySummary(rec);
+    alert('บันทึกเช็คเอาท์สำเร็จ — ดูสรุปเวลาทำงานด้านบน');
+  } else {
+    alert('บันทึกสำเร็จ');
+  }
   saveAttendancePhotoToDevice(photoUrl, rec, _scanType);
   clearFaceScanTimeout(); // [7] scan succeeded, clear timeout
   uploadAttendancePhotoCdn(rec, _scanType, photoUrl)
@@ -1016,6 +1049,16 @@ function formatTimesCell(rec) {
   return parts.join(' / ');
 }
 
+function formatWorkTimeCell(rec) {
+  if (!rec?.checkIn) return '—';
+  const mins = (typeof calcWorkTimeSummary === 'function')
+    ? calcWorkTimeSummary(rec).totalWorkMinutes
+    : (rec.totalWorkMinutes || 0);
+  const fmt = (typeof formatDurationMinutes === 'function') ? formatDurationMinutes : function(m) { return m + ' นาที'; };
+  if (!rec.checkOut) return '<span style="color:var(--green);font-size:11px;">' + fmt(mins) + '</span>';
+  return '<span class="tag green" style="font-size:11px;">' + fmt(mins) + '</span>';
+}
+
 function appendHistoryRow(rec, photoUrl) {
   const now = new Date(rec.checkIn);
   const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -1031,6 +1074,7 @@ function appendHistoryRow(rec, photoUrl) {
     <td>${escapeHtml(formattedDate)}</td>
     <td><div class="emp-av" style="border-radius:6px;background:url('${safePhoto}') center/cover;"></div></td>
     <td>${escapeHtml(formatTimesCell(rec))}</td>
+    <td>${formatWorkTimeCell(rec)}</td>
     <td><div style="font-size:11px;color:var(--text3);">${escapeHtml((rec.lat?.toFixed(6) || '') + ', ' + (rec.lng?.toFixed(6) || ''))}</div>${placeTag}</td>
     <td><span class="tag green">ปกติ</span></td>`;
   tbody.insertBefore(tr, tbody.firstChild);
@@ -1038,7 +1082,10 @@ function appendHistoryRow(rec, photoUrl) {
 
 function updateHistoryCheckout(rec) {
   const tr = document.querySelector('#attendance-body tr[data-today-row="1"]');
-  if (tr && tr.cells[2]) tr.cells[2].textContent = formatTimesCell(rec);
+  if (!tr) return;
+  if (tr.cells[2]) tr.cells[2].textContent = formatTimesCell(rec);
+  if (tr.cells[3]) tr.cells[3].innerHTML = formatWorkTimeCell(rec);
+  if (tr.cells[5] && rec.isLate) tr.cells[5].innerHTML = '<span class="tag yellow">' + (typeof formatLateLabel === 'function' ? formatLateLabel(rec.lateMinutes || 0) : 'มาสาย') + '</span>';
 }
 
 function renderTimeline(rec) {
@@ -1095,25 +1142,81 @@ function renderPhotos(rec) {
     </div>`).join('');
 }
 
+function renderWorkTimer(rec) {
+  const labelEl = document.getElementById('stat-timer-label');
+  const timerEl = document.getElementById('stat-work-timer');
+  if (!labelEl || !timerEl) return;
+  if (!rec?.checkIn) {
+    labelEl.textContent = 'เวลาทำงาน';
+    timerEl.textContent = '—';
+    timerEl.style.color = 'var(--text3)';
+    return;
+  }
+  const summary = (typeof calcWorkTimeSummary === 'function')
+    ? calcWorkTimeSummary(rec) : { timerLabel: '—', timerMinutes: 0, timerMode: null, workPhase: null };
+  labelEl.textContent = summary.timerLabel;
+  const fmt = (typeof formatDurationMinutes === 'function') ? formatDurationMinutes : function(m) { return m + ' นาที'; };
+  timerEl.textContent = fmt(summary.timerMinutes);
+  if (summary.workPhase === 'lunch_break') timerEl.style.color = 'var(--orange)';
+  else if (summary.workPhase === 'checked_out') timerEl.style.color = 'var(--accent)';
+  else timerEl.style.color = 'var(--green)';
+}
+
+function renderDailySummary(rec) {
+  const card = document.getElementById('daily-summary-card');
+  const body = document.getElementById('daily-summary-body');
+  if (!card || !body || !rec?.checkOut) { if (card) card.style.display = 'none'; return; }
+  const s = (typeof calcWorkTimeSummary === 'function') ? calcWorkTimeSummary(rec) : null;
+  if (!s) { card.style.display = 'none'; return; }
+  const fmt = (typeof formatDurationMinutes === 'function') ? formatDurationMinutes : function(m) { return m + ' นาที'; };
+  const lateLine = rec.isLate && rec.lateMinutes
+    ? '<div>มาสาย: <strong style="color:var(--orange);">' + (typeof formatLateLabel === 'function' ? formatLateLabel(rec.lateMinutes) : rec.lateMinutes + ' นาที') + '</strong></div>'
+    : '<div>มาสาย: <strong style="color:var(--green);">ตรงเวลา</strong></div>';
+  const otLine = s.overtimeMinutes > 0
+    ? '<div>ล่วงเวลา (OT): <strong style="color:var(--purple);">' + fmt(s.overtimeMinutes) + '</strong></div>' : '';
+  body.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 20px;">' +
+    '<div>เวลาเข้างาน: <strong style="color:var(--text);">' + (s.checkInTime || '—') + '</strong></div>' +
+    '<div>พักเที่ยงออก: <strong style="color:var(--text);">' + (s.lunchOutTime || '—') + '</strong></div>' +
+    '<div>พักเที่ยงเข้า: <strong style="color:var(--text);">' + (s.lunchInTime || '—') + '</strong></div>' +
+    '<div>เวลาออกงาน: <strong style="color:var(--text);">' + (s.checkOutTime || '—') + '</strong></div>' +
+    '</div>' +
+    '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">' +
+    '<div>วันนี้ทำงาน: <strong style="color:var(--green);font-size:15px;">' + fmt(s.totalWorkMinutes) + '</strong></div>' +
+    '<div>พักเที่ยงรวม: <strong style="color:var(--text);">' + fmt(s.totalBreakMinutes) + '</strong></div>' +
+    lateLine + otLine +
+    (rec.workStatus && rec.workStatus !== 'เลิกงานปกติ' ? '<div>สถานะเลิกงาน: ' + rec.workStatus + '</div>' : '') +
+    '</div>';
+  card.style.display = 'block';
+}
+
 function renderAttendanceUI() {
   const rec = getTodayDisplayRecord();
   const dayComplete = isDayAttendanceComplete();
   const firstCheckIn = getTodayData().sessions.find(s => s.checkIn);
   const lastCheckOut = [...getTodayData().sessions].reverse().find(s => s.checkOut);
 
+  renderWorkTimer(rec);
+  if (rec?.checkOut) renderDailySummary(rec);
+  else {
+    const sumCard = document.getElementById('daily-summary-card');
+    if (sumCard) sumCard.style.display = 'none';
+  }
+
   document.getElementById('stat-checkin').textContent = fmtTime(firstCheckIn?.checkIn || rec?.checkIn);
   document.getElementById('stat-checkout').textContent = fmtTime(rec?.checkOut || lastCheckOut?.checkOut);
   // สถานะแบบละเอียดตามขั้นตอน
   let stepStatus = 'ยังไม่เช็คอิน';
   let stepColor  = 'var(--text3)';
-  if (dayComplete || rec?.checkOut) {
+  const phase = rec?.workPhase || (rec?.checkOut ? 'checked_out' : (rec?.lunchOut && !rec?.lunchIn ? 'lunch_break' : rec?.checkIn ? 'working' : null));
+  if (dayComplete || phase === 'checked_out') {
     stepStatus = '✅ เช็คเอาท์แล้ว'; stepColor = 'var(--accent)';
-  } else if (rec?.checkIn && rec?.lunchOut && rec?.lunchIn) {
-    stepStatus = '🔔 กลับจากพักแล้ว'; stepColor = 'var(--green)';
-  } else if (rec?.checkIn && rec?.lunchOut && !rec?.lunchIn) {
+  } else if (phase === 'lunch_break') {
     stepStatus = '☕ กำลังพักกลางวัน'; stepColor = 'var(--orange)';
-  } else if (rec?.checkIn) {
-    stepStatus = '🟢 เช็คอินแล้ว'; stepColor = 'var(--green)';
+  } else if (rec?.checkIn && rec?.lunchIn) {
+    stepStatus = '🔔 กลับจากพักแล้ว'; stepColor = 'var(--green)';
+  } else if (phase === 'working') {
+    stepStatus = '🟢 กำลังทำงาน'; stepColor = 'var(--green)';
   }
   document.getElementById('stat-status').textContent = stepStatus;
   document.getElementById('stat-status').style.color  = stepColor;
@@ -1412,30 +1515,12 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // ── LATE STATUS ───────────────────────────────────────────────────────────────
-// คืนข้อมูลมาสายแบบ structured — timezone: Asia/Bangkok (UTC+7)
+// ใช้ calcLateInfoCore จาก hr-core.js (workStart + lateGrace)
 function calcLateInfo(scanType, time) {
   const notCheckin = scanType !== 'checkin-company' && scanType !== 'checkin-outside';
   if (notCheckin) return { isLate: false, lateMinutes: 0, lateStatus: 'ไม่ใช่เช็คอิน', checkInTime: null };
-
-  const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
-  const workStartStr = s.workStart || '08:30';
-  const parts = workStartStr.split(':');
-  const workH = parseInt(parts[0], 10);
-  const workM = parseInt(parts[1], 10);
-
-  // แปลงเป็นเวลาไทย (Asia/Bangkok) เพื่อคำนวณถูกต้องทุก timezone
-  const bkk = new Date(time.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
-  const deadline = new Date(bkk);
-  deadline.setHours(workH, workM, 0, 0);
-
-  const isLate = bkk > deadline;
-  const lateMinutes = isLate ? Math.round((bkk.getTime() - deadline.getTime()) / 60000) : 0;
-  const lateStatus = isLate ? formatLateLabel(lateMinutes) : 'ตรงเวลา';
-  const checkInTime = bkk.toLocaleTimeString('th-TH', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
-  });
-
-  return { isLate, lateMinutes, lateStatus, checkInTime };
+  if (typeof calcLateInfoCore === 'function') return calcLateInfoCore(time);
+  return { isLate: false, lateMinutes: 0, lateStatus: 'ตรงเวลา', checkInTime: null };
 }
 
 function calcLateStatus(scanType, time) {
@@ -1569,6 +1654,7 @@ function getAllAttendanceData() {
       const email = m ? m[1] : '—';
       const dateKey = m ? m[2] : '—';
       data.sessions.forEach(function(s) {
+        const wt = (typeof calcWorkTimeSummary === 'function') ? calcWorkTimeSummary(s) : {};
         rows.push({
           date: dateKey, email,
           sessionIndex: s.sessionIndex || 1,
@@ -1576,6 +1662,10 @@ function getAllAttendanceData() {
           lunchOut: s.lunchOut ? fmtTime(s.lunchOut) : '—',
           lunchIn:  s.lunchIn  ? fmtTime(s.lunchIn)  : '—',
           checkOut: s.checkOut ? fmtTime(s.checkOut) : '—',
+          workPhase: wt.workPhase || s.workPhase || '—',
+          totalWorkMinutes: wt.totalWorkMinutes || s.totalWorkMinutes || 0,
+          totalBreakMinutes: wt.totalBreakMinutes || s.totalBreakMinutes || 0,
+          overtimeMinutes: wt.overtimeMinutes || s.overtimeMinutes || 0,
           isLate:   s.isLate ? 'ใช่' : 'ไม่',
           lateMinutes:      s.lateMinutes || 0,
           earlyLeave:       s.earlyLeave ? 'ใช่' : 'ไม่',
@@ -1599,6 +1689,7 @@ function exportAttendanceCSV() {
   const rows = getAllAttendanceData();
   if (!rows.length) { alert('ไม่มีข้อมูลสำหรับ Export'); return; }
   const headers = ['วันที่','อีเมล','รอบ','เช็คอิน','พักออก','พักกลับ','เช็คเอาท์',
+    'สถานะงาน','ทำงาน(นาที)','พัก(นาที)','OT(นาที)',
     'มาสาย','สาย(นาที)','กลับก่อน','กลับก่อน(นาที)','สถานะเลิกงาน','สถานะมาสาย',
     'ที่อยู่','สาขา','แผนก','ประเภทสถานที่','ยืนยันใบหน้า'];
   const csvRows = [headers.join(',')];
@@ -1606,6 +1697,7 @@ function exportAttendanceCSV() {
     csvRows.push([
       r.date, r.email, r.sessionIndex,
       r.checkIn, r.lunchOut, r.lunchIn, r.checkOut,
+      r.workPhase, r.totalWorkMinutes, r.totalBreakMinutes, r.overtimeMinutes,
       r.isLate, r.lateMinutes, r.earlyLeave, r.earlyLeaveMinutes,
       r.workStatus, r.lateStatus,
       '"' + (r.address || '').replace(/"/g, '""') + '"',
@@ -1697,6 +1789,13 @@ function applyManualEdit(storageKey, sessionIdx) {
       if (el && el.value) s[f] = new Date(el.value).toISOString();
       else if (el && !el.value) s[f] = null;
     });
+    if (s.checkIn && typeof calcLateInfoCore === 'function') {
+      const late = calcLateInfoCore(s.checkIn);
+      s.isLate = late.isLate;
+      s.lateMinutes = late.lateMinutes;
+      s.lateStatus = late.lateStatus;
+      s.checkInTime = late.checkInTime;
+    }
     const reasonEl = document.getElementById('me-' + sessionIdx + '-reason');
     const reason = reasonEl ? reasonEl.value.trim() : '';
     // audit log
@@ -1708,6 +1807,7 @@ function applyManualEdit(storageKey, sessionIdx) {
       newValue: JSON.stringify({ checkIn: s.checkIn, lunchOut: s.lunchOut, lunchIn: s.lunchIn, checkOut: s.checkOut }),
       reason,
     });
+    if (typeof syncWorkTimeFields === 'function') syncWorkTimeFields(s);
     data.sessions[sessionIdx] = s;
     localStorage.setItem(storageKey, JSON.stringify(data));
     alert('บันทึกสำเร็จ — ระบบบันทึก audit log แล้ว');
@@ -1802,10 +1902,20 @@ function scheduleMidnightReset() {
   setTimeout(midnightReset, msUntilMidnight());
 }
 
+let _workTimerInterval = null;
+function startWorkTimerTick() {
+  if (_workTimerInterval) clearInterval(_workTimerInterval);
+  _workTimerInterval = setInterval(function() {
+    const rec = typeof getTodayDisplayRecord === 'function' ? getTodayDisplayRecord() : null;
+    if (rec?.checkIn && !rec?.checkOut) renderWorkTimer(rec);
+  }, 30000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof initRole === 'function') initRole();
   if (typeof purgeAttendanceLineQueue === 'function') purgeAttendanceLineQueue();
   renderAttendanceUI();
+  startWorkTimerTick();
   initCamera();
   startRealTimeGPS();
   scheduleMidnightReset();

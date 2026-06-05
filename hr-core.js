@@ -195,7 +195,7 @@ function getCompanySettings() {
   _settingsCache = lsGet('settings', {
     companyName: 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
     lat: 13.7563, lng: 100.5018, radius: 200,
-    workStart: '08:30', workEnd: '17:30', lateGrace: 0,
+    workStart: '08:30', workEnd: '17:30', lateGrace: 5,
     sickDays: 30, vacDays: 10, personalDays: 3,
     lineToken: '',
   });
@@ -246,6 +246,242 @@ function formatLateMinutes(totalMinutes) {
 /** ป้ายมาสายพร้อม duration เช่น "มาสาย 1 ชั่วโมง 20 นาที" */
 function formatLateLabel(totalMinutes) {
   return 'มาสาย ' + formatLateMinutes(totalMinutes);
+}
+
+const LATE_WARN_THRESHOLD = 3;
+const LATE_WARN_CEO = 'ท.เฉลิม (CEO)';
+
+/** อ่านนโยบายมาสายจาก settings — ไม่ hardcode เวลา */
+function getLatePolicy(settings) {
+  const s = settings || getCompanySettings();
+  const workStartStr = s.workStart || '08:30';
+  const parts = workStartStr.split(':');
+  const workH = parseInt(parts[0], 10);
+  const workM = parseInt(parts[1], 10) || 0;
+  const lateGrace = Math.max(0, parseInt(s.lateGrace, 10));
+  const graceMin = Number.isFinite(lateGrace) ? lateGrace : 5;
+  return { workStartStr, workH, workM, lateGrace: graceMin };
+}
+
+function toBangkokDate(time) {
+  return new Date(new Date(time).toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+}
+
+/** เวลาสุดท้ายที่ยังไม่ถือว่าสาย = workStart + lateGrace */
+function getLateDeadlineDate(time, settings) {
+  const policy = getLatePolicy(settings);
+  const bkk = toBangkokDate(time);
+  const deadline = new Date(bkk);
+  deadline.setHours(policy.workH, policy.workM, 0, 0);
+  deadline.setMinutes(deadline.getMinutes() + policy.lateGrace);
+  return deadline;
+}
+
+function formatLateDeadlineTime(settings) {
+  const policy = getLatePolicy(settings);
+  const ref = new Date();
+  ref.setHours(policy.workH, policy.workM, 0, 0);
+  ref.setMinutes(ref.getMinutes() + policy.lateGrace);
+  return ref.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * คำนวณมาสาย — lateMinutes = checkIn - (workStart + grace), ถ้า < 0 เป็น 0
+ */
+function calcLateInfoCore(time, settings) {
+  const bkk = toBangkokDate(time);
+  const deadline = getLateDeadlineDate(time, settings);
+  const diffMs = bkk.getTime() - deadline.getTime();
+  const lateMinutes = diffMs > 0 ? Math.round(diffMs / 60000) : 0;
+  const isLate = lateMinutes > 0;
+  const policy = getLatePolicy(settings);
+  const checkInTime = bkk.toLocaleTimeString('th-TH', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
+  });
+  const lateStatus = isLate ? formatLateLabel(lateMinutes) : 'ตรงเวลา';
+  return {
+    isLate,
+    lateMinutes,
+    lateStatus,
+    checkInTime,
+    workStart: policy.workStartStr,
+    lateGrace: policy.lateGrace,
+    lateDeadline: formatLateDeadlineTime(settings),
+  };
+}
+
+/** นับวันมาสายในเดือน (จาก localStorage sessions) */
+function countLateCheckinsForEmail(empEmail, month, year) {
+  if (!empEmail) return 0;
+  let count = 0;
+  const prefix = 'hrflow_today_' + empEmail + '_';
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(prefix)) continue;
+    const m = key.match(/(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) continue;
+    if (parseInt(m[2], 10) !== month || parseInt(m[1], 10) !== year) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || 'null');
+      (data.sessions || []).forEach(function(s) {
+        if (s.checkIn && s.isLate) count++;
+      });
+    } catch { /* skip */ }
+  }
+  return count;
+}
+
+function countLateCheckinsThisMonth(empEmail) {
+  const now = new Date();
+  return countLateCheckinsForEmail(empEmail, now.getMonth() + 1, now.getFullYear());
+}
+
+/** นับมาสายสำหรับ payroll ตามชื่อพนักงาน */
+function countLateDaysForEmployee(empName, month, year) {
+  const emp = getEmployees().find(function(e) { return e.name === empName; });
+  if (emp && emp.email) return countLateCheckinsForEmail(emp.email, month, year);
+  return getAttendances().filter(function(a) {
+    const d = new Date(a.checkIn);
+    return a.empName === empName && a.isLate && d.getMonth() + 1 === month && d.getFullYear() === year;
+  }).length;
+}
+
+/** มาสายครบ 3 ครั้ง/เดือน → สร้าง draft ใบเตือน รอ CEO อนุมัติ */
+function maybeCreateLateWarningDraft(user) {
+  if (!user || !user.email || !user.name) return null;
+  const count = countLateCheckinsThisMonth(user.email);
+  if (count < LATE_WARN_THRESHOLD) return null;
+
+  const warns = getWarnings();
+  const monthKey = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+  const existing = warns.find(function(w) {
+    return w.empName === user.name && w.isAuto && w.status === 'draft_pending_ceo' && w.lateWarnMonth === monthKey;
+  });
+  if (existing) return existing;
+
+  const issued = warns.filter(function(w) {
+    return w.empName === user.name && w.status !== 'draft_pending_ceo';
+  });
+  const draft = {
+    id: uid(),
+    empName: user.name,
+    reason: 'มาสาย ' + count + ' ครั้งในเดือนนี้ (หลัง Grace Period ' + formatLateDeadlineTime() + ') — รออนุมัติจาก ' + LATE_WARN_CEO,
+    cumulative: issued.length + 1,
+    isAuto: true,
+    status: 'draft_pending_ceo',
+    approver: LATE_WARN_CEO,
+    lateWarnMonth: monthKey,
+    lateCount: count,
+    createdAt: new Date().toISOString(),
+  };
+  warns.push(draft);
+  lsSet('warnings', warns);
+  return draft;
+}
+
+/** แสดง duration ทั่วไป (เวลาทำงาน/พัก) — รูปแบบเดียวกับ formatLateMinutes */
+function formatDurationMinutes(totalMinutes) {
+  return formatLateMinutes(totalMinutes);
+}
+
+const STANDARD_WORK_MINUTES = 480; // 8 ชั่วโมง
+
+/**
+ * คำนวณเวลาทำงานจริง — นับเฉพาะช่วง working (ไม่นับพักเที่ยง)
+ * @returns {{ workPhase, totalWorkMinutes, totalBreakMinutes, overtimeMinutes, timerLabel, timerMinutes, timerMode }}
+ */
+function calcWorkTimeSummary(rec, asOf) {
+  const empty = {
+    workPhase: null,
+    totalWorkMinutes: 0,
+    totalBreakMinutes: 0,
+    overtimeMinutes: 0,
+    timerLabel: '—',
+    timerMinutes: 0,
+    timerMode: null,
+    checkInTime: null,
+    lunchOutTime: null,
+    lunchInTime: null,
+    checkOutTime: null,
+  };
+  if (!rec || !rec.checkIn) return empty;
+
+  const t = function(iso) { return new Date(iso).getTime(); };
+  const now = asOf instanceof Date ? asOf.getTime() : new Date(asOf || Date.now()).getTime();
+
+  let workPhase = 'working';
+  if (rec.checkOut) workPhase = 'checked_out';
+  else if (rec.lunchOut && !rec.lunchIn) workPhase = 'lunch_break';
+
+  let totalWorkMinutes = 0;
+  const ci = t(rec.checkIn);
+  if (rec.lunchOut) {
+    totalWorkMinutes += Math.max(0, Math.round((t(rec.lunchOut) - ci) / 60000));
+    if (rec.lunchIn) {
+      const workEnd = rec.checkOut ? t(rec.checkOut) : now;
+      totalWorkMinutes += Math.max(0, Math.round((workEnd - t(rec.lunchIn)) / 60000));
+    }
+  } else {
+    const workEnd = rec.checkOut ? t(rec.checkOut) : now;
+    totalWorkMinutes += Math.max(0, Math.round((workEnd - ci) / 60000));
+  }
+
+  let totalBreakMinutes = 0;
+  if (rec.lunchOut) {
+    if (rec.lunchIn) {
+      totalBreakMinutes = Math.max(0, Math.round((t(rec.lunchIn) - t(rec.lunchOut)) / 60000));
+    } else {
+      const breakEnd = rec.checkOut ? t(rec.checkOut) : now;
+      totalBreakMinutes = Math.max(0, Math.round((breakEnd - t(rec.lunchOut)) / 60000));
+    }
+  }
+
+  const timerMode = workPhase === 'lunch_break' ? 'break' : 'work';
+  const timerMinutes = timerMode === 'break' ? totalBreakMinutes : totalWorkMinutes;
+  const timerLabel = workPhase === 'lunch_break' ? 'กำลังพัก'
+    : workPhase === 'checked_out' ? 'เวลาทำงานวันนี้' : 'กำลังทำงาน';
+  const overtimeMinutes = workPhase === 'checked_out'
+    ? Math.max(0, totalWorkMinutes - STANDARD_WORK_MINUTES) : 0;
+
+  return {
+    workPhase,
+    totalWorkMinutes,
+    totalBreakMinutes,
+    overtimeMinutes,
+    timerLabel,
+    timerMinutes,
+    timerMode,
+    checkInTime: rec.checkInTime || thTime(rec.checkIn),
+    lunchOutTime: rec.lunchOut ? (rec.lunchOutTime || thTime(rec.lunchOut)) : null,
+    lunchInTime: rec.lunchIn ? (rec.lunchInTime || thTime(rec.lunchIn)) : null,
+    checkOutTime: rec.checkOut ? (rec.checkOutTime || thTime(rec.checkOut)) : null,
+  };
+}
+
+/** อัปเดต workPhase / totalWorkMinutes บน record (backward compatible) */
+function syncWorkTimeFields(rec, asOf) {
+  const s = calcWorkTimeSummary(rec, asOf);
+  if (!rec) return s;
+  rec.workPhase = s.workPhase;
+  rec.totalWorkMinutes = s.totalWorkMinutes;
+  rec.totalBreakMinutes = s.totalBreakMinutes;
+  rec.overtimeMinutes = s.overtimeMinutes;
+  if (rec.lunchOut) rec.lunchOutTime = s.lunchOutTime;
+  if (rec.lunchIn) rec.lunchInTime = s.lunchInTime;
+  return s;
+}
+
+/** อ่าน session วันนี้ของ user จาก localStorage (ใช้ dashboard) */
+function getTodaySessionForUser(user) {
+  if (!user || !user.email) return null;
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
+  const key = 'hrflow_today_' + user.email + '_' + day;
+  try {
+    const data = JSON.parse(localStorage.getItem(key) || 'null');
+    if (!data || !Array.isArray(data.sessions) || !data.sessions.length) return null;
+    return data.sessions.find(function(s) { return s.checkIn && !s.checkOut; })
+      || data.sessions[data.sessions.length - 1];
+  } catch { return null; }
 }
 
 function uid() {
