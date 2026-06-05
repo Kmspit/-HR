@@ -144,10 +144,12 @@ function calcPayroll() {
 
   payrollData = emps.map(emp => {
     // Count late days this month
-    const lateCount = atts.filter(a => {
-      const d = new Date(a.checkIn);
-      return a.empName === emp.name && a.isLate && d.getMonth()+1 === month && d.getFullYear() === year;
-    }).length;
+    const lateCount = (typeof countLateDaysForEmployee === 'function')
+      ? countLateDaysForEmployee(emp.name, month, year)
+      : atts.filter(a => {
+          const d = new Date(a.checkIn);
+          return a.empName === emp.name && a.isLate && d.getMonth()+1 === month && d.getFullYear() === year;
+        }).length;
 
     // Count unpaid leave days
     const unpaidDays = leaves.filter(l => {

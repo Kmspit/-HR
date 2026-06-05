@@ -777,6 +777,10 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
       <div class="hero-time">
         <div class="hero-clock" id="clock">08:47:23</div>
         <div class="hero-date" id="datestr">จันทร์ที่ 25 พฤษภาคม 2569</div>
+        <div id="dash-work-timer" style="margin-top:10px;font-size:13px;color:var(--accent3);display:none;">
+          <span id="dash-work-timer-label">กำลังทำงาน</span>:
+          <strong id="dash-work-timer-value" style="color:var(--green);">—</strong>
+        </div>
       </div>
     </div>
 
@@ -1273,6 +1277,24 @@ function tick(){
     n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 tick();setInterval(tick,1000);
+
+function updateDashWorkTimer(){
+  const wrap=document.getElementById('dash-work-timer');
+  const labelEl=document.getElementById('dash-work-timer-label');
+  const valEl=document.getElementById('dash-work-timer-value');
+  if(!wrap||!labelEl||!valEl) return;
+  const user=typeof getCurrentUser==='function'?getCurrentUser():null;
+  const rec=user&&typeof getTodaySessionForUser==='function'?getTodaySessionForUser(user):null;
+  if(!rec?.checkIn){ wrap.style.display='none'; return; }
+  const s=typeof calcWorkTimeSummary==='function'?calcWorkTimeSummary(rec):null;
+  if(!s){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  labelEl.textContent=s.timerLabel;
+  valEl.textContent=typeof formatDurationMinutes==='function'?formatDurationMinutes(s.timerMinutes):s.timerMinutes+' นาที';
+  valEl.style.color=s.workPhase==='lunch_break'?'var(--orange)':s.workPhase==='checked_out'?'var(--accent)':'var(--green)';
+}
+updateDashWorkTimer();
+setInterval(updateDashWorkTimer,30000);
 
 function setActive(el,title){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));

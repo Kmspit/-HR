@@ -67,6 +67,19 @@
   </header>
 
   <main class="content">
+    <div class="card role-hr-admin-only" style="margin-bottom:20px;border-color:rgba(249,115,22,.35);" id="warn-draft-card">
+      <div class="card-header">
+        <span class="card-title">⏳ Draft ใบเตือน (มาสาย) — รออนุมัติ CEO</span>
+        <span style="font-size:11px;color:var(--text3);">อนุมัติโดย ท.เฉลิม (CEO)</span>
+      </div>
+      <div class="table-wrap">
+        <table class="warnings-table">
+          <thead><tr><th>วันที่</th><th>พนักงาน</th><th>มาสาย (ครั้ง)</th><th>เหตุผล</th><th>จัดการ</th></tr></thead>
+          <tbody id="warn-draft-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:20px;" id="warn-summary-card">
       <div class="card-header"><span class="card-title">📅 สรุปใบเตือนรายเดือน</span></div>
       <div class="table-wrap" id="warn-summary-wrap" style="display:none;">
@@ -113,7 +126,8 @@ function formatMonthLabel(key) {
 }
 
 function warningOrdinalMap(warns) {
-  const sorted = warns.slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const issued = warns.filter(w => w.status !== 'draft_pending_ceo');
+  const sorted = issued.slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
   const byId = {};
   const count = {};
   sorted.forEach(w => {
@@ -124,12 +138,67 @@ function warningOrdinalMap(warns) {
   return byId;
 }
 
+function renderWarningDrafts() {
+  const drafts = getWarnings().filter(w => w.status === 'draft_pending_ceo');
+  const card = document.getElementById('warn-draft-card');
+  const tb = document.getElementById('warn-draft-tbody');
+  if (!tb) return;
+  if (!drafts.length) {
+    if (card) card.style.display = 'none';
+    tb.innerHTML = '';
+    return;
+  }
+  if (card) card.style.display = '';
+  tb.innerHTML = drafts.map(w => `<tr>
+    <td>${thDate(w.createdAt)}</td>
+    <td><strong>${w.empName}</strong></td>
+    <td style="text-align:center;"><span class="tag orange">${w.lateCount || '—'}</span></td>
+    <td class="cell-ellipsis" title="${w.reason}">${w.reason}</td>
+    <td><span class="warn-actions">
+      <button class="btn-sm" style="color:var(--green);white-space:nowrap;" onclick="approveLateWarningDraft('${w.id}')">✅ อนุมัติ</button>
+      <button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="rejectLateWarningDraft('${w.id}')">✕ ปฏิเสธ</button>
+    </span></td>
+  </tr>`).join('');
+}
+
+function approveLateWarningDraft(id) {
+  const user = getCurrentUser();
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'MANAGER_HR')) {
+    alert('เฉพาะผู้มีสิทธิ์อนุมัติ (CEO/Admin/HR)'); return;
+  }
+  const warns = getWarnings();
+  const w = warns.find(x => x.id === id);
+  if (!w || w.status !== 'draft_pending_ceo') return;
+  if (!confirm('อนุมัติใบเตือนสำหรับ ' + w.empName + ' และส่งแจ้งเตือน?')) return;
+  w.status = 'approved';
+  w.approvedBy = user.name || LATE_WARN_CEO;
+  w.approvedAt = new Date().toISOString();
+  lsSet('warnings', warns);
+  const s = getCompanySettings();
+  if (s.notifyWarn !== false) {
+    const warnMsg = `⚠️ คุณได้รับใบเตือน\nชื่อ: ${w.empName}\nเหตุผล: ${w.reason}\nครั้งที่ ${w.cumulative}\n\nกรุณาพบ HR ภายใน 3 วันทำการ`;
+    mockLineNotify(warnMsg, w.empName);
+    if (typeof sendLineOAMsg === 'function') sendLineOAMsg(warnMsg, null).catch(() => {});
+  }
+  renderWarnings();
+  alert('อนุมัติใบเตือนแล้ว');
+}
+
+function rejectLateWarningDraft(id) {
+  if (!confirm('ปฏิเสธ draft ใบเตือนนี้?')) return;
+  lsSet('warnings', getWarnings().filter(w => w.id !== id));
+  renderWarnings();
+}
+
 function renderWarnings() {
-  const warns = getWarnings().slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const ordinals = warningOrdinalMap(getWarnings());
+  renderWarningDrafts();
+  const allWarns = getWarnings();
+  const warns = allWarns.filter(w => w.status !== 'draft_pending_ceo')
+    .slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const ordinals = warningOrdinalMap(allWarns);
 
   const byMonth = {};
-  warns.forEach(w => {
+  allWarns.filter(w => w.status !== 'draft_pending_ceo').forEach(w => {
     const k = monthKeyFromWarning(w);
     if (!byMonth[k]) byMonth[k] = { total: 0, employees: {}, latestAt: w.createdAt };
     byMonth[k].total++;
@@ -164,7 +233,7 @@ function renderWarnings() {
   }
   tb.innerHTML = warns.map(w => {
     const n = ordinals[w.id] || '—';
-    const typeLabel = w.isAuto ? 'อัตโนมัติ' : 'ด้วยตนเอง';
+    const typeLabel = w.status === 'draft_pending_ceo' ? 'รอ CEO' : (w.isAuto ? 'อัตโนมัติ' : 'ด้วยตนเอง');
     const pdf = w._pdfData
       ? `<button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="viewWarnPdf('${w.id}')">📄 ดู PDF</button>`
       : (w.fileUrl && w.fileUrl !== '#pdf-'+w.id ? `<a href="${w.fileUrl}" target="_blank" style="color:var(--red)">PDF</a>` : '—');
@@ -176,7 +245,7 @@ function renderWarnings() {
       <td style="text-align:center;">${typeLabel}</td>
       <td style="text-align:center;">${pdf}</td>
       <td><span class="warn-actions">
-        <button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${w.empName}', ${n})">💬 LINE</button>
+        ${w.status === 'draft_pending_ceo' ? '' : `<button class="btn-sm" style="color:#06C755;white-space:nowrap;" onclick="sendWarnLine('${w.empName}', ${n})">💬 LINE</button>`}
         <button class="btn-sm" style="color:var(--red);white-space:nowrap;" onclick="deleteWarning('${w.id}')">ลบ</button>
       </span></td>
     </tr>`;
