@@ -49,21 +49,231 @@ function initRole() {
     el.style.display = show ? '' : 'none';
   });
 
-  // Active nav
-  const page = location.pathname.split('/').pop() || 'index.html';
-  document.querySelectorAll('.nav-item').forEach(a => {
-    const href = a.getAttribute('href') || '';
-    a.classList.toggle('active', href === page);
-  });
-
   initSidebar();
 }
 
-// ── SIDEBAR (collapse + mobile slide) ─────────────────────────────────────────
+// ── SIDEBAR (nav config + accordion + collapse + mobile slide) ───────────────
 
 const SIDEBAR_COLLAPSED_KEY = 'hrflow_sidebar_collapsed';
+const SIDEBAR_SECTIONS_KEY = 'hrflow_nav_sections';
 const SIDEBAR_MOBILE_BP = 768;
 let _sidebarResizeTimer = null;
+
+/** @type {{ id: string, label: string, collapsible?: boolean, sectionRoles?: string[], items: { href: string, icon: string, label: string, roles?: string[] }[] }[]} */
+const SIDEBAR_NAV = [
+  {
+    id: 'main',
+    label: 'หลัก',
+    collapsible: false,
+    items: [
+      { href: 'index.html', icon: '📊', label: 'แดชบอร์ด' },
+    ],
+  },
+  {
+    id: 'work',
+    label: 'การทำงาน',
+    collapsible: true,
+    items: [
+      { href: 'attendance.html', icon: '⏱️', label: 'ลงเวลางาน' },
+      { href: 'attendance-history.html', icon: '📋', label: 'บันทึกลงเวลารายเดือน' },
+      { href: 'attendance.html#scan-history', icon: '📸', label: 'ประวัติสแกนใบหน้า' },
+      { href: 'calendar.html', icon: '🗓️', label: 'ปฏิทิน' },
+      { href: 'leave.html', icon: '📅', label: 'ขอหยุด' },
+      { href: 'out-of-office.html', icon: '🚗', label: 'ออกนอกสถานที่' },
+      { href: 'calendar.html?view=week', icon: '📆', label: 'แผนงานสัปดาห์' },
+    ],
+  },
+  {
+    id: 'hr',
+    label: 'HR จัดการ',
+    collapsible: true,
+    sectionRoles: ['MANAGER_HR', 'ADMIN'],
+    items: [
+      { href: 'employees.html', icon: '👥', label: 'พนักงาน', roles: ['hr-admin'] },
+      { href: 'settings.html#branches', icon: '🏢', label: 'จัดการสาขา', roles: ['admin'] },
+      { href: 'employees.html#departments', icon: '🏛️', label: 'ฝ่าย/แผนก/ส่วนงาน', roles: ['hr-admin'] },
+      { href: 'payroll.html', icon: '💰', label: 'เงินเดือน', roles: ['hr-admin'] },
+      { href: 'reports.html', icon: '📈', label: 'รายงานรายเดือน', roles: ['hr-admin'] },
+      { href: 'payslip.html', icon: '🧾', label: 'สลิปเงินเดือน', roles: ['hr-admin'] },
+      { href: 'leave.html#approve', icon: '✅', label: 'อนุมัติ', roles: ['hr-admin'] },
+    ],
+  },
+  {
+    id: 'comm',
+    label: 'สื่อสาร',
+    collapsible: true,
+    items: [
+      { href: 'announcements.html', icon: '📢', label: 'ประกาศ' },
+      { href: 'rules.html', icon: '📄', label: 'เอกสาร' },
+      { href: 'warnings.html', icon: '🔔', label: 'แจ้งเตือน' },
+    ],
+  },
+  {
+    id: 'system',
+    label: 'ระบบ',
+    collapsible: true,
+    items: [
+      { href: 'settings.html', icon: '⚙️', label: 'ตั้งค่าระบบ', roles: ['hr-admin'] },
+      { href: 'settings.html#permissions', icon: '🔐', label: 'สิทธิ์การใช้งาน', roles: ['admin'] },
+      { href: 'line-oa.html', icon: '💬', label: 'LINE OA', roles: ['admin'] },
+      { href: 'settings.html#profile', icon: '👤', label: 'โปรไฟล์' },
+    ],
+  },
+];
+
+function navRoleClass(roles) {
+  if (!roles || !roles.length) return '';
+  if (roles.includes('admin')) return 'role-admin-only';
+  if (roles.includes('hr-admin')) return 'role-hr-admin-only';
+  if (roles.includes('manager')) return 'role-manager-only';
+  if (roles.includes('employee')) return 'role-employee-only';
+  if (roles.includes('lawyer')) return 'role-lawyer-only';
+  return '';
+}
+
+function navItemMatchesRole(el, user) {
+  if (!user) return true;
+  const hasGate = el.classList.contains('role-manager-only') ||
+    el.classList.contains('role-admin-only') ||
+    el.classList.contains('role-employee-only') ||
+    el.classList.contains('role-lawyer-only') ||
+    el.classList.contains('role-hr-admin-only');
+  if (!hasGate) return true;
+  return (
+    (el.classList.contains('role-manager-only') && user.role === 'MANAGER_HR') ||
+    (el.classList.contains('role-admin-only') && (user.role === 'ADMIN' || user.role === 'MANAGER_HR')) ||
+    (el.classList.contains('role-employee-only') && user.role === 'EMPLOYEE') ||
+    (el.classList.contains('role-lawyer-only') && user.role === 'LAWYER') ||
+    (el.classList.contains('role-hr-admin-only') && (user.role === 'MANAGER_HR' || user.role === 'ADMIN'))
+  );
+}
+
+function sectionMatchesRole(section, user) {
+  if (!section.sectionRoles || !section.sectionRoles.length) return true;
+  if (!user) return true;
+  return section.sectionRoles.includes(user.role);
+}
+
+function navHrefMatchesPage(href) {
+  const page = location.pathname.split('/').pop() || 'index.html';
+  const hash = location.hash || '';
+  const query = location.search || '';
+  const base = href.split('#')[0].split('?')[0];
+  const itemHash = href.includes('#') ? '#' + href.split('#')[1].split('?')[0] : '';
+  const itemQuery = href.includes('?') ? '?' + href.split('?')[1] : '';
+  if (base !== page) return false;
+  if (itemHash && itemHash !== hash) return false;
+  if (itemQuery && itemQuery !== query) return false;
+  if (!itemHash && hash && href.indexOf('#') === -1) return hash === '';
+  return true;
+}
+
+function renderSidebarNav() {
+  const nav = document.querySelector('.sidebar-nav');
+  if (!nav) return;
+  const html = SIDEBAR_NAV.map(function(section) {
+    const collapsible = section.collapsible !== false && section.id !== 'main';
+    const sectionCls = collapsible ? ' nav-section-collapsible' : '';
+    const sectionRoles = section.sectionRoles ? ' data-section-roles="' + section.sectionRoles.join(',') + '"' : '';
+    const itemsHtml = section.items.map(function(item) {
+      const roleCls = navRoleClass(item.roles);
+      const cls = 'nav-item' + (roleCls ? ' ' + roleCls : '');
+      return '<a href="' + item.href + '" class="' + cls + '" data-nav-label="' + item.label + '">' +
+        '<span class="icon">' + item.icon + '</span> ' + item.label + '</a>';
+    }).join('');
+    if (collapsible) {
+      return '<div class="nav-section' + sectionCls + '" data-section-id="' + section.id + '"' + sectionRoles + '>' +
+        '<button type="button" class="nav-section-toggle" aria-expanded="false">' +
+        '<span class="nav-toggle-label">' + section.label + '</span>' +
+        '<span class="nav-toggle-arrow" aria-hidden="true">▶</span></button>' +
+        '<div class="nav-section-body">' + itemsHtml + '</div></div>';
+    }
+    return '<div class="nav-section" data-section-id="' + section.id + '">' +
+      '<div class="nav-label">' + section.label + '</div>' +
+      '<div class="nav-section-body">' + itemsHtml + '</div></div>';
+  }).join('');
+  nav.innerHTML = html;
+}
+
+function applyNavRoleVisibility(user) {
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(function(el) {
+    el.style.display = navItemMatchesRole(el, user) ? '' : 'none';
+  });
+  SIDEBAR_NAV.forEach(function(section) {
+    const secEl = document.querySelector('.nav-section[data-section-id="' + section.id + '"]');
+    if (!secEl) return;
+    if (!sectionMatchesRole(section, user)) {
+      secEl.style.display = 'none';
+      return;
+    }
+    const anyVisible = Array.from(secEl.querySelectorAll('.nav-item')).some(function(el) {
+      return el.style.display !== 'none';
+    });
+    secEl.style.display = anyVisible ? '' : 'none';
+  });
+}
+
+function highlightActiveNav() {
+  document.querySelectorAll('.nav-item').forEach(function(a) {
+    const href = a.getAttribute('href') || '';
+    a.classList.toggle('active', navHrefMatchesPage(href));
+  });
+}
+
+function loadNavSectionState() {
+  try {
+    return JSON.parse(localStorage.getItem(SIDEBAR_SECTIONS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveNavSectionState(state) {
+  localStorage.setItem(SIDEBAR_SECTIONS_KEY, JSON.stringify(state));
+}
+
+function setNavSectionOpen(sectionEl, open, save) {
+  if (!sectionEl || !sectionEl.classList.contains('nav-section-collapsible')) return;
+  sectionEl.classList.toggle('is-open', open);
+  const btn = sectionEl.querySelector('.nav-section-toggle');
+  const body = sectionEl.querySelector('.nav-section-body');
+  if (btn) {
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const arrow = btn.querySelector('.nav-toggle-arrow');
+    if (arrow) arrow.textContent = open ? '▼' : '▶';
+  }
+  if (body) body.style.maxHeight = open ? (body.scrollHeight + 'px') : '0px';
+  if (save) {
+    const id = sectionEl.getAttribute('data-section-id');
+    if (!id) return;
+    const state = loadNavSectionState();
+    state[id] = open;
+    saveNavSectionState(state);
+  }
+}
+
+function initNavAccordion() {
+  const nav = document.querySelector('.sidebar-nav');
+  if (!nav || nav.dataset.accordionInit === '1') return;
+  nav.dataset.accordionInit = '1';
+  const saved = loadNavSectionState();
+  nav.querySelectorAll('.nav-section-collapsible').forEach(function(sectionEl) {
+    const id = sectionEl.getAttribute('data-section-id');
+    const hasActive = !!sectionEl.querySelector('.nav-item.active');
+    const open = hasActive || (id && saved[id] === true);
+    setNavSectionOpen(sectionEl, open, false);
+    const btn = sectionEl.querySelector('.nav-section-toggle');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        const isOpen = sectionEl.classList.contains('is-open');
+        setNavSectionOpen(sectionEl, !isOpen, true);
+      });
+    }
+  });
+  nav.querySelectorAll('.nav-section:not(.nav-section-collapsible) .nav-section-body').forEach(function(body) {
+    body.style.maxHeight = 'none';
+  });
+}
 
 function isSidebarMobile() {
   return window.innerWidth <= SIDEBAR_MOBILE_BP;
@@ -113,8 +323,9 @@ function toggleSidebarCollapse() {
 
 function setNavTooltips() {
   document.querySelectorAll('.nav-item').forEach(function(a) {
-    if (!a.dataset.navLabel) a.dataset.navLabel = a.textContent.replace(/\s+/g, ' ').trim();
-    a.title = a.dataset.navLabel;
+    const label = a.dataset.navLabel || a.textContent.replace(/\s+/g, ' ').trim();
+    a.dataset.navLabel = label;
+    a.title = label;
   });
 }
 
@@ -138,7 +349,20 @@ function onSidebarResize() {
 }
 
 function initSidebar() {
-  if (!document.getElementById('sidebar') || document.body.dataset.sidebarInit === '1') return;
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  if (document.body.dataset.navRendered !== '1') {
+    renderSidebarNav();
+    document.body.dataset.navRendered = '1';
+  }
+
+  const user = getCurrentUser();
+  applyNavRoleVisibility(user);
+  highlightActiveNav();
+  initNavAccordion();
+
+  if (document.body.dataset.sidebarInit === '1') return;
   document.body.dataset.sidebarInit = '1';
   injectSidebarToggle();
   setNavTooltips();
