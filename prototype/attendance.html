@@ -292,9 +292,6 @@
 <script src="hr-core.js"></script>
 <script src="face-core.js"></script>
 <script>
-function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').style.display='block'; }
-function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').style.display='none'; }
-
 // ── XSS PROTECTION ─────────────────────────────────────────────────────────
 function escapeHtml(str) {
   return String(str == null ? '' : str)
@@ -999,17 +996,9 @@ function submitActiveAction() {
   closePanel();
   alert('บันทึกสำเร็จ');
   saveAttendancePhotoToDevice(photoUrl, rec, _scanType);
-  const scanLabel = (typeof ATT_SCAN_LABELS !== 'undefined' && ATT_SCAN_LABELS[_scanType]) || _scanType;
   clearFaceScanTimeout(); // [7] scan succeeded, clear timeout
-  processAttendanceNotification(rec, _scanType, photoUrl)
-    .then(function(lineResult) {
-      showAttendanceSaveResult(true, lineResult, scanLabel); // [8] offline status
-      if (typeof showLineAfterScan === 'function') showLineAfterScan(lineResult, scanLabel);
-    })
-    .catch(function(e) {
-      console.warn('attendance notification:', e);
-      showAttendanceSaveResult(true, null, scanLabel); // [8] att ok, LINE failed
-    });
+  uploadAttendancePhotoCdn(rec, _scanType, photoUrl)
+    .catch(function(e) { console.warn('cloudinary upload:', e); });
   } catch (err) {
     console.error('submitActiveAction error:', err);
     alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
@@ -1070,7 +1059,7 @@ function renderTimeline(rec) {
     let statusBadge = '';
     if (s.key === 'checkIn' && done) {
       if (rec.isLate) {
-        statusBadge = `<span class="tag orange" style="font-size:10px;margin-left:6px;">มาสาย ${rec.lateMinutes || 0} นาที</span>`;
+        statusBadge = `<span class="tag orange" style="font-size:10px;margin-left:6px;">${formatLateLabel(rec.lateMinutes || 0)}</span>`;
       } else if (rec.checkInTime) {
         statusBadge = `<span class="tag green" style="font-size:10px;margin-left:6px;">ตรงเวลา</span>`;
       }
@@ -1441,7 +1430,7 @@ function calcLateInfo(scanType, time) {
 
   const isLate = bkk > deadline;
   const lateMinutes = isLate ? Math.round((bkk.getTime() - deadline.getTime()) / 60000) : 0;
-  const lateStatus = isLate ? ('มาสาย ' + lateMinutes + ' นาที') : 'ตรงเวลา';
+  const lateStatus = isLate ? formatLateLabel(lateMinutes) : 'ตรงเวลา';
   const checkInTime = bkk.toLocaleTimeString('th-TH', {
     hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
   });
@@ -1481,100 +1470,35 @@ function calcCheckoutInfo(scanType, time) {
   return { earlyLeave, earlyLeaveMinutes, workStatus, checkOutTime };
 }
 
-// ── ATTENDANCE NOTIFICATION (Cloudinary + LINE OA) ────────────────────────────
-const ATT_SCAN_LABELS = {
-  'checkin-company':  'Check In (ในบริษัท)',
-  'checkin-outside':  'Check In (นอกสถานที่)',
-  'lunch-out':        'Lunch Start',
-  'lunch-in':         'Lunch End',
-  'checkout':         'Check Out',
-};
-const _TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-const _TH_DAYS   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-
-async function processAttendanceNotification(rec, scanType, photoDataUrl) {
+// ── CLOUDINARY UPLOAD (ไม่ส่ง LINE OA) ───────────────────────────────────────
+async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
   const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
-  if (!user) return;
+  if (!user || !photoDataUrl) return;
   const s = (typeof getCompanySettings === 'function') ? getCompanySettings() : {};
+  if (!s.cloudinaryCloud || !s.cloudinaryPreset) return;
 
-  // Determine which timestamp this scan represents
-  const tsMap = {
-    'checkin-company': rec.checkIn, 'checkin-outside': rec.checkIn,
-    'lunch-out': rec.lunchOut, 'lunch-in': rec.lunchIn, 'checkout': rec.checkOut,
-  };
-  const ts = tsMap[scanType] ? new Date(tsMap[scanType]) : new Date();
-
-  const dateStr = ts.getDate() + ' ' + _TH_MONTHS[ts.getMonth()] + ' ' + (ts.getFullYear() + 543) +
-                  ' (' + _TH_DAYS[ts.getDay()] + ')';
-  const timeStr = ts.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  // ข้อมูลมาสาย (เฉพาะ checkin)
-  const lateInfoNotify = (scanType === 'checkin-company' || scanType === 'checkin-outside')
-    ? (typeof calcLateInfo === 'function' ? calcLateInfo(scanType, ts) : { isLate: false, lateMinutes: 0, lateStatus: '—' })
-    : { isLate: false, lateMinutes: 0, lateStatus: 'ไม่ใช่เช็คอิน' };
-  const lateStatus = lateInfoNotify.lateStatus;
-
-  // ข้อมูลกลับก่อนเวลา (เฉพาะ checkout)
-  const checkoutInfoNotify = (scanType === 'checkout')
-    ? (typeof calcCheckoutInfo === 'function' ? calcCheckoutInfo('checkout', ts) : { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: '—' })
-    : { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: '—' };
-
-  const location = rec.address
-    ? rec.address + (rec.lat ? '\n(' + rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) + ')' : '')
-    : (rec.lat ? rec.lat.toFixed(6) + ', ' + rec.lng.toFixed(6) : '—');
-
-  const msgData = {
-    employeeName:  user.name  || '—',
-    employeeCode:  user.id    || '—',
-    scanType:      ATT_SCAN_LABELS[scanType] || scanType,
-    date:          dateStr,
-    time:          timeStr,
-    lateStatus,
-    lateMinutes:        lateInfoNotify.lateMinutes,
-    earlyLeave:         checkoutInfoNotify.earlyLeave,
-    earlyLeaveMinutes:  checkoutInfoNotify.earlyLeaveMinutes,
-    workStatus:         checkoutInfoNotify.workStatus,
-    branch:        s.branch || s.companyName || '—',
-    department:    user.dept || '—',
-    faceVerified:  rec.faceVerified || false,
-    location,
-  };
-
-  let imageUrl = null;
-  if (photoDataUrl && s.cloudinaryCloud && s.cloudinaryPreset) {
-    try {
-      const folderMap = {
-        'checkin-company': 'checkin', 'checkin-outside': 'checkin',
-        'lunch-out': 'lunch-out', 'lunch-in': 'lunch-in', 'checkout': 'checkout',
+  try {
+    const folderMap = {
+      'checkin-company': 'checkin', 'checkin-outside': 'checkin',
+      'lunch-out': 'lunch-out', 'lunch-in': 'lunch-in', 'checkout': 'checkout',
+    };
+    const cdnResult = await uploadToCloudinary(photoDataUrl, {
+      folder: 'attendance/' + (user.id || 'unknown') + '/' + (folderMap[scanType] || scanType),
+      tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
+    });
+    const stored = getTodayRecord();
+    if (stored) {
+      const fieldMap = {
+        'checkin-company': 'photoUrlCdn', 'checkin-outside': 'photoUrlCdn',
+        'lunch-out': 'lunchOutPhotoUrlCdn', 'lunch-in': 'lunchInPhotoUrlCdn',
+        'checkout': 'checkOutPhotoUrlCdn',
       };
-      const cdnResult = await uploadToCloudinary(photoDataUrl, {
-        folder: 'attendance/' + (user.id || 'unknown') + '/' + (folderMap[scanType] || scanType),
-        tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
-      });
-      imageUrl = cdnResult.secure_url;
-      // Persist the CDN URL back into today's record
-      const stored = getTodayRecord();
-      if (stored) {
-        const fieldMap = {
-          'checkin-company': 'photoUrlCdn', 'checkin-outside': 'photoUrlCdn',
-          'lunch-out': 'lunchOutPhotoUrlCdn', 'lunch-in': 'lunchInPhotoUrlCdn',
-          'checkout': 'checkOutPhotoUrlCdn',
-        };
-        const field = fieldMap[scanType];
-        if (field) { stored[field] = imageUrl; saveTodayRecord(stored); }
-      }
-    } catch (err) {
-      console.warn('Cloudinary upload skipped:', err.message || err);
+      const field = fieldMap[scanType];
+      if (field) { stored[field] = cdnResult.secure_url; saveTodayRecord(stored); }
     }
+  } catch (err) {
+    console.warn('Cloudinary upload skipped:', err.message || err);
   }
-
-  // 2. Send LINE OA message + image
-  const message = (typeof buildLineAttMsg === 'function') ? buildLineAttMsg(msgData) : JSON.stringify(msgData);
-  const lineResult = await sendLineOAMsg(message, imageUrl);
-  if (!lineResult.ok && lineResult.reason !== 'no_config') {
-    queueLineNotification({ message, imageUrl, queuedFor: scanType, employeeId: user.id });
-    console.warn('LINE OA queued for retry — reason:', lineResult.reason);
-  }
-  return lineResult;
 }
 
 // ── LATE REPORT (HR/Admin) ────────────────────────────────────────────────────
@@ -1616,14 +1540,14 @@ function renderLateReport() {
   container.innerHTML = `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>วันที่</th><th>รอบ</th><th>เวลาเช็คอิน</th><th>สาย (นาที)</th><th>ประเภท</th></tr></thead>
+        <thead><tr><th>วันที่</th><th>รอบ</th><th>เวลาเช็คอิน</th><th>เวลาสาย</th><th>ประเภท</th></tr></thead>
         <tbody>
           ${records.map(function(r) {
             return '<tr>' +
               '<td>' + (r.dateKey || '—') + '</td>' +
               '<td style="text-align:center;">' + r.sessionIdx + '</td>' +
               '<td><span style="color:var(--orange);font-weight:600;">' + r.checkInTime + '</span></td>' +
-              '<td><span class="tag orange">' + r.lateMinutes + ' นาที</span></td>' +
+              '<td><span class="tag orange">' + formatLateMinutes(r.lateMinutes) + '</span></td>' +
               '<td>' + (r.isOutside ? '<span class="tag orange">นอกสถานที่</span>' : '<span class="tag blue">ในบริษัท</span>') + '</td>' +
               '</tr>';
           }).join('')}
@@ -1657,7 +1581,7 @@ function getAllAttendanceData() {
           earlyLeave:       s.earlyLeave ? 'ใช่' : 'ไม่',
           earlyLeaveMinutes: s.earlyLeaveMinutes || 0,
           workStatus:  s.workStatus  || '—',
-          lateStatus:  s.lateStatus  || '—',
+          lateStatus:  s.isLate ? formatLateLabel(s.lateMinutes || 0) : '—',
           address:     s.address || '—',
           branch:      s.branch  || '—',
           department:  s.department || '—',
@@ -1811,29 +1735,6 @@ function clearFaceScanTimeout() {
   if (_faceTimeoutTimer) { clearTimeout(_faceTimeoutTimer); _faceTimeoutTimer = null; }
 }
 
-// ── [8] OFFLINE CHECKIN STATUS — แยก Attendance vs LINE ──────────────────────
-function showAttendanceSaveResult(attOk, lineResult, scanLabel) {
-  const bar = document.getElementById('offline-queue-bar');
-  const msg = document.getElementById('offline-queue-msg');
-  if (!bar || !msg) return;
-  if (!attOk) {
-    bar.style.display = 'flex';
-    bar.style.background = 'rgba(239,68,68,.1)';
-    bar.style.borderColor = 'rgba(239,68,68,.3)';
-    msg.textContent = '❌ บันทึกข้อมูล Attendance ไม่สำเร็จ';
-    return;
-  }
-  const lineOk = lineResult && lineResult.ok;
-  const lineNoConf = lineResult && lineResult.reason === 'no_config';
-  if (!lineOk && !lineNoConf) {
-    bar.style.display = 'flex';
-    bar.style.background = 'rgba(6,182,212,.08)';
-    bar.style.borderColor = 'rgba(6,182,212,.25)';
-    msg.textContent = '✓ บันทึก Attendance สำเร็จ · LINE: รอส่ง (จะ retry อัตโนมัติ)';
-  }
-  updateOfflineQueueBar();
-}
-
 // ── [10] GPS LIVE LOCATION TTL (24h) ─────────────────────────────────────────
 function cleanExpiredGpsLocations() {
   try {
@@ -1901,44 +1802,10 @@ function scheduleMidnightReset() {
   setTimeout(midnightReset, msUntilMidnight());
 }
 
-// ── OFFLINE QUEUE UI ──────────────────────────────────────────────────────────
-function updateOfflineQueueBar() {
-  const q = (typeof lsGet === 'function') ? lsGet('lineNotifyQueue', []) : [];
-  const bar = document.getElementById('offline-queue-bar');
-  const msg = document.getElementById('offline-queue-msg');
-  if (!bar) return;
-  if (q.length > 0) {
-    bar.style.display = 'flex';
-    if (msg) msg.textContent = `📡 มีข้อมูล ${q.length} รายการรอ sync LINE OA — จะส่งอัตโนมัติเมื่อออนไลน์`;
-  } else {
-    bar.style.display = 'none';
-  }
-}
-
-// Flush queued LINE notifications when the device comes back online
-window.addEventListener('online', function() {
-  if (typeof flushLineQueue === 'function') {
-    flushLineQueue()
-      .then(function() { updateOfflineQueueBar(); })
-      .catch(function(e) { console.warn('flushLineQueue:', e); });
-  }
-});
-
-window.addEventListener('offline', function() { updateOfflineQueueBar(); });
-
-// Attempt flush on load in case there are stale queued items
-if (navigator.onLine && typeof flushLineQueue === 'function') {
-  setTimeout(function() {
-    flushLineQueue()
-      .then(function() { updateOfflineQueueBar(); })
-      .catch(function(e) { console.warn('flushLineQueue:', e); });
-  }, 3000);
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof initRole === 'function') initRole();
+  if (typeof purgeAttendanceLineQueue === 'function') purgeAttendanceLineQueue();
   renderAttendanceUI();
-  updateOfflineQueueBar();
   initCamera();
   startRealTimeGPS();
   scheduleMidnightReset();

@@ -55,7 +55,100 @@ function initRole() {
     const href = a.getAttribute('href') || '';
     a.classList.toggle('active', href === page);
   });
+
+  initSidebar();
 }
+
+// ── SIDEBAR (collapse + mobile slide) ─────────────────────────────────────────
+
+const SIDEBAR_COLLAPSED_KEY = 'hrflow_sidebar_collapsed';
+const SIDEBAR_MOBILE_BP = 768;
+let _sidebarResizeTimer = null;
+
+function isSidebarMobile() {
+  return window.innerWidth <= SIDEBAR_MOBILE_BP;
+}
+
+function openSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  if (sb) sb.classList.add('open');
+  if (ov) ov.style.display = 'block';
+}
+
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  if (sb) sb.classList.remove('open');
+  if (ov) ov.style.display = 'none';
+}
+
+function updateSidebarToggleIcon() {
+  const btn = document.getElementById('sidebar-toggle');
+  if (!btn) return;
+  const collapsed = document.body.classList.contains('sidebar-collapsed');
+  btn.textContent = collapsed ? '»' : '«';
+  btn.setAttribute('aria-label', collapsed ? 'ขยายเมนู' : 'หุบเมนู');
+  btn.title = collapsed ? 'ขยายเมนู' : 'หุบเมนู';
+}
+
+function applySidebarCollapsed() {
+  if (isSidebarMobile()) {
+    document.body.classList.remove('sidebar-collapsed');
+    updateSidebarToggleIcon();
+    return;
+  }
+  const collapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+  updateSidebarToggleIcon();
+}
+
+function toggleSidebarCollapse() {
+  if (isSidebarMobile()) return;
+  const next = !document.body.classList.contains('sidebar-collapsed');
+  document.body.classList.toggle('sidebar-collapsed', next);
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+  updateSidebarToggleIcon();
+}
+
+function setNavTooltips() {
+  document.querySelectorAll('.nav-item').forEach(function(a) {
+    if (!a.dataset.navLabel) a.dataset.navLabel = a.textContent.replace(/\s+/g, ' ').trim();
+    a.title = a.dataset.navLabel;
+  });
+}
+
+function injectSidebarToggle() {
+  if (document.getElementById('sidebar-toggle')) return;
+  const logo = document.querySelector('.sidebar-logo');
+  if (!logo) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'sidebar-toggle';
+  btn.className = 'sidebar-toggle';
+  btn.textContent = '«';
+  btn.setAttribute('aria-label', 'หุบเมนู');
+  btn.addEventListener('click', toggleSidebarCollapse);
+  logo.appendChild(btn);
+}
+
+function onSidebarResize() {
+  clearTimeout(_sidebarResizeTimer);
+  _sidebarResizeTimer = setTimeout(applySidebarCollapsed, 120);
+}
+
+function initSidebar() {
+  if (!document.getElementById('sidebar') || document.body.dataset.sidebarInit === '1') return;
+  document.body.dataset.sidebarInit = '1';
+  injectSidebarToggle();
+  setNavTooltips();
+  applySidebarCollapsed();
+  window.addEventListener('resize', onSidebarResize);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('sidebar')) initSidebar();
+});
 
 // ── MOCK LINE NOTIFICATION ────────────────────────────────────────────────────
 
@@ -140,6 +233,19 @@ function thTime(dateStr) {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
   return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** แปลง lateMinutes เป็น "0 ชั่วโมง 15 นาที" (display only) */
+function formatLateMinutes(totalMinutes) {
+  const m = Math.max(0, Math.round(Number(totalMinutes) || 0));
+  const hours = Math.floor(m / 60);
+  const mins = String(m % 60).padStart(2, '0');
+  return hours + ' ชั่วโมง ' + mins + ' นาที';
+}
+
+/** ป้ายมาสายพร้อม duration เช่น "มาสาย 1 ชั่วโมง 20 นาที" */
+function formatLateLabel(totalMinutes) {
+  return 'มาสาย ' + formatLateMinutes(totalMinutes);
 }
 
 function uid() {
@@ -252,57 +358,15 @@ const _LINE_QUEUE_KEY = 'lineNotifyQueue';
 const DEFAULT_LINE_OA_ID = '@593qdkpk';
 const DEFAULT_LINE_NOTIFY_API = 'https://hrflow-app-gamma.vercel.app';
 
-/**
- * Builds the Thai attendance notification message per the LINE OA template.
- */
-function buildLineAttMsg(d) {
-  const isCheckin = d.scanType && (
-    d.scanType.includes('Check In') || d.scanType.includes('เข้างาน') ||
-    d.scanType.includes('checkin')
-  );
-  const lines = [
-    '\nพนักงานลงเวลาแล้ว',
-    '',
-    'ชื่อ: ' + d.employeeName,
-    d.employeeCode ? 'รหัส: ' + d.employeeCode : null,
-    '',
-    'ประเภท:',
-    d.scanType,
-    '',
-    'วันที่:',
-    d.date,
-    '',
-    'เวลา:',
-    d.time,
-  ];
+const _ATT_LINE_QUEUE_TYPES = ['checkin-company', 'checkin-outside', 'lunch-out', 'lunch-in', 'checkout'];
 
-  if (isCheckin) {
-    const lateMin = typeof d.lateMinutes === 'number' ? d.lateMinutes : 0;
-    const isLate  = lateMin > 0;
-    lines.push('', 'สถานะ:', isLate ? 'มาสาย' : 'ตรงเวลา');
-    if (isLate) { lines.push('', 'สาย:', lateMin + ' นาที'); }
-  }
-
-  const isCheckout = d.scanType && (
-    d.scanType.includes('Check Out') || d.scanType.includes('ออกงาน') ||
-    d.scanType.includes('checkout')
-  );
-  if (isCheckout) {
-    const earlyMin = typeof d.earlyLeaveMinutes === 'number' ? d.earlyLeaveMinutes : 0;
-    const isEarly  = earlyMin > 0;
-    lines.push('', 'สถานะ:', isEarly ? 'กลับก่อนเวลา' : 'เลิกงานปกติ');
-    if (isEarly) { lines.push('', 'กลับก่อน:', earlyMin + ' นาที'); }
-  }
-
-  lines.push(
-    '',
-    'สาขา: ' + (d.branch || '—'),
-    'แผนก: ' + (d.department || '—'),
-    'ยืนยันใบหน้า: ' + (d.faceVerified ? '✓ ผ่าน' : '—'),
-  );
-  if (d.location) { lines.push('', 'สถานที่:', d.location); }
-
-  return lines.filter(function(l) { return l !== null; }).join('\n');
+/** ลบรายการแจ้งเตือนลงเวลาที่ค้างใน queue (หลังปิด attendance LINE notify) */
+function purgeAttendanceLineQueue() {
+  const q = lsGet(_LINE_QUEUE_KEY, []);
+  const filtered = q.filter(function(item) {
+    return !_ATT_LINE_QUEUE_TYPES.includes(item.queuedFor);
+  });
+  if (filtered.length !== q.length) lsSet(_LINE_QUEUE_KEY, filtered);
 }
 
 /** Base URL ของแอป Next.js สำหรับส่ง LINE ผ่าน server (หลีกเลี่ยง CORS) */
@@ -394,10 +458,12 @@ function queueLineNotification(item) {
 
 /** Retries all queued notifications. Call on 'online' event. */
 async function flushLineQueue() {
+  purgeAttendanceLineQueue();
   const q = lsGet(_LINE_QUEUE_KEY, []);
   if (!q.length) return;
   const remaining = [];
   for (const item of q) {
+    if (_ATT_LINE_QUEUE_TYPES.includes(item.queuedFor)) continue;
     if ((item.retries || 0) >= 5) continue; // discard after 5 attempts
     const result = await sendLineOAMsg(item.message, item.imageUrl || null);
     if (!result.ok) remaining.push(Object.assign({}, item, { retries: (item.retries || 0) + 1 }));
@@ -416,24 +482,3 @@ function openLineOaChat(basicId) {
   }
 }
 
-/**
- * หลังสแกนลงเวลา — แจ้งผล + เปิด LINE OA ให้ผู้ใช้เห็นแชท/แจ้งเตือน
- */
-function showLineAfterScan(lineResult, scanLabel) {
-  const sent = lineResult && lineResult.ok;
-  const reason = lineResult && lineResult.reason;
-  let msg = sent
-    ? '✓ ส่งแจ้งเตือนไป LINE HR แล้ว'
-    : reason === 'no_hr_linked'
-      ? '⚠ HR ยังไม่ได้ผูก LINE OA — เปิด LINE เพื่อเพิ่มเพื่อนและผูกบัญชี'
-      : reason === 'no_config'
-        ? '⚠ ยังไม่ตั้งค่า LINE บนเซิร์ฟเวอร์'
-        : '⚠ ส่ง LINE ไม่สำเร็จ — เปิด LINE OA เพื่อตรวจสอบ';
-
-  if (typeof mockLineNotify === 'function') {
-    mockLineNotify((scanLabel ? scanLabel + '\n' : '') + msg, sent ? 'LINE HR' : 'LINE OA');
-  }
-
-  const goLine = confirm(msg + '\n\nต้องการเปิดแอป LINE OA (@593qdkpk) ตอนนี้หรือไม่?');
-  if (goLine) openLineOaChat(DEFAULT_LINE_OA_ID);
-}
