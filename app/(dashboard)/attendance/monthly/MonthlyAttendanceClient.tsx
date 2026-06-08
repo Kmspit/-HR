@@ -11,6 +11,7 @@ import { ClipboardList, FileSpreadsheet, FileText, Loader2, Users } from 'lucide
 import { toast } from 'sonner'
 
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { formatLateMinutes } from '@/lib/utils'
 
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 
@@ -844,7 +845,7 @@ export default function MonthlyAttendanceClient({
 
                   </td>
 
-                  <td className="px-2 py-2 text-amber-400">{r.lateMinutes > 0 ? r.lateMinutes : '—'}</td>
+                  <td className="px-2 py-2 text-amber-400">{r.lateMinutes > 0 ? formatLateMinutes(r.lateMinutes) : '—'}</td>
 
                   <td className="px-2 py-2 text-orange-400">
 

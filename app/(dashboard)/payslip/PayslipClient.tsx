@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { FileText, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
+import { formatLateMinutes } from '@/lib/utils'
 
 type Payslip = {
   id: string
@@ -127,7 +128,7 @@ export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
                     {p.lateDeduction > 0 && (
                       <>
                         <Row
-                          label={`หักมาสาย (${p.lateDays} วัน · ${p.lateBillableMinutes ?? p.lateMinutes} นาที)`}
+                          label={`หักมาสาย (${p.lateDays} วัน · ${formatLateMinutes(p.lateBillableMinutes ?? p.lateMinutes)})`}
                           value={`-฿${p.lateDeduction.toFixed(2)}`}
                           red
                         />

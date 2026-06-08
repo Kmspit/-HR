@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, formatLateMinutes } from '@/lib/utils'
 import { buildHolidayMapForMonth, type HolidayRecord } from '@/lib/company-holidays'
 import HolidayManagePanel, { type HolidayItem } from '@/components/calendar/HolidayManagePanel'
 
@@ -340,7 +340,7 @@ export default function CalendarClient({
                 },
                 {
                   label: 'สาย',
-                  value: selectedRecord.lateMinutes > 0 ? `${selectedRecord.lateMinutes} นาที` : '—',
+                  value: selectedRecord.lateMinutes > 0 ? formatLateMinutes(selectedRecord.lateMinutes) : '—',
                 },
               ].map((item) => (
                 <div

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import { ROLE_LABELS } from '@/lib/permissions'
-import { formatThaiDate } from '@/lib/utils'
+import { formatThaiDate, formatLateMinutes } from '@/lib/utils'
 import Link from 'next/link'
 import AttendanceChartWrapper from '@/components/dashboard/AttendanceChartWrapper'
 import EmployeeDashboard from './EmployeeDashboard'
@@ -274,7 +274,7 @@ export default async function DashboardPage({
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-semibold text-slate-200 leading-tight truncate">{a.user.name}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {a.status === 'LATE' ? `มาสาย ${a.lateMinutes} นาที` : 'เช็คอินแล้ว'}
+                      {a.status === 'LATE' ? `มาสาย ${formatLateMinutes(a.lateMinutes)}` : 'เช็คอินแล้ว'}
                       {a.checkIn && ` · ${new Date(a.checkIn).toLocaleTimeString('th-TH', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -370,7 +370,7 @@ export default async function DashboardPage({
                     <p className="text-[10px] text-slate-500">{a.user.department ?? '—'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] font-bold text-yellow-400">+{a.lateMinutes} นาที</p>
+                    <p className="text-[11px] font-bold text-yellow-400">+{formatLateMinutes(a.lateMinutes)}</p>
                     {a.checkIn && <p className="text-[9px] text-slate-600">{new Date(a.checkIn).toLocaleTimeString('th-TH', {
                         hour: '2-digit',
                         minute: '2-digit',
