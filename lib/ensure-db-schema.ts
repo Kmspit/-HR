@@ -117,6 +117,23 @@ async function runEnsure(): Promise<boolean> {
     `
   }
 
+  // Force-correct wrong HQ branch coordinates seeded in earlier versions.
+  // Only update if lat/lng matches one of the two known-wrong seed values:
+  //   - 13.8511, 100.6596  (from old company-branches.ts default)
+  //   - 13.8253, 100.6785  (from old CompanySettings seed / company-defaults.ts)
+  //   - NULL               (never populated)
+  // If admin has set a custom value (neither of the above), this is a no-op.
+  await prisma.$executeRaw`
+    UPDATE company_branches
+    SET lat = 13.82965, lng = 100.67712, radiusMeters = 200, updatedAt = datetime('now')
+    WHERE id = ${HQ_BRANCH_ID}
+      AND (
+        lat IS NULL
+        OR (ABS(lat - 13.8511) < 0.001 AND ABS(lng - 100.6596) < 0.001)
+        OR (ABS(lat - 13.8253) < 0.001 AND ABS(lng - 100.6785) < 0.001)
+      )
+  `
+
   const hqId = DEFAULT_COMPANY_BRANCHES[0].id
   await prisma.$executeRaw`
     UPDATE users SET branchId = ${hqId} WHERE branchId IS NULL OR branchId = ''

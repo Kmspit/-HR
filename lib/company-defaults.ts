@@ -10,7 +10,7 @@ export const KM_COMPANY = {
   companyNameEn: COMPANY_NAME_EN,
   officeAddress:
     '16 ซอย รามอินทรา 93 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230',
-  geofenceLat: 13.8253,
-  geofenceLng: 100.6785,
-  geofenceRadius: 250,
+  geofenceLat: 13.82965,
+  geofenceLng: 100.67712,
+  geofenceRadius: 200,
 } as const

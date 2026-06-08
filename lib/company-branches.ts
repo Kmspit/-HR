@@ -27,9 +27,9 @@ export const DEFAULT_COMPANY_BRANCHES: CompanyBranchSeed[] = [
     address: '16 ซอย รามอินทรา 93 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230',
     isDefault: true,
     registerTag: 'สาขาหลัก',
-    lat: 13.8511,
-    lng: 100.6596,
-    radiusMeters: 100,
+    lat: 13.82965,
+    lng: 100.67712,
+    radiusMeters: 200,
   },
   {
     id: NMA_BRANCH_ID,
