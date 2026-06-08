@@ -46,6 +46,8 @@ export type FaceScanResult = {
   score: number
   earAvg: number                            // Eye Aspect Ratio — used for blink detection
   nosePt: { x: number; y: number } | null  // Nose tip — used for head-movement liveness
+  faceSizePct: number   // face box width as % of frame width (0 = no face)
+  faceCenterX: number   // face center X as fraction of frame (0.5 = center; 0 = no face)
 }
 
 export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceScanResult> {
@@ -57,7 +59,7 @@ export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceSc
     .withFaceDescriptor()
 
   if (!det?.landmarks || !det.descriptor) {
-    return { descriptor: null, pose: 'none', score: 0, earAvg: 0, nosePt: null }
+    return { descriptor: null, pose: 'none', score: 0, earAvg: 0, nosePt: null, faceSizePct: 0, faceCenterX: 0 }
   }
 
   const lm = det.landmarks
@@ -77,13 +79,29 @@ export async function scanFaceFromVideo(video: HTMLVideoElement): Promise<FaceSc
 
   const ear = computeEarFromLandmarks(lm)
 
+  // Face quality metrics from detection box
+  const box = det.detection.box
+  const frameW = (video as HTMLVideoElement).videoWidth || 1
+  const faceSizePct = (box.width / frameW) * 100
+  const faceCenterX = (box.x + box.width / 2) / frameW
+
   return {
     descriptor: Array.from(det.descriptor as Float32Array),
     pose,
     score: det.detection.score,
     earAvg: ear.avg,
     nosePt: nose ? { x: nose.x, y: nose.y } : null,
+    faceSizePct,
+    faceCenterX,
   }
+}
+
+/** ตรวจจำนวนใบหน้าทั้งหมดในเฟรม — ใช้ตรวจ multi-face (เรียก periodic ไม่ใช่ทุก frame) */
+export async function countDetectedFaces(video: HTMLVideoElement): Promise<number> {
+  await loadFaceModels()
+  if (!faceapi) return 0
+  const dets = await faceapi.detectAllFaces(video, detectorOptions())
+  return dets.length
 }
 
 export async function extractDescriptorFromVideo(

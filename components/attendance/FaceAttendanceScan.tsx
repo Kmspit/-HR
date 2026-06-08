@@ -9,13 +9,14 @@ import {
   loadFaceModels,
   scanFaceFromVideo,
   captureJpegFromVideo,
+  countDetectedFaces,
 } from '@/lib/face-client'
 import {
   scoreLivenessSamples,
   serializeSpoofFlags,
+  sampleVideoLuminance,
   type LivenessChallengeResult,
 } from '@/lib/face-liveness'
-import { sampleVideoLuminance } from '@/lib/face-liveness'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 export type FaceVerifyPayload = {
@@ -39,6 +40,14 @@ type Props = {
 const ALIGN_SCORE = 0.5   // ลดจาก 0.6 — ตรวจจับง่ายขึ้น ลด false-reject
 const STABLE_MS = 900     // เพิ่มจาก 280 → 900 ms เพื่อเก็บ ~4 samples สำหรับ liveness
 
+const MAX_RETRIES = 3
+const COOLDOWN_MS = 30_000
+const MULTI_FACE_INTERVAL_MS = 3_000
+const MIN_LUMINANCE = 35    // ต่ำกว่านี้ = มืดเกิน
+const MIN_FACE_SIZE_PCT = 10 // ต่ำกว่านี้ = ไกลเกิน
+const MAX_FACE_SIZE_PCT = 72 // สูงกว่านี้ = ใกล้เกิน
+const MAX_CENTER_OFFSET = 0.38 // ออกจากกลางเฟรมเกินนี้ = ขอบ
+
 const PROMPT_DEFAULT = 'กรุณาหันหน้าตรงกล้องเพื่อสแกน'
 const PROMPT_ALIGN = 'กรุณาหันหน้าตรงกล้อง'
 
@@ -47,15 +56,43 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   const [hint, setHint] = useState(PROMPT_DEFAULT)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
+  const [cooldownSecs, setCooldownSecs] = useState(0)
 
   const doneRef = useRef(false)
   const verifyingRef = useRef(false)
   const alignedSinceRef = useRef<number | null>(null)
+  const cooldownUntilRef = useRef<number | null>(null)
+  const lastMultiFaceCheckRef = useRef<number>(0)
 
   // Liveness data accumulators — filled during stable alignment window
   const earSamplesRef = useRef<number[]>([])
   const nosePosRef = useRef<{ x: number; y: number }[]>([])
   const lumSamplesRef = useRef<number[]>([])
+
+  // Sync cooldown ref for access inside tick closure
+  useEffect(() => {
+    cooldownUntilRef.current = cooldownUntil
+  }, [cooldownUntil])
+
+  // Countdown timer
+  useEffect(() => {
+    if (!cooldownUntil) return
+    const interval = setInterval(() => {
+      const left = Math.ceil((cooldownUntil - Date.now()) / 1000)
+      if (left <= 0) {
+        setCooldownUntil(null)
+        cooldownUntilRef.current = null
+        setCooldownSecs(0)
+        setRetryCount(0)
+        setHint(PROMPT_DEFAULT)
+      } else {
+        setCooldownSecs(left)
+      }
+    }, 500)
+    return () => clearInterval(interval)
+  }, [cooldownUntil])
 
   const { stream, ready, error: cameraError, retry } = useCameraStream({
     enabled: !done,
@@ -96,13 +133,25 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
 
         if (!ok) {
           toast.error(apiErrorMessage(data as Record<string, unknown>, 'ใบหน้าไม่ตรงกับที่ลงทะเบียน', status))
-          setHint('ใบหน้าไม่ตรง — กรุณาหันหน้าตรงกล้องอีกครั้ง')
           alignedSinceRef.current = null
           earSamplesRef.current = []
           nosePosRef.current = []
           lumSamplesRef.current = []
           verifyingRef.current = false
           setBusy(false)
+          setRetryCount((prev) => {
+            const next = prev + 1
+            if (next >= MAX_RETRIES) {
+              const until = Date.now() + COOLDOWN_MS
+              setCooldownUntil(until)
+              cooldownUntilRef.current = until
+              setCooldownSecs(Math.ceil(COOLDOWN_MS / 1000))
+              setHint(`ลองใหม่ไม่สำเร็จ ${MAX_RETRIES} ครั้ง — กรุณารอ ${COOLDOWN_MS / 1000} วินาที`)
+            } else {
+              setHint(`ใบหน้าไม่ตรง — ลองอีก ${MAX_RETRIES - next} ครั้ง`)
+            }
+            return next
+          })
           return
         }
 
@@ -157,15 +206,65 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
 
     const tick = async () => {
       if (cancelled || doneRef.current || verifyingRef.current) return
+
+      // Cooldown guard — บล็อกสแกนระหว่างรอ cooldown
+      if (cooldownUntilRef.current && Date.now() < cooldownUntilRef.current) {
+        timer = setTimeout(() => void tick(), 500)
+        return
+      }
+
       const video = videoRef.current
       if (!video || video.readyState < 2 || video.videoWidth === 0) {
         timer = setTimeout(() => void tick(), 400)
         return
       }
 
+      // Luminance check — ตรวจแสงก่อนสแกน
+      const lum = sampleVideoLuminance(video)
+      if (lum < MIN_LUMINANCE) {
+        setHint('กรุณาอยู่ในที่มีแสงเพียงพอ')
+        timer = setTimeout(() => void tick(), 600)
+        return
+      }
+
+      // Multi-face check — ตรวจจำนวนใบหน้า (ทุก 3 วินาที เพื่อไม่ให้ช้า)
+      const nowMs = Date.now()
+      if (nowMs - lastMultiFaceCheckRef.current > MULTI_FACE_INTERVAL_MS) {
+        lastMultiFaceCheckRef.current = nowMs
+        const fc = await countDetectedFaces(video)
+        if (cancelled || doneRef.current) return
+        if (fc > 1) {
+          setHint('กรุณาอยู่ในเฟรมเพียงคนเดียว')
+          timer = setTimeout(() => void tick(), 800)
+          return
+        }
+      }
+
       try {
         const scan = await scanFaceFromVideo(video)
         if (cancelled || doneRef.current || verifyingRef.current) return
+
+        // Camera quality checks จาก detection box
+        if (scan.descriptor) {
+          if (scan.faceSizePct < MIN_FACE_SIZE_PCT) {
+            setHint('กรุณาขยับใบหน้าเข้ากล้อง')
+            alignedSinceRef.current = null
+            timer = setTimeout(() => void tick(), 400)
+            return
+          }
+          if (scan.faceSizePct > MAX_FACE_SIZE_PCT) {
+            setHint('กรุณาถอยออกจากกล้องเล็กน้อย')
+            alignedSinceRef.current = null
+            timer = setTimeout(() => void tick(), 400)
+            return
+          }
+          if (Math.abs(scan.faceCenterX - 0.5) > MAX_CENTER_OFFSET) {
+            setHint('กรุณาจัดใบหน้าให้อยู่กลางกล้อง')
+            alignedSinceRef.current = null
+            timer = setTimeout(() => void tick(), 400)
+            return
+          }
+        }
 
         const aligned = !!scan.descriptor && scan.score >= ALIGN_SCORE && scan.pose === 'center'
 
@@ -247,16 +346,27 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
       )}
 
       {!done && (
-        <p className="text-center text-xs text-slate-400 min-h-[2rem]">
-          {busy ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {hint}
-            </span>
-          ) : (
-            hint
+        <div className="space-y-1">
+          <p className="text-center text-xs text-slate-400 min-h-[2rem]">
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {hint}
+              </span>
+            ) : cooldownUntil ? (
+              <span className="text-amber-400 font-medium">
+                รอ {cooldownSecs} วินาทีก่อนลองใหม่...
+              </span>
+            ) : (
+              hint
+            )}
+          </p>
+          {retryCount > 0 && !cooldownUntil && (
+            <p className="text-center text-[10px] text-red-400">
+              ลองใหม่ได้อีก {MAX_RETRIES - retryCount} ครั้ง
+            </p>
           )}
-        </p>
+        </div>
       )}
 
       {cameraError && (

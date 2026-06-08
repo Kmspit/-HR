@@ -29,10 +29,20 @@ type Props = {
 
 type RegPhase = 'intro' | 'camera' | 'scan' | 'done'
 
-// ถ่ายใบหน้าตรงกล้องหลายภาพเพื่อทำ average embedding (ไม่มีการหันหน้า/ตรวจความมีชีวิต)
-const SAMPLE_TARGET = 5    // เพิ่มจาก 3 — embedding เฉลี่ยแม่นยำขึ้น
-const STABLE_FRAMES = 1    // ลดจาก 2 — capture เร็วขึ้น
-const SCAN_INTERVAL_MS = 500  // ลดจาก 700 — สแกนถี่ขึ้น
+// ถ่ายใบหน้าหลายมุมเพื่อทำ multi-angle average embedding
+const SAMPLE_TARGET = 5
+const STABLE_FRAMES = 1
+const SCAN_INTERVAL_MS = 500
+
+// ขั้นตอนมุมใบหน้า: center×2, ซ้าย, ขวา, center อีกครั้ง
+type AngleStep = { pose: 'center' | 'left' | 'right'; label: string; instruction: string }
+const ANGLE_STEPS: AngleStep[] = [
+  { pose: 'center', label: 'หน้าตรง',   instruction: 'มองตรงกล้อง' },
+  { pose: 'center', label: 'หน้าตรง',   instruction: 'มองตรงกล้อง นิ่งๆ' },
+  { pose: 'left',   label: 'หันซ้าย',   instruction: 'หันหน้าซ้ายเล็กน้อย' },
+  { pose: 'right',  label: 'หันขวา',    instruction: 'หันหน้าขวาเล็กน้อย' },
+  { pose: 'center', label: 'หน้าตรง',   instruction: 'กลับมามองตรงกล้อง' },
+]
 
 function phaseToGuideIndex(phase: RegPhase): number {
   if (phase === 'intro') return 0
@@ -71,20 +81,27 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
       if (cancelled || savingRef.current || !videoRef.current || videoRef.current.videoWidth === 0) return
       if (samplesRef.current.length >= SAMPLE_TARGET) return
 
-      setHint(`มองตรงกล้อง — ระบบจะถ่ายให้อัตโนมัติ (${samplesRef.current.length}/${SAMPLE_TARGET})`)
+      const currentStep = ANGLE_STEPS[samplesRef.current.length] ?? ANGLE_STEPS[SAMPLE_TARGET - 1]
+      setHint(`${currentStep.instruction} — ถ่าย ${samplesRef.current.length + 1}/${SAMPLE_TARGET}`)
 
       const result = await scanFaceFromVideo(videoRef.current)
       if (cancelled) return
 
       if (!result.descriptor || result.score < 0.5) {
         stableRef.current = 0
-        setHint('จัดใบหน้าให้อยู่ในกรอบ และมองตรงกล้อง')
+        setHint(`จัดใบหน้าให้อยู่ในกรอบ — ${currentStep.instruction}`)
         return
       }
 
-      if (result.pose !== 'center') {
+      // ยอมรับ pose ตามขั้นตอน: left/right step ยอมรับ center ด้วย (ไม่ strict เกิน)
+      const expectedPose = currentStep.pose
+      const poseOk =
+        result.pose === expectedPose ||
+        (expectedPose === 'left'  && result.pose === 'center') ||
+        (expectedPose === 'right' && result.pose === 'center')
+      if (!poseOk) {
         stableRef.current = 0
-        setHint('มองตรงกล้อง ไม่ต้องหันซ้ายหรือขวา')
+        setHint(currentStep.instruction)
         return
       }
 
@@ -238,18 +255,22 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
 
           {phase === 'scan' && (
             <>
-              <div className="flex justify-center gap-2">
-                {Array.from({ length: SAMPLE_TARGET }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2.5 w-10 rounded-full transition-colors ${
-                      i < samples.length
-                        ? 'bg-green-500'
-                        : i === samples.length
-                          ? 'bg-cyan-500 animate-pulse'
-                          : 'dark:bg-white/15 light:bg-slate-200'
-                    }`}
-                  />
+              <div className="flex justify-center gap-1.5">
+                {ANGLE_STEPS.map((step, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <span
+                      className={`h-2.5 w-9 rounded-full transition-colors ${
+                        i < samples.length
+                          ? 'bg-green-500'
+                          : i === samples.length
+                            ? 'bg-cyan-500 animate-pulse'
+                            : 'dark:bg-white/15 light:bg-slate-200'
+                      }`}
+                    />
+                    <span className={`text-[8px] ${i < samples.length ? 'text-green-400' : i === samples.length ? 'text-cyan-400' : 'dark:text-white/30 light:text-slate-400'}`}>
+                      {step.label}
+                    </span>
+                  </div>
                 ))}
               </div>
 
