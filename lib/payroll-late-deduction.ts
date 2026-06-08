@@ -4,8 +4,8 @@ import {
   toDateKey,
 } from '@/lib/company-holidays'
 
-/** นาทียกเว้นก่อนหัก (ต่อวัน) */
-export const PAYROLL_LATE_GRACE_MINUTES = 5
+/** Grace period ถูกหักแล้ว ณ เวลาเช็คอิน (lateMinutes ในฐานข้อมูลคือนาทีจาก effective deadline แล้ว) */
+export const PAYROLL_LATE_GRACE_MINUTES = 0
 
 export const SALARY_DAYS_PER_MONTH = 30
 export const WORK_HOURS_PER_DAY = 8
@@ -71,7 +71,8 @@ export function isLateAttendance(att: { lateMinutes: number; status: string }): 
 }
 
 /**
- * หักมาสาย: เงินเดือน ÷ 30 ÷ 8 ÷ 60 × นาทีที่มาสาย (หลัง grace 5 นาที/วัน)
+ * หักมาสาย: เงินเดือน ÷ 30 ÷ 8 ÷ 60 × นาทีที่มาสาย
+ * lateMinutes ที่บันทึกในฐานข้อมูลคือนาทีจาก effective deadline (หลัง grace period แล้ว)
  * ไม่หักวันลาอนุมัติ / วันหยุด
  */
 export function computeLateDeduction(params: {

@@ -54,7 +54,7 @@ export default function LateDeductionDetail({
           {WORK_MINUTES_PER_HOUR} = ฿{rate.toFixed(4)}/นาที
         </p>
         <p className="text-white/50">
-          ยกเว้น {PAYROLL_LATE_GRACE_MINUTES} นาที/วัน · ไม่หักวันลาอนุมัติ · ไม่หักวันหยุด
+          นับจากเกณฑ์จริง (08:30 + grace 5 นาที = 08:35) · ไม่หักวันลาอนุมัติ · ไม่หักวันหยุด
         </p>
         <p className="text-yellow-300 font-semibold pt-1">
           รวมหัก ฿{lateDeduction.toFixed(2)} ({formatLateMinutes(lateBillableMinutes)} · {lateDays} วัน)

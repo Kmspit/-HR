@@ -64,7 +64,10 @@ export async function POST(req: NextRequest) {
 
     let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
     if (!settings) {
-      settings = await prisma.companySettings.create({ data: { id: 'singleton' } })
+      settings = await prisma.companySettings.create({ data: { id: 'singleton', lateGraceMin: 5 } })
+    } else if (settings.lateGraceMin === 15) {
+      // Migrate old unused default (15) to correct grace period (5 min = 08:35 threshold)
+      settings = await prisma.companySettings.update({ where: { id: 'singleton' }, data: { lateGraceMin: 5 } })
     }
 
     let isOutside = forceOutside
@@ -135,10 +138,12 @@ export async function POST(req: NextRequest) {
         status = 'LATE'
       }
     } else if (!forceOutside && settings?.workStartTime) {
-      // เช็คอินในบริษัท: สายตาม workStartTime (ค่าตั้งต้น 08:30)
-      const deadline = new Date(`${dateKey}T${settings.workStartTime}:00+07:00`)
-      if (now > deadline) {
-        lateMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000)
+      // เช็คอินในบริษัท: สายหลัง workStartTime + grace period (เช่น 08:30 + 5 น. = 08:35)
+      const graceMin = settings.lateGraceMin ?? 5
+      const baseDeadline = new Date(`${dateKey}T${settings.workStartTime}:00+07:00`)
+      const effectiveDeadline = new Date(baseDeadline.getTime() + graceMin * 60_000)
+      if (now > effectiveDeadline) {
+        lateMinutes = Math.floor((now.getTime() - effectiveDeadline.getTime()) / 60000)
         status = 'LATE'
       }
     }

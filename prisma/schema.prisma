@@ -982,7 +982,7 @@ model CompanySettings {
   logoUrl          String?
   workStartTime    String   @default("08:30")
   workEndTime      String   @default("17:30")
-  lateGraceMin     Int      @default(15)
+  lateGraceMin     Int      @default(5)
   sickDaysYear     Int      @default(30)
   vacationDaysYear Int      @default(6)
   personalDaysYear Int      @default(3)
