@@ -135,10 +135,11 @@ model CompanyBranch {
   phone        String?
   isActive     Boolean  @default(true)
   isDefault    Boolean  @default(false)
-  lat          Float?
-  lng          Float?
-  radiusMeters Float    @default(100)
-  createdAt    DateTime @default(now())
+  lat             Float?
+  lng             Float?
+  radiusMeters    Float    @default(100)
+  googleMapPlaceId String?
+  createdAt       DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   users       User[]

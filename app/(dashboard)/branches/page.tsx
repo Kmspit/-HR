@@ -31,6 +31,10 @@ export default async function BranchesPage() {
           phone: b.phone ?? '',
           isActive: b.isActive,
           isDefault: b.isDefault,
+          lat: b.lat ?? null,
+          lng: b.lng ?? null,
+          radiusMeters: b.radiusMeters,
+          googleMapPlaceId: b.googleMapPlaceId ?? null,
           userCount: b._count.users,
         }))}
       />

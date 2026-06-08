@@ -16,6 +16,7 @@ const updateSchema = z.object({
   lat: z.number().min(-90).max(90).optional().nullable(),
   lng: z.number().min(-180).max(180).optional().nullable(),
   radiusMeters: z.number().min(10).max(10000).optional(),
+  googleMapPlaceId: z.string().optional().nullable(),
 })
 
 export async function PATCH(
@@ -78,6 +79,7 @@ export async function PATCH(
         ...(data.lat !== undefined ? { lat: data.lat } : {}),
         ...(data.lng !== undefined ? { lng: data.lng } : {}),
         ...(data.radiusMeters !== undefined ? { radiusMeters: data.radiusMeters } : {}),
+        ...(data.googleMapPlaceId !== undefined ? { googleMapPlaceId: data.googleMapPlaceId } : {}),
       },
     })
 

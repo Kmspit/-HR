@@ -61,15 +61,17 @@ async function runEnsure(): Promise<boolean> {
       lat REAL,
       lng REAL,
       radiusMeters REAL NOT NULL DEFAULT 100,
+      googleMapPlaceId TEXT,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
-  // Add geofence columns to existing company_branches table (idempotent)
+  // Add geofence + Google Maps columns to existing company_branches table (idempotent)
   for (const col of [
     `ALTER TABLE company_branches ADD COLUMN lat REAL`,
     `ALTER TABLE company_branches ADD COLUMN lng REAL`,
     `ALTER TABLE company_branches ADD COLUMN radiusMeters REAL NOT NULL DEFAULT 100`,
+    `ALTER TABLE company_branches ADD COLUMN googleMapPlaceId TEXT`,
   ]) {
     try { await prisma.$executeRawUnsafe(col) } catch { /* column already exists */ }
   }

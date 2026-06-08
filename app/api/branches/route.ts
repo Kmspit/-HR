@@ -16,6 +16,7 @@ const branchSchema = z.object({
   lat: z.number().min(-90).max(90).optional().nullable(),
   lng: z.number().min(-180).max(180).optional().nullable(),
   radiusMeters: z.number().min(10).max(10000).optional(),
+  googleMapPlaceId: z.string().optional().nullable(),
 })
 
 export async function GET() {
@@ -46,6 +47,7 @@ export async function GET() {
         lat: b.lat ?? null,
         lng: b.lng ?? null,
         radiusMeters: b.radiusMeters,
+        googleMapPlaceId: b.googleMapPlaceId ?? null,
         userCount: b._count.users,
         createdAt: b.createdAt.toISOString(),
       })),
@@ -95,6 +97,7 @@ export async function POST(req: NextRequest) {
         lat: data.lat ?? null,
         lng: data.lng ?? null,
         radiusMeters: data.radiusMeters ?? 100,
+        googleMapPlaceId: data.googleMapPlaceId ?? null,
       },
     })
 

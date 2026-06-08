@@ -15,6 +15,7 @@ export type CompanyBranchSeed = {
   lat?: number
   lng?: number
   radiusMeters?: number
+  googleMapPlaceId?: string
 }
 
 export const DEFAULT_COMPANY_BRANCHES: CompanyBranchSeed[] = [
