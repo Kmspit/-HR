@@ -26,20 +26,26 @@ export default async function AttendancePage({
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const companySettings = await prisma.companySettings.findUnique({
-    where: { id: 'singleton' },
-    select: {
-      companyName: true,
-      geofenceLat: true,
-      geofenceLng: true,
-      geofenceRadius: true,
-    },
-  })
+  const [companySettings, profile] = await Promise.all([
+    prisma.companySettings.findUnique({
+      where: { id: 'singleton' },
+      select: { companyName: true, geofenceLat: true, geofenceLng: true, geofenceRadius: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        employeeId: true,
+        branch: { select: { lat: true, lng: true, radiusMeters: true, name: true, address: true } },
+      },
+    }),
+  ])
 
-  const profile = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { employeeId: true },
-  })
+  // Branch coords take priority over legacy CompanySettings geofence (mirrors checkin/route.ts logic)
+  const geofenceLat = profile?.branch?.lat ?? companySettings?.geofenceLat ?? null
+  const geofenceLng = profile?.branch?.lng ?? companySettings?.geofenceLng ?? null
+  const geofenceRadius = profile?.branch?.radiusMeters ?? companySettings?.geofenceRadius ?? 200
+  const geofenceName = profile?.branch?.name ?? companySettings?.companyName ?? 'สำนักงาน'
+  const geofenceAddress = profile?.branch?.address ?? KM_COMPANY.officeAddress
 
   const [displaySession, recentRecords, leaveBalance] = await Promise.all([
     findTodayAttendanceForDisplay(session.user.id, today),
@@ -107,21 +113,16 @@ export default async function AttendancePage({
       userName={session.user.name ?? 'พนักงาน'}
       employeeCode={profile?.employeeId ?? null}
       companyOffice={
-        companySettings
-          ? {
-              name: companySettings.companyName,
-              address: KM_COMPANY.officeAddress,
-            }
-          : null
+        companySettings ? { name: geofenceName, address: geofenceAddress } : null
       }
       companyGeofence={
-        companySettings?.geofenceLat != null && companySettings?.geofenceLng != null
+        geofenceLat != null && geofenceLng != null
           ? {
-              name: companySettings.companyName,
-              address: KM_COMPANY.officeAddress,
-              lat: companySettings.geofenceLat,
-              lng: companySettings.geofenceLng,
-              radiusM: companySettings.geofenceRadius ?? 250,
+              name: geofenceName,
+              address: geofenceAddress,
+              lat: geofenceLat,
+              lng: geofenceLng,
+              radiusM: geofenceRadius,
             }
           : null
       }
