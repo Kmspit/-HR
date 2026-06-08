@@ -116,7 +116,7 @@ export function CameraPreviewVideoWithRef({
   loading,
   overlayLabel,
   className,
-  mirror,
+  mirror = true,
 }: CameraPreviewWithRefProps) {
   const [videoLive, setVideoLive] = useState(false)
 
