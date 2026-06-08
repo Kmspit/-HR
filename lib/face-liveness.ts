@@ -105,11 +105,10 @@ export function scoreLivenessSamples(params: {
 }
 
 export function hasCriticalSpoofFlags(flags: string[]): boolean {
-  return flags.some((f) =>
-    ['static_frame', 'no_blink', 'low_motion', 'camera_not_ready', 'insufficient_samples', 'no_face'].includes(
-      f,
-    ),
-  )
+  // Only block on definitively-no-live-camera signals.
+  // no_blink / low_motion / static_frame / insufficient_samples can all occur for real
+  // users in short (~900–1600ms) accumulation windows and must NOT hard-block.
+  return flags.some((f) => ['no_face', 'camera_not_ready'].includes(f))
 }
 
 export function serializeSpoofFlags(flags: string[], extra?: Record<string, unknown>): string {

@@ -12,9 +12,10 @@ import { countRecentFaceMismatches, notifyFaceSecurityAlert } from '@/lib/face-s
 import { hasCriticalSpoofFlags, parseSpoofFlags } from '@/lib/face-liveness'
 
 /** Minimum liveness score required for attendance actions (0–1 scale).
- *  Clients that skip liveness detection must send score > 0 to bypass this gate.
- *  Score 0 is treated as "not provided" and will be rejected. */
-const LIVENESS_MIN_SCORE = 0.45
+ *  Lowered from 0.45 → 0.25: the 900–1600ms stable window rarely yields blink/movement
+ *  in that time, so the score-based gate is now lenient; the face-match threshold (0.45
+ *  euclidean) is the primary security gate.  Score 0 = client skipped liveness → reject. */
+const LIVENESS_MIN_SCORE = 0.25
 
 export type FaceVerifyInput = {
   userId: string

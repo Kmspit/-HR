@@ -38,7 +38,7 @@ type Props = {
 
 // ใบหน้าต้องชัดพอ (detector score) และมองตรงกล้อง ต่อเนื่องเท่านี้ก่อน capture
 const ALIGN_SCORE = 0.5   // ลดจาก 0.6 — ตรวจจับง่ายขึ้น ลด false-reject
-const STABLE_MS = 900     // เพิ่มจาก 280 → 900 ms เพื่อเก็บ ~4 samples สำหรับ liveness
+const STABLE_MS = 1600    // เพิ่มจาก 900 → 1600 ms: ~8 samples, โอกาสกะพริบตาสูงขึ้น
 
 const MAX_RETRIES = 3
 const COOLDOWN_MS = 30_000
