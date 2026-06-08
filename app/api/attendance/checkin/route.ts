@@ -80,11 +80,25 @@ export async function POST(req: NextRequest) {
     })
     const branchId: string | null = userBranch?.branchId ?? null
 
-    // เลือก geofence: ใช้ของ branch ก่อน ถ้าไม่มีให้ใช้ CompanySettings (backward compat)
-    const geofenceLat = userBranch?.branch?.lat ?? settings.geofenceLat
-    const geofenceLng = userBranch?.branch?.lng ?? settings.geofenceLng
-    const geofenceRadius = userBranch?.branch?.radiusMeters ?? settings.geofenceRadius ?? 200
-    const geofenceName = userBranch?.branch?.name ?? 'สำนักงาน'
+    // เลือก geofence:
+    // - ถ้า user มี branch → ใช้ coords ของ branch เท่านั้น (ไม่ fallback ไป CompanySettings)
+    //   ถ้า branch ยังไม่ตั้ง coords → ข้าม geofence (ดีกว่า fallback ไปพิกัดเก่าที่อาจผิด)
+    // - ถ้า user ไม่มี branch → ใช้ CompanySettings (backward compat)
+    let geofenceLat: number | null
+    let geofenceLng: number | null
+    let geofenceRadius: number
+    let geofenceName: string
+    if (userBranch?.branchId && userBranch?.branch) {
+      geofenceLat = userBranch.branch.lat
+      geofenceLng = userBranch.branch.lng
+      geofenceRadius = userBranch.branch.radiusMeters
+      geofenceName = userBranch.branch.name
+    } else {
+      geofenceLat = settings.geofenceLat
+      geofenceLng = settings.geofenceLng
+      geofenceRadius = settings.geofenceRadius ?? 200
+      geofenceName = 'สำนักงาน'
+    }
     const hasGeofence = geofenceLat != null && geofenceLng != null
 
     let isOutside = forceOutside

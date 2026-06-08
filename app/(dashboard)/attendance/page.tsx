@@ -40,12 +40,28 @@ export default async function AttendancePage({
     }),
   ])
 
-  // Branch coords take priority over legacy CompanySettings geofence (mirrors checkin/route.ts logic)
-  const geofenceLat = profile?.branch?.lat ?? companySettings?.geofenceLat ?? null
-  const geofenceLng = profile?.branch?.lng ?? companySettings?.geofenceLng ?? null
-  const geofenceRadius = profile?.branch?.radiusMeters ?? companySettings?.geofenceRadius ?? 200
-  const geofenceName = profile?.branch?.name ?? companySettings?.companyName ?? 'สำนักงาน'
-  const geofenceAddress = profile?.branch?.address ?? KM_COMPANY.officeAddress
+  // เลือก geofence สำหรับ client-side pre-check:
+  // - ถ้า user มี branch → ใช้ coords ของ branch เท่านั้น
+  //   ถ้า branch ยังไม่ตั้ง coords → ไม่ส่ง geofence ให้ client (ข้ามการ block)
+  // - ถ้า user ไม่มี branch → ใช้ CompanySettings (backward compat)
+  let geofenceLat: number | null
+  let geofenceLng: number | null
+  let geofenceRadius: number
+  let geofenceName: string
+  let geofenceAddress: string
+  if (profile?.branch) {
+    geofenceLat = profile.branch.lat
+    geofenceLng = profile.branch.lng
+    geofenceRadius = profile.branch.radiusMeters
+    geofenceName = profile.branch.name ?? companySettings?.companyName ?? 'สำนักงาน'
+    geofenceAddress = profile.branch.address ?? KM_COMPANY.officeAddress
+  } else {
+    geofenceLat = companySettings?.geofenceLat ?? null
+    geofenceLng = companySettings?.geofenceLng ?? null
+    geofenceRadius = companySettings?.geofenceRadius ?? 200
+    geofenceName = companySettings?.companyName ?? 'สำนักงาน'
+    geofenceAddress = KM_COMPANY.officeAddress
+  }
 
   const [displaySession, recentRecords, leaveBalance] = await Promise.all([
     findTodayAttendanceForDisplay(session.user.id, today),
