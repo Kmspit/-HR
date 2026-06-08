@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
           await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'lunchOutPhotoUrl')
         } catch (err) {
           console.error('[lunch-out-bg]', err)
-          // [DISABLED] LINE attendance fallback — ปิดพร้อมกับ attendance-face-scan.ts
         }
       })
       return NextResponse.json({ success: true, attendance: finalized })
@@ -141,7 +140,6 @@ export async function POST(req: NextRequest) {
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'lunchInPhotoUrl')
       } catch (err) {
         console.error('[lunch-in-bg]', err)
-        // [DISABLED] LINE attendance fallback — ปิดพร้อมกับ attendance-face-scan.ts
       }
     })
     return NextResponse.json({ success: true, attendance: finalized })

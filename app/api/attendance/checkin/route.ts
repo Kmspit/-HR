@@ -268,11 +268,6 @@ export async function POST(req: NextRequest) {
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'photoUrl')
       } catch (err) {
         console.error('[checkin-bg]', err)
-        // [DISABLED] LINE attendance fallback — ปิดพร้อมกับ attendance-face-scan.ts
-        // try {
-        //   const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-        //   await notifyHrAttendanceOnLine({ event: 'checkin', ... })
-        // } catch (lineErr) { ... }
       }
     })
 

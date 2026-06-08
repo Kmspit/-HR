@@ -473,34 +473,5 @@ export async function recordFaceScanAndNotifyHr(params: {
     console.error('[face-scan-persist]', err)
   }
 
-  // [DISABLED] LINE attendance notifications (check-in/out/lunch) ปิดแล้ว
-  // ระบบ LINE OA ยังทำงาน — เฉพาะ warning notifications เท่านั้นที่ส่ง
-  // หากต้องการเปิดใหม่: ลบ comment นี้และปลด block ด้านล่าง
-  /*
-  try {
-    let lineImageUrl: string | null = null
-    if (faceScanId) {
-      lineImageUrl = await getSignedScanImageUrlForLine(faceScanId)
-    }
-    const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
-    lineNotify = await notifyHrAttendanceOnLine({
-      event: params.event,
-      employeeUserId: params.userId,
-      attendanceId: params.attendanceId,
-      faceScanId,
-      photoUrl: lineImageUrl ?? params.photoUrl,
-      eventTime: params.eventTime,
-      location: params.location ?? params.locationName,
-      lateMinutes: params.lateMinutes,
-      earlyLeaveMinutes: params.earlyLeaveMinutes,
-      isOutside: params.isOutside,
-      lat: params.lat,
-      lng: params.lng,
-    })
-  } catch (err) {
-    console.error('[attendance-line-notify]', err)
-  }
-  */
-
   return { faceScanId, lineNotify }
 }
