@@ -58,10 +58,25 @@ async function runEnsure(): Promise<boolean> {
       phone TEXT,
       isActive INTEGER NOT NULL DEFAULT 1,
       isDefault INTEGER NOT NULL DEFAULT 0,
+      lat REAL,
+      lng REAL,
+      radiusMeters REAL NOT NULL DEFAULT 100,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
+  // Add geofence columns to existing company_branches table (idempotent)
+  for (const col of [
+    `ALTER TABLE company_branches ADD COLUMN lat REAL`,
+    `ALTER TABLE company_branches ADD COLUMN lng REAL`,
+    `ALTER TABLE company_branches ADD COLUMN radiusMeters REAL NOT NULL DEFAULT 100`,
+  ]) {
+    try { await prisma.$executeRawUnsafe(col) } catch { /* column already exists */ }
+  }
+  // Add branchId column to attendances table (idempotent)
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE attendances ADD COLUMN branchId TEXT`)
+  } catch { /* column already exists */ }
 
   await addUserColumnIfMissing('branchId', `ALTER TABLE users ADD COLUMN branchId TEXT`)
   await addUserColumnIfMissing('addressIdCard', `ALTER TABLE users ADD COLUMN addressIdCard TEXT`)
@@ -82,14 +97,20 @@ async function runEnsure(): Promise<boolean> {
   )
 
   for (const b of DEFAULT_COMPANY_BRANCHES) {
+    const lat = b.lat ?? null
+    const lng = b.lng ?? null
+    const radius = b.radiusMeters ?? 100
     await prisma.$executeRaw`
-      INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, createdAt, updatedAt)
-      VALUES (${b.id}, ${b.code}, ${b.name}, ${b.nameEn}, ${b.address}, 1, ${b.isDefault ? 1 : 0}, datetime('now'), datetime('now'))
+      INSERT OR IGNORE INTO company_branches (id, code, name, nameEn, address, isActive, isDefault, lat, lng, radiusMeters, createdAt, updatedAt)
+      VALUES (${b.id}, ${b.code}, ${b.name}, ${b.nameEn}, ${b.address}, 1, ${b.isDefault ? 1 : 0}, ${lat}, ${lng}, ${radius}, datetime('now'), datetime('now'))
     `
     await prisma.$executeRaw`
       UPDATE company_branches
       SET code = ${b.code}, name = ${b.name}, nameEn = ${b.nameEn}, address = ${b.address},
-          isActive = 1, isDefault = ${b.isDefault ? 1 : 0}, updatedAt = datetime('now')
+          isActive = 1, isDefault = ${b.isDefault ? 1 : 0},
+          lat = COALESCE(lat, ${lat}), lng = COALESCE(lng, ${lng}),
+          radiusMeters = COALESCE(radiusMeters, ${radius}),
+          updatedAt = datetime('now')
       WHERE id = ${b.id}
     `
   }

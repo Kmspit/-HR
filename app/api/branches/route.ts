@@ -13,6 +13,9 @@ const branchSchema = z.object({
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
+  radiusMeters: z.number().min(10).max(10000).optional(),
 })
 
 export async function GET() {
@@ -40,6 +43,9 @@ export async function GET() {
         phone: b.phone ?? '',
         isActive: b.isActive,
         isDefault: b.isDefault,
+        lat: b.lat ?? null,
+        lng: b.lng ?? null,
+        radiusMeters: b.radiusMeters,
         userCount: b._count.users,
         createdAt: b.createdAt.toISOString(),
       })),
@@ -86,6 +92,9 @@ export async function POST(req: NextRequest) {
         phone: data.phone?.trim() || null,
         isActive: data.isActive ?? true,
         isDefault: data.isDefault ?? false,
+        lat: data.lat ?? null,
+        lng: data.lng ?? null,
+        radiusMeters: data.radiusMeters ?? 100,
       },
     })
 

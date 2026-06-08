@@ -13,6 +13,9 @@ const updateSchema = z.object({
   phone: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
+  radiusMeters: z.number().min(10).max(10000).optional(),
 })
 
 export async function PATCH(
@@ -72,6 +75,9 @@ export async function PATCH(
         ...(data.phone !== undefined ? { phone: data.phone?.trim() || null } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
         ...(data.isDefault !== undefined ? { isDefault: data.isDefault } : {}),
+        ...(data.lat !== undefined ? { lat: data.lat } : {}),
+        ...(data.lng !== undefined ? { lng: data.lng } : {}),
+        ...(data.radiusMeters !== undefined ? { radiusMeters: data.radiusMeters } : {}),
       },
     })
 

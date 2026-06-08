@@ -127,22 +127,26 @@ enum HolidayType {
 // ── COMPANY BRANCH ──────────────────────────────
 
 model CompanyBranch {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  nameEn    String?
-  address   String?
-  phone     String?
-  isActive  Boolean  @default(true)
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  nameEn       String?
+  address      String?
+  phone        String?
+  isActive     Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  lat          Float?
+  lng          Float?
+  radiusMeters Float    @default(100)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   users       User[]
   divisions   Division[]
   departments Department[]
   sections    Section[]
   holidays    CompanyHoliday[]
+  attendances Attendance[]
 
   @@map("company_branches")
 }
@@ -511,12 +515,14 @@ model Attendance {
   gpsFlags             String?  // comma-separated spoof/quality flags for HR review
   deviceInfo           String?  // JSON { ua, platform, isMobile }
   outsideWorkRequestId String?  // approved OutsideWorkRequest that authorized this outside check-in
+  branchId             String?  // สาขาที่ใช้เช็คอิน
   note             String?
   editedById  String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user   User            @relation(fields: [userId], references: [id])
+  branch CompanyBranch?  @relation(fields: [branchId], references: [id])
 
   @@unique([userId, date, sessionIndex])
   @@map("attendances")

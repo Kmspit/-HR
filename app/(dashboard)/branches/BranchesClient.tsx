@@ -14,6 +14,9 @@ type Branch = {
   phone: string
   isActive: boolean
   isDefault: boolean
+  lat: number | null
+  lng: number | null
+  radiusMeters: number
   userCount: number
 }
 
@@ -27,6 +30,9 @@ const emptyForm = {
   phone: '',
   isActive: true,
   isDefault: false,
+  lat: '',
+  lng: '',
+  radiusMeters: '100',
 }
 
 export default function BranchesClient({ initial }: Props) {
@@ -57,6 +63,9 @@ export default function BranchesClient({ initial }: Props) {
       phone: b.phone,
       isActive: b.isActive,
       isDefault: b.isDefault,
+      lat: b.lat != null ? String(b.lat) : '',
+      lng: b.lng != null ? String(b.lng) : '',
+      radiusMeters: String(b.radiusMeters),
     })
     setShowForm(true)
   }
@@ -68,6 +77,8 @@ export default function BranchesClient({ initial }: Props) {
     }
     setSaving(true)
     try {
+      const latNum = parseFloat(form.lat)
+      const lngNum = parseFloat(form.lng)
       const payload = {
         code: form.code.trim(),
         name: form.name.trim(),
@@ -76,6 +87,9 @@ export default function BranchesClient({ initial }: Props) {
         phone: form.phone.trim() || undefined,
         isActive: form.isActive,
         isDefault: form.isDefault,
+        lat: !isNaN(latNum) && form.lat.trim() !== '' ? latNum : null,
+        lng: !isNaN(lngNum) && form.lng.trim() !== '' ? lngNum : null,
+        radiusMeters: parseFloat(form.radiusMeters) || 100,
       }
       const { ok, data, status } = editingId
         ? await apiJson('/api/branches/' + editingId, {
@@ -176,6 +190,47 @@ export default function BranchesClient({ initial }: Props) {
               className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm resize-none"
             />
           </div>
+          {/* Geofence */}
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 space-y-2">
+            <p className="text-xs text-blue-300 font-semibold">Geofence (พิกัด GPS ของสาขา)</p>
+            <p className="text-[10px] text-slate-500">พนักงานต้องอยู่ในรัศมีนี้จึงจะเช็คอินได้ — ถ้าไม่กรอกจะไม่บังคับ geofence</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] text-white/40 block mb-1">Latitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={form.lat}
+                  onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white text-xs"
+                  placeholder="13.8511"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/40 block mb-1">Longitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={form.lng}
+                  onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white text-xs"
+                  placeholder="100.6596"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/40 block mb-1">รัศมี (เมตร)</label>
+                <input
+                  type="number"
+                  min={10}
+                  max={10000}
+                  value={form.radiusMeters}
+                  onChange={(e) => setForm((f) => ({ ...f, radiusMeters: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white text-xs"
+                  placeholder="100"
+                />
+              </div>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-4 text-sm">
             <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
               <input
@@ -223,6 +278,7 @@ export default function BranchesClient({ initial }: Props) {
               <th className="p-3">รหัส</th>
               <th className="p-3">ชื่อสาขา</th>
               <th className="p-3 text-center">พนักงาน</th>
+              <th className="p-3 text-center">Geofence</th>
               <th className="p-3 text-center">สถานะ</th>
               <th className="p-3 text-center">จัดการ</th>
             </tr>
@@ -240,6 +296,16 @@ export default function BranchesClient({ initial }: Props) {
                   )}
                 </td>
                 <td className="p-3 text-center text-slate-300">{b.userCount}</td>
+                <td className="p-3 text-center">
+                  {b.lat != null && b.lng != null ? (
+                    <span className="text-[10px] text-green-400 font-mono">
+                      {b.lat.toFixed(4)}, {b.lng.toFixed(4)}<br/>
+                      <span className="text-slate-500">{b.radiusMeters}m</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-600">ไม่ตั้งค่า</span>
+                  )}
+                </td>
                 <td className="p-3 text-center">
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${

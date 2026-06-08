@@ -70,40 +70,57 @@ export async function POST(req: NextRequest) {
       settings = await prisma.companySettings.update({ where: { id: 'singleton' }, data: { lateGraceMin: 5 } })
     }
 
+    // โหลด branch ของ user สำหรับ geofence แบบ per-branch
+    const userBranch = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        branchId: true,
+        branch: { select: { id: true, lat: true, lng: true, radiusMeters: true, name: true } },
+      },
+    })
+    const branchId: string | null = userBranch?.branchId ?? null
+
+    // เลือก geofence: ใช้ของ branch ก่อน ถ้าไม่มีให้ใช้ CompanySettings (backward compat)
+    const geofenceLat = userBranch?.branch?.lat ?? settings.geofenceLat
+    const geofenceLng = userBranch?.branch?.lng ?? settings.geofenceLng
+    const geofenceRadius = userBranch?.branch?.radiusMeters ?? settings.geofenceRadius ?? 200
+    const geofenceName = userBranch?.branch?.name ?? 'สำนักงาน'
+    const hasGeofence = geofenceLat != null && geofenceLng != null
+
     let isOutside = forceOutside
     let checkInDistanceM: number | null = null
     let gpsFlags: string | null = null
 
-    if (!forceOutside && settings.geofenceLat != null && settings.geofenceLng != null) {
+    if (!forceOutside && hasGeofence) {
       if (lat == null || lng == null) {
         return NextResponse.json(
           { error: 'กรุณาเปิด GPS ก่อนเช็คอินในบริษัท', code: 'GPS_REQUIRED' },
           { status: 400 },
         )
       }
-      const radiusM = settings.geofenceRadius ?? 200
-      const distanceM = haversineDistanceMeters(lat, lng, settings.geofenceLat, settings.geofenceLng)
+      const distanceM = haversineDistanceMeters(lat, lng, geofenceLat!, geofenceLng!)
       checkInDistanceM = distanceM
-      isOutside = distanceM > radiusM
+      isOutside = distanceM > geofenceRadius
 
       // GPS spoof detection — flags stored for HR review, does NOT block check-in
       const spoofFlagList = detectGpsSpoofFlags({ lat, lng, accuracy: gpsAccuracy, distanceM })
       if (spoofFlagList.length > 0) gpsFlags = spoofFlagList.join(',')
 
-      // Enforce geofence: block company check-in if outside radius
+      // Enforce geofence: บล็อกถ้าอยู่นอกรัศมีสาขาของตนเอง
       if (isOutside) {
         return NextResponse.json(
           {
-            error: `อยู่นอกรัศมีสำนักงาน — ห่าง ${Math.round(distanceM)} เมตร (รัศมีที่อนุญาต ${radiusM} เมตร)`,
+            error: `คุณอยู่นอกพื้นที่บริษัท — ห่าง ${Math.round(distanceM)} เมตร จาก${geofenceName} (รัศมีที่อนุญาต ${Math.round(geofenceRadius)} เมตร)`,
             distanceM: Math.round(distanceM),
-            radiusM,
+            radiusM: Math.round(geofenceRadius),
+            branchName: geofenceName,
             code: 'OUTSIDE_GEOFENCE',
           },
           { status: 403 },
         )
       }
-    } else if (forceOutside && settings.geofenceLat != null && settings.geofenceLng != null && lat != null && lng != null) {
-      checkInDistanceM = haversineDistanceMeters(lat, lng, settings.geofenceLat, settings.geofenceLng)
+    } else if (forceOutside && hasGeofence && lat != null && lng != null) {
+      checkInDistanceM = haversineDistanceMeters(lat, lng, geofenceLat!, geofenceLng!)
     }
 
     // Outside work: ตรวจสอบใบอนุมัติออกนอกสถานที่สำหรับวันนี้
@@ -115,7 +132,7 @@ export async function POST(req: NextRequest) {
       outsideWorkRequestId = approvedOutsideWork?.id ?? null
 
       // ถ้า geofence ตั้งค่าไว้ → ต้องมีใบอนุมัติจึงเช็คอินนอกบริษัทได้
-      if (!outsideWorkRequestId && settings.geofenceLat != null && settings.geofenceLng != null) {
+      if (!outsideWorkRequestId && hasGeofence) {
         return NextResponse.json(
           {
             error: 'ต้องมีใบอนุมัติออกนอกสถานที่สำหรับวันนี้จึงเช็คอินนอกบริษัทได้',
@@ -192,6 +209,7 @@ export async function POST(req: NextRequest) {
         gpsFlags,
         deviceInfo: serverDeviceInfo,
         outsideWorkRequestId,
+        branchId,
         status: isFirstSessionOfDay ? status : 'NORMAL',
         lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
         dayOfWeek: getDayOfWeekIndex(today),
