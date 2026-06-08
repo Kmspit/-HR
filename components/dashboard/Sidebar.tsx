@@ -43,6 +43,7 @@ const ICONS: Record<string, string> = {
   logout:       'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1',
   chevronLeft:  'M15 19l-7-7 7-7',
   chevronRight: 'M9 5l7 7-7 7',
+  chevronDown:  'M19 9l-7 7-7-7',
 }
 
 type NavItem = { href: string; icon: keyof typeof ICONS; label: string; roles?: Role[]; badge?: string }
@@ -106,11 +107,18 @@ type Props = {
 export default function Sidebar({ user, onClose }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(NAV_SECTIONS.map(s => [s.title, true]))
+  )
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('sidebar-collapsed')
       if (stored === 'true') setCollapsed(true)
+    } catch {}
+    try {
+      const stored = localStorage.getItem('sidebar-sections')
+      if (stored) setOpenSections(JSON.parse(stored))
     } catch {}
   }, [])
 
@@ -118,6 +126,14 @@ export default function Sidebar({ user, onClose }: Props) {
     setCollapsed((prev) => {
       const next = !prev
       try { localStorage.setItem('sidebar-collapsed', String(next)) } catch {}
+      return next
+    })
+  }
+
+  const toggleSection = (title: string) => {
+    setOpenSections(prev => {
+      const next = { ...prev, [title]: !prev[title] }
+      try { localStorage.setItem('sidebar-sections', JSON.stringify(next)) } catch {}
       return next
     })
   }
@@ -179,71 +195,94 @@ export default function Sidebar({ user, onClose }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-5">
-        {filteredSections.map((section) => (
-          <div key={section.title}>
-            {!collapsed && (
-              <p className="mb-2 px-2.5 text-[9.5px] font-semibold uppercase tracking-[0.18em] dark:text-slate-600 light:text-slate-400">
-                {section.title}
-              </p>
-            )}
-            {collapsed && <div className="mb-1 mx-1 h-px dark:bg-white/5 light:bg-slate-100" />}
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const active = pathname.startsWith(item.href)
-                return (
-                  <div key={item.href} className="relative group/tip">
-                    <NavLink
-                      href={item.href}
-                      onClick={onClose}
-                      className={() => cn(
-                        'nav-link-icon',
-                        'group relative flex items-center rounded-xl py-2.5 text-sm transition-all duration-150',
-                        collapsed ? 'justify-center px-2' : 'gap-3 px-3',
-                        active
-                          ? 'nav-active dark:text-blue-300 light:text-blue-600 font-semibold'
-                          : 'dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200 light:text-slate-500 light:hover:bg-slate-50 light:hover:text-slate-800',
-                      )}
-                    >
-                      {!collapsed && (
-                        <span className={cn(
-                          'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
-                          active ? 'bg-blue-500 opacity-100' : 'opacity-0',
-                        )} />
-                      )}
-                      <Icon
-                        d={ICONS[item.icon] ?? ICONS.dashboard}
-                        className={cn('h-4 w-4', active
-                          ? 'dark:text-blue-400 light:text-blue-600'
-                          : 'dark:text-slate-500 dark:group-hover:text-slate-300 light:text-slate-400 light:group-hover:text-slate-700'
-                        )}
-                      />
-                      {!collapsed && (
-                        <>
-                          <span className="flex-1 leading-none">{item.label}</span>
-                          {item.badge && (
-                            <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                              {item.badge}
-                            </span>
+        {filteredSections.map((section) => {
+          const isOpen = collapsed || (openSections[section.title] !== false)
+          return (
+            <div key={section.title}>
+              {!collapsed && (
+                <button
+                  onClick={() => toggleSection(section.title)}
+                  className="flex w-full items-center justify-between mb-2 px-2.5 rounded transition-colors
+                    text-[9.5px] font-semibold uppercase tracking-[0.18em]
+                    dark:text-slate-600 dark:hover:text-slate-400
+                    light:text-slate-400 light:hover:text-slate-600"
+                >
+                  <span>{section.title}</span>
+                  <Icon
+                    d={isOpen ? ICONS.chevronDown : ICONS.chevronRight}
+                    className="h-3 w-3 transition-transform duration-300"
+                  />
+                </button>
+              )}
+              {collapsed && <div className="mb-1 mx-1 h-px dark:bg-white/5 light:bg-slate-100" />}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateRows: isOpen ? '1fr' : '0fr',
+                  transition: 'grid-template-rows 0.3s ease',
+                }}
+              >
+                <div className="overflow-hidden">
+                  <div className="space-y-0.5">
+                    {section.items.map((item) => {
+                      const active = pathname.startsWith(item.href)
+                      return (
+                        <div key={item.href} className="relative group/tip">
+                          <NavLink
+                            href={item.href}
+                            onClick={onClose}
+                            className={() => cn(
+                              'nav-link-icon',
+                              'group relative flex items-center rounded-xl py-2.5 text-sm transition-all duration-150',
+                              collapsed ? 'justify-center px-2' : 'gap-3 px-3',
+                              active
+                                ? 'nav-active dark:text-blue-300 light:text-blue-600 font-semibold'
+                                : 'dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200 light:text-slate-500 light:hover:bg-slate-50 light:hover:text-slate-800',
+                            )}
+                          >
+                            {!collapsed && (
+                              <span className={cn(
+                                'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
+                                active ? 'bg-blue-500 opacity-100' : 'opacity-0',
+                              )} />
+                            )}
+                            <Icon
+                              d={ICONS[item.icon] ?? ICONS.dashboard}
+                              className={cn('h-4 w-4', active
+                                ? 'dark:text-blue-400 light:text-blue-600'
+                                : 'dark:text-slate-500 dark:group-hover:text-slate-300 light:text-slate-400 light:group-hover:text-slate-700'
+                              )}
+                            />
+                            {!collapsed && (
+                              <>
+                                <span className="flex-1 leading-none">{item.label}</span>
+                                {item.badge && (
+                                  <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </NavLink>
+                          {/* Tooltip when collapsed */}
+                          {collapsed && (
+                            <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50
+                              whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium
+                              dark:bg-slate-800 dark:text-white dark:shadow-lg dark:ring-1 dark:ring-white/10
+                              light:bg-slate-900 light:text-white light:shadow-xl
+                              opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
+                              {item.label}
+                            </div>
                           )}
-                        </>
-                      )}
-                    </NavLink>
-                    {/* Tooltip when collapsed */}
-                    {collapsed && (
-                      <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50
-                        whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium
-                        dark:bg-slate-800 dark:text-white dark:shadow-lg dark:ring-1 dark:ring-white/10
-                        light:bg-slate-900 light:text-white light:shadow-xl
-                        opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
-                        {item.label}
-                      </div>
-                    )}
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Expand button when collapsed */}
