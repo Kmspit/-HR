@@ -11,6 +11,7 @@ import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { formatLateMinutes } from '@/lib/utils'
 
 
 
@@ -249,7 +250,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
               <p className="text-lg font-bold text-slate-300">{report.lateSummary.totalRecordedLateMinutes}</p>
-              <p className="text-[10px] text-slate-400">นาทีสายที่บันทึก (ก่อน grace)</p>
+              <p className="text-[10px] text-slate-400">นาทีสายที่บันทึก (หลัง grace)</p>
             </div>
           </div>
         )}
@@ -340,7 +341,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                     <td className="p-3 text-center text-yellow-400 tabular-nums">
 
-                      {emp.lateDays > 0 ? `${emp.lateDays} (${emp.lateMinutes}น.)` : '—'}
+                      {emp.lateDays > 0 ? `${emp.lateDays} ครั้ง · ${formatLateMinutes(emp.lateMinutes)}` : '—'}
 
                     </td>
 
@@ -442,7 +443,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                 <span className="text-slate-400">
 
-                  มาสาย: <b className="text-yellow-400">{emp.lateDays}</b> ({emp.lateMinutes} น.)
+                  มาสาย: <b className="text-yellow-400">{emp.lateDays}</b> ครั้ง · {formatLateMinutes(emp.lateMinutes)}
 
                 </span>
 
