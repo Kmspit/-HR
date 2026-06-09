@@ -1217,8 +1217,18 @@ function renderTimeline(rec) {
   document.getElementById('att-timeline').innerHTML = html;
 }
 
-// Called by onerror on att-photo-slot img — replaces broken img with placeholder
+// Called by onerror on att-photo-slot img.
+// If a local data URL fallback is stored on the element, try that first.
+// Only replace with placeholder when all sources are exhausted.
 function _attPhotoError(img) {
+  var local = img._localFallback;
+  if (local && img.src !== local) {
+    console.warn('[PHOTO] CDN URL failed (' + img.src.substring(0, 60) + '…) — retrying with local data URL');
+    img._localFallback = null; // don't loop
+    img.src = local;
+    return;
+  }
+  console.warn('[PHOTO] all image sources failed — showing placeholder');
   var ph = document.createElement('div');
   ph.className = 'att-photo-ph';
   ph.textContent = '📷';
@@ -1226,18 +1236,35 @@ function _attPhotoError(img) {
 }
 
 function renderPhotos(rec) {
-  // Prefer Cloudinary CDN URL (HTTPS, small) over local data URL when available
+  // cdn = Cloudinary HTTPS URL (preferred); local = data URL fallback
   const items = [
-    { label: 'เช็คอิน', url: rec.photoUrlCdn || rec.photoUrl, time: rec.checkIn },
-    { label: 'เริ่มพัก', url: rec.lunchOutPhotoUrlCdn || rec.lunchOutPhotoUrl, time: rec.lunchOut },
-    { label: 'กลับพัก', url: rec.lunchInPhotoUrlCdn || rec.lunchInPhotoUrl, time: rec.lunchIn },
-    { label: 'เช็คเอาท์', url: rec.checkOutPhotoUrlCdn || rec.checkOutPhotoUrl, time: rec.checkOut },
+    { label: 'เช็คอิน',   cdn: rec.photoUrlCdn,       local: rec.photoUrl,       time: rec.checkIn },
+    { label: 'เริ่มพัก',  cdn: rec.lunchOutPhotoUrlCdn, local: rec.lunchOutPhotoUrl, time: rec.lunchOut },
+    { label: 'กลับพัก',  cdn: rec.lunchInPhotoUrlCdn,  local: rec.lunchInPhotoUrl,  time: rec.lunchIn },
+    { label: 'เช็คเอาท์', cdn: rec.checkOutPhotoUrlCdn, local: rec.checkOutPhotoUrl, time: rec.checkOut },
   ];
-  document.getElementById('att-photos').innerHTML = items.map((it) => `
-    <div class="att-photo-slot">
-      ${it.url ? `<img src="${it.url}" alt="" onerror="_attPhotoError(this)">` : `<div class="att-photo-ph">—</div>`}
+  const container = document.getElementById('att-photos');
+  container.innerHTML = items.map((it) => {
+    const url = it.cdn || it.local;
+    const urlDesc = url ? (url.startsWith('data:') ? 'data:~' + Math.round(url.length / 1024) + 'KB' : url.substring(0, 70)) : 'null';
+    console.log('[PHOTO] rendering ' + it.label + ' url=' + urlDesc);
+    return `<div class="att-photo-slot">
+      ${url ? `<img src="${url}" alt="" onerror="_attPhotoError(this)">` : `<div class="att-photo-ph">—</div>`}
       <p>${it.label}${it.time ? ' · ' + fmtTime(it.time) : ''}</p>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  // Attach local data URL as onerror fallback — CDN imgs retry with local when CDN fails
+  // (can't put large data URLs in HTML attributes, so set as JS property instead)
+  const imgs = container.querySelectorAll('img');
+  let imgIdx = 0;
+  items.forEach((it) => {
+    if (it.cdn || it.local) { // only if an img was rendered
+      const img = imgs[imgIdx++];
+      if (img && it.cdn && it.local && it.cdn !== it.local) {
+        img._localFallback = it.local; // CDN img will retry with local on failure
+      }
+    }
+  });
 }
 
 function renderWorkTimer(rec) {
@@ -1684,7 +1711,15 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
       folder: 'attendance/' + (user.id || 'unknown') + '/' + (folderMap[scanType] || scanType),
       tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
     });
-    console.log('[CDN] upload result:', cdnResult.secure_url);
+    // Validate: must be a full HTTPS URL — never store public_id or partial paths
+    const secureUrl = cdnResult && cdnResult.secure_url;
+    if (!secureUrl || typeof secureUrl !== 'string' || !secureUrl.startsWith('https://')) {
+      console.error('[CDN] Cloudinary response missing valid secure_url:', JSON.stringify(cdnResult).substring(0, 200));
+      return;
+    }
+    console.log('[CDN] upload result secure_url:', secureUrl);
+    console.log('[CDN] saved attendance image url:', secureUrl);
+
     const stored = getTodayRecord();
     if (stored) {
       const fieldMap = {
@@ -1694,9 +1729,11 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
       };
       const field = fieldMap[scanType];
       if (field) {
-        stored[field] = cdnResult.secure_url;
+        stored[field] = secureUrl;
         saveTodayRecord(stored);
-        console.log('[CDN] saved CDN URL to field:', field);
+        console.log('[CDN] saved CDN URL to field:', field, secureUrl);
+        // Re-render so UI picks up the CDN URL immediately (was showing data URL before)
+        if (typeof renderAttendanceUI === 'function') renderAttendanceUI();
       }
     }
   } catch (err) {
