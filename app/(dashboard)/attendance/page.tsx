@@ -75,6 +75,26 @@ export default async function AttendancePage({
     }),
   ])
 
+  // Old records store Cloudinary publicId in photoUrl (not a valid img src).
+  // Authenticated Cloudinary images also need server-side tokens — use the proxy API instead.
+  const faceScanProxyUrls = new Map<string, string>()
+  if (displaySession) {
+    const scans = await prisma.attendanceFaceScan.findMany({
+      where: { attendanceId: displaySession.id },
+      select: { id: true, scanType: true },
+    })
+    for (const s of scans) {
+      faceScanProxyUrls.set(s.scanType, `/api/attendance/scan-image/${s.id}`)
+    }
+  }
+  const resolvePhotoUrl = (stored: string | null, scanType: string): string | null => {
+    if (!stored) return null
+    // Already a proper URL or existing proxy path — use as-is
+    if (stored.startsWith('/') || stored.startsWith('https://')) return stored
+    // Legacy: publicId stored without scheme — resolve via face scan proxy
+    return faceScanProxyUrls.get(scanType) ?? null
+  }
+
   // Manager/Admin: แสดงพนักงานทุกคน (รวมที่ยังไม่เช็คอินวันนี้)
   const TEAM_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
   let allToday: {
@@ -155,10 +175,10 @@ export default async function AttendancePage({
         isOutside: displaySession.isOutside ?? false,
         address: displaySession.address ?? null,
         workPlaceName: displaySession.workPlaceName ?? null,
-        photoUrl: displaySession.photoUrl ?? null,
-        checkOutPhotoUrl: displaySession.checkOutPhotoUrl ?? null,
-        lunchOutPhotoUrl: displaySession.lunchOutPhotoUrl ?? null,
-        lunchInPhotoUrl: displaySession.lunchInPhotoUrl ?? null,
+        photoUrl: resolvePhotoUrl(displaySession.photoUrl, 'checkin'),
+        checkOutPhotoUrl: resolvePhotoUrl(displaySession.checkOutPhotoUrl, 'checkout'),
+        lunchOutPhotoUrl: resolvePhotoUrl(displaySession.lunchOutPhotoUrl, 'lunch-out'),
+        lunchInPhotoUrl: resolvePhotoUrl(displaySession.lunchInPhotoUrl, 'lunch-in'),
         lat: displaySession.lat ?? null,
         lng: displaySession.lng ?? null,
         autoCheckout: displaySession.autoCheckout ?? false,

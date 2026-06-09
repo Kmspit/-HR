@@ -409,8 +409,12 @@ export async function syncAttendancePhotoFromFaceScan(
 
   const imageUrl = scan.secureUrl ?? scan.imageUrl ?? null
 
+  // Use proxy URL so <img src> works: authenticated Cloudinary images need server-side token,
+  // direct secure_url would return 401 in the browser.
+  const proxyUrl = `/api/attendance/scan-image/${faceScanId}`
+
   // Sync photo URL + Cloudinary image_public_id / image_url to Attendance row
-  const updateData: Record<string, string | null> = { [field]: publicId }
+  const updateData: Record<string, string | null> = { [field]: proxyUrl }
   // Only populate top-level image fields for the checkin photo (first scan)
   if (field === 'photoUrl') {
     updateData.imagePublicId = publicId
@@ -421,7 +425,7 @@ export async function syncAttendancePhotoFromFaceScan(
     where: { id: attendanceId },
     data: updateData,
   })
-  return publicId
+  return proxyUrl
 }
 
 export async function recordFaceScanAndNotifyHr(params: {
