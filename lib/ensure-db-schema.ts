@@ -668,6 +668,26 @@ async function runEnsure(): Promise<boolean> {
   await addAnnouncementColumnIfMissing('attachmentType',     `ALTER TABLE announcements ADD COLUMN attachmentType TEXT`)
   await addAnnouncementColumnIfMissing('attachmentPublicId', `ALTER TABLE announcements ADD COLUMN attachmentPublicId TEXT`)
 
+  // Attendance columns added after initial schema (idempotent — safe to run every deploy)
+  await addAttendanceColumnIfMissing(
+    'autoCheckout',
+    `ALTER TABLE attendances ADD COLUMN autoCheckout INTEGER NOT NULL DEFAULT 0`,
+  )
+  await addAttendanceColumnIfMissing('note',       `ALTER TABLE attendances ADD COLUMN note TEXT`)
+  await addAttendanceColumnIfMissing('editedById', `ALTER TABLE attendances ADD COLUMN editedById TEXT`)
+  await addAttendanceColumnIfMissing('photoUrl',         `ALTER TABLE attendances ADD COLUMN photoUrl TEXT`)
+  await addAttendanceColumnIfMissing('checkOutPhotoUrl', `ALTER TABLE attendances ADD COLUMN checkOutPhotoUrl TEXT`)
+  await addAttendanceColumnIfMissing('lunchOutPhotoUrl', `ALTER TABLE attendances ADD COLUMN lunchOutPhotoUrl TEXT`)
+  await addAttendanceColumnIfMissing('lunchInPhotoUrl',  `ALTER TABLE attendances ADD COLUMN lunchInPhotoUrl TEXT`)
+  await addAttendanceColumnIfMissing(
+    'lateMinutes',
+    `ALTER TABLE attendances ADD COLUMN lateMinutes INTEGER NOT NULL DEFAULT 0`,
+  )
+  await addAttendanceColumnIfMissing(
+    'earlyLeaveMinutes',
+    `ALTER TABLE attendances ADD COLUMN earlyLeaveMinutes INTEGER NOT NULL DEFAULT 0`,
+  )
+
   // Lunch overtime tracking (พักเกินเวลา)
   await addAttendanceColumnIfMissing(
     'lunchOverMinutes',
