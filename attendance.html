@@ -39,7 +39,8 @@
 .att-tl-dot.done + .att-tl-line, .att-tl-line.done { background:rgba(59,130,246,0.35); }
 .att-photos { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px; }
 .att-photo-slot { text-align:center; }
-.att-photo-slot img, .att-photo-slot .att-photo-ph { width:100%; aspect-ratio:4/3; border-radius:8px; object-fit:cover; background:var(--bg3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text3); }
+.att-photo-slot img { width:100%; aspect-ratio:4/3; border-radius:8px; object-fit:cover; background:var(--bg3); border:1px solid var(--border); display:block; }
+.att-photo-slot .att-photo-ph { width:100%; aspect-ratio:4/3; border-radius:8px; background:var(--bg3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text3); }
 .att-photo-slot p { font-size:10px; color:var(--text3); margin-top:4px; }
 .att-type-grid { display:grid; grid-template-columns:1fr; gap:12px; }
 @media (min-width:520px){ .att-type-grid { grid-template-columns:1fr 1fr; } }
@@ -1216,16 +1217,25 @@ function renderTimeline(rec) {
   document.getElementById('att-timeline').innerHTML = html;
 }
 
+// Called by onerror on att-photo-slot img — replaces broken img with placeholder
+function _attPhotoError(img) {
+  var ph = document.createElement('div');
+  ph.className = 'att-photo-ph';
+  ph.textContent = '📷';
+  img.parentNode.replaceChild(ph, img);
+}
+
 function renderPhotos(rec) {
+  // Prefer Cloudinary CDN URL (HTTPS, small) over local data URL when available
   const items = [
-    { label: 'เช็คอิน', url: rec.photoUrl, time: rec.checkIn },
-    { label: 'เริ่มพัก', url: rec.lunchOutPhotoUrl, time: rec.lunchOut },
-    { label: 'กลับพัก', url: rec.lunchInPhotoUrl, time: rec.lunchIn },
-    { label: 'เช็คเอาท์', url: rec.checkOutPhotoUrl, time: rec.checkOut },
+    { label: 'เช็คอิน', url: rec.photoUrlCdn || rec.photoUrl, time: rec.checkIn },
+    { label: 'เริ่มพัก', url: rec.lunchOutPhotoUrlCdn || rec.lunchOutPhotoUrl, time: rec.lunchOut },
+    { label: 'กลับพัก', url: rec.lunchInPhotoUrlCdn || rec.lunchInPhotoUrl, time: rec.lunchIn },
+    { label: 'เช็คเอาท์', url: rec.checkOutPhotoUrlCdn || rec.checkOutPhotoUrl, time: rec.checkOut },
   ];
   document.getElementById('att-photos').innerHTML = items.map((it) => `
     <div class="att-photo-slot">
-      ${it.url ? `<img src="${it.url}" alt="">` : `<div class="att-photo-ph">—</div>`}
+      ${it.url ? `<img src="${it.url}" alt="" onerror="_attPhotoError(this)">` : `<div class="att-photo-ph">—</div>`}
       <p>${it.label}${it.time ? ' · ' + fmtTime(it.time) : ''}</p>
     </div>`).join('');
 }
