@@ -5,6 +5,7 @@ import { ROLE_LABELS } from '@/lib/permissions'
 import { formatThaiDate } from '@/lib/utils'
 import { findTodayAttendanceForDisplay } from '@/lib/attendance-session'
 import { getAttendanceProgress, ACTION_LABELS } from '@/lib/attendance-progress'
+import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import type { Role } from '@prisma/client'
 
 type Props = {
@@ -14,8 +15,7 @@ type Props = {
 }
 
 export default async function EmployeeDashboard({ userId, name, role }: Props) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = startOfTodayBangkok()
 
   const [displaySession, leaveBalance, unreadCount, pendingLeave] = await Promise.all([
     findTodayAttendanceForDisplay(userId, today),

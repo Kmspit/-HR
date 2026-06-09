@@ -16,6 +16,7 @@ import {
   requestUserWhere,
   parseBranchQueryParam,
 } from '@/lib/branch-scope'
+import { startOfTodayBangkok, bangkokDateKey } from '@/lib/datetime-bangkok'
 import { Suspense } from 'react'
 
 type Role = 'SUPER_ADMIN' | 'MANAGER_HR' | 'HR' | 'MANAGER' | 'TEAM_LEADER' | 'ADMIN' | 'EMPLOYEE' | 'LAWYER' | 'ENFORCEMENT'
@@ -69,8 +70,7 @@ export default async function DashboardPage({
   const pendingUserWhere = branchUserWhere(scope, { status: 'PENDING' })
   const nestedUser = branchNestedUserWhere(scope)
 
-  const today = new Date()
-  const todayStart = new Date(today.setHours(0, 0, 0, 0))
+  const todayStart = startOfTodayBangkok()
   const todayAttWhere = attendanceWhere(scope, { date: { gte: todayStart } })
 
   /* ─── parallel data fetch ─── */
@@ -121,8 +121,8 @@ export default async function DashboardPage({
   /* ─── 7-day chart data ─── */
   const chartData = await Promise.all(
     Array.from({ length: 7 }).map(async (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0, 0, 0, 0)
-      const next = new Date(d); next.setDate(d.getDate() + 1)
+      const d = new Date(`${bangkokDateKey(new Date(Date.now() - (6 - i) * 86400_000))}T00:00:00+07:00`)
+      const next = new Date(`${bangkokDateKey(new Date(d.getTime() + 86400_000))}T00:00:00+07:00`)
       const [present, late, absent] = await Promise.all([
         prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: d, lt: next }, status: { in: ['NORMAL', 'OT'] } }) }),
         prisma.attendance.count({ where: attendanceWhere(scope, { date: { gte: d, lt: next }, status: 'LATE' }) }),

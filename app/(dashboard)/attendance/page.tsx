@@ -10,6 +10,7 @@ import {
   pickDisplaySessionForDay,
 } from '@/lib/attendance-session'
 import { getAttendanceProgress } from '@/lib/attendance-progress'
+import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import { Suspense } from 'react'
 
 export default async function AttendancePage({
@@ -23,8 +24,7 @@ export default async function AttendancePage({
   const branchParam = parseBranchQueryParam(sp.branchId)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = startOfTodayBangkok()
 
   const [companySettings, profile] = await Promise.all([
     prisma.companySettings.findUnique({
