@@ -806,6 +806,12 @@ async function autoScanTick() {
   if (!autoScanActive || !activePanel) return;
   const video = document.getElementById('checkin-video');
   if (!video?.srcObject) { autoScanTimer = setTimeout(autoScanTick, 400); return; }
+  // Wait until video has actual frame data (readyState 2 = HAVE_CURRENT_DATA)
+  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    console.log('[CAM] video not ready yet (readyState=' + video.readyState + ', w=' + video.videoWidth + ') — waiting...');
+    autoScanTimer = setTimeout(autoScanTick, 300);
+    return;
+  }
   try {
     const quality = await FaceCore.assessQuality(video);
     if (!autoScanActive) return; // may have been stopped while awaiting
@@ -835,6 +841,12 @@ async function autoScanTick() {
 
 async function runMatch(video) {
   if (matching) return;
+  // Guard: video must have real frame data before we capture
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    console.log('[CAM] runMatch: video not ready (readyState=' + video?.readyState + ', w=' + video?.videoWidth + ') — aborting capture');
+    autoScanTimer = setTimeout(autoScanTick, 300);
+    return;
+  }
   matching = true;
   autoScanActive = false; // pause loop while comparing
   alignedSince = null;
@@ -842,6 +854,21 @@ async function runMatch(video) {
   try {
     // Capture still and resize to max 480×360 / quality 0.75 before storing
     const still = FaceCore.captureStill(video, { quality: 0.92 });
+
+    // Black-frame guard: sample center pixel — if nearly black, camera is still warming up
+    {
+      const sctx = still.canvas.getContext('2d');
+      const cx = Math.floor(still.canvas.width / 2), cy = Math.floor(still.canvas.height / 2);
+      const px = sctx.getImageData(cx, cy, 1, 1).data;
+      const brightness = px[0] + px[1] + px[2]; // 0–765
+      console.log('[CAM] center pixel brightness=' + brightness + ' (0=black, 765=white)');
+      if (brightness < 30) {
+        console.warn('[CAM] black frame detected — camera warming up, will retry');
+        autoScanActive = true; // restore so the retry tick can proceed
+        autoScanTimer = setTimeout(autoScanTick, 500);
+        return;
+      }
+    }
     {
       const sw = still.canvas.width, sh = still.canvas.height;
       const scale = Math.min(1, 480 / sw, 360 / sh);
@@ -929,7 +956,12 @@ function capturePhotoDataUrl() {
   }
   // Fallback: capture directly from live video
   const video = document.getElementById('checkin-video');
-  const sw = video.videoWidth || 480, sh = video.videoHeight || 360;
+  // Guard: video must be ready before drawing — avoids black fallback frames
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    console.warn('[PHOTO] fallback: video not ready (readyState=' + video?.readyState + ') — returning null');
+    return null;
+  }
+  const sw = video.videoWidth, sh = video.videoHeight;
   const scale = Math.min(1, MAX_W / sw, MAX_H / sh);
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(sw * scale);
