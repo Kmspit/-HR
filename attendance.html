@@ -629,21 +629,27 @@ function getTodayData() {
 }
 
 function saveTodayData(data) {
+  const json = JSON.stringify(data);
+  console.log('[ATT] saveTodayData ~' + Math.round(json.length / 1024) + 'KB, sessions:', data.sessions.length);
   try {
-    localStorage.setItem(todayStorageKey(), JSON.stringify(data));
+    localStorage.setItem(todayStorageKey(), json);
+    _pendingAttendanceData = null; // clear memory fallback on successful save
+    console.log('[ATT] saveTodayData OK');
   } catch (e) {
     if (e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-      // พื้นที่เต็ม — ลบ log เก่าก่อนแล้ว retry
+      console.warn('[ATT] localStorage quota exceeded, cleaning old logs...');
       _cleanOldAttendanceLogs();
       try {
-        localStorage.setItem(todayStorageKey(), JSON.stringify(data));
+        localStorage.setItem(todayStorageKey(), json);
+        _pendingAttendanceData = null;
+        console.log('[ATT] saveTodayData OK after cleanup');
       } catch {
-        // ยัง fail — แจ้ง user และ queue ไว้
+        console.error('[ATT] saveTodayData FAILED even after cleanup — using memory fallback');
         _showStorageWarning();
-        _pendingAttendanceData = data; // เก็บใน memory ชั่วคราว
+        _pendingAttendanceData = data;
       }
     } else {
-      console.error('saveTodayData error:', e);
+      console.error('[ATT] saveTodayData unexpected error:', e);
     }
   }
 }
@@ -834,9 +840,21 @@ async function runMatch(video) {
   alignedSince = null;
   setScanStatus('กำลังเทียบใบหน้า...', 'var(--text2)');
   try {
-    // High-quality still (un-mirrored) for the saved record
+    // Capture still and resize to max 480×360 / quality 0.75 before storing
     const still = FaceCore.captureStill(video, { quality: 0.92 });
-    lastCapturedPhoto = still.dataUrl;
+    {
+      const sw = still.canvas.width, sh = still.canvas.height;
+      const scale = Math.min(1, 480 / sw, 360 / sh);
+      if (scale < 1) {
+        const rc = document.createElement('canvas');
+        rc.width = Math.round(sw * scale); rc.height = Math.round(sh * scale);
+        rc.getContext('2d').drawImage(still.canvas, 0, 0, rc.width, rc.height);
+        lastCapturedPhoto = rc.toDataURL('image/jpeg', 0.75);
+      } else {
+        lastCapturedPhoto = still.canvas.toDataURL('image/jpeg', 0.75);
+      }
+    }
+    console.log('[PHOTO] runMatch captured, size ~' + Math.round(lastCapturedPhoto.length / 1024) + 'KB');
     const previewShot = FaceCore.captureStill(video, { mirror: true, quality: 0.85 }).dataUrl;
 
     const employeeId = FaceCore.getCurrentEmployeeId();
@@ -903,15 +921,23 @@ function rescanFace() {
 }
 
 function capturePhotoDataUrl() {
-  if (lastCapturedPhoto) return lastCapturedPhoto;
-  // Fallback: capture directly if scan produced no still
+  // Max 480×360 at quality 0.75 — keeps file small enough for localStorage (~20–40 KB)
+  const MAX_W = 480, MAX_H = 360, QUALITY = 0.75;
+  if (lastCapturedPhoto) {
+    console.log('[PHOTO] using lastCapturedPhoto, size ~' + Math.round(lastCapturedPhoto.length / 1024) + 'KB');
+    return lastCapturedPhoto; // already resized in runMatch()
+  }
+  // Fallback: capture directly from live video
   const video = document.getElementById('checkin-video');
+  const sw = video.videoWidth || 480, sh = video.videoHeight || 360;
+  const scale = Math.min(1, MAX_W / sw, MAX_H / sh);
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth || 480;
-  canvas.height = video.videoHeight || 360;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.9);
+  canvas.width = Math.round(sw * scale);
+  canvas.height = Math.round(sh * scale);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const url = canvas.toDataURL('image/jpeg', QUALITY);
+  console.log('[PHOTO] fallback capture from video, size ~' + Math.round(url.length / 1024) + 'KB');
+  return url;
 }
 
 function submitActiveAction() {
@@ -928,6 +954,7 @@ function submitActiveAction() {
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'กำลังบันทึกข้อมูล...'; }
   try {
   const photoUrl = capturePhotoDataUrl();
+  console.log('[ATT] photoUrl captured:', photoUrl ? 'YES (~' + Math.round(photoUrl.length / 1024) + 'KB)' : 'NULL');
   const faceMeta = faceMatch ? {
     faceVerified: faceMatch.decision === 'accept' || !!faceMatch.userConfirmed,
     faceConfidence: faceMatch.confidence,
@@ -1015,7 +1042,9 @@ function submitActiveAction() {
   Object.assign(rec, faceMeta);
   if (typeof syncWorkTimeFields === 'function') syncWorkTimeFields(rec);
   saveTodayRecord(rec);
-  console.log('[ATT] saved. sessions:', getTodayData().sessions.length, 'nextKey:', getNextActionKey());
+  const _savedRec = getTodayDisplayRecord();
+  console.log('[ATT] saved. sessions:', getTodayData().sessions.length, 'nextKey:', getNextActionKey(),
+    '| photoUrl in storage:', _savedRec ? (_savedRec.photoUrl ? '✓ ~' + Math.round(_savedRec.photoUrl.length / 1024) + 'KB' : 'MISSING') : 'no rec');
   const _scanType = activePanel; // capture before closePanel resets it
   const _wasCheckout = _scanType === 'checkout';
   closePanel();
@@ -1580,10 +1609,12 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
       'checkin-company': 'checkin', 'checkin-outside': 'checkin',
       'lunch-out': 'lunch-out', 'lunch-in': 'lunch-in', 'checkout': 'checkout',
     };
+    console.log('[CDN] upload started for', scanType);
     const cdnResult = await uploadToCloudinary(photoDataUrl, {
       folder: 'attendance/' + (user.id || 'unknown') + '/' + (folderMap[scanType] || scanType),
       tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
     });
+    console.log('[CDN] upload result:', cdnResult.secure_url);
     const stored = getTodayRecord();
     if (stored) {
       const fieldMap = {
@@ -1592,10 +1623,14 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
         'checkout': 'checkOutPhotoUrlCdn',
       };
       const field = fieldMap[scanType];
-      if (field) { stored[field] = cdnResult.secure_url; saveTodayRecord(stored); }
+      if (field) {
+        stored[field] = cdnResult.secure_url;
+        saveTodayRecord(stored);
+        console.log('[CDN] saved CDN URL to field:', field);
+      }
     }
   } catch (err) {
-    console.warn('Cloudinary upload skipped:', err.message || err);
+    console.warn('[CDN] Cloudinary upload skipped:', err.message || err);
   }
 }
 
