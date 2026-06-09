@@ -920,6 +920,7 @@ function submitActiveAction() {
   _submitting = true;
   // แสดง loading state บนปุ่ม submit
   const submitBtn = document.getElementById('btn-submit');
+  const _submitBtnOrigText = submitBtn ? (submitBtn.textContent || 'บันทึก') : 'บันทึก';
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'กำลังบันทึกข้อมูล...'; }
   try {
   const photoUrl = capturePhotoDataUrl();
@@ -934,6 +935,7 @@ function submitActiveAction() {
   const dist = calculateDistance(userCoords.lat, userCoords.lng, office.lat, office.lng);
   const inRange = dist <= office.radius;
   let rec = getActiveSession();
+  console.log('[ATT] action:', activePanel, '| rec:', JSON.stringify(rec));
   const completedCount = getCompletedSessions().length;
   const nextSessionIndex = completedCount + (rec ? 0 : 1);
 
@@ -981,17 +983,19 @@ function submitActiveAction() {
     appendHistoryRow(rec, photoUrl);
   } else if (activePanel === 'lunch-out') {
     if (!rec?.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
-    if (rec.lunchOut) { alert('บันทึกเริ่มพักแล้ว'); return; }
+    if (rec?.lunchOut) { alert('บันทึกเริ่มพักแล้ว'); return; }
     rec.lunchOut = now;
     rec.lunchOutPhotoUrl = photoUrl;
+    updateHistoryCheckout(rec);
   } else if (activePanel === 'lunch-in') {
-    if (!rec.lunchOut) { alert('ต้องเริ่มพักก่อน'); return; }
-    if (rec.lunchIn) { alert('บันทึกกลับจากพักแล้ว'); return; }
+    if (!rec?.lunchOut) { alert('ต้องเริ่มพักก่อน'); return; }
+    if (rec?.lunchIn) { alert('บันทึกกลับจากพักแล้ว'); return; }
     rec.lunchIn = now;
     rec.lunchInPhotoUrl = photoUrl;
+    updateHistoryCheckout(rec);
   } else if (activePanel === 'checkout') {
-    if (!rec.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
-    if (rec.checkOut) { alert('เช็คเอาท์แล้ว'); return; }
+    if (!rec?.checkIn) { alert('ต้องเช็คอินก่อน'); return; }
+    if (rec?.checkOut) { alert('เช็คเอาท์แล้ว'); return; }
     const coInfo = (typeof calcCheckoutInfo === 'function')
       ? calcCheckoutInfo('checkout', new Date())
       : { earlyLeave: false, earlyLeaveMinutes: 0, workStatus: 'เลิกงานปกติ', checkOutTime: null };
@@ -1007,9 +1011,11 @@ function submitActiveAction() {
   Object.assign(rec, faceMeta);
   if (typeof syncWorkTimeFields === 'function') syncWorkTimeFields(rec);
   saveTodayRecord(rec);
+  console.log('[ATT] saved. sessions:', getTodayData().sessions.length, 'nextKey:', getNextActionKey());
   const _scanType = activePanel; // capture before closePanel resets it
   const _wasCheckout = _scanType === 'checkout';
   closePanel();
+  renderAttendanceUI();
   if (_scanType === 'checkin-company' || _scanType === 'checkin-outside') {
     if (rec.isLate && typeof maybeCreateLateWarningDraft === 'function') {
       const draft = maybeCreateLateWarningDraft(user);
@@ -1038,7 +1044,10 @@ function submitActiveAction() {
   } finally {
     _submitting = false;
     const submitBtn2 = document.getElementById('btn-submit');
-    if (submitBtn2) submitBtn2.disabled = false;
+    if (submitBtn2) {
+      submitBtn2.disabled = false;
+      if (submitBtn2.textContent === 'กำลังบันทึกข้อมูล...') submitBtn2.textContent = _submitBtnOrigText;
+    }
   }
 }
 
