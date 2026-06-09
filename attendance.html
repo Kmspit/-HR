@@ -171,7 +171,7 @@
           <span class="tag blue" style="font-size:11px">กล้องกำลังทำงาน</span>
         </div>
         <div class="view-container" style="background: #000; border: none; border-radius: 16px;">
-          <video id="checkin-video" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);" autoplay playsinline></video>
+          <video id="checkin-video" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);" autoplay playsinline muted></video>
           <div class="scan-overlay"><div class="scan-frame"></div></div>
           <div class="face-scan"></div>
           <div class="face-status" id="scan-status">มองกล้องตรงเพื่อสแกนใบหน้า</div>
@@ -806,9 +806,9 @@ async function autoScanTick() {
   if (!autoScanActive || !activePanel) return;
   const video = document.getElementById('checkin-video');
   if (!video?.srcObject) { autoScanTimer = setTimeout(autoScanTick, 400); return; }
-  // Wait until video has actual frame data (readyState 2 = HAVE_CURRENT_DATA)
-  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-    console.log('[CAM] video not ready yet (readyState=' + video.readyState + ', w=' + video.videoWidth + ') — waiting...');
+  // readyState 4 = HAVE_ENOUGH_DATA — required on iOS Safari and Android Chrome
+  if (video.readyState < 4 || !video.videoWidth || !video.videoHeight) {
+    console.log('[CAM] video not ready yet (readyState=' + video.readyState + ' w=' + video.videoWidth + ') — waiting...');
     autoScanTimer = setTimeout(autoScanTick, 300);
     return;
   }
@@ -841,9 +841,9 @@ async function autoScanTick() {
 
 async function runMatch(video) {
   if (matching) return;
-  // Guard: video must have real frame data before we capture
-  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-    console.log('[CAM] runMatch: video not ready (readyState=' + video?.readyState + ', w=' + video?.videoWidth + ') — aborting capture');
+  // Guard: video must have HAVE_ENOUGH_DATA before capture
+  if (!video || video.readyState < 4 || !video.videoWidth || !video.videoHeight) {
+    console.log('[CAM] runMatch: video not ready (readyState=' + video?.readyState + ' w=' + video?.videoWidth + ') — aborting');
     autoScanTimer = setTimeout(autoScanTick, 300);
     return;
   }
@@ -852,6 +852,20 @@ async function runMatch(video) {
   alignedSince = null;
   setScanStatus('กำลังเทียบใบหน้า...', 'var(--text2)');
   try {
+    // 300ms settle delay — Android Chrome / iOS Safari output black frames
+    // if captured the instant quality-OK is detected (camera auto-exposure settling)
+    await new Promise(function(r) { setTimeout(r, 300); });
+    if (!activePanel) return; // panel closed during delay
+
+    // Re-validate after delay
+    if (video.readyState < 4 || !video.videoWidth || !video.videoHeight) {
+      console.warn('[CAM] runMatch: video became not-ready after delay — aborting');
+      autoScanActive = true;
+      autoScanTimer = setTimeout(autoScanTick, 300);
+      return;
+    }
+    console.log('[CAM] runMatch: readyState=' + video.readyState + ' w=' + video.videoWidth + ' h=' + video.videoHeight);
+
     // Capture still and resize to max 480×360 / quality 0.75 before storing
     const still = FaceCore.captureStill(video, { quality: 0.92 });
 
@@ -956,9 +970,9 @@ function capturePhotoDataUrl() {
   }
   // Fallback: capture directly from live video
   const video = document.getElementById('checkin-video');
-  // Guard: video must be ready before drawing — avoids black fallback frames
-  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-    console.warn('[PHOTO] fallback: video not ready (readyState=' + video?.readyState + ') — returning null');
+  // Guard: require HAVE_ENOUGH_DATA to avoid black fallback frames on iOS/Android
+  if (!video || video.readyState < 4 || !video.videoWidth || !video.videoHeight) {
+    console.warn('[PHOTO] fallback: video not ready (readyState=' + video?.readyState + ' w=' + video?.videoWidth + ') — returning null');
     return null;
   }
   const sw = video.videoWidth, sh = video.videoHeight;
@@ -1378,14 +1392,14 @@ function cleanupCamera() {
 
 async function initCamera() {
   const video = document.getElementById('checkin-video');
-  // Request higher resolution for sharper, more reliable face matching (req 11)
+  // 720×1280 ideal — works reliably on Android and iPhone front cameras
+  // (1920×1080 caused delayed stream start and black frames on mobile)
   const constraints = {
     audio: false,
     video: {
       facingMode: 'user',
-      width:  { ideal: 1920 },
-      height: { ideal: 1080 },
-      frameRate: { ideal: 30 },
+      width:  { ideal: 720 },
+      height: { ideal: 1280 },
     },
   };
   try {
@@ -1393,18 +1407,32 @@ async function initCamera() {
     try {
       stream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch {
-      // Fallback for devices that reject the ideal constraints
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
     }
     _cameraStream = stream;
     video.srcObject = stream;
+
+    // iOS Safari: must wait for loadedmetadata BEFORE calling play(),
+    // otherwise play() fails silently and video stays black.
+    await new Promise(function(resolve) {
+      if (video.readyState >= 1) { resolve(); return; }
+      var done = false;
+      var onMeta = function() {
+        if (done) return; done = true;
+        video.removeEventListener('loadedmetadata', onMeta);
+        resolve();
+      };
+      video.addEventListener('loadedmetadata', onMeta);
+      setTimeout(onMeta, 5000); // safety timeout
+    });
+
     await video.play().catch(() => {});
+    console.log('[CAM] initCamera: readyState=' + video.readyState + ' w=' + video.videoWidth + ' h=' + video.videoHeight);
     setScanStatus('มองกล้องตรงเพื่อสแกนใบหน้า', 'var(--text2)');
-    // Warm up models in the background so the first scan is fast
     if (typeof FaceCore !== 'undefined') FaceCore.loadModels().catch(() => {});
   } catch (err) {
-    console.error("Error accessing camera:", err);
-    setScanStatus("ไม่สามารถเข้าถึงกล้องได้: " + err.message, 'var(--red)');
+    console.error('[CAM] initCamera error:', err);
+    setScanStatus('ไม่สามารถเข้าถึงกล้องได้: ' + err.message, 'var(--red)');
   }
 }
 
