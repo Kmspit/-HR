@@ -614,11 +614,15 @@ function todayStorageKey() {
 /** @returns {{ sessions: object[] }} */
 function getTodayData() {
   try {
+    // ถ้า localStorage quota เต็ม ข้อมูลเก็บใน memory — ใช้ก่อน
+    if (_pendingAttendanceData) return _pendingAttendanceData;
     const raw = JSON.parse(localStorage.getItem(todayStorageKey()) || 'null');
     if (raw && Array.isArray(raw.sessions)) return raw;
-    // migrate รูปแบบเก่า (record เดียวต่อวัน)
+    // migrate รูปแบบเก่า (record เดียวต่อวัน) และ save กลับทันที
     if (raw && raw.checkIn) {
-      return { sessions: [{ sessionIndex: 1, ...raw }] };
+      const migrated = { sessions: [{ sessionIndex: 1, ...raw }] };
+      try { localStorage.setItem(todayStorageKey(), JSON.stringify(migrated)); } catch {}
+      return migrated;
     }
     return { sessions: [] };
   } catch { return { sessions: [] }; }
@@ -962,7 +966,7 @@ function submitActiveAction() {
     if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อน'); return; }
     if (!inRange) { alert('อยู่นอกรัศมีสำนักงาน — ใช้เช็คอินนอกสถานที่แทน'); return; }
     rec = {
-      sessionIndex: getTodayData().sessions.length + 1,
+      sessionIndex: Math.max(0, ...getTodayData().sessions.map(s => s.sessionIndex || 0)) + 1,
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
       isOutside: false, workPlaceName: 'สำนักงาน',
       photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
@@ -974,7 +978,7 @@ function submitActiveAction() {
     if (getTodayData().sessions.some(s => s.checkIn)) { alert('เช็คอินแล้ววันนี้'); return; }
     if (rec) { alert('มีรอบงานที่ยังไม่เช็คเอาท์ — กรุณาเช็คเอาท์ก่อน'); return; }
     rec = {
-      sessionIndex: getTodayData().sessions.length + 1,
+      sessionIndex: Math.max(0, ...getTodayData().sessions.map(s => s.sessionIndex || 0)) + 1,
       checkIn: now, checkOut: null, lunchOut: null, lunchIn: null,
       isOutside: true, workPlaceName: 'นอกสถานที่',
       photoUrl, lunchOutPhotoUrl: null, lunchInPhotoUrl: null, checkOutPhotoUrl: null,
