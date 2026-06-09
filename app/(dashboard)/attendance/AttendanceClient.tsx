@@ -39,6 +39,7 @@ type TodayRecord = {
   lunchInPhotoUrl: string | null
   lat: number | null
   lng: number | null
+  autoCheckout: boolean
 }
 
 type RecentRecord = {
@@ -55,6 +56,7 @@ type RecentRecord = {
   workPlaceName: string | null
   lat: number | null
   lng: number | null
+  autoCheckout: boolean
 }
 
 type Props = {
@@ -157,6 +159,7 @@ export default function AttendanceClient({
   const dayComplete = dayCompleteProp || progress.dayComplete
   const nextAction: AttendanceAction | null =
     dayComplete || blockCheckIn ? null : progress.nextAction
+  const canCheckoutNow = !dayComplete && !blockCheckIn && progress.canCheckoutNow
 
   const stepDone = (key: AttendanceAction) => {
     if (!todayRecord) return false
@@ -200,6 +203,28 @@ export default function AttendanceClient({
       weekday: 'short',
       timeZone: 'Asia/Bangkok',
     })
+  }
+
+  const calcWorkMinutes = (
+    checkIn: string | null,
+    checkOut: string | null,
+    lunchOut: string | null,
+    lunchIn: string | null,
+  ): number | null => {
+    if (!checkIn || !checkOut) return null
+    const spanMs = new Date(checkOut).getTime() - new Date(checkIn).getTime()
+    const breakMs = lunchOut && lunchIn
+      ? Math.max(0, new Date(lunchIn).getTime() - new Date(lunchOut).getTime())
+      : 0
+    return Math.max(0, Math.round((spanMs - breakMs) / 60000))
+  }
+
+  const fmtMins = (mins: number) => {
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    if (h === 0) return `${m} นาที`
+    if (m === 0) return `${h} ชม.`
+    return `${h} ชม. ${m} นาที`
   }
 
   const handleSuccess = () => {
@@ -319,8 +344,67 @@ export default function AttendanceClient({
               lunchIn={todayRecord.lunchIn}
               checkOut={todayRecord.checkOut}
               workPlaceName={todayRecord.workPlaceName}
+              autoCheckout={todayRecord.autoCheckout}
             />
           )}
+
+          {/* Daily summary — แสดงหลังเช็คเอาท์ */}
+          {dayComplete && todayRecord?.checkOut && (() => {
+            const workMins = calcWorkMinutes(
+              todayRecord.checkIn, todayRecord.checkOut,
+              todayRecord.lunchOut, todayRecord.lunchIn,
+            )
+            const breakMins = todayRecord.lunchOut && todayRecord.lunchIn
+              ? Math.max(0, Math.round((new Date(todayRecord.lunchIn).getTime() - new Date(todayRecord.lunchOut).getTime()) / 60000))
+              : null
+            const late = todayRecord.lateMinutes ?? 0
+            return (
+              <div className="rounded-xl p-4 space-y-3"
+                style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <p className="text-xs font-semibold text-blue-400">สรุปวันนี้</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">เข้างาน</span>
+                    <span className="text-green-400 font-medium">{formatTime(todayRecord.checkIn)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">ออกงาน</span>
+                    <span className="text-blue-400 font-medium">{formatTime(todayRecord.checkOut)}</span>
+                  </div>
+                  {todayRecord.lunchOut && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">พักออก</span>
+                      <span className="text-amber-400 font-medium">{formatTime(todayRecord.lunchOut)}</span>
+                    </div>
+                  )}
+                  {todayRecord.lunchIn && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">พักกลับ</span>
+                      <span className="text-amber-300 font-medium">{formatTime(todayRecord.lunchIn)}</span>
+                    </div>
+                  )}
+                  {workMins !== null && (
+                    <div className="flex justify-between col-span-2 border-t border-white/5 pt-2 mt-1">
+                      <span className="text-slate-400 font-medium">ทำงานจริง</span>
+                      <span className="text-white font-semibold">{fmtMins(workMins)}</span>
+                    </div>
+                  )}
+                  {breakMins !== null && (
+                    <div className="flex justify-between col-span-2">
+                      <span className="text-slate-400">พักรวม</span>
+                      <span className="text-slate-300">{fmtMins(breakMins)}</span>
+                    </div>
+                  )}
+                  {late > 0 && (
+                    <div className="flex justify-between col-span-2">
+                      <span className="text-slate-400">มาสาย</span>
+                      <span className="text-yellow-400 font-medium">{fmtMins(late)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* ── ปุ่มเดียว — เปลี่ยนตามลำดับ 1→2→3→4 ── */}
           {!scanOpen && dayComplete && faceRegistered && (
@@ -417,6 +501,20 @@ export default function AttendanceClient({
                 <span className="text-base">{ACTION_STEPS.find((s) => s.key === nextAction)?.label}</span>
                 <span className="text-[11px] font-normal text-white/70">กดเพื่อสแกนใบหน้า</span>
               </button>
+
+              {/* เช็คเอาท์โดยไม่พักกลางวัน — แสดงเฉพาะเมื่ออยู่ใน working state */}
+              {canCheckoutNow && (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => { setSelectedType(null); setLunchPanel('checkout') }}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold text-slate-300 transition-all active:scale-[0.98] hover:text-white disabled:opacity-50"
+                  style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)' }}
+                >
+                  <span>🔵</span>
+                  <span>เช็คเอาท์ (ไม่พักกลางวัน)</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -523,6 +621,7 @@ export default function AttendanceClient({
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">พักออก</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">พักกลับ</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ออก</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ชม.ทำงาน</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">แผนที่</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">สถานะ</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ประเภท</th>
@@ -539,7 +638,23 @@ export default function AttendanceClient({
                       <td className="p-3 text-center text-green-400 font-medium text-xs">{formatTime(r.checkIn)}</td>
                       <td className="p-3 text-center text-amber-400/80 font-medium text-xs">{formatTime(r.lunchOut)}</td>
                       <td className="p-3 text-center text-amber-300/80 font-medium text-xs">{formatTime(r.lunchIn)}</td>
-                      <td className="p-3 text-center text-blue-400 font-medium text-xs">{formatTime(r.checkOut)}</td>
+                      <td className="p-3 text-center text-xs">
+                        <span className={r.checkOut ? (r.autoCheckout ? 'text-orange-400' : 'text-blue-400') : 'text-slate-600'}>
+                          {formatTime(r.checkOut)}
+                        </span>
+                        {r.autoCheckout && r.checkOut && (
+                          <span className="block text-[9px] text-orange-400/70 mt-0.5">ระบบปิดอัตโนมัติ</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center text-slate-300 text-xs">
+                        {(() => {
+                          const m = calcWorkMinutes(r.checkIn, r.checkOut, r.lunchOut, r.lunchIn)
+                          if (m === null) return <span className="text-slate-600">—</span>
+                          const h = Math.floor(m / 60)
+                          const min = m % 60
+                          return `${h}:${String(min).padStart(2, '0')}`
+                        })()}
+                      </td>
                       <td className="p-3 text-center">
                         {r.lat != null && r.lng != null ? (
                           <a
@@ -576,7 +691,7 @@ export default function AttendanceClient({
                 })}
                 {recentRecords.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-600 text-sm">ยังไม่มีข้อมูล</td>
+                    <td colSpan={10} className="py-10 text-center text-slate-600 text-sm">ยังไม่มีข้อมูล</td>
                   </tr>
                 )}
               </tbody>

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
+import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import {
@@ -106,9 +107,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, attendance: finalized })
     }
 
+    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    const lunchReturnTime = settings?.lunchReturnTime ?? '13:00'
+    const dateKey = bangkokDateKey(now)
+    const lunchReturn = new Date(`${dateKey}T${lunchReturnTime}:00+07:00`)
+    const lunchOverMinutes = now > lunchReturn
+      ? Math.floor((now.getTime() - lunchReturn.getTime()) / 60000)
+      : 0
+
     const updated = await prisma.attendance.update({
       where: { id: attendance.id },
-      data: { ...ATTENDANCE_COMPLETED_PATCH, lunchIn: now, ...geoPatch },
+      data: { ...ATTENDANCE_COMPLETED_PATCH, lunchIn: now, lunchOverMinutes, ...geoPatch },
     })
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
@@ -142,7 +151,7 @@ export async function POST(req: NextRequest) {
         console.error('[lunch-in-bg]', err)
       }
     })
-    return NextResponse.json({ success: true, attendance: finalized })
+    return NextResponse.json({ success: true, attendance: finalized, lunchOverMinutes })
   } catch (err) {
     return apiError(err)
   }

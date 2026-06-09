@@ -668,6 +668,16 @@ async function runEnsure(): Promise<boolean> {
   await addAnnouncementColumnIfMissing('attachmentType',     `ALTER TABLE announcements ADD COLUMN attachmentType TEXT`)
   await addAnnouncementColumnIfMissing('attachmentPublicId', `ALTER TABLE announcements ADD COLUMN attachmentPublicId TEXT`)
 
+  // Lunch overtime tracking (พักเกินเวลา)
+  await addAttendanceColumnIfMissing(
+    'lunchOverMinutes',
+    `ALTER TABLE attendances ADD COLUMN lunchOverMinutes INTEGER NOT NULL DEFAULT 0`,
+  )
+  await addCompanySettingsColumnIfMissing(
+    'lunchReturnTime',
+    `ALTER TABLE company_settings ADD COLUMN lunchReturnTime TEXT NOT NULL DEFAULT '13:00'`,
+  )
+
   return true
 }
 

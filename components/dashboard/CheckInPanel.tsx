@@ -431,7 +431,12 @@ export default function CheckInPanel({
           }
           toastLineNotifyResult(data.lineNotify)
         } else {
-          if (!location) return
+          if (!location) {
+            toast.error('กรุณาระบุตำแหน่ง GPS ก่อนเช็คเอาท์')
+            submittingRef.current = false
+            setIsLoading(false)
+            return
+          }
           formData.append('lat', String(location.lat))
           formData.append('lng', String(location.lng))
           formData.append('address', location.address)
@@ -629,7 +634,7 @@ export default function CheckInPanel({
       {step === 'face-scan' && faceRequired && (
         <div className="space-y-2">
           <p className="text-center text-xs text-slate-400">
-            สแกนสำเร็จ → บันทึกในเครื่อง + เซิร์ฟเวอร์ → ส่งเวลาและรูปเข้า LINE HR อัตโนมัติ
+            สแกนสำเร็จ → บันทึกในเครื่อง + เซิร์ฟเวอร์อัตโนมัติ
           </p>
           <FaceAttendanceScan
             action={type}

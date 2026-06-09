@@ -161,6 +161,7 @@ export default async function AttendancePage({
         lunchInPhotoUrl: displaySession.lunchInPhotoUrl ?? null,
         lat: displaySession.lat ?? null,
         lng: displaySession.lng ?? null,
+        autoCheckout: displaySession.autoCheckout ?? false,
       } : null}
       dayComplete={getAttendanceProgress(displaySession).dayComplete}
       recentRecords={recentRecords.map((r) => ({
@@ -177,6 +178,7 @@ export default async function AttendancePage({
         workPlaceName: r.workPlaceName ?? null,
         lat: r.lat ?? null,
         lng: r.lng ?? null,
+        autoCheckout: r.autoCheckout ?? false,
       }))}
       leaveBalance={leaveBalance ? {
         sick: leaveBalance.sick,

@@ -131,6 +131,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       attendance: finalized,
+      lateMinutes: finalized.lateMinutes ?? 0,
+      lunchOverMinutes: finalized.lunchOverMinutes ?? 0,
       earlyLeaveMinutes,
     })
   } catch (err) {

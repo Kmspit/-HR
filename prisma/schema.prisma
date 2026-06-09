@@ -104,6 +104,9 @@ enum NotificationType {
   DEVICE_RESET_REQUEST
   ANNOUNCEMENT
   SYSTEM
+  FORGOT_SCAN_REQUEST
+  FORGOT_SCAN_APPROVED
+  FORGOT_SCAN_REJECTED
 }
 
 enum AuditAction {
@@ -315,6 +318,9 @@ model User {
   probationEvaluationsGiven ProbationEvaluation[] @relation("ProbationEvaluator")
   documentRequests         DocumentRequest[]
   documentRequestsHandled  DocumentRequest[]      @relation("DocumentHandler")
+  forgotScanRequests        ForgotScanRequest[]   @relation("ForgotScanUser")
+  forgotScanSupervisedReqs  ForgotScanRequest[]   @relation("ForgotScanSupervisor")
+  forgotScanApprovedHR      ForgotScanRequest[]   @relation("ForgotScanHR")
 
   @@map("users")
 }
@@ -511,6 +517,7 @@ model Attendance {
   leaveType        LeaveType?
   lateMinutes      Int              @default(0)
   earlyLeaveMinutes Int             @default(0)
+  lunchOverMinutes  Int              @default(0)
   checkInDistanceM     Float?   // distance from company geofence center at check-in (meters)
   gpsAccuracy          Float?   // GPS accuracy in meters as reported by device
   gpsFlags             String?  // comma-separated spoof/quality flags for HR review
@@ -518,9 +525,10 @@ model Attendance {
   outsideWorkRequestId String?  // approved OutsideWorkRequest that authorized this outside check-in
   branchId             String?  // สาขาที่ใช้เช็คอิน
   note             String?
-  editedById  String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  editedById       String?
+  autoCheckout     Boolean          @default(false) // ระบบ auto checkout หลัง 22:00
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   user   User            @relation(fields: [userId], references: [id])
   branch CompanyBranch?  @relation(fields: [branchId], references: [id])
@@ -989,6 +997,7 @@ model CompanySettings {
   logoUrl          String?
   workStartTime    String   @default("08:30")
   workEndTime      String   @default("17:30")
+  lunchReturnTime  String   @default("13:00")
   lateGraceMin     Int      @default(5)
   sickDaysYear     Int      @default(30)
   vacationDaysYear Int      @default(6)
@@ -1023,4 +1032,38 @@ model LeavePolicy {
   updatedAt     DateTime @updatedAt
 
   @@map("leave_policies")
+}
+
+// ── FORGOT SCAN REQUEST ─────────────────────────
+
+model ForgotScanRequest {
+  id            String        @id @default(cuid())
+  userId        String
+  date          DateTime      // วันที่ลืมสแกน (เก็บเป็น midnight Bangkok)
+  scanType      String        // checkin | lunch-out | lunch-in | checkout
+  correctTime   DateTime      // เวลาที่ถูกต้อง
+  reason        String
+  evidenceUrl   String?       // ไฟล์หลักฐาน (optional)
+  status        RequestStatus @default(PENDING)
+
+  supervisorId  String?       // ผู้อนุมัติขั้น 1 (หัวหน้างาน)
+  supervisorNote String?
+  supervisorAt  DateTime?
+
+  hrId          String?       // ผู้อนุมัติขั้น 2 (HR)
+  hrNote        String?
+  hrAt          DateTime?
+
+  originalTime  DateTime?     // เวลาเดิมก่อนแก้ (audit log)
+  attendanceId  String?       // อ้างอิง Attendance row ที่ถูกแก้
+  appliedAt     DateTime?     // เวลาที่ระบบ apply แล้ว
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user          User          @relation("ForgotScanUser", fields: [userId], references: [id])
+  supervisorRel User?         @relation("ForgotScanSupervisor", fields: [supervisorId], references: [id])
+  hrRel         User?         @relation("ForgotScanHR", fields: [hrId], references: [id])
+
+  @@map("forgot_scan_requests")
 }

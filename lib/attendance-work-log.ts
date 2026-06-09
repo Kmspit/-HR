@@ -64,6 +64,13 @@ export function formatWorkHours(minutes: number): string {
   return m > 0 ? `${h} ชม. ${m} น.` : `${h} ชม.`
 }
 
+/** แสดงนาทีในรูปแบบ "X ชั่วโมง Y นาที" (รวม 0 ชั่วโมง) */
+export function formatMinutesThai(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${h} ชั่วโมง ${m} นาที`
+}
+
 export function formatTimeTh(iso: string | Date | null | undefined): string {
   return formatTimeBangkok(iso)
 }
@@ -82,6 +89,7 @@ export type WorkLogSummary = {
   totalWorkMinutes: number
   totalLateMinutes: number
   totalEarlyMinutes: number
+  totalLunchOverMinutes: number
 }
 
 export type AttendanceWorkLogRow = {
@@ -108,6 +116,7 @@ export type AttendanceWorkLogRow = {
   checkOutLng: number | null
   lateMinutes: number
   earlyLeaveMinutes: number
+  lunchOverMinutes: number
   workMinutes: number
   workHoursLabel: string
   status: AttendanceStatus
@@ -161,6 +170,7 @@ export function attendanceToWorkLogRow(a: Attendance): AttendanceWorkLogRow {
     checkOutLng: a.checkOutLng ?? null,
     lateMinutes: a.lateMinutes ?? 0,
     earlyLeaveMinutes: a.earlyLeaveMinutes ?? 0,
+    lunchOverMinutes: a.lunchOverMinutes ?? 0,
     workMinutes,
     workHoursLabel: formatWorkHours(workMinutes),
     status: a.status,
@@ -280,17 +290,7 @@ export async function buildMonthlyWorkLog(
   year: number
   userId: string
   rows: AttendanceWorkLogRow[]
-  summary: {
-    present: number
-    late: number
-    leave: number
-    absent: number
-    halfDay: number
-    earlyLeave: number
-    totalWorkMinutes: number
-    totalLateMinutes: number
-    totalEarlyMinutes: number
-  }
+  summary: WorkLogSummary
 }> {
   const startDate = new Date(year, month - 1, 1)
   const endDate = new Date(year, month, 0, 23, 59, 59)
@@ -360,6 +360,7 @@ function summarizeWorkLogRows(rows: AttendanceWorkLogRow[]): WorkLogSummary {
     totalWorkMinutes: rows.reduce((s, r) => s + r.workMinutes, 0),
     totalLateMinutes: rows.reduce((s, r) => s + (r.sessionIndex === 1 ? r.lateMinutes : 0), 0),
     totalEarlyMinutes: rows.reduce((s, r) => s + r.earlyLeaveMinutes, 0),
+    totalLunchOverMinutes: rows.reduce((s, r) => s + r.lunchOverMinutes, 0),
   }
 }
 

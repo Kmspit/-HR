@@ -24,6 +24,8 @@ public/prototype/
 prisma/dev.db
 prisma/dev.db-journal
 prisma/*.db
+prisma/**/*.db
+prisma/**/*.db-journal
 
 # uploads
 public/uploads/*.jpg

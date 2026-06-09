@@ -8,6 +8,7 @@ type Props = {
   lunchIn: string | null
   checkOut: string | null
   workPlaceName?: string | null
+  autoCheckout?: boolean
 }
 
 const STEPS = [
@@ -26,7 +27,7 @@ function fmt(iso: string | null) {
   })
 }
 
-export default function AttendanceTimeline({ checkIn, lunchOut, lunchIn, checkOut, workPlaceName }: Props) {
+export default function AttendanceTimeline({ checkIn, lunchOut, lunchIn, checkOut, workPlaceName, autoCheckout }: Props) {
   const times: Record<string, string | null> = { checkIn, lunchOut, lunchIn, checkOut }
 
   return (
@@ -56,6 +57,12 @@ export default function AttendanceTimeline({ checkIn, lunchOut, lunchIn, checkOu
                 <p className={`text-lg font-bold tabular-nums ${done ? step.color : 'text-slate-600'}`}>
                   {fmt(times[step.key])}
                 </p>
+                {step.key === 'checkOut' && autoCheckout && done && (
+                  <span className="inline-flex items-center mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium text-orange-300"
+                    style={{ background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.3)' }}>
+                    ระบบปิดเวลาอัตโนมัติ
+                  </span>
+                )}
               </div>
             </div>
           )
