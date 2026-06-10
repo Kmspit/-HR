@@ -11,7 +11,7 @@ import { weeklyDayLabel } from '@/lib/weekly-plan-days'
 
 type Person = { name: string; email: string; department: string | null; position?: string | null; role: string }
 type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; user: Person }
-type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; user: Person }
+type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; user: Person; googleMapsUrl?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; approvalStatus?: string | null }
 type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note?: string | null; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string; purpose: string }[] }
 
 type Props = {
@@ -231,6 +231,18 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
                 <div className="rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">เวลา</p><p className="font-semibold text-white">{o.startTime} — {o.endTime}</p></div>
                 <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">สถานที่</p><p className="font-semibold text-white">{o.place}</p></div>
                 <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">วัตถุประสงค์</p><p className="font-semibold text-white">{o.purpose}</p></div>
+                {o.googleMapsUrl && (
+                  <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5">
+                    <p className="text-slate-500">Google Maps</p>
+                    <a href={o.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">{o.googleMapsUrl}</a>
+                  </div>
+                )}
+                {o.attachmentUrl && (
+                  <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5">
+                    <p className="text-slate-500">เอกสารแนบ</p>
+                    <a href={o.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">{o.attachmentName || 'ดูเอกสาร'}</a>
+                  </div>
+                )}
               </div>
             </div>
           ))}

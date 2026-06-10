@@ -129,6 +129,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
     }
 
+    // ── CEO-only flow for new outside work requests ──
+    if ((req_ as Record<string, unknown>).approvalStatus === 'pending_ceo') {
+      if (role !== 'CEO') {
+        return NextResponse.json({ error: 'เฉพาะ CEO เท่านั้นที่อนุมัติคำขอนี้ได้', code: 'CEO_ONLY' }, { status: 403 })
+      }
+      const ceoDone = body.action === 'REJECT' ? 'REJECTED' : 'APPROVED'
+      const ceoApprovalStatus = body.action === 'REJECT' ? 'rejected_by_ceo' : 'approved_by_ceo'
+      await prisma.outsideWorkRequest.update({
+        where: { id: body.requestId },
+        data: { status: ceoDone, approvalStatus: ceoApprovalStatus } as Record<string, unknown>,
+      })
+      await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step: 1, ip, outsideRequestId: body.requestId } })
+      await runNotify(() => createAuditLog({ actorId, targetId: body.requestId, targetType: 'OutsideWorkRequest', action: body.action === 'APPROVE' ? 'APPROVE' : 'REJECT', before: { status: req_.status }, after: { status: ceoDone }, ip }))
+      await runNotify(() => createNotification({
+        userId: req_.userId,
+        type: ceoDone === 'APPROVED' ? 'OUTSIDE_APPROVED' : 'OUTSIDE_REJECTED',
+        title: ceoDone === 'APPROVED' ? '✅ CEO อนุมัติคำขอออกนอกสถานที่แล้ว' : '❌ CEO ปฏิเสธคำขอออกนอกสถานที่',
+        message: body.reason ?? '',
+        link: '/outside-work',
+      }))
+      await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] ออกนอกสถานที่: ${ceoDone === 'APPROVED' ? 'CEO อนุมัติแล้ว' : 'CEO ปฏิเสธ'}\nรหัสคำขอ: ${body.requestId}${body.reason ? `\nเหตุผล: ${body.reason}` : ''}`))
+      return NextResponse.json({ success: true, newStatus: ceoDone })
+    }
+
+    // ── Legacy 2-step flow (backward compat for old records) ──
     let newStatus: 'ADMIN_APPROVED' | 'APPROVED' | 'REJECTED'
     if (body.action === 'REJECT') {
       newStatus = 'REJECTED'

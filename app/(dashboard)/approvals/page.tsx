@@ -42,8 +42,8 @@ export default async function ApprovalsPage({
     }),
     prisma.outsideWorkRequest.findMany({
       where: role === 'CEO'
-        ? { OR: [{ status: 'PENDING' }, { status: 'ADMIN_APPROVED' }] }
-        : { status: outsideStatus, ...(nestedUser ? { user: nestedUser } : {}) },
+        ? { OR: [{ status: 'PENDING' }, { status: 'ADMIN_APPROVED' }], approvalStatus: 'pending_ceo' }
+        : { status: outsideStatus, NOT: [{ approvalStatus: 'pending_ceo' }], ...(nestedUser ? { user: nestedUser } : {}) },
       include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { createdAt: 'desc' },
     }),

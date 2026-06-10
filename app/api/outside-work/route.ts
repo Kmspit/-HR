@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const canViewAll = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
+    const canViewAll = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
     const { searchParams } = new URL(req.url)
     const filterUserId = searchParams.get('userId')
 
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { date, startTime, endTime, place, purpose, client, note } = body
+    const { date, startTime, endTime, place, purpose, client, note, googleMapsUrl, attachmentUrl, attachmentName } = body
 
-    if (!date || !startTime || !endTime || !place || !purpose) {
+    if (!date || !startTime || !endTime || !place || !purpose || !googleMapsUrl) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
     }
 
@@ -54,14 +54,18 @@ export async function POST(req: NextRequest) {
         purpose,
         client: client || null,
         note: note || null,
+        googleMapsUrl: googleMapsUrl || null,
+        attachmentUrl: attachmentUrl || null,
+        attachmentName: attachmentName || null,
+        approvalStatus: 'pending_ceo',
       },
     })
 
     await runNotify(() =>
       notifyRole(
-        'ADMIN',
+        'CEO',
         'OUTSIDE_REQUEST',
-        'คำขอออกนอกสถานที่',
+        'คำขอออกนอกสถานที่ — รอ CEO อนุมัติ',
         `${session.user.name} ขอออกนอกสถานที่วันที่ ${new Date(date).toLocaleDateString('th-TH')}`,
         '/approvals',
       ),

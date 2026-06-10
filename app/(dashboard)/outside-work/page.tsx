@@ -19,7 +19,7 @@ export default async function OutsideWorkPage({
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
-  const canViewAll = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'MANAGER', 'TEAM_LEADER'].includes(session.user.role)
+  const canViewAll = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'MANAGER', 'TEAM_LEADER', 'CEO'].includes(session.user.role)
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
@@ -70,6 +70,10 @@ export default async function OutsideWorkPage({
           note: r.note ?? '',
           status: r.status,
           createdAt: r.createdAt.toISOString(),
+          googleMapsUrl: (r as Record<string, unknown>).googleMapsUrl as string | null ?? null,
+          attachmentUrl: (r as Record<string, unknown>).attachmentUrl as string | null ?? null,
+          attachmentName: (r as Record<string, unknown>).attachmentName as string | null ?? null,
+          approvalStatus: (r as Record<string, unknown>).approvalStatus as string | null ?? null,
         }))}
       />
     </div>

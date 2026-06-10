@@ -584,18 +584,22 @@ model LeaveBalance {
 // ── OUTSIDE WORK ────────────────────────────────
 
 model OutsideWorkRequest {
-  id        String        @id @default(cuid())
-  userId    String
-  date      DateTime
-  startTime String
-  endTime   String
-  place     String
-  purpose   String
-  client    String?
-  note      String?
-  status    RequestStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  userId         String
+  date           DateTime
+  startTime      String
+  endTime        String
+  place          String
+  purpose        String
+  client         String?
+  note           String?
+  googleMapsUrl  String?       @map("google_maps_url")
+  attachmentUrl  String?       @map("attachment_url")
+  attachmentName String?       @map("attachment_name")
+  approvalStatus String?       @map("approval_status")
+  status         RequestStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   user      User              @relation(fields: [userId], references: [id])
   approvals ApprovalHistory[]

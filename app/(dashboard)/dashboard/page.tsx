@@ -19,7 +19,7 @@ import {
 import { startOfTodayBangkok, bangkokDateKey } from '@/lib/datetime-bangkok'
 import { Suspense } from 'react'
 
-type Role = 'SUPER_ADMIN' | 'MANAGER_HR' | 'HR' | 'MANAGER' | 'TEAM_LEADER' | 'ADMIN' | 'EMPLOYEE' | 'LAWYER' | 'ENFORCEMENT'
+type Role = 'SUPER_ADMIN' | 'CEO' | 'MANAGER_HR' | 'HR' | 'MANAGER' | 'TEAM_LEADER' | 'ADMIN' | 'EMPLOYEE' | 'LAWYER' | 'ENFORCEMENT'
 
 /* ─── helpers ─── */
 function StatCard({

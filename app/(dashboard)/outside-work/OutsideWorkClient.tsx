@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { MapPin, Clock, Loader2, History, CheckCircle2, Edit3, X, Check } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { MapPin, Clock, Loader2, History, CheckCircle2, Edit3, X, Check, Paperclip, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -21,20 +21,30 @@ type Request = {
   note: string
   status: string
   createdAt: string
+  googleMapsUrl?: string | null
+  attachmentUrl?: string | null
+  attachmentName?: string | null
+  approvalStatus?: string | null
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING:        'bg-yellow-500/20 text-yellow-400',
-  ADMIN_APPROVED: 'bg-blue-500/20 text-blue-400',
-  APPROVED:       'bg-green-500/20 text-green-400',
-  REJECTED:       'bg-red-500/20 text-red-400',
+  PENDING:         'bg-yellow-500/20 text-yellow-400',
+  ADMIN_APPROVED:  'bg-blue-500/20 text-blue-400',
+  APPROVED:        'bg-green-500/20 text-green-400',
+  REJECTED:        'bg-red-500/20 text-red-400',
+  pending_ceo:     'bg-yellow-500/20 text-yellow-400',
+  approved_by_ceo: 'bg-green-500/20 text-green-400',
+  rejected_by_ceo: 'bg-red-500/20 text-red-400',
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING:        'รอ Admin',
-  ADMIN_APPROVED: 'รอ Final Approve',
-  APPROVED:       'อนุมัติแล้ว',
-  REJECTED:       'ปฏิเสธแล้ว',
+  PENDING:         'รอ Admin',
+  ADMIN_APPROVED:  'รอ Final Approve',
+  APPROVED:        'อนุมัติแล้ว',
+  REJECTED:        'ปฏิเสธแล้ว',
+  pending_ceo:     'รอ CEO อนุมัติ',
+  approved_by_ceo: 'CEO อนุมัติแล้ว',
+  rejected_by_ceo: 'CEO ปฏิเสธ',
 }
 
 type Props = {
@@ -144,32 +154,49 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
     purpose: '',
     client: '',
     note: '',
+    googleMapsUrl: '',
   })
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [requests, setRequests] = useState<Request[]>(init)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const submit = async () => {
-    if (!form.date || !form.place || !form.purpose) {
-      toast.error('กรุณากรอกข้อมูลให้ครบ')
+    if (!form.date || !form.place || !form.purpose || !form.googleMapsUrl) {
+      toast.error('กรุณากรอกข้อมูลให้ครบ (วันที่, สถานที่, วัตถุประสงค์, Google Maps)')
       return
     }
     setSubmitting(true)
     try {
+      let attachmentUrl: string | null = null
+      let attachmentName: string | null = null
+      if (attachmentFile) {
+        const fd = new FormData()
+        fd.append('file', attachmentFile)
+        const upRes = await fetch('/api/outside-work/upload', { method: 'POST', body: fd })
+        const upData = await upRes.json()
+        if (!upRes.ok) { toast.error(upData.error ?? 'อัพโหลดไฟล์ไม่สำเร็จ'); return }
+        attachmentUrl = upData.url
+        attachmentName = upData.name
+      }
+
       const { ok, data, status } = await apiJson<{ request: Request }>('/api/outside-work', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, attachmentUrl, attachmentName }),
       })
       if (!ok) {
         toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
         return
       }
-      toast.success('ส่งคำขอแล้ว รอ Approver ตรวจสอบ')
-      setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '' })
+      toast.success('ส่งคำขอแล้ว รอ CEO อนุมัติ')
+      setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '', googleMapsUrl: '' })
+      setAttachmentFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       router.refresh()
       setTab('history')
     } catch (err) {
@@ -232,7 +259,7 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
           <div>
             <h3 className="font-semibold text-white text-[15px]">แบบฟอร์มขอออกนอกสถานที่</h3>
             <p className="text-xs text-slate-500 mt-1">
-              หลังอนุมัติแล้วสามารถเช็คอินนอกบริษัทได้ · กฎสาย: เช็คอินหลัง 09:00 = สาย
+              CEO อนุมัติ · หลังอนุมัติแล้วสามารถเช็คอินนอกบริษัทได้ · กฎสาย: เช็คอินหลัง 09:00 = สาย
             </p>
           </div>
 
@@ -240,7 +267,7 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
             {[
               { label: 'วันที่ *', key: 'date' as const, type: 'date' },
               { label: 'เวลาออก *', key: 'startTime' as const, type: 'time' },
-              { label: 'เวลากลับ *', key: 'endTime' as const, type: 'time' },
+              { label: 'เวลากลับโดยประมาณ *', key: 'endTime' as const, type: 'time' },
             ].map(({ label, key, type }) => (
               <div key={key} className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
@@ -256,8 +283,8 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
 
           {[
             { label: 'สถานที่ปฏิบัติงาน *', key: 'place' as const, placeholder: 'ชื่อสถานที่ / ที่อยู่' },
-            { label: 'วัตถุประสงค์ *', key: 'purpose' as const, placeholder: 'เหตุผล / ภารกิจ' },
-            { label: 'ชื่อลูกค้า / ผู้ติดต่อ', key: 'client' as const, placeholder: '(ถ้ามี)' },
+            { label: 'วัตถุประสงค์ / รายละเอียดงาน *', key: 'purpose' as const, placeholder: 'เหตุผล / ภารกิจ' },
+            { label: 'ลูกค้า / หน่วยงาน', key: 'client' as const, placeholder: '(ถ้ามี)' },
             { label: 'หมายเหตุ', key: 'note' as const, placeholder: '' },
           ].map(({ label, key, placeholder }) => (
             <div key={key} className="space-y-1.5">
@@ -270,6 +297,48 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
               />
             </div>
           ))}
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Google Maps URL *</label>
+            <input
+              value={form.googleMapsUrl}
+              onChange={(e) => set('googleMapsUrl', e.target.value)}
+              placeholder="https://maps.google.com/..."
+              className={inputCls}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              เอกสารแนบ <span className="text-slate-600 normal-case">(ถ้ามี · JPG, PNG, PDF · ไม่เกิน 10MB)</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-slate-400 hover:text-white hover:border-white/20 transition"
+              >
+                <Paperclip className="w-4 h-4" />
+                {attachmentFile ? attachmentFile.name : 'เลือกไฟล์'}
+              </button>
+              {attachmentFile && (
+                <button
+                  type="button"
+                  onClick={() => { setAttachmentFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                  className="text-slate-500 hover:text-red-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
 
           <button
             type="button"
@@ -295,90 +364,117 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
               แสดงคำขอออกนอกสถานที่ของพนักงาน · เรียงจากล่าสุด
             </p>
           )}
-          {requests.map((r) => (
-            <div
-              key={r.id}
-              className={`rounded-2xl border p-4 transition ${
-                r.status === 'APPROVED'
-                  ? 'border-green-500/30 bg-green-500/5'
-                  : r.status === 'REJECTED'
-                    ? 'border-red-500/20 bg-slate-900'
-                    : 'border-white/5 bg-slate-900'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  {canViewAll && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-xs font-bold text-blue-400">
-                        {r.userName[0] ?? '?'}
+          {requests.map((r) => {
+            const displayStatus = r.approvalStatus ?? r.status
+            const isApproved = r.status === 'APPROVED' || r.approvalStatus === 'approved_by_ceo'
+            return (
+              <div
+                key={r.id}
+                className={`rounded-2xl border p-4 transition ${
+                  isApproved
+                    ? 'border-green-500/30 bg-green-500/5'
+                    : r.status === 'REJECTED' || r.approvalStatus === 'rejected_by_ceo'
+                      ? 'border-red-500/20 bg-slate-900'
+                      : 'border-white/5 bg-slate-900'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    {canViewAll && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-xs font-bold text-blue-400">
+                          {r.userName[0] ?? '?'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{r.userName}</p>
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {r.userPosition || '—'} · {r.userDept || '—'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{r.userName}</p>
-                        <p className="text-[11px] text-slate-500 truncate">
-                          {r.userPosition || '—'} · {r.userDept || '—'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Approved badge */}
-                  {r.status === 'APPROVED' && (
-                    <div className="flex items-center gap-1.5 rounded-lg bg-green-500/15 border border-green-500/30 px-2.5 py-1.5 w-fit">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                      <span className="text-xs font-semibold text-green-400">อนุมัติแล้ว — เช็คอินนอกบริษัทได้</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 text-white font-medium">
-                    <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                    <span className="truncate">{r.place}</span>
-                    {canApproveOutside && (
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(r.id)}
-                        title="แก้ไขสถานที่ (HR)"
-                        className="ml-1 text-slate-500 hover:text-blue-400 flex-shrink-0"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
                     )}
+
+                    {isApproved && (
+                      <div className="flex items-center gap-1.5 rounded-lg bg-green-500/15 border border-green-500/30 px-2.5 py-1.5 w-fit">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                        <span className="text-xs font-semibold text-green-400">อนุมัติแล้ว — เช็คอินนอกบริษัทได้</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-white font-medium">
+                      <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <span className="truncate">{r.place}</span>
+                      {canApproveOutside && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(r.id)}
+                          title="แก้ไขสถานที่ (HR)"
+                          className="ml-1 text-slate-500 hover:text-blue-400 flex-shrink-0"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-slate-400 text-sm">{r.purpose}</p>
+                    {r.client && <p className="text-slate-500 text-xs">ลูกค้า / หน่วยงาน: {r.client}</p>}
+                    {r.note && <p className="text-slate-500 text-xs">หมายเหตุ: {r.note}</p>}
+
+                    {r.googleMapsUrl && (
+                      <a
+                        href={r.googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        ดู Google Maps
+                      </a>
+                    )}
+
+                    {r.attachmentUrl && (
+                      <a
+                        href={r.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white ml-3"
+                      >
+                        <Paperclip className="w-3 h-3" />
+                        {r.attachmentName || 'ดูเอกสารแนบ'}
+                      </a>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                      <span>
+                        {new Date(r.date).toLocaleDateString('th-TH', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                          timeZone: 'Asia/Bangkok',
+                        })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {r.startTime} — {r.endTime}
+                      </span>
+                      <span>
+                        ยื่น{' '}
+                        {new Date(r.createdAt).toLocaleDateString('th-TH', {
+                          day: 'numeric', month: 'short',
+                        })}
+                      </span>
+                    </div>
                   </div>
 
-                  <p className="text-slate-400 text-sm">{r.purpose}</p>
-                  {r.client && <p className="text-slate-500 text-xs">ลูกค้า: {r.client}</p>}
-                  {r.note && <p className="text-slate-500 text-xs">หมายเหตุ: {r.note}</p>}
-
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                    <span>
-                      {new Date(r.date).toLocaleDateString('th-TH', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                        timeZone: 'Asia/Bangkok',
-                      })}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {r.startTime} — {r.endTime}
-                    </span>
-                    <span>
-                      ยื่น{' '}
-                      {new Date(r.createdAt).toLocaleDateString('th-TH', {
-                        day: 'numeric', month: 'short',
-                      })}
-                    </span>
-                  </div>
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex-shrink-0 ${
+                      STATUS_STYLE[displayStatus] ?? 'bg-slate-700 text-slate-400'
+                    }`}
+                  >
+                    {STATUS_LABEL[displayStatus] ?? displayStatus}
+                  </span>
                 </div>
-
-                <span
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex-shrink-0 ${
-                    STATUS_STYLE[r.status] ?? 'bg-slate-700 text-slate-400'
-                  }`}
-                >
-                  {STATUS_LABEL[r.status] ?? r.status}
-                </span>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {requests.length === 0 && (
             <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center text-slate-500">
