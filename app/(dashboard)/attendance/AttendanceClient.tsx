@@ -11,6 +11,7 @@ import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
 import AttendanceLocalHistory from '@/components/attendance/AttendanceLocalHistory'
+import AttendanceDetailModal from '@/components/attendance/AttendanceDetailModal'
 import { formatLateMinutes, formatLateMinutesShort } from '@/lib/utils'
 import {
   getAttendanceProgress,
@@ -127,6 +128,7 @@ export default function AttendanceClient({
   const [activeTab, setActiveTab] = useState<'today' | 'history' | 'team'>('today')
   const [refreshKey, setRefreshKey] = useState(0)
   const [selectedType, setSelectedType] = useState<LocationType | null>(null)
+  const [detailRecordId, setDetailRecordId] = useState<string | null>(null)
   const [checkinLocationType, setCheckinLocationType] = useState<LocationType>('company')
   const [lunchPanel, setLunchPanel] = useState<'lunch-out' | 'lunch-in' | 'checkout' | null>(null)
   const [faceRegistered, setFaceRegistered] = useState(false)
@@ -611,13 +613,18 @@ export default function AttendanceClient({
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">แผนที่</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">สถานะ</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">ประเภท</th>
+                  <th className="text-center p-3 text-[11px] text-slate-500 font-medium w-8"></th>
                 </tr>
               </thead>
               <tbody>
                 {recentRecords.map((r) => {
                   const s = STATUS_LABEL[r.status] ?? { label: r.status, color: 'text-white/60' }
                   return (
-                    <tr key={r.id} className="border-b border-slate-100 dark:border-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <tr
+                      key={r.id}
+                      onClick={() => setDetailRecordId(r.id)}
+                      className="border-b border-slate-100 dark:border-white/[0.04] hover:bg-blue-50/60 dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
+                    >
                       <td className="p-3 text-slate-700 dark:text-slate-300 text-xs">{formatDate(r.date)}</td>
                       <td className="p-3 text-center text-slate-500 dark:text-slate-400 text-xs">{r.sessionIndex ?? 1}</td>
                       <td className="p-3 text-center text-green-700 dark:text-green-400 font-medium text-xs">{formatTime(r.checkIn)}</td>
@@ -640,7 +647,7 @@ export default function AttendanceClient({
                           return `${h}:${String(min).padStart(2, '0')}`
                         })()}
                       </td>
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                         {r.lat != null && r.lng != null ? (
                           <a
                             href={`https://www.google.com/maps?q=${r.lat},${r.lng}`}
@@ -651,7 +658,7 @@ export default function AttendanceClient({
                             ดูแผนที่
                           </a>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
                       <td className="p-3 text-center">
@@ -671,12 +678,15 @@ export default function AttendanceClient({
                           </span>
                         )}
                       </td>
+                      <td className="p-3 text-center">
+                        <span className="text-slate-300 dark:text-slate-600 text-[10px]">›</span>
+                      </td>
                     </tr>
                   )
                 })}
                 {recentRecords.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center text-slate-600 text-sm">ยังไม่มีข้อมูล</td>
+                    <td colSpan={11} className="py-10 text-center text-slate-600 text-sm">ยังไม่มีข้อมูล</td>
                   </tr>
                 )}
               </tbody>
@@ -718,6 +728,14 @@ export default function AttendanceClient({
             )}
           </div>
         </div>
+      )}
+
+      {/* Attendance detail modal */}
+      {detailRecordId && (
+        <AttendanceDetailModal
+          recordId={detailRecordId}
+          onClose={() => setDetailRecordId(null)}
+        />
       )}
     </div>
   )

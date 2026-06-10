@@ -23,9 +23,9 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
 
   return (
     <>
-      <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-4 space-y-3">
-        <p className="text-sm font-semibold text-white flex items-center gap-2">
-          <Camera className="w-4 h-4 text-cyan-400" />
+      <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/80 p-4 space-y-3 shadow-sm">
+        <p className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+          <Camera className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           {title}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -34,9 +34,9 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
               key={item.key}
               type="button"
               onClick={() => item.url && setLightbox({ url: item.url, label: item.label })}
-              className="text-left rounded-xl overflow-hidden border border-white/10 hover:border-cyan-500/40 transition group"
+              className="text-left rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 hover:border-cyan-400 dark:hover:border-cyan-500/40 transition group"
             >
-              <div className="aspect-square bg-black/40 relative">
+              <div className="aspect-square bg-slate-100 dark:bg-black/40 relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.url!}
@@ -44,8 +44,8 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
                   className="w-full h-full object-cover scale-x-[-1] group-hover:opacity-90"
                 />
               </div>
-              <div className="p-2 bg-white/5">
-                <p className="text-[11px] font-semibold text-white truncate">{item.label}</p>
+              <div className="p-2 bg-slate-50 dark:bg-white/5">
+                <p className="text-[11px] font-semibold text-slate-700 dark:text-white truncate">{item.label}</p>
                 {item.time && (
                   <p className="text-[10px] text-slate-500 tabular-nums">
                     {new Date(item.time).toLocaleTimeString('th-TH', {
