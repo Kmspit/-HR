@@ -4,9 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { dateForPlanDay } from '@/lib/weekly-plan-days'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user || session.user.role !== 'LAWYER') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
@@ -35,7 +37,8 @@ export async function POST(req: NextRequest) {
         deadline,
         note: note || null,
         isLate:    !!isLate,
-        status:    'PENDING',
+        status:         'PENDING',
+        approvalStatus: 'pending_supervisor',
         days: {
           create: filledDays.map((d: { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }) => ({
             dayOfWeek: d.dayOfWeek,
@@ -52,7 +55,8 @@ export async function POST(req: NextRequest) {
       include: { lawyer: { select: { name: true } } },
     })
 
-    await runNotify(() => notifyRole('ADMIN', 'OUTSIDE_REQUEST', '📋 แผนงานทนายใหม่', `${plan.lawyer.name} ส่งแผนงานสัปดาห์${isLate ? ' (ส่งช้า ⚠️)' : ''}`, '/approvals'))
+    // Step 1: notify หัวหน้างาน (MANAGER_HR) first
+    await runNotify(() => notifyRole('MANAGER_HR', 'OUTSIDE_REQUEST', '📋 แผนงานทนายใหม่', `${plan.lawyer.name} ส่งแผนงานสัปดาห์${isLate ? ' (ส่งช้า ⚠️)' : ''} — รอหัวหน้างานอนุมัติ`, '/approvals'))
     await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนงานทนายใหม่\nชื่อ: ${plan.lawyer.name}\nสัปดาห์: ${new Date(weekStart).toLocaleDateString('th-TH')}`))
 
     return NextResponse.json({ success: true, id: plan.id })

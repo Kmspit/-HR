@@ -46,10 +46,12 @@ export default async function ApprovalsPage({
       include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { createdAt: 'desc' },
     }),
+    // MANAGER_HR = หัวหน้างาน (Step 1): sees pending_supervisor or legacy PENDING
+    // ADMIN = ผู้บริหาร (Step 2): sees pending_executive or legacy ADMIN_APPROVED
     role === 'MANAGER_HR'
       ? prisma.weeklyLawyerPlan.findMany({
           where: {
-            status: 'ADMIN_APPROVED',
+            OR: [{ approvalStatus: 'pending_supervisor' }, { approvalStatus: null, status: 'PENDING' }],
             ...(nestedUser ? { lawyer: nestedUser } : {}),
           },
           include: { lawyer: { select: { name: true, email: true } }, days: true },
@@ -57,7 +59,7 @@ export default async function ApprovalsPage({
         })
       : prisma.weeklyLawyerPlan.findMany({
           where: {
-            status: 'PENDING',
+            OR: [{ approvalStatus: 'pending_executive' }, { approvalStatus: null, status: 'ADMIN_APPROVED' }],
             ...(nestedUser ? { lawyer: nestedUser } : {}),
           },
           include: { lawyer: { select: { name: true, email: true } }, days: true },
@@ -69,7 +71,7 @@ export default async function ApprovalsPage({
 
   return (
     <div className="flex flex-col">
-      <Topbar title="อนุมัติคำขอ" subtitle={role === 'ADMIN' ? 'Step 1 — ตรวจสอบเบื้องต้น' : 'Step 2 — Final Approval'} />
+      <Topbar title="อนุมัติคำขอ" subtitle={role === 'ADMIN' ? 'ผู้บริหาร — คำขอลา Step 1 · แผนงาน Final Approve' : 'หัวหน้างาน — คำขอลา Final Approve · แผนงาน Step 1'} />
       <Suspense fallback={null}>
         <BranchFilterBar role={role} filterBranchId={branchParam} />
       </Suspense>

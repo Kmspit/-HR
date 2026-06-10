@@ -698,6 +698,11 @@ async function runEnsure(): Promise<boolean> {
     `ALTER TABLE company_settings ADD COLUMN lunchReturnTime TEXT NOT NULL DEFAULT '13:00'`,
   )
 
+  // ── Weekly plan 2-step approval columns ──────────────────────────────────
+  await addWeeklyPlanColumnIfMissing('approval_status',     `ALTER TABLE weekly_lawyer_plans ADD COLUMN approval_status TEXT`)
+  await addWeeklyPlanColumnIfMissing('supervisor_comment',  `ALTER TABLE weekly_lawyer_plans ADD COLUMN supervisor_comment TEXT`)
+  await addWeeklyPlanColumnIfMissing('executive_comment',   `ALTER TABLE weekly_lawyer_plans ADD COLUMN executive_comment TEXT`)
+
   return true
 }
 
@@ -812,6 +817,22 @@ async function payrollColumns(): Promise<string[]> {
 
 async function addPayrollColumnIfMissing(column: string, ddl: string) {
   const cols = await payrollColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
+}
+
+async function weeklyPlanColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(weekly_lawyer_plans)')
+  return rows.map((r) => r.name)
+}
+
+async function addWeeklyPlanColumnIfMissing(column: string, ddl: string) {
+  const cols = await weeklyPlanColumns()
   if (cols.includes(column)) return
   try {
     await prisma.$executeRawUnsafe(ddl)

@@ -9,13 +9,46 @@ import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { WEEKLY_PLAN_DAYS, weeklyDayLabel } from '@/lib/weekly-plan-days'
 
 type DayPlan = { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }
-type Plan = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note: string | null; lawyer: { name: string }; days: DayPlan[] }
+type Plan = {
+  id: string
+  weekStart: string
+  weekEnd: string
+  status: string
+  approvalStatus?: string | null
+  supervisorComment?: string | null
+  executiveComment?: string | null
+  isLate: boolean
+  note: string | null
+  lawyer: { name: string }
+  days: DayPlan[]
+}
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'text-yellow-400 bg-yellow-500/10', ADMIN_APPROVED: 'text-blue-400 bg-blue-500/10',
-  APPROVED: 'text-green-400 bg-green-500/10', REJECTED: 'text-red-400 bg-red-500/10',
+  // Legacy values
+  PENDING:        'text-yellow-400 bg-yellow-500/10',
+  ADMIN_APPROVED: 'text-blue-400 bg-blue-500/10',
+  APPROVED:       'text-green-400 bg-green-500/10',
+  REJECTED:       'text-red-400 bg-red-500/10',
+  // New 2-step values
+  pending_supervisor:     'text-yellow-400 bg-yellow-500/10',
+  pending_executive:      'text-blue-400 bg-blue-500/10',
+  approved:               'text-green-400 bg-green-500/10',
+  rejected_by_supervisor: 'text-red-400 bg-red-500/10',
+  rejected_by_executive:  'text-orange-400 bg-orange-500/10',
 }
-const STATUS_LABELS: Record<string, string> = { PENDING: 'รออนุมัติ', ADMIN_APPROVED: 'ผ่าน Admin', APPROVED: 'อนุมัติแล้ว', REJECTED: 'ปฏิเสธ' }
+const STATUS_LABELS: Record<string, string> = {
+  // Legacy values
+  PENDING:        'รออนุมัติ',
+  ADMIN_APPROVED: 'ผ่านหัวหน้างาน',
+  APPROVED:       'อนุมัติแล้ว',
+  REJECTED:       'ปฏิเสธ',
+  // New 2-step values
+  pending_supervisor:     'รอหัวหน้างานอนุมัติ',
+  pending_executive:      'รอผู้บริหารอนุมัติ',
+  approved:               'อนุมัติสมบูรณ์',
+  rejected_by_supervisor: 'หัวหน้างานไม่อนุมัติ',
+  rejected_by_executive:  'ผู้บริหารไม่อนุมัติ',
+}
 
 export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }: { plans: Plan[]; nextWeek: { start: string; end: string }; deadline: string; isLawyer: boolean }) {
   const [tab, setTab] = useState<'submit' | 'history'>('submit')
@@ -62,8 +95,8 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
       if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
       toast.success(
         filledDays.length === 0
-          ? 'ส่งแผนงานแล้ว (ไม่มีวันออกนอกสถานที่) รอ Admin อนุมัติ'
-          : 'ส่งแผนงานเรียบร้อย รอ Admin อนุมัติ',
+          ? 'ส่งแผนงานแล้ว (ไม่มีวันออกนอกสถานที่) รอหัวหน้างานอนุมัติ'
+          : 'ส่งแผนงานเรียบร้อย รอหัวหน้างานอนุมัติ',
       )
       router.refresh()
       setTab('history')
@@ -155,15 +188,23 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
         <div className="space-y-3">
           {plans.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ยังไม่มีแผนงาน</div>
-          ) : plans.map((p) => (
+          ) : plans.map((p) => {
+            const displayStatus = p.approvalStatus ?? p.status
+            const rejectionComment =
+              displayStatus === 'rejected_by_supervisor' ? p.supervisorComment :
+              displayStatus === 'rejected_by_executive'  ? p.executiveComment  : null
+            return (
             <div key={p.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="font-semibold text-white">{isLawyer ? '' : p.lawyer.name + ' · '}{formatThaiDate(p.weekStart)} — {formatThaiDate(p.weekEnd)}</p>
                   {p.isLate && <span className="text-[10px] text-red-400">⚠️ ส่งช้า</span>}
                 </div>
-                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[p.status] ?? ''}`}>{STATUS_LABELS[p.status] ?? p.status}</span>
+                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[displayStatus] ?? ''}`}>{STATUS_LABELS[displayStatus] ?? displayStatus}</span>
               </div>
+              {rejectionComment && (
+                <p className="mb-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">❌ {rejectionComment}</p>
+              )}
               <div className="space-y-1">
                 {p.days.length === 0 ? (
                   <p className="text-xs text-slate-500 rounded-lg bg-white/5 px-3 py-2">
@@ -179,7 +220,8 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                 )}
               </div>
             </div>
-          ))}
+          )
+          })}
         </div>
       )}
     </div>

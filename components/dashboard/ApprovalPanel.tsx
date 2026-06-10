@@ -166,14 +166,14 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
   const tabs = [
     { id: 'leave' as const, label: `📅 คำขอลา`, count: leaveRequests.length },
     { id: 'outside' as const, label: `🚗 นอกสถานที่`, count: outsideRequests.length },
-    ...(weeklyPlans.length > 0 || userRole === 'MANAGER_HR'
+    ...(weeklyPlans.length > 0 || userRole === 'MANAGER_HR' || userRole === 'ADMIN'
       ? [{ id: 'weekly' as const, label: `📋 แผนทนาย`, count: weeklyPlans.length }]
       : []),
   ]
 
   const stepLabel = userRole === 'ADMIN'
-    ? 'Admin กำลังตรวจสอบ (Step 1)'
-    : 'Manager / HR Final Approval (Step 2)'
+    ? 'ผู้บริหาร — Final Approve แผนงาน (Step 2)'
+    : 'หัวหน้างาน — ตรวจสอบแผนงาน (Step 1)'
 
   return (
     <div className="p-4 md:p-5 space-y-5 max-w-full">
@@ -237,6 +237,9 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
 
       {tab === 'weekly' && (
         <div className="space-y-3">
+          <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'MANAGER_HR' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'border-green-500/30 bg-green-500/10 text-green-400'}`}>
+            {userRole === 'MANAGER_HR' ? '1️⃣ หัวหน้างาน — รออนุมัติเบื้องต้น' : '2️⃣ ผู้บริหาร — อนุมัติขั้นสุดท้าย'}
+          </div>
           {weeklyPlans.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ไม่มีแผนงานทนายที่รออนุมัติ ✅</div>
           ) : weeklyPlans.map((p) => (

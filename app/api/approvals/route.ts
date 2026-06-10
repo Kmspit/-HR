@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { createNotification, sendLineNotify, createAuditLog } from '@/lib/notifications'
+import { createNotification, notifyRole, sendLineNotify, createAuditLog } from '@/lib/notifications'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { headers } from 'next/headers'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { hasPermission } from '@/lib/rbac'
@@ -16,6 +17,7 @@ type ApprovalBody = {
 
 export async function POST(req: NextRequest) {
   try {
+  await ensureDbSchema().catch(() => {})
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -167,27 +169,75 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, newStatus })
   }
 
-  // ── WEEKLY PLAN ──────────────────────────────────────
+  // ── WEEKLY PLAN — 2-step: MANAGER_HR = หัวหน้างาน (Step 1), ADMIN = ผู้บริหาร (Step 2) ──
   if (body.type === 'WEEKLY_PLAN') {
     if (!isHrAdmin) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     const plan = await prisma.weeklyLawyerPlan.findUnique({ where: { id: body.requestId } })
     if (!plan) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    if (step === 1 && plan.status !== 'PENDING') {
-      return NextResponse.json({ error: 'แผนงานนี้ไม่อยู่ในขั้นตอน Admin แล้ว' }, { status: 400 })
+    const approvalStatus = plan.approvalStatus
+
+    // ── หัวหน้างาน (MANAGER_HR / HR / SUPER_ADMIN) — Step 1 ──
+    if (role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN') {
+      const isStep1 = approvalStatus === 'pending_supervisor' ||
+        (approvalStatus === null && plan.status === 'PENDING')
+      if (!isStep1) {
+        return NextResponse.json({ error: 'แผนงานนี้ไม่อยู่ในขั้นตอนหัวหน้างานแล้ว' }, { status: 400 })
+      }
+
+      if (body.action === 'REJECT') {
+        await prisma.weeklyLawyerPlan.update({
+          where: { id: body.requestId },
+          data: { status: 'REJECTED', approvalStatus: 'rejected_by_supervisor', supervisorComment: body.reason ?? null },
+        })
+        await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'REJECT', reason: body.reason, step: 1, ip, weeklyPlanId: body.requestId } })
+        await runNotify(() => createNotification({ userId: plan.lawyerId, type: 'WEEKLY_PLAN_REJECTED', title: '❌ แผนงานสัปดาห์ถูกปฏิเสธโดยหัวหน้างาน', message: body.reason ?? '', link: '/weekly-plan' }))
+        await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: หัวหน้างานไม่อนุมัติ`))
+        return NextResponse.json({ success: true, newStatus: 'rejected_by_supervisor' })
+      }
+
+      // Approve → forward to ผู้บริหาร
+      await prisma.weeklyLawyerPlan.update({
+        where: { id: body.requestId },
+        data: { status: 'ADMIN_APPROVED', approvalStatus: 'pending_executive', supervisorComment: body.reason ?? null },
+      })
+      await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'APPROVE', reason: body.reason, step: 1, ip, weeklyPlanId: body.requestId } })
+      await runNotify(() => notifyRole('ADMIN', 'OUTSIDE_REQUEST', '📋 แผนงานทนายรอผู้บริหารอนุมัติ', 'หัวหน้างานอนุมัติแล้ว — รออนุมัติขั้นสุดท้าย', '/approvals'))
+      await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: หัวหน้างานอนุมัติแล้ว รอผู้บริหาร`))
+      return NextResponse.json({ success: true, newStatus: 'pending_executive' })
     }
-    if (step === 2 && plan.status !== 'ADMIN_APPROVED') {
-      return NextResponse.json({ error: 'ต้องให้ Admin อนุมัติก่อน' }, { status: 400 })
+
+    // ── ผู้บริหาร (ADMIN) — Step 2 ──
+    if (role === 'ADMIN') {
+      const isStep2 = approvalStatus === 'pending_executive' ||
+        (approvalStatus === null && plan.status === 'ADMIN_APPROVED')
+      if (!isStep2) {
+        return NextResponse.json({ error: 'ต้องให้หัวหน้างานอนุมัติก่อน', code: 'SUPERVISOR_APPROVAL_REQUIRED' }, { status: 400 })
+      }
+
+      if (body.action === 'REJECT') {
+        await prisma.weeklyLawyerPlan.update({
+          where: { id: body.requestId },
+          data: { status: 'REJECTED', approvalStatus: 'rejected_by_executive', executiveComment: body.reason ?? null },
+        })
+        await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'REJECT', reason: body.reason, step: 2, ip, weeklyPlanId: body.requestId } })
+        await runNotify(() => createNotification({ userId: plan.lawyerId, type: 'WEEKLY_PLAN_REJECTED', title: '❌ แผนงานสัปดาห์ถูกปฏิเสธโดยผู้บริหาร', message: body.reason ?? '', link: '/weekly-plan' }))
+        await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: ผู้บริหารไม่อนุมัติ`))
+        return NextResponse.json({ success: true, newStatus: 'rejected_by_executive' })
+      }
+
+      // Final approve
+      await prisma.weeklyLawyerPlan.update({
+        where: { id: body.requestId },
+        data: { status: 'APPROVED', approvalStatus: 'approved', executiveComment: body.reason ?? null },
+      })
+      await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'APPROVE', reason: body.reason, step: 2, ip, weeklyPlanId: body.requestId } })
+      await runNotify(() => createNotification({ userId: plan.lawyerId, type: 'WEEKLY_PLAN_APPROVED', title: '✅ แผนงานสัปดาห์ได้รับการอนุมัติสมบูรณ์', message: body.reason ?? '', link: '/weekly-plan' }))
+      await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: ผู้บริหารอนุมัติสมบูรณ์แล้ว`))
+      return NextResponse.json({ success: true, newStatus: 'approved' })
     }
 
-    const newStatus = body.action === 'REJECT' ? 'REJECTED' : step === 1 ? 'ADMIN_APPROVED' : 'APPROVED'
-    await prisma.weeklyLawyerPlan.update({ where: { id: body.requestId }, data: { status: newStatus } })
-    await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step, ip, weeklyPlanId: body.requestId } })
-
-    await runNotify(() => createNotification({ userId: plan.lawyerId, type: newStatus === 'APPROVED' ? 'WEEKLY_PLAN_APPROVED' : 'OUTSIDE_REJECTED', title: newStatus === 'APPROVED' ? '✅ แผนงานสัปดาห์ได้รับการอนุมัติ' : '❌ แผนงานสัปดาห์ถูกปฏิเสธ', message: body.reason ?? '', link: '/weekly-plan' }))
-    await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: ${newStatus}`))
-
-    return NextResponse.json({ success: true, newStatus })
+    return NextResponse.json({ error: 'ไม่มีสิทธิ์อนุมัติแผนงาน' }, { status: 403 })
   }
 
   return NextResponse.json({ error: 'Unknown type' }, { status: 400 })

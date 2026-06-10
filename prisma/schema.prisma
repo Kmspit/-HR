@@ -101,6 +101,7 @@ enum NotificationType {
   WARNING_ISSUED
   WEEKLY_PLAN_DUE
   WEEKLY_PLAN_APPROVED
+  WEEKLY_PLAN_REJECTED
   DEVICE_RESET_REQUEST
   ANNOUNCEMENT
   SYSTEM
@@ -609,7 +610,10 @@ model WeeklyLawyerPlan {
   weekStart DateTime
   weekEnd   DateTime
   deadline  DateTime
-  status    RequestStatus @default(PENDING)
+  status         RequestStatus @default(PENDING)
+  approvalStatus String?       @map("approval_status")   // null = legacy record
+  supervisorComment String?    @map("supervisor_comment")
+  executiveComment  String?    @map("executive_comment")
   note      String?
   isLate    Boolean       @default(false)
   createdAt DateTime      @default(now())
