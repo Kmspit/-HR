@@ -60,7 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="th" className="dark" suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
       <body className={`${notoSansThai.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
         <ThemeProvider>
           <SessionProvider session={session}>

@@ -44,12 +44,12 @@ export default function MobileNav({ role }: { role: Role }) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div
-        className="absolute inset-0 dark:[background:rgba(8,12,22,0.92)] light:[background:rgba(255,255,255,0.92)]"
+        className="absolute inset-0 bg-white/95 dark:bg-[rgba(8,12,22,0.95)]"
         style={{ backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' }}
       />
-      <div className="absolute top-0 left-0 right-0 h-px dark:bg-white/[0.06] light:bg-slate-200" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-slate-200 dark:bg-white/[0.06]" />
 
-      <div className="relative flex items-stretch justify-around px-0.5 py-1.5">
+      <div className="relative flex items-stretch justify-around px-1 py-1">
         {items.map((item) => {
           const active = pathname.startsWith(item.href)
           const pending = pendingHref === item.href
@@ -59,30 +59,30 @@ export default function MobileNav({ role }: { role: Role }) {
               href={item.href}
               onClick={() => { if (!active) setPendingHref(item.href) }}
               className={cn(
-                'relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-0.5 pt-2 pb-1.5 transition-all duration-150 min-h-[50px] justify-center',
-                active ? 'dark:text-blue-400 light:text-blue-600' : 'dark:text-slate-500 light:text-slate-400',
+                'relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
+                active ? 'text-[#1E3A5F] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500',
                 pending && 'opacity-70 pointer-events-none',
               )}
             >
               {active && (
-                <span className="absolute top-0.5 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full dark:bg-blue-400 light:bg-blue-500" />
+                <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-[#1E3A5F] dark:bg-blue-400" />
               )}
 
               <span className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg',
-                active && 'dark:bg-blue-500/15 light:bg-blue-50',
+                'flex h-8 w-8 items-center justify-center rounded-xl transition-colors',
+                active && 'bg-[#1E3A5F]/8 dark:bg-blue-500/15',
               )}>
                 {pending ? (
                   <span className="h-4 w-4 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
                 ) : (
                   <svg
-                    width={18}
-                    height={18}
-                    className={cn('hr-icon h-4.5 w-4.5', active && 'dark:text-blue-400 light:text-blue-600')}
+                    width={20}
+                    height={20}
+                    className="hr-icon"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth={active ? 2.2 : 1.75}
+                    strokeWidth={active ? 2.25 : 1.75}
                     aria-hidden
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d={NAV_ICONS[item.icon]} />
@@ -90,7 +90,7 @@ export default function MobileNav({ role }: { role: Role }) {
                 )}
               </span>
 
-              <span className={cn('text-[9px] font-semibold leading-none', active && 'dark:text-blue-400 light:text-blue-600')}>
+              <span className={cn('text-[10px] font-semibold leading-none tracking-tight')}>
                 {pending ? '...' : item.label}
               </span>
             </Link>
@@ -101,17 +101,17 @@ export default function MobileNav({ role }: { role: Role }) {
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('hrflow:open-sidebar'))}
           className={cn(
-            'relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-0.5 pt-2 pb-1.5 transition-all duration-150 min-h-[50px] justify-center',
-            'dark:text-slate-500 light:text-slate-400',
+            'relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
+            'text-slate-400 dark:text-slate-500',
           )}
           aria-label="เมนูทั้งหมด"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg">
-            <svg width={18} height={18} className="hr-icon h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden>
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl">
+            <svg width={20} height={20} className="hr-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d={MENU_ICON} />
             </svg>
           </span>
-          <span className="text-[9px] font-semibold leading-none">เมนู</span>
+          <span className="text-[10px] font-semibold leading-none tracking-tight">เมนู</span>
         </button>
       </div>
     </nav>

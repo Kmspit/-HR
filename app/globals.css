@@ -3,8 +3,37 @@
 @tailwind utilities;
 
 @layer base {
-  /* ── Dark mode (default) — HR SaaS tokens ── */
+  /* ── Light mode (default) — professional clean palette ── */
   :root,
+  .light {
+    --background: 213 27% 98%;      /* #F7F9FC */
+    --foreground: 215 28% 17%;      /* #1F2937 */
+    --card: 0 0% 100%;              /* #FFFFFF */
+    --card-foreground: 215 28% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+    --primary: 214 52% 25%;         /* #1E3A5F navy */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 91% 60%;       /* #3B82F6 blue */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 213 27% 94%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 45% 92%;
+    --accent-foreground: 214 52% 25%;
+    --destructive: 0 72% 51%;       /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 27% 87%;
+    --input: 213 27% 91%;
+    --ring: 217 91% 60%;            /* #3B82F6 */
+    --radius: 0.75rem;
+    --surface: 213 27% 97%;
+    --surface-elevated: 0 0% 100%;
+    --text-primary: 215 28% 17%;
+    --text-secondary: 215 20% 35%;
+    --text-muted: 215 14% 52%;
+  }
+
+  /* ── Dark mode ── */
   .dark {
     --background: 224 71% 4%;
     --foreground: 210 40% 96%;
@@ -32,35 +61,6 @@
     --text-secondary: 215 18% 72%;
     --text-muted: 215 14% 58%;
   }
-
-  /* ── Light mode — higher contrast ── */
-  .light {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 9%;
-    --primary: 221 83% 48%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 20% 38%;
-    --accent: 210 40% 94%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 86%;
-    --input: 214 32% 88%;
-    --ring: 221 83% 48%;
-    --radius: 0.75rem;
-    --surface: 210 40% 98%;
-    --surface-elevated: 0 0% 100%;
-    --text-primary: 222 47% 9%;
-    --text-secondary: 215 20% 32%;
-    --text-muted: 215 16% 42%;
-  }
 }
 
 @layer base {
@@ -69,7 +69,9 @@
   }
 
   body {
-    font-family: var(--font-thai), var(--font-jakarta), -apple-system, sans-serif;
+    font-family: "LINE Seed Sans TH", var(--font-thai), var(--font-jakarta), -apple-system, sans-serif;
+    background-color: #F7F9FC;
+    color: #1F2937;
     background-attachment: fixed;
   }
 
@@ -107,6 +109,8 @@
   /* Dark mode body */
   .dark body {
     @apply bg-[#070b14] text-slate-100 antialiased;
+    background-color: #070b14;
+    color: #e2e8f0;
     overflow-x: hidden;
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.1) 0%, transparent 60%),
@@ -114,24 +118,18 @@
   }
 
   @media (max-width: 768px) {
-    .dark body,
-    .light body {
+    body, .dark body {
       background-attachment: scroll;
     }
   }
 
-  /* Light mode body */
-  .light body {
-    @apply bg-slate-50 text-slate-900 antialiased;
-    overflow-x: hidden;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(99,102,241,0.04) 0%, transparent 50%);
-  }
-
   h1, h2, h3, h4 {
-    font-family: var(--font-jakarta), var(--font-thai), sans-serif;
+    font-family: "LINE Seed Sans TH", var(--font-thai), sans-serif;
     font-weight: 700;
+    color: #1E3A5F;
+  }
+  .dark h1, .dark h2, .dark h3, .dark h4 {
+    color: inherit;
   }
 
   /* Dark scrollbar */
@@ -257,8 +255,13 @@
     background-clip: padding-box;
   }
 
-  /* Sidebar active gradient */
+  /* Sidebar active — light mode default (navy) */
   .nav-active {
+    background: linear-gradient(135deg, rgba(30,58,95,0.09) 0%, rgba(59,130,246,0.07) 100%);
+    border: 1px solid rgba(30,58,95,0.18);
+  }
+  /* Dark mode nav-active — blue */
+  .dark .nav-active {
     background: linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.15) 100%);
     border: 1px solid rgba(59,130,246,0.25);
     box-shadow: 0 0 20px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
@@ -293,12 +296,16 @@
 
   /* Input */
   .input-field {
-    @apply w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150
+    @apply w-full rounded-xl border px-4 py-3 text-[14px] leading-relaxed transition-all duration-150
+           border-slate-300 bg-white text-slate-900 placeholder-slate-400
            dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500
-           light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-500
-           focus:outline-none focus:ring-2 focus:ring-blue-500/25
-           dark:focus:border-blue-500/70 dark:focus:bg-slate-900/90
-           light:focus:border-blue-500 light:focus:ring-blue-500/20;
+           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
+           dark:focus:border-blue-500/70 dark:focus:bg-slate-900/90 dark:focus:ring-blue-500/15;
+  }
+
+  /* Form label */
+  .form-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5;
   }
 
   /* Button variants */
@@ -338,13 +345,13 @@
     @apply border-b dark:border-white/10 light:border-slate-200;
   }
   .hr-table thead th {
-    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+    @apply px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap
            dark:bg-slate-900/60 dark:text-slate-400
-           light:bg-slate-100 light:text-slate-600;
+           bg-slate-50 text-slate-600;
   }
   .hr-table tbody td {
-    @apply px-4 py-3 align-middle whitespace-nowrap
-           dark:text-slate-200 light:text-slate-700;
+    @apply px-4 py-3.5 align-middle whitespace-nowrap text-[13.5px] leading-relaxed
+           dark:text-slate-200 text-slate-700;
   }
   .hr-table tbody tr:nth-child(even) {
     @apply dark:bg-white/[0.02] light:bg-slate-50/70;
@@ -370,8 +377,8 @@
 }
 
 .light .nav-active {
-  background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(99,102,241,0.08) 100%) !important;
-  border: 1px solid rgba(59,130,246,0.2) !important;
+  background: linear-gradient(135deg, rgba(30,58,95,0.09) 0%, rgba(59,130,246,0.07) 100%) !important;
+  border: 1px solid rgba(30,58,95,0.18) !important;
 }
 
 .light .gradient-text {
@@ -456,18 +463,18 @@
 }
 .warnings-table thead th,
 .hr-table thead th {
-  @apply px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap
-         dark:bg-slate-900/55 dark:text-slate-400
-         light:bg-slate-100 light:text-slate-600;
+  @apply px-4 py-3.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+         bg-slate-50 text-slate-600
+         dark:bg-slate-900/55 dark:text-slate-400;
 }
 .warnings-table tbody tr:nth-child(even),
 .hr-table tbody tr:nth-child(even),
 .glass-card table tbody tr:nth-child(even) {
-  @apply dark:bg-white/[0.025] light:bg-slate-50/80;
+  @apply bg-slate-50/80 dark:bg-white/[0.025];
 }
 .warnings-table tbody td,
 .glass-card .table-scroll table tbody td {
-  @apply px-4 py-3 align-middle;
+  @apply px-4 py-3.5 align-middle text-[13.5px] leading-relaxed;
 }
 
 /* ── Light mode: fix legacy dark-only text utilities inside cards ── */
@@ -528,12 +535,12 @@
 .dashboard-shell {
   display: flex;
   min-height: 100dvh;
+  background-color: #F7F9FC;
+  color: #1F2937;
+}
+.dark .dashboard-shell {
   background-color: #070b14;
   color: #e2e8f0;
-}
-.light .dashboard-shell {
-  background-color: #f1f5f9;
-  color: #0f172a;
 }
 .dashboard-sidebar-slot {
   display: none;

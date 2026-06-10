@@ -16,8 +16,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Noto Sans Thai', 'Plus Jakarta Sans', '-apple-system', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Noto Sans Thai', 'sans-serif'],
+        sans: ['"LINE Seed Sans TH"', 'Noto Sans Thai', '-apple-system', 'sans-serif'],
+        display: ['"LINE Seed Sans TH"', 'Noto Sans Thai', 'sans-serif'],
       },
       spacing: {
         '4.5': '1.125rem',

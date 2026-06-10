@@ -27,12 +27,13 @@ export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSidebarOpen(false)}>
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div className="absolute left-0 top-0 bottom-0 w-60 z-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute left-0 top-0 bottom-0 w-64 z-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <Sidebar user={user} onClose={() => setSidebarOpen(false)} />
           </div>
           <button
-            className="absolute right-4 top-4 z-50 rounded-xl bg-slate-800/90 p-2 text-slate-400 hover:text-white border border-white/10"
+            className="absolute right-4 top-4 z-50 rounded-xl bg-white/90 p-2 text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm
+              dark:bg-slate-800/90 dark:text-slate-400 dark:hover:text-white dark:border-white/10"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={18} />
@@ -41,24 +42,23 @@ export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
       )}
 
       <header
-        className="sticky top-0 z-30 flex h-14 items-center gap-3 px-4
-          dark:[background:rgba(7,11,20,0.85)] dark:[border-bottom:1px_solid_rgba(255,255,255,0.05)]
-          light:bg-white/90 light:border-b light:border-slate-200/80 light:shadow-sm
-          backdrop-blur-[20px]"
+        className="sticky top-0 z-30 flex h-16 items-center gap-3 px-4 md:px-6
+          bg-white/95 border-b border-slate-200 shadow-sm backdrop-blur-[20px]
+          dark:bg-[rgba(7,11,20,0.90)] dark:border-[rgba(255,255,255,0.06)] dark:shadow-none"
       >
         {/* Mobile menu */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border transition-all md:hidden
-            dark:border-white/8 dark:bg-white/[0.04] dark:text-slate-400
-            light:border-slate-200 light:bg-white light:text-slate-500 light:shadow-sm"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border transition-all md:hidden
+            border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm
+            dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-400 dark:hover:bg-white/[0.1] dark:hover:text-white"
           aria-label="เปิดเมนู"
         >
-          <Menu size={16} />
+          <Menu size={18} />
         </button>
 
         <div className="flex-1 min-w-0 md:hidden">
-          <p className="truncate text-[13px] font-bold dark:text-white light:text-slate-800">
+          <p className="truncate text-[13.5px] font-bold text-[#1E3A5F] dark:text-white">
             เค เอ็ม เซอร์วิส พลัส
           </p>
         </div>
@@ -66,11 +66,10 @@ export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
         {/* Desktop spacer */}
         <div className="hidden md:block flex-1" />
 
-        {/* Actions — always top-right on every page */}
+        {/* Actions */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <NotificationBell initialCount={unreadCount} />
-
           <UserMenu user={user} />
         </div>
       </header>

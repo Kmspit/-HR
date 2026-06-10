@@ -148,9 +148,9 @@ export default function Sidebar({ user, onClose }: Props) {
     <aside
       className={cn(
         'flex h-full flex-col overflow-hidden transition-[width] duration-300 ease-in-out',
-        collapsed ? 'w-14' : 'w-56',
-        'dark:[background:linear-gradient(180deg,#0d1424_0%,#0a0f1e_100%)] dark:[border-right:1px_solid_rgba(255,255,255,0.05)]',
-        'light:bg-white light:border-r light:border-slate-200 light:shadow-sm',
+        collapsed ? 'w-14' : 'w-60',
+        'bg-white border-r border-slate-200/80 shadow-sm',
+        'dark:[background:linear-gradient(180deg,#0d1424_0%,#0a0f1e_100%)] dark:border-r dark:border-white/[0.05] dark:shadow-none',
       )}
     >
       {/* Logo area */}
@@ -164,16 +164,16 @@ export default function Sidebar({ user, onClose }: Props) {
         >
           <div
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)', boxShadow: '0 0 20px rgba(99,102,241,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #3B82F6 100%)', boxShadow: '0 2px 12px rgba(30,58,95,0.25)' }}
           >
             HR
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-[12px] font-extrabold tracking-tight text-white leading-tight">
+              <div className="text-[12px] font-extrabold tracking-tight text-[#1E3A5F] dark:text-white leading-tight">
                 เค เอ็ม <span className="gradient-text-blue">เซอร์วิส</span> พลัส
               </div>
-              <div className="text-[9px] text-slate-500 leading-tight">จำกัด</div>
+              <div className="text-[9px] text-slate-400 leading-tight">จำกัด</div>
             </div>
           )}
         </Link>
@@ -192,7 +192,7 @@ export default function Sidebar({ user, onClose }: Props) {
       </div>
 
       {/* Divider */}
-      <div className="mx-3 h-px dark:bg-gradient-to-r dark:from-transparent dark:via-white/8 dark:to-transparent light:bg-slate-100" />
+      <div className="mx-3 h-px bg-slate-100 dark:bg-gradient-to-r dark:from-transparent dark:via-white/8 dark:to-transparent" />
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-5">
@@ -205,8 +205,8 @@ export default function Sidebar({ user, onClose }: Props) {
                   onClick={() => toggleSection(section.title)}
                   className="flex w-full items-center justify-between mb-2 px-2.5 rounded transition-colors
                     text-[9.5px] font-semibold uppercase tracking-[0.18em]
-                    dark:text-slate-600 dark:hover:text-slate-400
-                    light:text-slate-400 light:hover:text-slate-600"
+                    text-slate-400 hover:text-slate-600
+                    dark:text-slate-600 dark:hover:text-slate-400"
                 >
                   <span>{section.title}</span>
                   <Icon
@@ -234,24 +234,24 @@ export default function Sidebar({ user, onClose }: Props) {
                             onClick={onClose}
                             className={() => cn(
                               'nav-link-icon',
-                              'group relative flex items-center rounded-xl py-2.5 text-sm transition-all duration-150',
+                              'group relative flex items-center rounded-xl py-2.5 text-[13px] transition-all duration-150',
                               collapsed ? 'justify-center px-2' : 'gap-3 px-3',
                               active
-                                ? 'nav-active dark:text-blue-300 light:text-blue-600 font-semibold'
-                                : 'dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200 light:text-slate-500 light:hover:bg-slate-50 light:hover:text-slate-800',
+                                ? 'nav-active text-[#1E3A5F] dark:text-blue-300 font-semibold'
+                                : 'text-slate-500 hover:bg-blue-50/60 hover:text-slate-800 dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
                             )}
                           >
                             {!collapsed && (
                               <span className={cn(
                                 'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
-                                active ? 'bg-blue-500 opacity-100' : 'opacity-0',
+                                active ? 'bg-[#1E3A5F] dark:bg-blue-500 opacity-100' : 'opacity-0',
                               )} />
                             )}
                             <Icon
                               d={ICONS[item.icon] ?? ICONS.dashboard}
                               className={cn('h-4 w-4', active
-                                ? 'dark:text-blue-400 light:text-blue-600'
-                                : 'dark:text-slate-500 dark:group-hover:text-slate-300 light:text-slate-400 light:group-hover:text-slate-700'
+                                ? 'text-[#1E3A5F] dark:text-blue-400'
+                                : 'text-slate-400 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-slate-300'
                               )}
                             />
                             {!collapsed && (
