@@ -51,6 +51,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/org-pending':        ALL_ROLES,
   '/probation':          [...HR_ROLES, 'MANAGER'],
   '/documents':          ALL_ROLES,
+  '/tasks':              ALL_ROLES,
   '/unauthorized':       ALL_ROLES,
 }
 

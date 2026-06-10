@@ -109,6 +109,34 @@ enum NotificationType {
   FORGOT_SCAN_REQUEST
   FORGOT_SCAN_APPROVED
   FORGOT_SCAN_REJECTED
+  TASK_ASSIGNED
+  TASK_SUBMITTED
+  TASK_APPROVED
+  TASK_REVISION
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  WAITING_REVIEW
+  REVISION
+  COMPLETED
+  OVERDUE
+}
+
+enum TaskType {
+  OFFICE
+  FIELD
+  LEGAL
+  DOCUMENT
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum AuditAction {
@@ -323,6 +351,9 @@ model User {
   forgotScanRequests        ForgotScanRequest[]   @relation("ForgotScanUser")
   forgotScanSupervisedReqs  ForgotScanRequest[]   @relation("ForgotScanSupervisor")
   forgotScanApprovedHR      ForgotScanRequest[]   @relation("ForgotScanHR")
+  assignedTasks             TaskAssignment[]       @relation("TaskAssignee")
+  createdTasks              TaskAssignment[]       @relation("TaskAssigner")
+  reviewedTasks             TaskAssignment[]       @relation("TaskReviewer")
 
   @@map("users")
 }
@@ -1083,4 +1114,41 @@ model ForgotScanRequest {
   hrRel         User?         @relation("ForgotScanHR", fields: [hrId], references: [id])
 
   @@map("forgot_scan_requests")
+}
+
+// ── TASK ASSIGNMENT ──────────────────────────────
+
+model TaskAssignment {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  type         TaskType     @default(OFFICE)
+  priority     TaskPriority @default(MEDIUM)
+  status       TaskStatus   @default(PENDING)
+
+  assigneeId   String       @map("assignee_id")
+  assignedById String       @map("assigned_by_id")
+
+  startDate    DateTime?    @map("start_date")
+  dueDate      DateTime?    @map("due_date")
+
+  notes        String?
+  attachmentUrl String?     @map("attachment_url")
+
+  resultNote   String?      @map("result_note")
+  resultUrl    String?      @map("result_url")
+  submittedAt  DateTime?    @map("submitted_at")
+
+  reviewNote   String?      @map("review_note")
+  reviewedAt   DateTime?    @map("reviewed_at")
+  reviewedById String?      @map("reviewed_by_id")
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  assignee   User  @relation("TaskAssignee", fields: [assigneeId],   references: [id])
+  assignedBy User  @relation("TaskAssigner", fields: [assignedById], references: [id])
+  reviewedBy User? @relation("TaskReviewer", fields: [reviewedById], references: [id])
+
+  @@map("task_assignments")
 }
