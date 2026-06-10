@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
 
     const verified = await verifyLoginCredentials(email, password)
     if (!verified.ok) {
+      console.log('[api/auth/login] credentials failed:', verified.error, 'for:', email)
       return NextResponse.json(
         { ok: false, error: verified.error },
         { status: ERROR_HTTP[verified.error] ?? 401 },
@@ -72,15 +73,15 @@ export async function POST(req: NextRequest) {
       status: verified.user.status,
     })
 
-    const { path, message } = resolvePostLoginPath(
-      dbUser ?? {
-        role: verified.user.role,
-        status: verified.user.status,
-        divisionId: null,
-        departmentId: null,
-        sectionId: null,
-      },
-    )
+    const resolveInput = dbUser ?? {
+      role: verified.user.role,
+      status: verified.user.status,
+      divisionId: null,
+      departmentId: null,
+      sectionId: null,
+    }
+    console.log('[api/auth/login] resolving path for role:', resolveInput.role)
+    const { path, message } = resolvePostLoginPath(resolveInput)
 
     const response = NextResponse.json({
       ok: true,
@@ -91,7 +92,9 @@ export async function POST(req: NextRequest) {
     return await attachSessionCookie(response, verified.user)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[api/auth/login]', err)
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('[api/auth/login] UNHANDLED ERROR:', msg)
+    console.error('[api/auth/login] stack:', stack)
 
     if (msg === 'AUTH_SECRET_MISSING') {
       return NextResponse.json(

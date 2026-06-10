@@ -55,7 +55,13 @@ export async function verifyLoginCredentials(
     return { ok: false, error: 'INVALID_CREDENTIALS' }
   }
 
-  const isValid = await bcrypt.compare(password, user.passwordHash)
+  let isValid = false
+  try {
+    isValid = await bcrypt.compare(password, user.passwordHash)
+  } catch (bcryptErr) {
+    console.error('[verifyLoginCredentials] bcrypt.compare', bcryptErr)
+    return { ok: false, error: 'SERVER_ERROR' }
+  }
   if (!isValid) return { ok: false, error: 'INVALID_CREDENTIALS' }
 
   return {
