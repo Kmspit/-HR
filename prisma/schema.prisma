@@ -525,6 +525,12 @@ model Attendance {
   gpsFlags             String?  // comma-separated spoof/quality flags for HR review
   deviceInfo           String?  // JSON { ua, platform, isMobile }
   outsideWorkRequestId String?  // approved OutsideWorkRequest that authorized this outside check-in
+  weeklyPlanDayId      String?  @map("weekly_plan_day_id")   // WeeklyPlanDay that authorized/matched this outside check-in
+  plannedLat           Float?   @map("planned_lat")
+  plannedLng           Float?   @map("planned_lng")
+  plannedPlace         String?  @map("planned_place")
+  locationDistance     Float?   @map("location_distance")    // meters between planned and actual GPS
+  locationStatus       String?  @map("location_status")      // matched | mismatch | no_gps_plan | no_plan
   branchId             String?  // สาขาที่ใช้เช็คอิน
   note             String?
   editedById       String?
@@ -642,6 +648,8 @@ model WeeklyPlanDay {
   purpose   String?
   client    String?
   note      String?
+  lat       Float?   @map("plan_lat")
+  lng       Float?   @map("plan_lng")
 
   plan WeeklyLawyerPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 

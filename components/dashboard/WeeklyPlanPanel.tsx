@@ -2,13 +2,23 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MapPin, Crosshair } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { WEEKLY_PLAN_DAYS, weeklyDayLabel } from '@/lib/weekly-plan-days'
 
-type DayPlan = { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }
+type DayPlan = {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  place: string
+  purpose: string
+  client: string
+  note: string
+  lat: number | null
+  lng: number | null
+}
 type Plan = {
   id: string
   weekStart: string
@@ -20,32 +30,30 @@ type Plan = {
   isLate: boolean
   note: string | null
   lawyer: { name: string }
-  days: DayPlan[]
+  days: (DayPlan & { id?: string })[]
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  // Legacy values
-  PENDING:        'text-yellow-400 bg-yellow-500/10',
-  ADMIN_APPROVED: 'text-blue-400 bg-blue-500/10',
-  APPROVED:       'text-green-400 bg-green-500/10',
-  REJECTED:       'text-red-400 bg-red-500/10',
-  // New 2-step values
+  PENDING:                'text-yellow-400 bg-yellow-500/10',
+  ADMIN_APPROVED:         'text-blue-400 bg-blue-500/10',
+  APPROVED:               'text-green-400 bg-green-500/10',
+  REJECTED:               'text-red-400 bg-red-500/10',
   pending_supervisor:     'text-yellow-400 bg-yellow-500/10',
   pending_executive:      'text-blue-400 bg-blue-500/10',
   approved:               'text-green-400 bg-green-500/10',
+  approved_by_executive:  'text-green-400 bg-green-500/10',
   rejected_by_supervisor: 'text-red-400 bg-red-500/10',
   rejected_by_executive:  'text-orange-400 bg-orange-500/10',
 }
 const STATUS_LABELS: Record<string, string> = {
-  // Legacy values
-  PENDING:        'รออนุมัติ',
-  ADMIN_APPROVED: 'ผ่านหัวหน้างาน',
-  APPROVED:       'อนุมัติแล้ว',
-  REJECTED:       'ปฏิเสธ',
-  // New 2-step values
+  PENDING:                'รออนุมัติ',
+  ADMIN_APPROVED:         'ผ่านหัวหน้างาน',
+  APPROVED:               'อนุมัติแล้ว',
+  REJECTED:               'ปฏิเสธ',
   pending_supervisor:     'รอหัวหน้างานอนุมัติ',
   pending_executive:      'รอผู้บริหารอนุมัติ',
   approved:               'อนุมัติสมบูรณ์',
+  approved_by_executive:  'อนุมัติแล้ว',
   rejected_by_supervisor: 'หัวหน้างานไม่อนุมัติ',
   rejected_by_executive:  'ผู้บริหารไม่อนุมัติ',
 }
@@ -53,6 +61,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }: { plans: Plan[]; nextWeek: { start: string; end: string }; deadline: string; isLawyer: boolean }) {
   const [tab, setTab] = useState<'submit' | 'history'>('submit')
   const [loading, setLoading] = useState(false)
+  const [capturingGps, setCapturingGps] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [days, setDays] = useState<DayPlan[]>(
     WEEKLY_PLAN_DAYS.map((d) => ({
@@ -63,6 +72,8 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
       purpose: '',
       client: '',
       note: '',
+      lat: null,
+      lng: null,
     })),
   )
   const router = useRouter()
@@ -72,8 +83,32 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
   const isLate = now > deadlineDate
   const hoursLeft = Math.max(0, Math.floor((deadlineDate.getTime() - now.getTime()) / 3600000))
 
-  const setDay = (dayOfWeek: number, key: keyof DayPlan, val: string) => {
+  const setDay = (dayOfWeek: number, key: keyof DayPlan, val: string | number | null) => {
     setDays((prev) => prev.map((d) => d.dayOfWeek === dayOfWeek ? { ...d, [key]: val } : d))
+  }
+
+  const captureGps = (dayOfWeek: number) => {
+    if (!navigator.geolocation) { toast.error('Browser ไม่รองรับ GPS'); return }
+    setCapturingGps(dayOfWeek)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setDays((prev) => prev.map((d) => d.dayOfWeek === dayOfWeek
+          ? { ...d, lat: pos.coords.latitude, lng: pos.coords.longitude }
+          : d
+        ))
+        toast.success('บันทึก GPS เรียบร้อย')
+        setCapturingGps(null)
+      },
+      (err) => {
+        toast.error(`GPS: ${err.message}`)
+        setCapturingGps(null)
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  }
+
+  const clearGps = (dayOfWeek: number) => {
+    setDays((prev) => prev.map((d) => d.dayOfWeek === dayOfWeek ? { ...d, lat: null, lng: null } : d))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,6 +159,14 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
         </div>
       </div>
 
+      {/* GPS validation info banner */}
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 flex items-start gap-2.5">
+        <MapPin className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-slate-400">
+          <span className="text-blue-400 font-semibold">บันทึก GPS ต่อวัน</span> เพื่อให้ระบบตรวจสอบตำแหน่งเช็คอินนอกสถานที่ — หากเช็คอินห่างเกิน 500 เมตร ระบบจะแจ้งหัวหน้างานและ CEO โดยอัตโนมัติ
+        </p>
+      </div>
+
       {isLawyer && (
         <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5">
           {[{ id: 'submit' as const, label: '📝 ส่งแผนงาน' }, { id: 'history' as const, label: `📜 ประวัติ (${plans.length})` }].map((t) => (
@@ -144,6 +187,8 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
           {WEEKLY_PLAN_DAYS.map((day) => {
             const d = days.find(x => x.dayOfWeek === day.id)!
             const hasEntry = !!(d.place.trim() || d.purpose.trim())
+            const hasGps = d.lat != null && d.lng != null
+            const isCapturing = capturingGps === day.id
             return (
               <div
                 key={day.id}
@@ -162,6 +207,37 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                   <div><label className="block text-[10px] text-slate-500 mb-1">สถานที่</label><input type="text" placeholder="สถานที่..." className={inputCls} value={d.place} onChange={(e) => setDay(day.id, 'place', e.target.value)} /></div>
                   <div><label className="block text-[10px] text-slate-500 mb-1">วัตถุประสงค์</label><input type="text" placeholder="วัตถุประสงค์..." className={inputCls} value={d.purpose} onChange={(e) => setDay(day.id, 'purpose', e.target.value)} /></div>
                   <div><label className="block text-[10px] text-slate-500 mb-1">ลูกค้า/หน่วยงาน</label><input type="text" placeholder="ชื่อลูกค้า..." className={inputCls} value={d.client} onChange={(e) => setDay(day.id, 'client', e.target.value)} /></div>
+                </div>
+
+                {/* GPS capture */}
+                <div className="mt-2 flex items-center gap-2">
+                  {hasGps ? (
+                    <>
+                      <div className="flex items-center gap-1.5 rounded-lg bg-green-500/10 border border-green-500/20 px-2.5 py-1.5 text-[10px] text-green-400">
+                        <MapPin className="w-3 h-3" />
+                        <span className="font-mono">{d.lat!.toFixed(5)}, {d.lng!.toFixed(5)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => clearGps(day.id)}
+                        className="text-[10px] text-slate-500 hover:text-red-400 px-2 py-1"
+                      >
+                        ลบ GPS
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isCapturing}
+                      onClick={() => captureGps(day.id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-800/60 px-2.5 py-1.5 text-[10px] text-slate-400 hover:text-white hover:border-white/20 transition disabled:opacity-50"
+                    >
+                      {isCapturing
+                        ? <><Loader2 className="w-3 h-3 animate-spin" /> กำลังอ่าน GPS...</>
+                        : <><Crosshair className="w-3 h-3" /> 📍 บันทึก GPS ตำแหน่งนี้</>
+                      }
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -214,7 +290,12 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                   p.days.map((d) => (
                     <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs">
                       <span className="font-semibold text-blue-400 w-16 flex-shrink-0">{weeklyDayLabel(d.dayOfWeek)}</span>
-                      <span className="text-slate-300">{d.place} — {d.purpose}</span>
+                      <span className="text-slate-300 flex-1">{d.place} — {d.purpose}</span>
+                      {d.lat != null && d.lng != null && (
+                        <span className="flex items-center gap-1 text-green-400 text-[10px] flex-shrink-0">
+                          <MapPin className="w-2.5 h-2.5" /> GPS
+                        </span>
+                      )}
                     </div>
                   ))
                 )}

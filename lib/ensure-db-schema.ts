@@ -709,6 +709,18 @@ async function runEnsure(): Promise<boolean> {
   await addOutsideWorkColumnIfMissing('attachment_url',  `ALTER TABLE outside_work_requests ADD COLUMN attachment_url TEXT`)
   await addOutsideWorkColumnIfMissing('attachment_name', `ALTER TABLE outside_work_requests ADD COLUMN attachment_name TEXT`)
 
+  // ── Weekly plan day GPS columns ───────────────────────────────────────────
+  await addWeeklyPlanDayColumnIfMissing('plan_lat', `ALTER TABLE weekly_plan_days ADD COLUMN plan_lat REAL`)
+  await addWeeklyPlanDayColumnIfMissing('plan_lng', `ALTER TABLE weekly_plan_days ADD COLUMN plan_lng REAL`)
+
+  // ── Attendance weekly plan location tracking columns ──────────────────────
+  await addAttendanceColumnIfMissing('weekly_plan_day_id', `ALTER TABLE attendances ADD COLUMN weekly_plan_day_id TEXT`)
+  await addAttendanceColumnIfMissing('planned_lat',        `ALTER TABLE attendances ADD COLUMN planned_lat REAL`)
+  await addAttendanceColumnIfMissing('planned_lng',        `ALTER TABLE attendances ADD COLUMN planned_lng REAL`)
+  await addAttendanceColumnIfMissing('planned_place',      `ALTER TABLE attendances ADD COLUMN planned_place TEXT`)
+  await addAttendanceColumnIfMissing('location_distance',  `ALTER TABLE attendances ADD COLUMN location_distance REAL`)
+  await addAttendanceColumnIfMissing('location_status',    `ALTER TABLE attendances ADD COLUMN location_status TEXT`)
+
   return true
 }
 
@@ -839,6 +851,22 @@ async function weeklyPlanColumns(): Promise<string[]> {
 
 async function addWeeklyPlanColumnIfMissing(column: string, ddl: string) {
   const cols = await weeklyPlanColumns()
+  if (cols.includes(column)) return
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.includes('duplicate column')) throw err
+  }
+}
+
+async function weeklyPlanDayColumns(): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(weekly_plan_days)')
+  return rows.map((r) => r.name)
+}
+
+async function addWeeklyPlanDayColumnIfMissing(column: string, ddl: string) {
+  const cols = await weeklyPlanDayColumns()
   if (cols.includes(column)) return
   try {
     await prisma.$executeRawUnsafe(ddl)

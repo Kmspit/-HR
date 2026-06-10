@@ -413,6 +413,8 @@ export default function CheckInPanel({
             lineNotify?: { sent?: number; failed?: number }
             attendance?: { id: string }
             faceScanId?: string | null
+            weeklyPlanWarning?: string | null
+            locationStatus?: string | null
           }>('/api/attendance/checkin', { method: 'POST', body: formData })
           if (!ok) {
             toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))
@@ -428,6 +430,9 @@ export default function CheckInPanel({
             toast.warning(`เช็คอินสำเร็จ — มาสาย ${data.lateMinutes} นาที`)
           } else {
             toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
+          }
+          if (data.weeklyPlanWarning) {
+            setTimeout(() => toast.warning(data.weeklyPlanWarning!, { duration: 8000 }), 600)
           }
           toastLineNotifyResult(data.lineNotify)
         } else {

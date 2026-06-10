@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         status:         'PENDING',
         approvalStatus: 'pending_supervisor',
         days: {
-          create: filledDays.map((d: { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string }) => ({
+          create: filledDays.map((d: { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string; lat?: number | null; lng?: number | null }) => ({
             dayOfWeek: d.dayOfWeek,
             date:      dateForPlanDay(weekStart, d.dayOfWeek),
             startTime: d.startTime || null,
@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
             purpose:   String(d.purpose ?? '').trim(),
             client:    d.client?.trim() || null,
             note:      d.note?.trim() || null,
+            lat:       d.lat ?? null,
+            lng:       d.lng ?? null,
           })),
         },
       },

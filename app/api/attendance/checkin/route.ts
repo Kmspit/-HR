@@ -27,6 +27,8 @@ import {
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
 import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
+import { findApprovedWeeklyPlanDayForDate, WEEKLY_PLAN_LOCATION_TOLERANCE_METERS } from '@/lib/weekly-plan-attendance'
+import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 
 export async function POST(req: NextRequest) {
   try {
@@ -140,13 +142,23 @@ export async function POST(req: NextRequest) {
     // Outside work: ตรวจสอบใบอนุมัติออกนอกสถานที่สำหรับวันนี้
     let approvedOutsideWork = null
     let outsideWorkRequestId: string | null = null
+    let approvedPlanDay: ApprovedPlanDay | null = null
+    let weeklyPlanDayId: string | null = null
+    let plannedLat: number | null = null
+    let plannedLng: number | null = null
+    let plannedPlace: string | null = null
+    let locationDistance: number | null = null
+    let locationStatus: string | null = null
 
     if (forceOutside) {
       approvedOutsideWork = await findApprovedOutsideWorkForDate(session.user.id, today)
       outsideWorkRequestId = approvedOutsideWork?.id ?? null
 
-      // ถ้า geofence ตั้งค่าไว้ → ต้องมีใบอนุมัติจึงเช็คอินนอกบริษัทได้
-      if (!outsideWorkRequestId && hasGeofence) {
+      // Check approved weekly plan day for today (additional permission pathway)
+      approvedPlanDay = await findApprovedWeeklyPlanDayForDate(session.user.id, today)
+
+      // ถ้า geofence ตั้งค่าไว้ → ต้องมีใบอนุมัติ (OutsideWorkRequest หรือ WeeklyPlanDay)
+      if (!outsideWorkRequestId && !approvedPlanDay && hasGeofence) {
         return NextResponse.json(
           {
             error: 'ต้องมีใบอนุมัติออกนอกสถานที่สำหรับวันนี้จึงเช็คอินนอกบริษัทได้',
@@ -154,6 +166,23 @@ export async function POST(req: NextRequest) {
           },
           { status: 403 },
         )
+      }
+
+      // GPS location validation against weekly plan day
+      if (approvedPlanDay) {
+        weeklyPlanDayId = approvedPlanDay.id
+        plannedPlace = approvedPlanDay.place
+
+        if (approvedPlanDay.lat != null && approvedPlanDay.lng != null && lat != null && lng != null) {
+          plannedLat = approvedPlanDay.lat
+          plannedLng = approvedPlanDay.lng
+          locationDistance = haversineDistanceMeters(lat, lng, plannedLat, plannedLng)
+          locationStatus = locationDistance > WEEKLY_PLAN_LOCATION_TOLERANCE_METERS ? 'mismatch' : 'matched'
+        } else {
+          locationStatus = 'no_gps_plan'
+        }
+      } else if (outsideWorkRequestId) {
+        locationStatus = 'no_plan'
       }
     }
 
@@ -223,6 +252,12 @@ export async function POST(req: NextRequest) {
         gpsFlags,
         deviceInfo: serverDeviceInfo,
         outsideWorkRequestId,
+        weeklyPlanDayId,
+        plannedLat,
+        plannedLng,
+        plannedPlace,
+        locationDistance,
+        locationStatus,
         branchId,
         status: isFirstSessionOfDay ? status : 'NORMAL',
         lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
@@ -271,6 +306,22 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    // GPS mismatch: notify supervisor + CEO after response
+    if (locationStatus === 'mismatch' && locationDistance != null) {
+      const employeeName = session.user.name ?? 'พนักงาน'
+      const distM = Math.round(locationDistance)
+      const mismatchMsg = `${employeeName} เช็คอินนอกสถานที่ — GPS ห่างจากแผนงาน ${distM} เมตร (ได้รับอนุญาต ${WEEKLY_PLAN_LOCATION_TOLERANCE_METERS} ม.) | สถานที่วางแผน: ${plannedPlace ?? '—'}`
+      after(async () => {
+        try {
+          const { notifyRole: _notifyRole } = await import('@/lib/notifications')
+          await _notifyRole('MANAGER_HR', 'SYSTEM', '⚠️ GPS ไม่ตรงแผนงาน', mismatchMsg, '/attendance')
+          await _notifyRole('CEO', 'SYSTEM', '⚠️ GPS ไม่ตรงแผนงาน', mismatchMsg, '/attendance')
+        } catch (err) {
+          console.error('[mismatch-notify]', err)
+        }
+      })
+    }
+
     // Auto-warning: check late count after LATE check-in
     if (isFirstSessionOfDay && status === 'LATE') {
       const uidForWarning = session.user.id
@@ -282,6 +333,10 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    const weeklyPlanWarning = locationStatus === 'mismatch' && locationDistance != null
+      ? `⚠️ GPS ไม่ตรงแผนงาน — ห่าง ${Math.round(locationDistance)} เมตร จาก "${plannedPlace ?? '—'}" (อนุญาต ${WEEKLY_PLAN_LOCATION_TOLERANCE_METERS} ม.)`
+      : null
+
     return NextResponse.json({
       success: true,
       attendance: finalized,
@@ -290,6 +345,10 @@ export async function POST(req: NextRequest) {
       outsidePlace: approvedOutsideWork?.place ?? null,
       lateMinutes: isFirstSessionOfDay ? lateMinutes : 0,
       sessionIndex,
+      weeklyPlanWarning,
+      locationStatus,
+      locationDistance: locationDistance ? Math.round(locationDistance) : null,
+      plannedPlace,
     })
   } catch (err) {
     return apiError(err)
