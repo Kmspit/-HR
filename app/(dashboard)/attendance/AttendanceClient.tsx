@@ -82,12 +82,12 @@ type Props = {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  NORMAL:   { label: 'ปกติ',      color: 'text-green-400' },
-  LATE:     { label: 'มาสาย',    color: 'text-yellow-400' },
-  ABSENT:   { label: 'ขาดงาน',   color: 'text-red-400' },
-  LEAVE:    { label: 'ลา',        color: 'text-blue-400' },
-  OT:       { label: 'OT',        color: 'text-purple-400' },
-  HALF_DAY: { label: 'ครึ่งวัน', color: 'text-orange-400' },
+  NORMAL:   { label: 'ปกติ',      color: 'text-green-700 dark:text-green-400' },
+  LATE:     { label: 'มาสาย',    color: 'text-amber-700 dark:text-yellow-400' },
+  ABSENT:   { label: 'ขาดงาน',   color: 'text-red-700 dark:text-red-400' },
+  LEAVE:    { label: 'ลา',        color: 'text-blue-700 dark:text-blue-400' },
+  OT:       { label: 'OT',        color: 'text-purple-700 dark:text-purple-400' },
+  HALF_DAY: { label: 'ครึ่งวัน', color: 'text-orange-700 dark:text-orange-400' },
   EARLY_LEAVE: { label: 'กลับก่อน', color: 'text-orange-400' },
   NONE: { label: 'ยังไม่เช็คอิน', color: 'text-slate-500' },
 }
@@ -251,9 +251,9 @@ export default function AttendanceClient({
     <div className="p-4 md:p-5 space-y-4">
       {/* Header + Tabs row */}
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-bold text-white">ลงเวลางาน</h1>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-white">ลงเวลางาน</h1>
         {/* Tabs */}
-        <div className="flex gap-1 bg-white/5 p-1 rounded-xl">
+        <div className="flex gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
           {[
             { id: 'today',   label: 'วันนี้',  icon: <Clock className="w-3.5 h-3.5" /> },
             { id: 'history', label: 'ประวัติ', icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -261,7 +261,7 @@ export default function AttendanceClient({
           ].map((tab) => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); setSelectedType(null) }}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white/80'
+                activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white/80'
               }`}>
               {tab.icon}
               <span className="hidden sm:inline">{tab.label}</span>
@@ -278,35 +278,31 @@ export default function AttendanceClient({
         <div className="space-y-4">
           {/* Status summary row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="rounded-xl p-3 text-center"
-              style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-[10px] text-slate-500 mb-1">เช็คอิน</p>
-              <p className="text-lg font-bold text-green-400">{formatTime(todayRecord?.checkIn ?? null)}</p>
+            <div className="rounded-xl p-3 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
+              <p className="text-[11px] text-slate-500 mb-1">เช็คอิน</p>
+              <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatTime(todayRecord?.checkIn ?? null)}</p>
               {(todayRecord?.lateMinutes ?? 0) > 0 && (
-                <p className="text-[10px] text-yellow-400 mt-0.5">สาย {formatLateMinutes(todayRecord!.lateMinutes)}</p>
+                <p className="text-[11px] text-amber-600 dark:text-yellow-400 mt-0.5">สาย {formatLateMinutes(todayRecord!.lateMinutes)}</p>
               )}
             </div>
-            <div className="rounded-xl p-3 text-center"
-              style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-[10px] text-slate-500 mb-1">เช็คเอาท์</p>
-              <p className="text-lg font-bold text-blue-400">{formatTime(todayRecord?.checkOut ?? null)}</p>
+            <div className="rounded-xl p-3 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
+              <p className="text-[11px] text-slate-500 mb-1">เช็คเอาท์</p>
+              <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{formatTime(todayRecord?.checkOut ?? null)}</p>
             </div>
-            <div className="rounded-xl p-3 text-center"
-              style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-[10px] text-slate-500 mb-1">สถานะ</p>
+            <div className="rounded-xl p-3 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
+              <p className="text-[11px] text-slate-500 mb-1">สถานะ</p>
               {todayRecord ? (
-                <p className={`text-sm font-bold ${STATUS_LABEL[todayRecord.status]?.color ?? 'text-white'}`}>
+                <p className={`text-sm font-bold ${STATUS_LABEL[todayRecord.status]?.color ?? 'text-slate-900 dark:text-white'}`}>
                   {STATUS_LABEL[todayRecord.status]?.label ?? todayRecord.status}
                 </p>
               ) : (
                 <p className="text-sm text-slate-500">—</p>
               )}
             </div>
-            <div className="rounded-xl p-3 text-center"
-              style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-[10px] text-slate-500 mb-1">ประเภท</p>
+            <div className="rounded-xl p-3 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
+              <p className="text-[11px] text-slate-500 mb-1">ประเภท</p>
               {todayRecord ? (
-                <p className={`text-sm font-bold ${todayRecord.isOutside ? 'text-orange-400' : 'text-cyan-400'}`}>
+                <p className={`text-sm font-bold ${todayRecord.isOutside ? 'text-orange-700 dark:text-orange-400' : 'text-cyan-700 dark:text-cyan-400'}`}>
                   {todayRecord.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}
                 </p>
               ) : (
@@ -316,10 +312,9 @@ export default function AttendanceClient({
           </div>
 
           {companyGeofence && (
-            <div className="rounded-xl px-3.5 py-2.5 space-y-1"
-              style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.2)' }}>
-              <p className="text-[10px] text-cyan-400 font-semibold">พิกัดสำนักงาน (Geofence)</p>
-              <p className="text-xs text-white font-mono">
+            <div className="rounded-xl px-3.5 py-2.5 space-y-1 bg-cyan-50 dark:bg-cyan-500/[0.08] border border-cyan-200 dark:border-cyan-500/20">
+              <p className="text-[10px] text-cyan-700 dark:text-cyan-400 font-semibold">พิกัดสำนักงาน (Geofence)</p>
+              <p className="text-xs text-slate-800 dark:text-white font-mono">
                 {companyGeofence.lat.toFixed(5)}, {companyGeofence.lng.toFixed(5)}
                 <span className="text-slate-500 font-sans ml-2">รัศมี {companyGeofence.radiusM} ม.</span>
               </p>
@@ -328,10 +323,9 @@ export default function AttendanceClient({
           )}
 
           {todayRecord?.address && (
-            <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5"
-              style={{ background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/[0.06]">
               <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-              <span className="text-xs text-slate-400 truncate">GPS ล่าสุด: {todayRecord.address}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 truncate">GPS ล่าสุด: {todayRecord.address}</span>
             </div>
           )}
 
@@ -359,46 +353,45 @@ export default function AttendanceClient({
               : null
             const late = todayRecord.lateMinutes ?? 0
             return (
-              <div className="rounded-xl p-4 space-y-3"
-                style={{ background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                <p className="text-xs font-semibold text-blue-400">สรุปวันนี้</p>
+              <div className="rounded-xl p-4 space-y-3 bg-blue-50 dark:bg-slate-900/70 border border-blue-100 dark:border-blue-500/20">
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">สรุปวันนี้</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div className="flex justify-between">
                     <span className="text-slate-500">เข้างาน</span>
-                    <span className="text-green-400 font-medium">{formatTime(todayRecord.checkIn)}</span>
+                    <span className="text-green-700 dark:text-green-400 font-medium">{formatTime(todayRecord.checkIn)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">ออกงาน</span>
-                    <span className="text-blue-400 font-medium">{formatTime(todayRecord.checkOut)}</span>
+                    <span className="text-blue-700 dark:text-blue-400 font-medium">{formatTime(todayRecord.checkOut)}</span>
                   </div>
                   {todayRecord.lunchOut && (
                     <div className="flex justify-between">
                       <span className="text-slate-500">พักออก</span>
-                      <span className="text-amber-400 font-medium">{formatTime(todayRecord.lunchOut)}</span>
+                      <span className="text-amber-700 dark:text-amber-400 font-medium">{formatTime(todayRecord.lunchOut)}</span>
                     </div>
                   )}
                   {todayRecord.lunchIn && (
                     <div className="flex justify-between">
                       <span className="text-slate-500">พักกลับ</span>
-                      <span className="text-amber-300 font-medium">{formatTime(todayRecord.lunchIn)}</span>
+                      <span className="text-amber-600 dark:text-amber-300 font-medium">{formatTime(todayRecord.lunchIn)}</span>
                     </div>
                   )}
                   {workMins !== null && (
-                    <div className="flex justify-between col-span-2 border-t border-white/5 pt-2 mt-1">
-                      <span className="text-slate-400 font-medium">ทำงานจริง</span>
-                      <span className="text-white font-semibold">{fmtMins(workMins)}</span>
+                    <div className="flex justify-between col-span-2 border-t border-slate-200 dark:border-white/5 pt-2 mt-1">
+                      <span className="text-slate-600 dark:text-slate-400 font-medium">ทำงานจริง</span>
+                      <span className="text-slate-900 dark:text-white font-semibold">{fmtMins(workMins)}</span>
                     </div>
                   )}
                   {breakMins !== null && (
                     <div className="flex justify-between col-span-2">
-                      <span className="text-slate-400">พักรวม</span>
-                      <span className="text-slate-300">{fmtMins(breakMins)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">พักรวม</span>
+                      <span className="text-slate-700 dark:text-slate-300">{fmtMins(breakMins)}</span>
                     </div>
                   )}
                   {late > 0 && (
                     <div className="flex justify-between col-span-2">
-                      <span className="text-slate-400">มาสาย</span>
-                      <span className="text-yellow-400 font-medium">{fmtMins(late)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">มาสาย</span>
+                      <span className="text-amber-700 dark:text-yellow-400 font-medium">{fmtMins(late)}</span>
                     </div>
                   )}
                 </div>
@@ -422,8 +415,7 @@ export default function AttendanceClient({
               <button
                 type="button"
                 disabled
-                className="w-full flex flex-col items-center justify-center gap-1 rounded-2xl py-5 px-4 text-slate-400 font-bold cursor-not-allowed opacity-70"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                className="w-full flex flex-col items-center justify-center gap-1 rounded-2xl py-5 px-4 text-slate-500 dark:text-slate-400 font-bold cursor-not-allowed opacity-70 bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10"
               >
                 <span className="text-2xl">✅</span>
                 <span className="text-base">ลงเวลาครบแล้ว</span>
@@ -492,10 +484,7 @@ export default function AttendanceClient({
                 disabled={isPending}
                 onClick={handleMainAction}
                 className="w-full flex flex-col items-center justify-center gap-1 rounded-2xl py-5 px-4 text-white font-bold transition-all active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50"
-                style={{
-                  background: ACTION_STYLE[nextAction].grad,
-                  border: '1px solid rgba(255,255,255,0.15)',
-                }}
+                style={{ background: ACTION_STYLE[nextAction].grad }}
               >
                 <span className="text-2xl">{ACTION_STYLE[nextAction].icon}</span>
                 <span className="text-base">{ACTION_STEPS.find((s) => s.key === nextAction)?.label}</span>
@@ -508,8 +497,7 @@ export default function AttendanceClient({
                   type="button"
                   disabled={isPending}
                   onClick={() => { setSelectedType(null); setLunchPanel('checkout') }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold text-slate-300 transition-all active:scale-[0.98] hover:text-white disabled:opacity-50"
-                  style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)' }}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold text-blue-700 dark:text-slate-300 bg-blue-100 dark:bg-blue-500/12 border border-blue-300 dark:border-blue-500/30 transition-all active:scale-[0.98] hover:bg-blue-200 dark:hover:text-white disabled:opacity-50"
                 >
                   <span>🔵</span>
                   <span>เช็คเอาท์ (ไม่พักกลางวัน)</span>
@@ -522,7 +510,7 @@ export default function AttendanceClient({
           {scanOpen && (
             <div className="space-y-2">
               <button type="button" onClick={closeScan}
-                className="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+                className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -587,13 +575,12 @@ export default function AttendanceClient({
 
           {/* Leave balance */}
           {leaveBalance && (
-            <div className="flex items-center gap-4 rounded-xl px-3.5 py-2.5"
-              style={{ background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-4 rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/[0.06]">
               <p className="text-[10px] text-slate-500 flex-shrink-0">วันลาคงเหลือ</p>
               <div className="flex gap-4 text-xs">
-                <span className="text-slate-400">ป่วย <strong className="text-white">{leaveBalance.sick}</strong></span>
-                <span className="text-slate-400">พักร้อน <strong className="text-white">{leaveBalance.vacation}</strong></span>
-                <span className="text-slate-400">กิจ <strong className="text-white">{leaveBalance.personal}</strong></span>
+                <span className="text-slate-500 dark:text-slate-400">ป่วย <strong className="text-slate-900 dark:text-white">{leaveBalance.sick}</strong></span>
+                <span className="text-slate-500 dark:text-slate-400">พักร้อน <strong className="text-slate-900 dark:text-white">{leaveBalance.vacation}</strong></span>
+                <span className="text-slate-500 dark:text-slate-400">กิจ <strong className="text-slate-900 dark:text-white">{leaveBalance.personal}</strong></span>
               </div>
             </div>
           )}
@@ -609,12 +596,11 @@ export default function AttendanceClient({
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="rounded-2xl overflow-hidden bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
           <div className="table-scroll">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <tr className="border-b border-slate-200 dark:border-white/[0.07]">
                   <th className="text-left p-3 text-[11px] text-slate-500 font-medium">วันที่</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">รอบ</th>
                   <th className="text-center p-3 text-[11px] text-slate-500 font-medium">เข้า</th>
@@ -631,22 +617,21 @@ export default function AttendanceClient({
                 {recentRecords.map((r) => {
                   const s = STATUS_LABEL[r.status] ?? { label: r.status, color: 'text-white/60' }
                   return (
-                    <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                      className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-3 text-slate-300 text-xs">{formatDate(r.date)}</td>
-                      <td className="p-3 text-center text-slate-400 text-xs">{r.sessionIndex ?? 1}</td>
-                      <td className="p-3 text-center text-green-400 font-medium text-xs">{formatTime(r.checkIn)}</td>
-                      <td className="p-3 text-center text-amber-400/80 font-medium text-xs">{formatTime(r.lunchOut)}</td>
-                      <td className="p-3 text-center text-amber-300/80 font-medium text-xs">{formatTime(r.lunchIn)}</td>
+                    <tr key={r.id} className="border-b border-slate-100 dark:border-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                      <td className="p-3 text-slate-700 dark:text-slate-300 text-xs">{formatDate(r.date)}</td>
+                      <td className="p-3 text-center text-slate-500 dark:text-slate-400 text-xs">{r.sessionIndex ?? 1}</td>
+                      <td className="p-3 text-center text-green-700 dark:text-green-400 font-medium text-xs">{formatTime(r.checkIn)}</td>
+                      <td className="p-3 text-center text-amber-700 dark:text-amber-400 font-medium text-xs">{formatTime(r.lunchOut)}</td>
+                      <td className="p-3 text-center text-amber-600 dark:text-amber-300 font-medium text-xs">{formatTime(r.lunchIn)}</td>
                       <td className="p-3 text-center text-xs">
-                        <span className={r.checkOut ? (r.autoCheckout ? 'text-orange-400' : 'text-blue-400') : 'text-slate-600'}>
+                        <span className={r.checkOut ? (r.autoCheckout ? 'text-orange-700 dark:text-orange-400' : 'text-blue-700 dark:text-blue-400') : 'text-slate-400'}>
                           {formatTime(r.checkOut)}
                         </span>
                         {r.autoCheckout && r.checkOut && (
-                          <span className="block text-[9px] text-orange-400/70 mt-0.5">ระบบปิดอัตโนมัติ</span>
+                          <span className="block text-[9px] text-orange-600 dark:text-orange-400/70 mt-0.5">ระบบปิดอัตโนมัติ</span>
                         )}
                       </td>
-                      <td className="p-3 text-center text-slate-300 text-xs">
+                      <td className="p-3 text-center text-slate-700 dark:text-slate-300 text-xs">
                         {(() => {
                           const m = calcWorkMinutes(r.checkIn, r.checkOut, r.lunchOut, r.lunchIn)
                           if (m === null) return <span className="text-slate-600">—</span>
@@ -661,7 +646,7 @@ export default function AttendanceClient({
                             href={`https://www.google.com/maps?q=${r.lat},${r.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-blue-400 hover:underline"
+                            className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
                           >
                             ดูแผนที่
                           </a>
@@ -672,16 +657,16 @@ export default function AttendanceClient({
                       <td className="p-3 text-center">
                         <span className={`text-xs font-semibold ${s.color}`}>{s.label}</span>
                         {r.lateMinutes > 0 && (
-                          <span className="ml-1 text-[10px] text-yellow-400">+{formatLateMinutesShort(r.lateMinutes)}</span>
+                          <span className="ml-1 text-[10px] text-amber-600 dark:text-yellow-400">+{formatLateMinutesShort(r.lateMinutes)}</span>
                         )}
                       </td>
                       <td className="p-3 text-center">
                         {r.isOutside ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
                             <Navigation className="w-2.5 h-2.5" /> นอก
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 dark:bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-400">
                             <Building2 className="w-2.5 h-2.5" /> ใน
                           </span>
                         )}
@@ -710,14 +695,13 @@ export default function AttendanceClient({
             {allToday.map((emp) => {
               const s = STATUS_LABEL[emp.status] ?? { label: emp.status, color: 'text-white/60' }
               return (
-                <div key={emp.id} className="flex items-center gap-3 rounded-xl p-3.5"
-                  style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div key={emp.id} className="flex items-center gap-3 rounded-xl p-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
                     style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
                     {emp.name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-white font-semibold text-sm truncate">{emp.name}</p>
+                    <p className="text-slate-900 dark:text-white font-semibold text-sm truncate">{emp.name}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5 truncate">
                       {emp.department ?? '—'} ·{' '}
                       {emp.hasCheckedIn

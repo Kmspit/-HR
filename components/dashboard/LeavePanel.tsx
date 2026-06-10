@@ -22,10 +22,10 @@ type Leave = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING:        'text-yellow-400 bg-yellow-500/10',
-  ADMIN_APPROVED: 'text-blue-400 bg-blue-500/10',
-  APPROVED:       'text-green-400 bg-green-500/10',
-  REJECTED:       'text-red-400 bg-red-500/10',
+  PENDING:        'text-amber-700 bg-amber-100 dark:text-yellow-400 dark:bg-yellow-500/10',
+  ADMIN_APPROVED: 'text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10',
+  APPROVED:       'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-500/10',
+  REJECTED:       'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-500/10',
 }
 const STATUS_LABELS: Record<string, string> = {
   PENDING:        'รออนุมัติ',
@@ -174,16 +174,16 @@ export default function LeavePanel({
 
       {/* Balance stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <BalanceCard label="ลาป่วย" icon="🤒" used={used.SICK} total={balance.sick} colorClass="text-red-400" barColor="bg-red-500" />
+        <BalanceCard label="ลาป่วย" icon="🤒" used={used.SICK} total={balance.sick} colorClass="text-red-600 dark:text-red-400" barColor="bg-red-500" />
         <BalanceCard
           label="ลาพักร้อน"
           icon="🏖️"
           used={used.VACATION}
           total={balance.vacation}
-          colorClass={isProbation ? 'text-slate-600' : 'text-green-400'}
+          colorClass={isProbation ? 'text-slate-600' : 'text-green-700 dark:text-green-400'}
           barColor="bg-green-500"
         />
-        <BalanceCard label="ลากิจ" icon="🗓️" used={used.PERSONAL} total={balance.personal} colorClass="text-blue-400" barColor="bg-blue-500" />
+        <BalanceCard label="ลากิจ" icon="🗓️" used={used.PERSONAL} total={balance.personal} colorClass="text-blue-700 dark:text-blue-400" barColor="bg-blue-500" />
       </div>
 
       {/* Extra types used (ordination etc.) */}

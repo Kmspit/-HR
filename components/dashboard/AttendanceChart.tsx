@@ -13,15 +13,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
     <div
-      className="rounded-xl px-3.5 py-2.5 text-xs shadow-xl"
-      style={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}
+      className="rounded-xl px-3.5 py-2.5 text-xs shadow-xl bg-white dark:bg-[rgba(15,23,42,0.95)] border border-slate-200 dark:border-white/10"
     >
-      <p className="font-semibold text-white mb-1.5">{label}</p>
+      <p className="font-semibold text-slate-900 dark:text-white mb-1.5">{label}</p>
       {payload.map((p: any) => (
         <div key={p.name} className="flex items-center gap-2 py-0.5">
           <span className="h-2 w-2 rounded-full" style={{ background: p.fill }} />
-          <span className="text-slate-400">{p.name}:</span>
-          <span className="font-semibold text-white">{p.value} คน</span>
+          <span className="text-slate-500 dark:text-slate-400">{p.name}:</span>
+          <span className="font-semibold text-slate-900 dark:text-white">{p.value} คน</span>
         </div>
       ))}
     </div>

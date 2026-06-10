@@ -205,7 +205,7 @@ export default function Sidebar({ user, onClose }: Props) {
                   onClick={() => toggleSection(section.title)}
                   className="flex w-full items-center justify-between mb-2 px-2.5 rounded transition-colors
                     text-[9.5px] font-semibold uppercase tracking-[0.18em]
-                    text-slate-400 hover:text-slate-600
+                    text-slate-500 hover:text-slate-700
                     dark:text-slate-600 dark:hover:text-slate-400"
                 >
                   <span>{section.title}</span>
@@ -237,21 +237,21 @@ export default function Sidebar({ user, onClose }: Props) {
                               'group relative flex items-center rounded-xl py-2.5 text-[13px] transition-all duration-150',
                               collapsed ? 'justify-center px-2' : 'gap-3 px-3',
                               active
-                                ? 'nav-active text-[#1E3A5F] dark:text-blue-300 font-semibold'
-                                : 'text-slate-500 hover:bg-blue-50/60 hover:text-slate-800 dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
+                                ? 'nav-active text-blue-700 dark:text-blue-300 font-semibold'
+                                : 'text-slate-600 hover:bg-blue-50 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
                             )}
                           >
                             {!collapsed && (
                               <span className={cn(
                                 'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
-                                active ? 'bg-[#1E3A5F] dark:bg-blue-500 opacity-100' : 'opacity-0',
+                                active ? 'bg-blue-600 dark:bg-blue-500 opacity-100' : 'opacity-0',
                               )} />
                             )}
                             <Icon
                               d={ICONS[item.icon] ?? ICONS.dashboard}
                               className={cn('h-4 w-4', active
-                                ? 'text-[#1E3A5F] dark:text-blue-400'
-                                : 'text-slate-400 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-slate-300'
+                                ? 'text-blue-600 dark:text-blue-400'
+                                : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-slate-300'
                               )}
                             />
                             {!collapsed && (

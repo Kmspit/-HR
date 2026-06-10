@@ -173,7 +173,7 @@ export default function NotificationBell({ initialCount }: Props) {
               {count > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                 >
                   <CheckCheck size={12} />
                   อ่านทั้งหมด
@@ -231,8 +231,8 @@ export default function NotificationBell({ initialCount }: Props) {
             <Link
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="block text-center py-2.5 text-[11px] font-medium text-blue-400 hover:text-blue-300
-                border-t dark:border-white/[0.06] light:border-slate-100 transition-colors"
+              className="block text-center py-2.5 text-[11px] font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300
+                border-t border-slate-100 dark:border-white/[0.06] transition-colors"
             >
               ดูการแจ้งเตือนทั้งหมด →
             </Link>

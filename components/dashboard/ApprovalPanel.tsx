@@ -60,14 +60,14 @@ function ApprovalActions({
           onChange={(e) => setReason(e.target.value)}
           placeholder="ระบุเหตุผลการปฏิเสธ..."
           rows={2}
-          className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-red-500/50 resize-none"
+          className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[14px] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-red-500 dark:focus:border-red-500/50 resize-none"
         />
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => onAction(type, requestId, 'REJECT')}
             disabled={busy || !reason.trim()}
-            className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 touch-manipulation"
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-600 py-2.5 text-[14px] font-semibold text-white hover:bg-red-500 disabled:opacity-50 touch-manipulation"
           >
             {busy ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
             ยืนยันปฏิเสธ
@@ -75,7 +75,7 @@ function ApprovalActions({
           <button
             type="button"
             onClick={() => { setRejectingId(null); setReason('') }}
-            className="min-h-[44px] rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-400 hover:text-white touch-manipulation"
+            className="min-h-[44px] rounded-xl border border-slate-300 dark:border-white/10 px-4 py-2 text-[14px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 touch-manipulation"
           >
             ยกเลิก
           </button>
@@ -90,7 +90,7 @@ function ApprovalActions({
         type="button"
         onClick={() => onAction(type, requestId, 'APPROVE')}
         disabled={blocked || busy}
-        className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white hover:bg-green-500 active:scale-[0.98] disabled:opacity-50 touch-manipulation"
+        className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-600 py-2.5 text-[14px] font-semibold text-white hover:bg-green-500 active:scale-[0.98] disabled:opacity-50 touch-manipulation"
       >
         {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
         อนุมัติ
@@ -99,7 +99,7 @@ function ApprovalActions({
         type="button"
         onClick={() => setRejectingId(requestId)}
         disabled={blocked}
-        className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/20 active:scale-[0.98] disabled:opacity-50 touch-manipulation"
+        className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 py-2.5 text-[14px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 active:scale-[0.98] disabled:opacity-50 touch-manipulation"
       >
         <XCircle size={16} />
         ปฏิเสธ
@@ -109,7 +109,9 @@ function ApprovalActions({
 }
 
 function PersonHeader({ name, subtitle, badge, accent = 'blue' }: { name: string; subtitle: string; badge: string; accent?: 'blue' | 'purple' }) {
-  const accentCls = accent === 'purple' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'
+  const accentCls = accent === 'purple'
+    ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400'
+    : 'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
@@ -117,11 +119,11 @@ function PersonHeader({ name, subtitle, badge, accent = 'blue' }: { name: string
           {name[0] ?? '?'}
         </div>
         <div className="min-w-0">
-          <p className="font-semibold text-white leading-tight">{name}</p>
-          <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
+          <p className="font-semibold text-[15px] text-slate-900 dark:text-white leading-tight">{name}</p>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{subtitle}</p>
         </div>
       </div>
-      <span className="flex-shrink-0 rounded-lg bg-yellow-500/10 px-2 py-0.5 text-[10px] font-bold text-yellow-400">{badge}</span>
+      <span className="flex-shrink-0 rounded-lg bg-amber-100 dark:bg-yellow-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-yellow-400">{badge}</span>
     </div>
   )
 }
@@ -178,22 +180,22 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
     : 'หัวหน้างาน — ตรวจสอบแผนงาน (Step 1)'
 
   return (
-    <div className="p-4 md:p-5 space-y-5 max-w-full">
-      <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'CEO' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : userRole === 'ADMIN' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' : 'border-purple-500/30 bg-purple-500/10 text-purple-400'}`}>
+    <div className="p-5 md:p-6 space-y-5 max-w-full">
+      <div className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold ${userRole === 'CEO' ? 'border-amber-300 dark:border-yellow-500/30 bg-amber-50 dark:bg-yellow-500/10 text-amber-700 dark:text-yellow-400' : userRole === 'ADMIN' ? 'border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'border-purple-300 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400'}`}>
         {userRole === 'CEO' ? '👑' : userRole === 'ADMIN' ? '1️⃣' : '2️⃣'} {stepLabel}
       </div>
 
-      <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5 overflow-x-auto">
+      <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1 border border-slate-200 dark:border-white/5 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => { setTab(t.id); setRejectingId(null); setReason('') }}
-            className={`flex flex-1 min-w-[88px] items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold transition-all touch-manipulation ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            className={`flex flex-1 min-w-[88px] items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all touch-manipulation ${tab === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
           >
             {t.label}
             {t.count > 0 && (
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.id ? 'bg-white/20' : 'bg-slate-700'}`}>{t.count}</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${tab === t.id ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>{t.count}</span>
             )}
           </button>
         ))}
@@ -202,17 +204,26 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
       {tab === 'leave' && (
         <div className="space-y-3">
           {leaveRequests.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ไม่มีคำขอลาที่รอดำเนินการ ✅</div>
+            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-[14px] text-slate-500">ไม่มีคำขอลาที่รอดำเนินการ ✅</div>
           ) : leaveRequests.map((l) => (
-            <div key={l.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
+            <div key={l.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
               <PersonHeader name={l.user.name} subtitle={personSubtitle(l.user)} badge="รออนุมัติ" />
               <ApprovalActions requestId={l.id} type="LEAVE" {...actionProps} />
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <div className="rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">ประเภท</p><p className="font-semibold text-white">{LEAVE_TYPES[l.type] ?? l.type}</p></div>
-                <div className="rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">ช่วงเวลา</p><p className="font-semibold text-white">{formatThaiDate(l.startDate)} — {formatThaiDate(l.endDate)}</p></div>
-                <div className="rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">จำนวน</p><p className="font-semibold text-white">{l.days} วัน</p></div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[13px]">
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">ประเภท</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{LEAVE_TYPES[l.type] ?? l.type}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">ช่วงเวลา</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{formatThaiDate(l.startDate)} — {formatThaiDate(l.endDate)}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">จำนวน</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{l.days} วัน</p>
+                </div>
               </div>
-              {l.reason && <p className="mt-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-300">📝 {l.reason}</p>}
+              {l.reason && <p className="mt-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent px-3 py-2.5 text-[13px] text-slate-700 dark:text-slate-300">📝 {l.reason}</p>}
             </div>
           ))}
         </div>
@@ -221,26 +232,38 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
       {tab === 'outside' && (
         <div className="space-y-3">
           {outsideRequests.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ไม่มีคำขอออกนอกสถานที่ ✅</div>
+            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-[14px] text-slate-500">ไม่มีคำขอออกนอกสถานที่ ✅</div>
           ) : outsideRequests.map((o) => (
-            <div key={o.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
+            <div key={o.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
               <PersonHeader name={o.user.name} subtitle={personSubtitle(o.user)} badge="รออนุมัติ" accent="purple" />
               <ApprovalActions requestId={o.id} type="OUTSIDE" {...actionProps} />
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">วันที่</p><p className="font-semibold text-white">{formatThaiDate(o.date)}</p></div>
-                <div className="rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">เวลา</p><p className="font-semibold text-white">{o.startTime} — {o.endTime}</p></div>
-                <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">สถานที่</p><p className="font-semibold text-white">{o.place}</p></div>
-                <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5"><p className="text-slate-500">วัตถุประสงค์</p><p className="font-semibold text-white">{o.purpose}</p></div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13px]">
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">วันที่</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{formatThaiDate(o.date)}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">เวลา</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{o.startTime} — {o.endTime}</p>
+                </div>
+                <div className="sm:col-span-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">สถานที่</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{o.place}</p>
+                </div>
+                <div className="sm:col-span-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">วัตถุประสงค์</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{o.purpose}</p>
+                </div>
                 {o.googleMapsUrl && (
-                  <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5">
-                    <p className="text-slate-500">Google Maps</p>
-                    <a href={o.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">{o.googleMapsUrl}</a>
+                  <div className="sm:col-span-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                    <p className="text-slate-500 text-[12px]">Google Maps</p>
+                    <a href={o.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 underline break-all text-[13px]">{o.googleMapsUrl}</a>
                   </div>
                 )}
                 {o.attachmentUrl && (
-                  <div className="sm:col-span-2 rounded-lg bg-white/5 p-2.5">
-                    <p className="text-slate-500">เอกสารแนบ</p>
-                    <a href={o.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">{o.attachmentName || 'ดูเอกสาร'}</a>
+                  <div className="sm:col-span-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                    <p className="text-slate-500 text-[12px]">เอกสารแนบ</p>
+                    <a href={o.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 underline text-[13px]">{o.attachmentName || 'ดูเอกสาร'}</a>
                   </div>
                 )}
               </div>
@@ -251,31 +274,31 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
 
       {tab === 'weekly' && (
         <div className="space-y-3">
-          <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'MANAGER_HR' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : userRole === 'CEO' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'border-green-500/30 bg-green-500/10 text-green-400'}`}>
+          <div className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold ${userRole === 'MANAGER_HR' ? 'border-amber-300 dark:border-yellow-500/30 bg-amber-50 dark:bg-yellow-500/10 text-amber-700 dark:text-yellow-400' : userRole === 'CEO' ? 'border-amber-300 dark:border-yellow-500/30 bg-amber-50 dark:bg-yellow-500/10 text-amber-700 dark:text-yellow-400' : 'border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400'}`}>
             {userRole === 'MANAGER_HR' ? '1️⃣ หัวหน้างาน — รออนุมัติเบื้องต้น' : userRole === 'CEO' ? '👑 ผู้บริหาร (CEO) — อนุมัติทุกขั้นตอน' : '2️⃣ ผู้บริหาร — อนุมัติขั้นสุดท้าย'}
           </div>
           {weeklyPlans.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ไม่มีแผนงานทนายที่รออนุมัติ ✅</div>
+            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-[14px] text-slate-500">ไม่มีแผนงานทนายที่รออนุมัติ ✅</div>
           ) : weeklyPlans.map((p) => (
-            <div key={p.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
+            <div key={p.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-white">{p.lawyer.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">ทนายความ · {formatThaiDate(p.weekStart)} — {formatThaiDate(p.weekEnd)}</p>
+                  <p className="font-semibold text-[15px] text-slate-900 dark:text-white">{p.lawyer.name}</p>
+                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">ทนายความ · {formatThaiDate(p.weekStart)} — {formatThaiDate(p.weekEnd)}</p>
                 </div>
-                {p.isLate && <span className="rounded-lg bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-400">⚠️ ส่งช้า</span>}
+                {p.isLate && <span className="rounded-lg bg-red-100 dark:bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400">⚠️ ส่งช้า</span>}
               </div>
               <ApprovalActions requestId={p.id} type="WEEKLY_PLAN" {...actionProps} />
-              <div className="mt-3 space-y-1.5">
+              <div className="mt-4 space-y-2">
                 {p.days.length === 0 ? (
-                  <p className="text-xs text-slate-500 rounded-lg bg-white/5 px-2.5 py-2">
+                  <p className="text-[13px] text-slate-500 rounded-lg bg-slate-50 dark:bg-white/5 px-3 py-2.5">
                     ไม่มีวันออกนอกสถานที่{p.note ? ` · ${p.note}` : ''}
                   </p>
                 ) : (
                   p.days.map((d) => (
-                    <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-2.5 py-2 text-xs">
-                      <span className="font-semibold text-blue-400 w-14 flex-shrink-0">วัน{weeklyDayLabel(d.dayOfWeek)}</span>
-                      <span className="text-slate-300">{d.place} — {d.purpose}</span>
+                    <div key={d.dayOfWeek} className="flex items-start gap-2.5 rounded-lg bg-slate-50 dark:bg-white/5 px-3 py-2.5 text-[13px]">
+                      <span className="font-semibold text-blue-600 dark:text-blue-400 w-16 flex-shrink-0">วัน{weeklyDayLabel(d.dayOfWeek)}</span>
+                      <span className="text-slate-700 dark:text-slate-300">{d.place} — {d.purpose}</span>
                     </div>
                   ))
                 )}

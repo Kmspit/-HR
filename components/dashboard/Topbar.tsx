@@ -13,16 +13,16 @@ export default function Topbar({ title, subtitle, actions }: Props) {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-4 py-3 md:px-6 md:py-4',
-        'border-b dark:border-white/[0.05] light:border-slate-200/80',
+        'flex items-center gap-3 px-5 py-4 md:px-6 md:py-5',
+        'border-b border-slate-200 dark:border-white/[0.05]',
       )}
     >
       <div className="flex-1 min-w-0">
-        <h1 className="truncate text-[15px] sm:text-base font-bold dark:text-white light:text-slate-800 leading-tight">
+        <h1 className="truncate text-[18px] sm:text-[20px] font-bold text-slate-900 dark:text-white leading-tight">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-[11px] sm:text-xs dark:text-slate-400 light:text-slate-600 truncate leading-none mt-0.5">
+          <p className="text-[13px] sm:text-[14px] text-slate-500 dark:text-slate-400 truncate leading-none mt-1">
             {subtitle}
           </p>
         )}

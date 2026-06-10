@@ -83,16 +83,16 @@ export const ROLE_LABELS: Record<Role, string> = {
 }
 
 export const ROLE_COLORS: Record<Role, string> = {
-  SUPER_ADMIN:  'bg-red-500/20 text-red-400 border-red-500/30',
-  CEO:          'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  MANAGER_HR:   'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  HR:           'bg-violet-500/20 text-violet-400 border-violet-500/30',
-  MANAGER:      'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-  TEAM_LEADER:  'bg-sky-500/20 text-sky-400 border-sky-500/30',
-  ADMIN:        'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  EMPLOYEE:     'bg-green-500/20 text-green-400 border-green-500/30',
-  LAWYER:       'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  ENFORCEMENT:  'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  SUPER_ADMIN:  'bg-red-100    text-red-700    border-red-200    dark:bg-red-500/20    dark:text-red-400    dark:border-red-500/30',
+  CEO:          'bg-amber-100  text-amber-700  border-amber-200  dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30',
+  MANAGER_HR:   'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30',
+  HR:           'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-400 dark:border-violet-500/30',
+  MANAGER:      'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30',
+  TEAM_LEADER:  'bg-sky-100    text-sky-700    border-sky-200    dark:bg-sky-500/20    dark:text-sky-400    dark:border-sky-500/30',
+  ADMIN:        'bg-blue-100   text-blue-700   border-blue-200   dark:bg-blue-500/20   dark:text-blue-400   dark:border-blue-500/30',
+  EMPLOYEE:     'bg-green-100  text-green-700  border-green-200  dark:bg-green-500/20  dark:text-green-400  dark:border-green-500/30',
+  LAWYER:       'bg-amber-100  text-amber-700  border-amber-200  dark:bg-amber-500/20  dark:text-amber-400  dark:border-amber-500/30',
+  ENFORCEMENT:  'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30',
 }
 
 export const ROLE_ICONS: Record<Role, string> = {
