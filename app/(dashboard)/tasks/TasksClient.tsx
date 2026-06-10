@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, X, Clock, CheckCircle, AlertCircle,
   RotateCcw, Eye, Loader2, ClipboardList,
+  ExternalLink, MessageSquare,
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
 
@@ -36,9 +37,14 @@ type Task = {
   reviewNote: string | null
   reviewedAt: string | null
   createdAt: string
+  taskLinks: string | null
+  progressNotes: string | null
   assignee: UserSnip
   assignedBy: UserSnip
 }
+
+type TaskLink      = { label: string; url: string }
+type ProgressNote  = { note: string; timestamp: string; userId: string; userName: string }
 
 type Props = {
   role: string
@@ -103,6 +109,13 @@ function fmtDate(iso: string | null): string {
   })
 }
 
+function fmtDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('th-TH', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
+  })
+}
+
 function isOverdue(task: Task): boolean {
   if (!task.dueDate) return false
   if (task.status === 'COMPLETED') return false
@@ -111,6 +124,20 @@ function isOverdue(task: Task): boolean {
 
 function effectiveStatus(task: Task): string {
   return isOverdue(task) ? 'OVERDUE' : task.status
+}
+
+function parseLinks(raw: string | null): TaskLink[] {
+  if (!raw) return []
+  try { return JSON.parse(raw) as TaskLink[] } catch { return [] }
+}
+
+function parseNotes(raw: string | null): ProgressNote[] {
+  if (!raw) return []
+  try { return JSON.parse(raw) as ProgressNote[] } catch { return [] }
+}
+
+function isValidUrl(s: string): boolean {
+  try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:' } catch { return false }
 }
 
 // ── StatusBadge ──────────────────────────────────────────────────────────────
@@ -143,10 +170,11 @@ type DetailModalProps = {
 }
 
 function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModalProps) {
-  const [resultNote,   setResultNote]  = useState(task.resultNote ?? '')
-  const [reviewNote,   setReviewNote]  = useState('')
-  const [error,        setError]       = useState<string | null>(null)
-  const [isPending,    startTransition] = useTransition()
+  const [resultNote,     setResultNote]    = useState(task.resultNote ?? '')
+  const [reviewNote,     setReviewNote]    = useState('')
+  const [progressInput,  setProgressInput] = useState('')
+  const [error,          setError]         = useState<string | null>(null)
+  const [isPending,      startTransition]  = useTransition()
 
   const isAssignee  = task.assigneeId   === userId
   const isAssigner  = task.assignedById === userId
@@ -154,7 +182,10 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
   const isReviewer  = ['SUPER_ADMIN','CEO','MANAGER_HR','HR','ADMIN','MANAGER','TEAM_LEADER'].includes(role)
                        && (isAssigner || isFullAdmin)
 
-  const eff = effectiveStatus(task)
+  const canAct    = isAssignee || isReviewer || isFullAdmin
+  const links     = parseLinks(task.taskLinks)
+  const noteHist  = parseNotes(task.progressNotes)
+  const eff       = effectiveStatus(task)
 
   function patch(body: Record<string, unknown>) {
     setError(null)
@@ -167,6 +198,12 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
       onUpdated(data.task)
     })
+  }
+
+  function handleAddNote() {
+    if (!progressInput.trim()) return
+    patch({ progressNote: progressInput.trim() })
+    setProgressInput('')
   }
 
   return (
@@ -224,6 +261,27 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
               ))}
             </div>
 
+            {/* Links */}
+            {links.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">ลิงก์ที่เกี่ยวข้อง</p>
+                <div className="space-y-1.5">
+                  {links.map((lk, i) => (
+                    <a
+                      key={i}
+                      href={lk.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors group"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-60 group-hover:opacity-100" />
+                      <span className="flex-1 truncate">{lk.label || lk.url}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {task.description && (
               <div>
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">รายละเอียด</p>
@@ -254,6 +312,51 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
                 {task.submittedAt && (
                   <p className="text-[10px] text-blue-500 dark:text-blue-400/60 mt-1">ส่งเมื่อ {fmtDate(task.submittedAt)}</p>
                 )}
+              </div>
+            )}
+
+            {/* Progress notes history */}
+            {noteHist.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <MessageSquare className="w-3 h-3" />
+                  ประวัติการอัปเดต
+                </p>
+                <div className="space-y-2">
+                  {noteHist.map((n, i) => (
+                    <div key={i} className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{n.userName}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">{fmtDateTime(n.timestamp)}</span>
+                      </div>
+                      <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed">{n.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add progress note (anyone who can act) */}
+            {canAct && task.status !== 'COMPLETED' && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">เพิ่มบันทึก</p>
+                <div className="flex gap-2">
+                  <textarea
+                    rows={2}
+                    value={progressInput}
+                    onChange={(e) => setProgressInput(e.target.value)}
+                    placeholder="บันทึกความคืบหน้า..."
+                    className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-blue-400/60"
+                  />
+                  <button
+                    type="button"
+                    disabled={isPending || !progressInput.trim()}
+                    onClick={handleAddNote}
+                    className="flex-shrink-0 self-end flex items-center justify-center rounded-xl px-3 py-2 text-[12px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 dark:hover:bg-blue-500/25 transition-colors disabled:opacity-40"
+                  >
+                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'บันทึก'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -346,22 +449,54 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
   const [startDate,   setStart]       = useState('')
   const [dueDate,     setDue]         = useState('')
   const [notes,       setNotes]       = useState('')
+  const [links,       setLinks]       = useState<TaskLink[]>([])
   const [error,       setError]       = useState<string | null>(null)
 
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
+
+  function addLink() {
+    setLinks((prev) => [...prev, { label: '', url: '' }])
+  }
+
+  function updateLink(i: number, field: keyof TaskLink, val: string) {
+    setLinks((prev) => prev.map((lk, idx) => idx === i ? { ...lk, [field]: val } : lk))
+  }
+
+  function removeLink(i: number) {
+    setLinks((prev) => prev.filter((_, idx) => idx !== i))
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim())  { setError('กรุณาระบุชื่องาน'); return }
     if (!assigneeId)    { setError('กรุณาเลือกผู้รับผิดชอบ'); return }
     if (!dueDate)       { setError('กรุณาระบุวันครบกำหนด'); return }
+
+    const cleanLinks = links.filter((l) => l.url.trim())
+    for (const lk of cleanLinks) {
+      if (!isValidUrl(lk.url.trim())) {
+        setError(`URL ไม่ถูกต้อง: ${lk.url} (ต้องขึ้นต้นด้วย http:// หรือ https://)`)
+        return
+      }
+    }
+
     setError(null)
 
     startTransition(async () => {
       const { ok, data } = await apiJson<{ task: Task; error?: string }>('/api/tasks', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ title: title.trim(), description: description.trim() || null, type, priority, assigneeId, startDate: startDate || null, dueDate, notes: notes.trim() || null }),
+        body:    JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          type,
+          priority,
+          assigneeId,
+          startDate: startDate || null,
+          dueDate,
+          notes: notes.trim() || null,
+          taskLinks: cleanLinks.length > 0 ? cleanLinks : undefined,
+        }),
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
       onCreated(data.task)
@@ -470,6 +605,46 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
                   placeholder="หมายเหตุเพิ่มเติม..." className={`${inputCls} resize-none`} />
               </div>
 
+              {/* Links section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[12px] text-slate-500 dark:text-slate-400">ลิงก์ที่เกี่ยวข้อง</label>
+                  <button type="button" onClick={addLink}
+                    className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
+                    <Plus className="w-3.5 h-3.5" />
+                    เพิ่มลิงก์
+                  </button>
+                </div>
+                {links.length > 0 && (
+                  <div className="space-y-2">
+                    {links.map((lk, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={lk.label}
+                            onChange={(e) => updateLink(i, 'label', e.target.value)}
+                            placeholder="ชื่อลิงก์ (ไม่บังคับ)"
+                            className={inputCls}
+                          />
+                          <input
+                            type="url"
+                            value={lk.url}
+                            onChange={(e) => updateLink(i, 'url', e.target.value)}
+                            placeholder="https://..."
+                            className={inputCls}
+                          />
+                        </div>
+                        <button type="button" onClick={() => removeLink(i)}
+                          className="flex-shrink-0 mt-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {error && (
                 <p className="rounded-xl text-[13px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2">
                   {error}
@@ -538,7 +713,7 @@ function TaskRow({
   showAssigner: boolean
   onClick: () => void
 }) {
-  const eff = effectiveStatus(task)
+  const eff    = effectiveStatus(task)
   const overdue = isOverdue(task)
 
   return (
@@ -554,6 +729,13 @@ function TaskRow({
         {task.description && (
           <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[200px]">{task.description}</p>
         )}
+      </td>
+
+      {/* ประเภทงาน */}
+      <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
+        <span className="text-[12px] text-slate-500 dark:text-slate-400">
+          {TYPE_LABEL[task.type] ?? task.type}
+        </span>
       </td>
 
       {/* Assignee / Assigner */}
@@ -572,7 +754,7 @@ function TaskRow({
       </td>
 
       {/* Priority */}
-      <td className="px-4 py-3 whitespace-nowrap">
+      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
         <span className={`text-[12px] font-medium ${PRIORITY_TEXT[task.priority] ?? 'text-slate-500'}`}>
           {PRIORITY_LABEL[task.priority] ?? task.priority}
         </span>
@@ -664,7 +846,7 @@ export default function TasksClient({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-bold text-slate-900 dark:text-white">มอบหมายงาน</h1>
-          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">จัดการและติดตามงานพนักงาน</p>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">จัดการ ติดตาม และมอบหมายงานพนักงาน</p>
         </div>
         {canAssign && (
           <button type="button" onClick={() => setCreate(true)}
@@ -736,9 +918,17 @@ export default function TasksClient({
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/[0.05]">
-                  {['ชื่องาน', tab === 'my' ? 'มอบหมายโดย' : 'ผู้รับผิดชอบ', 'สถานะ', 'ความสำคัญ', 'กำหนดส่ง', ''].map((col) => (
-                    <th key={col} className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">
-                      {col}
+                  {[
+                    { label: 'ชื่องาน',                                          cls: '' },
+                    { label: 'ประเภทงาน',                                        cls: 'hidden sm:table-cell' },
+                    { label: tab === 'my' ? 'มอบหมายโดย' : 'ผู้รับผิดชอบ',      cls: '' },
+                    { label: 'สถานะ',                                            cls: '' },
+                    { label: 'ความสำคัญ',                                        cls: 'hidden md:table-cell' },
+                    { label: 'กำหนดส่ง',                                         cls: '' },
+                    { label: '',                                                  cls: '' },
+                  ].map(({ label, cls }) => (
+                    <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap ${cls}`}>
+                      {label}
                     </th>
                   ))}
                 </tr>

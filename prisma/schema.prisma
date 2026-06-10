@@ -1143,6 +1143,9 @@ model TaskAssignment {
   reviewedAt   DateTime?    @map("reviewed_at")
   reviewedById String?      @map("reviewed_by_id")
 
+  taskLinks     String?      @map("task_links")
+  progressNotes String?      @map("progress_notes")
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 

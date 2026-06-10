@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { title, description, type, priority, assigneeId, startDate, dueDate, notes } = body
+  const { title, description, type, priority, assigneeId, startDate, dueDate, notes, taskLinks } = body
 
   if (!title?.trim()) return NextResponse.json({ error: 'กรุณาระบุชื่องาน' }, { status: 400 })
   if (!assigneeId)    return NextResponse.json({ error: 'กรุณาเลือกผู้รับผิดชอบ' }, { status: 400 })
@@ -88,6 +88,16 @@ export async function POST(req: Request) {
     }
   }
 
+  // Validate taskLinks is array of {label, url}
+  let taskLinksJson: string | null = null
+  if (Array.isArray(taskLinks) && taskLinks.length > 0) {
+    const clean = taskLinks
+      .filter((l: unknown) => l && typeof l === 'object')
+      .map((l: Record<string, string>) => ({ label: String(l.label ?? '').trim(), url: String(l.url ?? '').trim() }))
+      .filter(l => l.url)
+    taskLinksJson = clean.length > 0 ? JSON.stringify(clean) : null
+  }
+
   const task = await prisma.taskAssignment.create({
     data: {
       title: title.trim(),
@@ -100,6 +110,7 @@ export async function POST(req: Request) {
       startDate: startDate ? new Date(startDate) : null,
       dueDate: dueDate ? new Date(dueDate) : null,
       notes: notes?.trim() ?? null,
+      taskLinks: taskLinksJson,
     },
     include: {
       assignee:   { select: userSelect },

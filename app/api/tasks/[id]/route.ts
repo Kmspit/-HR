@@ -48,9 +48,10 @@ export async function PATCH(
   const task = await prisma.taskAssignment.findUnique({ where: { id } })
   if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const role   = session.user.role
-  const userId = session.user.id
-  const body   = await req.json()
+  const role     = session.user.role
+  const userId   = session.user.id
+  const userName = session.user.name ?? ''
+  const body     = await req.json()
 
   const isAssignee   = task.assigneeId   === userId
   const isAssigner   = task.assignedById === userId
@@ -63,15 +64,25 @@ export async function PATCH(
 
   let data: Record<string, unknown> = {}
 
+  // Helper: append a progress note to the JSON array stored in the column
+  function appendProgressNote(existing: string | null, note: string): string {
+    const arr: { note: string; timestamp: string; userId: string; userName: string }[] =
+      existing ? JSON.parse(existing) : []
+    arr.push({ note, timestamp: new Date().toISOString(), userId, userName })
+    return JSON.stringify(arr)
+  }
+
   if (isAssignee && !isReviewer && !isFullAdmin) {
     // Employee: can update progress and submit result
     const ALLOWED_STATUSES = ['IN_PROGRESS', 'WAITING_REVIEW']
     if (body.status && ALLOWED_STATUSES.includes(body.status)) data.status = body.status
     if (body.resultNote !== undefined) data.resultNote = body.resultNote
     if (body.resultUrl  !== undefined) data.resultUrl  = body.resultUrl
+    if (body.progressNote?.trim()) {
+      data.progressNotes = appendProgressNote(task.progressNotes as string | null, body.progressNote.trim())
+    }
     if (body.status === 'WAITING_REVIEW') {
       data.submittedAt = new Date()
-      // Notify assigner
       await createNotification({
         userId: task.assignedById,
         type: 'TASK_SUBMITTED',
@@ -89,6 +100,23 @@ export async function PATCH(
     if (body.notes        !== undefined) data.notes       = body.notes
     if (body.startDate    !== undefined) data.startDate   = body.startDate ? new Date(body.startDate) : null
     if (body.dueDate      !== undefined) data.dueDate     = body.dueDate   ? new Date(body.dueDate)   : null
+
+    // taskLinks update (reviewer/admin can modify links)
+    if (body.taskLinks !== undefined) {
+      if (Array.isArray(body.taskLinks) && body.taskLinks.length > 0) {
+        const clean = (body.taskLinks as Record<string, string>[])
+          .filter(l => l?.url?.trim())
+          .map(l => ({ label: String(l.label ?? '').trim(), url: String(l.url ?? '').trim() }))
+        data.taskLinks = clean.length > 0 ? JSON.stringify(clean) : null
+      } else {
+        data.taskLinks = null
+      }
+    }
+
+    // progressNote append (reviewer can also add notes)
+    if (body.progressNote?.trim()) {
+      data.progressNotes = appendProgressNote(task.progressNotes as string | null, body.progressNote.trim())
+    }
 
     if (body.status !== undefined) {
       data.status = body.status
