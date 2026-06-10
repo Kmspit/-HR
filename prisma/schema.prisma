@@ -14,6 +14,7 @@ datasource db {
 
 enum Role {
   SUPER_ADMIN  // highest privilege — can do everything
+  CEO          // chief executive — highest business authority
   MANAGER_HR   // legacy HR manager (backward compat)
   HR           // HR administrator
   MANAGER      // department manager — can approve leave/warnings

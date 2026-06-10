@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 
-const HR_ROLES = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'] as const
+const HR_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN', 'HR'] as const
 
 export async function GET(
   _req: NextRequest,

@@ -18,11 +18,11 @@ export function resolveFilterBranchId(scope: BranchScopeInput): string | undefin
 }
 
 export function canPickBranchFilter(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'ADMIN'
+  return role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
 }
 
 export function canManageBranches(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'ADMIN'
+  return role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
 }
 
 /** เงื่อนไข user ตามสาขา */

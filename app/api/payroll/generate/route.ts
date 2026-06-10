@@ -18,7 +18,7 @@ const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 const SS_RATE = 0.05
 const SS_MAX = 750
 
-const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'] as const
+const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN', 'HR'] as const
 
 export async function POST(req: NextRequest) {
   try {

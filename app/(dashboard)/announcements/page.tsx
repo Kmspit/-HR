@@ -11,7 +11,7 @@ export default async function AnnouncementsPage() {
   if (!session?.user) redirect('/')
 
   const { role, id: userId } = session.user
-  const isHR = role === 'MANAGER_HR' || role === 'ADMIN'
+  const isHR = role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
   const now = new Date()
 
   const [rawAnnouncements, branches, divisions, departments, sections] = await Promise.all([

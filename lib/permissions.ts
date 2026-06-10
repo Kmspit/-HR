@@ -11,19 +11,19 @@ import {
 // ROUTE PERMISSIONS — which roles can access each path
 // ─────────────────────────────────────────────────────
 
-const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT']
-const HR_ROLES:  Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR']
-const MGR_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'MANAGER']
-const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT']
+const HR_ROLES:  Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
+const MGR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER']
+const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
 // Roles that can view/approve weekly plans
-const WEEKLY_PLAN_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER']
+const WEEKLY_PLAN_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER']
 
 // Roles that can view attendance scan history (own team or all)
-const SCAN_HISTORY_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+const SCAN_HISTORY_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
 // Roles that can manage employees data
-const EMPLOYEE_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
+const EMPLOYEE_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
@@ -57,6 +57,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
 // Default redirect after login per role
 export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
   SUPER_ADMIN:  '/dashboard',
+  CEO:          '/dashboard',
   MANAGER_HR:   '/dashboard',
   HR:           '/dashboard',
   MANAGER:      '/dashboard',
@@ -70,6 +71,7 @@ export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
 // Role display names (Thai)
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN:  'Super Admin',
+  CEO:          'ผู้บริหาร (CEO)',
   MANAGER_HR:   'ผู้จัดการ / HR',
   HR:           'ฝ่ายบุคคล (HR)',
   MANAGER:      'ผู้จัดการ',
@@ -82,6 +84,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_COLORS: Record<Role, string> = {
   SUPER_ADMIN:  'bg-red-500/20 text-red-400 border-red-500/30',
+  CEO:          'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   MANAGER_HR:   'bg-purple-500/20 text-purple-400 border-purple-500/30',
   HR:           'bg-violet-500/20 text-violet-400 border-violet-500/30',
   MANAGER:      'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
@@ -94,6 +97,7 @@ export const ROLE_COLORS: Record<Role, string> = {
 
 export const ROLE_ICONS: Record<Role, string> = {
   SUPER_ADMIN:  '🔑',
+  CEO:          '👑',
   MANAGER_HR:   '👔',
   HR:           '🏢',
   MANAGER:      '💼',
@@ -115,11 +119,11 @@ export function canAccess(role: Role, path: string): boolean {
 }
 
 export function isManagerOrHR(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN'
+  return role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN' || role === 'CEO'
 }
 
 export function isAdmin(role: Role): boolean {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'CEO'
 }
 
 export function canApproveStep1(role: Role): boolean {

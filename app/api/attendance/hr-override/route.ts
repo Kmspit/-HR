@@ -10,7 +10,7 @@ import {
   getNextSessionIndex,
 } from '@/lib/attendance-session'
 
-const ALLOWED_ROLES = ['MANAGER_HR', 'ADMIN'] as const
+const ALLOWED_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO'] as const
 
 export async function POST(req: NextRequest) {
   try {

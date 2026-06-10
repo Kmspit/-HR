@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { announcementEmitter } from '@/lib/announcement-events'
 
-const HR_ROLES = ['MANAGER_HR', 'ADMIN']
+const HR_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO']
 
 function toAnnDto(a: {
   id: string; title: string; body: string; type: string; targetType: string

@@ -78,7 +78,7 @@ export default function AnnouncementsClient({
 }: {
   announcements: Announcement[]; role: Role; userId: string; orgData: OrgData
 }) {
-  const isHR = role === 'MANAGER_HR' || role === 'ADMIN'
+  const isHR = role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
 
   // ── Main list state
   const [items, setItems] = useState(init)

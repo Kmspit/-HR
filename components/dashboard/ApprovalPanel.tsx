@@ -166,19 +166,21 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
   const tabs = [
     { id: 'leave' as const, label: `📅 คำขอลา`, count: leaveRequests.length },
     { id: 'outside' as const, label: `🚗 นอกสถานที่`, count: outsideRequests.length },
-    ...(weeklyPlans.length > 0 || userRole === 'MANAGER_HR' || userRole === 'ADMIN'
+    ...(weeklyPlans.length > 0 || userRole === 'MANAGER_HR' || userRole === 'ADMIN' || userRole === 'CEO'
       ? [{ id: 'weekly' as const, label: `📋 แผนทนาย`, count: weeklyPlans.length }]
       : []),
   ]
 
-  const stepLabel = userRole === 'ADMIN'
+  const stepLabel = userRole === 'CEO'
+    ? 'ผู้บริหาร (CEO) — อนุมัติทุกขั้นตอน'
+    : userRole === 'ADMIN'
     ? 'ผู้บริหาร — Final Approve แผนงาน (Step 2)'
     : 'หัวหน้างาน — ตรวจสอบแผนงาน (Step 1)'
 
   return (
     <div className="p-4 md:p-5 space-y-5 max-w-full">
-      <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'ADMIN' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' : 'border-purple-500/30 bg-purple-500/10 text-purple-400'}`}>
-        {userRole === 'ADMIN' ? '1️⃣' : '2️⃣'} {stepLabel}
+      <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'CEO' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : userRole === 'ADMIN' ? 'border-blue-500/30 bg-blue-500/10 text-blue-400' : 'border-purple-500/30 bg-purple-500/10 text-purple-400'}`}>
+        {userRole === 'CEO' ? '👑' : userRole === 'ADMIN' ? '1️⃣' : '2️⃣'} {stepLabel}
       </div>
 
       <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5 overflow-x-auto">
@@ -237,8 +239,8 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
 
       {tab === 'weekly' && (
         <div className="space-y-3">
-          <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'MANAGER_HR' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'border-green-500/30 bg-green-500/10 text-green-400'}`}>
-            {userRole === 'MANAGER_HR' ? '1️⃣ หัวหน้างาน — รออนุมัติเบื้องต้น' : '2️⃣ ผู้บริหาร — อนุมัติขั้นสุดท้าย'}
+          <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${userRole === 'MANAGER_HR' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : userRole === 'CEO' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'border-green-500/30 bg-green-500/10 text-green-400'}`}>
+            {userRole === 'MANAGER_HR' ? '1️⃣ หัวหน้างาน — รออนุมัติเบื้องต้น' : userRole === 'CEO' ? '👑 ผู้บริหาร (CEO) — อนุมัติทุกขั้นตอน' : '2️⃣ ผู้บริหาร — อนุมัติขั้นสุดท้าย'}
           </div>
           {weeklyPlans.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ไม่มีแผนงานทนายที่รออนุมัติ ✅</div>

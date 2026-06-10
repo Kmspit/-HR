@@ -5,7 +5,7 @@ import { apiError } from '@/lib/api-handler'
 import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
 import { parseTaxDetail } from '@/lib/payroll-tax'
 
-const HR_ROLES = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN'] as const
+const HR_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as const
 
 export async function GET(
   req: NextRequest,

@@ -52,6 +52,8 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
 export const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
   SUPER_ADMIN: [...ALL_PERMISSIONS],
 
+  CEO: [...ALL_PERMISSIONS],
+
   MANAGER_HR: [...ALL_PERMISSIONS],   // backward compat — HR Manager has all
 
   HR: [
@@ -141,7 +143,7 @@ export const canAccessApprovals = (role: Role) =>
 
 // Roles that can manage other users (employees page, settings)
 export const canManageUsers = (role: Role) =>
-  role === 'SUPER_ADMIN' || role === 'MANAGER_HR' || role === 'HR' || role === 'ADMIN' ||
+  role === 'SUPER_ADMIN' || role === 'CEO' || role === 'MANAGER_HR' || role === 'HR' || role === 'ADMIN' ||
   hasPermission(role, 'manage_employees')
 
 // Roles that can view all attendance (not just their own)

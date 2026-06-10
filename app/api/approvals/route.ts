@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   // Base check: leave + weekly plan require ADMIN or MANAGER_HR
   // Outside work: any role with approve_outside_work permission (checked inside handler)
-  const isHrAdmin = role === 'ADMIN' || role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN'
+  const isHrAdmin = role === 'ADMIN' || role === 'CEO' || role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN'
   const canApproveOutside = hasPermission(role as Role, 'approve_outside_work')
 
   const body: ApprovalBody = await req.json()
@@ -39,6 +39,22 @@ export async function POST(req: NextRequest) {
     if (!isHrAdmin) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     const leave = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })
     if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    // CEO bypasses steps — direct final approval from any pending state
+    if (role === 'CEO') {
+      if (leave.status !== 'PENDING' && leave.status !== 'ADMIN_APPROVED') {
+        return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
+      }
+      const ceoStatus = body.action === 'REJECT' ? 'REJECTED' : 'APPROVED'
+      await prisma.leaveRequest.update({ where: { id: body.requestId }, data: { status: ceoStatus } })
+      await prisma.approvalHistory.create({ data: { approvedById: actorId, action: body.action, reason: body.reason, step: 2, ip, leaveRequestId: body.requestId } })
+      await runNotify(() => createAuditLog({ actorId, targetId: body.requestId, targetType: 'LeaveRequest', action: body.action === 'APPROVE' ? 'APPROVE' : 'REJECT', before: { status: leave.status }, after: { status: ceoStatus }, ip }))
+      const ceoNotifType  = ceoStatus === 'APPROVED' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED'
+      const ceoNotifTitle = ceoStatus === 'APPROVED' ? '✅ คำขอลาได้รับการอนุมัติ' : '❌ คำขอลาถูกปฏิเสธ'
+      await runNotify(() => createNotification({ userId: leave.userId, type: ceoNotifType, title: ceoNotifTitle, message: body.reason ?? '', link: '/leave' }))
+      await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] การลา: ${ceoNotifTitle}\nรหัสคำขอ: ${body.requestId}${body.reason ? `\nเหตุผล: ${body.reason}` : ''}`))
+      return NextResponse.json({ success: true, newStatus: ceoStatus })
+    }
 
     // Admin can only approve step 1 (PENDING → ADMIN_APPROVED)
     if (step === 1 && leave.status !== 'PENDING') {
@@ -177,6 +193,33 @@ export async function POST(req: NextRequest) {
 
     const approvalStatus = plan.approvalStatus
 
+    // ── CEO — Final approver, bypasses all steps ──
+    if (role === 'CEO') {
+      const canAct = approvalStatus === 'pending_supervisor' || approvalStatus === 'pending_executive' ||
+        (approvalStatus === null && (plan.status === 'PENDING' || plan.status === 'ADMIN_APPROVED'))
+      if (!canAct) {
+        return NextResponse.json({ error: 'แผนงานนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
+      }
+      if (body.action === 'REJECT') {
+        await prisma.weeklyLawyerPlan.update({
+          where: { id: body.requestId },
+          data: { status: 'REJECTED', approvalStatus: 'rejected_by_executive', executiveComment: body.reason ?? null },
+        })
+        await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'REJECT', reason: body.reason, step: 2, ip, weeklyPlanId: body.requestId } })
+        await runNotify(() => createNotification({ userId: plan.lawyerId, type: 'WEEKLY_PLAN_REJECTED', title: '❌ แผนงานสัปดาห์ถูกปฏิเสธโดยผู้บริหาร', message: body.reason ?? '', link: '/weekly-plan' }))
+        await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: ผู้บริหารไม่อนุมัติ`))
+        return NextResponse.json({ success: true, newStatus: 'rejected_by_executive' })
+      }
+      await prisma.weeklyLawyerPlan.update({
+        where: { id: body.requestId },
+        data: { status: 'APPROVED', approvalStatus: 'approved', executiveComment: body.reason ?? null },
+      })
+      await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'APPROVE', reason: body.reason, step: 2, ip, weeklyPlanId: body.requestId } })
+      await runNotify(() => createNotification({ userId: plan.lawyerId, type: 'WEEKLY_PLAN_APPROVED', title: '✅ แผนงานสัปดาห์ได้รับการอนุมัติสมบูรณ์', message: body.reason ?? '', link: '/weekly-plan' }))
+      await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: ผู้บริหารอนุมัติสมบูรณ์แล้ว`))
+      return NextResponse.json({ success: true, newStatus: 'approved' })
+    }
+
     // ── หัวหน้างาน (MANAGER_HR / HR / SUPER_ADMIN) — Step 1 ──
     if (role === 'MANAGER_HR' || role === 'HR' || role === 'SUPER_ADMIN') {
       const isStep1 = approvalStatus === 'pending_supervisor' ||
@@ -203,6 +246,7 @@ export async function POST(req: NextRequest) {
       })
       await prisma.approvalHistory.create({ data: { approvedById: actorId, action: 'APPROVE', reason: body.reason, step: 1, ip, weeklyPlanId: body.requestId } })
       await runNotify(() => notifyRole('ADMIN', 'OUTSIDE_REQUEST', '📋 แผนงานทนายรอผู้บริหารอนุมัติ', 'หัวหน้างานอนุมัติแล้ว — รออนุมัติขั้นสุดท้าย', '/approvals'))
+      await runNotify(() => notifyRole('CEO', 'OUTSIDE_REQUEST', '📋 แผนงานทนายรอผู้บริหารอนุมัติ', 'หัวหน้างานอนุมัติแล้ว — รออนุมัติขั้นสุดท้าย', '/approvals'))
       await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนทนาย: หัวหน้างานอนุมัติแล้ว รอผู้บริหาร`))
       return NextResponse.json({ success: true, newStatus: 'pending_executive' })
     }

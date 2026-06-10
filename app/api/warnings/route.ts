@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
+    if (!session?.user?.id || !['MANAGER_HR', 'ADMIN', 'CEO'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

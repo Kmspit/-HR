@@ -18,7 +18,7 @@ const createSchema = z.object({
 })
 
 function canManageHolidays(role: string) {
-  return ['MANAGER_HR', 'ADMIN'].includes(role)
+  return ['MANAGER_HR', 'ADMIN', 'CEO'].includes(role)
 }
 
 function serialize(h: {

@@ -5,7 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'crypto'
 
-const HR_ROLES = ['MANAGER_HR', 'ADMIN']
+const HR_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO']
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
 const ALLOWED_TYPES = [
   'application/pdf',

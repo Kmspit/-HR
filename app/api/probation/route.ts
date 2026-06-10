@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 
-const HR_ROLES = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN'] as const
+const HR_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as const
 
 function isProbationComplete(startDate: Date | null, probationMonths: number): boolean {
   if (!startDate) return false
