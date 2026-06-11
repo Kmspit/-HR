@@ -65,7 +65,10 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { title, description, type, priority, assigneeId, startDate, dueDate, notes, taskLinks } = body
+  const {
+    title, description, type, priority, assigneeId, startDate, dueDate, notes, taskLinks,
+    caseNumber, clientName, taskDepartment, appointmentDate, courtDate, appointmentPlace,
+  } = body
 
   if (!title?.trim()) return NextResponse.json({ error: 'กรุณาระบุชื่องาน' }, { status: 400 })
   if (!assigneeId)    return NextResponse.json({ error: 'กรุณาเลือกผู้รับผิดชอบ' }, { status: 400 })
@@ -115,6 +118,12 @@ export async function POST(req: Request) {
       dueDate: dueDate ? new Date(dueDate) : null,
       notes: notes?.trim() ?? null,
       taskLinks: taskLinksJson,
+      caseNumber:       caseNumber?.trim()       ?? null,
+      clientName:       clientName?.trim()       ?? null,
+      taskDepartment:   taskDepartment           ?? null,
+      appointmentDate:  appointmentDate ? new Date(appointmentDate) : null,
+      courtDate:        courtDate       ? new Date(courtDate)       : null,
+      appointmentPlace: appointmentPlace?.trim() ?? null,
     },
     include: {
       assignee:    { select: userSelect },

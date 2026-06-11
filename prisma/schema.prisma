@@ -122,6 +122,10 @@ enum TaskStatus {
   REVISION
   COMPLETED
   OVERDUE
+  // Phase 1 — department workflow
+  NEW
+  ASSIGNED
+  WAITING_DOC
 }
 
 enum TaskType {
@@ -130,6 +134,24 @@ enum TaskType {
   LEGAL
   DOCUMENT
   OTHER
+  // ฝ่ายเร่งรัดหนี้
+  DEBT_CALL
+  DEBT_APPT
+  DEBT_DOC
+  DEBT_REPORT
+  // ฝ่ายกฎหมาย
+  LEGAL_DRAFT
+  LEGAL_FILE
+  LEGAL_COURT_PREP
+  LEGAL_HEARING
+  // ฝ่ายสืบทรัพย์
+  ASSET_CHECK
+  ASSET_SURVEY
+  ASSET_REPORT
+  // ฝ่ายบังคับคดี
+  ENF_FILE
+  ENF_SEIZE
+  ENF_SUMMARY
 }
 
 enum TaskPriority {
@@ -1146,6 +1168,14 @@ model TaskAssignment {
 
   taskLinks     String?      @map("task_links")
   progressNotes String?      @map("progress_notes")
+
+  // Phase 1 — department workflow fields
+  caseNumber       String?   @map("case_number")
+  clientName       String?   @map("client_name")
+  taskDepartment   String?   @map("task_department")
+  appointmentDate  DateTime? @map("appointment_date")
+  courtDate        DateTime? @map("court_date")
+  appointmentPlace String?   @map("appointment_place")
 
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

@@ -78,12 +78,16 @@ export async function PATCH(
 
   if (isAssignee && !isReviewer && !isFullAdmin) {
     // Employee: can update progress and submit result
-    const ALLOWED_STATUSES = ['IN_PROGRESS', 'WAITING_REVIEW']
+    const ALLOWED_STATUSES = ['IN_PROGRESS', 'WAITING_REVIEW', 'WAITING_DOC']
     if (body.status && ALLOWED_STATUSES.includes(body.status)) data.status = body.status
     if (body.resultNote !== undefined) data.resultNote = body.resultNote
     if (body.resultUrl  !== undefined) data.resultUrl  = body.resultUrl
     if (body.progressNote?.trim()) {
       data.progressNotes = appendProgressNote(task.progressNotes as string | null, body.progressNote.trim())
+    }
+    // Allow starting work from NEW/ASSIGNED (map to IN_PROGRESS)
+    if (body.status === 'IN_PROGRESS' && ['NEW', 'ASSIGNED', 'PENDING'].includes(task.status as string)) {
+      data.status = 'IN_PROGRESS'
     }
     if (body.status === 'WAITING_REVIEW') {
       data.submittedAt = new Date()
@@ -106,6 +110,13 @@ export async function PATCH(
     if (body.dueDate      !== undefined) data.dueDate     = body.dueDate   ? new Date(body.dueDate)   : null
 
     // taskLinks update (reviewer/admin can modify links)
+    if (body.caseNumber       !== undefined) data.caseNumber       = body.caseNumber?.trim()       ?? null
+    if (body.clientName       !== undefined) data.clientName       = body.clientName?.trim()       ?? null
+    if (body.taskDepartment   !== undefined) data.taskDepartment   = body.taskDepartment           ?? null
+    if (body.appointmentDate  !== undefined) data.appointmentDate  = body.appointmentDate  ? new Date(body.appointmentDate)  : null
+    if (body.courtDate        !== undefined) data.courtDate        = body.courtDate        ? new Date(body.courtDate)        : null
+    if (body.appointmentPlace !== undefined) data.appointmentPlace = body.appointmentPlace?.trim() ?? null
+
     if (body.taskLinks !== undefined) {
       if (Array.isArray(body.taskLinks) && body.taskLinks.length > 0) {
         const clean = (body.taskLinks as Record<string, string>[])
