@@ -113,6 +113,12 @@ enum NotificationType {
   TASK_SUBMITTED
   TASK_APPROVED
   TASK_REVISION
+  // Phase 2 — deadline & reminder types
+  TASK_DEADLINE_REMINDER
+  TASK_OVERDUE
+  TASK_COURT_REMINDER
+  TASK_APPOINTMENT_REMINDER
+  TASK_WAITING_DOC
 }
 
 enum TaskStatus {
@@ -737,6 +743,7 @@ model ApprovalHistory {
 model Notification {
   id        String           @id @default(cuid())
   userId    String
+  taskId    String?          @map("task_id")
   type      NotificationType
   title     String
   message   String

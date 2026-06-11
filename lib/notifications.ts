@@ -5,6 +5,7 @@ import { pushLineMessages, pushLineText } from '@/lib/line-api'
 // ─── Create in-app notification ───────────────────────
 export async function createNotification(params: {
   userId: string
+  taskId?: string
   type: NotificationType
   title: string
   message: string

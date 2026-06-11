@@ -1,0 +1,39 @@
+/**
+ * Phase 2: เพิ่มคอลัมน์ task_id (nullable) บนตาราง notifications ใน Turso
+ * รัน: node scripts/migrate-turso-notifications-taskid.mjs
+ */
+import { config } from 'dotenv'
+import { resolve } from 'path'
+import { createClient } from '@libsql/client'
+
+config({ path: resolve(process.cwd(), '.env.local') })
+config({ path: resolve(process.cwd(), '.env') })
+
+const url   = process.env.TURSO_DATABASE_URL
+const token = process.env.TURSO_AUTH_TOKEN
+if (!url || !token) {
+  console.error('ต้องมี TURSO_DATABASE_URL และ TURSO_AUTH_TOKEN ใน .env.local')
+  process.exit(1)
+}
+
+const db = createClient({ url, authToken: token })
+
+async function run(sql) {
+  try {
+    await db.execute(sql)
+    console.log('OK:', sql.slice(0, 80))
+    return true
+  } catch (e) {
+    const msg = String(e.message ?? e)
+    if (msg.includes('duplicate column') || msg.includes('already exists')) {
+      console.log('skip (มีแล้ว):', sql.slice(0, 70))
+      return true
+    }
+    console.error('FAIL:', msg, '\n  SQL:', sql)
+    return false
+  }
+}
+
+console.log('Migrating Turso:', url)
+await run(`ALTER TABLE notifications ADD COLUMN task_id TEXT`)
+console.log('Done.')

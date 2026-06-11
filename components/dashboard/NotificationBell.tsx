@@ -42,6 +42,12 @@ const TYPE_ICONS: Record<string, string> = {
   REGISTER_REQUEST: '👤', ACCOUNT_APPROVED: '✅', ACCOUNT_REJECTED: '❌',
   WARNING_ISSUED: '⚠️', WEEKLY_PLAN_DUE: '⏰', WEEKLY_PLAN_APPROVED: '✅',
   ANNOUNCEMENT: '📢', DEVICE_RESET_REQUEST: '📱', SYSTEM: '🔔',
+  // Task workflow
+  TASK_ASSIGNED: '📋', TASK_SUBMITTED: '📤', TASK_APPROVED: '✅', TASK_REVISION: '🔄',
+  // Phase 2 — reminders
+  TASK_DEADLINE_REMINDER: '⏰', TASK_OVERDUE: '🔴',
+  TASK_COURT_REMINDER: '⚖️', TASK_APPOINTMENT_REMINDER: '📅',
+  TASK_WAITING_DOC: '📄',
 }
 
 const TYPE_LINKS: Record<string, string> = {
@@ -50,6 +56,11 @@ const TYPE_LINKS: Record<string, string> = {
   REGISTER_REQUEST: '/employees', ACCOUNT_APPROVED: '/profile', ACCOUNT_REJECTED: '/profile',
   WARNING_ISSUED: '/warnings', WEEKLY_PLAN_DUE: '/leave', WEEKLY_PLAN_APPROVED: '/leave',
   ANNOUNCEMENT: '/announcements', DEVICE_RESET_REQUEST: '/profile', SYSTEM: '/notifications',
+  // Task types all link to /tasks
+  TASK_ASSIGNED: '/tasks', TASK_SUBMITTED: '/tasks', TASK_APPROVED: '/tasks', TASK_REVISION: '/tasks',
+  TASK_DEADLINE_REMINDER: '/tasks', TASK_OVERDUE: '/tasks',
+  TASK_COURT_REMINDER: '/tasks', TASK_APPOINTMENT_REMINDER: '/tasks',
+  TASK_WAITING_DOC: '/tasks',
 }
 
 type Notif = {
