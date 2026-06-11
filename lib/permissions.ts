@@ -18,6 +18,8 @@ const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', '
 // Phase 5 — client portal
 const CLIENT_ROLE: Role[] = ['CLIENT']
 const CLIENT_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
+// Phase 7 — case finance
+const CAN_VIEW_FINANCE: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
 // Roles that can view/approve weekly plans
 const WEEKLY_PLAN_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER']
@@ -58,6 +60,8 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/performance':        ALL_ROLES,
   '/case-documents':     ALL_ROLES,
   '/clients':            CLIENT_MGMT_ROLES,
+  '/case-finance':       [...CAN_VIEW_FINANCE],
+  '/expense-claim':      ALL_ROLES,
   '/ai-assistant':       ALL_ROLES,
   '/client-portal':      CLIENT_ROLE,
   '/unauthorized':       [...ALL_ROLES, 'CLIENT'],

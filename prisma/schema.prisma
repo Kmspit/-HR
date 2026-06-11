@@ -125,6 +125,11 @@ enum NotificationType {
   DOC_SIGNATURE_REQUIRED
   DOC_APPROVED
   DOC_REJECTED
+  // Phase 7 — Case Finance
+  EXPENSE_CLAIM_SUBMITTED
+  EXPENSE_CLAIM_APPROVED
+  EXPENSE_CLAIM_REJECTED
+  EXPENSE_CLAIM_PAID
 }
 
 enum TaskStatus {
@@ -401,6 +406,11 @@ model User {
   clientMsgsAsClient        ClientMessage[]        @relation("ClientMessages")
   clientMsgsAsSender        ClientMessage[]        @relation("MessageSender")
   caseStatusChanges         CaseStatusHistory[]    @relation("StatusHistoryChanger")
+  // Phase 7 — Case Finance
+  caseIncomesCreated        CaseIncome[]           @relation("CaseIncomeCreator")
+  caseExpensesAsEmp         CaseExpense[]          @relation("CaseExpenseEmployee")
+  caseExpensesCreated       CaseExpense[]          @relation("CaseExpenseCreator")
+  expenseClaimsSubmitted    ExpenseClaim[]         @relation("ClaimSubmitter")
 
   @@map("users")
 }
@@ -1215,6 +1225,9 @@ model TaskAssignment {
   attachments     TaskAttachment[]
   statusHistories CaseStatusHistory[]
   clientMessages  ClientMessage[]
+  caseIncomes     CaseIncome[]
+  caseExpenses    CaseExpense[]
+  expenseClaims   ExpenseClaim[]
 
   @@map("task_assignments")
 }
@@ -1353,4 +1366,88 @@ model ClientMessage {
   task   TaskAssignment? @relation(fields: [taskId],   references: [id])
 
   @@map("client_messages")
+}
+
+// ── PHASE 7 — CASE FINANCIAL MANAGEMENT ─────────────────
+
+model CaseIncome {
+  id          String   @id @default(cuid())
+  taskId      String?  @map("task_id")
+  caseNumber  String?  @map("case_number")
+  clientName  String?  @map("client_name")
+  incomeType  String   @map("income_type")
+  amount      Float
+  date        DateTime
+  note        String?
+  department  String?
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  task      TaskAssignment? @relation(fields: [taskId],      references: [id])
+  createdBy User            @relation("CaseIncomeCreator",   fields: [createdById], references: [id])
+
+  @@map("case_incomes")
+}
+
+model CaseExpense {
+  id          String   @id @default(cuid())
+  taskId      String?  @map("task_id")
+  caseNumber  String?  @map("case_number")
+  expenseType String   @map("expense_type")
+  amount      Float
+  date        DateTime
+  employeeId  String   @map("employee_id")
+  note        String?
+  receiptUrl  String?  @map("receipt_url")
+  department  String?
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  task      TaskAssignment? @relation(fields: [taskId],        references: [id])
+  employee  User            @relation("CaseExpenseEmployee",   fields: [employeeId],  references: [id])
+  createdBy User            @relation("CaseExpenseCreator",    fields: [createdById], references: [id])
+
+  @@map("case_expenses")
+}
+
+model ExpenseClaim {
+  id             String    @id @default(cuid())
+  title          String
+  taskId         String?   @map("task_id")
+  caseNumber     String?   @map("case_number")
+  expenseType    String    @map("expense_type")
+  amount         Float
+  date           DateTime
+  note           String?
+  status         String    @default("PENDING")
+  submittedById  String    @map("submitted_by_id")
+  supervisorNote String?   @map("supervisor_note")
+  ceoNote        String?   @map("ceo_note")
+  rejectedNote   String?   @map("rejected_note")
+  paidAt         DateTime? @map("paid_at")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  task        TaskAssignment?   @relation(fields: [taskId],        references: [id])
+  submittedBy User              @relation("ClaimSubmitter",        fields: [submittedById], references: [id])
+  files       ExpenseClaimFile[]
+
+  @@map("expense_claims")
+}
+
+model ExpenseClaimFile {
+  id        String   @id @default(cuid())
+  claimId   String   @map("claim_id")
+  url       String
+  publicId  String   @default("") @map("public_id")
+  filename  String
+  fileType  String   @map("file_type")
+  size      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  claim ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("expense_claim_files")
 }

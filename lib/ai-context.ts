@@ -22,8 +22,9 @@ async function ctxCeoHr(): Promise<string> {
   const in7   = new Date(now.getTime() + 7  * 86400_000)
   const in30  = new Date(now.getTime() + 30 * 86400_000)
   const ago30 = new Date(now.getTime() - 30 * 86400_000)
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [tasks, pendingLeaves] = await Promise.all([
+  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims] = await Promise.all([
     prisma.taskAssignment.findMany({
       where: { createdAt: { gte: ago30 } },
       include: { assignee: { select: { name: true, department: true } } },
@@ -31,6 +32,9 @@ async function ctxCeoHr(): Promise<string> {
       take: 200,
     }),
     prisma.leaveRequest.count({ where: { status: 'PENDING' } }),
+    prisma.caseIncome.aggregate({ where: { date: { gte: startOfMonth } }, _sum: { amount: true } }),
+    prisma.caseExpense.aggregate({ where: { date: { gte: startOfMonth } }, _sum: { amount: true } }),
+    prisma.expenseClaim.findMany({ where: { status: { in: ['PENDING', 'SUPERVISOR_APPROVED'] } }, select: { title: true, amount: true, submittedBy: { select: { name: true } } }, take: 10 }),
   ])
 
   const overdue     = tasks.filter((t) => t.dueDate && t.dueDate < now && t.status !== 'COMPLETED')
@@ -53,6 +57,10 @@ async function ctxCeoHr(): Promise<string> {
     `  - ${t.title}${t.caseNumber ? ` [${t.caseNumber}]` : ''} — ${fmtDate(t.courtDate)} — ${t.assignee.name}`
   ).join('\n')
 
+  const totalIncome  = monthIncomes._sum.amount ?? 0
+  const totalExpense = monthExpenses._sum.amount ?? 0
+  const claimList    = pendingClaims.map((c) => `  - ${c.title} (${c.submittedBy.name}) ฿${c.amount.toLocaleString('th-TH')}`).join('\n')
+
   return [
     `=== สรุปภาพรวมบริษัท (30 วันล่าสุด) ===`,
     `งานทั้งหมด: ${tasks.length} รายการ`,
@@ -61,6 +69,13 @@ async function ctxCeoHr(): Promise<string> {
     `ใบลาที่รออนุมัติ: ${pendingLeaves} รายการ`,
     `นัดศาลใน 7 วัน: ${courtIn7.length} รายการ`,
     `นัดศาลใน 30 วัน: ${courtIn30.length} รายการ`,
+    ``,
+    `=== การเงินเดือนนี้ ===`,
+    `รายรับ: ฿${totalIncome.toLocaleString('th-TH')}`,
+    `ค่าใช้จ่าย: ฿${totalExpense.toLocaleString('th-TH')}`,
+    `กำไรสุทธิ: ฿${(totalIncome - totalExpense).toLocaleString('th-TH')}`,
+    `ใบเบิกรออนุมัติ: ${pendingClaims.length} รายการ`,
+    pendingClaims.length > 0 ? claimList : '',
     ``,
     `=== ผลงานรายฝ่าย ===`,
     byDept || '  (ไม่มีข้อมูล)',
