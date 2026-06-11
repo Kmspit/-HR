@@ -119,6 +119,11 @@ enum NotificationType {
   TASK_COURT_REMINDER
   TASK_APPOINTMENT_REMINDER
   TASK_WAITING_DOC
+  // Phase 4 — Case Document Center
+  DOC_UPLOADED
+  DOC_SIGNATURE_REQUIRED
+  DOC_APPROVED
+  DOC_REJECTED
 }
 
 enum TaskStatus {
@@ -383,6 +388,12 @@ model User {
   createdTasks              TaskAssignment[]       @relation("TaskAssigner")
   reviewedTasks             TaskAssignment[]       @relation("TaskReviewer")
   taskAttachments           TaskAttachment[]       @relation("TaskAttachmentUploader")
+  // Phase 4 — Case Document Center
+  caseDocsUploaded          CaseDocument[]         @relation("CaseDocUploader")
+  caseDocsAssigned          CaseDocument[]         @relation("CaseDocAssignee")
+  caseDocFiles              CaseDocumentFile[]     @relation("CaseDocFileUploader")
+  caseDocSigns              CaseDocumentSignature[] @relation("CaseDocSigner")
+  caseDocVersions           CaseDocumentVersion[]  @relation("CaseDocVersioner")
 
   @@map("users")
 }
@@ -1212,4 +1223,83 @@ model TaskAttachment {
   uploadedBy   User           @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id])
 
   @@map("task_attachments")
+}
+
+// ── CASE DOCUMENT CENTER (Phase 4) ──────────────────
+
+model CaseDocument {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  docType      String    @default("OTHER") @map("doc_type")
+  caseNumber   String?   @map("case_number")
+  clientName   String?   @map("client_name")
+  department   String?
+  taskId       String?   @map("task_id")
+  assignedToId String?   @map("assigned_to_id")
+  uploadedById String    @map("uploaded_by_id")
+  status       String    @default("ACTIVE")
+  tags         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  uploadedBy User                    @relation("CaseDocUploader",  fields: [uploadedById],  references: [id])
+  assignedTo User?                   @relation("CaseDocAssignee",  fields: [assignedToId],  references: [id])
+  files      CaseDocumentFile[]
+  signatures CaseDocumentSignature[]
+  versions   CaseDocumentVersion[]
+
+  @@map("case_documents")
+}
+
+model CaseDocumentFile {
+  id           String   @id @default(cuid())
+  documentId   String   @map("document_id")
+  fileName     String   @map("file_name")
+  fileUrl      String   @map("file_url")
+  publicId     String   @map("public_id")
+  fileType     String   @map("file_type")
+  fileSize     Int?     @map("file_size")
+  version      Int      @default(1)
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now())
+
+  document   CaseDocument @relation(fields: [documentId],   references: [id], onDelete: Cascade)
+  uploadedBy User         @relation("CaseDocFileUploader", fields: [uploadedById], references: [id])
+
+  @@map("case_document_files")
+}
+
+model CaseDocumentSignature {
+  id             String   @id @default(cuid())
+  documentId     String   @map("document_id")
+  signedById     String   @map("signed_by_id")
+  signerName     String   @map("signer_name")
+  signerRole     String   @map("signer_role")
+  signerPosition String?  @map("signer_position")
+  signatureType  String   @default("TYPED") @map("signature_type")
+  signatureData  String?  @map("signature_data")
+  signatureUrl   String?  @map("signature_url")
+  typedName      String?  @map("typed_name")
+  signedAt       DateTime @default(now())
+
+  document CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  signedBy User         @relation("CaseDocSigner",    fields: [signedById], references: [id])
+
+  @@map("case_document_signatures")
+}
+
+model CaseDocumentVersion {
+  id            String   @id @default(cuid())
+  documentId    String   @map("document_id")
+  versionNumber Int      @map("version_number")
+  changeNote    String?  @map("change_note")
+  changedById   String   @map("changed_by_id")
+  changedByName String   @map("changed_by_name")
+  createdAt     DateTime @default(now())
+
+  document  CaseDocument @relation(fields: [documentId],  references: [id], onDelete: Cascade)
+  changedBy User         @relation("CaseDocVersioner", fields: [changedById], references: [id])
+
+  @@map("case_document_versions")
 }
