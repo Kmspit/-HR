@@ -42,8 +42,12 @@ export async function GET(req: Request) {
   const tasks = await prisma.taskAssignment.findMany({
     where,
     include: {
-      assignee:   { select: userSelect },
-      assignedBy: { select: userSelect },
+      assignee:    { select: userSelect },
+      assignedBy:  { select: userSelect },
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
     orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
     take: 100,
@@ -113,8 +117,12 @@ export async function POST(req: Request) {
       taskLinks: taskLinksJson,
     },
     include: {
-      assignee:   { select: userSelect },
-      assignedBy: { select: userSelect },
+      assignee:    { select: userSelect },
+      assignedBy:  { select: userSelect },
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
 

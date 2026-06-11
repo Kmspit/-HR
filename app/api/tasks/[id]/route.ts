@@ -19,9 +19,13 @@ export async function GET(
   const task = await prisma.taskAssignment.findUnique({
     where: { id },
     include: {
-      assignee:   { select: userSelect },
-      assignedBy: { select: userSelect },
-      reviewedBy: { select: userSelect },
+      assignee:    { select: userSelect },
+      assignedBy:  { select: userSelect },
+      reviewedBy:  { select: userSelect },
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
 
@@ -149,9 +153,13 @@ export async function PATCH(
     where: { id },
     data,
     include: {
-      assignee:   { select: userSelect },
-      assignedBy: { select: userSelect },
-      reviewedBy: { select: userSelect },
+      assignee:    { select: userSelect },
+      assignedBy:  { select: userSelect },
+      reviewedBy:  { select: userSelect },
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
 

@@ -354,6 +354,7 @@ model User {
   assignedTasks             TaskAssignment[]       @relation("TaskAssignee")
   createdTasks              TaskAssignment[]       @relation("TaskAssigner")
   reviewedTasks             TaskAssignment[]       @relation("TaskReviewer")
+  taskAttachments           TaskAttachment[]       @relation("TaskAttachmentUploader")
 
   @@map("users")
 }
@@ -1149,9 +1150,29 @@ model TaskAssignment {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  assignee   User  @relation("TaskAssignee", fields: [assigneeId],   references: [id])
-  assignedBy User  @relation("TaskAssigner", fields: [assignedById], references: [id])
-  reviewedBy User? @relation("TaskReviewer", fields: [reviewedById], references: [id])
+  assignee     User             @relation("TaskAssignee", fields: [assigneeId],   references: [id])
+  assignedBy   User             @relation("TaskAssigner", fields: [assignedById], references: [id])
+  reviewedBy   User?            @relation("TaskReviewer", fields: [reviewedById], references: [id])
+  attachments  TaskAttachment[]
 
   @@map("task_assignments")
+}
+
+// ── TASK ATTACHMENTS ─────────────────────────────
+
+model TaskAttachment {
+  id           String   @id @default(cuid())
+  taskId       String   @map("task_id")
+  fileName     String   @map("file_name")
+  fileUrl      String   @map("file_url")
+  publicId     String   @map("public_id")
+  fileType     String   @map("file_type")
+  fileSize     Int?     @map("file_size")
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now())
+
+  task         TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy   User           @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id])
+
+  @@map("task_attachments")
 }

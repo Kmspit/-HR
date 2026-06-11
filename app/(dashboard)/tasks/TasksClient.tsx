@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, X, Clock, CheckCircle, AlertCircle,
   RotateCcw, Eye, Loader2, ClipboardList,
-  ExternalLink, MessageSquare,
+  ExternalLink, MessageSquare, Paperclip, Upload,
+  FileText, Download, Trash2, File,
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
 
@@ -17,6 +18,17 @@ type UserSnip = {
   department: string | null
   employeeId: string | null
   role: string
+}
+
+type TaskAttachment = {
+  id: string
+  fileName: string
+  fileUrl: string
+  publicId: string
+  fileType: string
+  fileSize: number | null
+  createdAt: string
+  uploadedBy: { id: string; name: string }
 }
 
 type Task = {
@@ -39,6 +51,7 @@ type Task = {
   createdAt: string
   taskLinks: string | null
   progressNotes: string | null
+  attachments: TaskAttachment[]
   assignee: UserSnip
   assignedBy: UserSnip
 }
@@ -140,6 +153,33 @@ function isValidUrl(s: string): boolean {
   try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:' } catch { return false }
 }
 
+function fmtFileSize(bytes: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fileIcon(fileType: string): React.ReactNode {
+  if (fileType.startsWith('image/')) return <File className="w-4 h-4 text-purple-500" />
+  if (fileType === 'application/pdf') return <FileText className="w-4 h-4 text-red-500" />
+  if (fileType.includes('word')) return <FileText className="w-4 h-4 text-blue-500" />
+  if (fileType.includes('excel') || fileType.includes('spreadsheet')) return <FileText className="w-4 h-4 text-green-600" />
+  return <File className="w-4 h-4 text-slate-400" />
+}
+
+const ACCEPTED_FILE_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/png',
+  'image/jpeg',
+  'application/zip',
+  'application/x-zip-compressed',
+].join(',')
+
 // ── StatusBadge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
@@ -156,6 +196,135 @@ function StatusBadge({ status }: { status: string }) {
       {icons[status]}
       {STATUS_LABEL[status] ?? status}
     </span>
+  )
+}
+
+// ── AttachmentItem ────────────────────────────────────────────────────────────
+
+function AttachmentItem({
+  att,
+  canDelete,
+  onDelete,
+  isDeleting,
+}: {
+  att: TaskAttachment
+  canDelete: boolean
+  onDelete: () => void
+  isDeleting: boolean
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] group">
+      <div className="flex-shrink-0">{fileIcon(att.fileType)}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 truncate">{att.fileName}</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500">
+          {fmtFileSize(att.fileSize)}{att.fileSize ? ' · ' : ''}{att.uploadedBy.name} · {fmtDate(att.createdAt)}
+        </p>
+      </div>
+      <a
+        href={att.fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+        title="เปิดไฟล์"
+      >
+        <Download className="w-3.5 h-3.5" />
+      </a>
+      {canDelete && (
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={onDelete}
+          className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40"
+          title="ลบไฟล์"
+        >
+          {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── FileUploadZone ────────────────────────────────────────────────────────────
+
+function FileUploadZone({
+  pendingFiles,
+  onFilesAdded,
+  onRemove,
+  uploading,
+}: {
+  pendingFiles: File[]
+  onFilesAdded: (files: File[]) => void
+  onRemove: (idx: number) => void
+  uploading: boolean
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length) onFilesAdded(files)
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length) onFilesAdded(files)
+    e.target.value = ''
+  }
+
+  return (
+    <div className="space-y-2">
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+          dragOver
+            ? 'border-blue-400 bg-blue-50 dark:bg-blue-500/10'
+            : 'border-slate-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-500/40 bg-slate-50 dark:bg-white/[0.02]'
+        }`}
+      >
+        <Upload className="w-5 h-5 mx-auto mb-1.5 text-slate-400 dark:text-slate-500" />
+        <p className="text-[12px] font-medium text-slate-600 dark:text-slate-400">
+          ลากไฟล์มาวาง หรือ <span className="text-blue-600 dark:text-blue-400">คลิกเลือกไฟล์</span>
+        </p>
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+          PDF, Word, Excel, PNG, JPG, ZIP (สูงสุด 20 MB)
+        </p>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept={ACCEPTED_FILE_TYPES}
+          className="hidden"
+          onChange={handleChange}
+          disabled={uploading}
+        />
+      </div>
+
+      {pendingFiles.length > 0 && (
+        <div className="space-y-1.5">
+          {pendingFiles.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+              <div className="flex-shrink-0">{fileIcon(f.type)}</div>
+              <span className="flex-1 text-[13px] text-slate-700 dark:text-slate-300 truncate">{f.name}</span>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 flex-shrink-0">{fmtFileSize(f.size)}</span>
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => onRemove(i)}
+                className="flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -176,16 +345,24 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
   const [error,          setError]         = useState<string | null>(null)
   const [isPending,      startTransition]  = useTransition()
 
+  // Attachment state
+  const [attachments,    setAttachments]   = useState<TaskAttachment[]>(task.attachments ?? [])
+  const [pendingFiles,   setPendingFiles]  = useState<File[]>([])
+  const [uploading,      setUploading]     = useState(false)
+  const [uploadError,    setUploadError]   = useState<string | null>(null)
+  const [deletingId,     setDeletingId]    = useState<string | null>(null)
+
   const isAssignee  = task.assigneeId   === userId
   const isAssigner  = task.assignedById === userId
   const isFullAdmin = ['SUPER_ADMIN','CEO','MANAGER_HR','HR'].includes(role)
   const isReviewer  = ['SUPER_ADMIN','CEO','MANAGER_HR','HR','ADMIN','MANAGER','TEAM_LEADER'].includes(role)
                        && (isAssigner || isFullAdmin)
 
-  const canAct    = isAssignee || isReviewer || isFullAdmin
-  const links     = parseLinks(task.taskLinks)
-  const noteHist  = parseNotes(task.progressNotes)
-  const eff       = effectiveStatus(task)
+  const canAct       = isAssignee || isReviewer || isFullAdmin
+  const canUploadFile = isAssignee || isReviewer || isFullAdmin
+  const links        = parseLinks(task.taskLinks)
+  const noteHist     = parseNotes(task.progressNotes)
+  const eff          = effectiveStatus(task)
 
   function patch(body: Record<string, unknown>) {
     setError(null)
@@ -204,6 +381,50 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
     if (!progressInput.trim()) return
     patch({ progressNote: progressInput.trim() })
     setProgressInput('')
+  }
+
+  async function handleUploadFiles() {
+    if (!pendingFiles.length) return
+    setUploading(true)
+    setUploadError(null)
+    const uploaded: TaskAttachment[] = []
+    for (const file of pendingFiles) {
+      const fd = new FormData()
+      fd.append('file', file)
+      try {
+        const res = await fetch(`/api/tasks/${task.id}/attachments`, { method: 'POST', body: fd })
+        const json = await res.json() as { attachment?: TaskAttachment; error?: string }
+        if (!res.ok || json.error) {
+          setUploadError(json.error ?? 'อัปโหลดไม่สำเร็จ')
+          setUploading(false)
+          return
+        }
+        if (json.attachment) uploaded.push(json.attachment)
+      } catch {
+        setUploadError('เกิดข้อผิดพลาดในการอัปโหลด')
+        setUploading(false)
+        return
+      }
+    }
+    setAttachments((prev) => [...prev, ...uploaded])
+    setPendingFiles([])
+    setUploading(false)
+  }
+
+  async function handleDeleteAttachment(att: TaskAttachment) {
+    setDeletingId(att.id)
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/attachments?attachmentId=${att.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+      } else {
+        const json = await res.json() as { error?: string }
+        setUploadError(json.error ?? 'ลบไม่สำเร็จ')
+      }
+    } catch {
+      setUploadError('เกิดข้อผิดพลาด')
+    }
+    setDeletingId(null)
   }
 
   return (
@@ -281,6 +502,64 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
                 </div>
               </div>
             )}
+
+            {/* Attachments */}
+            <div>
+              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Paperclip className="w-3 h-3" />
+                ไฟล์แนบ
+                {attachments.length > 0 && (
+                  <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 text-[10px] font-bold">
+                    {attachments.length}
+                  </span>
+                )}
+              </p>
+
+              {attachments.length > 0 && (
+                <div className="space-y-1.5 mb-3">
+                  {attachments.map((att) => (
+                    <AttachmentItem
+                      key={att.id}
+                      att={att}
+                      canDelete={att.uploadedBy.id === userId || isFullAdmin}
+                      onDelete={() => handleDeleteAttachment(att)}
+                      isDeleting={deletingId === att.id}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {canUploadFile && (
+                <div className="space-y-2">
+                  <FileUploadZone
+                    pendingFiles={pendingFiles}
+                    onFilesAdded={(files) => setPendingFiles((p) => [...p, ...files])}
+                    onRemove={(i) => setPendingFiles((p) => p.filter((_, idx) => idx !== i))}
+                    uploading={uploading}
+                  />
+                  {pendingFiles.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={handleUploadFiles}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {uploading ? 'กำลังอัปโหลด...' : `อัปโหลด ${pendingFiles.length} ไฟล์`}
+                    </button>
+                  )}
+                  {uploadError && (
+                    <p className="rounded-xl text-[13px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2">
+                      {uploadError}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {!canUploadFile && attachments.length === 0 && (
+                <p className="text-[12px] text-slate-400 dark:text-slate-600 italic">ยังไม่มีไฟล์แนบ</p>
+              )}
+            </div>
 
             {task.description && (
               <div>
@@ -450,6 +729,8 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
   const [dueDate,     setDue]         = useState('')
   const [notes,       setNotes]       = useState('')
   const [links,       setLinks]       = useState<TaskLink[]>([])
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [uploading,   setUploading]   = useState(false)
   const [error,       setError]       = useState<string | null>(null)
 
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
@@ -464,6 +745,19 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
 
   function removeLink(i: number) {
     setLinks((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
+  async function uploadFiles(taskId: string): Promise<string | null> {
+    for (const file of pendingFiles) {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: 'POST', body: fd })
+      if (!res.ok) {
+        const json = await res.json() as { error?: string }
+        return json.error ?? 'อัปโหลดไฟล์ไม่สำเร็จ'
+      }
+    }
+    return null
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -499,9 +793,31 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
         }),
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
+
+      // Upload files if any
+      if (pendingFiles.length > 0) {
+        setUploading(true)
+        const uploadErr = await uploadFiles(data.task.id)
+        setUploading(false)
+        if (uploadErr) {
+          // Task created but file upload failed — still proceed, show warning
+          setError(`สร้างงานสำเร็จ แต่อัปโหลดไฟล์ไม่สำเร็จ: ${uploadErr}`)
+          onCreated(data.task)
+          return
+        }
+        // Re-fetch task to get attachments
+        const refetch = await apiJson<{ task: Task }>(`/api/tasks/${data.task.id}`, { method: 'GET' })
+        if (refetch.ok && refetch.data.task) {
+          onCreated(refetch.data.task)
+          return
+        }
+      }
+
       onCreated(data.task)
     })
   }
+
+  const isSubmitting = isPending || uploading
 
   return (
     <>
@@ -608,7 +924,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
               {/* Links section */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[12px] text-slate-500 dark:text-slate-400">ลิงก์ที่เกี่ยวข้อง</label>
+                  <label className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</label>
                   <button type="button" onClick={addLink}
                     className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
                     <Plus className="w-3.5 h-3.5" />
@@ -645,6 +961,27 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
                 )}
               </div>
 
+              {/* Files section */}
+              <div>
+                <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <Paperclip className="w-3.5 h-3.5" />
+                    แนบไฟล์งาน
+                  </span>
+                </label>
+                <FileUploadZone
+                  pendingFiles={pendingFiles}
+                  onFilesAdded={(files) => setPendingFiles((p) => [...p, ...files])}
+                  onRemove={(i) => setPendingFiles((p) => p.filter((_, idx) => idx !== i))}
+                  uploading={isSubmitting}
+                />
+                {pendingFiles.length > 0 && (
+                  <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                    ไฟล์จะถูกอัปโหลดพร้อมกับการสร้างงาน
+                  </p>
+                )}
+              </div>
+
               {error && (
                 <p className="rounded-xl text-[13px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2">
                   {error}
@@ -654,11 +991,13 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
 
             {/* Sticky footer */}
             <div className="sticky bottom-0 px-5 pb-5 pt-3 border-t border-slate-100 dark:border-white/[0.06] bg-white dark:bg-slate-900">
-              <button type="submit" disabled={isPending}
+              <button type="submit" disabled={isSubmitting}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold text-white shadow-sm transition-all disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
-                {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                มอบหมายงาน
+                {isSubmitting
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />{uploading ? 'กำลังอัปโหลดไฟล์...' : 'กำลังสร้างงาน...'}</>
+                  : <><Plus className="w-4 h-4" />มอบหมายงาน</>
+                }
               </button>
             </div>
           </form>
@@ -726,9 +1065,17 @@ function TaskRow({
         <p className="text-[13px] font-semibold text-slate-900 dark:text-white leading-snug max-w-[200px] truncate">
           {task.title}
         </p>
-        {task.description && (
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[200px]">{task.description}</p>
-        )}
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {task.description && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[180px]">{task.description}</p>
+          )}
+          {task.attachments.length > 0 && (
+            <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+              <Paperclip className="w-2.5 h-2.5" />
+              {task.attachments.length}
+            </span>
+          )}
+        </div>
       </td>
 
       {/* ประเภทงาน */}
