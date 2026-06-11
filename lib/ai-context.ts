@@ -24,7 +24,7 @@ async function ctxCeoHr(): Promise<string> {
   const ago30 = new Date(now.getTime() - 30 * 86400_000)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary] = await Promise.all([
+  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary, billingSummary] = await Promise.all([
     prisma.taskAssignment.findMany({
       where: { createdAt: { gte: ago30 } },
       include: { assignee: { select: { name: true, department: true } } },
@@ -49,6 +49,12 @@ async function ctxCeoHr(): Promise<string> {
       prisma.clientContract.count({
         where: { status: 'ACTIVE', endDate: { lte: new Date(now.getTime() + 30 * 86400_000), gte: now } },
       }),
+    ]),
+    Promise.all([
+      prisma.billingInvoice.aggregate({ where: { status: { notIn: ['PAID', 'CANCELLED', 'DRAFT'] } }, _sum: { remainingAmount: true }, _count: { id: true } }),
+      prisma.billingInvoice.aggregate({ where: { status: 'PAID', updatedAt: { gte: startOfMonth } }, _sum: { paidAmount: true } }),
+      prisma.billingInvoice.count({ where: { status: 'OVERDUE' } }),
+      prisma.billingInvoice.count({ where: { status: { notIn: ['PAID', 'CANCELLED', 'DRAFT'] }, dueDate: { lt: now } } }),
     ]),
   ])
 
@@ -81,6 +87,10 @@ async function ctxCeoHr(): Promise<string> {
 
   const [clientTotal, clientActive, contractActive, contractValue, expiring30] = clientSummary
   const contractValueTotal = contractValue._sum.value ?? 0
+
+  const [billingOutstanding, billingMonthRevenue, billingOverdue, billingOverdueCount] = billingSummary
+  const totalOutstanding = billingOutstanding._sum.remainingAmount ?? 0
+  const monthBillingRev  = billingMonthRevenue._sum.paidAmount ?? 0
 
   return [
     `=== สรุปภาพรวมบริษัท (30 วันล่าสุด) ===`,
@@ -119,6 +129,11 @@ async function ctxCeoHr(): Promise<string> {
     `ลูกค้าทั้งหมด: ${clientTotal} บริษัท (ใช้งาน: ${clientActive})`,
     `สัญญามีผล: ${contractActive} ฉบับ | มูลค่า: ฿${contractValueTotal.toLocaleString('th-TH')}`,
     `สัญญาหมดอายุใน 30 วัน: ${expiring30} ฉบับ`,
+    ``,
+    `=== ใบแจ้งหนี้ (Billing) ===`,
+    `รายรับเดือนนี้: ฿${monthBillingRev.toLocaleString('th-TH')}`,
+    `ยอดค้างชำระรวม: ฿${totalOutstanding.toLocaleString('th-TH')} (${billingOutstanding._count.id} ใบ)`,
+    `ใบแจ้งหนี้เกินกำหนด: ${billingOverdueCount} ใบ`,
   ].join('\n')
 }
 

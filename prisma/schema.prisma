@@ -136,6 +136,10 @@ enum NotificationType {
   DEBT_PAYMENT_RECEIVED
   // Phase 9 — Client CRM
   CONTRACT_EXPIRING
+  // Phase 10 — Billing
+  INVOICE_CREATED
+  INVOICE_REMINDER
+  INVOICE_OVERDUE
 }
 
 enum TaskStatus {
@@ -430,6 +434,12 @@ model User {
   clientContractsCreated    ClientContract[]       @relation("ClientContractCreator")
   clientSlaRecords          ClientSlaRecord[]      @relation("SlaRecordCreator")
   clientCompanyFilesCreated ClientCompanyFile[]    @relation("ClientCompanyFileCreator")
+  // Phase 10 — Billing
+  invoicesCreated           BillingInvoice[]       @relation("InvoiceCreator")
+  invoicesApproved          BillingInvoice[]       @relation("InvoiceApprover")
+  billingPaymentsReceived   BillingPayment[]       @relation("BillingPaymentReceiver")
+  billingPaymentsCreated    BillingPayment[]       @relation("BillingPaymentCreator")
+  billingReceiptsCreated    BillingReceipt[]       @relation("BillingReceiptCreator")
 
   @@map("users")
 }
@@ -1252,6 +1262,7 @@ model TaskAssignment {
   expenseClaims   ExpenseClaim[]
   debtors         Debtor[]
   slaRecords      ClientSlaRecord[]
+  billingInvoices BillingInvoice[]
 
   @@map("task_assignments")
 }
@@ -1622,6 +1633,7 @@ model ClientCompany {
   slaRecords ClientSlaRecord[]
   files      ClientCompanyFile[]
   tasks      TaskAssignment[]
+  invoices   BillingInvoice[]
 
   @@index([status])
   @@map("client_companies")
@@ -1696,3 +1708,95 @@ model ClientCompanyFile {
   @@index([clientCompanyId])
   @@map("client_company_files")
 }
+
+// ── PHASE 10 — BILLING & INVOICE MANAGEMENT ────────────────────────────────
+
+model BillingInvoice {
+  id              String    @id @default(cuid())
+  invoiceNumber   String    @unique @map("invoice_number")
+  clientCompanyId String?   @map("client_company_id")
+  clientName      String    @map("client_name")
+  clientTaxId     String?   @map("client_tax_id")
+  clientAddress   String?   @map("client_address")
+  taskId          String?   @map("task_id")
+  serviceType     String    @map("service_type")
+  lineItems       String    @default("[]") @map("line_items")
+  subtotal        Float     @default(0)
+  vatRate         Float     @default(0.07) @map("vat_rate")
+  vatAmount       Float     @default(0) @map("vat_amount")
+  whtRate         Float     @default(0) @map("wht_rate")
+  whtAmount       Float     @default(0) @map("wht_amount")
+  totalAmount     Float     @default(0) @map("total_amount")
+  status          String    @default("DRAFT")
+  issueDate       DateTime  @map("issue_date")
+  dueDate         DateTime  @map("due_date")
+  paidAmount      Float     @default(0) @map("paid_amount")
+  remainingAmount Float     @default(0) @map("remaining_amount")
+  note            String?
+  createdById     String    @map("created_by_id")
+  approvedById    String?   @map("approved_by_id")
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  clientCompany ClientCompany?   @relation(fields: [clientCompanyId], references: [id])
+  task          TaskAssignment?  @relation(fields: [taskId],          references: [id])
+  createdBy     User             @relation("InvoiceCreator",  fields: [createdById],  references: [id])
+  approvedBy    User?            @relation("InvoiceApprover", fields: [approvedById], references: [id])
+  payments      BillingPayment[]
+  receipts      BillingReceipt[]
+
+  @@index([status])
+  @@index([clientCompanyId])
+  @@index([dueDate])
+  @@map("billing_invoices")
+}
+
+model BillingPayment {
+  id            String   @id @default(cuid())
+  invoiceId     String   @map("invoice_id")
+  amount        Float
+  paidAt        DateTime @map("paid_at")
+  paymentMethod String   @map("payment_method")
+  bankAccount   String?  @map("bank_account")
+  slipUrl       String?  @map("slip_url")
+  slipPublicId  String?  @map("slip_public_id")
+  receivedById  String?  @map("received_by_id")
+  note          String?
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  invoice    BillingInvoice @relation(fields: [invoiceId],    references: [id], onDelete: Cascade)
+  receivedBy User?          @relation("BillingPaymentReceiver", fields: [receivedById], references: [id])
+  createdBy  User           @relation("BillingPaymentCreator",  fields: [createdById],  references: [id])
+  receipts   BillingReceipt[]
+
+  @@index([invoiceId])
+  @@map("billing_payments")
+}
+
+model BillingReceipt {
+  id            String   @id @default(cuid())
+  receiptNumber String   @unique @map("receipt_number")
+  invoiceId     String   @map("invoice_id")
+  paymentId     String?  @map("payment_id")
+  amount        Float
+  vatAmount     Float    @default(0) @map("vat_amount")
+  whtAmount     Float    @default(0) @map("wht_amount")
+  totalAmount   Float    @map("total_amount")
+  receiverName  String   @map("receiver_name")
+  issuedAt      DateTime @map("issued_at")
+  note          String?
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  invoice   BillingInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment   BillingPayment? @relation(fields: [paymentId], references: [id])
+  createdBy User            @relation("BillingReceiptCreator", fields: [createdById], references: [id])
+
+  @@index([invoiceId])
+  @@map("billing_receipts")
+}
+
+// Add back-relation from TaskAssignment to BillingInvoice
+// (handled via BillingInvoice.task relation above — TaskAssignment gets invoices[] back-relation below)
