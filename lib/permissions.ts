@@ -67,6 +67,11 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/debtors':                 ALL_ROLES,
   '/debt-followup':           ALL_ROLES,
   '/payment-appointments':    ALL_ROLES,
+  // Phase 9 — Client CRM
+  '/client-companies':        APPR_ROLES,
+  '/contracts':               APPR_ROLES,
+  '/client-history':          APPR_ROLES,
+  '/forgot-scan':             ALL_ROLES,
   '/client-portal':      CLIENT_ROLE,
   '/unauthorized':       [...ALL_ROLES, 'CLIENT'],
 }

@@ -134,6 +134,8 @@ enum NotificationType {
   DEBT_APPOINTMENT_DUE
   DEBT_APPOINTMENT_MISSED
   DEBT_PAYMENT_RECEIVED
+  // Phase 9 — Client CRM
+  CONTRACT_EXPIRING
 }
 
 enum TaskStatus {
@@ -423,6 +425,11 @@ model User {
   debtPaymentsCreated       DebtPayment[]          @relation("PaymentCreator")
   paymentAppointmentsCreated PaymentAppointment[]  @relation("AppointmentCreator")
   debtorFilesCreated        DebtorFile[]           @relation("DebtorFileCreator")
+  // Phase 9 — Client CRM
+  clientCompaniesCreated    ClientCompany[]        @relation("ClientCompanyCreator")
+  clientContractsCreated    ClientContract[]       @relation("ClientContractCreator")
+  clientSlaRecords          ClientSlaRecord[]      @relation("SlaRecordCreator")
+  clientCompanyFilesCreated ClientCompanyFile[]    @relation("ClientCompanyFileCreator")
 
   @@map("users")
 }
@@ -1226,6 +1233,8 @@ model TaskAssignment {
 
   // Phase 5 — client portal link
   clientId         String?   @map("client_id")
+  // Phase 9 — Client CRM
+  clientCompanyId  String?   @map("client_company_id")
 
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -1234,6 +1243,7 @@ model TaskAssignment {
   assignedBy      User              @relation("TaskAssigner", fields: [assignedById], references: [id])
   reviewedBy      User?             @relation("TaskReviewer", fields: [reviewedById], references: [id])
   client          User?             @relation("TaskClient",   fields: [clientId],     references: [id])
+  clientCompany   ClientCompany?    @relation(fields: [clientCompanyId], references: [id])
   attachments     TaskAttachment[]
   statusHistories CaseStatusHistory[]
   clientMessages  ClientMessage[]
@@ -1241,6 +1251,7 @@ model TaskAssignment {
   caseExpenses    CaseExpense[]
   expenseClaims   ExpenseClaim[]
   debtors         Debtor[]
+  slaRecords      ClientSlaRecord[]
 
   @@map("task_assignments")
 }
@@ -1582,4 +1593,106 @@ model DebtorFile {
 
   @@index([debtorId])
   @@map("debtor_files")
+}
+
+// ── PHASE 9 — CLIENT CRM ────────────────────────────────────────
+
+model ClientCompany {
+  id          String    @id @default(cuid())
+  clientCode  String    @unique @map("client_code")
+  companyName String    @map("company_name")
+  contactName String?   @map("contact_name")
+  phone       String?
+  email       String?
+  lineId      String?   @map("line_id")
+  address     String?
+  taxId       String?   @map("tax_id")
+  clientType  String    @default("CORPORATE") @map("client_type")
+  status      String    @default("ACTIVE")
+  creditLimit Float?    @map("credit_limit")
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  note        String?
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy  User                @relation("ClientCompanyCreator", fields: [createdById], references: [id])
+  contracts  ClientContract[]
+  slaRecords ClientSlaRecord[]
+  files      ClientCompanyFile[]
+  tasks      TaskAssignment[]
+
+  @@index([status])
+  @@map("client_companies")
+}
+
+model ClientContract {
+  id              String   @id @default(cuid())
+  clientCompanyId String   @map("client_company_id")
+  contractNumber  String   @unique @map("contract_number")
+  serviceType     String   @map("service_type")
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  value           Float    @default(0)
+  slaAgreement    String?  @map("sla_agreement")
+  paymentTerms    String?  @map("payment_terms")
+  status          String   @default("ACTIVE")
+  note            String?
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clientCompany ClientCompany       @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  createdBy     User                @relation("ClientContractCreator",  fields: [createdById], references: [id])
+  files         ClientCompanyFile[]
+  slaRecords    ClientSlaRecord[]
+
+  @@index([clientCompanyId])
+  @@index([endDate])
+  @@map("client_contracts")
+}
+
+model ClientSlaRecord {
+  id              String    @id @default(cuid())
+  clientCompanyId String    @map("client_company_id")
+  contractId      String?   @map("contract_id")
+  taskId          String?   @map("task_id")
+  slaType         String    @map("sla_type")
+  targetHours     Float     @map("target_hours")
+  actualHours     Float?    @map("actual_hours")
+  met             Boolean?
+  note            String?
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now())
+  resolvedAt      DateTime? @map("resolved_at")
+
+  clientCompany ClientCompany   @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  contract      ClientContract? @relation(fields: [contractId],      references: [id])
+  task          TaskAssignment? @relation(fields: [taskId],          references: [id])
+  createdBy     User            @relation("SlaRecordCreator",        fields: [createdById], references: [id])
+
+  @@index([clientCompanyId])
+  @@map("client_sla_records")
+}
+
+model ClientCompanyFile {
+  id              String   @id @default(cuid())
+  clientCompanyId String   @map("client_company_id")
+  contractId      String?  @map("contract_id")
+  url             String
+  publicId        String   @default("") @map("public_id")
+  filename        String
+  fileType        String   @map("file_type")
+  size            Int      @default(0)
+  docType         String   @default("OTHER") @map("doc_type")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now())
+
+  clientCompany ClientCompany   @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  contract      ClientContract? @relation(fields: [contractId],      references: [id])
+  createdBy     User            @relation("ClientCompanyFileCreator", fields: [createdById], references: [id])
+
+  @@index([clientCompanyId])
+  @@map("client_company_files")
 }

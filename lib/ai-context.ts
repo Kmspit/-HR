@@ -24,7 +24,7 @@ async function ctxCeoHr(): Promise<string> {
   const ago30 = new Date(now.getTime() - 30 * 86400_000)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary] = await Promise.all([
+  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary] = await Promise.all([
     prisma.taskAssignment.findMany({
       where: { createdAt: { gte: ago30 } },
       include: { assignee: { select: { name: true, department: true } } },
@@ -40,6 +40,15 @@ async function ctxCeoHr(): Promise<string> {
       prisma.debtor.aggregate({ _sum: { totalDebt: true, paidAmount: true, remainingDebt: true } }),
       prisma.debtor.groupBy({ by: ['status'], _count: { id: true } }),
       prisma.paymentAppointment.count({ where: { appointDate: { lt: now }, status: 'PENDING' } }),
+    ]),
+    Promise.all([
+      prisma.clientCompany.count(),
+      prisma.clientCompany.count({ where: { status: 'ACTIVE' } }),
+      prisma.clientContract.count({ where: { status: 'ACTIVE' } }),
+      prisma.clientContract.aggregate({ where: { status: 'ACTIVE' }, _sum: { value: true } }),
+      prisma.clientContract.count({
+        where: { status: 'ACTIVE', endDate: { lte: new Date(now.getTime() + 30 * 86400_000), gte: now } },
+      }),
     ]),
   ])
 
@@ -69,6 +78,9 @@ async function ctxCeoHr(): Promise<string> {
 
   const [debtCount, debtAgg, debtByStatus, overdueAppts] = debtSummary
   const debtStatusList = debtByStatus.map((r) => `  ${r.status}: ${r._count.id} ราย`).join('\n')
+
+  const [clientTotal, clientActive, contractActive, contractValue, expiring30] = clientSummary
+  const contractValueTotal = contractValue._sum.value ?? 0
 
   return [
     `=== สรุปภาพรวมบริษัท (30 วันล่าสุด) ===`,
@@ -102,6 +114,11 @@ async function ctxCeoHr(): Promise<string> {
     `คงค้าง: ฿${(debtAgg._sum.remainingDebt ?? 0).toLocaleString('th-TH')}`,
     `ผิดนัดชำระ (ค้าง): ${overdueAppts} นัด`,
     debtStatusList || '  (ไม่มีข้อมูล)',
+    ``,
+    `=== ลูกค้าองค์กร (Client CRM) ===`,
+    `ลูกค้าทั้งหมด: ${clientTotal} บริษัท (ใช้งาน: ${clientActive})`,
+    `สัญญามีผล: ${contractActive} ฉบับ | มูลค่า: ฿${contractValueTotal.toLocaleString('th-TH')}`,
+    `สัญญาหมดอายุใน 30 วัน: ${expiring30} ฉบับ`,
   ].join('\n')
 }
 
