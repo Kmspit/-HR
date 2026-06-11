@@ -140,6 +140,13 @@ enum NotificationType {
   INVOICE_CREATED
   INVOICE_REMINDER
   INVOICE_OVERDUE
+  // Phase 11 — Approval 2.0
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_REJECTED
+  APPROVAL_REVISION
+  SIGNATURE_REQUIRED
+  APPROVAL_SIGNED
 }
 
 enum TaskStatus {
@@ -440,6 +447,12 @@ model User {
   billingPaymentsReceived   BillingPayment[]       @relation("BillingPaymentReceiver")
   billingPaymentsCreated    BillingPayment[]       @relation("BillingPaymentCreator")
   billingReceiptsCreated    BillingReceipt[]       @relation("BillingReceiptCreator")
+  // Phase 11 — Approval 2.0
+  activityLogs              ActivityLog[]          @relation("ActivityLogActor")
+  digitalSignatures         DigitalSignature[]     @relation("DigitalSignatureUser")
+  approvalRequestsMade      ApprovalRequest[]      @relation("ApprovalRequester")
+  approvalStepsAssigned     ApprovalRequestStep[]  @relation("StepApprover")
+  approvalStepActions       ApprovalRequestStep[]  @relation("StepActor")
 
   @@map("users")
 }
@@ -1800,3 +1813,96 @@ model BillingReceipt {
 
 // Add back-relation from TaskAssignment to BillingInvoice
 // (handled via BillingInvoice.task relation above — TaskAssignment gets invoices[] back-relation below)
+
+// ── PHASE 11 — APPROVAL FLOW 2.0 ────────────────────────────────────────────
+
+model ApprovalRequest {
+  id            String   @id @default(cuid())
+  docType       String   @map("doc_type")
+  docId         String   @map("doc_id")
+  docRef        String?  @map("doc_ref")
+  title         String
+  requestedById String   @map("requested_by_id")
+  amount        Float?
+  currentStep   Int      @default(1) @map("current_step")
+  totalSteps    Int      @default(1) @map("total_steps")
+  status        String   @default("PENDING")
+  priority      String   @default("NORMAL")
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  requestedBy User                  @relation("ApprovalRequester", fields: [requestedById], references: [id])
+  steps       ApprovalRequestStep[]
+
+  @@index([status])
+  @@index([docType, docId])
+  @@map("approval_requests")
+}
+
+model ApprovalRequestStep {
+  id           String    @id @default(cuid())
+  requestId    String    @map("request_id")
+  stepOrder    Int       @map("step_order")
+  stepName     String    @map("step_name")
+  approverRole String?   @map("approver_role")
+  approverId   String?   @map("approver_id")
+  status       String    @default("PENDING")
+  actorId      String?   @map("actor_id")
+  comment      String?
+  ip           String?
+  actedAt      DateTime? @map("acted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  request  ApprovalRequest @relation(fields: [requestId],  references: [id], onDelete: Cascade)
+  approver User?           @relation("StepApprover",       fields: [approverId], references: [id])
+  actor    User?           @relation("StepActor",          fields: [actorId],    references: [id])
+
+  @@index([requestId])
+  @@map("approval_request_steps")
+}
+
+model DigitalSignature {
+  id             String   @id @default(cuid())
+  signedById     String   @map("signed_by_id")
+  signerName     String   @map("signer_name")
+  signerPosition String?  @map("signer_position")
+  signerRole     String   @map("signer_role")
+  signatureType  String   @default("TYPED") @map("signature_type")
+  signatureData  String?  @map("signature_data")
+  signatureUrl   String?  @map("signature_url")
+  typedName      String?  @map("typed_name")
+  docType        String   @map("doc_type")
+  docId          String   @map("doc_id")
+  ip             String?
+  userAgent      String?
+  signedAt       DateTime @default(now()) @map("signed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  signedBy User @relation("DigitalSignatureUser", fields: [signedById], references: [id])
+
+  @@index([docType, docId])
+  @@map("digital_signatures")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  actorId     String   @map("actor_id")
+  actorName   String   @map("actor_name")
+  docType     String   @map("doc_type")
+  docId       String   @map("doc_id")
+  docRef      String?  @map("doc_ref")
+  action      String
+  detail      String?
+  beforeValue String?  @map("before_value")
+  afterValue  String?  @map("after_value")
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User @relation("ActivityLogActor", fields: [actorId], references: [id])
+
+  @@index([docType, docId])
+  @@index([actorId])
+  @@map("activity_logs")
+}
