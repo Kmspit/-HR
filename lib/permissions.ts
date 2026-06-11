@@ -58,6 +58,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/performance':        ALL_ROLES,
   '/case-documents':     ALL_ROLES,
   '/clients':            CLIENT_MGMT_ROLES,
+  '/ai-assistant':       ALL_ROLES,
   '/client-portal':      CLIENT_ROLE,
   '/unauthorized':       [...ALL_ROLES, 'CLIENT'],
 }

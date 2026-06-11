@@ -41,6 +41,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
     "@expo-google-fonts/noto-sans-thai": "^0.4.2",
     "@fontsource/noto-sans-thai": "^5.2.8",
     "@libsql/client": "^0.14.0",
