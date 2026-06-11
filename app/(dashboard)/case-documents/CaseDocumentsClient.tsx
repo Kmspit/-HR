@@ -573,8 +573,9 @@ export default function CaseDocumentsClient({ userId, userName, userRole }: Prop
 
       {/* ══ Create Modal ══════════════════════════════════════════════════════ */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800 text-lg">เพิ่มเอกสารใหม่</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
@@ -633,12 +634,14 @@ export default function CaseDocumentsClient({ userId, userName, userRole }: Prop
               </div>
             </form>
           </div>
+          </div>
         </div>
       )}
 
       {/* ══ Upload File Modal ═════════════════════════════════════════════════ */}
       {showUpload && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800">อัพโหลดไฟล์ — {selected.title}</h2>
             <div
@@ -666,13 +669,15 @@ export default function CaseDocumentsClient({ userId, userName, userRole }: Prop
               </button>
             </div>
           </div>
+          </div>
         </div>
       )}
 
       {/* ══ Sign Modal ════════════════════════════════════════════════════════ */}
       {showSign && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800">ลงลายมือชื่อ — {selected.title}</h2>
 
             {/* Sign type selector */}
@@ -731,6 +736,7 @@ export default function CaseDocumentsClient({ userId, userName, userRole }: Prop
                 {signing ? 'กำลังบันทึก...' : 'ยืนยันลายมือชื่อ'}
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}

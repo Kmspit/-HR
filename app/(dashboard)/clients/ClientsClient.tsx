@@ -276,7 +276,8 @@ export default function ClientsClient({ userRole }: Props) {
 
       {/* ── Create Modal ── */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800">เพิ่มบัญชีลูกค้า</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
@@ -305,12 +306,14 @@ export default function ClientsClient({ userRole }: Props) {
               </div>
             </form>
           </div>
+          </div>
         </div>
       )}
 
       {/* ── Status History Modal ── */}
       {showHistory && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800 text-sm">อัพเดทสถานะคดี (ลูกค้าจะเห็น)</h2>
             <div className="text-xs text-gray-500">{showHistory.taskTitle}</div>
@@ -340,12 +343,14 @@ export default function ClientsClient({ userRole }: Props) {
               </div>
             </form>
           </div>
+          </div>
         </div>
       )}
 
       {/* ── Link Task Modal ── */}
       {showLinkTask && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]">
             <h2 className="font-semibold text-gray-800">เลือกคดีที่จะเชื่อม</h2>
             <div className="flex gap-2">
@@ -366,6 +371,7 @@ export default function ClientsClient({ userRole }: Props) {
               {availableTasks.length === 0 && <div className="text-center text-gray-400 text-sm py-4">ค้นหาคดีก่อน</div>}
             </div>
             <button onClick={() => setShowLinkTask(false)} className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600">ปิด</button>
+          </div>
           </div>
         </div>
       )}
