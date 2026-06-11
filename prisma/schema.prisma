@@ -130,6 +130,10 @@ enum NotificationType {
   EXPENSE_CLAIM_APPROVED
   EXPENSE_CLAIM_REJECTED
   EXPENSE_CLAIM_PAID
+  // Phase 8 — Debt Collection CRM
+  DEBT_APPOINTMENT_DUE
+  DEBT_APPOINTMENT_MISSED
+  DEBT_PAYMENT_RECEIVED
 }
 
 enum TaskStatus {
@@ -411,6 +415,14 @@ model User {
   caseExpensesAsEmp         CaseExpense[]          @relation("CaseExpenseEmployee")
   caseExpensesCreated       CaseExpense[]          @relation("CaseExpenseCreator")
   expenseClaimsSubmitted    ExpenseClaim[]         @relation("ClaimSubmitter")
+  // Phase 8 — Debt Collection CRM
+  debtorsAssigned           Debtor[]               @relation("DebtorAssignee")
+  debtorsCreated            Debtor[]               @relation("DebtorCreator")
+  debtFollowUps             DebtFollowUp[]         @relation("FollowUpPerformer")
+  debtPaymentsReceived      DebtPayment[]          @relation("PaymentReceiver")
+  debtPaymentsCreated       DebtPayment[]          @relation("PaymentCreator")
+  paymentAppointmentsCreated PaymentAppointment[]  @relation("AppointmentCreator")
+  debtorFilesCreated        DebtorFile[]           @relation("DebtorFileCreator")
 
   @@map("users")
 }
@@ -1228,6 +1240,7 @@ model TaskAssignment {
   caseIncomes     CaseIncome[]
   caseExpenses    CaseExpense[]
   expenseClaims   ExpenseClaim[]
+  debtors         Debtor[]
 
   @@map("task_assignments")
 }
@@ -1450,4 +1463,123 @@ model ExpenseClaimFile {
   claim ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@map("expense_claim_files")
+}
+
+// ── PHASE 8 — DEBT COLLECTION CRM ────────────────────────────
+
+model Debtor {
+  id            String    @id @default(cuid())
+  debtorNumber  String    @unique @map("debtor_number")
+  caseNumber    String?   @map("case_number")
+  taskId        String?   @map("task_id")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  nationalId    String?   @map("national_id")
+  phone         String?
+  phone2        String?
+  lineId        String?   @map("line_id")
+  email         String?
+  address       String?
+  province      String?
+  assignedToId  String?   @map("assigned_to_id")
+  status        String    @default("NEW")
+  totalDebt     Float     @default(0) @map("total_debt")
+  paidAmount    Float     @default(0) @map("paid_amount")
+  remainingDebt Float     @default(0) @map("remaining_debt")
+  startDate     DateTime? @map("start_date")
+  note          String?
+  createdById   String    @map("created_by_id")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  task         TaskAssignment?      @relation(fields: [taskId],      references: [id])
+  assignedTo   User?                @relation("DebtorAssignee",      fields: [assignedToId], references: [id])
+  createdBy    User                 @relation("DebtorCreator",       fields: [createdById],  references: [id])
+  followUps    DebtFollowUp[]
+  payments     DebtPayment[]
+  appointments PaymentAppointment[]
+  files        DebtorFile[]
+
+  @@index([status])
+  @@index([assignedToId])
+  @@map("debtors")
+}
+
+model DebtFollowUp {
+  id            String    @id @default(cuid())
+  debtorId      String    @map("debtor_id")
+  method        String
+  followedAt    DateTime  @map("followed_at")
+  result        String
+  note          String?
+  nextFollowUp  DateTime? @map("next_follow_up")
+  performedById String    @map("performed_by_id")
+  createdAt     DateTime  @default(now())
+
+  debtor      Debtor @relation(fields: [debtorId],      references: [id], onDelete: Cascade)
+  performedBy User   @relation("FollowUpPerformer",     fields: [performedById], references: [id])
+
+  @@index([debtorId])
+  @@index([followedAt])
+  @@map("debt_follow_ups")
+}
+
+model DebtPayment {
+  id           String   @id @default(cuid())
+  debtorId     String   @map("debtor_id")
+  amount       Float
+  paidAt       DateTime @map("paid_at")
+  channel      String
+  receivedById String?  @map("received_by_id")
+  slipUrl      String?  @map("slip_url")
+  slipPublicId String?  @map("slip_public_id")
+  note         String?
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now())
+
+  debtor     Debtor @relation(fields: [debtorId],    references: [id], onDelete: Cascade)
+  receivedBy User?  @relation("PaymentReceiver",     fields: [receivedById], references: [id])
+  createdBy  User   @relation("PaymentCreator",      fields: [createdById],  references: [id])
+
+  @@index([debtorId])
+  @@map("debt_payments")
+}
+
+model PaymentAppointment {
+  id           String   @id @default(cuid())
+  debtorId     String   @map("debtor_id")
+  appointDate  DateTime @map("appoint_date")
+  agreedAmount Float    @map("agreed_amount")
+  location     String?
+  note         String?
+  status       String   @default("PENDING")
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  debtor    Debtor @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
+  createdBy User   @relation("AppointmentCreator", fields: [createdById], references: [id])
+
+  @@index([debtorId])
+  @@index([appointDate])
+  @@map("payment_appointments")
+}
+
+model DebtorFile {
+  id          String   @id @default(cuid())
+  debtorId    String   @map("debtor_id")
+  url         String
+  publicId    String   @default("") @map("public_id")
+  filename    String
+  fileType    String   @map("file_type")
+  size        Int      @default(0)
+  docType     String   @default("OTHER") @map("doc_type")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now())
+
+  debtor    Debtor @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
+  createdBy User   @relation("DebtorFileCreator",  fields: [createdById], references: [id])
+
+  @@index([debtorId])
+  @@map("debtor_files")
 }

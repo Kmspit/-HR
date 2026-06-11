@@ -24,7 +24,7 @@ async function ctxCeoHr(): Promise<string> {
   const ago30 = new Date(now.getTime() - 30 * 86400_000)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims] = await Promise.all([
+  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary] = await Promise.all([
     prisma.taskAssignment.findMany({
       where: { createdAt: { gte: ago30 } },
       include: { assignee: { select: { name: true, department: true } } },
@@ -35,6 +35,12 @@ async function ctxCeoHr(): Promise<string> {
     prisma.caseIncome.aggregate({ where: { date: { gte: startOfMonth } }, _sum: { amount: true } }),
     prisma.caseExpense.aggregate({ where: { date: { gte: startOfMonth } }, _sum: { amount: true } }),
     prisma.expenseClaim.findMany({ where: { status: { in: ['PENDING', 'SUPERVISOR_APPROVED'] } }, select: { title: true, amount: true, submittedBy: { select: { name: true } } }, take: 10 }),
+    Promise.all([
+      prisma.debtor.count(),
+      prisma.debtor.aggregate({ _sum: { totalDebt: true, paidAmount: true, remainingDebt: true } }),
+      prisma.debtor.groupBy({ by: ['status'], _count: { id: true } }),
+      prisma.paymentAppointment.count({ where: { appointDate: { lt: now }, status: 'PENDING' } }),
+    ]),
   ])
 
   const overdue     = tasks.filter((t) => t.dueDate && t.dueDate < now && t.status !== 'COMPLETED')
@@ -61,6 +67,9 @@ async function ctxCeoHr(): Promise<string> {
   const totalExpense = monthExpenses._sum.amount ?? 0
   const claimList    = pendingClaims.map((c) => `  - ${c.title} (${c.submittedBy.name}) ฿${c.amount.toLocaleString('th-TH')}`).join('\n')
 
+  const [debtCount, debtAgg, debtByStatus, overdueAppts] = debtSummary
+  const debtStatusList = debtByStatus.map((r) => `  ${r.status}: ${r._count.id} ราย`).join('\n')
+
   return [
     `=== สรุปภาพรวมบริษัท (30 วันล่าสุด) ===`,
     `งานทั้งหมด: ${tasks.length} รายการ`,
@@ -85,6 +94,14 @@ async function ctxCeoHr(): Promise<string> {
     ``,
     `=== นัดศาลใน 7 วัน ===`,
     courtList || '  (ไม่มีนัดศาล)',
+    ``,
+    `=== ลูกหนี้ (Debt CRM) ===`,
+    `ลูกหนี้ทั้งหมด: ${debtCount} ราย`,
+    `หนี้รวม: ฿${(debtAgg._sum.totalDebt ?? 0).toLocaleString('th-TH')}`,
+    `เก็บได้แล้ว: ฿${(debtAgg._sum.paidAmount ?? 0).toLocaleString('th-TH')}`,
+    `คงค้าง: ฿${(debtAgg._sum.remainingDebt ?? 0).toLocaleString('th-TH')}`,
+    `ผิดนัดชำระ (ค้าง): ${overdueAppts} นัด`,
+    debtStatusList || '  (ไม่มีข้อมูล)',
   ].join('\n')
 }
 
