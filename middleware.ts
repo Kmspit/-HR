@@ -53,6 +53,16 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.redirect(url)
   }
 
+  // CLIENT role: can only access /client-portal/** — redirect everything else
+  if (role === 'CLIENT') {
+    if (pathname.startsWith('/client-portal') || pathname === '/unauthorized') {
+      return NextResponse.next()
+    }
+    const url = req.nextUrl.clone()
+    url.pathname = '/client-portal'
+    return NextResponse.redirect(url)
+  }
+
   // Logged-in user tries to visit auth pages → redirect to their dashboard
   if (isAuth) {
     const url = req.nextUrl.clone()

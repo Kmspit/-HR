@@ -23,6 +23,7 @@ enum Role {
   EMPLOYEE     // regular employee
   LAWYER       // legal / weekly plans
   ENFORCEMENT  // enforcement officer — can issue warnings
+  CLIENT       // Phase 5 — external client portal access
 }
 
 enum AppPermission {
@@ -394,6 +395,12 @@ model User {
   caseDocFiles              CaseDocumentFile[]     @relation("CaseDocFileUploader")
   caseDocSigns              CaseDocumentSignature[] @relation("CaseDocSigner")
   caseDocVersions           CaseDocumentVersion[]  @relation("CaseDocVersioner")
+  // Phase 5 — Client Portal
+  clientTasks               TaskAssignment[]       @relation("TaskClient")
+  clientDocs                CaseDocument[]         @relation("DocClient")
+  clientMsgsAsClient        ClientMessage[]        @relation("ClientMessages")
+  clientMsgsAsSender        ClientMessage[]        @relation("MessageSender")
+  caseStatusChanges         CaseStatusHistory[]    @relation("StatusHistoryChanger")
 
   @@map("users")
 }
@@ -1195,13 +1202,19 @@ model TaskAssignment {
   courtDate        DateTime? @map("court_date")
   appointmentPlace String?   @map("appointment_place")
 
+  // Phase 5 — client portal link
+  clientId         String?   @map("client_id")
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  assignee     User             @relation("TaskAssignee", fields: [assigneeId],   references: [id])
-  assignedBy   User             @relation("TaskAssigner", fields: [assignedById], references: [id])
-  reviewedBy   User?            @relation("TaskReviewer", fields: [reviewedById], references: [id])
-  attachments  TaskAttachment[]
+  assignee        User              @relation("TaskAssignee", fields: [assigneeId],   references: [id])
+  assignedBy      User              @relation("TaskAssigner", fields: [assignedById], references: [id])
+  reviewedBy      User?             @relation("TaskReviewer", fields: [reviewedById], references: [id])
+  client          User?             @relation("TaskClient",   fields: [clientId],     references: [id])
+  attachments     TaskAttachment[]
+  statusHistories CaseStatusHistory[]
+  clientMessages  ClientMessage[]
 
   @@map("task_assignments")
 }
@@ -1238,6 +1251,8 @@ model CaseDocument {
   taskId       String?   @map("task_id")
   assignedToId String?   @map("assigned_to_id")
   uploadedById String    @map("uploaded_by_id")
+  // Phase 5 — client portal link
+  clientId     String?   @map("client_id")
   status       String    @default("ACTIVE")
   tags         String?
   createdAt    DateTime  @default(now())
@@ -1245,6 +1260,7 @@ model CaseDocument {
 
   uploadedBy User                    @relation("CaseDocUploader",  fields: [uploadedById],  references: [id])
   assignedTo User?                   @relation("CaseDocAssignee",  fields: [assignedToId],  references: [id])
+  client     User?                   @relation("DocClient",         fields: [clientId],      references: [id])
   files      CaseDocumentFile[]
   signatures CaseDocumentSignature[]
   versions   CaseDocumentVersion[]
@@ -1302,4 +1318,39 @@ model CaseDocumentVersion {
   changedBy User         @relation("CaseDocVersioner", fields: [changedById], references: [id])
 
   @@map("case_document_versions")
+}
+
+// ── PHASE 5 — CLIENT PORTAL ──────────────────────────
+
+model CaseStatusHistory {
+  id            String   @id @default(cuid())
+  taskId        String   @map("task_id")
+  status        String
+  note          String?
+  changedById   String?  @map("changed_by_id")
+  changedByName String   @default("") @map("changed_by_name")
+  createdAt     DateTime @default(now())
+
+  task      TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  changedBy User?          @relation("StatusHistoryChanger", fields: [changedById], references: [id])
+
+  @@map("case_status_history")
+}
+
+model ClientMessage {
+  id           String    @id @default(cuid())
+  clientId     String    @map("client_id")
+  taskId       String?   @map("task_id")
+  senderId     String?   @map("sender_id")
+  senderName   String    @map("sender_name")
+  isFromClient Boolean   @default(true) @map("is_from_client")
+  content      String
+  readAt       DateTime? @map("read_at")
+  createdAt    DateTime  @default(now())
+
+  client User            @relation("ClientMessages", fields: [clientId], references: [id])
+  sender User?           @relation("MessageSender",  fields: [senderId],  references: [id])
+  task   TaskAssignment? @relation(fields: [taskId],   references: [id])
+
+  @@map("client_messages")
 }

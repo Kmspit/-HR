@@ -43,6 +43,7 @@ const ICONS: Record<string, string> = {
   tasks:        'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
   performance:  'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
   casedocs:     'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2zM9 13h6m-6 4h6m2-10H9',
+  clients:      'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v2h5m0-2v-2c0-.656.126-1.283.356-1.857M7 20v2m7-13a4 4 0 11-8 0 4 4 0 018 0zm6 2a3 3 0 11-6 0 3 3 0 016 0z',
   logout:       'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1',
   chevronLeft:  'M15 19l-7-7 7-7',
   chevronRight: 'M9 5l7 7-7 7',
@@ -72,6 +73,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/tasks',          icon: 'tasks',       label: 'มอบหมายงาน' },
       { href: '/performance',    icon: 'performance', label: 'KPI / ผลงาน' },
       { href: '/case-documents', icon: 'casedocs',    label: 'เอกสารคดี' },
+      { href: '/clients',        icon: 'clients',     label: 'จัดการลูกค้า', roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] },
     ],
   },
   {

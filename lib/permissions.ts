@@ -15,6 +15,9 @@ const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'E
 const HR_ROLES:  Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
 const MGR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER']
 const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+// Phase 5 — client portal
+const CLIENT_ROLE: Role[] = ['CLIENT']
+const CLIENT_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 
 // Roles that can view/approve weekly plans
 const WEEKLY_PLAN_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER']
@@ -52,7 +55,11 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/probation':          [...HR_ROLES, 'MANAGER'],
   '/documents':          ALL_ROLES,
   '/tasks':              ALL_ROLES,
-  '/unauthorized':       ALL_ROLES,
+  '/performance':        ALL_ROLES,
+  '/case-documents':     ALL_ROLES,
+  '/clients':            CLIENT_MGMT_ROLES,
+  '/client-portal':      CLIENT_ROLE,
+  '/unauthorized':       [...ALL_ROLES, 'CLIENT'],
 }
 
 // Default redirect after login per role
@@ -67,6 +74,7 @@ export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
   EMPLOYEE:     '/dashboard',
   LAWYER:       '/dashboard',
   ENFORCEMENT:  '/dashboard',
+  CLIENT:       '/client-portal',
 }
 
 // Role display names (Thai)
@@ -81,6 +89,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   EMPLOYEE:     'พนักงาน',
   LAWYER:       'ทนายความ',
   ENFORCEMENT:  'เจ้าหน้าที่บังคับคดี',
+  CLIENT:       'ลูกค้า',
 }
 
 export const ROLE_COLORS: Record<Role, string> = {
@@ -94,6 +103,7 @@ export const ROLE_COLORS: Record<Role, string> = {
   EMPLOYEE:     'bg-green-100  text-green-700  border-green-200  dark:bg-green-500/20  dark:text-green-400  dark:border-green-500/30',
   LAWYER:       'bg-amber-100  text-amber-700  border-amber-200  dark:bg-amber-500/20  dark:text-amber-400  dark:border-amber-500/30',
   ENFORCEMENT:  'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30',
+  CLIENT:       'bg-teal-100   text-teal-700   border-teal-200   dark:bg-teal-500/20   dark:text-teal-400   dark:border-teal-500/30',
 }
 
 export const ROLE_ICONS: Record<Role, string> = {
@@ -107,6 +117,7 @@ export const ROLE_ICONS: Record<Role, string> = {
   EMPLOYEE:     '👤',
   LAWYER:       '⚖️',
   ENFORCEMENT:  '🛡️',
+  CLIENT:       '🏛️',
 }
 
 // ─────────────────────────────────────────────────────

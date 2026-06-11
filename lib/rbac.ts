@@ -99,6 +99,8 @@ export const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
   LAWYER:      [],
 
   ENFORCEMENT: ['approve_warning'],
+
+  CLIENT:      [],  // Phase 5 — no HR permissions
 }
 
 // ── Sync permission checks (role only, no DB) ───────────────────────────────
