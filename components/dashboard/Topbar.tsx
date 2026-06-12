@@ -13,7 +13,7 @@ export default function Topbar({ title, subtitle, actions }: Props) {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-5 py-4 md:px-6 md:py-5',
+        'flex items-center gap-3 px-5 py-3 md:px-6 md:py-5',
         'border-b border-slate-200 dark:border-white/[0.05]',
       )}
     >

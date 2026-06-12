@@ -747,7 +747,51 @@ export default function MonthlyAttendanceClient({
 
 
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10">
+      {/* Mobile card layout */}
+      <div className="sm:hidden space-y-2">
+        {loading && (
+          <div className="text-center text-slate-500 py-8 text-sm">กำลังโหลด…</div>
+        )}
+        {!loading && rows.length === 0 && (
+          <div className="text-center text-slate-500 py-8 text-sm">
+            {isAllView ? 'ไม่มีข้อมูลลงเวลาในเดือนนี้ (ทุกคน)' : 'ไม่มีข้อมูลในเดือนนี้'}
+          </div>
+        )}
+        {!loading && rows.map((r) => (
+          <div key={r.id + '-m'} className="rounded-xl border border-white/10 bg-slate-900/50 px-4 py-3 space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                {isAllView && r.employeeName && (
+                  <p className="text-[13px] font-semibold text-white leading-tight">{r.employeeName}</p>
+                )}
+                <p className="text-[13px] text-slate-300">
+                  {r.dateLabel} <span className="text-slate-500">{r.dayLabel}</span>
+                </p>
+              </div>
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800 shrink-0 ${STATUS_COLORS[r.statusDisplay] ?? 'text-slate-400'}`}>
+                {r.statusDisplay}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-[12px] text-slate-400">
+              <span>เข้า <span className="text-slate-200">{r.checkInTime || '—'}</span></span>
+              <span>ออก <span className="text-slate-200">{r.checkOutTime || '—'}</span></span>
+              <span className="text-slate-300">{r.workHoursLabel}</span>
+            </div>
+            {r.lateMinutes > 0 && (
+              <p className="text-[12px] text-amber-400">สาย {formatLateMinutes(r.lateMinutes)}</p>
+            )}
+            {r.leaveTypeLabel && (
+              <p className="text-[12px] text-blue-400">{r.leaveTypeLabel}</p>
+            )}
+            {r.note && (
+              <p className="text-[12px] text-slate-500 truncate">{r.note}</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto rounded-2xl border border-white/10">
 
         <table className="w-full text-xs text-left min-w-[1100px]">
 
@@ -896,6 +940,7 @@ export default function MonthlyAttendanceClient({
         </table>
 
       </div>
+      {/* end hidden sm:block */}
 
     </div>
 
