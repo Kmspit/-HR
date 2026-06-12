@@ -24,7 +24,7 @@ async function ctxCeoHr(): Promise<string> {
   const ago30 = new Date(now.getTime() - 30 * 86400_000)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary, billingSummary, approvalSummary] = await Promise.all([
+  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary, billingSummary, approvalSummary, knowledgeSummary] = await Promise.all([
     prisma.taskAssignment.findMany({
       where: { createdAt: { gte: ago30 } },
       include: { assignee: { select: { name: true, department: true } } },
@@ -61,6 +61,12 @@ async function ctxCeoHr(): Promise<string> {
       prisma.approvalRequest.count({ where: { status: { notIn: ['CEO_APPROVED', 'APPROVED', 'REJECTED'] }, priority: 'URGENT' } }),
       prisma.approvalRequest.groupBy({ by: ['docType'], where: { status: { notIn: ['CEO_APPROVED', 'APPROVED', 'REJECTED'] } }, _count: { id: true } }),
     ]),
+    Promise.all([
+      prisma.knowledgeArticle.count({ where: { status: 'PUBLISHED' } }),
+      prisma.sopDocument.count({ where: { status: 'APPROVED' } }),
+      prisma.trainingModule.count({ where: { status: 'PUBLISHED' } }),
+      prisma.trainingEnrollment.count({ where: { status: 'COMPLETED' } }),
+    ]),
   ])
 
   const overdue     = tasks.filter((t) => t.dueDate && t.dueDate < now && t.status !== 'COMPLETED')
@@ -96,6 +102,7 @@ async function ctxCeoHr(): Promise<string> {
   const [billingOutstanding, billingMonthRevenue, billingOverdue, billingOverdueCount] = billingSummary
   const [approvalPending, approvalUrgent, approvalByType] = approvalSummary
   const approvalTypeList = approvalByType.map((a) => `  ${a.docType}: ${a._count.id} รายการ`).join('\n')
+  const [knowledgePublished, sopApproved, trainingPublished, trainingCompleted] = knowledgeSummary
   const totalOutstanding = billingOutstanding._sum.remainingAmount ?? 0
   const monthBillingRev  = billingMonthRevenue._sum.paidAmount ?? 0
 
@@ -146,6 +153,12 @@ async function ctxCeoHr(): Promise<string> {
     `รออนุมัติทั้งหมด: ${approvalPending} รายการ`,
     `เร่งด่วน: ${approvalUrgent} รายการ`,
     approvalByType.length > 0 ? approvalTypeList : '  (ไม่มีรายการรอ)',
+    ``,
+    `=== องค์ความรู้ (Knowledge Base) ===`,
+    `บทความที่เผยแพร่: ${knowledgePublished} บทความ`,
+    `SOP ที่อนุมัติแล้ว: ${sopApproved} ฉบับ`,
+    `หลักสูตร Training: ${trainingPublished} หลักสูตร`,
+    `ผ่านการอบรมแล้ว: ${trainingCompleted} ครั้ง`,
   ].join('\n')
 }
 
