@@ -81,6 +81,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/knowledge':               ALL_ROLES,
   '/sop':                     ALL_ROLES,
   '/training':                ALL_ROLES,
+  // Phase 13 — Calendar
+  '/court-calendar':          ALL_ROLES,
+  '/appointments':            ALL_ROLES,
   '/forgot-scan':             ALL_ROLES,
   '/client-portal':      CLIENT_ROLE,
   '/unauthorized':       [...ALL_ROLES, 'CLIENT'],

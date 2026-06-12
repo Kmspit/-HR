@@ -24,7 +24,7 @@ async function ctxCeoHr(): Promise<string> {
   const ago30 = new Date(now.getTime() - 30 * 86400_000)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary, billingSummary, approvalSummary, knowledgeSummary] = await Promise.all([
+  const [tasks, pendingLeaves, monthIncomes, monthExpenses, pendingClaims, debtSummary, clientSummary, billingSummary, approvalSummary, knowledgeSummary, calendarSummary] = await Promise.all([
     prisma.taskAssignment.findMany({
       where: { createdAt: { gte: ago30 } },
       include: { assignee: { select: { name: true, department: true } } },
@@ -67,6 +67,18 @@ async function ctxCeoHr(): Promise<string> {
       prisma.trainingModule.count({ where: { status: 'PUBLISHED' } }),
       prisma.trainingEnrollment.count({ where: { status: 'COMPLETED' } }),
     ]),
+    (() => {
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+      const in7 = new Date(now.getTime() + 7 * 86400_000)
+      return Promise.all([
+        prisma.calendarEvent.count({ where: { startAt: { gte: todayStart, lte: todayEnd }, status: { not: 'CANCELLED' } } }),
+        prisma.calendarEvent.count({ where: { startAt: { gte: now, lte: in7 }, status: { not: 'CANCELLED' } } }),
+        prisma.taskAssignment.count({ where: { courtDate: { gte: now, lte: in7 } } }),
+        prisma.calendarEvent.count({ where: { startAt: { lt: now }, status: 'SCHEDULED' } }),
+      ])
+    })(),
   ])
 
   const overdue     = tasks.filter((t) => t.dueDate && t.dueDate < now && t.status !== 'COMPLETED')
@@ -103,6 +115,7 @@ async function ctxCeoHr(): Promise<string> {
   const [approvalPending, approvalUrgent, approvalByType] = approvalSummary
   const approvalTypeList = approvalByType.map((a) => `  ${a.docType}: ${a._count.id} รายการ`).join('\n')
   const [knowledgePublished, sopApproved, trainingPublished, trainingCompleted] = knowledgeSummary
+  const [calToday, calIn7, calCourtIn7, calMissed] = calendarSummary
   const totalOutstanding = billingOutstanding._sum.remainingAmount ?? 0
   const monthBillingRev  = billingMonthRevenue._sum.paidAmount ?? 0
 
@@ -159,6 +172,12 @@ async function ctxCeoHr(): Promise<string> {
     `SOP ที่อนุมัติแล้ว: ${sopApproved} ฉบับ`,
     `หลักสูตร Training: ${trainingPublished} หลักสูตร`,
     `ผ่านการอบรมแล้ว: ${trainingCompleted} ครั้ง`,
+    ``,
+    `=== ปฏิทิน / นัดหมาย (Calendar) ===`,
+    `นัดหมายวันนี้: ${calToday} รายการ`,
+    `นัดหมายใน 7 วัน: ${calIn7} รายการ`,
+    `นัดศาลใน 7 วัน: ${calCourtIn7} รายการ`,
+    `นัดที่ยังค้าง (ไม่ได้อัปเดต): ${calMissed} รายการ`,
   ].join('\n')
 }
 

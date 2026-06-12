@@ -152,6 +152,8 @@ enum NotificationType {
   TRAINING_OVERDUE
   SOP_UPDATED
   KNOWLEDGE_PUBLISHED
+  // Phase 13 — Calendar
+  CALENDAR_REMINDER
 }
 
 enum TaskStatus {
@@ -467,6 +469,8 @@ model User {
   trainingModulesCreated    TrainingModule[]       @relation("TrainingCreator")
   trainingEnrollments       TrainingEnrollment[]   @relation("TrainingEnrollee")
   quizAttempts              QuizAttempt[]          @relation("QuizAttemptUser")
+  // Phase 13 — Calendar
+  calendarEvents            CalendarEvent[]        @relation("CalendarEventCreator")
 
   @@map("users")
 }
@@ -2065,4 +2069,41 @@ model QuizAttempt {
 
   @@index([moduleId, userId])
   @@map("quiz_attempts")
+}
+
+// ── PHASE 13 — CALENDAR & APPOINTMENTS ────────────────────────────────────────
+
+model CalendarEvent {
+  id           String    @id @default(cuid())
+  title        String
+  eventType    String    @default("INTERNAL") @map("event_type")
+  startAt      DateTime  @map("start_at")
+  endAt        DateTime? @map("end_at")
+  allDay       Boolean   @default(false) @map("all_day")
+  location     String?
+  locationLat  Float?    @map("location_lat")
+  locationLng  Float?    @map("location_lng")
+  description  String?
+  courtName    String?   @map("court_name")
+  caseNumber   String?   @map("case_number")
+  clientName   String?   @map("client_name")
+  debtorName   String?   @map("debtor_name")
+  debtAmount   Float?    @map("debt_amount")
+  status       String    @default("SCHEDULED")
+  priority     String    @default("NORMAL")
+  department   String?
+  attendees    String    @default("[]")
+  attachments  String    @default("[]")
+  note         String?
+  createdById  String    @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  createdBy User @relation("CalendarEventCreator", fields: [createdById], references: [id])
+
+  @@index([startAt])
+  @@index([eventType])
+  @@index([status])
+  @@index([createdById])
+  @@map("calendar_events")
 }
