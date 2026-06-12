@@ -174,7 +174,59 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
         )}
       </div>
 
-      {/* รออนุมัติ — การ์ดมือถือ */}
+      {/* Mobile card layout — all/disabled tabs */}
+      {(tab === 'all' || tab === 'disabled') && (
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-slate-500">
+              ไม่มีข้อมูล
+            </div>
+          ) : filtered.map((u) => (
+            <div key={`card-${u.id}`} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/10 text-sm font-bold text-blue-700 dark:text-blue-400">
+                  {u.name[0]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 dark:text-white text-[14px] leading-tight">{u.name}</p>
+                      <p className="text-[12px] text-slate-500 mt-0.5 truncate">{u.position ?? '—'}</p>
+                    </div>
+                    {statusBadge(u.status)}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 truncate">{orgLabel(u)}</p>
+                  {u.branch && (
+                    <p className="text-[11px] text-cyan-600 dark:text-cyan-400/80 truncate">{u.branch.name} ({u.branch.code})</p>
+                  )}
+                  <div className="mt-1">
+                    <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${ROLE_COLORS[u.role]}`}>
+                      {ROLE_ICONS[u.role]} {ROLE_LABELS[u.role]}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Link
+                  href={`/employees/${u.id}`}
+                  className="flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 text-[13px] font-semibold text-slate-700 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/10 touch-manipulation"
+                >
+                  <Pencil size={12} /> แก้ไข
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setAssignUser(u)}
+                  className="flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-blue-300 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-500/10 text-[13px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 touch-manipulation"
+                >
+                  <Layers size={12} /> ฝ่าย/แผนก
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mobile card layout — pending tab */}
       {tab === 'pending' && (
         <div className="md:hidden space-y-3">
           {filtered.length === 0 ? (
@@ -208,8 +260,8 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
         </div>
       )}
 
-      {/* Table */}
-      <div className={`rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 overflow-hidden shadow-sm ${tab === 'pending' ? 'hidden md:block' : ''}`}>
+      {/* Table — desktop only */}
+      <div className="hidden md:block rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
         <div className="table-scroll">
           <table className="w-full">
             <thead>
