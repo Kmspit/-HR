@@ -108,13 +108,6 @@ export default async function DashboardPage({
     }),
   ])
 
-  /* ─── late employees ─── */
-  const lateToday = await prisma.attendance.findMany({
-    where: attendanceWhere(scope, { date: { gte: todayStart }, status: 'LATE' }),
-    include: { user: { select: { id: true, name: true, department: true } } },
-    take: 5,
-  })
-
   /* ─── 7-day chart data ─── */
   const chartData = await Promise.all(
     Array.from({ length: 7 }).map(async (_, i) => {
@@ -132,15 +125,12 @@ export default async function DashboardPage({
     })
   )
 
-  /* ─── payroll by dept ─── */
+  /* ─── payroll total (for stat card) ─── */
   const deptMap: Record<string, number> = {}
   for (const p of payrollRecs) {
     const dept = p.user.department ?? 'อื่นๆ'
     deptMap[dept] = (deptMap[dept] ?? 0) + p.netSalary
   }
-  const deptPayroll = Object.entries(deptMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
   const totalPayroll = Object.values(deptMap).reduce((a, b) => a + b, 0)
 
   /* ─── activity feed ─── */
@@ -154,13 +144,6 @@ export default async function DashboardPage({
   const leaveTypeLabel: Record<string, string> = {
     SICK: 'ลาป่วย', VACATION: 'ลาพักร้อน', PERSONAL: 'ลากิจ',
     UNPAID: 'ลาไม่รับค่าจ้าง', MATERNITY: 'ลาคลอด', ORDINATION: 'บวช',
-  }
-
-  const statusMap: Record<string, { label: string; cls: string }> = {
-    PENDING:        { label: 'รออนุมัติ',  cls: 'badge-yellow' },
-    ADMIN_APPROVED: { label: 'ผ่าน Admin', cls: 'badge-blue' },
-    APPROVED:       { label: 'อนุมัติ',    cls: 'badge-green' },
-    REJECTED:       { label: 'ปฏิเสธ',     cls: 'badge-red' },
   }
 
   return (
@@ -298,150 +281,28 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        {/* ─── Leave Requests + Late Employees ─── */}
-        <div className="grid gap-5 lg:grid-cols-2">
-          {/* Leave requests */}
-          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-slate-900 dark:text-white text-[16px]">คำขอลา</h2>
-                <p className="text-[13px] text-slate-500 mt-0.5">รายการล่าสุด</p>
-              </div>
-              <Link href="/approvals" className="text-[13px] text-blue-600 dark:text-blue-400 hover:text-blue-500 flex items-center gap-1">
-                อนุมัติ
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {recentLeaves.length === 0 ? (
-                <p className="text-center text-[14px] text-slate-500 py-6">ไม่มีคำขอลา</p>
-              ) : recentLeaves.map((l) => {
-                const s = statusMap[l.status] ?? { label: l.status, cls: 'badge-slate' }
-                return (
-                  <div key={l.id} className="flex items-center gap-3 rounded-xl px-3 py-3 border border-slate-100 dark:border-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-[12px] font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
-                      {l.user.name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-[14px] font-semibold text-slate-800 dark:text-slate-200">{l.user.name}</p>
-                      <p className="text-[12px] text-slate-500">{leaveTypeLabel[l.type]} · {l.user.department ?? '—'}</p>
-                    </div>
-                    <span className={s.cls}>{s.label}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Late employees */}
-          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-slate-900 dark:text-white text-[16px]">มาสายวันนี้</h2>
-                <p className="text-[13px] text-slate-500 mt-0.5">{lateToday.length} คน</p>
-              </div>
-              <Link href="/attendance" className="text-[13px] text-blue-600 dark:text-blue-400 hover:text-blue-500 flex items-center gap-1">
-                ดูทั้งหมด
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {lateToday.length === 0 ? (
-                <div className="flex flex-col items-center py-6 gap-2">
-                  <svg className="h-9 w-9 text-green-500/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <p className="text-[14px] text-slate-500">ไม่มีพนักงานมาสาย 🎉</p>
+        {/* ─── Quick Actions ─── */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
+          <h2 className="mb-4 font-semibold text-slate-900 dark:text-white text-[16px]">Quick Actions</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+            {[
+              { href: '/employees',     label: 'พนักงาน',   icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',  gradient: 'from-blue-500 to-indigo-500',   roles: ['SUPER_ADMIN','MANAGER_HR','HR','MANAGER','ADMIN'] as Role[] },
+              { href: '/payroll',       label: 'เงินเดือน', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', gradient: 'from-emerald-500 to-teal-500',   roles: ['SUPER_ADMIN','MANAGER_HR','HR'] as Role[] },
+              { href: '/approvals',     label: 'อนุมัติ',    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                                                                                  gradient: 'from-violet-500 to-purple-500', roles: ['SUPER_ADMIN','MANAGER_HR','HR','ADMIN','MANAGER','TEAM_LEADER'] as Role[] },
+              { href: '/attendance',    label: 'เวลางาน',   icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                                                                                     gradient: 'from-cyan-500 to-blue-500' },
+              { href: '/announcements', label: 'ประกาศ',     icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z',                                                     gradient: 'from-orange-500 to-amber-500' },
+              { href: '/warnings',      label: 'ใบเตือน',    icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',                                                                                                                          gradient: 'from-red-500 to-rose-500' },
+            ].filter(a => !a.roles || (a.roles as string[]).includes(role)).map((a) => (
+              <Link key={a.href} href={a.href}
+                className="group flex flex-col items-center gap-2 rounded-xl p-3.5 text-center border border-slate-200 dark:border-white/[0.05] bg-slate-50 dark:bg-white/[0.02] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-white/[0.1] hover:bg-slate-100 dark:hover:bg-white/[0.04]">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${a.gradient} group-hover:scale-105 transition-transform`}>
+                  <svg width={18} height={18} className="hr-icon-sm h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
+                  </svg>
                 </div>
-              ) : lateToday.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 rounded-xl px-3 py-3 border border-amber-200 dark:border-yellow-500/10 bg-amber-50 dark:bg-yellow-500/[0.04]">
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-[12px] font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>
-                    {a.user.name[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-slate-800 dark:text-slate-200">{a.user.name}</p>
-                    <p className="text-[12px] text-slate-500">{a.user.department ?? '—'}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[13px] font-bold text-amber-600 dark:text-yellow-400">+{formatLateMinutes(a.lateMinutes)}</p>
-                    {a.checkIn && <p className="text-[11px] text-slate-500">{new Date(a.checkIn).toLocaleTimeString('th-TH', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        timeZone: 'Asia/Bangkok',
-                      })}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Payroll by dept + Quick Actions ─── */}
-        <div className="grid gap-5 lg:grid-cols-3">
-          {/* Payroll by dept */}
-          <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-slate-900 dark:text-white text-[16px]">เงินเดือนรายแผนก</h2>
-                <p className="text-[13px] text-slate-500 mt-0.5">เดือนปัจจุบัน</p>
-              </div>
-              <Link href="/payroll" className="text-[13px] text-blue-600 dark:text-blue-400 hover:text-blue-500 flex items-center gap-1">
-                จัดการ
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                <span className="text-[12px] font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors leading-tight text-center">{a.label}</span>
               </Link>
-            </div>
-            {deptPayroll.length === 0 ? (
-              <p className="text-center text-[14px] text-slate-500 py-6">ยังไม่มีข้อมูล Payroll เดือนนี้</p>
-            ) : (
-              <div className="space-y-3.5">
-                {deptPayroll.map(([dept, amount]) => {
-                  const pct = totalPayroll > 0 ? (amount / totalPayroll) * 100 : 0
-                  return (
-                    <div key={dept}>
-                      <div className="mb-2 flex items-center justify-between text-[13px]">
-                        <span className="text-slate-700 dark:text-slate-300 font-medium">{dept}</span>
-                        <span className="text-slate-500 dark:text-slate-400">{amount.toLocaleString('th-TH')} ฿</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#3b82f6,#6366f1)' }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-                <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-white/[0.06] pt-4">
-                  <span className="text-[14px] font-semibold text-slate-700 dark:text-slate-300">รวมทั้งหมด</span>
-                  <span className="text-[15px] font-bold text-slate-900 dark:text-white">{totalPayroll.toLocaleString('th-TH')} ฿</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Quick actions */}
-          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
-            <h2 className="mb-4 font-semibold text-slate-900 dark:text-white text-[16px]">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { href: '/employees',     label: 'พนักงาน',    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',  gradient: 'from-blue-500 to-indigo-500',   roles: ['SUPER_ADMIN','MANAGER_HR','HR','MANAGER','ADMIN'] as Role[] },
-                { href: '/payroll',       label: 'เงินเดือน',  icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', gradient: 'from-emerald-500 to-teal-500',   roles: ['SUPER_ADMIN','MANAGER_HR','HR'] as Role[] },
-                { href: '/approvals',     label: 'อนุมัติ',     icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                                                                                  gradient: 'from-violet-500 to-purple-500', roles: ['SUPER_ADMIN','MANAGER_HR','HR','ADMIN','MANAGER','TEAM_LEADER'] as Role[] },
-                { href: '/attendance',    label: 'เวลางาน',    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                                                                                     gradient: 'from-cyan-500 to-blue-500' },
-                { href: '/announcements', label: 'ประกาศ',      icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z',                                                     gradient: 'from-orange-500 to-amber-500' },
-                { href: '/warnings',      label: 'ใบเตือน',     icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',                                                                                                                          gradient: 'from-red-500 to-rose-500' },
-              ].filter(a => !a.roles || (a.roles as string[]).includes(role)).map((a) => (
-                <Link key={a.href} href={a.href}
-                  className="group flex flex-col items-center gap-2 rounded-xl p-3.5 text-center border border-slate-200 dark:border-white/[0.05] bg-slate-50 dark:bg-white/[0.02] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-white/[0.1] hover:bg-slate-100 dark:hover:bg-white/[0.04]">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${a.gradient} group-hover:scale-105 transition-transform`}>
-                    <svg width={18} height={18} className="hr-icon-sm h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
-                    </svg>
-                  </div>
-                  <span className="text-[12px] font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{a.label}</span>
-                </Link>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </div>

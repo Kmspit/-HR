@@ -235,6 +235,8 @@ function isOverdue(task: Task): boolean {
   return new Date(task.dueDate) < new Date()
 }
 
+const ACTIVE_STATUSES = ['PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_DOC', 'REVISION']
+
 function effectiveStatus(task: Task): string {
   return isOverdue(task) ? 'OVERDUE' : task.status
 }
@@ -1199,8 +1201,10 @@ export default function TasksClient({
   const filtered = useMemo(() => {
     let list = currentList
     if (deptFilter !== 'all') list = list.filter((t) => t.taskDepartment === deptFilter)
-    if (filter === 'overdue') return list.filter(isOverdue)
-    if (filter !== 'all')     return list.filter((t) => t.status === filter)
+    if (filter === 'overdue')   return list.filter(isOverdue)
+    if (filter === 'active')    return list.filter((t) => ACTIVE_STATUSES.includes(t.status) && !isOverdue(t))
+    if (filter === 'review')    return list.filter((t) => t.status === 'WAITING_REVIEW')
+    if (filter === 'completed') return list.filter((t) => t.status === 'COMPLETED')
     return list
   }, [currentList, filter, deptFilter])
 
@@ -1223,17 +1227,12 @@ export default function TasksClient({
     { id: 'all'   as TabId, label: 'ทุกงาน',        count: allList.length,   show: canSeeAll },
   ].filter((t) => t.show)
 
-  const STATUS_FILTERS = [
-    { id: 'all',            label: 'ทั้งหมด' },
-    { id: 'NEW',            label: 'รับเรื่องใหม่' },
-    { id: 'ASSIGNED',       label: 'มอบหมายแล้ว' },
-    { id: 'PENDING',        label: 'รอมอบหมาย' },
-    { id: 'IN_PROGRESS',    label: 'กำลังดำเนินการ' },
-    { id: 'WAITING_DOC',    label: 'รอเอกสาร' },
-    { id: 'WAITING_REVIEW', label: 'รอตรวจสอบ' },
-    { id: 'REVISION',       label: 'แก้ไข' },
-    { id: 'COMPLETED',      label: 'เสร็จ' },
-    { id: 'overdue',        label: '⚠️ เกินกำหนด' },
+  const STATUS_TABS = [
+    { id: 'all',       label: 'ทั้งหมด' },
+    { id: 'active',    label: 'กำลังดำเนิน' },
+    { id: 'review',    label: 'รอตรวจ' },
+    { id: 'overdue',   label: 'เกินกำหนด' },
+    { id: 'completed', label: 'เสร็จสิ้น' },
   ]
 
   return (
@@ -1290,20 +1289,21 @@ export default function TasksClient({
         ))}
       </div>
 
-      {/* Status filter pills */}
-      <div className="flex flex-wrap gap-1.5">
-        {STATUS_FILTERS.map(({ id, label }) => (
+      {/* Status filter tabs */}
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-white/[0.05]">
+        {STATUS_TABS.map(({ id, label }) => (
           <button key={id} type="button" onClick={() => setFilter(id)}
-            className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${
+            className={`flex-1 px-2 py-2 rounded-lg text-[12px] font-medium transition-all truncate ${
               filter === id
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }${id === 'overdue' ? ' text-red-600 dark:text-red-400' : ''}`}>
             {label}
           </button>
         ))}
       </div>
 
-      {/* Table */}
+      {/* Task list — mobile cards (xs) / desktop table (sm+) */}
       <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center justify-between">
           <h2 className="text-[14px] font-semibold text-slate-700 dark:text-slate-200">รายการงาน</h2>
@@ -1322,32 +1322,65 @@ export default function TasksClient({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-white/[0.05]">
-                  {[
-                    { label: 'เลขคดี / ชื่องาน', cls: '' },
-                    { label: 'ฝ่าย',              cls: 'hidden sm:table-cell' },
-                    { label: 'ประเภทงาน',         cls: 'hidden md:table-cell' },
-                    { label: tab === 'my' ? 'มอบหมายโดย' : 'ผู้รับผิดชอบ', cls: '' },
-                    { label: 'สถานะ',             cls: '' },
-                    { label: 'กำหนดเสร็จ',        cls: '' },
-                    { label: '',                   cls: '' },
-                  ].map(({ label, cls }) => (
-                    <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap ${cls}`}>
-                      {label}
-                    </th>
+          <>
+            {/* Mobile card list */}
+            <div className="sm:hidden divide-y divide-slate-100 dark:divide-white/[0.04]">
+              {filtered.map((task) => {
+                const eff = effectiveStatus(task)
+                const overdue = eff === 'OVERDUE'
+                const person = tab === 'my' ? task.assignedBy : task.assignee
+                return (
+                  <button key={task.id} type="button" onClick={() => setSelected(task)}
+                    className="w-full text-left px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <p className="text-[14px] font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2 flex-1">
+                        {task.caseNumber ? <span className="text-blue-600 dark:text-blue-400 mr-1">{task.caseNumber}</span> : null}
+                        {task.title}
+                      </p>
+                      <StatusBadge status={eff} />
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {task.taskDepartment && <DeptBadge dept={task.taskDepartment} />}
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{person.name}</span>
+                      {task.dueDate && (
+                        <span className={`text-[11px] ${overdue ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
+                          ครบ {fmtDate(task.dueDate)}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-white/[0.05]">
+                    {[
+                      { label: 'เลขคดี / ชื่องาน', cls: '' },
+                      { label: 'ฝ่าย',              cls: 'hidden sm:table-cell' },
+                      { label: 'ประเภทงาน',         cls: 'hidden md:table-cell' },
+                      { label: tab === 'my' ? 'มอบหมายโดย' : 'ผู้รับผิดชอบ', cls: '' },
+                      { label: 'สถานะ',             cls: '' },
+                      { label: 'กำหนดเสร็จ',        cls: '' },
+                      { label: '',                   cls: '' },
+                    ].map(({ label, cls }) => (
+                      <th key={label} className={`text-left px-4 py-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap ${cls}`}>
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((task) => (
+                    <TaskRow key={task.id} task={task} showAssigner={tab === 'my'} onClick={() => setSelected(task)} />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((task) => (
-                  <TaskRow key={task.id} task={task} showAssigner={tab === 'my'} onClick={() => setSelected(task)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
