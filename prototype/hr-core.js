@@ -25,6 +25,9 @@ function initRole() {
   const user = getCurrentUser();
   if (!user) return;
 
+  injectSkipLink();
+  tagMainContent();
+
   // Update sidebar user card
   const nameEl = document.querySelector('.user-name');
   const roleEl = document.querySelector('.user-role');
@@ -53,6 +56,21 @@ function initRole() {
 }
 
 // ── SIDEBAR (nav config + accordion + collapse + mobile slide) ───────────────
+
+function injectSkipLink() {
+  if (document.getElementById('skip-to-content')) return;
+  const a = document.createElement('a');
+  a.id = 'skip-to-content';
+  a.href = '#main-content';
+  a.className = 'skip-link';
+  a.textContent = 'ข้ามไปเนื้อหาหลัก';
+  document.body.insertBefore(a, document.body.firstChild);
+}
+
+function tagMainContent() {
+  const main = document.querySelector('main.content') || document.querySelector('.content');
+  if (main && !main.id) main.id = 'main-content';
+}
 
 const SIDEBAR_COLLAPSED_KEY = 'hrflow_sidebar_collapsed';
 const SIDEBAR_SECTIONS_KEY = 'hrflow_nav_sections';
@@ -178,7 +196,7 @@ function renderSidebarNav() {
     const itemsHtml = section.items.map(function(item) {
       const roleCls = navRoleClass(item.roles);
       const cls = 'nav-item' + (roleCls ? ' ' + roleCls : '');
-      return '<a href="' + item.href + '" class="' + cls + '" data-nav-label="' + item.label + '">' +
+      return '<a href="' + item.href + '" class="' + cls + '" data-nav-label="' + item.label + '" aria-label="' + item.label + '">' +
         '<span class="icon">' + item.icon + '</span> ' + item.label + '</a>';
     }).join('');
     if (collapsible) {
@@ -361,6 +379,7 @@ function initSidebar() {
   applyNavRoleVisibility(user);
   highlightActiveNav();
   initNavAccordion();
+  renderMobileNav();
 
   if (document.body.dataset.sidebarInit === '1') return;
   document.body.dataset.sidebarInit = '1';
@@ -941,4 +960,111 @@ function openLineOaChat(basicId) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
+
+// ── MOBILE NAV (dynamic from SIDEBAR_NAV) ─────────────────────────────────────
+
+/** @type {{ href: string, icon: string, label: string, roles?: string[] }[]} */
+const MOBILE_NAV = [
+  { href: 'index.html',           icon: '📊', label: 'หน้าหลัก' },
+  { href: 'attendance.html',      icon: '⏱️', label: 'เช็คอิน' },
+  { href: 'leave.html',           icon: '📅', label: 'ลา' },
+  { href: 'out-of-office.html',   icon: '🚗', label: 'OOO' },
+  { href: 'payroll.html',         icon: '💰', label: 'เงินเดือน', roles: ['hr-admin'] },
+  { href: 'settings.html',        icon: '⚙️', label: 'ตั้งค่า' },
+];
+
+function renderMobileNav() {
+  const nav = document.querySelector('.mobile-nav .mobile-nav-grid');
+  if (!nav) return;
+  const user = getCurrentUser();
+  const page = location.pathname.split('/').pop() || 'index.html';
+  const isOooPage = page === 'out-of-office.html';
+
+  const picked = [];
+  MOBILE_NAV.forEach(function(item) {
+    if (item.href === 'settings.html') return;
+    if (item.href === 'payroll.html' && isOooPage) return;
+    if (item.href === 'out-of-office.html' && !isOooPage) return;
+    if (item.roles && item.roles.includes('hr-admin')) {
+      if (!user || (user.role !== 'MANAGER_HR' && user.role !== 'ADMIN')) return;
+    }
+    picked.push(item);
+  });
+
+  const settingsItem = MOBILE_NAV.find(function(i) { return i.href === 'settings.html'; });
+  const items = picked.slice(0, 4).concat(settingsItem ? [settingsItem] : []);
+
+  nav.innerHTML = items.map(function(item) {
+    const base = item.href.split('#')[0].split('?')[0];
+    const active = base === page ? ' active' : '';
+    return '<a href="' + item.href + '" class="mnav-item' + active + '" aria-label="' + item.label + '">' +
+      '<span class="icon" aria-hidden="true">' + item.icon + '</span>' + item.label + '</a>';
+  }).join('');
+}
+
+// ── DEEP LINK / HASH SCROLL ───────────────────────────────────────────────────
+
+function scrollToHashTarget() {
+  const hash = location.hash.replace(/^#/, '');
+  if (!hash) return;
+  const el = document.getElementById(hash);
+  if (!el) return;
+  setTimeout(function() {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('hash-highlight');
+    setTimeout(function() { el.classList.remove('hash-highlight'); }, 2000);
+  }, 120);
+}
+
+// ── API LAYER (Prisma-backed — fallback to localStorage) ───────────────────────
+
+const HR_API_BASE = (typeof location !== 'undefined' && location.protocol !== 'file:')
+  ? location.origin.replace(/\/prototype.*$/, '')
+  : '';
+
+function useHrApi() {
+  return !!HR_API_BASE;
+}
+
+async function apiFetch(path, options) {
+  if (!useHrApi()) return null;
+  try {
+    const res = await fetch(HR_API_BASE + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options || {}));
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchLeaveRequestsApi() {
+  const data = await apiFetch('/api/leaves');
+  return data && Array.isArray(data.items) ? data.items : null;
+}
+
+async function fetchAttendancesApi() {
+  const data = await apiFetch('/api/attendances');
+  return data && Array.isArray(data.items) ? data.items : null;
+}
+
+async function syncFromApi() {
+  const leaves = await fetchLeaveRequestsApi();
+  if (leaves) lsSet('leaves', leaves);
+  const atts = await fetchAttendancesApi();
+  if (atts) lsSet('attendances', atts);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  scrollToHashTarget();
+  renderMobileNav();
+  if (useHrApi()) syncFromApi().catch(function() {});
+});
+
+(function() {
+  if (document.getElementById('hr-hash-highlight-style')) return;
+  const st = document.createElement('style');
+  st.id = 'hr-hash-highlight-style';
+  st.textContent = '.hash-highlight{outline:2px solid var(--accent);outline-offset:4px;transition:outline .3s}';
+  document.head.appendChild(st);
+})();
 
