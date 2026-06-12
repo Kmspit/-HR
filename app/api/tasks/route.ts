@@ -68,6 +68,7 @@ export async function POST(req: Request) {
   const {
     title, description, type, priority, assigneeId, startDate, dueDate, notes, taskLinks,
     caseNumber, clientName, taskDepartment, appointmentDate, courtDate, appointmentPlace,
+    checklist,
   } = body
 
   if (!title?.trim()) return NextResponse.json({ error: 'กรุณาระบุชื่องาน' }, { status: 400 })
@@ -134,6 +135,20 @@ export async function POST(req: Request) {
       },
     },
   })
+
+  // Create checklist items if provided
+  if (Array.isArray(checklist) && checklist.length > 0) {
+    const checklistData = checklist
+      .filter((item: { title?: string }) => item?.title?.trim())
+      .map((item: { title: string }, idx: number) => ({
+        taskId: task.id,
+        title: item.title.trim(),
+        order: idx,
+      }))
+    if (checklistData.length > 0) {
+      await prisma.taskChecklist.createMany({ data: checklistData })
+    }
+  }
 
   // Notify the assignee
   await createNotification({

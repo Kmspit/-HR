@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo, useRef } from 'react'
+import { useState, useTransition, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, X, Clock, CheckCircle, AlertCircle,
@@ -8,6 +8,8 @@ import {
   ExternalLink, MessageSquare, Paperclip, Upload,
   FileText, Download, Trash2, File, Building2,
   Calendar, MapPin, User2,
+  LayoutGrid, List, Square, CheckSquare, Send,
+  Ban, XCircle, ChevronDown, ChevronRight, SlidersHorizontal,
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
 
@@ -62,10 +64,26 @@ type Task = {
   appointmentDate: string | null
   courtDate: string | null
   appointmentPlace: string | null
+  // Phase 2 — comments + checklist (loaded on detail view)
+  comments?: TaskCommentItem[]
+  checklist?: ChecklistItem[]
 }
 
 type TaskLink     = { label: string; url: string }
 type ProgressNote = { note: string; timestamp: string; userId: string; userName: string }
+
+type CommentUser  = { id: string; name: string; role: string }
+type CommentReply = { id: string; content: string; parentId: string; createdAt: string; updatedAt: string; user: CommentUser }
+type TaskCommentItem = { id: string; content: string; parentId: string | null; createdAt: string; updatedAt: string; user: CommentUser; replies: CommentReply[] }
+
+type ChecklistItem = {
+  id: string
+  title: string
+  isCompleted: boolean
+  order: number
+  completedAt: string | null
+  completedBy: { id: string; name: string } | null
+}
 
 type Props = {
   role: string
@@ -142,39 +160,48 @@ const DEPT_TASK_OPTIONS: Record<string, { value: string; label: string }[]> = {
 // ── Lookup maps ──────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING:        'รอมอบหมาย',
-  NEW:            'รับเรื่องใหม่',
-  ASSIGNED:       'มอบหมายแล้ว',
-  IN_PROGRESS:    'กำลังดำเนินการ',
-  WAITING_DOC:    'รอเอกสาร',
-  WAITING_REVIEW: 'รอตรวจสอบ',
-  REVISION:       'แก้ไขงาน',
-  COMPLETED:      'เสร็จสิ้น',
-  OVERDUE:        'เกินกำหนด',
+  PENDING:          'รอมอบหมาย',
+  NEW:              'รับเรื่องใหม่',
+  ASSIGNED:         'มอบหมายแล้ว',
+  IN_PROGRESS:      'กำลังดำเนินการ',
+  WAITING_DOC:      'รอเอกสาร',
+  WAITING_REVIEW:   'รอตรวจสอบ',
+  WAITING_APPROVAL: 'รออนุมัติ',
+  REVISION:         'แก้ไขงาน',
+  REJECTED:         'ถูกปฏิเสธ',
+  CANCELLED:        'ยกเลิกแล้ว',
+  COMPLETED:        'เสร็จสิ้น',
+  OVERDUE:          'เกินกำหนด',
 }
 
 const STATUS_CLS: Record<string, string> = {
-  PENDING:        'text-slate-600  dark:text-slate-400  bg-slate-100  dark:bg-slate-500/10',
-  NEW:            'text-slate-600  dark:text-slate-400  bg-slate-100  dark:bg-slate-500/10',
-  ASSIGNED:       'text-teal-700   dark:text-teal-400   bg-teal-100   dark:bg-teal-500/10',
-  IN_PROGRESS:    'text-blue-700   dark:text-blue-400   bg-blue-100   dark:bg-blue-500/10',
-  WAITING_DOC:    'text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-500/10',
-  WAITING_REVIEW: 'text-amber-700  dark:text-amber-400  bg-amber-100  dark:bg-amber-500/10',
-  REVISION:       'text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10',
-  COMPLETED:      'text-green-700  dark:text-green-400  bg-green-100  dark:bg-green-500/10',
-  OVERDUE:        'text-red-700    dark:text-red-400    bg-red-100    dark:bg-red-500/10',
+  PENDING:          'text-slate-600  dark:text-slate-400  bg-slate-100  dark:bg-slate-500/10',
+  NEW:              'text-slate-600  dark:text-slate-400  bg-slate-100  dark:bg-slate-500/10',
+  ASSIGNED:         'text-teal-700   dark:text-teal-400   bg-teal-100   dark:bg-teal-500/10',
+  IN_PROGRESS:      'text-blue-700   dark:text-blue-400   bg-blue-100   dark:bg-blue-500/10',
+  WAITING_DOC:      'text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-500/10',
+  WAITING_REVIEW:   'text-amber-700  dark:text-amber-400  bg-amber-100  dark:bg-amber-500/10',
+  WAITING_APPROVAL: 'text-purple-700 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/10',
+  REVISION:         'text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10',
+  REJECTED:         'text-red-700    dark:text-red-400    bg-red-100    dark:bg-red-500/10',
+  CANCELLED:        'text-slate-500  dark:text-slate-500  bg-slate-100  dark:bg-slate-500/10',
+  COMPLETED:        'text-green-700  dark:text-green-400  bg-green-100  dark:bg-green-500/10',
+  OVERDUE:          'text-red-700    dark:text-red-400    bg-red-100    dark:bg-red-500/10',
 }
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
-  PENDING:        <Clock className="w-3 h-3" />,
-  NEW:            <Clock className="w-3 h-3" />,
-  ASSIGNED:       <User2 className="w-3 h-3" />,
-  IN_PROGRESS:    <Clock className="w-3 h-3" />,
-  WAITING_DOC:    <FileText className="w-3 h-3" />,
-  WAITING_REVIEW: <Eye className="w-3 h-3" />,
-  REVISION:       <RotateCcw className="w-3 h-3" />,
-  COMPLETED:      <CheckCircle className="w-3 h-3" />,
-  OVERDUE:        <AlertCircle className="w-3 h-3" />,
+  PENDING:          <Clock className="w-3 h-3" />,
+  NEW:              <Clock className="w-3 h-3" />,
+  ASSIGNED:         <User2 className="w-3 h-3" />,
+  IN_PROGRESS:      <Clock className="w-3 h-3" />,
+  WAITING_DOC:      <FileText className="w-3 h-3" />,
+  WAITING_REVIEW:   <Eye className="w-3 h-3" />,
+  WAITING_APPROVAL: <Eye className="w-3 h-3" />,
+  REVISION:         <RotateCcw className="w-3 h-3" />,
+  REJECTED:         <XCircle className="w-3 h-3" />,
+  CANCELLED:        <Ban className="w-3 h-3" />,
+  COMPLETED:        <CheckCircle className="w-3 h-3" />,
+  OVERDUE:          <AlertCircle className="w-3 h-3" />,
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -235,7 +262,7 @@ function isOverdue(task: Task): boolean {
   return new Date(task.dueDate) < new Date()
 }
 
-const ACTIVE_STATUSES = ['PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_DOC', 'REVISION']
+const ACTIVE_STATUSES = ['PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_DOC', 'REVISION', 'WAITING_APPROVAL']
 
 function effectiveStatus(task: Task): string {
   return isOverdue(task) ? 'OVERDUE' : task.status
@@ -395,6 +422,248 @@ function FileUploadZone({
   )
 }
 
+// ── Checklist Section ────────────────────────────────────────────────────────
+
+function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; initial: ChecklistItem[]; currentUserId: string }) {
+  const [items, setItems] = useState<ChecklistItem[]>(initial)
+  const [newTitle, setNewTitle] = useState('')
+  const [loading, setLoading] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+
+  const done = items.filter((i) => i.isCompleted).length
+  const pct  = items.length > 0 ? Math.round((done / items.length) * 100) : 0
+
+  async function toggleItem(item: ChecklistItem) {
+    setLoading(item.id)
+    const res = await fetch(`/api/tasks/${taskId}/checklist?itemId=${item.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isCompleted: !item.isCompleted }),
+    })
+    if (res.ok) {
+      const json = await res.json() as { item: ChecklistItem }
+      setItems((p) => p.map((i) => i.id === item.id ? json.item : i))
+    }
+    setLoading(null)
+  }
+
+  async function addItem() {
+    if (!newTitle.trim()) return
+    setAdding(true)
+    const res = await fetch(`/api/tasks/${taskId}/checklist`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle.trim() }),
+    })
+    if (res.ok) {
+      const json = await res.json() as { item: ChecklistItem }
+      setItems((p) => [...p, json.item])
+      setNewTitle('')
+    }
+    setAdding(false)
+  }
+
+  async function deleteItem(itemId: string) {
+    setLoading(itemId)
+    const res = await fetch(`/api/tasks/${taskId}/checklist?itemId=${itemId}`, { method: 'DELETE' })
+    if (res.ok) setItems((p) => p.filter((i) => i.id !== itemId))
+    setLoading(null)
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+          <CheckSquare className="w-3 h-3" />รายการตรวจสอบ
+          {items.length > 0 && <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 text-[10px] font-bold">{done}/{items.length}</span>}
+        </p>
+      </div>
+      {items.length > 0 && (
+        <>
+          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-white/10 mb-3 overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+          </div>
+          <div className="space-y-1.5 mb-3">
+            {items.map((item) => (
+              <div key={item.id} className={`flex items-center gap-2.5 rounded-xl px-3 py-2 border transition-colors ${item.isCompleted ? 'bg-green-50 dark:bg-green-500/[0.06] border-green-100 dark:border-green-500/20' : 'bg-slate-50 dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.05]'}`}>
+                <button type="button" disabled={loading === item.id} onClick={() => toggleItem(item)}
+                  className="flex-shrink-0 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-40">
+                  {loading === item.id
+                    ? <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                    : item.isCompleted
+                      ? <CheckSquare className="w-4 h-4 text-green-500" />
+                      : <Square className="w-4 h-4" />
+                  }
+                </button>
+                <span className={`flex-1 text-[13px] ${item.isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{item.title}</span>
+                {item.completedBy && (
+                  <span className="text-[10px] text-slate-400 truncate max-w-[80px]">{item.completedBy.name}</span>
+                )}
+                <button type="button" onClick={() => deleteItem(item.id)} disabled={loading === item.id}
+                  className="flex-shrink-0 text-slate-300 hover:text-red-400 transition-colors disabled:opacity-40">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="flex gap-2">
+        <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem() } }}
+          placeholder="เพิ่มรายการตรวจสอบ..."
+          className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400/60" />
+        <button type="button" disabled={adding || !newTitle.trim()} onClick={addItem}
+          className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+          {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          เพิ่ม
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Comments Section ──────────────────────────────────────────────────────────
+
+function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; initial: TaskCommentItem[]; currentUserId: string }) {
+  const [comments, setComments]   = useState<TaskCommentItem[]>(initial)
+  const [text, setText]           = useState('')
+  const [replyingTo, setReplyTo]  = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [posting, setPosting]     = useState(false)
+  const [deleting, setDeleting]   = useState<string | null>(null)
+
+  async function postComment(content: string, parentId?: string) {
+    if (!content.trim()) return
+    setPosting(true)
+    const res = await fetch(`/api/tasks/${taskId}/comments`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: content.trim(), parentId: parentId ?? null }),
+    })
+    if (res.ok) {
+      const json = await res.json() as { comment: TaskCommentItem }
+      if (parentId) {
+        setComments((p) => p.map((c) =>
+          c.id === parentId
+            ? { ...c, replies: [...(c.replies ?? []), json.comment as unknown as CommentReply] }
+            : c
+        ))
+        setReplyTo(null); setReplyText('')
+      } else {
+        setComments((p) => [...p, json.comment])
+        setText('')
+      }
+    }
+    setPosting(false)
+  }
+
+  async function deleteComment(commentId: string) {
+    setDeleting(commentId)
+    const res = await fetch(`/api/tasks/${taskId}/comments?commentId=${commentId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setComments((p) => p.filter((c) => c.id !== commentId).map((c) => ({
+        ...c, replies: c.replies?.filter((r) => r.id !== commentId) ?? []
+      })))
+    }
+    setDeleting(null)
+  }
+
+  function fmtRelative(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime()
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return 'เมื่อกี้'
+    if (m < 60) return `${m} นาทีที่แล้ว`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h} ชั่วโมงที่แล้ว`
+    return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' })
+  }
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <MessageSquare className="w-3 h-3" />ความคิดเห็น
+        {comments.length > 0 && <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 text-[10px] font-bold">{comments.length}</span>}
+      </p>
+
+      {comments.length === 0 && (
+        <p className="text-center text-[13px] text-slate-400 dark:text-slate-600 py-4">ยังไม่มีความคิดเห็น</p>
+      )}
+
+      <div className="space-y-3 mb-4">
+        {comments.map((c) => (
+          <div key={c.id}>
+            <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{c.user.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-400">{fmtRelative(c.createdAt)}</span>
+                  {c.user.id === currentUserId && (
+                    <button type="button" disabled={deleting === c.id} onClick={() => deleteComment(c.id)}
+                      className="text-slate-300 hover:text-red-400 transition-colors disabled:opacity-40">
+                      {deleting === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+              <button type="button" onClick={() => setReplyTo(replyingTo === c.id ? null : c.id)}
+                className="mt-1 text-[11px] text-blue-500 hover:text-blue-600 transition-colors">
+                ตอบกลับ
+              </button>
+            </div>
+
+            {/* Replies */}
+            {c.replies && c.replies.length > 0 && (
+              <div className="ml-5 mt-1.5 space-y-1.5">
+                {c.replies.map((r) => (
+                  <div key={r.id} className="rounded-xl bg-blue-50/50 dark:bg-blue-500/[0.04] border border-blue-100 dark:border-blue-500/10 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{r.user.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400">{fmtRelative(r.createdAt)}</span>
+                        {r.user.id === currentUserId && (
+                          <button type="button" disabled={deleting === r.id} onClick={() => deleteComment(r.id)}
+                            className="text-slate-300 hover:text-red-400 transition-colors disabled:opacity-40">
+                            {deleting === r.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Trash2 className="w-2.5 h-2.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{r.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reply input */}
+            {replyingTo === c.id && (
+              <div className="ml-5 mt-1.5 flex gap-2">
+                <input type="text" value={replyText} onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(replyText, c.id) } }}
+                  placeholder={`ตอบกลับ ${c.user.name}...`}
+                  className="flex-1 rounded-xl px-3 py-2 text-[12px] bg-white dark:bg-white/5 border border-blue-200 dark:border-blue-500/25 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
+                <button type="button" disabled={posting || !replyText.trim()} onClick={() => postComment(replyText, c.id)}
+                  className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-xl text-blue-600 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+                  {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* New comment */}
+      <div className="flex gap-2">
+        <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)}
+          placeholder="เพิ่มความคิดเห็น..."
+          className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-blue-400/60" />
+        <button type="button" disabled={posting || !text.trim()} onClick={() => postComment(text)}
+          className="flex-shrink-0 self-end flex h-9 w-9 items-center justify-center rounded-xl text-blue-600 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+          {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Task Detail Modal ─────────────────────────────────────────────────────────
 
 type DetailModalProps = {
@@ -411,12 +680,27 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
   const [progressInput, setProgress]     = useState('')
   const [error,         setError]        = useState<string | null>(null)
   const [isPending,     startTransition] = useTransition()
+  const [detailTab,     setDetailTab]    = useState<'info' | 'checklist' | 'comments'>('info')
 
   const [attachments,  setAttachments]  = useState<TaskAttachment[]>(task.attachments ?? [])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [uploading,    setUploading]    = useState(false)
   const [uploadError,  setUploadError]  = useState<string | null>(null)
   const [deletingId,   setDeletingId]   = useState<string | null>(null)
+
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(task.checklist ?? [])
+  const [comments, setComments] = useState<TaskCommentItem[]>(task.comments ?? [])
+  const [loadedDetail, setLoadedDetail] = useState(false)
+
+  // Load checklist + comments on first open
+  useEffect(() => {
+    if (loadedDetail) return
+    setLoadedDetail(true)
+    fetch(`/api/tasks/${task.id}`).then(r => r.json()).then((d: { task?: Task }) => {
+      if (d.task?.checklist) setChecklist(d.task.checklist)
+      if (d.task?.comments) setComments(d.task.comments)
+    }).catch(() => {})
+  }, [task.id, loadedDetail])
 
   const isAssignee  = task.assigneeId   === userId
   const isAssigner  = task.assignedById === userId
@@ -430,7 +714,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
   const noteHist      = parseNotes(task.progressNotes)
   const eff           = effectiveStatus(task)
 
-  const isWorkable = !['COMPLETED'].includes(task.status)
+  const isWorkable = !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(task.status)
   const canStart   = ['PENDING', 'NEW', 'ASSIGNED'].includes(task.status)
   const canWork    = ['IN_PROGRESS', 'REVISION', 'WAITING_DOC'].includes(task.status)
 
@@ -507,8 +791,32 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
             </button>
           </div>
 
+          {/* Detail tabs */}
+          <div className="flex-shrink-0 flex gap-1 px-5 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+            {([
+              { id: 'info' as const,      label: 'ข้อมูล' },
+              { id: 'checklist' as const, label: `รายการ${checklist.length > 0 ? ` (${checklist.filter(i => i.isCompleted).length}/${checklist.length})` : ''}` },
+              { id: 'comments' as const,  label: `ความคิดเห็น${comments.length > 0 ? ` (${comments.length})` : ''}` },
+            ]).map((t) => (
+              <button key={t.id} type="button" onClick={() => setDetailTab(t.id)}
+                className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all ${detailTab === t.id ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+
+            {detailTab === 'checklist' && (
+              <ChecklistSection taskId={task.id} initial={checklist} currentUserId={userId} />
+            )}
+
+            {detailTab === 'comments' && (
+              <CommentsSection taskId={task.id} initial={comments} currentUserId={userId} />
+            )}
+
+            {detailTab === 'info' && <>
 
             {/* Status + priority */}
             <div className="flex flex-wrap gap-2 items-center">
@@ -738,7 +1046,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
             )}
 
             {/* ── Reviewer actions ── */}
-            {isReviewer && task.status === 'WAITING_REVIEW' && (
+            {isReviewer && (task.status === 'WAITING_REVIEW' || task.status === 'WAITING_APPROVAL') && (
               <div className="space-y-3 pt-1 border-t border-slate-100 dark:border-white/[0.05]">
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pt-1">ตรวจงาน</p>
                 <textarea rows={2} value={reviewNote} onChange={(e) => setReviewNote(e.target.value)}
@@ -755,9 +1063,27 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
                     {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
                     ขอแก้ไข
                   </button>
+                  <button type="button" disabled={isPending} onClick={() => patch({ status: 'REJECTED', reviewNote })}
+                    className="flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-[13px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/25 hover:bg-red-100 transition-colors disabled:opacity-50">
+                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    ปฏิเสธ
+                  </button>
                 </div>
               </div>
             )}
+
+            {/* ── Cancel action (creator or admin) ── */}
+            {(isAssigner || isFullAdmin) && isWorkable && (
+              <div className="pt-1 border-t border-slate-100 dark:border-white/[0.05]">
+                <button type="button" disabled={isPending} onClick={() => { if (confirm('ยืนยันยกเลิกงานนี้?')) patch({ status: 'CANCELLED' }) }}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.07] hover:bg-slate-200 dark:hover:bg-white/[0.10] transition-colors disabled:opacity-50">
+                  <Ban className="w-3.5 h-3.5" />
+                  ยกเลิกงาน
+                </button>
+              </div>
+            )}
+
+            </> /* end detailTab === 'info' */}
           </div>
 
           {/* Footer */}
@@ -802,6 +1128,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
   const [pendingFiles,     setPendingFiles]= useState<File[]>([])
   const [uploading,        setUploading]   = useState(false)
   const [error,            setError]       = useState<string | null>(null)
+  const [checklistItems,   setChecklistItems] = useState<string[]>([])
 
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
 
@@ -853,6 +1180,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
           appointmentPlace: appointmentPlace.trim() || null,
           notes:            notes.trim()            || null,
           taskLinks:        cleanLinks.length > 0 ? cleanLinks : undefined,
+          checklist:        checklistItems.filter(t => t.trim()).map(t => ({ title: t.trim() })),
         }),
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
@@ -1037,6 +1365,35 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
                 )}
               </div>
 
+              {/* Checklist */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[12px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5" />รายการตรวจสอบ (ไม่บังคับ)
+                  </label>
+                  <button type="button" onClick={() => setChecklistItems((p) => [...p, ''])}
+                    className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
+                    <Plus className="w-3.5 h-3.5" />เพิ่ม
+                  </button>
+                </div>
+                {checklistItems.length > 0 && (
+                  <div className="space-y-1.5">
+                    {checklistItems.map((item, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <Square className="w-3.5 h-3.5 flex-shrink-0 text-slate-300 dark:text-slate-600" />
+                        <input type="text" value={item}
+                          onChange={(e) => setChecklistItems((p) => p.map((x, idx) => idx === i ? e.target.value : x))}
+                          placeholder={`รายการที่ ${i + 1}...`} className={`flex-1 ${inputCls}`} />
+                        <button type="button" onClick={() => setChecklistItems((p) => p.filter((_, idx) => idx !== i))}
+                          className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Files */}
               <div>
                 <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
@@ -1066,6 +1423,67 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
         </div>
       </div>
     </>
+  )
+}
+
+// ── Kanban Board ──────────────────────────────────────────────────────────────
+
+const KANBAN_COLS = [
+  { id: 'queue',    label: 'รับเรื่อง',        statuses: ['PENDING', 'NEW', 'ASSIGNED'],         color: 'border-slate-300 dark:border-slate-600', dot: 'bg-slate-400' },
+  { id: 'active',   label: 'กำลังดำเนินการ',   statuses: ['IN_PROGRESS', 'WAITING_DOC'],          color: 'border-blue-400 dark:border-blue-500',   dot: 'bg-blue-500' },
+  { id: 'review',   label: 'รอตรวจ / อนุมัติ', statuses: ['WAITING_REVIEW', 'WAITING_APPROVAL'],  color: 'border-amber-400 dark:border-amber-500',  dot: 'bg-amber-500' },
+  { id: 'done',     label: 'เสร็จสิ้น',         statuses: ['COMPLETED'],                          color: 'border-green-400 dark:border-green-500',  dot: 'bg-green-500' },
+] as const
+
+function KanbanBoard({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {KANBAN_COLS.map((col) => {
+        const colTasks = tasks.filter((t) => col.statuses.includes(t.status as never) || (col.id === 'active' && isOverdue(t) && col.statuses.includes(t.status as never)))
+        const overdueCount = colTasks.filter(isOverdue).length
+        return (
+          <div key={col.id} className={`rounded-2xl border-2 ${col.color} bg-white dark:bg-slate-900/60 overflow-hidden`}>
+            <div className="px-3 py-2.5 border-b border-slate-100 dark:border-white/[0.05] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
+                <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">{col.label}</span>
+              </div>
+              <span className="text-[11px] text-slate-400">{colTasks.length}</span>
+            </div>
+            <div className="p-2 space-y-2 min-h-[120px]">
+              {colTasks.length === 0 && (
+                <p className="text-center text-[11px] text-slate-400 dark:text-slate-600 py-4">ไม่มีงาน</p>
+              )}
+              {colTasks.map((task) => {
+                const overdue = isOverdue(task)
+                return (
+                  <button key={task.id} type="button" onClick={() => onSelect(task)}
+                    className={`w-full text-left rounded-xl border p-2.5 hover:shadow-md transition-all active:scale-[0.98] ${overdue ? 'border-red-200 dark:border-red-500/30 bg-red-50/60 dark:bg-red-500/[0.05]' : 'border-slate-100 dark:border-white/[0.05] bg-white dark:bg-slate-800/60'}`}>
+                    {task.caseNumber && (
+                      <p className="text-[10px] font-mono font-bold text-slate-400 mb-0.5">{task.caseNumber}</p>
+                    )}
+                    <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">{task.title}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {task.taskDepartment && <DeptBadge dept={task.taskDepartment} />}
+                      <span className={`text-[10px] ${PRIORITY_TEXT[task.priority] ?? ''}`}>{PRIORITY_LABEL[task.priority]}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-[10px] text-slate-400 truncate">{task.assignee.name}</span>
+                      {task.dueDate && (
+                        <span className={`text-[10px] ${overdue ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
+                          {fmtDate(task.dueDate)}
+                        </span>
+                      )}
+                    </div>
+                    {overdue && <span className="mt-1 inline-block text-[10px] font-bold text-red-600 dark:text-red-400">⚠️ เกินกำหนด</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -1186,10 +1604,13 @@ export default function TasksClient({
 }: Props) {
   const router = useRouter()
   type TabId = 'my' | 'by_me' | 'all'
+  type ViewMode = 'list' | 'kanban'
 
   const [tab,        setTab]      = useState<TabId>('my')
   const [filter,     setFilter]   = useState('all')
   const [deptFilter, setDeptFilter] = useState('all')
+  const [viewMode,   setViewMode] = useState<ViewMode>('list')
+  const [showDeptFilter, setShowDeptFilter] = useState(false)
   const [myTasks,    setMyTasks]  = useState<Task[]>(initMy)
   const [byMeTasks,  setByMe]     = useState<Task[]>(initByMe)
   const [allList,    setAll]      = useState<Task[]>(initAll)
@@ -1244,15 +1665,28 @@ export default function TasksClient({
           <h1 className="text-[20px] font-bold text-slate-900 dark:text-white">มอบหมายงาน</h1>
           <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">จัดการ ติดตาม และมอบหมายงานแต่ละฝ่าย</p>
         </div>
-        {canAssign && (
-          <button type="button" onClick={() => setCreate(true)}
-            className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5"
-            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">สร้างงาน</span>
-            <span className="sm:hidden">สร้าง</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* View mode switcher */}
+          <div className="flex rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden bg-white dark:bg-slate-900">
+            <button type="button" onClick={() => setViewMode('list')}
+              className={`flex h-9 w-9 items-center justify-center transition-colors ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05]'}`} title="มุมมองรายการ">
+              <List className="w-4 h-4" />
+            </button>
+            <button type="button" onClick={() => setViewMode('kanban')}
+              className={`flex h-9 w-9 items-center justify-center transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05]'}`} title="มุมมองกระดาน">
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
+          {canAssign && (
+            <button type="button" onClick={() => setCreate(true)}
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">สร้างงาน</span>
+              <span className="sm:hidden">สร้าง</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <StatStrip tasks={currentList} />
@@ -1275,18 +1709,33 @@ export default function TasksClient({
         </div>
       )}
 
-      {/* Department filter */}
-      <div className="flex flex-wrap gap-2">
-        {[{ value: 'all', label: 'ทุกฝ่าย' }, ...DEPT_OPTIONS.filter((d) => d.value)].map(({ value, label }) => (
-          <button key={value} type="button" onClick={() => setDeptFilter(value)}
-            className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors border ${
-              deptFilter === value
-                ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}>
-            {value !== 'all' && <Building2 className="w-2.5 h-2.5 inline mr-1 -mt-0.5" />}
-            {label}
-          </button>
-        ))}
+      {/* Department filter — collapsible */}
+      <div className="rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden">
+        <button type="button" onClick={() => setShowDeptFilter(v => !v)}
+          className="flex w-full items-center justify-between px-4 py-2.5 text-[12px] font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors">
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal size={14} />
+            ตัวกรองฝ่าย
+            {deptFilter !== 'all' && (
+              <span className="rounded-full bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5">{DEPT_LABEL[deptFilter] ?? deptFilter}</span>
+            )}
+          </span>
+          <ChevronDown size={14} className={`transition-transform ${showDeptFilter ? 'rotate-180' : ''}`} />
+        </button>
+        {showDeptFilter && (
+          <div className="flex flex-wrap gap-2 px-4 pb-3 border-t border-slate-100 dark:border-white/[0.05] pt-2.5">
+            {[{ value: 'all', label: 'ทุกฝ่าย' }, ...DEPT_OPTIONS.filter((d) => d.value)].map(({ value, label }) => (
+              <button key={value} type="button" onClick={() => setDeptFilter(value)}
+                className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors border ${
+                  deptFilter === value
+                    ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 border-transparent'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}>
+                {value !== 'all' && <Building2 className="w-2.5 h-2.5 inline mr-1 -mt-0.5" />}
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Status filter tabs */}
@@ -1303,8 +1752,13 @@ export default function TasksClient({
         ))}
       </div>
 
+      {/* Kanban view */}
+      {viewMode === 'kanban' && (
+        <KanbanBoard tasks={filtered} onSelect={setSelected} />
+      )}
+
       {/* Task list — mobile cards (xs) / desktop table (sm+) */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
+      {viewMode === 'list' && <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center justify-between">
           <h2 className="text-[14px] font-semibold text-slate-700 dark:text-slate-200">รายการงาน</h2>
           <span className="text-[12px] text-slate-400">{filtered.length} รายการ</span>
@@ -1384,6 +1838,8 @@ export default function TasksClient({
         )}
       </div>
 
+      }
+
       {selected && (
         <TaskDetailModal task={selected} role={role} userId={userId}
           onClose={() => setSelected(null)} onUpdated={applyUpdate} />
@@ -1391,6 +1847,16 @@ export default function TasksClient({
       {showCreate && (
         <CreateTaskModal employees={employees} assignerName={userName}
           onClose={() => setCreate(false)} onCreated={handleCreated} />
+      )}
+
+      {/* Mobile FAB */}
+      {canAssign && (
+        <button type="button" onClick={() => setCreate(true)}
+          className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+          style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}>
+          <Plus className="w-4 h-4" />
+          สร้างงาน
+        </button>
       )}
     </div>
   )

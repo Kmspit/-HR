@@ -173,6 +173,10 @@ enum TaskStatus {
   NEW
   ASSIGNED
   WAITING_DOC
+  // Phase 2 — extended workflow
+  WAITING_APPROVAL
+  REJECTED
+  CANCELLED
 }
 
 enum TaskType {
@@ -431,6 +435,8 @@ model User {
   createdTasks              TaskAssignment[]       @relation("TaskAssigner")
   reviewedTasks             TaskAssignment[]       @relation("TaskReviewer")
   taskAttachments           TaskAttachment[]       @relation("TaskAttachmentUploader")
+  taskComments              TaskComment[]          @relation("TaskCommentAuthor")
+  completedChecklistItems   TaskChecklist[]        @relation("TaskChecklistCompleter")
   // Phase 4 — Case Document Center
   caseDocsUploaded          CaseDocument[]         @relation("CaseDocUploader")
   caseDocsAssigned          CaseDocument[]         @relation("CaseDocAssignee")
@@ -1313,6 +1319,8 @@ model TaskAssignment {
   debtors         Debtor[]
   slaRecords      ClientSlaRecord[]
   billingInvoices BillingInvoice[]
+  comments        TaskComment[]
+  checklist       TaskChecklist[]
 
   @@map("task_assignments")
 }
@@ -1334,6 +1342,44 @@ model TaskAttachment {
   uploadedBy   User           @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id])
 
   @@map("task_attachments")
+}
+
+// ── TASK COMMENTS (Phase 2) ──────────────────────────
+
+model TaskComment {
+  id           String   @id @default(cuid())
+  taskId       String   @map("task_id")
+  userId       String   @map("user_id")
+  content      String
+  parentId     String?  @map("parent_id")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  task    TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user    User           @relation("TaskCommentAuthor", fields: [userId], references: [id])
+  parent  TaskComment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies TaskComment[]  @relation("CommentReplies")
+
+  @@map("task_comments")
+}
+
+// ── TASK CHECKLIST (Phase 2) ──────────────────────────
+
+model TaskChecklist {
+  id            String    @id @default(cuid())
+  taskId        String    @map("task_id")
+  title         String
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  order         Int       @default(0)
+  completedById String?   @map("completed_by_id")
+  completedAt   DateTime? @map("completed_at")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  task        TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  completedBy User?          @relation("TaskChecklistCompleter", fields: [completedById], references: [id])
+
+  @@map("task_checklists")
 }
 
 // ── CASE DOCUMENT CENTER (Phase 4) ──────────────────
