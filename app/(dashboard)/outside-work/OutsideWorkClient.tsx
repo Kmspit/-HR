@@ -146,6 +146,7 @@ function EditPlaceModal({
 
 export default function OutsideWorkClient({ canViewAll, canApproveOutside, requests: init }: Props) {
   const [tab, setTab] = useState<'request' | 'history'>('request')
+  const [step, setStep] = useState<1 | 2>(1)
   const [form, setForm] = useState({
     date: '',
     startTime: '09:00',
@@ -164,6 +165,13 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
   const router = useRouter()
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
+
+  const goNext = () => {
+    if (!form.date) { toast.error('กรุณาเลือกวันที่'); return }
+    if (!form.place.trim()) { toast.error('กรุณาระบุสถานที่'); return }
+    if (!form.googleMapsUrl.trim()) { toast.error('กรุณาใส่ Google Maps URL'); return }
+    setStep(2)
+  }
 
   const submit = async () => {
     if (!form.date || !form.place || !form.purpose || !form.googleMapsUrl) {
@@ -196,6 +204,7 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
       toast.success('ส่งคำขอแล้ว รอ CEO อนุมัติ')
       setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '', googleMapsUrl: '' })
       setAttachmentFile(null)
+      setStep(1)
       if (fileInputRef.current) fileInputRef.current.value = ''
       router.refresh()
       setTab('history')
@@ -255,105 +264,172 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
       </div>
 
       {tab === 'request' && (
-        <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-5 space-y-4">
+        <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-5 space-y-5">
+
+          {/* Step indicator */}
           <div>
-            <h3 className="font-semibold text-white text-[15px]">แบบฟอร์มขอออกนอกสถานที่</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              CEO อนุมัติ · หลังอนุมัติแล้วสามารถเช็คอินนอกบริษัทได้ · กฎสาย: เช็คอินหลัง 09:00 = สาย
+            <div className="flex items-center gap-0">
+              <div className="flex items-center gap-2">
+                <span className={`h-7 w-7 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${step === 1 ? 'bg-blue-600 text-white' : 'bg-green-600 text-white'}`}>
+                  {step === 1 ? '1' : '✓'}
+                </span>
+                <span className={`text-[13px] font-semibold ${step === 1 ? 'text-white' : 'text-green-400'}`}>
+                  วันที่ & สถานที่
+                </span>
+              </div>
+              <div className="flex-1 h-px bg-white/10 mx-3" />
+              <div className="flex items-center gap-2">
+                <span className={`h-7 w-7 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${step === 2 ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                  2
+                </span>
+                <span className={`text-[13px] font-semibold ${step === 2 ? 'text-white' : 'text-slate-500'}`}>
+                  รายละเอียดงาน
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              CEO อนุมัติ · หลังอนุมัติเช็คอินนอกบริษัทได้
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: 'วันที่ *', key: 'date' as const, type: 'date' },
-              { label: 'เวลาออก *', key: 'startTime' as const, type: 'time' },
-              { label: 'เวลากลับโดยประมาณ *', key: 'endTime' as const, type: 'time' },
-            ].map(({ label, key, type }) => (
-              <div key={key} className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+          {/* ─── Step 1: วันที่ & สถานที่ ─── */}
+          {step === 1 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'วันที่ *', key: 'date' as const, type: 'date' },
+                  { label: 'เวลาออก *', key: 'startTime' as const, type: 'time' },
+                  { label: 'เวลากลับโดยประมาณ *', key: 'endTime' as const, type: 'time' },
+                ].map(({ label, key, type }) => (
+                  <div key={key} className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+                    <input
+                      type={type}
+                      value={form[key]}
+                      onChange={(e) => set(key, e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">สถานที่ปฏิบัติงาน *</label>
                 <input
-                  type={type}
-                  value={form[key]}
-                  onChange={(e) => set(key, e.target.value)}
+                  value={form.place}
+                  onChange={(e) => set('place', e.target.value)}
+                  placeholder="ชื่อสถานที่ / ที่อยู่"
                   className={inputCls}
                 />
               </div>
-            ))}
-          </div>
 
-          {[
-            { label: 'สถานที่ปฏิบัติงาน *', key: 'place' as const, placeholder: 'ชื่อสถานที่ / ที่อยู่' },
-            { label: 'วัตถุประสงค์ / รายละเอียดงาน *', key: 'purpose' as const, placeholder: 'เหตุผล / ภารกิจ' },
-            { label: 'ลูกค้า / หน่วยงาน', key: 'client' as const, placeholder: '(ถ้ามี)' },
-            { label: 'หมายเหตุ', key: 'note' as const, placeholder: '' },
-          ].map(({ label, key, placeholder }) => (
-            <div key={key} className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
-              <input
-                value={form[key]}
-                onChange={(e) => set(key, e.target.value)}
-                placeholder={placeholder}
-                className={inputCls}
-              />
-            </div>
-          ))}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Google Maps URL *</label>
+                <input
+                  value={form.googleMapsUrl}
+                  onChange={(e) => set('googleMapsUrl', e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  className={inputCls}
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Google Maps URL *</label>
-            <input
-              value={form.googleMapsUrl}
-              onChange={(e) => set('googleMapsUrl', e.target.value)}
-              placeholder="https://maps.google.com/..."
-              className={inputCls}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              เอกสารแนบ <span className="text-slate-600 normal-case">(ถ้ามี · JPG, PNG, PDF · ไม่เกิน 10MB)</span>
-            </label>
-            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-slate-400 hover:text-white hover:border-white/20 transition"
+                onClick={goNext}
+                className="w-full min-h-[44px] rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition touch-manipulation flex items-center justify-center gap-2"
               >
-                <Paperclip className="w-4 h-4" />
-                {attachmentFile ? attachmentFile.name : 'เลือกไฟล์'}
+                ถัดไป — รายละเอียดงาน →
               </button>
-              {attachmentFile && (
+            </>
+          )}
+
+          {/* ─── Step 2: รายละเอียดงาน ─── */}
+          {step === 2 && (
+            <>
+              {/* summary of step 1 */}
+              <div className="rounded-xl bg-slate-800/60 border border-white/[0.07] px-4 py-3 space-y-1">
+                <p className="text-[12px] text-slate-400 uppercase tracking-wider font-semibold">ข้อมูลจากขั้นตอนที่ 1</p>
+                <p className="text-sm text-white">
+                  {form.date ? new Date(form.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : '—'}
+                  {' · '}{form.startTime} – {form.endTime}
+                </p>
+                <p className="text-sm text-slate-300 truncate">{form.place}</p>
+              </div>
+
+              {[
+                { label: 'วัตถุประสงค์ / รายละเอียดงาน *', key: 'purpose' as const, placeholder: 'เหตุผล / ภารกิจที่ต้องดำเนินการ' },
+                { label: 'ลูกค้า / หน่วยงาน', key: 'client' as const, placeholder: '(ถ้ามี)' },
+                { label: 'หมายเหตุ', key: 'note' as const, placeholder: '' },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+                  <input
+                    value={form[key]}
+                    onChange={(e) => set(key, e.target.value)}
+                    placeholder={placeholder}
+                    className={inputCls}
+                  />
+                </div>
+              ))}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  เอกสารแนบ <span className="text-slate-600 normal-case">(ถ้ามี · JPG, PNG, PDF · ไม่เกิน 10MB)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-slate-400 hover:text-white hover:border-white/20 transition"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    {attachmentFile ? attachmentFile.name : 'เลือกไฟล์'}
+                  </button>
+                  {attachmentFile && (
+                    <button
+                      type="button"
+                      onClick={() => { setAttachmentFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                      className="text-slate-500 hover:text-red-400"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
+
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => { setAttachmentFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
-                  className="text-slate-500 hover:text-red-400"
+                  onClick={() => setStep(1)}
+                  className="flex-shrink-0 px-5 min-h-[44px] rounded-xl border border-white/10 text-slate-400 hover:text-white text-sm font-semibold transition touch-manipulation"
                 >
-                  <X className="w-4 h-4" />
+                  ← ย้อนกลับ
                 </button>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              className="hidden"
-              onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={submitting}
+                  className="flex-1 min-h-[44px] rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-50 touch-manipulation flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> กำลังส่ง...
+                    </>
+                  ) : (
+                    'ส่งคำขอออกนอกสถานที่'
+                  )}
+                </button>
+              </div>
+            </>
+          )}
 
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting}
-            className="w-full min-h-[44px] rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-50 touch-manipulation"
-          >
-            {submitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> กำลังส่ง...
-              </span>
-            ) : (
-              'ส่งคำขอออกนอกสถานที่'
-            )}
-          </button>
         </div>
       )}
 
