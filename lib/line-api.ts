@@ -154,6 +154,33 @@ export async function pushLineText(toUserId: string, text: string): Promise<bool
   return result.ok
 }
 
+// ─── Reply helpers (Phase 14) ─────────────────────────────────────────────────
+
+export async function replyLineMessages(replyToken: string, messages: object[]): Promise<boolean> {
+  const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
+  const { token } = await resolveLineChannelAccessToken()
+  if (!token) {
+    console.log('[LINE reply-multi mock]', messages.length, 'messages')
+    return true
+  }
+  try {
+    const res = await fetch(`${LINE_API}/message/reply`, {
+      method: 'POST',
+      headers: createLineApiHeaders(token),
+      body: JSON.stringify({ replyToken, messages: messages.slice(0, 5) }),
+    })
+    if (!res.ok) console.error('[LINE reply-multi]', res.status, await res.text())
+    return res.ok
+  } catch (err) {
+    console.error('[LINE reply-multi]', err)
+    return false
+  }
+}
+
+export async function replyLineFlex(replyToken: string, altText: string, contents: object): Promise<boolean> {
+  return replyLineMessages(replyToken, [{ type: 'flex', altText, contents }])
+}
+
 export async function getLineUserProfile(lineUserId: string): Promise<{
   displayName: string
   pictureUrl?: string

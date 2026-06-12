@@ -8,6 +8,7 @@ import { saveUpload } from '@/lib/save-upload'
 import { LEAVE_TYPE_OPTIONS } from '@/lib/leave-types'
 import type { LeaveType } from '@prisma/client'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { sendLineApprovalRequest } from '@/lib/line-notifications'
 import {
   findLeaveHolidayConflicts,
   formatHolidayConflictMessage,
@@ -142,6 +143,21 @@ export async function POST(req: NextRequest) {
 
     await runNotify(() =>
       sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
+    )
+    // Phase 14 — LINE approval card
+    await runNotify(() =>
+      sendLineApprovalRequest({
+        approvalType: 'LEAVE',
+        id: leave.id,
+        title: `ลา ${parsed.type} ${parsed.days} วัน`,
+        requesterName: leave.user.name,
+        details: [
+          { label: 'ประเภท', value: parsed.type },
+          { label: 'วันที่', value: `${parsed.startDate} — ${parsed.endDate}` },
+          { label: 'จำนวน', value: `${parsed.days} วัน` },
+          ...(parsed.reason ? [{ label: 'เหตุผล', value: parsed.reason.slice(0, 60) }] : []),
+        ],
+      }),
     )
 
     return NextResponse.json({ success: true, id: leave.id, chainApplied: !!defaultChain })

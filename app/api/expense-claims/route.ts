@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
+import { sendLineApprovalRequest } from '@/lib/line-notifications'
 
 const CAN_APPROVE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
 const userSel = { id: true, name: true, department: true, role: true }
@@ -97,6 +98,19 @@ export async function POST(req: NextRequest) {
       message: `${claim.submittedBy.name} ยื่นเบิก ${title} — ${Number(amount).toLocaleString('th-TH')} บาท`,
     })
   }
+  // Phase 14 — LINE approval card
+  void sendLineApprovalRequest({
+    approvalType: 'EXPENSE',
+    id: claim.id,
+    title: `${title} — ฿${Number(amount).toLocaleString('th-TH')}`,
+    requesterName: claim.submittedBy.name,
+    details: [
+      { label: 'ประเภท', value: String(expenseType) },
+      { label: 'จำนวน', value: `฿${Number(amount).toLocaleString('th-TH')} บาท` },
+      ...(caseNumber ? [{ label: 'เลขคดี', value: String(caseNumber) }] : []),
+      ...(note ? [{ label: 'หมายเหตุ', value: String(note).slice(0, 60) }] : []),
+    ],
+  })
 
   return NextResponse.json(claim, { status: 201 })
 }

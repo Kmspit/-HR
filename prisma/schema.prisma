@@ -154,6 +154,9 @@ enum NotificationType {
   KNOWLEDGE_PUBLISHED
   // Phase 13 — Calendar
   CALENDAR_REMINDER
+  // Phase 14 — LINE OA Automation 2.0
+  LINE_APPROVAL_RESPONSE
+  LINE_DAILY_SUMMARY
 }
 
 enum TaskStatus {
@@ -364,10 +367,11 @@ model User {
   baseSalary       Float?
   startDate        DateTime?
   socialSecurity   Boolean    @default(true)
-  lineId           String?
-  lineUserId       String?    @unique
-  lineDisplayName  String?
-  isCoworker       Boolean    @default(false)
+  lineId               String?
+  lineUserId           String?    @unique
+  lineDisplayName      String?
+  lineNotifSettings    String?    @map("line_notif_settings")
+  isCoworker           Boolean    @default(false)
   approvedById     String?
   approvedAt       DateTime?
   branchId         String?

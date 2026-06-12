@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/task-reminders",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/line-daily-summary",
+      "schedule": "0 2 * * *"
     }
   ]
 }
