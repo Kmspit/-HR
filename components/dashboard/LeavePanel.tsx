@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Loader2, Paperclip, Info } from 'lucide-react'
+import { AlertTriangle, Loader2, Paperclip, Info, Plus, FileText } from 'lucide-react'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { LEAVE_TYPE_OPTIONS, LEAVE_TYPE_LABELS } from '@/lib/leave-types'
@@ -159,7 +159,7 @@ export default function LeavePanel({
   const { used, remaining, balance, isProbation } = stats
 
   return (
-    <div className="p-4 md:p-5 space-y-5 max-w-full overflow-x-hidden">
+    <div className="p-4 md:p-6 space-y-5 max-w-full overflow-x-hidden">
 
       {/* Probation warning */}
       {isProbation && (
@@ -171,20 +171,6 @@ export default function LeavePanel({
           </div>
         </div>
       )}
-
-      {/* Balance stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <BalanceCard label="ลาป่วย" icon="🤒" used={used.SICK} total={balance.sick} colorClass="text-red-600 dark:text-red-400" barColor="bg-red-500" />
-        <BalanceCard
-          label="ลาพักร้อน"
-          icon="🏖️"
-          used={used.VACATION}
-          total={balance.vacation}
-          colorClass={isProbation ? 'text-slate-600' : 'text-green-700 dark:text-green-400'}
-          barColor="bg-green-500"
-        />
-        <BalanceCard label="ลากิจ" icon="🗓️" used={used.PERSONAL} total={balance.personal} colorClass="text-blue-700 dark:text-blue-400" barColor="bg-blue-500" />
-      </div>
 
       {/* Extra types used (ordination etc.) */}
       {(used.ORDINATION > 0 || used.FUNERAL > 0 || used.WEDDING > 0 || used.MATERNITY > 0) && (
@@ -224,7 +210,23 @@ export default function LeavePanel({
       </div>
 
       {tab === 'request' && (
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Balance summary — visible only in request tab */}
+          <div className="grid grid-cols-3 gap-2">
+            <BalanceCard label="ลาป่วย" icon="🤒" used={used.SICK} total={balance.sick} colorClass="text-red-600 dark:text-red-400" barColor="bg-red-500" />
+            <BalanceCard
+              label="ลาพักร้อน"
+              icon="🏖️"
+              used={used.VACATION}
+              total={balance.vacation}
+              colorClass={isProbation ? 'text-slate-600' : 'text-green-700 dark:text-green-400'}
+              barColor="bg-green-500"
+            />
+            <BalanceCard label="ลากิจ" icon="🗓️" used={used.PERSONAL} total={balance.personal} colorClass="text-blue-700 dark:text-blue-400" barColor="bg-blue-500" />
+          </div>
+
+        <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-6 space-y-5">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ประเภทการลา</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -332,13 +334,38 @@ export default function LeavePanel({
               ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</>
               : isOrdination ? '🙏 ส่งคำขอลาบวช (อัตโนมัติ)' : '📤 ส่งคำขออนุมัติ'}
           </button>
+        </div>
         </form>
       )}
 
+      {/* Mobile FAB — ยื่นคำขอลา (shows only when viewing history) */}
       {tab === 'history' && (
-        <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setTab('request')}
+          className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+          style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}
+        >
+          <Plus className="w-4 h-4" />
+          ยื่นคำขอลา
+        </button>
+      )}
+
+      {tab === 'history' && (
+        <div className="space-y-3">
           {leaves.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-slate-900 p-8 text-center text-slate-500">ยังไม่มีประวัติการลา</div>
+            <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center space-y-3">
+              <FileText className="w-12 h-12 mx-auto text-slate-600" />
+              <p className="font-semibold text-white text-[15px]">ยังไม่มีประวัติการลา</p>
+              <p className="text-[13px] text-slate-500">เมื่อยื่นคำขอลา ประวัติจะแสดงที่นี่</p>
+              <button
+                type="button"
+                onClick={() => setTab('request')}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> ยื่นคำขอลาแรก
+              </button>
+            </div>
           ) : leaves.map((l) => (
             <div key={l.id} className="rounded-2xl border border-white/5 bg-slate-900 p-4">
               <div className="flex items-center justify-between mb-2">

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, CheckCircle, XCircle, Search, Layers, Pencil } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, Search, Layers, Pencil, SlidersHorizontal, UserPlus, ChevronDown } from 'lucide-react'
 import OrgAssignModal from '@/components/dashboard/OrgAssignModal'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -51,6 +51,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [assignUser, setAssignUser] = useState<User | null>(null)
+  const [showOrgFilter, setShowOrgFilter] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -123,31 +124,49 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
       </div>
 
       {orgFilterOptions && (
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ฝ่าย</label>
-            <select value={sel('divisionId') || 'all'} onChange={(e) => setOrgFilter('divisionId', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
-              <option value="all">ทุกฝ่าย</option>
-              {orgFilterOptions.divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">แผนก</label>
-            <select value={sel('departmentId') || 'all'} onChange={(e) => setOrgFilter('departmentId', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
-              <option value="all">ทุกแผนก</option>
-              {orgFilterOptions.departments.filter((d) => !sel('divisionId') || d.divisionId === sel('divisionId')).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ส่วนงาน</label>
-            <select value={sel('sectionId') || 'all'} onChange={(e) => setOrgFilter('sectionId', e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
-              <option value="all">ทุกส่วนงาน</option>
-              {orgFilterOptions.sections.filter((s) => !sel('departmentId') || s.departmentId === sel('departmentId')).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+        <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowOrgFilter(v => !v)}
+            className="flex w-full items-center justify-between px-4 py-3 text-[13px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal size={15} className="text-slate-400" />
+              ตัวกรองขั้นสูง
+              {(sel('divisionId') || sel('departmentId') || sel('sectionId')) && (
+                <span className="h-2 w-2 rounded-full bg-blue-500" />
+              )}
+            </span>
+            <ChevronDown size={15} className={`text-slate-400 transition-transform ${showOrgFilter ? 'rotate-180' : ''}`} />
+          </button>
+          {showOrgFilter && (
+            <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200 dark:border-white/5 pt-3">
+              <div>
+                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ฝ่าย</label>
+                <select value={sel('divisionId') || 'all'} onChange={(e) => setOrgFilter('divisionId', e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                  <option value="all">ทุกฝ่าย</option>
+                  {orgFilterOptions.divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">แผนก</label>
+                <select value={sel('departmentId') || 'all'} onChange={(e) => setOrgFilter('departmentId', e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                  <option value="all">ทุกแผนก</option>
+                  {orgFilterOptions.departments.filter((d) => !sel('divisionId') || d.divisionId === sel('divisionId')).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ส่วนงาน</label>
+                <select value={sel('sectionId') || 'all'} onChange={(e) => setOrgFilter('sectionId', e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                  <option value="all">ทุกส่วนงาน</option>
+                  {orgFilterOptions.sections.filter((s) => !sel('departmentId') || s.departmentId === sel('departmentId')).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -339,6 +358,16 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           onClose={() => setAssignUser(null)}
         />
       )}
+
+      {/* Mobile FAB — เพิ่มพนักงาน */}
+      <Link
+        href="/register"
+        className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+        style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}
+      >
+        <UserPlus size={16} />
+        เพิ่มพนักงาน
+      </Link>
     </div>
   )
 }

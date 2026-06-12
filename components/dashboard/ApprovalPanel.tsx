@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, CalendarCheck, MapPin, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -204,7 +204,11 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
       {tab === 'leave' && (
         <div className="space-y-3">
           {leaveRequests.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-[14px] text-slate-500">ไม่มีคำขอลาที่รอดำเนินการ ✅</div>
+            <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center space-y-3">
+              <CalendarCheck className="w-12 h-12 mx-auto text-emerald-500/50" />
+              <p className="font-semibold text-white text-[15px]">ไม่มีคำขอลาค้างอยู่</p>
+              <p className="text-[13px] text-slate-500">ทุกคำขอลาได้รับการดำเนินการแล้ว</p>
+            </div>
           ) : leaveRequests.map((l) => (
             <div key={l.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
               <PersonHeader name={l.user.name} subtitle={personSubtitle(l.user)} badge="รออนุมัติ" />
@@ -232,7 +236,11 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
       {tab === 'outside' && (
         <div className="space-y-3">
           {outsideRequests.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-[14px] text-slate-500">ไม่มีคำขอออกนอกสถานที่ ✅</div>
+            <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center space-y-3">
+              <MapPin className="w-12 h-12 mx-auto text-purple-500/50" />
+              <p className="font-semibold text-white text-[15px]">ไม่มีคำขอออกนอกสถานที่</p>
+              <p className="text-[13px] text-slate-500">ทุกคำขอได้รับการดำเนินการแล้ว</p>
+            </div>
           ) : outsideRequests.map((o) => (
             <div key={o.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
               <PersonHeader name={o.user.name} subtitle={personSubtitle(o.user)} badge="รออนุมัติ" accent="purple" />
@@ -278,7 +286,11 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
             {userRole === 'MANAGER_HR' ? '1️⃣ หัวหน้างาน — รออนุมัติเบื้องต้น' : userRole === 'CEO' ? '👑 ผู้บริหาร (CEO) — อนุมัติทุกขั้นตอน' : '2️⃣ ผู้บริหาร — อนุมัติขั้นสุดท้าย'}
           </div>
           {weeklyPlans.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-[14px] text-slate-500">ไม่มีแผนงานทนายที่รออนุมัติ ✅</div>
+            <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center space-y-3">
+              <FileText className="w-12 h-12 mx-auto text-amber-500/50" />
+              <p className="font-semibold text-white text-[15px]">ไม่มีแผนงานทนายรออนุมัติ</p>
+              <p className="text-[13px] text-slate-500">ทุกแผนงานได้รับการดำเนินการแล้ว</p>
+            </div>
           ) : weeklyPlans.map((p) => (
             <div key={p.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
               <div className="flex items-start justify-between gap-3">
