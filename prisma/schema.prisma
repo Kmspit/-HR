@@ -157,6 +157,9 @@ enum NotificationType {
   // Phase 14 — LINE OA Automation 2.0
   LINE_APPROVAL_RESPONSE
   LINE_DAILY_SUMMARY
+  // Phase 15 — Enterprise Security
+  SECURITY_ALERT
+  BACKUP_COMPLETED
 }
 
 enum TaskStatus {
@@ -214,6 +217,9 @@ enum AuditAction {
   LOGIN
   LOGOUT
   PASSWORD_RESET
+  // Phase 15 — Security
+  EXPORT
+  SECURITY_CHANGE
 }
 
 enum HolidayType {
@@ -371,6 +377,9 @@ model User {
   lineUserId           String?    @unique
   lineDisplayName      String?
   lineNotifSettings    String?    @map("line_notif_settings")
+  // Phase 15 — Security
+  lockedUntil          DateTime?  @map("locked_until")
+  passwordChangedAt    DateTime?  @map("password_changed_at")
   isCoworker           Boolean    @default(false)
   approvedById     String?
   approvedAt       DateTime?
@@ -475,6 +484,12 @@ model User {
   quizAttempts              QuizAttempt[]          @relation("QuizAttemptUser")
   // Phase 13 — Calendar
   calendarEvents            CalendarEvent[]        @relation("CalendarEventCreator")
+  // Phase 15 — Security
+  loginAttempts             LoginAttempt[]
+  securityEvents            SecurityEvent[]
+  deviceSessions            DeviceSession[]
+  otpCodes                  OtpCode[]
+  twoFactorSetup            TwoFactorSetup?
 
   @@map("users")
 }
@@ -2110,4 +2125,108 @@ model CalendarEvent {
   @@index([status])
   @@index([createdById])
   @@map("calendar_events")
+}
+
+// ── PHASE 15 — ENTERPRISE SECURITY ─────────────
+
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  email      String
+  ip         String?
+  userAgent  String?
+  success    Boolean  @default(false)
+  userId     String?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, createdAt])
+  @@index([userId])
+  @@map("login_attempts")
+}
+
+model SecurityEvent {
+  id          String   @id @default(cuid())
+  userId      String?
+  eventType   String
+  severity    String   @default("INFO")
+  description String
+  ip          String?
+  userAgent   String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([severity])
+  @@index([eventType])
+  @@map("security_events")
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  sessionId   String   @unique
+  ip          String?
+  userAgent   String?
+  browser     String?
+  os          String?
+  deviceType  String?
+  country     String?
+  isRevoked   Boolean  @default(false)
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("device_sessions")
+}
+
+model OtpCode {
+  id         String   @id @default(cuid())
+  userId     String
+  challenge  String   @unique
+  code       String
+  channel    String   @default("LINE")
+  used       Boolean  @default(false)
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([challenge])
+  @@map("otp_codes")
+}
+
+model TwoFactorSetup {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  enabled    Boolean  @default(false)
+  channel    String   @default("LINE")
+  totpSecret String?  @map("totp_secret")
+  enabledAt  DateTime? @map("enabled_at")
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_setups")
+}
+
+model BackupRecord {
+  id          String   @id @default(cuid())
+  filename    String
+  sizeBytes   Int      @default(0) @map("size_bytes")
+  tables      String
+  status      String   @default("COMPLETED")
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now())
+  note        String?
+
+  @@index([createdAt])
+  @@map("backup_records")
 }

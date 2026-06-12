@@ -1,0 +1,46 @@
+/**
+ * GET  /api/security/2fa — get current 2FA status for the session user
+ * POST /api/security/2fa — enable or disable 2FA
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { logSecurityEvent } from '@/lib/security-events'
+
+export async function GET() {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const setup = await prisma.twoFactorSetup.findUnique({ where: { userId: session.user.id } })
+
+  return NextResponse.json({
+    enabled:  setup?.enabled ?? false,
+    channel:  setup?.channel ?? 'LINE',
+    enabledAt: setup?.enabledAt ?? null,
+  })
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json() as { enabled: boolean; channel?: string }
+  const { enabled, channel = 'LINE' } = body
+
+  const setup = await prisma.twoFactorSetup.upsert({
+    where:  { userId: session.user.id },
+    create: { userId: session.user.id, enabled, channel, enabledAt: enabled ? new Date() : null },
+    update: { enabled, channel, enabledAt: enabled ? new Date() : null },
+  })
+
+  await logSecurityEvent({
+    userId:      session.user.id,
+    eventType:   enabled ? 'TWO_FACTOR_ENABLED' : 'TWO_FACTOR_DISABLED',
+    severity:    'INFO',
+    description: `2FA ${enabled ? 'enabled' : 'disabled'} via ${channel}`,
+    ip:          req.headers.get('x-forwarded-for') ?? undefined,
+    userAgent:   req.headers.get('user-agent') ?? undefined,
+  })
+
+  return NextResponse.json({ enabled: setup.enabled, channel: setup.channel })
+}

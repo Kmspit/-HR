@@ -63,6 +63,7 @@ const ICONS: Record<string, string> = {
   appt:         'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z M9 14h.01M12 14h.01M15 14h.01M9 17h.01M12 17h.01M15 17h.01',
   sop:          'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
   training:     'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222',
+  security:     'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
   logout:       'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1',
   chevronLeft:  'M15 19l-7-7 7-7',
   chevronRight: 'M9 5l7 7-7 7',
@@ -150,7 +151,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'ระบบ',
     items: [
-      { href: '/settings', icon: 'settings', label: 'ตั้งค่า', roles: ['CEO', 'MANAGER_HR', 'ADMIN'] },
+      { href: '/settings', icon: 'settings', label: 'ตั้งค่า',      roles: ['CEO', 'MANAGER_HR', 'ADMIN'] },
+      { href: '/security', icon: 'security', label: 'ความปลอดภัย', roles: ['CEO', 'SUPER_ADMIN', 'HR', 'MANAGER_HR'] as Role[] },
     ],
   },
 ]
