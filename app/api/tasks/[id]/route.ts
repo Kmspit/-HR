@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import { createNotification } from '@/lib/notifications'
+import { createNotification, sendLineMessage } from '@/lib/notifications'
 
 const CAN_MANAGE_ALL = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
 const CAN_REVIEW     = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
@@ -38,7 +38,30 @@ const fullTaskInclude = {
     },
     orderBy: { order: 'asc' as const },
   },
+  timeline: {
+    select: {
+      id: true, action: true, description: true, meta: true, createdAt: true,
+      user: { select: { id: true, name: true, role: true } },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
 } as const
+
+// Map Thai status labels for timeline descriptions
+const STATUS_TH: Record<string, string> = {
+  PENDING:          'รอดำเนินการ',
+  NEW:              'งานใหม่',
+  ASSIGNED:         'มอบหมายแล้ว',
+  IN_PROGRESS:      'กำลังดำเนินการ',
+  WAITING_DOC:      'รอเอกสาร',
+  WAITING_REVIEW:   'รอตรวจสอบ',
+  WAITING_APPROVAL: 'รออนุมัติ',
+  REVISION:         'แก้ไข',
+  COMPLETED:        'เสร็จสิ้น',
+  REJECTED:         'ปฏิเสธ',
+  CANCELLED:        'ยกเลิก',
+  OVERDUE:          'เกินกำหนด',
+}
 
 export async function GET(
   _req: Request,
@@ -91,6 +114,7 @@ export async function PATCH(
   }
 
   let data: Record<string, unknown> = {}
+  const timelineEntries: { action: string; description: string; meta?: string }[] = []
 
   function appendProgressNote(existing: string | null, note: string): string {
     const arr: { note: string; timestamp: string; userId: string; userName: string }[] =
@@ -102,11 +126,23 @@ export async function PATCH(
   if (isAssignee && !isReviewer && !isFullAdmin) {
     // Employee: can update progress, submit result, cancel own task
     const ALLOWED_STATUSES = ['IN_PROGRESS', 'WAITING_REVIEW', 'WAITING_DOC', 'WAITING_APPROVAL', 'CANCELLED']
-    if (body.status && ALLOWED_STATUSES.includes(body.status)) data.status = body.status
+    if (body.status && ALLOWED_STATUSES.includes(body.status)) {
+      const oldStatus = task.status as string
+      data.status = body.status
+      timelineEntries.push({
+        action: 'status_changed',
+        description: `${userName} เปลี่ยนสถานะจาก "${STATUS_TH[oldStatus] ?? oldStatus}" เป็น "${STATUS_TH[body.status] ?? body.status}"`,
+        meta: JSON.stringify({ oldStatus, newStatus: body.status }),
+      })
+    }
     if (body.resultNote !== undefined) data.resultNote = body.resultNote
     if (body.resultUrl  !== undefined) data.resultUrl  = body.resultUrl
     if (body.progressNote?.trim()) {
       data.progressNotes = appendProgressNote(task.progressNotes as string | null, body.progressNote.trim())
+      timelineEntries.push({
+        action: 'edited',
+        description: `${userName} เพิ่มบันทึกความคืบหน้า`,
+      })
     }
     if (body.status === 'IN_PROGRESS' && ['NEW', 'ASSIGNED', 'PENDING'].includes(task.status as string)) {
       data.status = 'IN_PROGRESS'
@@ -132,13 +168,32 @@ export async function PATCH(
     }
   } else {
     // Reviewer / full admin: can update everything
-    if (body.title        !== undefined) data.title       = body.title
+    const oldStatus = task.status as string
+
+    if (body.title        !== undefined) {
+      if (body.title !== task.title) {
+        timelineEntries.push({ action: 'edited', description: `${userName} แก้ไขชื่องาน`, meta: JSON.stringify({ field: 'title', oldValue: task.title, newValue: body.title }) })
+      }
+      data.title = body.title
+    }
     if (body.description  !== undefined) data.description = body.description
     if (body.type         !== undefined) data.type        = body.type
-    if (body.priority     !== undefined) data.priority    = body.priority
+    if (body.priority     !== undefined) {
+      if (body.priority !== task.priority) {
+        timelineEntries.push({ action: 'edited', description: `${userName} เปลี่ยนความสำคัญ`, meta: JSON.stringify({ field: 'priority', oldValue: task.priority, newValue: body.priority }) })
+      }
+      data.priority = body.priority
+    }
     if (body.notes        !== undefined) data.notes       = body.notes
     if (body.startDate    !== undefined) data.startDate   = body.startDate ? new Date(body.startDate) : null
-    if (body.dueDate      !== undefined) data.dueDate     = body.dueDate   ? new Date(body.dueDate)   : null
+    if (body.dueDate      !== undefined) {
+      if (body.dueDate !== (task.dueDate ? task.dueDate.toISOString() : null)) {
+        timelineEntries.push({ action: 'edited', description: `${userName} แก้ไขกำหนดส่ง`, meta: JSON.stringify({ field: 'dueDate', newValue: body.dueDate }) })
+      }
+      data.dueDate = body.dueDate ? new Date(body.dueDate) : null
+    }
+    if (body.dueTime      !== undefined) data.dueTime     = body.dueTime?.trim() ?? null
+    if (body.slaHours     !== undefined) data.slaHours    = body.slaHours ? Number(body.slaHours) : null
 
     if (body.caseNumber       !== undefined) data.caseNumber       = body.caseNumber?.trim()       ?? null
     if (body.clientName       !== undefined) data.clientName       = body.clientName?.trim()       ?? null
@@ -160,10 +215,16 @@ export async function PATCH(
 
     if (body.progressNote?.trim()) {
       data.progressNotes = appendProgressNote(task.progressNotes as string | null, body.progressNote.trim())
+      timelineEntries.push({ action: 'edited', description: `${userName} เพิ่มบันทึกความคืบหน้า` })
     }
 
     if (body.status !== undefined) {
       data.status = body.status
+      timelineEntries.push({
+        action: 'status_changed',
+        description: `${userName} เปลี่ยนสถานะจาก "${STATUS_TH[oldStatus] ?? oldStatus}" เป็น "${STATUS_TH[body.status] ?? body.status}"`,
+        meta: JSON.stringify({ oldStatus, newStatus: body.status }),
+      })
 
       if (body.status === 'COMPLETED') {
         data.reviewedById = userId
@@ -176,6 +237,11 @@ export async function PATCH(
           message: `งาน "${task.title}" ได้รับการอนุมัติเรียบร้อยแล้ว`,
           link: '/tasks',
         })
+        // LINE OA
+        await sendLineMessage(
+          task.assigneeId,
+          `✅ งานของคุณได้รับการอนุมัติ\n\n"${task.title}"\nอนุมัติโดย: ${userName}`,
+        ).catch(() => {})
       }
       if (body.status === 'REVISION') {
         data.reviewNote = body.reviewNote ?? null
@@ -186,6 +252,10 @@ export async function PATCH(
           message: `งาน "${task.title}" ต้องการการแก้ไข${body.reviewNote ? `: ${body.reviewNote}` : ''}`,
           link: '/tasks',
         })
+        await sendLineMessage(
+          task.assigneeId,
+          `🔄 งานของคุณต้องการการแก้ไข\n\n"${task.title}"${body.reviewNote ? `\nหมายเหตุ: ${body.reviewNote}` : ''}`,
+        ).catch(() => {})
       }
       if (body.status === 'REJECTED') {
         data.reviewNote = body.reviewNote ?? null
@@ -196,6 +266,10 @@ export async function PATCH(
           message: `งาน "${task.title}" ถูกปฏิเสธ${body.reviewNote ? `: ${body.reviewNote}` : ''}`,
           link: '/tasks',
         })
+        await sendLineMessage(
+          task.assigneeId,
+          `❌ งานถูกปฏิเสธ\n\n"${task.title}"${body.reviewNote ? `\nเหตุผล: ${body.reviewNote}` : ''}`,
+        ).catch(() => {})
       }
       if (body.status === 'CANCELLED') {
         await createNotification({
@@ -214,6 +288,19 @@ export async function PATCH(
     data,
     include: fullTaskInclude,
   })
+
+  // Write all timeline entries
+  if (timelineEntries.length > 0) {
+    await prisma.taskTimeline.createMany({
+      data: timelineEntries.map(e => ({
+        taskId:      id,
+        userId:      userId,
+        action:      e.action,
+        description: e.description,
+        meta:        e.meta ?? null,
+      })),
+    })
+  }
 
   return NextResponse.json({ task: updated })
 }

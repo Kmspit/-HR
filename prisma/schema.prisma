@@ -437,6 +437,7 @@ model User {
   taskAttachments           TaskAttachment[]       @relation("TaskAttachmentUploader")
   taskComments              TaskComment[]          @relation("TaskCommentAuthor")
   completedChecklistItems   TaskChecklist[]        @relation("TaskChecklistCompleter")
+  taskTimelines             TaskTimeline[]         @relation("TaskTimelineActor")
   // Phase 4 — Case Document Center
   caseDocsUploaded          CaseDocument[]         @relation("CaseDocUploader")
   caseDocsAssigned          CaseDocument[]         @relation("CaseDocAssignee")
@@ -1302,6 +1303,11 @@ model TaskAssignment {
   // Phase 9 — Client CRM
   clientCompanyId  String?   @map("client_company_id")
 
+  // Phase 2 — Deadline & SLA
+  dueTime      String?   @map("due_time")      // HH:MM for reminder targeting
+  slaHours     Int?      @map("sla_hours")     // SLA target hours from creation
+  slaDeadline  DateTime? @map("sla_deadline")  // computed: createdAt + slaHours
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -1321,6 +1327,7 @@ model TaskAssignment {
   billingInvoices BillingInvoice[]
   comments        TaskComment[]
   checklist       TaskChecklist[]
+  timeline        TaskTimeline[]
 
   @@map("task_assignments")
 }
@@ -1380,6 +1387,24 @@ model TaskChecklist {
   completedBy User?          @relation("TaskChecklistCompleter", fields: [completedById], references: [id])
 
   @@map("task_checklists")
+}
+
+// ── TASK TIMELINE / AUDIT TRAIL (Phase 2) ────────────────────────────────────
+
+model TaskTimeline {
+  id          String   @id @default(cuid())
+  taskId      String   @map("task_id")
+  userId      String   @map("user_id")
+  action      String   // created | status_changed | edited | commented | checklist_completed | attachment_uploaded | escalated
+  description String
+  meta        String?  // JSON: { oldStatus, newStatus, field, oldValue, newValue }
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User           @relation("TaskTimelineActor", fields: [userId], references: [id])
+
+  @@index([taskId, createdAt])
+  @@map("task_timelines")
 }
 
 // ── CASE DOCUMENT CENTER (Phase 4) ──────────────────

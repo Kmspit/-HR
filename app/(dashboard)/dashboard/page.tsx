@@ -102,9 +102,28 @@ export default async function DashboardPage({
   const todayStart = startOfTodayBangkok()
   const todayAttWhere = attendanceWhere(scope, { date: { gte: todayStart } })
 
+  const now = new Date()
+  const CAN_SEE_TASK_KPI = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
+  const showTaskKpi = CAN_SEE_TASK_KPI.includes(role)
+
+  // Build task scope for managers/team leaders
+  let taskManagedIds: string[] | null = null
+  if (role === 'MANAGER') {
+    const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
+    taskManagedIds = managed.map(u => u.id)
+  } else if (role === 'TEAM_LEADER') {
+    const members = await prisma.user.findMany({ where: { teamLeaderId: userId }, select: { id: true } })
+    taskManagedIds = members.map(u => u.id)
+  }
+
+  const taskWhere = taskManagedIds !== null
+    ? { assigneeId: { in: taskManagedIds } }
+    : {}
+
   const [
     totalUsers, pendingLeaves, todayAttendance, todayLate,
     pendingUsers, overdueTaskCount,
+    taskTotal, taskCompleted, taskInProgress, taskWaitingReview, taskHighPriority,
   ] = await Promise.all([
     prisma.user.count({ where: activeUserWhere }),
     prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
@@ -113,11 +132,20 @@ export default async function DashboardPage({
     prisma.user.count({ where: pendingUserWhere }),
     prisma.taskAssignment.count({
       where: {
-        dueDate: { lt: new Date() },
-        status: { not: 'COMPLETED' },
+        ...taskWhere,
+        dueDate: { lt: now },
+        status: { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] },
       },
     }),
+    showTaskKpi ? prisma.taskAssignment.count({ where: taskWhere }) : Promise.resolve(0),
+    showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, status: 'COMPLETED' } }) : Promise.resolve(0),
+    showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, status: 'IN_PROGRESS' } }) : Promise.resolve(0),
+    showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, status: { in: ['WAITING_REVIEW', 'WAITING_APPROVAL'] } } }) : Promise.resolve(0),
+    showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, priority: { in: ['HIGH', 'URGENT'] }, status: { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] } } }) : Promise.resolve(0),
   ])
+
+  const taskCompletionRate = taskTotal > 0 ? Math.round(taskCompleted / taskTotal * 100) : 0
+  const taskOverdueRate    = taskTotal > 0 ? Math.round(overdueTaskCount / taskTotal * 100) : 0
 
   const actionItems: ActionItem[] = [
     {
@@ -243,6 +271,59 @@ export default async function DashboardPage({
             ))}
           </div>
         </div>
+
+        {/* ─── Task KPI (manager/CEO/HR) ─── */}
+        {showTaskKpi && taskTotal > 0 && (
+          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
+              <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมงาน</h2>
+              <Link href="/tasks" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                ดูทั้งหมด →
+              </Link>
+            </div>
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {([
+                { label: 'ทั้งหมด',        val: taskTotal,         color: 'text-slate-700 dark:text-slate-200',  bg: 'bg-slate-50 dark:bg-white/[0.03]' },
+                { label: 'กำลังดำเนินการ', val: taskInProgress,    color: 'text-blue-700  dark:text-blue-400',   bg: 'bg-blue-50  dark:bg-blue-500/[0.07]' },
+                { label: 'รอตรวจ/อนุมัติ', val: taskWaitingReview, color: 'text-amber-700 dark:text-amber-400',  bg: 'bg-amber-50 dark:bg-amber-500/[0.07]' },
+                { label: 'เกินกำหนด',      val: overdueTaskCount,  color: 'text-red-700   dark:text-red-400',    bg: 'bg-red-50   dark:bg-red-500/[0.07]' },
+                { label: 'เสร็จสิ้น',       val: taskCompleted,     color: 'text-green-700 dark:text-green-400',  bg: 'bg-green-50 dark:bg-green-500/[0.07]' },
+              ] as { label: string; val: number; color: string; bg: string }[]).map(({ label, val, color, bg }) => (
+                <div key={label} className={`rounded-xl p-3 ${bg}`}>
+                  <p className={`text-xl font-bold ${color}`}>{val}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 pb-4 flex flex-wrap gap-4 items-center">
+              <div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-1">อัตราเสร็จงาน</p>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-28 rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
+                    <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${taskCompletionRate}%` }} />
+                  </div>
+                  <span className="text-[12px] font-bold text-green-600 dark:text-green-400">{taskCompletionRate}%</span>
+                </div>
+              </div>
+              {overdueTaskCount > 0 && (
+                <div>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-1">อัตราเกินกำหนด</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-28 rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
+                      <div className="h-full rounded-full bg-red-500 transition-all" style={{ width: `${taskOverdueRate}%` }} />
+                    </div>
+                    <span className="text-[12px] font-bold text-red-600 dark:text-red-400">{taskOverdueRate}%</span>
+                  </div>
+                </div>
+              )}
+              {taskHighPriority > 0 && (
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-400 px-2.5 py-1 text-[12px] font-semibold">
+                  🟠 {taskHighPriority} งานเร่งด่วน/สูง
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

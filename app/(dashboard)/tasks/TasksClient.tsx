@@ -10,8 +10,10 @@ import {
   Calendar, MapPin, User2,
   LayoutGrid, List, Square, CheckSquare, Send,
   Ban, XCircle, ChevronDown, ChevronRight, SlidersHorizontal,
+  Search, History,
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
+import { getOverdueInfo, getSeverityBadgeClass } from '@/lib/task-sla'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,6 +69,11 @@ type Task = {
   // Phase 2 — comments + checklist (loaded on detail view)
   comments?: TaskCommentItem[]
   checklist?: ChecklistItem[]
+  timeline?: TaskTimelineEntry[]
+  // Phase 2 — SLA fields
+  dueTime: string | null
+  slaHours: number | null
+  slaDeadline: string | null
 }
 
 type TaskLink     = { label: string; url: string }
@@ -83,6 +90,15 @@ type ChecklistItem = {
   order: number
   completedAt: string | null
   completedBy: { id: string; name: string } | null
+}
+
+type TaskTimelineEntry = {
+  id: string
+  action: string
+  description: string
+  meta: string | null
+  createdAt: string
+  user: { id: string; name: string; role: string }
 }
 
 type Props = {
@@ -327,6 +343,18 @@ function DeptBadge({ dept }: { dept: string | null }) {
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${cls}`}>
       <Building2 className="w-2.5 h-2.5" />
       {DEPT_LABEL[dept] ?? dept}
+    </span>
+  )
+}
+
+// ── OverdueSeverityBadge ──────────────────────────────────────────────────────
+
+function OverdueSeverityBadge({ task }: { task: Task }) {
+  const info = getOverdueInfo(task.dueDate, task.status)
+  if (!info.isOverdue) return null
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${getSeverityBadgeClass(info.severity)}`}>
+      <AlertCircle className="w-2.5 h-2.5" />{info.label}
     </span>
   )
 }
@@ -664,6 +692,70 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
   )
 }
 
+// ── Timeline Section ──────────────────────────────────────────────────────────
+
+const TIMELINE_ACTION_ICON: Record<string, React.ReactNode> = {
+  created:              <Plus className="w-3 h-3 text-blue-500" />,
+  status_changed:       <RotateCcw className="w-3 h-3 text-amber-500" />,
+  edited:               <FileText className="w-3 h-3 text-slate-400" />,
+  commented:            <MessageSquare className="w-3 h-3 text-purple-400" />,
+  checklist_completed:  <CheckCircle className="w-3 h-3 text-green-500" />,
+  attachment_uploaded:  <Paperclip className="w-3 h-3 text-slate-400" />,
+  escalated:            <AlertCircle className="w-3 h-3 text-red-500" />,
+}
+
+function TimelineSection({ taskId }: { taskId: string }) {
+  const [entries, setEntries] = useState<TaskTimelineEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/tasks/${taskId}/timeline`)
+      .then(r => r.json())
+      .then((d: { timeline?: TaskTimelineEntry[] }) => {
+        if (d.timeline) setEntries(d.timeline)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [taskId])
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <History className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+        <p className="text-[13px] text-slate-400 dark:text-slate-600">ยังไม่มีประวัติการดำเนินงาน</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <History className="w-3 h-3" />ประวัติการดำเนินงาน ({entries.length})
+      </p>
+      <div className="relative pl-5 space-y-3 before:absolute before:left-2 before:top-1 before:bottom-1 before:w-px before:bg-slate-200 dark:before:bg-white/[0.06]">
+        {entries.map((entry) => (
+          <div key={entry.id} className="relative">
+            <div className="absolute -left-[15px] top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08]">
+              {TIMELINE_ACTION_ICON[entry.action] ?? <History className="w-3 h-3 text-slate-400" />}
+            </div>
+            <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{entry.user.name}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">
+                  {new Date(entry.createdAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}
+                </span>
+              </div>
+              <p className="text-[12px] text-slate-600 dark:text-slate-400 leading-relaxed">{entry.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Task Detail Modal ─────────────────────────────────────────────────────────
 
 type DetailModalProps = {
@@ -680,7 +772,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
   const [progressInput, setProgress]     = useState('')
   const [error,         setError]        = useState<string | null>(null)
   const [isPending,     startTransition] = useTransition()
-  const [detailTab,     setDetailTab]    = useState<'info' | 'checklist' | 'comments'>('info')
+  const [detailTab,     setDetailTab]    = useState<'info' | 'checklist' | 'comments' | 'timeline'>('info')
 
   const [attachments,  setAttachments]  = useState<TaskAttachment[]>(task.attachments ?? [])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -797,6 +889,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
               { id: 'info' as const,      label: 'ข้อมูล' },
               { id: 'checklist' as const, label: `รายการ${checklist.length > 0 ? ` (${checklist.filter(i => i.isCompleted).length}/${checklist.length})` : ''}` },
               { id: 'comments' as const,  label: `ความคิดเห็น${comments.length > 0 ? ` (${comments.length})` : ''}` },
+              { id: 'timeline' as const,  label: 'ประวัติ' },
             ]).map((t) => (
               <button key={t.id} type="button" onClick={() => setDetailTab(t.id)}
                 className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all ${detailTab === t.id ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
@@ -816,6 +909,10 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
               <CommentsSection taskId={task.id} initial={comments} currentUserId={userId} />
             )}
 
+            {detailTab === 'timeline' && (
+              <TimelineSection taskId={task.id} />
+            )}
+
             {detailTab === 'info' && <>
 
             {/* Status + priority */}
@@ -824,6 +921,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
               <span className={`text-[12px] font-medium ${PRIORITY_TEXT[task.priority] ?? 'text-slate-500'}`}>
                 {PRIORITY_LABEL[task.priority] ?? task.priority}
               </span>
+              <OverdueSeverityBadge task={task} />
             </div>
 
             {/* Info grid */}
@@ -1129,6 +1227,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
   const [uploading,        setUploading]   = useState(false)
   const [error,            setError]       = useState<string | null>(null)
   const [checklistItems,   setChecklistItems] = useState<string[]>([])
+  const [dueTime,          setDueTime]        = useState('')
 
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
 
@@ -1181,6 +1280,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
           notes:            notes.trim()            || null,
           taskLinks:        cleanLinks.length > 0 ? cleanLinks : undefined,
           checklist:        checklistItems.filter(t => t.trim()).map(t => ({ title: t.trim() })),
+          dueTime:          dueTime || null,
         }),
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
@@ -1303,6 +1403,10 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
                 <div>
                   <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">กำหนดเสร็จ <span className="text-red-500">*</span></label>
                   <input type="date" value={dueDate} onChange={(e) => setDue(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เวลากำหนดส่ง</label>
+                  <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className={inputCls} />
                 </div>
               </div>
 
@@ -1582,6 +1686,7 @@ function TaskRow({
         <span className={`text-[12px] ${overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
           {fmtDate(task.dueDate)}
         </span>
+        {overdue && <OverdueSeverityBadge task={task} />}
         {(task.courtDate || task.appointmentDate) && (
           <p className="text-[10px] text-amber-500 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
             <Calendar className="w-2.5 h-2.5" />
@@ -1606,11 +1711,13 @@ export default function TasksClient({
   type TabId = 'my' | 'by_me' | 'all'
   type ViewMode = 'list' | 'kanban'
 
-  const [tab,        setTab]      = useState<TabId>('my')
-  const [filter,     setFilter]   = useState('all')
-  const [deptFilter, setDeptFilter] = useState('all')
-  const [viewMode,   setViewMode] = useState<ViewMode>('list')
+  const [tab,          setTab]        = useState<TabId>('my')
+  const [filter,       setFilter]     = useState('all')
+  const [deptFilter,   setDeptFilter] = useState('all')
+  const [viewMode,     setViewMode]   = useState<ViewMode>('list')
   const [showDeptFilter, setShowDeptFilter] = useState(false)
+  const [search,       setSearch]     = useState('')
+  const [smartFilter,  setSmartFilter] = useState('all') // all|overdue|high|today|week
   const [myTasks,    setMyTasks]  = useState<Task[]>(initMy)
   const [byMeTasks,  setByMe]     = useState<Task[]>(initByMe)
   const [allList,    setAll]      = useState<Task[]>(initAll)
@@ -1622,12 +1729,43 @@ export default function TasksClient({
   const filtered = useMemo(() => {
     let list = currentList
     if (deptFilter !== 'all') list = list.filter((t) => t.taskDepartment === deptFilter)
-    if (filter === 'overdue')   return list.filter(isOverdue)
-    if (filter === 'active')    return list.filter((t) => ACTIVE_STATUSES.includes(t.status) && !isOverdue(t))
-    if (filter === 'review')    return list.filter((t) => t.status === 'WAITING_REVIEW')
-    if (filter === 'completed') return list.filter((t) => t.status === 'COMPLETED')
+    if (filter === 'overdue')   list = list.filter(isOverdue)
+    else if (filter === 'active')    list = list.filter((t) => ACTIVE_STATUSES.includes(t.status) && !isOverdue(t))
+    else if (filter === 'review')    list = list.filter((t) => t.status === 'WAITING_REVIEW')
+    else if (filter === 'completed') list = list.filter((t) => t.status === 'COMPLETED')
+
+    // Smart filters
+    const nowTs = Date.now()
+    if (smartFilter === 'overdue') list = list.filter(isOverdue)
+    else if (smartFilter === 'high') list = list.filter((t) => ['HIGH', 'URGENT'].includes(t.priority) && !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(t.status))
+    else if (smartFilter === 'today') {
+      list = list.filter((t) => {
+        if (!t.dueDate) return false
+        const d = new Date(t.dueDate)
+        const nd = new Date()
+        return d.getFullYear() === nd.getFullYear() && d.getMonth() === nd.getMonth() && d.getDate() === nd.getDate()
+      })
+    } else if (smartFilter === 'week') {
+      list = list.filter((t) => {
+        if (!t.dueDate) return false
+        const ms = new Date(t.dueDate).getTime() - nowTs
+        return ms >= 0 && ms <= 7 * 24 * 60 * 60 * 1000
+      })
+    }
+
+    // Full-text search
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter((t) =>
+        t.title.toLowerCase().includes(q) ||
+        (t.caseNumber?.toLowerCase() ?? '').includes(q) ||
+        (t.clientName?.toLowerCase() ?? '').includes(q) ||
+        t.assignee.name.toLowerCase().includes(q)
+      )
+    }
+
     return list
-  }, [currentList, filter, deptFilter])
+  }, [currentList, filter, deptFilter, smartFilter, search])
 
   function applyUpdate(updated: Task) {
     const apply = (list: Task[]) => list.map((t) => (t.id === updated.id ? updated : t))
@@ -1738,6 +1876,44 @@ export default function TasksClient({
         )}
       </div>
 
+      {/* Search box */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="ค้นหางาน, เลขคดี, ลูกค้า, พนักงาน..."
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400/60"
+        />
+        {search && (
+          <button type="button" onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Smart filter chips */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {([
+          { id: 'all',    label: 'ทั้งหมด' },
+          { id: 'overdue', label: '🔴 เกินกำหนด' },
+          { id: 'high',   label: '🟠 เร่งด่วน/สูง' },
+          { id: 'today',  label: '📅 ครบวันนี้' },
+          { id: 'week',   label: '📆 ครบสัปดาห์นี้' },
+        ] as const).map(({ id, label }) => (
+          <button key={id} type="button" onClick={() => setSmartFilter(id)}
+            className={`flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors border ${
+              smartFilter === id
+                ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 border-transparent'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Status filter tabs */}
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-white/[0.05]">
         {STATUS_TABS.map(({ id, label }) => (
@@ -1801,6 +1977,7 @@ export default function TasksClient({
                           ครบ {fmtDate(task.dueDate)}
                         </span>
                       )}
+                      {overdue && <OverdueSeverityBadge task={task} />}
                     </div>
                   </button>
                 )

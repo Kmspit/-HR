@@ -1,9 +1,10 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import { createNotification } from '@/lib/notifications'
+import { createNotification, sendLineMessage } from '@/lib/notifications'
+import { calcSlaDeadline } from '@/lib/task-sla'
 
-const CAN_ASSIGN = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+const CAN_ASSIGN  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 const CAN_SEE_ALL = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
 
 const userSelect = {
@@ -19,25 +20,79 @@ export async function GET(req: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const status = searchParams.get('status') ?? undefined
-  const view = searchParams.get('view') ?? 'mine' // 'mine' | 'assigned_by_me' | 'all'
+  const status    = searchParams.get('status')    ?? undefined
+  const view      = searchParams.get('view')      ?? 'mine' // 'mine' | 'assigned_by_me' | 'all'
+  const search    = searchParams.get('search')    ?? undefined
+  const filter    = searchParams.get('filter')    ?? undefined // 'overdue' | 'high_priority' | 'due_today' | 'due_week' | 'my_team'
+  const priority  = searchParams.get('priority')  ?? undefined
+  const dept      = searchParams.get('department')  ?? undefined
 
-  const role = session.user.role
+  const role   = session.user.role
   const userId = session.user.id
+  const now    = new Date()
 
-  let where: Record<string, unknown> = {}
+  type Where = Record<string, unknown>
+  let where: Where = {}
 
   if (view === 'all' && CAN_SEE_ALL.includes(role)) {
-    // HR/CEO see everything
     where = {}
   } else if (view === 'assigned_by_me') {
     where = { assignedById: userId }
+  } else if (view === 'my_team') {
+    // Manager: their managed users; Team leader: team members; others: own
+    if (role === 'MANAGER') {
+      const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
+      where = { assigneeId: { in: managed.map(u => u.id) } }
+    } else if (role === 'TEAM_LEADER') {
+      const members = await prisma.user.findMany({ where: { teamLeaderId: userId }, select: { id: true } })
+      where = { assigneeId: { in: members.map(u => u.id) } }
+    } else {
+      where = { assigneeId: userId }
+    }
   } else {
-    // Default: own tasks (assigned to me)
     where = { assigneeId: userId }
   }
 
-  if (status) where.status = status
+  if (status)   where.status   = status
+  if (priority) where.priority = priority
+  if (dept)     where.taskDepartment = dept
+
+  // Smart filters
+  if (filter === 'overdue') {
+    where.dueDate = { lt: now }
+    where.status  = { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] }
+  } else if (filter === 'high_priority') {
+    where.priority = { in: ['HIGH', 'URGENT'] }
+    where.status   = { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] }
+  } else if (filter === 'due_today') {
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    where.dueDate = { gte: startOfDay, lt: endOfDay }
+    where.status  = { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] }
+  } else if (filter === 'due_week') {
+    const endOfWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    where.dueDate = { gte: now, lte: endOfWeek }
+    where.status  = { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] }
+  } else if (filter === 'my_team') {
+    const teamIds: string[] = []
+    if (role === 'MANAGER') {
+      const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
+      teamIds.push(...managed.map(u => u.id))
+    } else if (role === 'TEAM_LEADER') {
+      const members = await prisma.user.findMany({ where: { teamLeaderId: userId }, select: { id: true } })
+      teamIds.push(...members.map(u => u.id))
+    }
+    if (teamIds.length > 0) where.assigneeId = { in: teamIds }
+  }
+
+  // Full-text search across title, caseNumber, clientName
+  if (search?.trim()) {
+    where.OR = [
+      { title:      { contains: search.trim() } },
+      { caseNumber: { contains: search.trim() } },
+      { clientName: { contains: search.trim() } },
+    ]
+  }
 
   const tasks = await prisma.taskAssignment.findMany({
     where,
@@ -50,7 +105,7 @@ export async function GET(req: Request) {
       },
     },
     orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
-    take: 100,
+    take: 200,
   })
 
   return NextResponse.json({ tasks })
@@ -69,6 +124,7 @@ export async function POST(req: Request) {
     title, description, type, priority, assigneeId, startDate, dueDate, notes, taskLinks,
     caseNumber, clientName, taskDepartment, appointmentDate, courtDate, appointmentPlace,
     checklist,
+    dueTime, slaHours,
   } = body
 
   if (!title?.trim()) return NextResponse.json({ error: 'กรุณาระบุชื่องาน' }, { status: 400 })
@@ -106,6 +162,10 @@ export async function POST(req: Request) {
     taskLinksJson = clean.length > 0 ? JSON.stringify(clean) : null
   }
 
+  // SLA deadline
+  const slaHoursNum = slaHours ? Number(slaHours) : null
+  const slaDeadlineValue = slaHoursNum ? calcSlaDeadline(new Date(), slaHoursNum) : null
+
   const task = await prisma.taskAssignment.create({
     data: {
       title: title.trim(),
@@ -125,6 +185,9 @@ export async function POST(req: Request) {
       appointmentDate:  appointmentDate ? new Date(appointmentDate) : null,
       courtDate:        courtDate       ? new Date(courtDate)       : null,
       appointmentPlace: appointmentPlace?.trim() ?? null,
+      dueTime:     dueTime?.trim() ?? null,
+      slaHours:    slaHoursNum,
+      slaDeadline: slaDeadlineValue,
     },
     include: {
       assignee:    { select: userSelect },
@@ -150,7 +213,18 @@ export async function POST(req: Request) {
     }
   }
 
-  // Notify the assignee
+  // Record initial timeline entry
+  await prisma.taskTimeline.create({
+    data: {
+      taskId:      task.id,
+      userId:      session.user.id,
+      action:      'created',
+      description: `${session.user.name} สร้างงาน: ${title.trim()}`,
+      meta:        JSON.stringify({ status: 'PENDING', priority: priority ?? 'MEDIUM' }),
+    },
+  })
+
+  // Notify assignee (in-app)
   await createNotification({
     userId: assigneeId,
     type: 'TASK_ASSIGNED',
@@ -158,6 +232,21 @@ export async function POST(req: Request) {
     message: `${session.user.name} มอบหมายงาน: ${title.trim()}`,
     link: '/tasks',
   })
+
+  // LINE OA notification to assignee
+  const assignee = await prisma.user.findUnique({
+    where: { id: assigneeId },
+    select: { lineUserId: true, name: true },
+  })
+  if (assignee?.lineUserId) {
+    const dueDateStr = dueDate
+      ? `\nกำหนดส่ง: ${new Date(dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}`
+      : ''
+    await sendLineMessage(
+      assigneeId,
+      `📋 งานใหม่ถูกมอบหมายให้คุณ\n\n${title.trim()}\nมอบหมายโดย: ${session.user.name}${dueDateStr}\nดูรายละเอียดได้ในแอป HRFlow`,
+    )
+  }
 
   return NextResponse.json({ task }, { status: 201 })
 }
