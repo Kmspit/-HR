@@ -1543,6 +1543,7 @@ model CaseDocument {
   title        String
   description  String?
   docType      String    @default("OTHER") @map("doc_type")
+  category     String    @default("OTHER")
   caseNumber   String?   @map("case_number")
   clientName   String?   @map("client_name")
   department   String?
@@ -1553,16 +1554,24 @@ model CaseDocument {
   clientId     String?   @map("client_id")
   status       String    @default("ACTIVE")
   tags         String?
+  isArchived   Boolean   @default(false) @map("is_archived")
+  // Document Center Phase 1 — FK to Case + Debtor
+  caseId       String?   @map("case_id")
+  debtorId     String?   @map("debtor_id")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   uploadedBy User                    @relation("CaseDocUploader",  fields: [uploadedById],  references: [id])
   assignedTo User?                   @relation("CaseDocAssignee",  fields: [assignedToId],  references: [id])
   client     User?                   @relation("DocClient",         fields: [clientId],      references: [id])
+  case       Case?                   @relation(fields: [caseId], references: [id], onDelete: SetNull)
   files      CaseDocumentFile[]
   signatures CaseDocumentSignature[]
   versions   CaseDocumentVersion[]
 
+  @@index([caseId])
+  @@index([category])
+  @@index([isArchived])
   @@map("case_documents")
 }
 
@@ -1571,8 +1580,12 @@ model CaseDocumentFile {
   documentId   String   @map("document_id")
   fileName     String   @map("file_name")
   fileUrl      String   @map("file_url")
+  secureUrl    String?  @map("secure_url")
   publicId     String   @map("public_id")
   fileType     String   @map("file_type")
+  mimeType     String?  @map("mime_type")
+  resourceType String?  @map("resource_type")
+  format       String?
   fileSize     Int?     @map("file_size")
   version      Int      @default(1)
   uploadedById String   @map("uploaded_by_id")
@@ -2478,6 +2491,7 @@ model Case {
   checklists       CaseChecklist[]
   debtorActivities CaseDebtorActivity[]
   financial        CaseFinancial?
+  documents        CaseDocument[]
 
   @@index([status])
   @@index([caseType])

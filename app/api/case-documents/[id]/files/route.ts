@@ -19,13 +19,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
 
   const body = await req.json()
-  const { fileUrl, publicId, fileName, fileType, fileSize } = body
+  const { fileUrl, secureUrl, publicId, fileName, fileType, mimeType, resourceType, format, fileSize } = body
 
-  if (!fileUrl || !publicId || !fileName) {
-    return NextResponse.json({ error: 'fileUrl, publicId, fileName required' }, { status: 400 })
+  if (!publicId || !fileName) {
+    return NextResponse.json({ error: 'publicId, fileName required' }, { status: 400 })
   }
 
-  // Determine next version number
   const lastFile = await prisma.caseDocumentFile.findFirst({
     where: { documentId },
     orderBy: { version: 'desc' },
@@ -36,10 +35,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       documentId,
       fileName,
-      fileUrl,
+      fileUrl:      fileUrl ?? secureUrl ?? '',
+      secureUrl:    secureUrl ?? null,
       publicId,
-      fileType:     fileType ?? 'application/octet-stream',
-      fileSize:     fileSize ?? null,
+      fileType:     fileType ?? mimeType ?? 'application/octet-stream',
+      mimeType:     mimeType ?? null,
+      resourceType: resourceType ?? null,
+      format:       format ?? null,
+      fileSize:     fileSize ? Number(fileSize) : null,
       version,
       uploadedById: session.user.id,
     },

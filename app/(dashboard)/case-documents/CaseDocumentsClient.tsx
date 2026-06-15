@@ -1,744 +1,857 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  FileText, Image as ImageIcon, File, Archive, Search, Upload, X,
+  Download, Eye, Tag, Calendar, User, RefreshCw, ChevronLeft, ChevronRight,
+  Plus, Loader2, FolderOpen, AlertCircle, CheckCircle, Clock, Trash2,
+} from 'lucide-react'
+import { toast } from 'sonner'
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-interface DocFile {
+type DocFile = {
   id: string
   fileName: string
   fileUrl: string
+  secureUrl: string | null
+  publicId: string
   fileType: string
+  mimeType: string | null
+  resourceType: string | null
+  format: string | null
   fileSize: number | null
   version: number
   createdAt: string
+  uploadedById: string
 }
 
-interface DocSignature {
-  id: string
-  signedById: string
-  signerName: string
-  signerRole: string
-  signerPosition: string | null
-  signatureType: string
-  signatureUrl: string | null
-  typedName: string | null
-  signedAt: string
-}
-
-interface DocVersion {
-  id: string
-  versionNumber: number
-  changeNote: string | null
-  changedByName: string
-  createdAt: string
-}
-
-interface CaseDoc {
+type Doc = {
   id: string
   title: string
   description: string | null
   docType: string
+  category: string
   caseNumber: string | null
   clientName: string | null
   department: string | null
+  taskId: string | null
+  caseId: string | null
+  debtorId: string | null
   tags: string | null
   status: string
+  isArchived: boolean
   createdAt: string
   updatedAt: string
   uploadedBy: { id: string; name: string; role: string }
   assignedTo: { id: string; name: string; role: string } | null
   files: DocFile[]
-  signatures: DocSignature[]
-  versions?: DocVersion[]
+  signatures: { id: string; signerName: string; signedAt: string }[]
+  _count: { files: number; versions: number }
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const DOC_TYPES: { value: string; label: string }[] = [
-  { value: 'OTHER',      label: 'เอกสารทั่วไป' },
-  { value: 'COMPLAINT',  label: 'คำฟ้อง' },
-  { value: 'PETITION',   label: 'คำร้อง' },
-  { value: 'COURT',      label: 'เอกสารศาล' },
-  { value: 'POA',        label: 'หนังสือมอบอำนาจ' },
-  { value: 'EVIDENCE',   label: 'หลักฐานคดี' },
-  { value: 'REPORT',     label: 'รายงานติดตาม' },
-  { value: 'DEBTOR',     label: 'เอกสารลูกหนี้' },
-  { value: 'INTERNAL',   label: 'เอกสารภายใน' },
-]
-
-const DOC_TYPE_LABELS: Record<string, string> = Object.fromEntries(DOC_TYPES.map((d) => [d.value, d.label]))
-
-const DEPARTMENTS = [
-  { value: 'DEBT',    label: 'ฝ่ายเร่งรัดหนี้' },
-  { value: 'LAW',     label: 'ฝ่ายกฎหมาย' },
-  { value: 'ASSET',   label: 'ฝ่ายสืบทรัพย์' },
-  { value: 'ENFORCE', label: 'ฝ่ายบังคับคดี' },
-]
-
-const DEPT_LABELS: Record<string, string> = Object.fromEntries(DEPARTMENTS.map((d) => [d.value, d.label]))
-
-const CAN_SIGN_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
-
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE:   'bg-green-100 text-green-800',
-  ARCHIVED: 'bg-gray-100 text-gray-600',
-  REJECTED: 'bg-red-100 text-red-700',
+type Props = {
+  userId: string
+  userName: string
+  role: string
+  department: string | null
+  cloudName: string
 }
 
-function fmtDate(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 'all',      label: 'ทั้งหมด',       icon: FolderOpen },
+  { id: 'mine',     label: 'ของฉัน',         icon: User },
+  { id: 'court',    label: 'ศาล',            icon: FileText },
+  { id: 'evidence', label: 'หลักฐาน',        icon: Archive },
+  { id: 'recent',   label: 'ล่าสุด',          icon: Clock },
+  { id: 'archived', label: 'เก็บถาวร',        icon: Archive },
+] as const
+type Tab = typeof TABS[number]['id']
+
+const CATEGORIES: Record<string, string> = {
+  CONTRACT:         'สัญญา',
+  AGREEMENT:        'ข้อตกลง',
+  EVIDENCE:         'หลักฐาน',
+  COURT_DOCUMENT:   'เอกสารศาล',
+  DEBTOR_DOCUMENT:  'เอกสารลูกหนี้',
+  CLIENT_DOCUMENT:  'เอกสารลูกค้า',
+  PAYMENT_DOCUMENT: 'เอกสารชำระเงิน',
+  LEGAL_DOCUMENT:   'เอกสารกฎหมาย',
+  INTERNAL_DOCUMENT:'เอกสารภายใน',
+  OTHER:            'อื่นๆ',
 }
 
-function fmtSize(bytes: number | null) {
-  if (!bytes) return ''
+const CATEGORY_COLORS: Record<string, string> = {
+  CONTRACT:         'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  AGREEMENT:        'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
+  EVIDENCE:         'bg-orange-500/15 text-orange-400 border-orange-500/20',
+  COURT_DOCUMENT:   'bg-red-500/15 text-red-400 border-red-500/20',
+  DEBTOR_DOCUMENT:  'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  CLIENT_DOCUMENT:  'bg-green-500/15 text-green-400 border-green-500/20',
+  PAYMENT_DOCUMENT: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  LEGAL_DOCUMENT:   'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  INTERNAL_DOCUMENT:'bg-slate-500/15 text-slate-400 border-slate-500/20',
+  OTHER:            'bg-white/5 text-white/40 border-white/10',
+}
+
+function FileIcon({ mimeType, format, resourceType, className = 'w-5 h-5' }: {
+  mimeType?: string | null
+  format?: string | null
+  resourceType?: string | null
+  className?: string
+}) {
+  const type = mimeType ?? ''
+  const fmt  = (format ?? '').toLowerCase()
+  if (resourceType === 'image' && !fmt.includes('pdf')) {
+    return <ImageIcon className={`${className} text-green-400`} />
+  }
+  if (type.includes('pdf') || fmt === 'pdf') {
+    return <FileText className={`${className} text-red-400`} />
+  }
+  if (type.includes('word') || ['doc', 'docx'].includes(fmt)) {
+    return <FileText className={`${className} text-blue-400`} />
+  }
+  if (type.includes('sheet') || type.includes('excel') || ['xls', 'xlsx'].includes(fmt)) {
+    return <FileText className={`${className} text-green-400`} />
+  }
+  if (type.includes('zip') || fmt === 'zip') {
+    return <Archive className={`${className} text-yellow-400`} />
+  }
+  return <File className={`${className} text-slate-400`} />
+}
+
+function formatBytes(bytes: number | null) {
+  if (!bytes) return '—'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// ── Upload helper (Cloudinary direct) ───────────────────────────────────────
-
-async function uploadToCloudinary(file: File, folder: string): Promise<{ url: string; publicId: string }> {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? 'hr_unsigned')
-  formData.append('folder', folder)
-
-  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/auto/upload`, {
-    method: 'POST',
-    body: formData,
-  })
-  if (!res.ok) throw new Error('Upload failed')
-  const data = await res.json()
-  return { url: data.secure_url, publicId: data.public_id }
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// ── SignatureCanvas component ────────────────────────────────────────────────
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
-function SignatureCanvas({ onSave }: { onSave: (dataUrl: string) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const drawing   = useRef(false)
+// ── Preview Modal ──────────────────────────────────────────────────────────────
 
-  function getPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
-    const rect = canvas.getBoundingClientRect()
-    if ('touches' in e) {
-      const t = e.touches[0]
-      return { x: t.clientX - rect.left, y: t.clientY - rect.top }
+function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+  const latestFile = doc.files[0]
+
+  function getPreviewUrl(file: DocFile) {
+    return file.secureUrl ?? file.fileUrl
+  }
+
+  function renderPreview(file: DocFile) {
+    const url  = getPreviewUrl(file)
+    const mime = file.mimeType ?? ''
+    const fmt  = (file.format ?? '').toLowerCase()
+    const isImg = file.resourceType === 'image' && !fmt.includes('pdf') && !mime.includes('pdf')
+    const isPdf = mime.includes('pdf') || fmt === 'pdf' || file.resourceType === 'image'
+
+    if (isImg) {
+      return (
+        <div className="flex items-center justify-center flex-1 p-4 bg-black/40 rounded-xl overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt={file.fileName} className="max-h-[60vh] max-w-full object-contain rounded-lg" />
+        </div>
+      )
     }
-    return { x: (e as React.MouseEvent).clientX - rect.left, y: (e as React.MouseEvent).clientY - rect.top }
-  }
-
-  function start(e: React.MouseEvent | React.TouchEvent) {
-    const canvas = canvasRef.current; if (!canvas) return
-    drawing.current = true
-    const ctx = canvas.getContext('2d')!
-    ctx.beginPath()
-    const { x, y } = getPos(e, canvas)
-    ctx.moveTo(x, y)
-    e.preventDefault()
-  }
-
-  function move(e: React.MouseEvent | React.TouchEvent) {
-    if (!drawing.current) return
-    const canvas = canvasRef.current; if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    ctx.lineWidth = 2
-    ctx.lineCap   = 'round'
-    ctx.strokeStyle = '#1e3a5f'
-    const { x, y } = getPos(e, canvas)
-    ctx.lineTo(x, y)
-    ctx.stroke()
-    e.preventDefault()
-  }
-
-  function stop() { drawing.current = false }
-
-  function clear() {
-    const canvas = canvasRef.current; if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-  }
-
-  function save() {
-    const canvas = canvasRef.current; if (!canvas) return
-    onSave(canvas.toDataURL('image/png'))
+    if (isPdf) {
+      return (
+        <div className="flex-1 rounded-xl overflow-hidden bg-black/20">
+          <iframe src={url} className="w-full h-[60vh]" title={file.fileName} />
+        </div>
+      )
+    }
+    // For office docs: Google Docs viewer
+    const isOffice = ['doc','docx','xls','xlsx'].includes(fmt) ||
+      mime.includes('word') || mime.includes('sheet') || mime.includes('excel')
+    if (isOffice) {
+      const googleUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
+      return (
+        <div className="flex-1 rounded-xl overflow-hidden bg-black/20">
+          <iframe src={googleUrl} className="w-full h-[60vh]" title={file.fileName} />
+        </div>
+      )
+    }
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/50">
+        <FileIcon mimeType={file.mimeType} format={file.format} resourceType={file.resourceType} className="w-16 h-16" />
+        <p className="text-sm">ไม่รองรับการแสดงตัวอย่างไฟล์ประเภทนี้</p>
+        <a
+          href={url}
+          download={file.fileName}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+        >
+          <Download className="w-4 h-4" /> ดาวน์โหลด
+        </a>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <canvas
-        ref={canvasRef}
-        width={400} height={150}
-        className="border-2 border-dashed border-gray-300 rounded bg-white cursor-crosshair touch-none w-full"
-        onMouseDown={start} onMouseMove={move} onMouseUp={stop} onMouseLeave={stop}
-        onTouchStart={start} onTouchMove={move} onTouchEnd={stop}
-      />
-      <div className="flex gap-2">
-        <button onClick={clear} className="text-xs px-3 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50">
-          ล้าง
-        </button>
-        <button onClick={save} className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">
-          บันทึกลายมือชื่อ
-        </button>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.07]">
+          {latestFile && (
+            <FileIcon mimeType={latestFile.mimeType} format={latestFile.format} resourceType={latestFile.resourceType} className="w-5 h-5 shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-semibold text-sm truncate">{doc.title}</p>
+            <p className="text-white/40 text-xs mt-0.5">
+              {latestFile ? latestFile.fileName : '—'} · {latestFile ? formatBytes(latestFile.fileSize) : ''}
+              {doc.caseNumber ? ` · คดี ${doc.caseNumber}` : ''}
+            </p>
+          </div>
+          <span className={`px-2 py-1 rounded-lg text-xs font-medium border shrink-0 ${CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.OTHER}`}>
+            {CATEGORIES[doc.category] ?? doc.category}
+          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {latestFile && (
+              <a
+                href={getPreviewUrl(latestFile)}
+                download={latestFile.fileName}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition"
+                title="ดาวน์โหลด"
+              >
+                <Download className="w-4 h-4" />
+              </a>
+            )}
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Preview area */}
+        <div className="flex-1 overflow-hidden p-4 flex flex-col gap-4 min-h-0">
+          {latestFile ? renderPreview(latestFile) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-white/30 gap-3">
+              <FileText className="w-12 h-12 opacity-30" />
+              <p className="text-sm">ยังไม่มีไฟล์แนบ</p>
+            </div>
+          )}
+
+          {/* Meta */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="bg-white/5 rounded-xl px-3 py-2">
+              <p className="text-white/40 mb-1">อัปโหลดโดย</p>
+              <p className="text-white font-medium">{doc.uploadedBy.name}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl px-3 py-2">
+              <p className="text-white/40 mb-1">วันที่</p>
+              <p className="text-white font-medium">{formatDate(doc.createdAt)}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl px-3 py-2">
+              <p className="text-white/40 mb-1">เวอร์ชัน</p>
+              <p className="text-white font-medium">v{latestFile?.version ?? 1} ({doc._count.files} ไฟล์)</p>
+            </div>
+            <div className="bg-white/5 rounded-xl px-3 py-2">
+              <p className="text-white/40 mb-1">ขนาด</p>
+              <p className="text-white font-medium">{formatBytes(latestFile?.fileSize ?? null)}</p>
+            </div>
+          </div>
+
+          {doc.description && (
+            <p className="text-white/50 text-xs bg-white/5 rounded-xl px-3 py-2">{doc.description}</p>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
+// ── Upload Modal ───────────────────────────────────────────────────────────────
 
-interface Props {
-  userId:   string
-  userName: string
-  userRole: string
-}
+function UploadModal({
+  cloudName,
+  userId,
+  onClose,
+  onSuccess,
+  defaultCaseId,
+  defaultCaseNumber,
+}: {
+  cloudName: string
+  userId: string
+  onClose: () => void
+  onSuccess: () => void
+  defaultCaseId?: string | null
+  defaultCaseNumber?: string | null
+}) {
+  const [title, setTitle]         = useState('')
+  const [category, setCategory]   = useState('OTHER')
+  const [description, setDesc]    = useState('')
+  const [tags, setTags]           = useState('')
+  const [caseNumber, setCaseNum]  = useState(defaultCaseNumber ?? '')
+  const [caseId, setCaseId]       = useState(defaultCaseId ?? '')
+  const [file, setFile]           = useState<File | null>(null)
+  const [dragging, setDragging]   = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress]   = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-export default function CaseDocumentsClient({ userId, userName, userRole }: Props) {
-  // List state
-  const [docs,      setDocs]      = useState<CaseDoc[]>([])
-  const [total,     setTotal]     = useState(0)
-  const [page,      setPage]      = useState(1)
-  const [pages,     setPages]     = useState(1)
-  const [loading,   setLoading]   = useState(true)
-
-  // Filters
-  const [q,          setQ]         = useState('')
-  const [deptFilter, setDeptFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
-
-  // Selected doc detail
-  const [selected,  setSelected]  = useState<CaseDoc | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-
-  // Modals
-  const [showCreate,  setShowCreate]  = useState(false)
-  const [showSign,    setShowSign]    = useState(false)
-  const [showUpload,  setShowUpload]  = useState(false)
-
-  // Create form
-  const [form, setForm] = useState({
-    title: '', description: '', docType: 'OTHER', caseNumber: '',
-    clientName: '', department: '', tags: '',
-  })
-  const [creating, setCreating] = useState(false)
-
-  // Signature
-  const [signType,      setSignType]      = useState<'TYPED' | 'DRAWN' | 'UPLOADED'>('TYPED')
-  const [typedName,     setTypedName]     = useState(userName)
-  const [drawnDataUrl,  setDrawnDataUrl]  = useState<string | null>(null)
-  const [uploadedSigUrl,setUploadedSigUrl]= useState<string | null>(null)
-  const [signing,       setSigning]       = useState(false)
-
-  // File upload
-  const [uploadFile,   setUploadFile]   = useState<File | null>(null)
-  const [uploading,    setUploading]    = useState(false)
-  const fileInputRef   = useRef<HTMLInputElement>(null)
-  const sigFileRef     = useRef<HTMLInputElement>(null)
-
-  const canSign = CAN_SIGN_ROLES.includes(userRole)
-
-  // ── Fetch list ──────────────────────────────────────────────────────────────
-  const fetchDocs = useCallback(async (pg = 1) => {
-    setLoading(true)
-    const params = new URLSearchParams({ page: String(pg) })
-    if (q)          params.set('q', q)
-    if (deptFilter) params.set('department', deptFilter)
-    if (typeFilter) params.set('docType', typeFilter)
-
-    const res = await fetch(`/api/case-documents?${params}`)
-    if (res.ok) {
-      const data = await res.json()
-      setDocs(data.docs)
-      setTotal(data.total)
-      setPage(data.page)
-      setPages(data.pages)
-    }
-    setLoading(false)
-  }, [q, deptFilter, typeFilter])
-
-  useEffect(() => { fetchDocs(1) }, [fetchDocs])
-
-  // ── Fetch detail ────────────────────────────────────────────────────────────
-  async function openDetail(doc: CaseDoc) {
-    setDetailLoading(true)
-    setSelected(doc)
-    const res = await fetch(`/api/case-documents/${doc.id}`)
-    if (res.ok) setSelected(await res.json())
-    setDetailLoading(false)
-  }
-
-  // ── Create ──────────────────────────────────────────────────────────────────
-  async function handleCreate(e: React.FormEvent) {
+  function onDrop(e: React.DragEvent) {
     e.preventDefault()
-    if (!form.title.trim()) return
-    setCreating(true)
-    const res = await fetch('/api/case-documents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    if (res.ok) {
-      setShowCreate(false)
-      setForm({ title: '', description: '', docType: 'OTHER', caseNumber: '', clientName: '', department: '', tags: '' })
-      fetchDocs(1)
-    } else {
-      alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
-    }
-    setCreating(false)
+    setDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f) handleFile(f)
   }
 
-  // ── Upload file ──────────────────────────────────────────────────────────────
-  async function handleFileUpload() {
-    if (!uploadFile || !selected) return
+  function handleFile(f: File) {
+    setFile(f)
+    if (!title) setTitle(f.name.replace(/\.[^.]+$/, ''))
+  }
+
+  async function submit() {
+    if (!file) { toast.error('กรุณาเลือกไฟล์'); return }
+    if (!title.trim()) { toast.error('กรุณากรอกชื่อเอกสาร'); return }
+
     setUploading(true)
+    setProgress(10)
+
     try {
-      const { url, publicId } = await uploadToCloudinary(uploadFile, `hr-system/tasks/${selected.id}`)
-      const res = await fetch(`/api/case-documents/${selected.id}/files`, {
+      // 1. Get Cloudinary signature
+      const sigRes = await fetch('/api/upload/sign?context=documents')
+      if (!sigRes.ok) throw new Error('Cannot get upload signature')
+      const sig = await sigRes.json()
+      setProgress(20)
+
+      // 2. Upload to Cloudinary
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('api_key', sig.apiKey)
+      formData.append('timestamp', String(sig.timestamp))
+      formData.append('signature', sig.signature)
+      formData.append('folder', sig.folder)
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+        { method: 'POST', body: formData },
+      )
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json()
+        throw new Error(err.error?.message ?? 'Upload failed')
+      }
+      const cloud = await uploadRes.json()
+      setProgress(80)
+
+      // 3. Create document + file record
+      const docRes = await fetch('/api/case-documents/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileUrl:  url,
-          publicId,
-          fileName: uploadFile.name,
-          fileType: uploadFile.type,
-          fileSize: uploadFile.size,
+          title:        title.trim(),
+          description:  description.trim() || null,
+          category,
+          caseId:       caseId || null,
+          caseNumber:   caseNumber.trim() || null,
+          tags:         tags.trim() || null,
+          publicId:     cloud.public_id,
+          fileUrl:      cloud.url,
+          secureUrl:    cloud.secure_url,
+          fileName:     file.name,
+          fileType:     file.type,
+          mimeType:     file.type,
+          resourceType: cloud.resource_type,
+          format:       cloud.format,
+          fileSize:     cloud.bytes,
         }),
       })
-      if (res.ok) {
-        setShowUpload(false)
-        setUploadFile(null)
-        openDetail(selected)
-      } else {
-        alert('อัพโหลดไม่สำเร็จ')
-      }
-    } catch {
-      alert('อัพโหลดไม่สำเร็จ')
-    }
-    setUploading(false)
-  }
+      if (!docRes.ok) throw new Error('Cannot save document')
+      setProgress(100)
 
-  // ── Sign ─────────────────────────────────────────────────────────────────────
-  async function handleSign() {
-    if (!selected) return
-    setSigning(true)
-
-    let signatureData: string | null = null
-    if (signType === 'DRAWN') {
-      if (!drawnDataUrl) { alert('กรุณาวาดลายมือชื่อ'); setSigning(false); return }
-      signatureData = drawnDataUrl
-    } else if (signType === 'UPLOADED') {
-      if (!uploadedSigUrl) { alert('กรุณาอัพโหลดลายมือชื่อ'); setSigning(false); return }
-      signatureData = uploadedSigUrl
-    }
-
-    const res = await fetch(`/api/case-documents/${selected.id}/sign`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signatureType: signType, typedName, signatureData }),
-    })
-    if (res.ok) {
-      setShowSign(false)
-      setDrawnDataUrl(null)
-      openDetail(selected)
-    } else {
-      const err = await res.json()
-      alert(err.error ?? 'เกิดข้อผิดพลาด')
-    }
-    setSigning(false)
-  }
-
-  async function handleUploadedSig(file: File) {
-    try {
-      const { url } = await uploadToCloudinary(file, 'hr-system/signatures')
-      setUploadedSigUrl(url)
-    } catch { alert('อัพโหลดลายมือชื่อไม่สำเร็จ') }
-  }
-
-  // ── Delete doc ───────────────────────────────────────────────────────────────
-  async function handleDelete(id: string) {
-    if (!confirm('ต้องการลบเอกสารนี้?')) return
-    const res = await fetch(`/api/case-documents/${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      setSelected(null)
-      fetchDocs(page)
+      toast.success('อัปโหลดเอกสารสำเร็จ')
+      onSuccess()
+      onClose()
+    } catch (err) {
+      toast.error(String(err))
+    } finally {
+      setUploading(false)
+      setProgress(0)
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 flex flex-col gap-4">
-
-      {/* ── Toolbar ── */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <input
-          value={q} onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fetchDocs(1)}
-          placeholder="ค้นหาชื่อ / เลขคดี / ลูกค้า"
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm flex-1 min-w-48"
-        />
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm">
-          <option value="">ทุกฝ่าย</option>
-          {DEPARTMENTS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-        </select>
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm">
-          <option value="">ทุกประเภท</option>
-          {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <button onClick={() => fetchDocs(1)}
-          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">
-          ค้นหา
-        </button>
-        <button onClick={() => setShowCreate(true)}
-          className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 ml-auto">
-          + เพิ่มเอกสาร
-        </button>
-      </div>
-
-      <div className="flex gap-4 items-start">
-
-        {/* ── Doc list ── */}
-        <div className="flex-1 min-w-0">
-          <div className="text-xs text-gray-500 mb-2">ทั้งหมด {total} รายการ</div>
-          {loading ? (
-            <div className="text-center py-10 text-gray-400 text-sm">กำลังโหลด...</div>
-          ) : docs.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 text-sm">ยังไม่มีเอกสาร</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {docs.map((doc) => (
-                <div key={doc.id}
-                  onClick={() => openDetail(doc)}
-                  className={`border rounded-lg p-3 cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors ${selected?.id === doc.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-gray-800 truncate">{doc.title}</div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-500">
-                        {doc.caseNumber && <span>เลขคดี: {doc.caseNumber}</span>}
-                        {doc.clientName && <span>ลูกค้า: {doc.clientName}</span>}
-                        {doc.department && <span>{DEPT_LABELS[doc.department] ?? doc.department}</span>}
-                        <span>{DOC_TYPE_LABELS[doc.docType] ?? doc.docType}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[doc.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {doc.status === 'ACTIVE' ? 'ใช้งาน' : doc.status === 'ARCHIVED' ? 'เก็บถาวร' : doc.status}
-                      </span>
-                      <span className="text-xs text-gray-400">{fmtDate(doc.updatedAt)}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 mt-1.5 text-xs text-gray-400">
-                    <span>ไฟล์ {doc.files.length} ไฟล์</span>
-                    <span>ลายมือชื่อ {doc.signatures.length}</span>
-                    <span>โดย {doc.uploadedBy.name}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {pages > 1 && (
-            <div className="flex gap-1 mt-4 justify-center">
-              {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-                <button key={p} onClick={() => fetchDocs(p)}
-                  className={`w-8 h-8 rounded text-sm ${p === page ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+      <div
+        className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">
+          <h3 className="text-white font-semibold">อัปโหลดเอกสาร</h3>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* ── Detail panel ── */}
-        {selected && (
-          <div className="w-96 shrink-0 bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-4 sticky top-4">
-            {detailLoading && <div className="text-center text-sm text-gray-400 py-6">กำลังโหลด...</div>}
-
-            {!detailLoading && (
+        <div className="p-5 space-y-4">
+          {/* Drop zone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            className={`relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${
+              dragging
+                ? 'border-blue-500 bg-blue-500/10'
+                : file
+                ? 'border-green-500/40 bg-green-500/5'
+                : 'border-white/20 hover:border-white/30 hover:bg-white/5'
+            }`}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.zip,.txt"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+            />
+            {file ? (
+              <div className="flex items-center gap-3 justify-center">
+                <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
+                <div className="text-left">
+                  <p className="text-white text-sm font-medium truncate max-w-[200px]">{file.name}</p>
+                  <p className="text-white/40 text-xs">{formatBytes(file.size)}</p>
+                </div>
+                <button
+                  className="ml-auto p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white"
+                  onClick={(e) => { e.stopPropagation(); setFile(null) }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
               <>
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-800 leading-tight">{selected.title}</h3>
-                    <div className="text-xs text-gray-500 mt-0.5">{DOC_TYPE_LABELS[selected.docType] ?? selected.docType}</div>
-                  </div>
-                  <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-700 text-lg leading-none">×</button>
-                </div>
-
-                {/* Meta */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
-                  {selected.caseNumber && <><span className="text-gray-400">เลขคดี</span><span>{selected.caseNumber}</span></>}
-                  {selected.clientName && <><span className="text-gray-400">ลูกค้า</span><span>{selected.clientName}</span></>}
-                  {selected.department && <><span className="text-gray-400">ฝ่าย</span><span>{DEPT_LABELS[selected.department] ?? selected.department}</span></>}
-                  <span className="text-gray-400">สถานะ</span>
-                  <span className={`px-1.5 py-0.5 rounded-full font-medium w-fit ${STATUS_COLORS[selected.status] ?? ''}`}>
-                    {selected.status === 'ACTIVE' ? 'ใช้งาน' : selected.status}
-                  </span>
-                  <span className="text-gray-400">อัพเดท</span><span>{fmtDate(selected.updatedAt)}</span>
-                  <span className="text-gray-400">โดย</span><span>{selected.uploadedBy.name}</span>
-                </div>
-
-                {selected.description && (
-                  <p className="text-xs text-gray-600 bg-gray-50 rounded p-2">{selected.description}</p>
-                )}
-
-                {/* Action buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={() => setShowUpload(true)}
-                    className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">
-                    อัพโหลดไฟล์
-                  </button>
-                  {canSign && (
-                    <button onClick={() => setShowSign(true)}
-                      className="text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700">
-                      ลงลายมือชื่อ
-                    </button>
-                  )}
-                  {(selected.uploadedBy.id === userId || ['SUPER_ADMIN','CEO','MANAGER_HR','HR'].includes(userRole)) && (
-                    <button onClick={() => handleDelete(selected.id)}
-                      className="text-xs px-3 py-1.5 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100">
-                      ลบ
-                    </button>
-                  )}
-                </div>
-
-                {/* Files */}
-                <div>
-                  <div className="text-xs font-semibold text-gray-700 mb-1.5">ไฟล์แนบ ({selected.files.length})</div>
-                  {selected.files.length === 0 ? (
-                    <div className="text-xs text-gray-400">ยังไม่มีไฟล์</div>
-                  ) : (
-                    <div className="flex flex-col gap-1">
-                      {selected.files.map((f) => (
-                        <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer"
-                          className="flex items-center gap-2 text-xs text-blue-600 hover:underline bg-gray-50 rounded px-2 py-1.5">
-                          <span className="text-gray-400">📄</span>
-                          <span className="flex-1 truncate">{f.fileName}</span>
-                          <span className="text-gray-400 shrink-0">v{f.version} {fmtSize(f.fileSize)}</span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Signatures */}
-                <div>
-                  <div className="text-xs font-semibold text-gray-700 mb-1.5">ลายมือชื่อ ({selected.signatures.length})</div>
-                  {selected.signatures.length === 0 ? (
-                    <div className="text-xs text-gray-400">ยังไม่มีลายมือชื่อ</div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {selected.signatures.map((s) => (
-                        <div key={s.id} className="border border-gray-100 rounded p-2 bg-gray-50">
-                          <div className="text-xs font-medium text-gray-800">{s.signerName}</div>
-                          <div className="text-xs text-gray-500">{s.signerPosition ?? s.signerRole}</div>
-                          <div className="text-xs text-gray-400 mt-1">{fmtDate(s.signedAt)} · {s.signatureType === 'TYPED' ? 'พิมพ์ชื่อ' : s.signatureType === 'DRAWN' ? 'วาด' : 'อัพโหลด'}</div>
-                          {s.signatureType === 'TYPED' && s.typedName && (
-                            <div className="mt-1 font-serif italic text-blue-800 text-sm border-b border-blue-300 w-fit px-1">{s.typedName}</div>
-                          )}
-                          {(s.signatureType === 'DRAWN' || s.signatureType === 'UPLOADED') && s.signatureUrl && (
-                            <img src={s.signatureUrl} alt="signature" className="mt-1 h-12 object-contain" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Version history */}
-                {selected.versions && selected.versions.length > 0 && (
-                  <div>
-                    <div className="text-xs font-semibold text-gray-700 mb-1.5">ประวัติการแก้ไข</div>
-                    <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
-                      {selected.versions.map((v) => (
-                        <div key={v.id} className="flex gap-2 text-xs text-gray-500">
-                          <span className="text-gray-300">v{v.versionNumber}</span>
-                          <span className="flex-1">{v.changeNote}</span>
-                          <span className="shrink-0">{fmtDate(v.createdAt)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <Upload className="w-8 h-8 mx-auto mb-2 text-white/30" />
+                <p className="text-white/60 text-sm font-medium">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือก</p>
+                <p className="text-white/30 text-xs mt-1">PDF, รูปภาพ, Word, Excel, ZIP · สูงสุด 20 MB</p>
               </>
             )}
+            {uploading && (
+              <div className="absolute inset-0 rounded-2xl bg-slate-900/80 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                <div className="w-32 bg-white/10 rounded-full h-1.5">
+                  <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="text-white/50 text-xs">กำลังอัปโหลด {progress}%</p>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Title */}
+          <div>
+            <label className="text-white/50 text-xs mb-1.5 block">ชื่อเอกสาร *</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="เช่น คำฟ้อง-ชื่อลูกหนี้"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="text-white/50 text-xs mb-1.5 block">ประเภทเอกสาร</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50"
+            >
+              {Object.entries(CATEGORIES).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Case number */}
+          <div>
+            <label className="text-white/50 text-xs mb-1.5 block">หมายเลขคดี (ไม่บังคับ)</label>
+            <input
+              value={caseNumber}
+              onChange={(e) => setCaseNum(e.target.value)}
+              placeholder="เช่น CS-2024-001"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-white/50 text-xs mb-1.5 block">คำอธิบาย (ไม่บังคับ)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDesc(e.target.value)}
+              rows={2}
+              placeholder="รายละเอียดเพิ่มเติม..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-500/50"
+            />
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="text-white/50 text-xs mb-1.5 block">แท็ก (คั่นด้วยจุลภาค)</label>
+            <input
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="เช่น court, urgent, evidence"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={submit}
+              disabled={uploading || !file}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition"
+            >
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {uploading ? 'กำลังอัปโหลด...' : 'อัปโหลด'}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={uploading}
+              className="px-4 py-2.5 rounded-xl border border-white/10 text-white/50 hover:bg-white/5 text-sm transition disabled:opacity-40"
+            >
+              ยกเลิก
+            </button>
+          </div>
+        </div>
       </div>
+    </div>
+  )
+}
 
-      {/* ══ Create Modal ══════════════════════════════════════════════════════ */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 flex flex-col gap-4">
-            <h2 className="font-semibold text-gray-800 text-lg">เพิ่มเอกสารใหม่</h2>
-            <form onSubmit={handleCreate} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">ชื่อเอกสาร *</label>
-                <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm" placeholder="ชื่อเอกสาร" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">ประเภทเอกสาร</label>
-                  <select value={form.docType} onChange={(e) => setForm({ ...form, docType: e.target.value })}
-                    className="border border-gray-300 rounded px-2 py-2 text-sm">
-                    {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">ฝ่าย</label>
-                  <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}
-                    className="border border-gray-300 rounded px-2 py-2 text-sm">
-                    <option value="">-- ไม่ระบุ --</option>
-                    {DEPARTMENTS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">เลขคดี</label>
-                  <input value={form.caseNumber} onChange={(e) => setForm({ ...form, caseNumber: e.target.value })}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm" placeholder="เลขคดี" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">ชื่อลูกค้า</label>
-                  <input value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm" placeholder="ชื่อลูกค้า" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2} className="border border-gray-300 rounded px-3 py-2 text-sm resize-none" placeholder="หมายเหตุ..." />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">แท็ก (คั่นด้วย ,)</label>
-                <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm" placeholder="แท็ก, คีย์เวิร์ด" />
-              </div>
-              <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowCreate(false)}
-                  className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">
-                  ยกเลิก
-                </button>
-                <button type="submit" disabled={creating}
-                  className="px-5 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
-                  {creating ? 'กำลังสร้าง...' : 'สร้างเอกสาร'}
-                </button>
-              </div>
-            </form>
-          </div>
-          </div>
+// ── Document Card ──────────────────────────────────────────────────────────────
+
+function DocCard({ doc, onPreview, onArchive, userId, role }: {
+  doc: Doc
+  onPreview: () => void
+  onArchive: () => void
+  userId: string
+  role: string
+}) {
+  const latestFile = doc.files[0]
+  const canManage = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN'].includes(role) || doc.uploadedBy.id === userId
+
+  return (
+    <div className="group bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.12] rounded-2xl p-4 transition-all duration-200">
+      <div className="flex items-start gap-3">
+        {/* File icon */}
+        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+          {latestFile ? (
+            <FileIcon
+              mimeType={latestFile.mimeType}
+              format={latestFile.format}
+              resourceType={latestFile.resourceType}
+              className="w-5 h-5"
+            />
+          ) : (
+            <FileText className="w-5 h-5 text-slate-500" />
+          )}
         </div>
-      )}
 
-      {/* ══ Upload File Modal ═════════════════════════════════════════════════ */}
-      {showUpload && selected && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
-            <h2 className="font-semibold text-gray-800">อัพโหลดไฟล์ — {selected.title}</h2>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-              {uploadFile ? (
-                <div>
-                  <div className="text-sm font-medium text-gray-800">{uploadFile.name}</div>
-                  <div className="text-xs text-gray-500">{fmtSize(uploadFile.size)}</div>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">คลิกเพื่อเลือกไฟล์</div>
-              )}
-            </div>
-            <input ref={fileInputRef} type="file" className="hidden"
-              onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => { setShowUpload(false); setUploadFile(null) }}
-                className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">
-                ยกเลิก
-              </button>
-              <button onClick={handleFileUpload} disabled={!uploadFile || uploading}
-                className="px-5 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-50">
-                {uploading ? 'กำลังอัพโหลด...' : 'อัพโหลด'}
-              </button>
-            </div>
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2 flex-wrap">
+            <p className="text-white font-medium text-sm leading-tight truncate max-w-[200px] md:max-w-none">{doc.title}</p>
+            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border shrink-0 ${CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.OTHER}`}>
+              {CATEGORIES[doc.category] ?? doc.category}
+            </span>
           </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-white/40">
+            {doc.caseNumber && (
+              <span className="flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                {doc.caseNumber}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {doc.uploadedBy.name}
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {formatDate(doc.updatedAt)}
+            </span>
+            {doc._count.files > 1 && (
+              <span className="text-blue-400">v{latestFile?.version ?? 1} ({doc._count.files} ไฟล์)</span>
+            )}
+            {latestFile?.fileSize && (
+              <span>{formatBytes(latestFile.fileSize)}</span>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* ══ Sign Modal ════════════════════════════════════════════════════════ */}
-      {showSign && selected && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
-            <h2 className="font-semibold text-gray-800">ลงลายมือชื่อ — {selected.title}</h2>
-
-            {/* Sign type selector */}
-            <div className="flex gap-2">
-              {(['TYPED', 'DRAWN', 'UPLOADED'] as const).map((t) => (
-                <button key={t} onClick={() => setSignType(t)}
-                  className={`flex-1 py-2 rounded text-xs font-medium border transition-colors ${signType === t ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
-                  {t === 'TYPED' ? 'พิมพ์ชื่อ' : t === 'DRAWN' ? 'วาดลายมือ' : 'อัพโหลดรูป'}
-                </button>
+          {doc.tags && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {doc.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                <span key={tag} className="flex items-center gap-1 text-[10px] text-white/40 bg-white/5 px-2 py-0.5 rounded-lg">
+                  <Tag className="w-2.5 h-2.5" /> {tag}
+                </span>
               ))}
             </div>
-
-            {signType === 'TYPED' && (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">ชื่อที่จะแสดง</label>
-                <input value={typedName} onChange={(e) => setTypedName(e.target.value)}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm" />
-                {typedName && (
-                  <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-100 text-center font-serif italic text-blue-900 text-xl">
-                    {typedName}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {signType === 'DRAWN' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-gray-700">วาดลายมือชื่อ</label>
-                <SignatureCanvas onSave={setDrawnDataUrl} />
-                {drawnDataUrl && (
-                  <img src={drawnDataUrl} alt="preview" className="h-16 object-contain border rounded" />
-                )}
-              </div>
-            )}
-
-            {signType === 'UPLOADED' && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-gray-700">อัพโหลดรูปลายมือชื่อ</label>
-                <button onClick={() => sigFileRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded p-4 text-sm text-gray-500 hover:border-blue-400 hover:bg-blue-50 text-center cursor-pointer">
-                  คลิกเพื่อเลือกรูปภาพ
-                </button>
-                <input ref={sigFileRef} type="file" accept="image/*" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadedSig(f) }} />
-                {uploadedSigUrl && <img src={uploadedSigUrl} alt="sig" className="h-16 object-contain border rounded" />}
-              </div>
-            )}
-
-            <div className="flex gap-2 justify-end pt-1">
-              <button onClick={() => { setShowSign(false); setDrawnDataUrl(null); setUploadedSigUrl(null) }}
-                className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">
-                ยกเลิก
-              </button>
-              <button onClick={handleSign} disabled={signing}
-                className="px-5 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50">
-                {signing ? 'กำลังบันทึก...' : 'ยืนยันลายมือชื่อ'}
-              </button>
-            </div>
-          </div>
-          </div>
+          )}
         </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={onPreview}
+            className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition"
+            title="ดูตัวอย่าง"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          {latestFile && (
+            <a
+              href={latestFile.secureUrl ?? latestFile.fileUrl}
+              download={latestFile.fileName}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition"
+              title="ดาวน์โหลด"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+          )}
+          {canManage && (
+            <button
+              onClick={onArchive}
+              className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-amber-400 transition"
+              title={doc.isArchived ? 'ยกเลิกเก็บถาวร' : 'เก็บถาวร'}
+            >
+              <Archive className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tap to preview on mobile */}
+      <button
+        onClick={onPreview}
+        className="md:hidden mt-3 w-full py-2 rounded-xl bg-white/5 text-white/50 text-xs hover:bg-white/10 hover:text-white transition"
+      >
+        ดูตัวอย่าง
+      </button>
+    </div>
+  )
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+export default function CaseDocumentsClient({ userId, userName, role, department, cloudName }: Props) {
+  const [activeTab, setActiveTab]     = useState<Tab>('all')
+  const [docs, setDocs]               = useState<Doc[]>([])
+  const [total, setTotal]             = useState(0)
+  const [page, setPage]               = useState(1)
+  const [pages, setPages]             = useState(1)
+  const [loading, setLoading]         = useState(true)
+  const [searchQ, setSearchQ]         = useState('')
+  const [catFilter, setCatFilter]     = useState('')
+  const [previewDoc, setPreviewDoc]   = useState<Doc | null>(null)
+  const [showUpload, setShowUpload]   = useState(false)
+  const searchTimeout                 = useRef<ReturnType<typeof setTimeout>>(null)
+  const [debouncedQ, setDebouncedQ]   = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const p = new URLSearchParams()
+      p.set('tab', activeTab)
+      p.set('page', String(page))
+      if (debouncedQ) p.set('q', debouncedQ)
+      if (catFilter)  p.set('category', catFilter)
+
+      const res = await fetch(`/api/case-documents?${p}`)
+      const data = await res.json()
+      setDocs(data.docs ?? [])
+      setTotal(data.total ?? 0)
+      setPages(data.pages ?? 1)
+    } catch {
+      toast.error('โหลดข้อมูลไม่สำเร็จ')
+    } finally {
+      setLoading(false)
+    }
+  }, [activeTab, page, debouncedQ, catFilter])
+
+  useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      setDebouncedQ(searchQ)
+      setPage(1)
+    }, 400)
+  }, [searchQ])
+
+  function changeTab(t: Tab) {
+    setActiveTab(t)
+    setPage(1)
+  }
+
+  async function toggleArchive(doc: Doc) {
+    try {
+      await fetch(`/api/case-documents/${doc.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: !doc.isArchived }),
+      })
+      toast.success(doc.isArchived ? 'ยกเลิกเก็บถาวรแล้ว' : 'เก็บถาวรแล้ว')
+      void load()
+    } catch {
+      toast.error('เกิดข้อผิดพลาด')
+    }
+  }
+
+  return (
+    <div className="flex flex-col min-h-0 p-4 md:p-6 gap-4 max-w-6xl">
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto no-scrollbar">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => changeTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white'
+                : 'text-white/50 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <input
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="ค้นหาชื่อเอกสาร, หมายเลขคดี, ลูกค้า, แท็ก..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+          />
+        </div>
+
+        <select
+          value={catFilter}
+          onChange={(e) => { setCatFilter(e.target.value); setPage(1) }}
+          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50"
+        >
+          <option value="">ทุกประเภท</option>
+          {Object.entries(CATEGORIES).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={() => void load()}
+          className="p-2.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => setShowUpload(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+        >
+          <Plus className="w-4 h-4" /> อัปโหลดเอกสาร
+        </button>
+      </div>
+
+      {/* Stats bar */}
+      {!loading && (
+        <p className="text-white/30 text-xs">
+          {total} เอกสาร{total > 0 && page < pages ? ` · หน้า ${page}/${pages}` : ''}
+        </p>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <div className="flex justify-center py-20 text-white/40">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+      ) : docs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-white/30 gap-3">
+          <FolderOpen className="w-12 h-12 opacity-30" />
+          <p className="text-sm">ไม่มีเอกสาร</p>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="flex items-center gap-2 text-blue-400 text-sm hover:text-blue-300 transition"
+          >
+            <Plus className="w-4 h-4" /> อัปโหลดเอกสารแรก
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docs.map(doc => (
+            <DocCard
+              key={doc.id}
+              doc={doc}
+              userId={userId}
+              role={role}
+              onPreview={() => setPreviewDoc(doc)}
+              onArchive={() => void toggleArchive(doc)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pages > 1 && (
+        <div className="flex items-center justify-center gap-3 py-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition disabled:opacity-30"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-white/50 text-sm">{page} / {pages}</span>
+          <button
+            onClick={() => setPage(p => Math.min(pages, p + 1))}
+            disabled={page === pages}
+            className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition disabled:opacity-30"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Upload FAB (mobile) */}
+      <button
+        onClick={() => setShowUpload(true)}
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 shadow-lg flex items-center justify-center z-40 transition"
+      >
+        <Plus className="w-6 h-6 text-white" />
+      </button>
+
+      {/* Modals */}
+      {previewDoc && (
+        <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
+      )}
+
+      {showUpload && (
+        <UploadModal
+          cloudName={cloudName}
+          userId={userId}
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => void load()}
+        />
       )}
     </div>
   )

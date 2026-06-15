@@ -3,30 +3,82 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 
 const CAN_SIGN = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
+const EXEC     = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = req.nextUrl
-  const q          = searchParams.get('q')?.trim()
+  const q          = searchParams.get('q')?.trim() || searchParams.get('search')?.trim()
   const department = searchParams.get('department')
   const docType    = searchParams.get('docType')
-  const status     = searchParams.get('status') ?? 'ACTIVE'
+  const category   = searchParams.get('category')
+  const caseId     = searchParams.get('caseId')
+  const taskId     = searchParams.get('taskId')
+  const tab        = searchParams.get('tab') ?? 'all'           // all|mine|court|evidence|recent|archived
   const page       = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
   const limit      = 20
 
   const where: Record<string, unknown> = {}
-  if (status !== 'ALL') where.status = status
-  if (department) where.department = department
-  if (docType) where.docType = docType
+
+  // Tab logic
+  switch (tab) {
+    case 'mine':
+      where.uploadedById = session.user.id
+      where.isArchived   = false
+      break
+    case 'court':
+      where.category   = 'COURT_DOCUMENT'
+      where.isArchived = false
+      break
+    case 'evidence':
+      where.category   = 'EVIDENCE'
+      where.isArchived = false
+      break
+    case 'recent':
+      where.isArchived = false
+      where.createdAt  = { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      break
+    case 'archived':
+      where.isArchived = true
+      break
+    default: // all
+      where.isArchived = false
+  }
+
+  // Extra filters (override tab defaults for specific fields)
+  if (category) where.category = category
+  if (docType)  where.docType  = docType
+  if (caseId)   where.caseId   = caseId
+  if (taskId)   where.taskId   = taskId
+  if (department && EXEC.includes(session.user.role)) where.department = department
+
+  // Permission scoping
+  if (!EXEC.includes(session.user.role) && session.user.role !== 'MANAGER') {
+    if (!caseId && !taskId && tab !== 'mine') {
+      // For non-execs without a specific filter: show own + assigned
+      where.OR = [
+        { uploadedById: session.user.id },
+        { assignedToId: session.user.id },
+      ]
+    }
+  }
+
   if (q) {
-    where.OR = [
+    const qFilter = [
       { title:      { contains: q } },
       { caseNumber: { contains: q } },
       { clientName: { contains: q } },
       { tags:       { contains: q } },
+      { description:{ contains: q } },
     ]
+    if (where.OR) {
+      where.AND = [{ OR: where.OR as unknown[] }, { OR: qFilter }]
+      delete where.OR
+    } else {
+      where.OR = qFilter
+    }
   }
 
   const [docs, total] = await Promise.all([
@@ -36,7 +88,8 @@ export async function GET(req: NextRequest) {
         uploadedBy: { select: { id: true, name: true, role: true } },
         assignedTo: { select: { id: true, name: true, role: true } },
         files:      { orderBy: { version: 'desc' }, take: 1 },
-        signatures: { orderBy: { signedAt: 'asc' } },
+        signatures: { orderBy: { signedAt: 'asc' }, select: { id: true, signerName: true, signedAt: true } },
+        _count:     { select: { files: true, versions: true } },
       },
       orderBy: { updatedAt: 'desc' },
       skip: (page - 1) * limit,
@@ -59,7 +112,10 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { title, description, docType, caseNumber, clientName, department, taskId, assignedToId, tags } = body
+  const {
+    title, description, docType, category, caseId, caseNumber,
+    clientName, department, taskId, debtorId, assignedToId, tags,
+  } = body
 
   if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
 
@@ -67,11 +123,14 @@ export async function POST(req: NextRequest) {
     data: {
       title:        title.trim(),
       description:  description?.trim() ?? null,
-      docType:      docType ?? 'OTHER',
+      docType:      docType    ?? 'OTHER',
+      category:     category   ?? 'OTHER',
+      caseId:       caseId     ?? null,
       caseNumber:   caseNumber?.trim() ?? null,
       clientName:   clientName?.trim() ?? null,
       department:   department ?? null,
-      taskId:       taskId ?? null,
+      taskId:       taskId     ?? null,
+      debtorId:     debtorId   ?? null,
       assignedToId: assignedToId ?? null,
       uploadedById: session.user.id,
       tags:         tags?.trim() ?? null,
@@ -82,7 +141,6 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Version entry #1
   await prisma.caseDocumentVersion.create({
     data: {
       documentId:    doc.id,

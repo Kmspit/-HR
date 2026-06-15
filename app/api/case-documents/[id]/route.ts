@@ -45,7 +45,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { title, description, docType, caseNumber, clientName, department, taskId, assignedToId, tags, status, changeNote } = body
+  const {
+    title, description, docType, category, caseId, caseNumber,
+    clientName, department, taskId, debtorId, assignedToId, tags, status,
+    isArchived, changeNote,
+  } = body
 
   const updated = await prisma.caseDocument.update({
     where: { id },
@@ -53,13 +57,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(title        !== undefined && { title:        title.trim() }),
       ...(description  !== undefined && { description:  description?.trim() ?? null }),
       ...(docType      !== undefined && { docType }),
+      ...(category     !== undefined && { category }),
+      ...(caseId       !== undefined && { caseId }),
       ...(caseNumber   !== undefined && { caseNumber:   caseNumber?.trim() ?? null }),
       ...(clientName   !== undefined && { clientName:   clientName?.trim() ?? null }),
       ...(department   !== undefined && { department }),
       ...(taskId       !== undefined && { taskId }),
+      ...(debtorId     !== undefined && { debtorId }),
       ...(assignedToId !== undefined && { assignedToId }),
       ...(tags         !== undefined && { tags: tags?.trim() ?? null }),
       ...(status       !== undefined && { status }),
+      ...(isArchived   !== undefined && { isArchived }),
     },
     include: {
       uploadedBy: { select: { id: true, name: true, role: true } },

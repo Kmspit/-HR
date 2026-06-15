@@ -59,6 +59,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       role={role}
       userId={userId}
       canEdit={canEdit}
+      cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
     />
   )
 }
