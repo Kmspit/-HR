@@ -15,6 +15,7 @@ interface CaseItem {
   caseType: CaseType
   status: CaseStatus
   priority: CasePriority
+  riskLevel: string
   debtAmount: number | null
   department: string | null
   dueDate: string | null
@@ -78,7 +79,23 @@ const RISK_COLOR: Record<string, string> = {
   CRITICAL: 'text-red-600 font-semibold',
 }
 
-const CAN_CREATE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
+const CAN_CREATE  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
+const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
+
+type SmartFilter = 'high_risk' | 'court_this_week' | 'overdue' | 'assigned_to_me' | 'critical'
+const SMART_FILTER_LABELS: Record<SmartFilter, string> = {
+  high_risk:      '⚡ ความเสี่ยงสูง',
+  court_this_week: '⚖️ นัดศาลสัปดาห์นี้',
+  overdue:        '🔴 เกินกำหนด',
+  assigned_to_me: '👤 ของฉัน',
+  critical:       '🚨 วิกฤต',
+}
+
+interface ExecutiveSummary {
+  summary: { totalActive: number; totalCompleted: number; totalOverdue: number; totalHighRisk: number; courtThisWeek: number; recoveryRate: number; totalDebt: number; totalCollected: number }
+  byType:  { type: string; count: number }[]
+  byRisk:  { risk: string; count: number }[]
+}
 
 function thb(n: number) {
   return n.toLocaleString('th-TH', { maximumFractionDigits: 0 })
@@ -90,28 +107,42 @@ function fmtDate(d: string | null) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function CasesClient({ role, userId, userName }: { role: string; userId: string; userName: string }) {
-  const [cases,     setCases]     = useState<CaseItem[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [employees, setEmployees] = useState<User[]>([])
-  const [search,    setSearch]    = useState('')
-  const [statusF,   setStatusF]   = useState('')
-  const [typeF,     setTypeF]     = useState('')
-  const [priorityF, setPriorityF] = useState('')
+  const [cases,      setCases]     = useState<CaseItem[]>([])
+  const [loading,    setLoading]   = useState(true)
+  const [employees,  setEmployees] = useState<User[]>([])
+  const [search,     setSearch]    = useState('')
+  const [statusF,    setStatusF]   = useState('')
+  const [typeF,      setTypeF]     = useState('')
+  const [priorityF,  setPriorityF] = useState('')
+  const [smartFilter, setSmartFilter] = useState<SmartFilter | ''>('')
   const [showCreate, setShowCreate] = useState(false)
+  const [execSummary, setExecSummary] = useState<ExecutiveSummary | null>(null)
+  const [activeView,  setActiveView]  = useState<'list' | 'executive'>('list')
 
   const canCreate = CAN_CREATE.includes(role)
+  const isExec    = EXEC_ROLES.includes(role)
 
   const fetchCases = useCallback(async () => {
     setLoading(true)
     const p = new URLSearchParams()
     if (search)    p.set('search',   search)
-    if (statusF)   p.set('status',   statusF)
     if (typeF)     p.set('type',     typeF)
-    if (priorityF) p.set('priority', priorityF)
+
+    // Smart filters override normal filters
+    if (smartFilter === 'high_risk')       { p.set('priority', 'HIGH') }
+    else if (smartFilter === 'critical')   { p.set('priority', 'CRITICAL') }
+    else if (smartFilter === 'overdue')    { p.set('overdue', '1') }
+    else if (smartFilter === 'assigned_to_me') { p.set('assignee', userId) }
+    else if (smartFilter === 'court_this_week') { p.set('court_this_week', '1') }
+    else {
+      if (statusF)   p.set('status',   statusF)
+      if (priorityF) p.set('priority', priorityF)
+    }
+
     const res = await fetch(`/api/cases?${p}`)
     if (res.ok) { const d = await res.json(); setCases(d.cases) }
     setLoading(false)
-  }, [search, statusF, typeF, priorityF])
+  }, [search, statusF, typeF, priorityF, smartFilter, userId])
 
   useEffect(() => { fetchCases() }, [fetchCases])
 
@@ -122,6 +153,18 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
     })
   }, [canCreate])
 
+  useEffect(() => {
+    if (!isExec) return
+    fetch('/api/cases/executive').then(r => r.ok ? r.json() : null).then(d => {
+      if (d) setExecSummary(d)
+    })
+  }, [isExec])
+
+  // Apply client-side smart filters that aren't handled server-side
+  const displayCases = smartFilter === 'overdue'
+    ? cases.filter(c => c.dueDate && new Date(c.dueDate) < new Date() && !['COMPLETED', 'CANCELLED'].includes(c.status))
+    : cases
+
   return (
     <div className="flex flex-col pb-24 md:pb-0">
       {/* Header */}
@@ -129,46 +172,118 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-[17px] font-bold text-slate-900 dark:text-white leading-tight">คดีความ</h1>
-            <p className="text-[12px] text-slate-400 mt-0.5">{cases.length} คดี</p>
+            <p className="text-[12px] text-slate-400 mt-0.5">{displayCases.length} คดี</p>
           </div>
-          {canCreate && (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 active:scale-[0.97] transition-all shadow-lg shadow-blue-600/20"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-              สร้างคดี
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {isExec && (
+              <button
+                onClick={() => setActiveView(v => v === 'list' ? 'executive' : 'list')}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all ${activeView === 'executive' ? 'bg-indigo-600 text-white' : 'border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}
+              >
+                📊 Dashboard
+              </button>
+            )}
+            {canCreate && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 active:scale-[0.97] transition-all shadow-lg shadow-blue-600/20"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                สร้างคดี
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="ค้นหาเลขคดี / ลูกค้า / ลูกหนี้..."
-            className="flex-1 min-w-[160px] rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-1.5 text-[13px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <select value={statusF} onChange={e => setStatusF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">ทุกสถานะ</option>
-            {(Object.entries(STATUS_LABELS) as [CaseStatus, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <select value={typeF} onChange={e => setTypeF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">ทุกประเภท</option>
-            {(Object.entries(TYPE_LABELS) as [CaseType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <select value={priorityF} onChange={e => setPriorityF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">ทุกความเร่งด่วน</option>
-            {(Object.entries(PRIORITY_LABELS) as [CasePriority, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+        {/* Smart filters */}
+        <div className="flex gap-1.5 mt-2 overflow-x-auto scrollbar-none pb-0.5">
+          <button
+            onClick={() => setSmartFilter('')}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${smartFilter === '' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+          >
+            ทั้งหมด
+          </button>
+          {(Object.entries(SMART_FILTER_LABELS) as [SmartFilter, string][]).map(([k, l]) => (
+            <button
+              key={k}
+              onClick={() => setSmartFilter(sf => sf === k ? '' : k)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors whitespace-nowrap ${smartFilter === k ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+            >
+              {l}
+            </button>
+          ))}
         </div>
+
+        {/* Filters — hidden when smart filter active */}
+        {!smartFilter && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหาเลขคดี / ลูกค้า / ลูกหนี้..."
+              className="flex-1 min-w-[160px] rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-1.5 text-[13px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select value={statusF} onChange={e => setStatusF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">ทุกสถานะ</option>
+              {(Object.entries(STATUS_LABELS) as [CaseStatus, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <select value={typeF} onChange={e => setTypeF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">ทุกประเภท</option>
+              {(Object.entries(TYPE_LABELS) as [CaseType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <select value={priorityF} onChange={e => setPriorityF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">ทุกความเร่งด่วน</option>
+              {(Object.entries(PRIORITY_LABELS) as [CasePriority, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+        )}
       </div>
+
+      {/* Executive Dashboard */}
+      {activeView === 'executive' && isExec && execSummary && (
+        <div className="px-4 py-4 md:px-6 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'คดีที่ดำเนินการ', value: execSummary.summary.totalActive,    color: 'text-blue-600' },
+              { label: 'เกินกำหนด',        value: execSummary.summary.totalOverdue,   color: 'text-red-600' },
+              { label: 'ความเสี่ยงสูง',    value: execSummary.summary.totalHighRisk,  color: 'text-orange-600' },
+              { label: 'นัดศาลสัปดาห์นี้', value: execSummary.summary.courtThisWeek, color: 'text-purple-600' },
+            ].map(m => (
+              <div key={m.label} className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 text-center">
+                <p className={`text-3xl font-bold ${m.color}`}>{m.value}</p>
+                <p className="text-[12px] text-slate-400 mt-1">{m.label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
+              <p className="font-semibold text-slate-900 dark:text-white text-[14px] mb-3">Recovery Rate</p>
+              <div className="text-center">
+                <p className="text-4xl font-bold text-green-600">{execSummary.summary.recoveryRate}%</p>
+                <p className="text-[12px] text-slate-400 mt-1">เก็บได้ ฿{thb(execSummary.summary.totalCollected)} / ฿{thb(execSummary.summary.totalDebt)}</p>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
+              <p className="font-semibold text-slate-900 dark:text-white text-[14px] mb-3">ความเสี่ยงคดี</p>
+              {execSummary.byRisk.map(r => (
+                <div key={r.risk} className="flex items-center gap-2 mb-1.5">
+                  <span className={`text-[11px] font-medium w-16 ${RISK_COLOR[r.risk] ?? ''} px-1.5 py-0.5 rounded text-center`}>{r.risk}</span>
+                  <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="h-2 rounded-full bg-blue-500" style={{ width: `${Math.min(100, (r.count / Math.max(1, execSummary.summary.totalActive)) * 100)}%` }} />
+                  </div>
+                  <span className="text-[12px] text-slate-500 w-5 text-right">{r.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-[12px] text-slate-400">คลิก Dashboard อีกครั้งเพื่อกลับสู่รายการคดี</p>
+        </div>
+      )}
 
       {/* Desktop Table */}
       <div className="hidden md:block px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center h-40 text-slate-400 text-sm">กำลังโหลด...</div>
-        ) : cases.length === 0 ? (
+        ) : displayCases.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-slate-400">
             <svg className="h-10 w-10 mb-2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             <p className="text-sm">ไม่พบคดี</p>
@@ -178,13 +293,13 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/[0.05] bg-slate-50/80 dark:bg-white/[0.02]">
-                  {['เลขคดี', 'ชื่อคดี', 'ประเภท', 'สถานะ', 'ความเร่งด่วน', 'ลูกค้า', 'ลูกหนี้', 'ผู้รับผิดชอบ', 'วันครบกำหนด', 'อัปเดต'].map(h => (
+                  {['เลขคดี', 'ชื่อคดี', 'ประเภท', 'สถานะ', 'ความเร่งด่วน', 'ความเสี่ยง', 'ลูกค้า', 'ลูกหนี้', 'ผู้รับผิดชอบ', 'ครบกำหนด'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-[12px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
-                {cases.map(c => (
+                {displayCases.map(c => (
                   <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => window.location.href = `/cases/${c.id}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-mono text-[12px] text-blue-600 dark:text-blue-400 font-semibold">{c.caseNumber}</span>
@@ -201,6 +316,14 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`text-[12px] ${PRIORITY_COLOR[c.priority]}`}>{PRIORITY_LABELS[c.priority]}</span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        c.riskLevel === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                        c.riskLevel === 'HIGH'     ? 'bg-orange-100 text-orange-700' :
+                        c.riskLevel === 'MEDIUM'   ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>⚡ {c.riskLevel}</span>
                     </td>
                     <td className="px-4 py-3 max-w-[140px]">
                       <p className="text-[12px] text-slate-700 dark:text-slate-300 truncate">{c.client?.companyName || c.client?.clientName || '-'}</p>
@@ -219,9 +342,6 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
                     <td className="px-4 py-3 whitespace-nowrap text-[12px] text-slate-500">
                       {fmtDate(c.dueDate)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-[12px] text-slate-400">
-                      {fmtDate(c.updatedAt)}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -234,11 +354,11 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
       <div className="md:hidden px-4 py-3 space-y-3">
         {loading ? (
           <div className="flex items-center justify-center h-40 text-slate-400 text-sm">กำลังโหลด...</div>
-        ) : cases.length === 0 ? (
+        ) : displayCases.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-slate-400">
             <p className="text-sm">ไม่พบคดี</p>
           </div>
-        ) : cases.map(c => (
+        ) : displayCases.map(c => (
           <Link key={c.id} href={`/cases/${c.id}`} className="block rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 active:scale-[0.98] transition-transform">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex-1 min-w-0">

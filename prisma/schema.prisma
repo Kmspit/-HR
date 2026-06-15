@@ -168,6 +168,9 @@ enum NotificationType {
   CASE_ASSIGNED
   CASE_STATUS_CHANGED
   CASE_COURT_REMINDER
+  CASE_RISK_ESCALATED
+  CASE_NO_CONTACT_FOLLOWUP
+  CASE_SLA_OVERDUE
 }
 
 enum TaskStatus {
@@ -538,10 +541,14 @@ model User {
   otpCodes                  OtpCode[]
   twoFactorSetup            TwoFactorSetup?
   // Case Management
-  casesCreated              Case[]           @relation("CaseCreator")
-  casesAssigned             Case[]           @relation("CaseAssignee")
-  caseCourtItems            CaseCourt[]      @relation("CaseCourtCreator")
-  caseTimelines             CaseTimeline[]   @relation("CaseTimelineActor")
+  casesCreated              Case[]               @relation("CaseCreator")
+  casesAssigned             Case[]               @relation("CaseAssignee")
+  caseCourtItems            CaseCourt[]          @relation("CaseCourtCreator")
+  caseTimelines             CaseTimeline[]       @relation("CaseTimelineActor")
+  caseTemplates             CaseTemplate[]       @relation("CaseTemplateCreator")
+  caseChecklistDone         CaseChecklist[]      @relation("CaseChecklistDoneBy")
+  caseDebtorActivities      CaseDebtorActivity[] @relation("CaseDebtorActivityActor")
+  caseFinancialUpdates      CaseFinancial[]      @relation("CaseFinancialUpdater")
 
   @@map("users")
 }
@@ -2451,17 +2458,31 @@ model Case {
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
+  // Phase 2 fields
+  riskLevel        String    @default("MEDIUM") @map("risk_level")
+  slaDeadline      DateTime? @map("sla_deadline")
+  templateId       String?   @map("template_id")
+  collectedAmount  Float     @default(0) @map("collected_amount")
+  legalFee         Float     @default(0) @map("legal_fee")
+  courtFee         Float     @default(0) @map("court_fee")
+  enforcementFee   Float     @default(0) @map("enforcement_fee")
+
   assignedEmployee User?          @relation("CaseAssignee",  fields: [assignedEmployeeId], references: [id])
   createdBy        User           @relation("CaseCreator",   fields: [createdById],        references: [id])
+  template         CaseTemplate?  @relation(fields: [templateId], references: [id])
   client           CaseClient?
   debtor           CaseDebtor?
   courts           CaseCourt[]
   timeline         CaseTimeline[]
   tasks            TaskAssignment[]
+  checklists       CaseChecklist[]
+  debtorActivities CaseDebtorActivity[]
+  financial        CaseFinancial?
 
   @@index([status])
   @@index([caseType])
   @@index([priority])
+  @@index([riskLevel])
   @@index([assignedEmployeeId])
   @@index([createdAt])
   @@map("cases")
@@ -2543,4 +2564,83 @@ model CaseTimeline {
 
   @@index([caseId, createdAt])
   @@map("case_timelines")
+}
+
+// ── CASE MANAGEMENT PHASE 2 ──────────────────────────────────────────────────
+
+model CaseTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  caseType      CaseType @map("case_type")
+  department    String?
+  slaHours      Int      @default(720)  @map("sla_hours")
+  checklistJson String   @default("[]") @map("checklist_json")
+  taskJson      String   @default("[]") @map("task_json")
+  approvalFlow  String?  @map("approval_flow")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  createdBy User   @relation("CaseTemplateCreator", fields: [createdById], references: [id])
+  cases     Case[]
+
+  @@index([caseType])
+  @@index([isActive])
+  @@map("case_templates")
+}
+
+model CaseChecklist {
+  id        String    @id @default(cuid())
+  caseId    String    @map("case_id")
+  label     String
+  done      Boolean   @default(false)
+  required  Boolean   @default(false)
+  sortOrder Int       @default(0) @map("sort_order")
+  doneAt    DateTime? @map("done_at")
+  doneById  String?   @map("done_by_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  case   Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  doneBy User? @relation("CaseChecklistDoneBy", fields: [doneById], references: [id])
+
+  @@index([caseId])
+  @@map("case_checklists")
+}
+
+model CaseDebtorActivity {
+  id             String    @id @default(cuid())
+  caseId         String    @map("case_id")
+  actorId        String    @map("actor_id")
+  activityType   String    @map("activity_type")
+  note           String?
+  promisedDate   DateTime? @map("promised_date")
+  promisedAmount Float?    @map("promised_amount")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  case  Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor User @relation("CaseDebtorActivityActor", fields: [actorId], references: [id])
+
+  @@index([caseId, createdAt])
+  @@map("case_debtor_activities")
+}
+
+model CaseFinancial {
+  id              String   @id @default(cuid())
+  caseId          String   @unique @map("case_id")
+  debtAmount      Float    @default(0) @map("debt_amount")
+  collectedAmount Float    @default(0) @map("collected_amount")
+  legalFee        Float    @default(0) @map("legal_fee")
+  courtFee        Float    @default(0) @map("court_fee")
+  enforcementFee  Float    @default(0) @map("enforcement_fee")
+  otherFee        Float    @default(0) @map("other_fee")
+  updatedById     String?  @map("updated_by_id")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  case      Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("CaseFinancialUpdater", fields: [updatedById], references: [id])
+
+  @@map("case_financials")
 }

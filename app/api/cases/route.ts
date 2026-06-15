@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   const {
     caseTitle, caseType, priority, description, debtAmount,
     department, assignedEmployeeId, dueDate,
-    client, debtor,
+    client, debtor, templateId,
   } = body
 
   if (!caseTitle?.trim()) return NextResponse.json({ error: 'กรุณาระบุชื่อคดี' }, { status: 400 })
@@ -102,7 +102,8 @@ export async function POST(req: Request) {
       department:         department  ?? null,
       assignedEmployeeId: assignedEmployeeId ?? null,
       createdById:        session.user.id,
-      dueDate:            dueDate     ? new Date(dueDate) : null,
+      dueDate:            dueDate ? new Date(dueDate) : null,
+      templateId:         templateId ?? null,
       client: client?.clientName || client?.companyName
         ? { create: {
             clientName:    client.clientName?.trim()    ?? null,
@@ -147,6 +148,85 @@ export async function POST(req: Request) {
       meta:        JSON.stringify({ caseType, priority: priority ?? 'MEDIUM' }),
     },
   })
+
+  // Auto task generation from template or caseType defaults
+  const taskAssigneeId = assignedEmployeeId ?? session.user.id
+  const autoTaskDefs: Array<{ title: string; priority?: string; dayOffset?: number }> = []
+
+  if (templateId) {
+    const tmpl = await prisma.caseTemplate.findUnique({ where: { id: templateId } })
+    if (tmpl) {
+      const parsed = JSON.parse(tmpl.taskJson) as Array<{ title: string; priority?: string; dayOffset?: number }>
+      autoTaskDefs.push(...parsed)
+      // Set SLA deadline
+      if (tmpl.slaHours) {
+        await prisma.case.update({
+          where: { id: newCase.id },
+          data:  { slaDeadline: new Date(Date.now() + tmpl.slaHours * 60 * 60 * 1000) },
+        })
+      }
+      // Auto-create checklist from template
+      const checklistItems = JSON.parse(tmpl.checklistJson) as Array<{ label: string; required?: boolean }>
+      if (checklistItems.length > 0) {
+        await prisma.caseChecklist.createMany({
+          data: checklistItems.map((item, idx) => ({
+            caseId:    newCase.id,
+            label:     item.label,
+            required:  item.required ?? false,
+            sortOrder: idx,
+          })),
+        })
+      }
+    }
+  } else {
+    // Default tasks by caseType
+    const DEFAULT_TASKS: Record<string, Array<{ title: string; priority: string; dayOffset: number }>> = {
+      DEBT_COLLECTION: [
+        { title: 'ตรวจสอบเอกสารคดี', priority: 'HIGH', dayOffset: 1 },
+        { title: 'โทรติดต่อลูกหนี้', priority: 'HIGH', dayOffset: 2 },
+        { title: 'นัดชำระหนี้', priority: 'MEDIUM', dayOffset: 7 },
+        { title: 'สรุปรายงานคดี', priority: 'MEDIUM', dayOffset: 30 },
+      ],
+      LEGAL: [
+        { title: 'ตรวจสอบเอกสารคดี', priority: 'HIGH', dayOffset: 1 },
+        { title: 'เตรียมคำฟ้อง', priority: 'HIGH', dayOffset: 7 },
+        { title: 'ยื่นศาล', priority: 'CRITICAL', dayOffset: 14 },
+        { title: 'นัดพิจารณาคดี', priority: 'HIGH', dayOffset: 21 },
+      ],
+      COURT: [
+        { title: 'เตรียมเอกสารศาล', priority: 'HIGH', dayOffset: 1 },
+        { title: 'นัดประชุมทนาย', priority: 'MEDIUM', dayOffset: 3 },
+      ],
+    }
+    if (DEFAULT_TASKS[caseType]) autoTaskDefs.push(...DEFAULT_TASKS[caseType])
+  }
+
+  if (autoTaskDefs.length > 0) {
+    const caseDate = new Date()
+    await prisma.taskAssignment.createMany({
+      data: autoTaskDefs.map(t => ({
+        title:        t.title,
+        type:         'CASE_TASK' as never,
+        status:       'PENDING',
+        priority:     (t.priority ?? 'MEDIUM') as never,
+        assigneeId:   taskAssigneeId,
+        assignedById: session.user.id,
+        caseId:       newCase.id,
+        caseNumber:   caseNumber,
+        dueDate:      new Date(caseDate.getTime() + (t.dayOffset ?? 7) * 86400000),
+      })),
+    }).catch(() => {})
+
+    await prisma.caseTimeline.create({
+      data: {
+        caseId:      newCase.id,
+        userId:      session.user.id,
+        action:      'auto_tasks_created',
+        description: `ระบบสร้างงานอัตโนมัติ ${autoTaskDefs.length} งาน`,
+        meta:        JSON.stringify({ count: autoTaskDefs.length, source: templateId ? 'template' : 'default' }),
+      },
+    })
+  }
 
   // Notify assigned employee
   if (assignedEmployeeId && assignedEmployeeId !== session.user.id) {

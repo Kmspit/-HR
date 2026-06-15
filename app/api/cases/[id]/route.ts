@@ -48,7 +48,10 @@ export async function GET(
         orderBy: { createdAt: 'desc' },
         take: 30,
       },
-      _count: { select: { tasks: true, courts: true } },
+      checklists:       { include: { doneBy: { select: { id: true, name: true } } }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+      debtorActivities: { include: { actor: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'desc' }, take: 30 },
+      financial:        { include: { updatedBy: { select: { id: true, name: true } } } },
+      _count:           { select: { tasks: true, courts: true, checklists: true } },
     },
   })
 

@@ -447,6 +447,226 @@ export async function GET(req: NextRequest) {
     }
   } catch { stats.errors++ }
 
-  console.log('[task-reminders]', stats)
-  return NextResponse.json({ ok: true, stats })
+  // ── 8. Case court reminders (7d / 3d / 1d / same-day) ────────────────────
+  const caseCourtStats = { reminded: 0, missed: 0, errors: 0 }
+  try {
+    for (const days of [7, 3, 1, 0]) {
+      const range = targetDate(days)
+      const courts = await prisma.caseCourt.findMany({
+        where: { courtDate: { gte: range.gte, lte: range.lte } },
+        include: {
+          case: {
+            select: {
+              id: true, caseNumber: true, caseTitle: true,
+              assignedEmployeeId: true, status: true,
+            },
+          },
+        },
+      })
+
+      for (const court of courts) {
+        if (['COMPLETED', 'CANCELLED'].includes(court.case.status)) continue
+        const assigneeId = court.case.assignedEmployeeId
+        if (!assigneeId) continue
+
+        const notifKey = `case_court_${court.id}_${days}d`
+        const alreadySentCourt = await prisma.notification.findFirst({
+          where: {
+            userId:    assigneeId,
+            type:      'CASE_COURT_REMINDER',
+            link:      `/cases/${court.case.id}`,
+            createdAt: { gte: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+            message:   { contains: notifKey },
+          },
+          select: { id: true },
+        })
+        if (alreadySentCourt) continue
+
+        const label     = days === 0 ? 'วันนี้!' : days === 1 ? 'พรุ่งนี้' : `อีก ${days} วัน`
+        const courtStr  = court.courtDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })
+        const timeStr   = court.appointmentTime ? ` เวลา ${court.appointmentTime}` : ''
+
+        await createNotification({
+          userId:  assigneeId,
+          type:    'CASE_COURT_REMINDER',
+          title:   `⚖️ นัดศาล ${label}`,
+          message: `[${notifKey}] ${court.case.caseNumber}: ${court.courtName} — ${courtStr}${timeStr}`,
+          link:    `/cases/${court.case.id}`,
+        })
+
+        if (days <= 1) {
+          await sendLineMessage(assigneeId,
+            `⚖️ แจ้งเตือนนัดศาล${days === 0 ? 'วันนี้!' : 'พรุ่งนี้'}\n\nคดี: ${court.case.caseNumber}\n${court.case.caseTitle}\n\nศาล: ${court.courtName}\nวัน: ${courtStr}${timeStr}\n\nเตรียมเอกสารให้พร้อม`
+          ).catch(() => {})
+        }
+
+        // Also notify managers for 1d/same-day
+        if (days <= 1) {
+          const managers = await prisma.user.findMany({
+            where: { role: { in: ['MANAGER', 'MANAGER_HR', 'CEO'] }, status: 'ACTIVE' },
+            select: { id: true, lineUserId: true },
+          })
+          for (const mgr of managers) {
+            if (mgr.id === assigneeId) continue
+            await createNotification({
+              userId:  mgr.id,
+              type:    'CASE_COURT_REMINDER',
+              title:   `⚖️ [แจ้งผู้จัดการ] นัดศาล${days === 0 ? 'วันนี้' : 'พรุ่งนี้'}`,
+              message: `[${notifKey}] ${court.case.caseNumber}: ${court.courtName} ${courtStr}`,
+              link:    `/cases/${court.case.id}`,
+            })
+          }
+        }
+
+        caseCourtStats.reminded++
+      }
+    }
+
+    // Missed court: courtDate in past with no result recorded
+    const pastCourts = await prisma.caseCourt.findMany({
+      where: {
+        courtDate: { lt: new Date(now.getTime() - 2 * 60 * 60 * 1000) },
+        result:    null,
+        case:      { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+      },
+      include: {
+        case: { select: { id: true, caseNumber: true, caseTitle: true, assignedEmployeeId: true } },
+      },
+      take: 20,
+    })
+
+    for (const court of pastCourts) {
+      const assigneeId = court.case.assignedEmployeeId
+      if (!assigneeId) continue
+      const alreadySentMiss = await prisma.notification.findFirst({
+        where: {
+          userId: assigneeId, type: 'CASE_COURT_REMINDER',
+          message: { contains: `missed_${court.id}` },
+          createdAt: { gte: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+        },
+        select: { id: true },
+      })
+      if (alreadySentMiss) continue
+
+      const managers = await prisma.user.findMany({
+        where: { role: { in: ['MANAGER', 'MANAGER_HR', 'CEO'] }, status: 'ACTIVE' },
+        select: { id: true },
+      })
+      for (const mgr of managers) {
+        await createNotification({
+          userId:  mgr.id,
+          type:    'CASE_COURT_REMINDER',
+          title:   '🚨 ผ่านวันนัดศาลแล้ว — ยังไม่มีผล',
+          message: `[missed_${court.id}] ${court.case.caseNumber}: ${court.courtName} — กรุณาบันทึกผล`,
+          link:    `/cases/${court.case.id}`,
+        })
+      }
+      caseCourtStats.missed++
+    }
+  } catch { caseCourtStats.errors++ }
+
+  // ── 9. Case debtor no-contact 7d automation ───────────────────────────────
+  try {
+    const activeStatuses: string[] = ['NEW', 'ASSIGNED', 'INVESTIGATING', 'NEGOTIATING', 'WAITING_DOCUMENT']
+    const cutoff7d = new Date(now.getTime() - 7 * 86400000)
+
+    const debtCases = await prisma.case.findMany({
+      where: {
+        caseType: 'DEBT_COLLECTION',
+        status:   { in: activeStatuses as never[] },
+      },
+      select: {
+        id: true, caseNumber: true, caseTitle: true,
+        assignedEmployeeId: true,
+        debtorActivities: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+      },
+      take: 100,
+    })
+
+    for (const c of debtCases) {
+      const lastContact = c.debtorActivities[0]
+      const noContact   = !lastContact || lastContact.createdAt < cutoff7d
+      if (!noContact) continue
+      if (!c.assignedEmployeeId) continue
+
+      const alreadySentNC = await prisma.notification.findFirst({
+        where: {
+          userId:    c.assignedEmployeeId,
+          type:      'CASE_NO_CONTACT_FOLLOWUP',
+          link:      `/cases/${c.id}`,
+          createdAt: { gte: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+        },
+        select: { id: true },
+      })
+      if (alreadySentNC) continue
+
+      await createNotification({
+        userId:  c.assignedEmployeeId,
+        type:    'CASE_NO_CONTACT_FOLLOWUP',
+        title:   '📞 ยังไม่ได้ติดต่อลูกหนี้ 7 วัน',
+        message: `คดี ${c.caseNumber}: ${c.caseTitle} — กรุณาติดต่อลูกหนี้`,
+        link:    `/cases/${c.id}`,
+      })
+
+      await sendLineMessage(c.assignedEmployeeId,
+        `📞 แจ้งเตือน: ยังไม่ได้ติดต่อลูกหนี้\n\nคดี: ${c.caseNumber}\n${c.caseTitle}\n\nกรุณาติดต่อลูกหนี้และบันทึกผลในระบบ`
+      ).catch(() => {})
+
+      // Auto-create follow-up task
+      await prisma.taskAssignment.create({
+        data: {
+          title:        `[Auto] ติดตามลูกหนี้ — ${c.caseNumber}`,
+          description:  `ติดต่อลูกหนี้คดี ${c.caseNumber} ไม่มีการติดต่อ 7 วันแล้ว`,
+          type:         'FOLLOW_UP' as never,
+          status:       'PENDING',
+          priority:     'HIGH',
+          assigneeId:   c.assignedEmployeeId,
+          assignedById: c.assignedEmployeeId,
+          caseId:       c.id,
+          caseNumber:   c.caseNumber,
+          dueDate:      new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      }).catch(() => {})
+    }
+  } catch { stats.errors++ }
+
+  // ── 10. Case SLA overdue check ────────────────────────────────────────────
+  try {
+    const slaOverdueCases = await prisma.case.findMany({
+      where: {
+        slaDeadline: { lt: now },
+        status:      { notIn: ['COMPLETED', 'CANCELLED'] as never[] },
+      },
+      select: {
+        id: true, caseNumber: true, caseTitle: true,
+        assignedEmployeeId: true, riskLevel: true, slaDeadline: true,
+      },
+      take: 50,
+    })
+
+    for (const c of slaOverdueCases) {
+      if (!c.assignedEmployeeId) continue
+      const alreadySentSla = await prisma.notification.findFirst({
+        where: {
+          userId:    c.assignedEmployeeId,
+          type:      'CASE_SLA_OVERDUE',
+          link:      `/cases/${c.id}`,
+          createdAt: { gte: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+        },
+        select: { id: true },
+      })
+      if (alreadySentSla) continue
+
+      await createNotification({
+        userId:  c.assignedEmployeeId,
+        type:    'CASE_SLA_OVERDUE',
+        title:   '⏱️ คดีเกิน SLA',
+        message: `${c.caseNumber}: ${c.caseTitle} — เกินกำหนด SLA แล้ว`,
+        link:    `/cases/${c.id}`,
+      })
+    }
+  } catch { stats.errors++ }
+
+  console.log('[task-reminders]', stats, '[case-reminders]', caseCourtStats)
+  return NextResponse.json({ ok: true, stats, caseCourtStats })
 }

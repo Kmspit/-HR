@@ -30,7 +30,10 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         },
         orderBy: { createdAt: 'desc' },
       },
-      _count: { select: { tasks: true, courts: true } },
+      checklists:       { include: { doneBy: { select: { id: true, name: true } } }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+      debtorActivities: { include: { actor: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'desc' }, take: 30 },
+      financial:        { include: { updatedBy: { select: { id: true, name: true } } } },
+      _count: { select: { tasks: true, courts: true, checklists: true } },
     },
   })
 

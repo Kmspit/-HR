@@ -14,6 +14,8 @@ interface CaseData {
   status: CaseStatus; priority: CasePriority; description: string | null
   debtAmount: number | null; department: string | null; dueDate: string | null
   openedAt: string; closedAt: string | null; createdAt: string; updatedAt: string
+  riskLevel: string; slaDeadline: string | null
+  collectedAmount: number; legalFee: number; courtFee: number; enforcementFee: number
   assignedEmployee: { id: string; name: string; department: string | null; employeeId: string | null; role: string } | null
   createdBy: { id: string; name: string; role: string }
   client: CaseClientData | null
@@ -21,13 +23,19 @@ interface CaseData {
   courts: CourtData[]
   timeline: TimelineEntry[]
   tasks: TaskSummary[]
-  _count: { tasks: number; courts: number }
+  checklists: ChecklistItem[]
+  debtorActivities: DebtorActivity[]
+  financial: CaseFinancial | null
+  _count: { tasks: number; courts: number; checklists: number }
 }
 interface CaseClientData { id: string; clientName: string | null; companyName: string | null; taxId: string | null; phone: string | null; email: string | null; address: string | null; contactPerson: string | null; note: string | null }
 interface CaseDebtorData { id: string; fullName: string; idCard: string | null; phone: string | null; email: string | null; address: string | null; workplace: string | null; riskLevel: string; assetInfo: string | null; note: string | null }
 interface CourtData { id: string; courtName: string; courtDate: string; appointmentTime: string | null; judgeName: string | null; result: string | null; note: string | null; createdBy: { id: string; name: string } }
 interface TimelineEntry { id: string; action: string; description: string; meta: string | null; createdAt: string; user: { id: string; name: string; role: string } }
 interface TaskSummary { id: string; title: string; status: TaskStatus; priority: string; dueDate: string | null; type: string; assignee: { id: string; name: string } }
+interface ChecklistItem { id: string; label: string; done: boolean; required: boolean; sortOrder: number; doneAt: string | null; doneBy: { id: string; name: string } | null }
+interface DebtorActivity { id: string; activityType: string; note: string | null; promisedDate: string | null; promisedAmount: number | null; createdAt: string; actor: { id: string; name: string; role: string } }
+interface CaseFinancial { id: string; debtAmount: number; collectedAmount: number; legalFee: number; courtFee: number; enforcementFee: number; otherFee: number; updatedBy: { id: string; name: string } | null; updatedAt: string }
 
 // ── Labels ────────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<CaseType, string> = {
@@ -58,6 +66,10 @@ const PRIORITY_LABELS: Record<CasePriority, string> = { LOW: 'ต่ำ', MEDIUM
 const PRIORITY_COLOR: Record<CasePriority, string> = {
   LOW: 'text-slate-500', MEDIUM: 'text-blue-600', HIGH: 'text-orange-600 font-semibold', CRITICAL: 'text-red-600 font-bold',
 }
+const RISK_COLOR: Record<string, string> = {
+  LOW: 'bg-green-100 text-green-700', MEDIUM: 'bg-yellow-100 text-yellow-700',
+  HIGH: 'bg-orange-100 text-orange-700', CRITICAL: 'bg-red-100 text-red-700 font-bold',
+}
 const TASK_STATUS_COLOR: Record<string, string> = {
   PENDING: 'bg-slate-100 text-slate-600', IN_PROGRESS: 'bg-blue-100 text-blue-700',
   WAITING_REVIEW: 'bg-amber-100 text-amber-700', COMPLETED: 'bg-green-100 text-green-700',
@@ -66,7 +78,21 @@ const TASK_STATUS_COLOR: Record<string, string> = {
 const ACTION_ICON: Record<string, string> = {
   created: '📁', status_changed: '🔄', assigned: '👤', task_created: '📋',
   task_completed: '✅', court_added: '⚖️', court_removed: '🗑️', doc_uploaded: '📄',
-  comment_added: '💬', cancelled: '❌', default: '📌',
+  comment_added: '💬', cancelled: '❌', checklist_done: '☑️', checklist_undone: '☐',
+  debtor_activity: '📞', financial_updated: '💰', auto_tasks_created: '🤖',
+  risk_changed: '⚠️', default: '📌',
+}
+const ACTIVITY_LABELS: Record<string, string> = {
+  phone_contacted:       '📞 โทรติดต่อสำเร็จ',
+  unable_to_contact:     '📵 โทรติดต่อไม่ได้',
+  payment_promise:       '🤝 นัดชำระหนี้',
+  payment_completed:     '✅ ชำระหนี้แล้ว',
+  refused_payment:       '❌ ปฏิเสธการชำระ',
+  settlement_discussion: '💬 เจรจาประนอม',
+  lawsuit_filed:         '⚖️ ยื่นฟ้องแล้ว',
+  letter_sent:           '📄 ส่งหนังสือแล้ว',
+  visit_in_person:       '🚗 เข้าพบลูกหนี้',
+  other:                 '📌 อื่นๆ',
 }
 
 function fmtDate(d: string | null) {
@@ -78,7 +104,7 @@ function fmtDateTime(d: string) {
 }
 function thb(n: number) { return n.toLocaleString('th-TH', { maximumFractionDigits: 0 }) }
 
-const TABS = ['ภาพรวม', 'ไทม์ไลน์', 'งาน', 'ศาล', 'เอกสาร', 'ลูกหนี้', 'การเงิน', 'ออดิต'] as const
+const TABS = ['ภาพรวม', 'ไทม์ไลน์', 'งาน', 'เช็คลิสต์', 'ศาล', 'ลูกหนี้', 'การเงิน', 'เอกสาร', 'ออดิต'] as const
 type Tab = typeof TABS[number]
 
 // ── Main Component ─────────────────────────────────────────────────────────
@@ -126,6 +152,11 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
     await refetch()
   }
 
+  async function recalcRisk() {
+    await fetch(`/api/cases/${c.id}/risk`, { method: 'POST' })
+    await refetch()
+  }
+
   const isActive = !['COMPLETED', 'CANCELLED'].includes(c.status)
 
   return (
@@ -145,6 +176,9 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
               </span>
               <span className={`text-[12px] ${PRIORITY_COLOR[c.priority]}`}>{PRIORITY_LABELS[c.priority]}</span>
               <span className="text-[12px] text-slate-400">{TYPE_LABELS[c.caseType]}</span>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${RISK_COLOR[c.riskLevel] ?? 'bg-slate-100 text-slate-600'}`}>
+                ⚡ {c.riskLevel}
+              </span>
               {c.debtAmount != null && <span className="text-[12px] text-slate-500">฿{thb(c.debtAmount)}</span>}
             </div>
           </div>
@@ -182,16 +216,21 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
         {activeTab === 'ภาพรวม' && (
           <div className="space-y-4 max-w-3xl">
             <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-3">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ข้อมูลทั่วไป</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ข้อมูลทั่วไป</h3>
+                <button onClick={recalcRisk} className="text-[11px] text-blue-600 hover:underline">คำนวณความเสี่ยงใหม่</button>
+              </div>
               <div className="grid grid-cols-2 gap-3 text-[13px]">
-                <Info label="เลขคดี"      value={c.caseNumber} mono />
-                <Info label="ประเภท"      value={TYPE_LABELS[c.caseType]} />
-                <Info label="สถานะ"       value={STATUS_LABELS[c.status]} />
-                <Info label="ความเร่งด่วน" value={PRIORITY_LABELS[c.priority]} />
+                <Info label="เลขคดี"        value={c.caseNumber} mono />
+                <Info label="ประเภท"        value={TYPE_LABELS[c.caseType]} />
+                <Info label="สถานะ"         value={STATUS_LABELS[c.status]} />
+                <Info label="ความเร่งด่วน"  value={PRIORITY_LABELS[c.priority]} />
+                <Info label="ความเสี่ยง"    value={c.riskLevel} />
                 {c.debtAmount != null && <Info label="มูลหนี้" value={`฿${thb(c.debtAmount)}`} />}
                 {c.department  && <Info label="ฝ่าย" value={c.department} />}
-                <Info label="วันเปิดคดี"   value={fmtDate(c.openedAt)} />
+                <Info label="วันเปิดคดี"    value={fmtDate(c.openedAt)} />
                 {c.dueDate && <Info label="วันครบกำหนด" value={fmtDate(c.dueDate)} />}
+                {c.slaDeadline && <Info label="SLA Deadline" value={fmtDate(c.slaDeadline)} />}
                 {c.closedAt && <Info label="วันปิดคดี" value={fmtDate(c.closedAt)} />}
               </div>
               {c.description && (
@@ -218,24 +257,47 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
               <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-2">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">สถิติ</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <Stat label="งาน" value={c._count.tasks} color="text-blue-600" />
-                  <Stat label="นัดศาล" value={c._count.courts} color="text-purple-600" />
-                  <Stat label="เหตุการณ์" value={c.timeline.length} color="text-slate-600" />
-                  <Stat label="อัปเดต" value={fmtDate(c.updatedAt)} color="text-slate-500" small />
+                  <Stat label="งาน"        value={c._count.tasks}      color="text-blue-600" />
+                  <Stat label="นัดศาล"     value={c._count.courts}     color="text-purple-600" />
+                  <Stat label="เช็คลิสต์" value={`${c.checklists.filter(ch => ch.done).length}/${c._count.checklists}`} color="text-green-600" small />
+                  <Stat label="เหตุการณ์" value={c.timeline.length}    color="text-slate-600" />
                 </div>
               </div>
             </div>
+
+            {/* Quick Financial Summary */}
+            {c.debtAmount != null && (
+              <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
+                <h3 className="font-semibold text-slate-900 dark:text-white text-[14px] mb-3">สรุปการเงิน</h3>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-[18px] font-bold text-slate-900 dark:text-white">฿{thb(c.debtAmount)}</p>
+                    <p className="text-[11px] text-slate-400">มูลหนี้รวม</p>
+                  </div>
+                  <div>
+                    <p className="text-[18px] font-bold text-green-600">฿{thb(c.collectedAmount ?? 0)}</p>
+                    <p className="text-[11px] text-slate-400">เก็บได้แล้ว</p>
+                  </div>
+                  <div>
+                    <p className="text-[18px] font-bold text-orange-600">
+                      {c.debtAmount > 0 ? Math.round(((c.collectedAmount ?? 0) / c.debtAmount) * 100) : 0}%
+                    </p>
+                    <p className="text-[11px] text-slate-400">Recovery Rate</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {c.client && (
               <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-2">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ลูกค้า (ผู้ว่าจ้าง)</h3>
                 <div className="grid grid-cols-2 gap-3 text-[13px]">
-                  {c.client.companyName   && <Info label="บริษัท"    value={c.client.companyName} />}
-                  {c.client.clientName    && <Info label="ชื่อ"       value={c.client.clientName} />}
-                  {c.client.taxId         && <Info label="เลขภาษี"    value={c.client.taxId} mono />}
-                  {c.client.phone         && <Info label="โทรศัพท์"   value={c.client.phone} />}
-                  {c.client.email         && <Info label="อีเมล"      value={c.client.email} />}
-                  {c.client.contactPerson && <Info label="ผู้ติดต่อ"  value={c.client.contactPerson} />}
+                  {c.client.companyName   && <Info label="บริษัท"   value={c.client.companyName} />}
+                  {c.client.clientName    && <Info label="ชื่อ"      value={c.client.clientName} />}
+                  {c.client.taxId         && <Info label="เลขภาษี"   value={c.client.taxId} mono />}
+                  {c.client.phone         && <Info label="โทรศัพท์"  value={c.client.phone} />}
+                  {c.client.email         && <Info label="อีเมล"     value={c.client.email} />}
+                  {c.client.contactPerson && <Info label="ผู้ติดต่อ" value={c.client.contactPerson} />}
                 </div>
                 {c.client.address && <p className="text-[12px] text-slate-500">{c.client.address}</p>}
               </div>
@@ -246,7 +308,6 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
         {/* ── Timeline ────────────────────────────────── */}
         {activeTab === 'ไทม์ไลน์' && (
           <div className="max-w-2xl space-y-3">
-            {/* Add comment */}
             <form onSubmit={postComment} className="flex gap-2">
               <input
                 value={commentText} onChange={e => setCommentText(e.target.value)}
@@ -257,8 +318,6 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
                 {posting ? '...' : 'บันทึก'}
               </button>
             </form>
-
-            {/* Timeline list */}
             <div className="relative pl-6">
               <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-slate-200 dark:bg-white/[0.08]" />
               {[...c.timeline].reverse().map(entry => (
@@ -287,7 +346,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
             {c.tasks.length === 0 ? (
               <p className="text-[13px] text-slate-400">ยังไม่มีงานที่เชื่อมกับคดีนี้</p>
             ) : c.tasks.map(t => (
-              <Link key={t.id} href={`/tasks`} className="block rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm px-4 py-3 hover:shadow-md transition-shadow">
+              <div key={t.id} className="block rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium text-slate-900 dark:text-white text-[13px] truncate">{t.title}</p>
                   <span className={`flex-shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${TASK_STATUS_COLOR[t.status] ?? 'bg-slate-100 text-slate-600'}`}>
@@ -295,9 +354,14 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
                   </span>
                 </div>
                 <p className="text-[12px] text-slate-400 mt-0.5">ผู้รับ: {t.assignee.name} {t.dueDate ? `· ครบ ${fmtDate(t.dueDate)}` : ''}</p>
-              </Link>
+              </div>
             ))}
           </div>
+        )}
+
+        {/* ── Checklist ───────────────────────────────── */}
+        {activeTab === 'เช็คลิสต์' && (
+          <ChecklistTab caseId={c.id} items={c.checklists} canEdit={canEdit} onRefresh={refetch} />
         )}
 
         {/* ── Court ───────────────────────────────────── */}
@@ -311,32 +375,53 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
             )}
             {c.courts.length === 0 ? (
               <p className="text-[13px] text-slate-400">ยังไม่มีนัดศาล</p>
-            ) : c.courts.map(court => (
-              <div key={court.id} className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white text-[14px]">⚖️ {court.courtName}</p>
-                    <p className="text-[13px] text-slate-700 dark:text-slate-300 mt-0.5">
-                      {fmtDate(court.courtDate)}{court.appointmentTime ? ` เวลา ${court.appointmentTime}` : ''}
-                    </p>
-                    {court.judgeName && <p className="text-[12px] text-slate-400 mt-0.5">ผู้พิพากษา: {court.judgeName}</p>}
-                    {court.result   && <p className="text-[12px] text-green-600 dark:text-green-400 mt-0.5">ผล: {court.result}</p>}
-                    {court.note     && <p className="text-[12px] text-slate-400 mt-1 whitespace-pre-wrap">{court.note}</p>}
+            ) : c.courts.map(court => {
+              const isUpcoming = new Date(court.courtDate) >= new Date()
+              const daysUntil  = Math.ceil((new Date(court.courtDate).getTime() - Date.now()) / 86400000)
+              return (
+                <div key={court.id} className={`rounded-2xl bg-white dark:bg-slate-900/60 border shadow-sm p-4 ${isUpcoming && daysUntil <= 3 ? 'border-red-300 dark:border-red-800' : 'border-slate-200 dark:border-white/[0.07]'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900 dark:text-white text-[14px]">⚖️ {court.courtName}</p>
+                        {isUpcoming && daysUntil <= 7 && (
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${daysUntil <= 1 ? 'bg-red-100 text-red-700' : daysUntil <= 3 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {daysUntil === 0 ? 'วันนี้!' : daysUntil === 1 ? 'พรุ่งนี้' : `อีก ${daysUntil} วัน`}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[13px] text-slate-700 dark:text-slate-300 mt-0.5">
+                        {fmtDate(court.courtDate)}{court.appointmentTime ? ` เวลา ${court.appointmentTime}` : ''}
+                      </p>
+                      {court.judgeName && <p className="text-[12px] text-slate-400 mt-0.5">ผู้พิพากษา: {court.judgeName}</p>}
+                      {court.result   && <p className="text-[12px] text-green-600 dark:text-green-400 mt-0.5">ผล: {court.result}</p>}
+                      {court.note     && <p className="text-[12px] text-slate-400 mt-1 whitespace-pre-wrap">{court.note}</p>}
+                    </div>
+                    {canEdit && (
+                      <button onClick={async () => {
+                        if (!confirm('ลบนัดศาลนี้?')) return
+                        await fetch(`/api/cases/${c.id}/court/${court.id}`, { method: 'DELETE' })
+                        await refetch()
+                      }} className="h-7 w-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    )}
                   </div>
-                  {canEdit && (
-                    <button onClick={async () => {
-                      if (!confirm('ลบนัดศาลนี้?')) return
-                      await fetch(`/api/cases/${c.id}/court/${court.id}`, { method: 'DELETE' })
-                      await refetch()
-                    }} className="h-7 w-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  )}
+                  <p className="text-[11px] text-slate-400 mt-2">เพิ่มโดย: {court.createdBy.name}</p>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-2">เพิ่มโดย: {court.createdBy.name}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
+        )}
+
+        {/* ── Debtor ──────────────────────────────────── */}
+        {activeTab === 'ลูกหนี้' && (
+          <DebtorTab caseId={c.id} debtor={c.debtor} activities={c.debtorActivities} canEdit={canEdit} onRefresh={refetch} />
+        )}
+
+        {/* ── Finance ─────────────────────────────────── */}
+        {activeTab === 'การเงิน' && (
+          <FinanceTab caseId={c.id} caseData={c} canEdit={canEdit} onRefresh={refetch} />
         )}
 
         {/* ── Documents ───────────────────────────────── */}
@@ -347,52 +432,6 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
               <p className="text-[13px] text-slate-500 mb-3">จัดการเอกสารคดีในระบบเอกสาร</p>
               <Link href={`/case-documents?search=${c.caseNumber}`} className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 transition-colors">
                 ดูเอกสารคดี {c.caseNumber} →
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* ── Debtor ──────────────────────────────────── */}
-        {activeTab === 'ลูกหนี้' && (
-          <div className="max-w-2xl">
-            {c.debtor ? (
-              <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">{c.debtor.fullName}</h3>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    c.debtor.riskLevel === 'CRITICAL' ? 'bg-red-100 text-red-700' :
-                    c.debtor.riskLevel === 'HIGH'     ? 'bg-orange-100 text-orange-700' :
-                    c.debtor.riskLevel === 'MEDIUM'   ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    ความเสี่ยง: {c.debtor.riskLevel}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-[13px]">
-                  {c.debtor.idCard    && <Info label="เลขบัตรประชาชน" value={c.debtor.idCard} mono />}
-                  {c.debtor.phone     && <Info label="โทรศัพท์"       value={c.debtor.phone} />}
-                  {c.debtor.email     && <Info label="อีเมล"          value={c.debtor.email} />}
-                  {c.debtor.workplace && <Info label="ที่ทำงาน"       value={c.debtor.workplace} />}
-                </div>
-                {c.debtor.address  && <div><p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">ที่อยู่</p><p className="text-[13px] text-slate-700 dark:text-slate-300">{c.debtor.address}</p></div>}
-                {c.debtor.assetInfo && <div><p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">ทรัพย์สิน</p><p className="text-[13px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{c.debtor.assetInfo}</p></div>}
-                {c.debtor.note     && <div><p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">หมายเหตุ</p><p className="text-[13px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{c.debtor.note}</p></div>}
-              </div>
-            ) : (
-              <p className="text-[13px] text-slate-400">ยังไม่มีข้อมูลลูกหนี้</p>
-            )}
-          </div>
-        )}
-
-        {/* ── Finance ─────────────────────────────────── */}
-        {activeTab === 'การเงิน' && (
-          <div className="max-w-2xl">
-            <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-6 text-center">
-              <svg className="h-10 w-10 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              {c.debtAmount != null && <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">฿{thb(c.debtAmount)}</p>}
-              <p className="text-[13px] text-slate-500 mb-3">จัดการการเงินในระบบการเงินคดี</p>
-              <Link href={`/case-finance?search=${c.caseNumber}`} className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 transition-colors">
-                ดูการเงินคดี {c.caseNumber} →
               </Link>
             </div>
           </div>
@@ -428,6 +467,356 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit }:
   )
 }
 
+// ── Checklist Tab ──────────────────────────────────────────────────────────
+function ChecklistTab({ caseId, items, canEdit, onRefresh }: {
+  caseId: string; items: ChecklistItem[]; canEdit: boolean; onRefresh: () => void
+}) {
+  const [newLabel, setNewLabel] = useState('')
+  const [adding,   setAdding]   = useState(false)
+  const [toggling, setToggling] = useState<string | null>(null)
+
+  async function addItem(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newLabel.trim()) return
+    setAdding(true)
+    await fetch(`/api/cases/${caseId}/checklist`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: newLabel.trim() }),
+    })
+    setNewLabel('')
+    setAdding(false)
+    onRefresh()
+  }
+
+  async function toggleItem(id: string) {
+    setToggling(id)
+    await fetch(`/api/cases/${caseId}/checklist`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle', checklistId: id }),
+    })
+    setToggling(null)
+    onRefresh()
+  }
+
+  async function deleteItem(id: string) {
+    await fetch(`/api/cases/${caseId}/checklist?checklistId=${id}`, { method: 'DELETE' })
+    onRefresh()
+  }
+
+  const done  = items.filter(i => i.done).length
+  const total = items.length
+
+  return (
+    <div className="max-w-2xl space-y-3">
+      {total > 0 && (
+        <div className="flex items-center gap-3 mb-1">
+          <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+            <div className="h-2 bg-green-500 rounded-full transition-all" style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }} />
+          </div>
+          <span className="text-[12px] text-slate-500 whitespace-nowrap">{done}/{total} เสร็จแล้ว</span>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {items.map(item => (
+          <div key={item.id} className={`flex items-center gap-3 rounded-xl bg-white dark:bg-slate-900/60 border px-4 py-3 transition-colors ${item.done ? 'border-green-200 dark:border-green-900/30 bg-green-50/50 dark:bg-green-900/10' : 'border-slate-200 dark:border-white/[0.07]'}`}>
+            <button
+              onClick={() => toggleItem(item.id)}
+              disabled={toggling === item.id || !canEdit}
+              className={`flex-shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${item.done ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300 dark:border-slate-600 hover:border-green-400'}`}
+            >
+              {item.done && <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className={`text-[13px] ${item.done ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                {item.required && <span className="text-red-500 mr-1">*</span>}
+                {item.label}
+              </p>
+              {item.done && item.doneBy && (
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {item.doneBy.name} · {item.doneAt ? fmtDateTime(item.doneAt) : ''}
+                </p>
+              )}
+            </div>
+            {canEdit && (
+              <button onClick={() => deleteItem(item.id)} className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-slate-300 hover:text-red-400 transition-colors">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-[13px] text-slate-400">ยังไม่มีรายการเช็คลิสต์</p>}
+      </div>
+
+      {canEdit && (
+        <form onSubmit={addItem} className="flex gap-2 mt-2">
+          <input
+            value={newLabel} onChange={e => setNewLabel(e.target.value)}
+            placeholder="เพิ่มรายการใหม่..."
+            className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button type="submit" disabled={adding || !newLabel.trim()} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">
+            {adding ? '...' : 'เพิ่ม'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// ── Debtor Tab ─────────────────────────────────────────────────────────────
+function DebtorTab({ caseId, debtor, activities, canEdit, onRefresh }: {
+  caseId: string; debtor: CaseDebtorData | null; activities: DebtorActivity[]; canEdit: boolean; onRefresh: () => void
+}) {
+  const [showForm,  setShowForm]  = useState(false)
+  const [saving,    setSaving]    = useState(false)
+  const [form, setForm] = useState({ activityType: 'phone_contacted', note: '', promisedDate: '', promisedAmount: '' })
+
+  async function submitActivity(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/cases/${caseId}/debtor-activity`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activityType:   form.activityType,
+        note:           form.note || null,
+        promisedDate:   form.promisedDate  || null,
+        promisedAmount: form.promisedAmount ? Number(form.promisedAmount) : null,
+      }),
+    })
+    setForm({ activityType: 'phone_contacted', note: '', promisedDate: '', promisedAmount: '' })
+    setShowForm(false)
+    setSaving(false)
+    onRefresh()
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      {debtor && (
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-slate-900 dark:text-white">{debtor.fullName}</h3>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${RISK_COLOR[debtor.riskLevel] ?? 'bg-slate-100 text-slate-600'}`}>
+              ⚡ {debtor.riskLevel}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[13px]">
+            {debtor.idCard    && <Info label="เลขบัตร"  value={debtor.idCard} mono />}
+            {debtor.phone     && <Info label="โทรศัพท์" value={debtor.phone} />}
+            {debtor.email     && <Info label="อีเมล"    value={debtor.email} />}
+            {debtor.workplace && <Info label="ที่ทำงาน" value={debtor.workplace} />}
+          </div>
+          {debtor.address  && <p className="text-[12px] text-slate-500">{debtor.address}</p>}
+          {debtor.assetInfo && <p className="text-[12px] text-slate-500">ทรัพย์สิน: {debtor.assetInfo}</p>}
+        </div>
+      )}
+
+      {/* Activity history */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ประวัติการติดต่อ ({activities.length})</h3>
+          {canEdit && (
+            <button onClick={() => setShowForm(!showForm)} className="text-[12px] text-blue-600 hover:underline">
+              {showForm ? 'ยกเลิก' : '+ บันทึกการติดต่อ'}
+            </button>
+          )}
+        </div>
+
+        {showForm && (
+          <form onSubmit={submitActivity} className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 mb-3 space-y-3">
+            <div>
+              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทการติดต่อ</label>
+              <select value={form.activityType} onChange={e => setForm(p => ({ ...p, activityType: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {Object.entries(ACTIVITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">บันทึก</label>
+              <textarea value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="รายละเอียดการติดต่อ..." />
+            </div>
+            {['payment_promise'].includes(form.activityType) && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันที่นัดชำระ</label>
+                  <input type="date" value={form.promisedDate} onChange={e => setForm(p => ({ ...p, promisedDate: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">จำนวนเงิน (บาท)</label>
+                  <input type="number" value={form.promisedAmount} onChange={e => setForm(p => ({ ...p, promisedAmount: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500" min="0" />
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-slate-200 dark:border-white/10 py-2 text-[13px] text-slate-600 dark:text-slate-300">ยกเลิก</button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-600 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:opacity-60">
+                {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="relative pl-6 space-y-3">
+          <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-slate-200 dark:bg-white/[0.08]" />
+          {activities.map(act => (
+            <div key={act.id} className="relative">
+              <div className="absolute -left-[15px] top-[3px] h-4 w-4 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center text-[9px]">
+                {(ACTIVITY_LABELS[act.activityType] ?? '').slice(0, 2)}
+              </div>
+              <div className="rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] px-3 py-2.5">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{ACTIVITY_LABELS[act.activityType] ?? act.activityType}</span>
+                </div>
+                {act.note && <p className="text-[12px] text-slate-600 dark:text-slate-400">{act.note}</p>}
+                {act.promisedDate && <p className="text-[11px] text-blue-600">นัดชำระ: {fmtDate(act.promisedDate)} {act.promisedAmount ? `฿${thb(act.promisedAmount)}` : ''}</p>}
+                <p className="text-[11px] text-slate-400 mt-0.5">{act.actor.name} · {fmtDateTime(act.createdAt)}</p>
+              </div>
+            </div>
+          ))}
+          {activities.length === 0 && <p className="text-[13px] text-slate-400 py-2">ยังไม่มีประวัติการติดต่อ</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Finance Tab ────────────────────────────────────────────────────────────
+function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
+  caseId: string; caseData: CaseData; canEdit: boolean; onRefresh: () => void
+}) {
+  const f = caseData.financial
+  const [editing, setEditing] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [form, setForm] = useState({
+    debtAmount:      String(f?.debtAmount      ?? caseData.debtAmount ?? 0),
+    collectedAmount: String(f?.collectedAmount  ?? 0),
+    legalFee:        String(f?.legalFee         ?? 0),
+    courtFee:        String(f?.courtFee         ?? 0),
+    enforcementFee:  String(f?.enforcementFee   ?? 0),
+    otherFee:        String(f?.otherFee         ?? 0),
+  })
+
+  const debt      = Number(form.debtAmount)
+  const collected = Number(form.collectedAmount)
+  const totalFee  = Number(form.legalFee) + Number(form.courtFee) + Number(form.enforcementFee) + Number(form.otherFee)
+  const remaining = Math.max(0, debt - collected)
+  const recovery  = debt > 0 ? Math.round((collected / debt) * 100) : 0
+
+  // Sync when financial data loads
+  useEffect(() => {
+    if (f) {
+      setForm({
+        debtAmount:      String(f.debtAmount),
+        collectedAmount: String(f.collectedAmount),
+        legalFee:        String(f.legalFee),
+        courtFee:        String(f.courtFee),
+        enforcementFee:  String(f.enforcementFee),
+        otherFee:        String(f.otherFee),
+      })
+    }
+  }, [f])
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/cases/${caseId}/financial`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        debtAmount:      Number(form.debtAmount),
+        collectedAmount: Number(form.collectedAmount),
+        legalFee:        Number(form.legalFee),
+        courtFee:        Number(form.courtFee),
+        enforcementFee:  Number(form.enforcementFee),
+        otherFee:        Number(form.otherFee),
+      }),
+    })
+    setSaving(false)
+    setEditing(false)
+    onRefresh()
+  }
+
+  function field(k: keyof typeof form, label: string) {
+    return (
+      <div key={k}>
+        <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</label>
+        <input
+          type="number" min="0" step="0.01"
+          value={form[k]}
+          onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
+          disabled={!editing}
+          className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 disabled:bg-slate-50 dark:disabled:bg-slate-900 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-3 text-center">
+          <p className="text-[18px] font-bold text-slate-900 dark:text-white">฿{thb(debt)}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">มูลหนี้รวม</p>
+        </div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-3 text-center">
+          <p className="text-[18px] font-bold text-green-600">฿{thb(collected)}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">เก็บได้แล้ว</p>
+        </div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-3 text-center">
+          <p className="text-[18px] font-bold text-orange-600">฿{thb(remaining)}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">คงค้าง</p>
+        </div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-3 text-center">
+          <p className="text-[18px] font-bold text-blue-600">{recovery}%</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Recovery</p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
+        <div className="flex justify-between text-[12px] text-slate-500 mb-1.5">
+          <span>Progress</span><span>{recovery}%</span>
+        </div>
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-3 rounded-full transition-all" style={{ width: `${Math.min(100, recovery)}%`, background: recovery >= 80 ? '#22c55e' : recovery >= 50 ? '#3b82f6' : '#f97316' }} />
+        </div>
+      </div>
+
+      {/* Edit form */}
+      <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">รายละเอียดการเงิน</h3>
+          {canEdit && !editing && (
+            <button onClick={() => setEditing(true)} className="text-[12px] text-blue-600 hover:underline">แก้ไข</button>
+          )}
+        </div>
+        <form onSubmit={save} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {field('debtAmount', 'มูลหนี้รวม (บาท)')}
+            {field('collectedAmount', 'เก็บได้แล้ว (บาท)')}
+            {field('legalFee', 'ค่าทนาย (บาท)')}
+            {field('courtFee', 'ค่าศาล (บาท)')}
+            {field('enforcementFee', 'ค่าบังคับคดี (บาท)')}
+            {field('otherFee', 'ค่าอื่นๆ (บาท)')}
+          </div>
+          <div className="flex items-center justify-between text-[13px] bg-slate-50 dark:bg-white/[0.03] rounded-lg px-3 py-2">
+            <span className="text-slate-500">ค่าใช้จ่ายรวม</span>
+            <span className="font-semibold text-slate-900 dark:text-white">฿{thb(totalFee)}</span>
+          </div>
+          {editing && (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 py-2.5 text-[14px] font-medium text-slate-700 dark:text-slate-300">ยกเลิก</button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-500 disabled:opacity-60">
+                {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          )}
+          {f?.updatedBy && <p className="text-[11px] text-slate-400">อัปเดตโดย: {f.updatedBy.name} · {fmtDateTime(f.updatedAt)}</p>}
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────
 function Info({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -440,7 +829,7 @@ function Info({ label, value, mono }: { label: string; value: string; mono?: boo
 function Stat({ label, value, color, small }: { label: string; value: number | string; color: string; small?: boolean }) {
   return (
     <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] p-2.5">
-      <p className={`${small ? 'text-[12px]' : 'text-xl font-bold'} ${color}`}>{value}</p>
+      <p className={`${small ? 'text-[13px] font-semibold' : 'text-xl font-bold'} ${color}`}>{value}</p>
       <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
     </div>
   )
@@ -492,6 +881,10 @@ function CourtModal({ caseId, onClose, onSaved }: { caseId: string; onClose: () 
           <div>
             <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้พิพากษา</label>
             <input value={form.judgeName} onChange={e => set('judgeName', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" />
+          </div>
+          <div>
+            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผลการพิจารณา (ถ้ามี)</label>
+            <input value={form.result} onChange={e => set('result', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="เช่น ศาลนัดไกล่เกลี่ย" />
           </div>
           <div>
             <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">หมายเหตุ</label>
