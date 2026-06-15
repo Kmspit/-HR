@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import type { CaseStatus, CasePriority } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import { ROLE_LABELS } from '@/lib/permissions'
 import { formatThaiDate } from '@/lib/utils'
@@ -105,6 +106,8 @@ export default async function DashboardPage({
   const now = new Date()
   const CAN_SEE_TASK_KPI = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
   const showTaskKpi = CAN_SEE_TASK_KPI.includes(role)
+  const CAN_SEE_CASE_KPI = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT']
+  const showCaseKpi = CAN_SEE_CASE_KPI.includes(role)
 
   // Build task scope for managers/team leaders
   let taskManagedIds: string[] | null = null
@@ -120,10 +123,26 @@ export default async function DashboardPage({
     ? { assigneeId: { in: taskManagedIds } }
     : {}
 
+  // Case scope
+  const CASE_EXEC = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
+  type CaseWhereClause = Record<string, unknown>
+  let caseWhere: CaseWhereClause = {}
+  if (!CASE_EXEC.includes(role)) {
+    if (role === 'MANAGER' && session.user.department) {
+      caseWhere = { department: session.user.department }
+    } else if (['LAWYER', 'ENFORCEMENT', 'TEAM_LEADER'].includes(role)) {
+      caseWhere = { OR: [{ assignedEmployeeId: userId }, { createdById: userId }] }
+    }
+  }
+  const activeStatuses: CaseStatus[] = ['NEW', 'ASSIGNED', 'INVESTIGATING', 'NEGOTIATING', 'WAITING_DOCUMENT', 'FILED', 'COURT_PROCESS', 'ENFORCEMENT', 'SETTLED']
+  const caseActiveWhere = { ...caseWhere, status: { in: activeStatuses } }
+  const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
   const [
     totalUsers, pendingLeaves, todayAttendance, todayLate,
     pendingUsers, overdueTaskCount,
     taskTotal, taskCompleted, taskInProgress, taskWaitingReview, taskHighPriority,
+    caseActive, caseOverdue, caseHighRisk, caseCourtThisWeek,
   ] = await Promise.all([
     prisma.user.count({ where: activeUserWhere }),
     prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
@@ -142,6 +161,10 @@ export default async function DashboardPage({
     showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, status: 'IN_PROGRESS' } }) : Promise.resolve(0),
     showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, status: { in: ['WAITING_REVIEW', 'WAITING_APPROVAL'] } } }) : Promise.resolve(0),
     showTaskKpi ? prisma.taskAssignment.count({ where: { ...taskWhere, priority: { in: ['HIGH', 'URGENT'] }, status: { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] } } }) : Promise.resolve(0),
+    showCaseKpi ? prisma.case.count({ where: caseActiveWhere }) : Promise.resolve(0),
+    showCaseKpi ? prisma.case.count({ where: { ...caseWhere, dueDate: { lt: now }, status: { in: activeStatuses } } }) : Promise.resolve(0),
+    showCaseKpi ? prisma.case.count({ where: { ...caseActiveWhere, priority: { in: ['HIGH', 'CRITICAL'] as CasePriority[] } } }) : Promise.resolve(0),
+    showCaseKpi ? prisma.caseCourt.count({ where: { courtDate: { gte: now, lte: weekEnd }, case: caseActiveWhere } }) : Promise.resolve(0),
   ])
 
   const taskCompletionRate = taskTotal > 0 ? Math.round(taskCompleted / taskTotal * 100) : 0
@@ -321,6 +344,29 @@ export default async function DashboardPage({
                   🟠 {taskHighPriority} งานเร่งด่วน/สูง
                 </span>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Case KPI (legal/debt roles) ─── */}
+        {showCaseKpi && caseActive > 0 && (
+          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
+              <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมคดี</h2>
+              <Link href="/cases" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">ดูทั้งหมด →</Link>
+            </div>
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {([
+                { label: 'คดีที่ดำเนินการ',    val: caseActive,         color: 'text-blue-700   dark:text-blue-400',  bg: 'bg-blue-50   dark:bg-blue-500/[0.07]' },
+                { label: 'นัดศาลสัปดาห์นี้',   val: caseCourtThisWeek, color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/[0.07]' },
+                { label: 'ความเสี่ยงสูง/วิกฤต', val: caseHighRisk,      color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/[0.07]' },
+                { label: 'เกินกำหนด',           val: caseOverdue,       color: 'text-red-700    dark:text-red-400',    bg: 'bg-red-50    dark:bg-red-500/[0.07]' },
+              ] as { label: string; val: number; color: string; bg: string }[]).map(({ label, val, color, bg }) => (
+                <div key={label} className={`rounded-xl p-3 ${bg}`}>
+                  <p className={`text-xl font-bold ${color}`}>{val}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}

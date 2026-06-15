@@ -163,6 +163,11 @@ enum NotificationType {
   // Phase 15 — Enterprise Security
   SECURITY_ALERT
   BACKUP_COMPLETED
+  // Case Management
+  CASE_CREATED
+  CASE_ASSIGNED
+  CASE_STATUS_CHANGED
+  CASE_COURT_REMINDER
 }
 
 enum TaskStatus {
@@ -234,6 +239,37 @@ enum HolidayType {
   SUNDAY
   PUBLIC_HOLIDAY
   COMPANY_HOLIDAY
+}
+
+enum CaseType {
+  DEBT_COLLECTION
+  LEGAL
+  COURT
+  ASSET_INVESTIGATION
+  ENFORCEMENT
+  INTERNAL_LEGAL
+}
+
+enum CaseStatus {
+  NEW
+  ASSIGNED
+  INVESTIGATING
+  NEGOTIATING
+  WAITING_DOCUMENT
+  FILED
+  COURT_PROCESS
+  ENFORCEMENT
+  SETTLED
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 // ── COMPANY BRANCH ──────────────────────────────
@@ -501,6 +537,11 @@ model User {
   deviceSessions            DeviceSession[]
   otpCodes                  OtpCode[]
   twoFactorSetup            TwoFactorSetup?
+  // Case Management
+  casesCreated              Case[]           @relation("CaseCreator")
+  casesAssigned             Case[]           @relation("CaseAssignee")
+  caseCourtItems            CaseCourt[]      @relation("CaseCourtCreator")
+  caseTimelines             CaseTimeline[]   @relation("CaseTimelineActor")
 
   @@map("users")
 }
@@ -1317,6 +1358,9 @@ model TaskAssignment {
   debtorId      String? @map("debtor_id")      // primary debtor link (plain ref, no FK constraint)
   rejectedCount Int     @default(0) @map("rejected_count") // times rejected — triggers CEO alert at 3+
 
+  // Case Management — FK to Case entity
+  caseId        String? @map("case_id")
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -1326,6 +1370,7 @@ model TaskAssignment {
   client          User?             @relation("TaskClient",   fields: [clientId],     references: [id])
   clientCompany   ClientCompany?    @relation(fields: [clientCompanyId], references: [id])
   template        TaskTemplate?     @relation(fields: [templateId], references: [id])
+  case            Case?             @relation(fields: [caseId],     references: [id])
   attachments     TaskAttachment[]
   statusHistories CaseStatusHistory[]
   clientMessages  ClientMessage[]
@@ -2377,4 +2422,125 @@ model BackupRecord {
 
   @@index([createdAt])
   @@map("backup_records")
+}
+
+// ── CASE MANAGEMENT ──────────────────────────────────────────────────────────
+
+model CaseNumberSeq {
+  year Int @id
+  last Int @default(0)
+
+  @@map("case_number_seqs")
+}
+
+model Case {
+  id                 String       @id @default(cuid())
+  caseNumber         String       @unique @map("case_number")
+  caseTitle          String       @map("case_title")
+  caseType           CaseType     @map("case_type")
+  status             CaseStatus   @default(NEW)
+  priority           CasePriority @default(MEDIUM)
+  description        String?
+  debtAmount         Float?       @map("debt_amount")
+  department         String?
+  assignedEmployeeId String?      @map("assigned_employee_id")
+  createdById        String       @map("created_by_id")
+  openedAt           DateTime     @default(now()) @map("opened_at")
+  closedAt           DateTime?    @map("closed_at")
+  dueDate            DateTime?    @map("due_date")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  assignedEmployee User?          @relation("CaseAssignee",  fields: [assignedEmployeeId], references: [id])
+  createdBy        User           @relation("CaseCreator",   fields: [createdById],        references: [id])
+  client           CaseClient?
+  debtor           CaseDebtor?
+  courts           CaseCourt[]
+  timeline         CaseTimeline[]
+  tasks            TaskAssignment[]
+
+  @@index([status])
+  @@index([caseType])
+  @@index([priority])
+  @@index([assignedEmployeeId])
+  @@index([createdAt])
+  @@map("cases")
+}
+
+model CaseClient {
+  id              String   @id @default(cuid())
+  caseId          String   @unique @map("case_id")
+  clientName      String?  @map("client_name")
+  companyName     String?  @map("company_name")
+  taxId           String?  @map("tax_id")
+  phone           String?
+  email           String?
+  address         String?
+  contactPerson   String?  @map("contact_person")
+  note            String?
+  clientCompanyId String?  @map("client_company_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("case_clients")
+}
+
+model CaseDebtor {
+  id        String   @id @default(cuid())
+  caseId    String   @unique @map("case_id")
+  fullName  String   @map("full_name")
+  idCard    String?  @map("id_card")
+  phone     String?
+  email     String?
+  address   String?
+  workplace String?
+  riskLevel String   @default("MEDIUM") @map("risk_level")
+  assetInfo String?  @map("asset_info")
+  note      String?
+  debtorId  String?  @map("debtor_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("case_debtors")
+}
+
+model CaseCourt {
+  id              String    @id @default(cuid())
+  caseId          String    @map("case_id")
+  courtName       String    @map("court_name")
+  courtDate       DateTime  @map("court_date")
+  appointmentTime String?   @map("appointment_time")
+  judgeName       String?   @map("judge_name")
+  result          String?
+  note            String?
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  case      Case @relation(fields: [caseId],      references: [id], onDelete: Cascade)
+  createdBy User @relation("CaseCourtCreator",     fields: [createdById], references: [id])
+
+  @@index([caseId])
+  @@index([courtDate])
+  @@map("case_courts")
+}
+
+model CaseTimeline {
+  id          String   @id @default(cuid())
+  caseId      String   @map("case_id")
+  userId      String   @map("user_id")
+  action      String
+  description String
+  meta        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation("CaseTimelineActor", fields: [userId], references: [id])
+
+  @@index([caseId, createdAt])
+  @@map("case_timelines")
 }
