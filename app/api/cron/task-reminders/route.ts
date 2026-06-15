@@ -333,6 +333,120 @@ export async function GET(req: NextRequest) {
     } catch { stats.errors++ }
   }
 
+  // ── 6. Automation rules (from DB) ────────────────────────────────────────
+  try {
+    const rules = await prisma.taskAutomationRule.findMany({ where: { isActive: true } })
+
+    for (const rule of rules) {
+      const conditions = JSON.parse(rule.conditions) as Record<string, unknown>
+
+      if (rule.triggerOn === 'OVERDUE') {
+        // Rule: overdue > N days AND optionally priority match → action
+        const minDays     = Number(conditions.minDaysLate ?? 1)
+        const priorities  = (conditions.priorities as string[] | undefined) ?? []
+        const cutoff      = new Date(now.getTime() - minDays * 86400000)
+
+        const matchTasks = await prisma.taskAssignment.findMany({
+          where: {
+            status:  { in: ACTIVE_STATUSES },
+            dueDate: { lt: cutoff },
+            ...(priorities.length > 0 ? { priority: { in: priorities as never[] } } : {}),
+            ...(rule.department ? { taskDepartment: rule.department } : {}),
+          },
+          select: { id: true, title: true, assigneeId: true, assignedById: true, caseNumber: true },
+          take: 50,
+        })
+
+        for (const t of matchTasks) {
+          try {
+            if (await alreadySent(t.assignedById, t.id, 'TASK_AUTOMATION_TRIGGERED')) continue
+            const actionData = JSON.parse(rule.actionData) as Record<string, string>
+            const prefix     = t.caseNumber ? `[${t.caseNumber}] ` : ''
+            await notifyUser({
+              userId:      t.assignedById,
+              taskId:      t.id,
+              type:        'TASK_AUTOMATION_TRIGGERED',
+              title:       `🤖 ${rule.name}`,
+              message:     `${prefix}${t.title}`,
+              link:        '/tasks',
+              lineMessage: actionData.lineMessage
+                ? actionData.lineMessage.replace('{title}', t.title).replace('{prefix}', prefix)
+                : undefined,
+            })
+            stats.escalated++
+          } catch { stats.errors++ }
+        }
+      }
+
+      if (rule.triggerOn === 'REJECTED_COUNT') {
+        const minCount = Number(conditions.minCount ?? 3)
+        const rejectTasks = await prisma.taskAssignment.findMany({
+          where: {
+            rejectedCount: { gte: minCount },
+            status: { notIn: ['COMPLETED', 'CANCELLED'] },
+            ...(rule.department ? { taskDepartment: rule.department } : {}),
+          },
+          select: { id: true, title: true, assignedById: true, rejectedCount: true, caseNumber: true },
+          take: 20,
+        })
+        for (const t of rejectTasks) {
+          try {
+            if (await alreadySent(t.assignedById, t.id, 'TASK_AUTOMATION_TRIGGERED')) continue
+            const prefix = t.caseNumber ? `[${t.caseNumber}] ` : ''
+            await notifyUser({
+              userId:  t.assignedById,
+              taskId:  t.id,
+              type:    'TASK_AUTOMATION_TRIGGERED',
+              title:   `🤖 ${rule.name} (ปฏิเสธ ${t.rejectedCount}x)`,
+              message: `${prefix}${t.title}`,
+              link:    '/tasks',
+            })
+            stats.escalated++
+          } catch { stats.errors++ }
+        }
+      }
+    }
+  } catch { stats.errors++ }
+
+  // ── 7. Dependency unblock notifications ────────────────────────────────────
+  try {
+    // Find tasks that recently became unblocked (all dependencies now COMPLETED)
+    const completedSince = new Date(now.getTime() - 25 * 60 * 60 * 1000)
+    const recentlyCompleted = await prisma.taskAssignment.findMany({
+      where: { status: 'COMPLETED', reviewedAt: { gte: completedSince } },
+      select: { id: true },
+    })
+    if (recentlyCompleted.length > 0) {
+      const completedIds = recentlyCompleted.map((t) => t.id)
+      // Find tasks that depended on these, now check if all their deps are done
+      const waitingDependents = await prisma.taskDependency.findMany({
+        where: { dependsOnId: { in: completedIds } },
+        include: {
+          task: {
+            select: { id: true, title: true, assigneeId: true, status: true },
+            include: { dependencies: { include: { dependsOn: { select: { status: true } } } } },
+          },
+        },
+      })
+      for (const dep of waitingDependents) {
+        const t = dep.task as typeof dep.task & { dependencies: { dependsOn: { status: string } }[] }
+        if (['COMPLETED', 'CANCELLED', 'REJECTED'].includes(t.status)) continue
+        const allDone = (t.dependencies ?? []).every((d: { dependsOn: { status: string } }) => d.dependsOn.status === 'COMPLETED')
+        if (!allDone) continue
+        if (await alreadySent(t.assigneeId, t.id, 'TASK_DEPENDENCY_UNBLOCKED')) continue
+        await notifyUser({
+          userId:      t.assigneeId,
+          taskId:      t.id,
+          type:        'TASK_DEPENDENCY_UNBLOCKED',
+          title:       '🔓 งานของคุณพร้อมเริ่มแล้ว',
+          message:     `"${t.title}" — งานที่รอผ่านแล้ว สามารถเริ่มดำเนินการได้`,
+          link:        '/tasks',
+          lineMessage: `🔓 งานของคุณพร้อมเริ่มแล้ว\n\n"${t.title}"\n\nงานที่ต้องทำก่อนหน้าเสร็จสิ้นแล้ว ดำเนินการได้เลย`,
+        })
+      }
+    }
+  } catch { stats.errors++ }
+
   console.log('[task-reminders]', stats)
   return NextResponse.json({ ok: true, stats })
 }

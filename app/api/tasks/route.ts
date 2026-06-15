@@ -108,7 +108,21 @@ export async function GET(req: Request) {
     take: 200,
   })
 
-  return NextResponse.json({ tasks })
+  // Compute isBlocked: has unresolved dependency (prerequisite not COMPLETED)
+  const taskIds = tasks.map((t) => t.id)
+  let blockedIds = new Set<string>()
+  if (taskIds.length > 0) {
+    const deps = await prisma.taskDependency.findMany({
+      where: { taskId: { in: taskIds } },
+      select: { taskId: true, dependsOn: { select: { status: true } } },
+    })
+    blockedIds = new Set(
+      deps.filter((d) => d.dependsOn.status !== 'COMPLETED').map((d) => d.taskId)
+    )
+  }
+
+  const tasksWithBlocked = tasks.map((t) => ({ ...t, isBlocked: blockedIds.has(t.id) }))
+  return NextResponse.json({ tasks: tasksWithBlocked })
 }
 
 export async function POST(req: Request) {
@@ -125,6 +139,7 @@ export async function POST(req: Request) {
     caseNumber, clientName, taskDepartment, appointmentDate, courtDate, appointmentPlace,
     checklist,
     dueTime, slaHours,
+    templateId, debtorId,
   } = body
 
   if (!title?.trim()) return NextResponse.json({ error: 'กรุณาระบุชื่องาน' }, { status: 400 })
@@ -185,9 +200,11 @@ export async function POST(req: Request) {
       appointmentDate:  appointmentDate ? new Date(appointmentDate) : null,
       courtDate:        courtDate       ? new Date(courtDate)       : null,
       appointmentPlace: appointmentPlace?.trim() ?? null,
-      dueTime:     dueTime?.trim() ?? null,
-      slaHours:    slaHoursNum,
-      slaDeadline: slaDeadlineValue,
+      dueTime:      dueTime?.trim()   ?? null,
+      slaHours:     slaHoursNum,
+      slaDeadline:  slaDeadlineValue,
+      templateId:   templateId        ?? null,
+      debtorId:     debtorId          ?? null,
     },
     include: {
       assignee:    { select: userSelect },
@@ -211,6 +228,29 @@ export async function POST(req: Request) {
     if (checklistData.length > 0) {
       await prisma.taskChecklist.createMany({ data: checklistData })
     }
+  }
+
+  // Auto-create CalendarEvent for court/appointment dates (calendar sync)
+  if (courtDate || appointmentDate) {
+    const eventDate = courtDate ? new Date(courtDate) : new Date(appointmentDate)
+    const eventTitle = courtDate
+      ? `นัดศาล: ${title.trim()}${caseNumber ? ` [${caseNumber}]` : ''}`
+      : `นัดหมาย: ${title.trim()}${clientName ? ` (${clientName})` : ''}`
+    await prisma.calendarEvent.create({
+      data: {
+        title:       eventTitle,
+        eventType:   courtDate ? 'COURT' : 'APPOINTMENT',
+        startAt:     eventDate,
+        caseNumber:  caseNumber?.trim()  ?? null,
+        clientName:  clientName?.trim()  ?? null,
+        description: `งาน: ${title.trim()}`,
+        location:    appointmentPlace?.trim() ?? null,
+        priority:    priority ?? 'MEDIUM',
+        department:  taskDepartment ?? null,
+        createdById: session.user.id,
+        status:      'SCHEDULED',
+      },
+    }).catch(() => {})
   }
 
   // Record initial timeline entry

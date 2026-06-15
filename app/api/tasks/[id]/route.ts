@@ -127,6 +127,18 @@ export async function PATCH(
     // Employee: can update progress, submit result, cancel own task
     const ALLOWED_STATUSES = ['IN_PROGRESS', 'WAITING_REVIEW', 'WAITING_DOC', 'WAITING_APPROVAL', 'CANCELLED']
     if (body.status && ALLOWED_STATUSES.includes(body.status)) {
+      // Dependency check: block IN_PROGRESS if prerequisites not completed
+      if (body.status === 'IN_PROGRESS') {
+        const blockedDep = await prisma.taskDependency.findFirst({
+          where: { taskId: id, dependsOn: { status: { notIn: ['COMPLETED'] } } },
+          include: { dependsOn: { select: { title: true, status: true } } },
+        })
+        if (blockedDep) {
+          return NextResponse.json({
+            error: `ไม่สามารถเริ่มงานได้ เนื่องจากยังรองานก่อนหน้า: "${(blockedDep as { dependsOn: { title: string } }).dependsOn.title}"`,
+          }, { status: 409 })
+        }
+      }
       const oldStatus = task.status as string
       data.status = body.status
       timelineEntries.push({
@@ -194,6 +206,7 @@ export async function PATCH(
     }
     if (body.dueTime      !== undefined) data.dueTime     = body.dueTime?.trim() ?? null
     if (body.slaHours     !== undefined) data.slaHours    = body.slaHours ? Number(body.slaHours) : null
+    if (body.debtorId     !== undefined) data.debtorId    = body.debtorId ?? null
 
     if (body.caseNumber       !== undefined) data.caseNumber       = body.caseNumber?.trim()       ?? null
     if (body.clientName       !== undefined) data.clientName       = body.clientName?.trim()       ?? null
@@ -258,7 +271,8 @@ export async function PATCH(
         ).catch(() => {})
       }
       if (body.status === 'REJECTED') {
-        data.reviewNote = body.reviewNote ?? null
+        data.reviewNote    = body.reviewNote ?? null
+        data.rejectedCount = (task.rejectedCount ?? 0) + 1
         await createNotification({
           userId: task.assigneeId,
           type: 'TASK_REVISION',
@@ -270,6 +284,32 @@ export async function PATCH(
           task.assigneeId,
           `❌ งานถูกปฏิเสธ\n\n"${task.title}"${body.reviewNote ? `\nเหตุผล: ${body.reviewNote}` : ''}`,
         ).catch(() => {})
+        // Automation rule: 3+ rejections → notify CEO
+        if ((task.rejectedCount ?? 0) + 1 >= 3) {
+          const ceo = await prisma.user.findFirst({
+            where: { role: 'CEO', status: 'ACTIVE' },
+            select: { id: true },
+          })
+          if (ceo) {
+            await createNotification({
+              userId:  ceo.id,
+              type:    'TASK_AUTOMATION_TRIGGERED' as never,
+              title:   '⚠️ งานถูกปฏิเสธซ้ำ 3+ ครั้ง',
+              message: `งาน "${task.title}" ถูกปฏิเสธแล้ว ${(task.rejectedCount ?? 0) + 1} ครั้ง`,
+              link:    '/tasks',
+            })
+            await sendLineMessage(
+              ceo.id,
+              `⚠️ แจ้งเตือน: งานถูกปฏิเสธซ้ำ\n\n"${task.title}"\nถูกปฏิเสธแล้ว ${(task.rejectedCount ?? 0) + 1} ครั้ง\n\nต้องการการแก้ไขเร่งด่วน`,
+            ).catch(() => {})
+          }
+          // Log to timeline
+          timelineEntries.push({
+            action:      'escalated',
+            description: `ระบบแจ้งเตือน CEO: งานถูกปฏิเสธ ${(task.rejectedCount ?? 0) + 1} ครั้ง`,
+            meta:        JSON.stringify({ rejectedCount: (task.rejectedCount ?? 0) + 1, escalatedTo: 'ceo' }),
+          })
+        }
       }
       if (body.status === 'CANCELLED') {
         await createNotification({

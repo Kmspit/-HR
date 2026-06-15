@@ -120,6 +120,9 @@ enum NotificationType {
   TASK_COURT_REMINDER
   TASK_APPOINTMENT_REMINDER
   TASK_WAITING_DOC
+  // Phase 3 — dependency & automation
+  TASK_DEPENDENCY_UNBLOCKED
+  TASK_AUTOMATION_TRIGGERED
   // Phase 4 — Case Document Center
   DOC_UPLOADED
   DOC_SIGNATURE_REQUIRED
@@ -438,6 +441,7 @@ model User {
   taskComments              TaskComment[]          @relation("TaskCommentAuthor")
   completedChecklistItems   TaskChecklist[]        @relation("TaskChecklistCompleter")
   taskTimelines             TaskTimeline[]         @relation("TaskTimelineActor")
+  taskTemplatesCreated      TaskTemplate[]         @relation("TemplateCreator")
   // Phase 4 — Case Document Center
   caseDocsUploaded          CaseDocument[]         @relation("CaseDocUploader")
   caseDocsAssigned          CaseDocument[]         @relation("CaseDocAssignee")
@@ -1308,6 +1312,11 @@ model TaskAssignment {
   slaHours     Int?      @map("sla_hours")     // SLA target hours from creation
   slaDeadline  DateTime? @map("sla_deadline")  // computed: createdAt + slaHours
 
+  // Phase 3 — Template, Case Relation & Automation
+  templateId    String? @map("template_id")    // which template generated this task
+  debtorId      String? @map("debtor_id")      // primary debtor link (plain ref, no FK constraint)
+  rejectedCount Int     @default(0) @map("rejected_count") // times rejected — triggers CEO alert at 3+
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -1316,6 +1325,7 @@ model TaskAssignment {
   reviewedBy      User?             @relation("TaskReviewer", fields: [reviewedById], references: [id])
   client          User?             @relation("TaskClient",   fields: [clientId],     references: [id])
   clientCompany   ClientCompany?    @relation(fields: [clientCompanyId], references: [id])
+  template        TaskTemplate?     @relation(fields: [templateId], references: [id])
   attachments     TaskAttachment[]
   statusHistories CaseStatusHistory[]
   clientMessages  ClientMessage[]
@@ -1328,6 +1338,8 @@ model TaskAssignment {
   comments        TaskComment[]
   checklist       TaskChecklist[]
   timeline        TaskTimeline[]
+  dependencies    TaskDependency[]  @relation("TaskDeps")
+  dependents      TaskDependency[]  @relation("TaskBlockedBy")
 
   @@map("task_assignments")
 }
@@ -1405,6 +1417,71 @@ model TaskTimeline {
 
   @@index([taskId, createdAt])
   @@map("task_timelines")
+}
+
+// ── TASK TEMPLATES (Phase 3) ────────────────────────────────────────────────
+
+model TaskTemplate {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?
+  category            String   @default("GENERAL")
+  taskType            String?  @map("task_type")
+  priority            String   @default("MEDIUM")
+  defaultSlaHours     Int?     @map("default_sla_hours")
+  defaultChecklist    String   @default("[]") @map("default_checklist")
+  defaultAssigneeRole String?  @map("default_assignee_role")
+  department          String?
+  notes               String?
+  isActive            Boolean  @default(true) @map("is_active")
+  sortOrder           Int      @default(0) @map("sort_order")
+  createdById         String   @map("created_by_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  createdBy User             @relation("TemplateCreator", fields: [createdById], references: [id])
+  tasks     TaskAssignment[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("task_templates")
+}
+
+// ── TASK DEPENDENCIES (Phase 3) ─────────────────────────────────────────────
+
+model TaskDependency {
+  id          String   @id @default(cuid())
+  taskId      String   @map("task_id")
+  dependsOnId String   @map("depends_on_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task      TaskAssignment @relation("TaskDeps",      fields: [taskId],      references: [id], onDelete: Cascade)
+  dependsOn TaskAssignment @relation("TaskBlockedBy", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+  @@index([taskId])
+  @@index([dependsOnId])
+  @@map("task_dependencies")
+}
+
+// ── TASK AUTOMATION RULES (Phase 3) ─────────────────────────────────────────
+
+model TaskAutomationRule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  triggerOn   String   @map("trigger_on")
+  conditions  String   @default("{}")
+  action      String
+  actionData  String   @default("{}") @map("action_data")
+  department  String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("task_automation_rules")
 }
 
 // ── CASE DOCUMENT CENTER (Phase 4) ──────────────────

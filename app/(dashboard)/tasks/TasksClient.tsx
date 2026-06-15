@@ -74,6 +74,11 @@ type Task = {
   dueTime: string | null
   slaHours: number | null
   slaDeadline: string | null
+  // Phase 3 — Template & dependency
+  templateId: string | null
+  debtorId: string | null
+  rejectedCount: number
+  isBlocked?: boolean
 }
 
 type TaskLink     = { label: string; url: string }
@@ -99,6 +104,30 @@ type TaskTimelineEntry = {
   meta: string | null
   createdAt: string
   user: { id: string; name: string; role: string }
+}
+
+type TaskTemplate = {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  taskType: string | null
+  priority: string
+  defaultSlaHours: number | null
+  defaultChecklist: string
+  defaultAssigneeRole: string | null
+  department: string | null
+  notes: string | null
+  createdBy: { id: string; name: string }
+}
+
+type WorkloadInfo = {
+  userId: string
+  activeCount: number
+  overdueCount: number
+  score: number
+  status: 'LOW' | 'NORMAL' | 'HIGH' | 'OVERLOADED'
+  statusLabel: string
 }
 
 type Props = {
@@ -357,6 +386,25 @@ function OverdueSeverityBadge({ task }: { task: Task }) {
       <AlertCircle className="w-2.5 h-2.5" />{info.label}
     </span>
   )
+}
+
+// ── BlockedBadge — shown when task has unresolved dependencies ───────────────
+
+function BlockedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+      🔒 รอ
+    </span>
+  )
+}
+
+// ── WorkloadBadge — capacity indicator ────────────────────────────────────────
+
+const WORKLOAD_CLS: Record<string, string> = {
+  LOW:        'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20',
+  NORMAL:     'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
+  HIGH:       'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
+  OVERLOADED: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20',
 }
 
 // ── AttachmentItem ────────────────────────────────────────────────────────────
@@ -922,6 +970,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
                 {PRIORITY_LABEL[task.priority] ?? task.priority}
               </span>
               <OverdueSeverityBadge task={task} />
+              {task.isBlocked && <BlockedBadge />}
             </div>
 
             {/* Info grid */}
@@ -1204,10 +1253,14 @@ type CreateModalProps = {
   assignerName: string
   onClose: () => void
   onCreated: (t: Task) => void
+  templates?: TaskTemplate[]
+  workloadMap?: Record<string, WorkloadInfo>
 }
 
-function CreateTaskModal({ employees, assignerName, onClose, onCreated }: CreateModalProps) {
+function CreateTaskModal({ employees, assignerName, onClose, onCreated, templates = [], workloadMap = {} }: CreateModalProps) {
   const [isPending, startTransition] = useTransition()
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [caseNumber,       setCaseNumber]  = useState('')
   const [clientName,       setClientName]  = useState('')
   const [taskDepartment,   setDept]        = useState('')
@@ -1232,6 +1285,21 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
 
   const taskTypeOptions = DEPT_TASK_OPTIONS[taskDepartment] ?? DEPT_TASK_OPTIONS['']
+
+  function applyTemplate(tpl: TaskTemplate) {
+    if (tpl.description)    setDesc(tpl.description)
+    if (tpl.taskType)       setType(tpl.taskType)
+    if (tpl.priority)       setPriority(tpl.priority)
+    if (tpl.department)     { setDept(tpl.department); setType(tpl.taskType ?? (DEPT_TASK_OPTIONS[tpl.department]?.[0]?.value ?? 'OFFICE')) }
+    if (tpl.notes)          setNotes(tpl.notes)
+    if (tpl.defaultSlaHours) { /* slaHours not in current state — skip */ }
+    try {
+      const items: { title: string }[] = JSON.parse(tpl.defaultChecklist)
+      if (items.length > 0) setChecklistItems(items.map((i) => i.title))
+    } catch { /* ignore */ }
+    setSelectedTemplateId(tpl.id)
+    setShowTemplatePicker(false)
+  }
 
   function handleDeptChange(d: string) {
     setDept(d)
@@ -1281,6 +1349,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
           taskLinks:        cleanLinks.length > 0 ? cleanLinks : undefined,
           checklist:        checklistItems.filter(t => t.trim()).map(t => ({ title: t.trim() })),
           dueTime:          dueTime || null,
+          templateId:       selectedTemplateId || null,
         }),
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
@@ -1319,6 +1388,41 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain">
             <div className="px-5 py-4 space-y-4">
+
+              {/* Template picker */}
+              {templates.length > 0 && (
+                <div className="rounded-xl border border-dashed border-blue-300 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/[0.04] px-3 py-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[12px] font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                      <ClipboardList className="w-3.5 h-3.5" />
+                      {selectedTemplateId ? `เทมเพลต: ${templates.find(t => t.id === selectedTemplateId)?.name ?? ''}` : 'สร้างจากเทมเพลต (ไม่บังคับ)'}
+                    </p>
+                    <button type="button" onClick={() => setShowTemplatePicker(v => !v)}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                      {showTemplatePicker ? 'ซ่อน' : selectedTemplateId ? 'เปลี่ยน' : 'เลือก'}
+                    </button>
+                  </div>
+                  {showTemplatePicker && (
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {templates.map((tpl) => (
+                        <button key={tpl.id} type="button" onClick={() => applyTemplate(tpl)}
+                          className="w-full text-left rounded-lg px-3 py-2 text-[12px] hover:bg-blue-100 dark:hover:bg-blue-500/15 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-500/30">
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">{tpl.name}</p>
+                          {tpl.description && <p className="text-slate-500 dark:text-slate-400 truncate text-[11px]">{tpl.description}</p>}
+                          <div className="flex gap-1.5 mt-1 flex-wrap">
+                            {tpl.department && <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 border ${DEPT_COLOR[tpl.department] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>{DEPT_LABEL[tpl.department] ?? tpl.department}</span>}
+                            <span className="text-[10px] text-slate-400">{PRIORITY_LABEL[tpl.priority]}</span>
+                            {tpl.defaultSlaHours && <span className="text-[10px] text-slate-400">SLA {tpl.defaultSlaHours}h</span>}
+                            {tpl.defaultChecklist !== '[]' && (() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })() > 0 && (
+                              <span className="text-[10px] text-slate-400">✓ {(() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })()} รายการ</span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Case + client */}
               <div className="grid grid-cols-2 gap-3">
@@ -1371,12 +1475,24 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated }: Create
                   <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ผู้รับผิดชอบ <span className="text-red-500">*</span></label>
                   <select value={assigneeId} onChange={(e) => setAssignee(e.target.value)} className={inputCls}>
                     <option value="">เลือกพนักงาน...</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name}{emp.department ? ` — ${emp.department}` : ''}
-                      </option>
-                    ))}
+                    {employees.map((emp) => {
+                      const wl = workloadMap[emp.id]
+                      const wlLabel = wl ? ` [${wl.statusLabel} ${wl.activeCount}งาน]` : ''
+                      return (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name}{emp.department ? ` — ${emp.department}` : ''}{wlLabel}
+                        </option>
+                      )
+                    })}
                   </select>
+                  {assigneeId && workloadMap[assigneeId] && (() => {
+                    const wl = workloadMap[assigneeId]
+                    return (
+                      <p className={`mt-1 text-[11px] font-medium px-1 ${WORKLOAD_CLS[wl.status]?.split(' ').slice(2).join(' ') ?? ''}`}>
+                        {wl.statusLabel}: {wl.activeCount} งาน{wl.overdueCount > 0 ? `, เกินกำหนด ${wl.overdueCount}` : ''}
+                      </p>
+                    )
+                  })()}
                 </div>
                 <div>
                   <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ความสำคัญ</label>
@@ -1687,6 +1803,7 @@ function TaskRow({
           {fmtDate(task.dueDate)}
         </span>
         {overdue && <OverdueSeverityBadge task={task} />}
+        {task.isBlocked && <BlockedBadge />}
         {(task.courtDate || task.appointmentDate) && (
           <p className="text-[10px] text-amber-500 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
             <Calendar className="w-2.5 h-2.5" />
@@ -1723,6 +1840,22 @@ export default function TasksClient({
   const [allList,    setAll]      = useState<Task[]>(initAll)
   const [showCreate, setCreate]   = useState(false)
   const [selected,   setSelected] = useState<Task | null>(null)
+  const [templates,  setTemplates] = useState<TaskTemplate[]>([])
+  const [workloadMap, setWorkloadMap] = useState<Record<string, WorkloadInfo>>({})
+
+  useEffect(() => {
+    if (!canAssign) return
+    fetch('/api/tasks/templates').then(r => r.json()).then((d: { templates?: TaskTemplate[] }) => {
+      if (d.templates) setTemplates(d.templates)
+    }).catch(() => {})
+    fetch('/api/tasks/workload').then(r => r.json()).then((d: { workload?: WorkloadInfo[] }) => {
+      if (d.workload) {
+        const map: Record<string, WorkloadInfo> = {}
+        d.workload.forEach((w) => { map[w.userId] = w })
+        setWorkloadMap(map)
+      }
+    }).catch(() => {})
+  }, [canAssign])
 
   const currentList = tab === 'my' ? myTasks : tab === 'by_me' ? byMeTasks : allList
 
@@ -2023,7 +2156,8 @@ export default function TasksClient({
       )}
       {showCreate && (
         <CreateTaskModal employees={employees} assignerName={userName}
-          onClose={() => setCreate(false)} onCreated={handleCreated} />
+          onClose={() => setCreate(false)} onCreated={handleCreated}
+          templates={templates} workloadMap={workloadMap} />
       )}
 
       {/* Mobile FAB */}
