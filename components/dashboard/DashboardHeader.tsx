@@ -14,7 +14,7 @@ type Props = {
 export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
   return (
     <header
-      className="sticky top-0 z-30 flex h-16 items-center gap-3 px-4 md:px-6
+      className="sticky top-0 z-50 flex h-16 items-center gap-3 px-4 md:px-6
         bg-white/95 border-b border-slate-200 shadow-sm backdrop-blur-[20px]
         dark:bg-[rgba(7,11,20,0.90)] dark:border-[rgba(255,255,255,0.06)] dark:shadow-none"
     >

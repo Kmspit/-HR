@@ -377,6 +377,16 @@ export default function Sidebar({ user }: Props) {
     setMobileOpen(false)
   }, [pathname])
 
+  // Body scroll lock — prevents background scroll on iOS Safari while drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev
@@ -402,13 +412,16 @@ export default function Sidebar({ user }: Props) {
       {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div className="md:hidden">
+          {/* Backdrop — z-[55] sits above header (z-50) and MobileNav (z-50) */}
           <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm animate-[fadeIn_0.15s_ease]"
             onClick={closeMobile}
             aria-hidden
           />
-          <div className="fixed left-0 top-0 h-full z-50 w-72 flex flex-col overflow-hidden
-            bg-white dark:bg-[#0d1424] shadow-2xl">
+          {/* Drawer — z-[60] sits above backdrop */}
+          <div className="fixed left-0 top-0 h-full z-[60] w-72 flex flex-col overflow-hidden
+            bg-white dark:bg-[#0d1424] shadow-2xl
+            animate-[slideInLeft_0.22s_cubic-bezier(0.25,0.46,0.45,0.94)]">
             <SidebarContent
               {...sharedProps}
               collapsed={false}
