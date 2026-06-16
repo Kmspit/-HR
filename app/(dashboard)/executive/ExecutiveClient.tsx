@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -111,7 +111,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
   const kpi = overview?.kpi
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950">
       {/* ── Header ── */}
       <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-white/[0.06] px-4 py-3">
         <div className="flex items-center justify-between">

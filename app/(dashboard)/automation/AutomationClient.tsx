@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 
@@ -217,7 +217,7 @@ function RuleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'}</h2>
@@ -519,7 +519,8 @@ export default function AutomationClient({
       {loading && <div className="text-center py-12 text-gray-400">กำลังโหลด...</div>}
 
       <div className="rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Rule</th>
@@ -551,6 +552,7 @@ export default function AutomationClient({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {logPages > 1 && (
@@ -666,7 +668,7 @@ export default function AutomationClient({
   // ─── Main render ───────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-[100dvh] bg-gray-50">
       <div className="mx-auto max-w-5xl px-4 py-6">
         {/* Page header */}
         <div className="mb-6">

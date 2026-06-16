@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 
@@ -162,7 +162,7 @@ export default function AppointmentsClient({
   const typeIcon = (t: string) => EVENT_TYPES.find((et) => et.value === t)?.icon ?? '📅'
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex flex-col lg:flex-row h-[calc(100dvh-4rem)] overflow-hidden bg-gray-50 dark:bg-gray-950">
       {/* ── Left sidebar ── */}
       <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
         {/* KPI strip — visible to admins */}
@@ -433,7 +433,7 @@ export default function AppointmentsClient({
       {/* ── Create Modal ── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">📅 เพิ่มนัดหมาย</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-400 text-xl">✕</button>

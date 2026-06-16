@@ -370,7 +370,8 @@ function DashboardView({ summary }: { summary: Summary | null }) {
       {summary.topRemaining.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">ลูกหนี้ยอดคงค้างสูงสุด 10 อันดับ</h3>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead>
               <tr className="text-xs text-gray-500 border-b border-gray-100 dark:border-gray-700">
                 <th className="text-left py-1">เลข</th>
@@ -394,6 +395,7 @@ function DashboardView({ summary }: { summary: Summary | null }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
@@ -630,7 +632,7 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
 
       {showForm && (
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 space-y-3 border border-blue-200 dark:border-blue-800">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">ช่องทาง</label>
               <select value={channel} onChange={e => setChannel(e.target.value)}
@@ -942,7 +944,7 @@ function PaymentTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
       )}
       {showForm && (
         <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">ยอดชำระ (บาท) *</label>
               <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
@@ -106,7 +106,7 @@ export default function AiAssistantClient({ userName, userRole }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] px-4 md:px-6 py-4">
+    <div className="flex flex-col h-[calc(100dvh-64px)] px-4 md:px-6 py-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>

@@ -1,6 +1,6 @@
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+﻿export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950">
       {/* Animated gradient blobs */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-blue-600/20 blur-[120px] animate-float" />

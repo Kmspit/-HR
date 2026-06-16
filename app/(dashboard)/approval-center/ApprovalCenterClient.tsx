@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
@@ -380,13 +380,13 @@ export default function ApprovalCenterClient({
   })
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-[calc(100dvh-4rem)] overflow-hidden">
       {/* ── Left panel ── */}
       <div className="w-full lg:w-[420px] flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
 
         {/* KPI summary strip */}
         {summary && (
-          <div className="grid grid-cols-4 gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
             <KpiCard label="รออนุมัติ"   value={summary.totalPending}  color="bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300" />
             <KpiCard label="เร่งด่วน"    value={summary.urgentCount}   color="bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300" />
             <KpiCard label="มูลค่าสูง"   value={summary.highValueCount} color="bg-orange-50 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300" />
@@ -769,7 +769,7 @@ export default function ApprovalCenterClient({
       {/* ── Signature Pad Modal ── */}
       {showSigPad && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">✍️ ลงนามดิจิทัล</h3>
               <button

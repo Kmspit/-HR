@@ -446,7 +446,7 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
       )}
 
       {/* Status counts */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'ทั้งหมด',    value: data.counts.total,     color: 'text-slate-700 dark:text-slate-200' },
           { label: 'รออนุมัติ',   value: data.counts.pending,   color: 'text-yellow-600' },

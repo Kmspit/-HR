@@ -241,7 +241,7 @@ function SidebarContent({
 
       <div className="mx-3 h-px bg-slate-100 dark:bg-gradient-to-r dark:from-transparent dark:via-white/8 dark:to-transparent" />
 
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-5">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] space-y-5">
         {filteredSections.map((section) => {
           const isOpen = collapsed || (openSections[section.title] !== false)
           return (

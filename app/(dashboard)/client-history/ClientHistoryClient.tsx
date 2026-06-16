@@ -201,7 +201,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
 
             {/* Revenue summary */}
             {company._revenue && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-3 text-center">
                   <p className="text-xs text-gray-500 mb-1">รายรับรวม</p>
                   <p className="text-lg font-bold text-green-600">฿{fmt(company._revenue.income)}</p>

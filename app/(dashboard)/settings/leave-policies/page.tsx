@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+﻿import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { canManageUsers } from '@/lib/rbac'
@@ -23,7 +23,7 @@ export default async function LeavePoliciesPage() {
   ])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-[100dvh]">
       <Topbar
         title="นโยบายวันลา"
         subtitle="กำหนดวันลาตาม Role / ตำแหน่ง + ช่วงทดลองงาน"

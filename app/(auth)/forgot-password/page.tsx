@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
   const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4">
       <Link href="/login" className="mb-8 flex items-center gap-2 group">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-lg">⚡</div>
         <span className="text-lg font-bold text-white">HR<span className="gradient-text">Flow</span></span>

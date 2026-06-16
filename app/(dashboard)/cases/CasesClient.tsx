@@ -290,7 +290,8 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
           </div>
         ) : (
           <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[900px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/[0.05] bg-slate-50/80 dark:bg-white/[0.02]">
                   {['เลขคดี', 'ชื่อคดี', 'ประเภท', 'สถานะ', 'ความเร่งด่วน', 'ความเสี่ยง', 'ลูกค้า', 'ลูกหนี้', 'ผู้รับผิดชอบ', 'ครบกำหนด'].map(h => (
@@ -346,6 +347,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -817,7 +817,7 @@ function FileViewer({ attachment, onClose }: { attachment: Attachment; onClose: 
           // eslint-disable-next-line @next/next/no-img-element
           <img src={attachment.url} alt={attachment.name}
             className="max-w-full max-h-full object-contain rounded-xl"
-            style={{ maxHeight: 'calc(100vh - 80px)' }} />
+            style={{ maxHeight: 'calc(100dvh - 80px)' }} />
         )}
         {!isPdfFile && !isImageFile && (
           <div className="text-center">

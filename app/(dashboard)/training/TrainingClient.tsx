@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 
@@ -179,7 +179,7 @@ export default function TrainingClient({
   )
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-[calc(100dvh-4rem)] overflow-hidden">
       {/* ── Left panel ── */}
       <div className="w-full lg:w-[360px] flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
 
@@ -471,7 +471,7 @@ export default function TrainingClient({
       {/* ── Create Modal ── */}
       {showCreate && isEditor && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">+ สร้างหลักสูตร</h2>
               <button onClick={() => setCreate(false)} className="text-gray-400 text-xl">✕</button>

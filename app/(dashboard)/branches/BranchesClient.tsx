@@ -332,7 +332,8 @@ export default function BranchesClient({ initial }: Props) {
       )}
 
       <div className="glass-card rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[520px]">
           <thead>
             <tr className="border-b border-white/10 text-white/40 text-left">
               <th className="p-3">รหัส</th>
@@ -405,6 +406,7 @@ export default function BranchesClient({ initial }: Props) {
             ))}
           </tbody>
         </table>
+        </div>
         {list.length === 0 && (
           <p className="p-8 text-center text-slate-500">ยังไม่มีสาขาในระบบ</p>
         )}

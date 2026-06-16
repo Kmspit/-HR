@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { signOut } from 'next-auth/react'
@@ -144,7 +144,7 @@ export default function ClientDashboard({ userName }: Props) {
   const displayedTasks = tasks
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col">
       {/* ── Header ── */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
@@ -388,7 +388,7 @@ function MessagesView({ userName }: { userName: string }) {
   return (
     <div className="flex-1 px-4 pt-3 pb-4 flex flex-col gap-3 max-w-2xl mx-auto w-full">
       <div className="font-medium text-gray-700">ข้อความ</div>
-      <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 min-h-64 max-h-[60vh] overflow-y-auto">
+      <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 min-h-64 max-h-[60dvh] overflow-y-auto">
         {loading && <div className="text-center text-gray-400 text-sm">กำลังโหลด...</div>}
         {!loading && msgs.length === 0 && <div className="text-center text-gray-400 text-sm">ยังไม่มีข้อความ</div>}
         {msgs.map((m) => (
