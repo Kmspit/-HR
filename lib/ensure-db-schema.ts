@@ -43,7 +43,7 @@ async function addUserColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -863,9 +863,9 @@ async function runEnsure(): Promise<boolean> {
   for (const u of demoAccounts) {
     await prisma.$executeRaw`
       INSERT OR IGNORE INTO users
-        (id, email, passwordHash, name, role, status, branchId, socialSecurity, isCoworker, createdAt, updatedAt)
+        (id, email, passwordHash, name, role, status, branchId, socialSecurity, createdAt, updatedAt)
       VALUES
-        (${u.id}, ${u.email}, ${DEMO_HASH}, ${u.name}, ${u.role}, 'ACTIVE', ${DEMO_BRANCH}, 1, 0, datetime('now'), datetime('now'))
+        (${u.id}, ${u.email}, ${DEMO_HASH}, ${u.name}, ${u.role}, 'ACTIVE', ${DEMO_BRANCH}, 1, datetime('now'), datetime('now'))
     `
   }
 
@@ -886,7 +886,7 @@ async function addUserFaceProfileColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -904,7 +904,7 @@ async function addCompanySettingsColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -922,7 +922,7 @@ async function addFaceScanColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -940,7 +940,7 @@ async function addLineNotifyColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -956,7 +956,7 @@ async function addAttendanceColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -972,7 +972,7 @@ async function addWarningColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -988,7 +988,7 @@ async function addPayrollColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -1004,7 +1004,7 @@ async function addWeeklyPlanColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -1020,7 +1020,7 @@ async function addWeeklyPlanDayColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -1036,7 +1036,7 @@ async function addOutsideWorkColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -1087,7 +1087,7 @@ async function addLeaveRequestColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
 
@@ -1103,6 +1103,6 @@ async function addAnnouncementColumnIfMissing(column: string, ddl: string) {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column')) throw err
+    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
   }
 }
