@@ -12,7 +12,7 @@ if (-not (Test-Path $hrflow)) {
 
 $dst = Join-Path $hrflow "prototype"
 Copy-Item "$src\*.html" $dst -Force
-foreach ($file in @("style.css", "hr-core.js", "dev-banner.js", "face-core.js", "line-relay-worker.js")) {
+foreach ($file in @("style.css", "hr-core.js", "dev-banner.js", "face-core.js", "line-relay-worker.js", "dashboard.js", "attendance.js")) {
     $path = Join-Path $src $file
     if (Test-Path $path) {
         Copy-Item $path $dst -Force

@@ -1,85 +1,77 @@
-# HRFlow — Enterprise HR Platform
+# HRFlow — Enterprise HR Platform (เค เอ็ม เซอร์วิส พลัส)
 
-**Project Type**: Frontend HTML/CSS UI prototype for HR management system
+**Project Type**: Multi-page HTML/CSS/JS prototype for HR management system
 
 ## Project Overview
 
-HRFlow is an enterprise HR management platform with features for employee tracking, attendance, payroll, leave management, and company communications. Currently in early-stage frontend development with HTML/CSS only.
+HRFlow (UI brand: **เค เอ็ม เซอร์วิส พลัส**) is an enterprise HR platform with employee tracking, attendance, payroll, leave, OOO scheduling, and LINE OA integration. Data persists in `localStorage` (`hrflow_*` keys) with optional API sync when deployed on the main app domain.
 
 ### Key Features
-- Dashboard with analytics
-- Attendance & time tracking
-- Leave request management
-- Out-of-office scheduling
-- Payroll & payslips
-- Employee management
-- Announcements & warnings
-- Company rules & settings
-- LINE OA integration
+- Dashboard with analytics (`index.html`, `dashboard.js`)
+- Attendance & face recognition (`attendance.html`, `attendance.js`, `face-core.js`)
+- Leave request & approval workflow (`leave.html`)
+- Out-of-office weekly plans (`out-of-office.html`)
+- Payroll, payslips, reports
+- Employee management & RBAC (4 roles)
+- Dynamic sidebar + mobile nav (`hr-core.js` → `SIDEBAR_NAV`, `MOBILE_NAV`)
 
 ## Architecture & Structure
 
-### Files & Responsibilities
-- **index.html** — Main dashboard page; defines sidebar navigation structure and page layout
-- **style.css** — Complete styling system using CSS custom properties (variables); includes responsive design, dark theme, and component styles
+### Core Files
+| File | Role |
+|------|------|
+| `style.css` | Shared design system (CSS variables, components, responsive) |
+| `hr-core.js` | Auth, sidebar, mobile nav, localStorage CRUD, RBAC, API layer stub |
+| `face-core.js` | Client-side face recognition (face-api.js CDN) |
+| `dashboard.js` | Dashboard-only logic (index.html) |
+| `attendance.js` | Attendance page logic (GPS, map, face scan, history) |
+| `dev-banner.js` | Prototype warning banner |
+| `schema.prisma` | PostgreSQL data model for future backend |
+| `line-relay-worker.js` | Cloudflare Worker for LINE relay |
 
-### Design System
+### HTML Pages (19)
+All app pages use `<nav class="sidebar-nav"></nav>` rendered by `hr-core.js`.
 
-**Color Variables** (defined in `:root`):
-- Background: `--bg` (primary), `--bg2`, `--bg3`
-- Accents: `--accent` (#3b82f6 blue), `--accent2` (#6366f1 indigo), `--accent3` (#06b6d4 cyan)
-- Semantic: `--green`, `--red`, `--yellow`, `--orange`, `--purple`
-- Text: `--text`, `--text2`, `--text3`
-- Borders: `--border`, `--border2`
-- Spacing: `--r` (12px), `--r2` (16px)
+**Auth:** `login.html`, `forgot-password.html`  
+**App:** `index.html`, `attendance.html`, `attendance-history.html`, `leave.html`, `out-of-office.html`, `calendar.html`, `employees.html`, `payroll.html`, `payslip.html`, `reports.html`, `announcements.html`, `warnings.html`, `rules.html`, `line-oa.html`, `settings.html`
 
-**Typography**:
-- Primary: "Syne" (400, 700, 800 weights) — headings & branding
-- Body: "Noto Sans Thai" (300-600 weights) — content & labels
-- Language: Thai localization used throughout UI
+### Deep Links (sidebar anchors)
+| Link | Target ID |
+|------|-----------|
+| `attendance.html#scan-history` | `#scan-history` |
+| `calendar.html?view=week` | Week view toggle |
+| `leave.html#approve` | `#tab-approve` (hash handler) |
+| `settings.html#profile` | `#profile` |
+| `settings.html#branches` | `#branches` |
+| `settings.html#permissions` | `#permissions` |
+| `settings.html#face` | `#face` |
+| `employees.html#departments` | `#departments` |
 
-**UI Patterns**:
-- Sidebar navigation (fixed left, 240px width)
-- Dark mode theme with subtle noise texture
-- Navigation sections with labels and badges
-- Responsive design with overlay for mobile
+## Design System
 
-### CSS Organization
-- CSS custom properties for theming (easy to maintain dark/light mode)
-- Utility-style sections marked with `/* ── SECTION ── */` comments
-- Modular component classes (`.sidebar`, `.nav-item`, `.card`, etc.)
-- Flexbox & grid layouts
+**Typography:**
+- Headings: Syne (400, 700, 800)
+- Body: IBM Plex Sans Thai (300–700)
+- Language: Thai (`lang="th"`)
+
+**Colors:** CSS custom properties in `:root` — `--bg`, `--accent`, `--green`, `--red`, etc.
 
 ## Development Guidelines
 
 ### Adding New Pages
-1. Create new HTML file (e.g., `attendance.html`)
-2. Include same `<head>` structure with fonts and styles
-3. Follow sidebar navigation pattern in markup
-4. Reuse existing CSS classes from `style.css`
+1. Copy `<head>` + sidebar skeleton from any app page
+2. Include `<script src="hr-core.js"></script>` and `<script src="dev-banner.js"></script>`
+3. Add entry to `SIDEBAR_NAV` and optionally `MOBILE_NAV` in `hr-core.js`
+4. Use role classes: `role-hr-admin-only`, `role-manager-only`, etc.
 
-### Styling New Components
-1. Use CSS custom properties from `:root` for colors/spacing
-2. Keep component styles modular with BEM-like naming
-3. Test dark theme compatibility
-4. Maintain Thai font support (Noto Sans Thai)
-
-### Localization Notes
-- UI text is in Thai language
-- Maintain UTF-8 encoding in HTML files
-- Font stack prioritizes Noto Sans Thai for proper rendering
-
-## Next Steps & Common Tasks
-
-- **Adding interactivity**: Create JavaScript files for sidebar toggle, page navigation, form handling
-- **Backend integration**: Plan API endpoints for employee data, attendance tracking, payroll
-- **Data visualization**: Dashboard analytics will need charts (consider Chart.js or similar)
-- **Mobile responsiveness**: Test overlay and sidebar on mobile devices
+### RBAC Roles
+- `EMPLOYEE`, `LAWYER`, `MANAGER_HR`, `ADMIN`
+- Gated via CSS classes and `initRole()` in `hr-core.js`
 
 ## Notes for AI Agents
 
-- **Page references**: `index.html` contains links to other pages not yet created (attendance.html, leave.html, etc.)
-- **Consistency**: Always use existing CSS variables and color scheme
-- **Thai language**: If adding content, maintain Thai localization
-- **Accessibility**: Ensure color contrasts meet WCAG standards with current dark theme
-- **Scope**: Currently HTML/CSS only; coordinate with backend team before adding JavaScript
+- **Do not duplicate sidebar HTML** — `renderSidebarNav()` owns navigation
+- **Use `style.css`** — avoid large inline `<style>` blocks
+- **Thai localization** — keep UI text in Thai unless i18n is explicitly requested
+- **Accessibility** — hamburger is `<button aria-label="เปิดเมนู">`; use meaningful `alt` on images
+- **Backend** — `useHrApi()` + `syncFromApi()` in `hr-core.js`; Prisma schema in `schema.prisma`

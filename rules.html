@@ -17,36 +17,12 @@
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><div class="logo-mark">⚡</div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div></div>
-  <nav class="sidebar-nav">
-    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
-    <div class="nav-section"><div class="nav-label">การทำงาน</div>
-      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
-      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
-      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
-      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
-      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
-    </div>
-    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
-      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
-      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
-      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
-      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
-    </div>
-    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
-      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
-      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
-      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
-    </div>
-    <div class="nav-section"><div class="nav-label">ระบบ</div>
-      <a href="rules.html" class="nav-item active"><span class="icon">📋</span> กฎบริษัท</a>
-      <a href="settings.html" class="nav-item"><span class="icon">⚙️</span> ตั้งค่า</a>
-    </div>
-  </nav>
+  <nav class="sidebar-nav"></nav>
 </aside>
 
 <div class="main">
   <header class="topbar">
-    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <button type="button" class="hamburger" aria-label="เปิดเมนู" onclick="openSidebar()">☰</button>
     <div class="topbar-title">กฎบริษัท <span class="topbar-subtitle">/ นโยบายและระเบียบปฏิบัติ</span></div>
     <div class="topbar-actions">
       <button class="btn-primary role-hr-admin-only" onclick="openUploadRuleModal()">⬆️ อัปโหลดกฎใหม่</button>
@@ -221,5 +197,6 @@ document.addEventListener('DOMContentLoaded', function() {
   renderRules();
 });
 </script>
+<script src="dev-banner.js"></script>
 </body>
 </html>

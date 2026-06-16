@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8" />
@@ -38,31 +38,7 @@
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo"><div class="logo-mark">⚡</div><div><div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div><div class="logo-badge">จำกัด</div></div></div>
-  <nav class="sidebar-nav">
-    <div class="nav-section"><div class="nav-label">หลัก</div><a href="index.html" class="nav-item"><span class="icon">📊</span> แดชบอร์ด</a></div>
-    <div class="nav-section"><div class="nav-label">การทำงาน</div>
-      <a href="attendance.html" class="nav-item"><span class="icon">⏱️</span> ลงเวลางาน</a>
-      <a href="attendance-history.html" class="nav-item"><span class="icon">📜</span> ประวัติลงเวลา</a>
-      <a href="leave.html" class="nav-item"><span class="icon">📅</span> ขอลาหยุด</a>
-      <a href="out-of-office.html" class="nav-item"><span class="icon">🚗</span> ออกนอกสถานที่</a>
-      <a href="calendar.html" class="nav-item"><span class="icon">🗓️</span> ปฏิทิน</a>
-    </div>
-    <div class="nav-section"><div class="nav-label">HR จัดการ</div>
-      <a href="employees.html" class="nav-item"><span class="icon">👥</span> พนักงาน</a>
-      <a href="payroll.html" class="nav-item"><span class="icon">💰</span> เงินเดือน</a>
-      <a href="payslip.html" class="nav-item"><span class="icon">🧾</span> สลิปเงินเดือน</a>
-      <a href="reports.html" class="nav-item"><span class="icon">📈</span> รีพอร์ท</a>
-    </div>
-    <div class="nav-section"><div class="nav-label">สื่อสาร</div>
-      <a href="announcements.html" class="nav-item"><span class="icon">📢</span> ประกาศ</a>
-      <a href="warnings.html" class="nav-item"><span class="icon">⚠️</span> ใบเตือน</a>
-      <a href="line-oa.html" class="nav-item"><span class="icon">💬</span> LINE OA</a>
-    </div>
-    <div class="nav-section"><div class="nav-label">ระบบ</div>
-      <a href="rules.html" class="nav-item"><span class="icon">📋</span> กฎบริษัท</a>
-      <a href="settings.html" class="nav-item active"><span class="icon">⚙️</span> ตั้งค่า</a>
-    </div>
-  </nav>
+  <nav class="sidebar-nav"></nav>
   <div class="sidebar-footer">
     <div class="user-card">
       <div class="avatar">HR</div>
@@ -74,7 +50,7 @@
 
 <div class="main">
   <header class="topbar">
-    <div class="hamburger" onclick="openSidebar()">☰</div>
+    <button type="button" class="hamburger" aria-label="เปิดเมนู" onclick="openSidebar()">☰</button>
     <div class="topbar-title">ตั้งค่าระบบ <span class="topbar-subtitle">/ Company Settings</span></div>
     <div class="topbar-actions">
       <button class="btn-primary" onclick="saveSettings()">💾 บันทึกทั้งหมด</button>
@@ -82,6 +58,17 @@
   </header>
 
   <main class="content">
+
+    <!-- Profile (deep link: #profile) -->
+    <div class="settings-section" id="profile">
+      <h3>👤 โปรไฟล์ผู้ใช้</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>ชื่อ</label><input id="profile-name" class="form-input" readonly></div>
+        <div class="form-group"><label>อีเมล</label><input id="profile-email" class="form-input" readonly></div>
+        <div class="form-group"><label>บทบาท</label><input id="profile-role" class="form-input" readonly></div>
+        <div class="form-group"><label>แผนก</label><input id="profile-dept" class="form-input" readonly></div>
+      </div>
+    </div>
 
     <!-- 1. Company info -->
     <div class="settings-section">
@@ -92,6 +79,39 @@
         <div class="form-group"><label>เบอร์โทรศัพท์</label><input id="s-phone" class="form-input" placeholder="02-xxx-xxxx"></div>
         <div class="form-group"><label>อีเมลบริษัท</label><input id="s-email" type="email" class="form-input" placeholder="hr@company.com"></div>
       </div>
+    </div>
+
+    <!-- Branches (deep link: #branches) -->
+    <div class="settings-section" id="branches">
+      <h3>🏢 จัดการสาขา</h3>
+      <div class="settings-grid">
+        <div class="form-group"><label>ชื่อสาขาหลัก</label><input id="s-branch-name" class="form-input" placeholder="สำนักงานใหญ่"></div>
+        <div class="form-group"><label>รหัสสาขา</label><input id="s-branch-code" class="form-input" placeholder="HQ"></div>
+        <div class="form-group"><label>ที่อยู่สาขา</label><input id="s-branch-address" class="form-input" placeholder="ที่อยู่สาขา..."></div>
+        <div class="form-group"><label>สถานะ</label>
+          <select id="s-branch-status" class="form-input">
+            <option value="active">เปิดใช้งาน</option>
+            <option value="inactive">ปิดชั่วคราว</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Permissions (deep link: #permissions) -->
+    <div class="settings-section" id="permissions">
+      <h3>🔐 สิทธิ์การใช้งาน (RBAC)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>บทบาท</th><th>ลงเวลา</th><th>อนุมัติลา</th><th>เงินเดือน</th><th>ตั้งค่าระบบ</th></tr></thead>
+          <tbody>
+            <tr><td>พนักงาน (EMPLOYEE)</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>ทนายความ (LAWYER)</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>ผู้จัดการ / HR</td><td>✓</td><td>✓</td><td>✓</td><td>—</td></tr>
+            <tr><td>Admin</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px;">สิทธิ์ถูกควบคุมผ่าน class <code>role-*-only</code> และเมนูใน hr-core.js</p>
     </div>
 
     <!-- 2. Geofence -->
@@ -330,6 +350,22 @@ function loadSettings() {
   document.getElementById('s-face-confirm').value     = f.confirmFloor ?? fd.confirmFloor;
   document.getElementById('s-face-model-url').value   = f.modelUrl     || fd.modelUrl;
   syncFaceSliders();
+
+  const user = getCurrentUser();
+  if (user) {
+    const roleMap = { MANAGER_HR: 'ผู้จัดการ / HR', ADMIN: 'Admin', EMPLOYEE: 'พนักงาน', LAWYER: 'ทนายความ' };
+    document.getElementById('profile-name').value  = user.name || '';
+    document.getElementById('profile-email').value = user.email || '';
+    document.getElementById('profile-role').value  = roleMap[user.role] || user.role || '';
+    document.getElementById('profile-dept').value  = user.dept || '—';
+  }
+  const branchName = document.getElementById('s-branch-name');
+  if (branchName) {
+    branchName.value = s.branchName || s.branch || 'สำนักงานใหญ่';
+    document.getElementById('s-branch-code').value = s.branchCode || 'HQ';
+    document.getElementById('s-branch-address').value = s.branchAddress || s.address || '';
+    document.getElementById('s-branch-status').value = s.branchStatus || 'active';
+  }
 }
 
 function syncFaceSliders() {
@@ -379,6 +415,10 @@ function saveSettings() {
     cloudinaryCloud:   document.getElementById('s-cloudinary-cloud').value.trim(),
     cloudinaryPreset:  document.getElementById('s-cloudinary-preset').value.trim(),
     branch:            document.getElementById('s-branch').value.trim(),
+    branchName:        (document.getElementById('s-branch-name') || {}).value || '',
+    branchCode:        (document.getElementById('s-branch-code') || {}).value || '',
+    branchAddress:     (document.getElementById('s-branch-address') || {}).value || '',
+    branchStatus:      (document.getElementById('s-branch-status') || {}).value || 'active',
     notifyLeave:  document.getElementById('s-notify-leave').checked,
     notifyOOO:    document.getElementById('s-notify-ooo').checked,
     notifyWarn:   document.getElementById('s-notify-warn').checked,
@@ -580,5 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFaceLogs();
 });
 </script>
+<script src="dev-banner.js"></script>
 </body>
 </html>
