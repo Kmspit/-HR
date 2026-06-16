@@ -192,7 +192,7 @@ async function runEnsure(): Promise<boolean> {
   // Phase 15 security columns — added to schema after initial Turso push
   await addUserColumnIfMissing('locked_until', `ALTER TABLE users ADD COLUMN locked_until DATETIME`)
   await addUserColumnIfMissing('password_changed_at', `ALTER TABLE users ADD COLUMN password_changed_at DATETIME`)
-  await addUserColumnIfMissing('is_coworker', `ALTER TABLE users ADD COLUMN is_coworker INTEGER NOT NULL DEFAULT 0`)
+  await addUserColumnIfMissing('isCoworker', `ALTER TABLE users ADD COLUMN isCoworker INTEGER NOT NULL DEFAULT 0`)
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS company_holidays (
@@ -849,6 +849,25 @@ async function runEnsure(): Promise<boolean> {
   `)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS cpl_user_idx ON client_portal_logs (portal_user_id)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS cpl_created_idx ON client_portal_logs (created_at)`)
+
+  // ── Demo accounts — idempotent, never overwrites existing rows ────────────
+  // Hash of 'demo1234' with bcrypt cost 12 (pre-computed to avoid runtime cost)
+  const DEMO_HASH = '$2a$12$MYyHT55yC2oo6zvB2ot2iu9bG6Xeu1egcNQbcMZ8H5bkz69cd8jqq'
+  const DEMO_BRANCH = 'branch-hq-kmsp'
+  const demoAccounts = [
+    { id: 'demo-manager',  email: 'manager@demo.com',  name: 'Manager Demo',  role: 'MANAGER_HR' },
+    { id: 'demo-admin',    email: 'admin@demo.com',    name: 'Admin Demo',    role: 'ADMIN' },
+    { id: 'demo-employee', email: 'employee@demo.com', name: 'Employee Demo', role: 'EMPLOYEE' },
+    { id: 'demo-lawyer',   email: 'lawyer@demo.com',   name: 'Lawyer Demo',   role: 'LAWYER' },
+  ] as const
+  for (const u of demoAccounts) {
+    await prisma.$executeRaw`
+      INSERT OR IGNORE INTO users
+        (id, email, passwordHash, name, role, status, branchId, socialSecurity, isCoworker, createdAt, updatedAt)
+      VALUES
+        (${u.id}, ${u.email}, ${DEMO_HASH}, ${u.name}, ${u.role}, 'ACTIVE', ${DEMO_BRANCH}, 1, 0, datetime('now'), datetime('now'))
+    `
+  }
 
   return true
 }

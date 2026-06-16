@@ -4,6 +4,7 @@ import { DEFAULT_COMPANY_BRANCHES } from '../lib/company-branches'
 import { seedDefaultOrgStructure } from '../lib/default-org-structure'
 import { config } from 'dotenv'
 import { resolve } from 'path'
+import bcrypt from 'bcryptjs'
 
 // Load .env from project root
 config({ path: resolve(process.cwd(), '.env') })
@@ -100,6 +101,32 @@ async function main() {
       personalDaysYear: 3,
     },
   })
+
+  // ── Demo accounts ─────────────────────────────────────────────────────────
+  const PASS = await bcrypt.hash('demo1234', 12)
+  const demoUsers = [
+    { id: 'demo-manager',  email: 'manager@demo.com',  name: 'Manager Demo',  role: 'MANAGER_HR' as const },
+    { id: 'demo-admin',    email: 'admin@demo.com',    name: 'Admin Demo',    role: 'ADMIN'      as const },
+    { id: 'demo-employee', email: 'employee@demo.com', name: 'Employee Demo', role: 'EMPLOYEE'   as const },
+    { id: 'demo-lawyer',   email: 'lawyer@demo.com',   name: 'Lawyer Demo',   role: 'LAWYER'     as const },
+  ]
+  for (const u of demoUsers) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { passwordHash: PASS, status: 'ACTIVE', name: u.name, role: u.role },
+      create: {
+        id: u.id,
+        email: u.email,
+        passwordHash: PASS,
+        name: u.name,
+        role: u.role,
+        status: 'ACTIVE',
+        branchId: DEFAULT_COMPANY_BRANCHES[0].id,
+        socialSecurity: true,
+      },
+    })
+  }
+  console.log('✅ Demo accounts: manager/admin/employee/lawyer @demo.com (demo1234)')
 
   console.log('✅ Seeding complete!')
 }
