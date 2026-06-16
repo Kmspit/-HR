@@ -2010,9 +2010,50 @@ model ClientCompany {
   tasks            TaskAssignment[]
   invoices         BillingInvoice[]
   recoveryPayments RecoveryPayment[]
+  portalUsers      ClientPortalUser[]
 
   @@index([status])
   @@map("client_companies")
+}
+
+// ── CLIENT PORTAL PHASE 1 ─────────────────────────────────────────────────────
+
+model ClientPortalUser {
+  id              String    @id @default(cuid())
+  clientCompanyId String    @map("client_company_id")
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  fullName        String    @map("full_name")
+  phone           String?
+  isActive        Boolean   @default(true) @map("is_active")
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  clientCompany ClientCompany      @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  logs          ClientPortalLog[]
+
+  @@index([clientCompanyId])
+  @@index([email])
+  @@map("client_portal_users")
+}
+
+model ClientPortalLog {
+  id             String   @id @default(cuid())
+  portalUserId   String   @map("portal_user_id")
+  action         String
+  resourceType   String?  @map("resource_type")
+  resourceId     String?  @map("resource_id")
+  meta           String?
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  portalUser ClientPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
+
+  @@index([portalUserId])
+  @@index([createdAt])
+  @@map("client_portal_logs")
 }
 
 model ClientContract {

@@ -1,39 +1,93 @@
-import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { getPortalSession } from '@/lib/portal-auth'
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await getPortalSession(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id } = await params
-  const clientId = session.user.id
+  const { id: caseId } = await params
+  const { clientCompanyId } = session
 
-  const task = await prisma.taskAssignment.findUnique({
-    where: { id },
-    include: {
-      assignee:    { select: { id: true, name: true, position: true, phone: true } },
-      assignedBy:  { select: { id: true, name: true } },
-      attachments: { orderBy: { createdAt: 'desc' } },
-      statusHistories: { orderBy: { createdAt: 'asc' } },
+  const caseLink = await prisma.caseClient.findFirst({
+    where: { caseId, clientCompanyId },
+  })
+  if (!caseLink) return NextResponse.json({ error: 'Not Found' }, { status: 404 })
+
+  const caseData = await prisma.case.findUnique({
+    where:  { id: caseId },
+    select: {
+      id:          true,
+      caseNumber:  true,
+      caseTitle:   true,
+      status:      true,
+      caseType:    true,
+      priority:    true,
+      description: true,
+      debtAmount:  true,
+      createdAt:   true,
+      updatedAt:   true,
+      debtor: {
+        select: { id: true, fullName: true, riskLevel: true, phone: true, address: true },
+      },
+      assignedEmployee: { select: { id: true, name: true, phone: true } },
+      timeline: {
+        orderBy: { createdAt: 'desc' },
+        take:    30,
+        select: {
+          id:          true,
+          action:      true,
+          description: true,
+          createdAt:   true,
+          user:        { select: { name: true } },
+        },
+      },
+      courtEvents: {
+        where:   { status: { not: 'CANCELLED' } },
+        orderBy: { appointmentDate: 'asc' },
+        select: {
+          id:              true,
+          courtName:       true,
+          courtType:       true,
+          appointmentType: true,
+          appointmentDate: true,
+          appointmentTime: true,
+          status:          true,
+          priority:        true,
+          location:        true,
+        },
+      },
+      recoveryPayments: {
+        where:   { status: 'RECEIVED' },
+        orderBy: { paymentDate: 'desc' },
+        take:    20,
+        select: {
+          id:          true,
+          amount:      true,
+          paymentDate: true,
+          paymentType: true,
+          status:      true,
+        },
+      },
     },
   })
 
-  if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!caseData) return NextResponse.json({ error: 'Not Found' }, { status: 404 })
 
-  // Strict: only the linked client can view
-  if (task.clientId !== clientId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  // Related documents
-  const docs = await prisma.caseDocument.findMany({
-    where: { OR: [{ clientId }, { taskId: id }], status: 'ACTIVE' },
-    include: {
-      files: { orderBy: { version: 'desc' }, take: 1 },
-      signatures: { select: { signerName: true, signerRole: true, signedAt: true } },
+  void prisma.clientPortalLog.create({
+    data: {
+      portalUserId: session.portalUserId,
+      action:       'VIEW_CASE',
+      resourceType: 'Case',
+      resourceId:   caseId,
+      ipAddress:    req.headers.get('x-forwarded-for') ?? undefined,
     },
-    orderBy: { updatedAt: 'desc' },
-  })
+  }).catch(() => undefined)
 
-  return NextResponse.json({ task, docs })
+  const recoveryTotal = caseData.recoveryPayments.reduce((sum, p) => sum + p.amount, 0)
+
+  return NextResponse.json({ case: caseData, recoveryTotal })
 }
