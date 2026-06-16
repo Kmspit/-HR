@@ -39,6 +39,7 @@ async function userColumns(): Promise<string[]> {
 async function addUserColumnIfMissing(column: string, ddl: string) {
   const cols = await userColumns()
   if (cols.includes(column)) return
+  console.log('[PATCH COLUMN]', column)
   try {
     await prisma.$executeRawUnsafe(ddl)
   } catch (err) {
@@ -48,6 +49,7 @@ async function addUserColumnIfMissing(column: string, ddl: string) {
 }
 
 async function runEnsure(): Promise<boolean> {
+  console.log('[ENSURE START]')
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS company_branches (
       id TEXT NOT NULL PRIMARY KEY,
@@ -80,6 +82,11 @@ async function runEnsure(): Promise<boolean> {
     await prisma.$executeRawUnsafe(`ALTER TABLE attendances ADD COLUMN branchId TEXT`)
   } catch { /* column already exists */ }
 
+  await addUserColumnIfMissing('nameEn',    `ALTER TABLE users ADD COLUMN nameEn TEXT`)
+  await addUserColumnIfMissing('nickname',  `ALTER TABLE users ADD COLUMN nickname TEXT`)
+  await addUserColumnIfMissing('prefix',    `ALTER TABLE users ADD COLUMN prefix TEXT`)
+  await addUserColumnIfMissing('position',  `ALTER TABLE users ADD COLUMN position TEXT`)
+  await addUserColumnIfMissing('profileImage', `ALTER TABLE users ADD COLUMN profileImage TEXT`)
   await addUserColumnIfMissing('branchId', `ALTER TABLE users ADD COLUMN branchId TEXT`)
   await addUserColumnIfMissing('addressIdCard', `ALTER TABLE users ADD COLUMN addressIdCard TEXT`)
   await addUserColumnIfMissing('employeeType', `ALTER TABLE users ADD COLUMN employeeType TEXT DEFAULT 'permanent_employee'`)
@@ -873,8 +880,10 @@ async function runEnsure(): Promise<boolean> {
       VALUES
         (${u.id}, ${u.email}, ${DEMO_HASH}, ${u.name}, ${u.role}, 'ACTIVE', ${DEMO_BRANCH}, 1, datetime('now'), datetime('now'))
     `
+    console.log('[DEMO USER INSERTED]', u.email)
   }
 
+  console.log('[ENSURE COMPLETE]')
   return true
 }
 

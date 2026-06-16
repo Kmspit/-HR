@@ -54,18 +54,18 @@ export async function POST(req: NextRequest) {
     const phone = data.phone.replace(/\D/g, '')
     const nationalId = emptyToNull(data.nationalId)
 
-    const existingEmail = await prisma.user.findUnique({ where: { email } })
+    const existingEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } })
     if (existingEmail) {
       return NextResponse.json({ error: 'อีเมลนี้มีการลงทะเบียนแล้ว' }, { status: 409 })
     }
 
-    const existingPhone = await prisma.user.findFirst({ where: { phone } })
+    const existingPhone = await prisma.user.findFirst({ where: { phone }, select: { id: true } })
     if (existingPhone) {
       return NextResponse.json({ error: 'เบอร์โทรนี้มีการลงทะเบียนแล้ว' }, { status: 409 })
     }
 
     if (nationalId) {
-      const existingId = await prisma.user.findFirst({ where: { nationalId } })
+      const existingId = await prisma.user.findFirst({ where: { nationalId }, select: { id: true } })
       if (existingId) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
       }
@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
 
     const branch = await prisma.companyBranch.findFirst({
       where: { id: data.branchId, isActive: true },
+      select: { id: true, name: true },
     })
     if (!branch) {
       return NextResponse.json({ error: 'สาขาที่เลือกไม่ถูกต้องหรือปิดใช้งาน' }, { status: 400 })
@@ -111,6 +112,7 @@ export async function POST(req: NextRequest) {
         socialSecurity:data.socialSecurity,
         lineId:          lineParsed.lineId,
       },
+      select: { id: true },
     })
 
     await prisma.leaveBalance.create({
@@ -121,6 +123,7 @@ export async function POST(req: NextRequest) {
         vacation: 6,
         personal: 3,
       },
+      select: { id: true },
     })
 
     await runNotify(() =>
@@ -145,8 +148,8 @@ export async function POST(req: NextRequest) {
       userId: user.id,
     })
   } catch (err) {
-    console.error('[REGISTER ERROR]', err)
-    return apiError(err, 'สมัครไม่สำเร็จ กรุณาลองใหม่หรือติดต่อ HR')
+    console.error('[REGISTER ERROR FULL]', err)
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 })
   }
 }
 

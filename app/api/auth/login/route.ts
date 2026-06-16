@@ -51,6 +51,7 @@ async function loadUserForRedirect(userId: string, fallback: {
  * ล็อกอิน + สร้าง session + คืน URL ปลายทาง
  */
 export async function POST(req: NextRequest) {
+  console.log('[LOGIN START]')
   try {
     try {
       await ensureDbSchema()
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
     const email = typeof body.email === 'string' ? body.email : ''
     const password = typeof body.password === 'string' ? body.password : ''
+    console.log('[EMAIL]', email)
 
     // Phase 15: brute-force check
     const lockCheck = await checkLoginAllowed(email).catch(() => ({ allowed: true }))
@@ -123,10 +125,12 @@ export async function POST(req: NextRequest) {
       message,
     })
 
+    console.log('[LOGIN SUCCESS PATH]')
     return await attachSessionCookie(response, verified.user)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const stack = err instanceof Error ? err.stack : undefined
+    console.error('[LOGIN FATAL ERROR]', err)
     console.error('[api/auth/login] UNHANDLED ERROR:', msg)
     console.error('[api/auth/login] stack:', stack)
 

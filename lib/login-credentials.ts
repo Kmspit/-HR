@@ -27,7 +27,17 @@ export async function verifyLoginCredentials(
     return { ok: false, error: 'MISSING_FIELDS' }
   }
 
-  let user
+  // Use explicit select to avoid SELECT * — prevents failure on missing columns in Turso
+  let user: {
+    id: string
+    email: string
+    name: string
+    role: import('@prisma/client').Role
+    status: import('@prisma/client').UserStatus
+    department: string | null
+    branchId: string | null
+    passwordHash: string
+  } | null = null
   try {
     const isEmail = raw.includes('@')
     user = await prisma.user.findFirst({
@@ -40,18 +50,31 @@ export async function verifyLoginCredentials(
               { employeeId: raw.toLowerCase() },
             ],
           },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        department: true,
+        branchId: true,
+        passwordHash: true,
+      },
     })
   } catch (err) {
-    console.error('[verifyLoginCredentials] db', err)
+    console.error('[verifyLoginCredentials] db error:', err)
     return { ok: false, error: 'SERVER_ERROR' }
   }
 
   console.log('[LOGIN USER FOUND]', !!user)
+  console.log('[USER EMAIL]', user?.email ?? null)
+  console.log('[USER ROLE]', user?.role ?? null)
   if (!user) return { ok: false, error: 'INVALID_CREDENTIALS' }
   if (user.status === 'PENDING') return { ok: false, error: 'PENDING_APPROVAL' }
   if (user.status === 'DISABLED') return { ok: false, error: 'ACCOUNT_DISABLED' }
   if (user.status === 'REJECTED') return { ok: false, error: 'ACCOUNT_REJECTED' }
 
+  console.log('[PASSWORD HASH EXISTS]', !!user.passwordHash)
   if (!user.passwordHash?.startsWith('$2')) {
     return { ok: false, error: 'INVALID_CREDENTIALS' }
   }
@@ -60,7 +83,7 @@ export async function verifyLoginCredentials(
   try {
     isValid = await bcrypt.compare(password, user.passwordHash)
   } catch (bcryptErr) {
-    console.error('[verifyLoginCredentials] bcrypt.compare', bcryptErr)
+    console.error('[verifyLoginCredentials] bcrypt.compare error:', bcryptErr)
     return { ok: false, error: 'SERVER_ERROR' }
   }
   console.log('[PASSWORD MATCH]', isValid)
