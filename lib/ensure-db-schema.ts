@@ -189,6 +189,10 @@ async function runEnsure(): Promise<boolean> {
   await addUserColumnIfMissing('sectionId', `ALTER TABLE users ADD COLUMN sectionId TEXT`)
   await addUserColumnIfMissing('lineUserId', `ALTER TABLE users ADD COLUMN lineUserId TEXT`)
   await addUserColumnIfMissing('lineDisplayName', `ALTER TABLE users ADD COLUMN lineDisplayName TEXT`)
+  // Phase 15 security columns — added to schema after initial Turso push
+  await addUserColumnIfMissing('locked_until', `ALTER TABLE users ADD COLUMN locked_until DATETIME`)
+  await addUserColumnIfMissing('password_changed_at', `ALTER TABLE users ADD COLUMN password_changed_at DATETIME`)
+  await addUserColumnIfMissing('is_coworker', `ALTER TABLE users ADD COLUMN is_coworker INTEGER NOT NULL DEFAULT 0`)
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS company_holidays (
@@ -720,6 +724,131 @@ async function runEnsure(): Promise<boolean> {
   await addAttendanceColumnIfMissing('planned_place',      `ALTER TABLE attendances ADD COLUMN planned_place TEXT`)
   await addAttendanceColumnIfMissing('location_distance',  `ALTER TABLE attendances ADD COLUMN location_distance REAL`)
   await addAttendanceColumnIfMissing('location_status',    `ALTER TABLE attendances ADD COLUMN location_status TEXT`)
+
+  // ── Phase 15 — Enterprise Security tables ────────────────────────────────
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      id TEXT NOT NULL PRIMARY KEY,
+      email TEXT NOT NULL,
+      ip TEXT,
+      userAgent TEXT,
+      success INTEGER NOT NULL DEFAULT 0,
+      userId TEXT,
+      reason TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS login_attempts_email_created_idx ON login_attempts (email, createdAt)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS login_attempts_user_idx ON login_attempts (userId)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS security_events (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT,
+      eventType TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'INFO',
+      description TEXT NOT NULL,
+      ip TEXT,
+      userAgent TEXT,
+      metadata TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS security_events_user_created_idx ON security_events (userId, createdAt)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS security_events_severity_idx ON security_events (severity)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS two_factor_setups (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      channel TEXT NOT NULL DEFAULT 'LINE',
+      totp_secret TEXT,
+      enabled_at DATETIME,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS device_sessions (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      sessionId TEXT NOT NULL UNIQUE,
+      ip TEXT,
+      userAgent TEXT,
+      browser TEXT,
+      os TEXT,
+      deviceType TEXT,
+      country TEXT,
+      isRevoked INTEGER NOT NULL DEFAULT 0,
+      last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS device_sessions_user_idx ON device_sessions (userId)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      challenge TEXT NOT NULL UNIQUE,
+      code TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'LINE',
+      used INTEGER NOT NULL DEFAULT 0,
+      expires_at DATETIME NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS otp_codes_user_idx ON otp_codes (userId)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS otp_codes_challenge_idx ON otp_codes (challenge)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS backup_records (
+      id TEXT NOT NULL PRIMARY KEY,
+      filename TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL DEFAULT 0,
+      tables TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'COMPLETED',
+      created_by_id TEXT,
+      note TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS backup_records_created_idx ON backup_records (createdAt)`)
+
+  // ── Client Portal Phase 1 tables ─────────────────────────────────────────
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS client_portal_users (
+      id TEXT NOT NULL PRIMARY KEY,
+      client_company_id TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      phone TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_login_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS cpu_company_idx ON client_portal_users (client_company_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS cpu_email_idx ON client_portal_users (email)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS client_portal_logs (
+      id TEXT NOT NULL PRIMARY KEY,
+      portal_user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id TEXT,
+      meta TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS cpl_user_idx ON client_portal_logs (portal_user_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS cpl_created_idx ON client_portal_logs (created_at)`)
 
   return true
 }
