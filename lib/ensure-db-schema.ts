@@ -189,6 +189,12 @@ async function runEnsure(): Promise<boolean> {
   await addUserColumnIfMissing('sectionId', `ALTER TABLE users ADD COLUMN sectionId TEXT`)
   await addUserColumnIfMissing('lineUserId', `ALTER TABLE users ADD COLUMN lineUserId TEXT`)
   await addUserColumnIfMissing('lineDisplayName', `ALTER TABLE users ADD COLUMN lineDisplayName TEXT`)
+  // LINE OA fields — added after initial Turso push in some deployments
+  await addUserColumnIfMissing('lineId', `ALTER TABLE users ADD COLUMN lineId TEXT`)
+  await addUserColumnIfMissing('line_notif_settings', `ALTER TABLE users ADD COLUMN line_notif_settings TEXT`)
+  // Approval workflow columns
+  await addUserColumnIfMissing('approvedById', `ALTER TABLE users ADD COLUMN approvedById TEXT`)
+  await addUserColumnIfMissing('approvedAt', `ALTER TABLE users ADD COLUMN approvedAt DATETIME`)
   // Phase 15 security columns — added to schema after initial Turso push
   await addUserColumnIfMissing('locked_until', `ALTER TABLE users ADD COLUMN locked_until DATETIME`)
   await addUserColumnIfMissing('password_changed_at', `ALTER TABLE users ADD COLUMN password_changed_at DATETIME`)

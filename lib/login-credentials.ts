@@ -46,6 +46,7 @@ export async function verifyLoginCredentials(
     return { ok: false, error: 'SERVER_ERROR' }
   }
 
+  console.log('[LOGIN USER FOUND]', !!user)
   if (!user) return { ok: false, error: 'INVALID_CREDENTIALS' }
   if (user.status === 'PENDING') return { ok: false, error: 'PENDING_APPROVAL' }
   if (user.status === 'DISABLED') return { ok: false, error: 'ACCOUNT_DISABLED' }
@@ -62,6 +63,7 @@ export async function verifyLoginCredentials(
     console.error('[verifyLoginCredentials] bcrypt.compare', bcryptErr)
     return { ok: false, error: 'SERVER_ERROR' }
   }
+  console.log('[PASSWORD MATCH]', isValid)
   if (!isValid) return { ok: false, error: 'INVALID_CREDENTIALS' }
 
   return {

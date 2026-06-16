@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
     })
   } catch (err) {
+    console.error('[REGISTER ERROR]', err)
     return apiError(err, 'สมัครไม่สำเร็จ กรุณาลองใหม่หรือติดต่อ HR')
   }
 }
