@@ -901,7 +901,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
   const canEdit = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER'].includes(role)
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden">
+    <div className="flex flex-col md:h-[calc(100dvh-56px)] md:overflow-hidden">
       {/* ── Summary Cards ───────────────────────────────── */}
       {summary && (
         <div className="px-4 pt-3 pb-2 grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0">

@@ -594,7 +594,10 @@ export default function EmployeeEditClient({
       )}
 
       {/* ── Mobile save button ── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4 border-t border-white/10 bg-slate-950/95 backdrop-blur-md">
+      <div
+        className="md:hidden fixed left-0 right-0 z-[45] p-4 border-t border-white/10 bg-slate-950/95 backdrop-blur-md"
+        style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
+      >
         <button
           type="button"
           onClick={save}

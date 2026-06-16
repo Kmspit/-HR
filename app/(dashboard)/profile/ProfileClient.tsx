@@ -385,7 +385,10 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
       </div>
 
       {/* Mobile sticky save */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4 pt-3 border-t dark:border-white/10 light:border-slate-200 dark:bg-slate-950/95 light:bg-white/95 backdrop-blur-md safe-area-pb">
+      <div
+        className="md:hidden fixed left-0 right-0 z-[45] p-4 pt-3 border-t dark:border-white/10 light:border-slate-200 dark:bg-slate-950/95 light:bg-white/95 backdrop-blur-md"
+        style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
+      >
         <button
           type="button"
           onClick={save}

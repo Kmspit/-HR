@@ -128,7 +128,7 @@ export default function RecoveryClient({ userId, userRole, userName }: {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-64px)] overflow-hidden">
+    <div className="flex flex-col md:h-[calc(100dvh-64px)] md:overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-200 dark:border-white/[0.06] shrink-0 bg-white dark:bg-slate-950/80">
         <div>

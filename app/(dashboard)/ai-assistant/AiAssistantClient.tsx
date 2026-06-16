@@ -106,7 +106,7 @@ export default function AiAssistantClient({ userName, userRole }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-64px)] px-4 md:px-6 py-4">
+    <div className="flex flex-col h-[calc(100dvh-64px)] px-4 md:px-6 pt-4 pb-mobile-nav">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>

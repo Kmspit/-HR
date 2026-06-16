@@ -81,6 +81,7 @@
     line-height: 1.6;
     overflow-x: hidden;
     max-width: 100vw;
+    overscroll-behavior-y: contain;
   }
 
   /* Accessible focus — keyboard navigation */
@@ -562,10 +563,19 @@
 }
 
 /* Better mobile form inputs */
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   input, select, textarea {
     font-size: 16px !important; /* Prevents iOS zoom on focus */
+    -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* AI chat — pad bottom above MobileNav + safe area on mobile, reset on desktop */
+.pb-mobile-nav {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .pb-mobile-nav { padding-bottom: 1rem; }
 }
 
 /* ── Critical layout fallback (เมื่อ Tailwind/CSS โหลดไม่ครบ) ── */

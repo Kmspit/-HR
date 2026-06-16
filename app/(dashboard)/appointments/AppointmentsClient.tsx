@@ -162,7 +162,7 @@ export default function AppointmentsClient({
   const typeIcon = (t: string) => EVENT_TYPES.find((et) => et.value === t)?.icon ?? '📅'
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100dvh-4rem)] overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex flex-col lg:flex-row md:h-[calc(100dvh-4rem)] md:overflow-hidden bg-gray-50 dark:bg-gray-950">
       {/* ── Left sidebar ── */}
       <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
         {/* KPI strip — visible to admins */}

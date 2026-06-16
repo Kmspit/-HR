@@ -184,7 +184,7 @@ export default function SopClient({
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100dvh-4rem)] overflow-hidden">
+    <div className="flex flex-col lg:flex-row md:h-[calc(100dvh-4rem)] md:overflow-hidden">
       {/* ── Left panel ── */}
       <div className="w-full lg:w-[360px] flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
 
