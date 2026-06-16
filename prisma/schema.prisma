@@ -2948,3 +2948,16 @@ model CourtEvent {
   @@index([assignedLawyerId])
   @@map("court_events")
 }
+
+// ── SCHEMA VERSION TRACKING ───────────────────────────────────────────────────
+// Created by ensure-db-schema.ts on first cold start; never written by Prisma migrations.
+// Each entry records one idempotent migration that has been applied to this DB.
+
+model SchemaMigration {
+  id        String   @id
+  version   Int      @unique
+  name      String
+  appliedAt DateTime @default(now()) @map("applied_at")
+
+  @@map("schema_migrations")
+}

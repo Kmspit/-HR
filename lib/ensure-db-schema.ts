@@ -48,8 +48,66 @@ async function addUserColumnIfMissing(column: string, ddl: string) {
   }
 }
 
+/**
+ * Run a numbered migration exactly once, tracked in schema_migrations.
+ * Safe: logs failures but never throws — schema errors must not block auth.
+ *
+ * Usage for any future column or table addition:
+ *   await runMigration(1, 'add-users-foo-column', async () => {
+ *     await addUserColumnIfMissing('foo', `ALTER TABLE users ADD COLUMN foo TEXT`)
+ *   })
+ */
+async function runMigration(version: number, name: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    const result = await prisma.$queryRaw<{ cnt: bigint }[]>`
+      SELECT COUNT(*) AS cnt FROM schema_migrations WHERE version = ${version}
+    `
+    if (Number(result[0]?.cnt ?? 0) > 0) return   // already applied
+    await fn()
+    const id = `mig_${version}`
+    await prisma.$executeRaw`
+      INSERT OR IGNORE INTO schema_migrations (id, version, name) VALUES (${id}, ${version}, ${name})
+    `
+    console.log('[MIGRATION APPLIED]', version, name)
+  } catch (err) {
+    console.error('[MIGRATION FAILED]', version, name, err instanceof Error ? err.message : String(err))
+    // intentionally not rethrown — schema failures must not crash auth
+  }
+}
+
+/**
+ * Validate that all columns needed by login/register exist.
+ * Logs a warning but never throws — auth must keep working even if this fails.
+ */
+async function validateCriticalSchema(): Promise<void> {
+  try {
+    const cols = await userColumns()
+    const critical = ['id', 'email', 'passwordHash', 'name', 'role', 'status', 'branchId', 'locked_until', 'password_changed_at', 'isCoworker']
+    const missing = critical.filter(c => !cols.includes(c))
+    if (missing.length > 0) {
+      console.error('[SCHEMA VALIDATION] WARNING — missing user columns:', missing.join(', '))
+      console.error('[SCHEMA VALIDATION] Auth may be degraded. Run ensure-db-schema again.')
+    } else {
+      console.log('[SCHEMA VALIDATION] users table OK — all critical columns present')
+    }
+  } catch (err) {
+    console.error('[SCHEMA VALIDATION] could not read user columns:', err instanceof Error ? err.message : err)
+  }
+}
+
 async function runEnsure(): Promise<boolean> {
   console.log('[ENSURE START]')
+
+  // ── Schema version tracking table (must be first) ───────────────────────────
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      id TEXT NOT NULL PRIMARY KEY,
+      version INTEGER NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS company_branches (
       id TEXT NOT NULL PRIMARY KEY,
@@ -882,6 +940,14 @@ async function runEnsure(): Promise<boolean> {
     `
     console.log('[DEMO USER INSERTED]', u.email)
   }
+
+  // ── Record baseline migration (marks this DB as having all patches applied) ──
+  await runMigration(0, 'baseline-all-column-patches', async () => {
+    // All patches above are idempotent PRAGMA-based; this entry just tracks the baseline.
+  })
+
+  // ── Startup schema validation — warns but never crashes ──────────────────────
+  await validateCriticalSchema()
 
   console.log('[ENSURE COMPLETE]')
   return true
