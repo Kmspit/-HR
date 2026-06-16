@@ -112,7 +112,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-3xl">
+    <div className="p-4 md:p-6 space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         {isHr && (

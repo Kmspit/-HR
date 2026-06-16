@@ -104,7 +104,7 @@ export default function ProbationClient() {
   )
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-3xl">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-2">
           {([['all', 'ทั้งหมด'], ['pending', `รอประเมิน${pendingCount ? ` (${pendingCount})` : ''}`], ['done', 'ประเมินแล้ว']] as const).map(([val, lbl]) => (

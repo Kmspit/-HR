@@ -336,7 +336,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
   ).length
 
   return (
-    <div className="p-4 md:p-5 space-y-4 max-w-2xl mx-auto">
+    <div className="p-4 md:p-5 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>

@@ -716,7 +716,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
   }
 
   return (
-    <div className="flex flex-col min-h-0 p-4 md:p-6 gap-4 max-w-6xl">
+    <div className="flex flex-col min-h-0 p-4 md:p-6 gap-4">
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto no-scrollbar">
         {TABS.map(tab => (

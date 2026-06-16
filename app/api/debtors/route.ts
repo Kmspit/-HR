@@ -60,9 +60,14 @@ export async function POST(req: NextRequest) {
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { firstName, lastName, caseNumber, taskId, nationalId, phone, phone2,
-          lineId, email, address, province, assignedToId, status,
-          totalDebt, startDate, note } = body
+  const {
+    firstName, lastName, caseNumber, taskId, nationalId,
+    phone, phone2, phone3, lineId, email, facebook,
+    address, province, workplace, occupation, incomeEstimate,
+    riskLevel, preferredContactTime, contactPreference, tags,
+    workplaceAddress, registeredAddress, assetAddress,
+    assignedToId, status, totalDebt, startDate, note,
+  } = body
 
   if (!firstName || !lastName) {
     return NextResponse.json({ error: 'firstName and lastName are required' }, { status: 400 })
@@ -77,24 +82,36 @@ export async function POST(req: NextRequest) {
   const debtor = await prisma.debtor.create({
     data: {
       debtorNumber,
-      caseNumber:   caseNumber   || null,
-      taskId:       taskId       || null,
+      caseNumber:          caseNumber          || null,
+      taskId:              taskId              || null,
       firstName,
       lastName,
-      nationalId:   nationalId   || null,
-      phone:        phone        || null,
-      phone2:       phone2       || null,
-      lineId:       lineId       || null,
-      email:        email        || null,
-      address:      address      || null,
-      province:     province     || null,
-      assignedToId: assignedToId || null,
-      status:       status       || 'NEW',
-      totalDebt:    total,
-      remainingDebt: total,
-      startDate:    startDate ? new Date(startDate) : null,
-      note:         note         || null,
-      createdById:  session.user.id,
+      nationalId:          nationalId          || null,
+      phone:               phone               || null,
+      phone2:              phone2              || null,
+      phone3:              phone3              || null,
+      lineId:              lineId              || null,
+      email:               email               || null,
+      facebook:            facebook            || null,
+      address:             address             || null,
+      province:            province            || null,
+      workplace:           workplace           || null,
+      occupation:          occupation          || null,
+      incomeEstimate:      incomeEstimate ? Number(incomeEstimate) : null,
+      riskLevel:           riskLevel           || 'MEDIUM',
+      preferredContactTime: preferredContactTime || null,
+      contactPreference:   contactPreference   || null,
+      tags:                tags                || '[]',
+      workplaceAddress:    workplaceAddress    || null,
+      registeredAddress:   registeredAddress   || null,
+      assetAddress:        assetAddress        || null,
+      assignedToId:        assignedToId        || null,
+      status:              status              || 'NEW',
+      totalDebt:           total,
+      remainingDebt:       total,
+      startDate:           startDate ? new Date(startDate) : null,
+      note:                note                || null,
+      createdById:         session.user.id,
     },
     include: {
       assignedTo: { select: userSel },

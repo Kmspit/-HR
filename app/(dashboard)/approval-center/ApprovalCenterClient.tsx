@@ -543,7 +543,7 @@ export default function ApprovalCenterClient({
             เลือกรายการเพื่อดูรายละเอียด
           </div>
         ) : (
-          <div className="p-4 lg:p-6 max-w-3xl">
+          <div className="p-4 lg:p-6">
             {/* Header */}
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>

@@ -315,7 +315,7 @@ export default function CaseDocumentsTab({
   useEffect(() => { void load() }, [load])
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3 flex-wrap">
         <select

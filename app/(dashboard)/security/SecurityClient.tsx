@@ -148,7 +148,7 @@ export default function SecurityClient() {
   ]
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl space-y-5">
+    <div className="p-4 md:p-6 space-y-5">
       {/* Header */}
       <div className="glass-card rounded-2xl p-4 border border-blue-500/15 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20">

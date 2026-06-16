@@ -138,7 +138,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
   return (
 
-    <div className="p-5 space-y-5 max-w-6xl">
+    <div className="p-4 md:p-6 space-y-5">
 
       <h1 className="text-lg font-bold text-white flex items-center gap-2">
 

@@ -28,7 +28,7 @@ export default async function LeavePoliciesPage() {
         title="นโยบายวันลา"
         subtitle="กำหนดวันลาตาม Role / ตำแหน่ง + ช่วงทดลองงาน"
       />
-      <div className="flex-1 p-4 md:p-6 max-w-3xl mx-auto w-full space-y-6">
+      <div className="flex-1 p-4 md:p-6 w-full space-y-6">
         <LeavePolicyManager
           initialPolicies={JSON.parse(JSON.stringify(policies))}
           defaults={{

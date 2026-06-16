@@ -506,6 +506,13 @@ model User {
   debtPaymentsCreated       DebtPayment[]          @relation("PaymentCreator")
   paymentAppointmentsCreated PaymentAppointment[]  @relation("AppointmentCreator")
   debtorFilesCreated        DebtorFile[]           @relation("DebtorFileCreator")
+  debtorContactsPerformed   DebtorContact[]        @relation("ContactPerformer")
+  promisesCreated           PromiseToPay[]         @relation("PromiseCreator")
+  // Phase 12 — Recovery
+  recoveryPaymentsCollected RecoveryPayment[]      @relation("RecoveryCollector")
+  recoveryPaymentsCreated   RecoveryPayment[]      @relation("RecoveryCreator")
+  // Phase 13 — Automation
+  automationRulesCreated    AutomationRule[]       @relation("AutomationRuleCreator")
   // Phase 9 — Client CRM
   clientCompaniesCreated    ClientCompany[]        @relation("ClientCompanyCreator")
   clientContractsCreated    ClientContract[]       @relation("ClientContractCreator")
@@ -1777,6 +1784,21 @@ model Debtor {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // CRM Phase 1 extensions
+  phone3               String?   @map("phone3")
+  facebook             String?
+  workplace            String?
+  occupation           String?
+  incomeEstimate       Float?    @map("income_estimate")
+  riskLevel            String    @default("MEDIUM") @map("risk_level")
+  preferredContactTime String?   @map("preferred_contact_time")
+  contactPreference    String?   @map("contact_preference")
+  tags                 String    @default("[]")
+  workplaceAddress     String?   @map("workplace_address")
+  registeredAddress    String?   @map("registered_address")
+  assetAddress         String?   @map("asset_address")
+  lastContactAt        DateTime? @map("last_contact_at")
+
   task         TaskAssignment?      @relation(fields: [taskId],      references: [id])
   assignedTo   User?                @relation("DebtorAssignee",      fields: [assignedToId], references: [id])
   createdBy    User                 @relation("DebtorCreator",       fields: [createdById],  references: [id])
@@ -1784,9 +1806,13 @@ model Debtor {
   payments     DebtPayment[]
   appointments PaymentAppointment[]
   files        DebtorFile[]
+  contacts         DebtorContact[]
+  promises         PromiseToPay[]
+  recoveryPayments RecoveryPayment[]
 
   @@index([status])
   @@index([assignedToId])
+  @@index([riskLevel])
   @@map("debtors")
 }
 
@@ -1869,6 +1895,52 @@ model DebtorFile {
   @@map("debtor_files")
 }
 
+// ── PHASE 8b — CRM CONTACT TIMELINE & PROMISES ───────────────────
+
+model DebtorContact {
+  id             String    @id @default(cuid())
+  debtorId       String    @map("debtor_id")
+  channel        String    // PHONE, LINE, SMS, EMAIL, VISIT
+  direction      String    @default("OUTBOUND") // OUTBOUND, INBOUND
+  result         String    // REACHED, NO_ANSWER, WRONG_NUMBER, DISCONNECTED, REFUSED, LEFT_MESSAGE
+  note           String?
+  duration       Int?      // seconds (for calls)
+  promisedAt     DateTime? @map("promised_at")
+  promisedAmount Float?    @map("promised_amount")
+  nextContactAt  DateTime? @map("next_contact_at")
+  performedById  String    @map("performed_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  debtor      Debtor @relation(fields: [debtorId],      references: [id], onDelete: Cascade)
+  performedBy User   @relation("ContactPerformer",      fields: [performedById], references: [id])
+
+  @@index([debtorId])
+  @@index([createdAt])
+  @@map("debtor_contacts")
+}
+
+model PromiseToPay {
+  id             String    @id @default(cuid())
+  debtorId       String    @map("debtor_id")
+  promisedAmount Float     @map("promised_amount")
+  promisedDate   DateTime  @map("promised_date")
+  actualAmount   Float?    @map("actual_amount")
+  actualDate     DateTime? @map("actual_date")
+  status         String    @default("PENDING") // PENDING, KEPT, PARTIALLY_KEPT, BROKEN, CANCELLED
+  note           String?
+  createdById    String    @map("created_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  debtor           Debtor            @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
+  createdBy        User              @relation("PromiseCreator",     fields: [createdById], references: [id])
+  recoveryPayments RecoveryPayment[]
+
+  @@index([debtorId])
+  @@index([promisedDate])
+  @@map("promises_to_pay")
+}
+
 // ── PHASE 9 — CLIENT CRM ────────────────────────────────────────
 
 model ClientCompany {
@@ -1891,12 +1963,13 @@ model ClientCompany {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  createdBy  User                @relation("ClientCompanyCreator", fields: [createdById], references: [id])
-  contracts  ClientContract[]
-  slaRecords ClientSlaRecord[]
-  files      ClientCompanyFile[]
-  tasks      TaskAssignment[]
-  invoices   BillingInvoice[]
+  createdBy        User                @relation("ClientCompanyCreator", fields: [createdById], references: [id])
+  contracts        ClientContract[]
+  slaRecords       ClientSlaRecord[]
+  files            ClientCompanyFile[]
+  tasks            TaskAssignment[]
+  invoices         BillingInvoice[]
+  recoveryPayments RecoveryPayment[]
 
   @@index([status])
   @@map("client_companies")
@@ -2306,37 +2379,50 @@ model QuizAttempt {
 // ── PHASE 13 — CALENDAR & APPOINTMENTS ────────────────────────────────────────
 
 model CalendarEvent {
-  id           String    @id @default(cuid())
-  title        String
-  eventType    String    @default("INTERNAL") @map("event_type")
-  startAt      DateTime  @map("start_at")
-  endAt        DateTime? @map("end_at")
-  allDay       Boolean   @default(false) @map("all_day")
-  location     String?
-  locationLat  Float?    @map("location_lat")
-  locationLng  Float?    @map("location_lng")
-  description  String?
-  courtName    String?   @map("court_name")
-  caseNumber   String?   @map("case_number")
-  clientName   String?   @map("client_name")
-  debtorName   String?   @map("debtor_name")
-  debtAmount   Float?    @map("debt_amount")
-  status       String    @default("SCHEDULED")
-  priority     String    @default("NORMAL")
-  department   String?
-  attendees    String    @default("[]")
-  attachments  String    @default("[]")
-  note         String?
-  createdById  String    @map("created_by_id")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(cuid())
+  title              String
+  eventType          String    @default("OTHER") @map("event_type")
+  startAt            DateTime  @map("start_at")
+  endAt              DateTime? @map("end_at")
+  startTime          String?   @map("start_time")    // HH:MM
+  endTime            String?   @map("end_time")      // HH:MM
+  allDay             Boolean   @default(false) @map("all_day")
+  location           String?
+  locationLat        Float?    @map("location_lat")
+  locationLng        Float?    @map("location_lng")
+  googleMapsUrl      String?   @map("google_maps_url")
+  description        String?
+  courtName          String?   @map("court_name")
+  caseNumber         String?   @map("case_number")
+  clientName         String?   @map("client_name")
+  debtorName         String?   @map("debtor_name")
+  debtAmount         Float?    @map("debt_amount")
+  status             String    @default("SCHEDULED")
+  priority           String    @default("MEDIUM")
+  department         String?
+  attendees          String    @default("[]")
+  attachments        String    @default("[]")
+  note               String?
+  reminderEnabled    Boolean   @default(true) @map("reminder_enabled")
+  reminderSentAt     DateTime? @map("reminder_sent_at")
+  // Court Calendar Phase 1 — FK links
+  caseId             String?   @map("case_id")
+  courtId            String?   @map("court_id")
+  assignedLawyerId   String?   @map("assigned_lawyer_id")
+  assignedEmployeeId String?   @map("assigned_employee_id")
+  createdById        String    @map("created_by_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  createdBy User @relation("CalendarEventCreator", fields: [createdById], references: [id])
+  createdBy User   @relation("CalendarEventCreator", fields: [createdById], references: [id])
+  case      Case?  @relation("CalendarEventCase", fields: [caseId], references: [id], onDelete: SetNull)
 
   @@index([startAt])
   @@index([eventType])
   @@index([status])
   @@index([createdById])
+  @@index([caseId])
+  @@index([assignedLawyerId])
   @@map("calendar_events")
 }
 
@@ -2492,6 +2578,8 @@ model Case {
   debtorActivities CaseDebtorActivity[]
   financial        CaseFinancial?
   documents        CaseDocument[]
+  recoveryPayments RecoveryPayment[]
+  calendarEvents   CalendarEvent[] @relation("CalendarEventCase")
 
   @@index([status])
   @@index([caseType])
@@ -2638,6 +2726,91 @@ model CaseDebtorActivity {
 
   @@index([caseId, createdAt])
   @@map("case_debtor_activities")
+}
+
+// ── PHASE 13 — AUTOMATION ENGINE ─────────────────────────────────────────────
+
+model AutomationRule {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?
+  trigger      String    // CASE_CREATED | PAYMENT_CONFIRMED | PROMISE_BROKEN | etc.
+  conditions   String    @default("[]")  // JSON: Condition[]
+  actions      String    @default("[]")  // JSON: Action[]
+  isActive     Boolean   @default(true)  @map("is_active")
+  priority     Int       @default(0)
+  testMode     Boolean   @default(false) @map("test_mode")
+  lastRunAt    DateTime? @map("last_run_at")
+  runCount     Int       @default(0)     @map("run_count")
+  successCount Int       @default(0)     @map("success_count")
+  failCount    Int       @default(0)     @map("fail_count")
+  createdById  String    @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt      @map("updated_at")
+
+  createdBy  User                     @relation("AutomationRuleCreator", fields: [createdById], references: [id])
+  executions AutomationExecutionLog[]
+
+  @@index([trigger])
+  @@index([isActive])
+  @@map("automation_rules")
+}
+
+model AutomationExecutionLog {
+  id           String   @id @default(cuid())
+  ruleId       String   @map("rule_id")
+  trigger      String
+  triggerData  String   @default("{}") @map("trigger_data")
+  success      Boolean
+  actionsRun   String   @default("[]") @map("actions_run")
+  errorMessage String?  @map("error_message")
+  durationMs   Int?     @map("duration_ms")
+  testMode     Boolean  @default(false) @map("test_mode")
+  triggeredAt  DateTime @default(now()) @map("triggered_at")
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([triggeredAt])
+  @@index([success])
+  @@map("automation_execution_logs")
+}
+
+// ── PHASE 12 — RECOVERY & BILLING SYSTEM ────────────────────────────────────
+
+model RecoveryPayment {
+  id              String    @id @default(cuid())
+  caseId          String?   @map("case_id")
+  debtorId        String    @map("debtor_id")
+  clientId        String?   @map("client_id")
+  promiseId       String?   @map("promise_id")
+  paymentType     String    @map("payment_type")
+  amount          Float
+  paymentDate     DateTime  @map("payment_date")
+  paymentMethod   String    @map("payment_method")
+  referenceNumber String?   @map("reference_number")
+  proofUrl        String?   @map("proof_url")
+  proofPublicId   String?   @map("proof_public_id")
+  collectorId     String    @map("collector_id")
+  status          String    @default("PENDING")
+  note            String?
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  case      Case?          @relation(fields: [caseId],    references: [id])
+  debtor    Debtor         @relation(fields: [debtorId],  references: [id], onDelete: Cascade)
+  client    ClientCompany? @relation(fields: [clientId],  references: [id])
+  promise   PromiseToPay?  @relation(fields: [promiseId], references: [id])
+  collector User           @relation("RecoveryCollector", fields: [collectorId],  references: [id])
+  createdBy User           @relation("RecoveryCreator",   fields: [createdById],  references: [id])
+
+  @@index([debtorId])
+  @@index([caseId])
+  @@index([collectorId])
+  @@index([paymentDate])
+  @@index([status])
+  @@map("recovery_payments")
 }
 
 model CaseFinancial {

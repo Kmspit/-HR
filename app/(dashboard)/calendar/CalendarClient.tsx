@@ -148,7 +148,7 @@ export default function CalendarClient({
   const selectedHoliday = selectedKey ? holidayMap[selectedKey] : null
 
   return (
-    <div className="p-4 md:p-5 space-y-5 max-w-5xl mx-auto">
+    <div className="p-4 md:p-5 xl:p-6 space-y-5">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: 'มาทำงาน', value: presentDays, dot: 'bg-blue-400' },

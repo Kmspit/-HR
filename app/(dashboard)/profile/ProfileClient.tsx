@@ -185,7 +185,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
   const displayName = `${form.prefix}${form.firstName} ${form.lastName}`.trim()
 
   return (
-    <div className="w-full max-w-4xl md:max-w-none p-4 md:p-8 lg:px-10 pb-28 md:pb-8 space-y-5 md:space-y-6">
+    <div className="w-full p-4 md:p-6 lg:px-8 pb-28 md:pb-8 space-y-5 md:space-y-6">
       {/* Hero + avatar */}
       <div className="glass-card rounded-2xl p-5 md:p-8">
         <div className="flex flex-col sm:flex-row gap-6 sm:items-center">

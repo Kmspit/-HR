@@ -136,7 +136,7 @@ export default function HolidaysClient({
     'w-full rounded-xl border dark:border-white/10 light:border-slate-200 dark:bg-slate-800/60 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:border-blue-500/50'
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto pb-10">
+    <div className="p-4 md:p-6 space-y-5 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <p className="text-sm dark:text-slate-400 light:text-slate-600 flex-1">
           ระบบลาจะปิดอัตโนมัติในวันหยุดตามสาขาของพนักงาน

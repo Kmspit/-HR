@@ -122,7 +122,7 @@ export default function WarningDetailClient({
       : '—'
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 space-y-5">
       {/* Back */}
       <button
         type="button"

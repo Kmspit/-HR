@@ -216,7 +216,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
 
         {/* ── Overview ───────────────────────────────── */}
         {activeTab === 'ภาพรวม' && (
-          <div className="space-y-4 max-w-3xl">
+          <div className="space-y-4">
             <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ข้อมูลทั่วไป</h3>
@@ -340,7 +340,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
 
         {/* ── Tasks ───────────────────────────────────── */}
         {activeTab === 'งาน' && (
-          <div className="max-w-3xl space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[13px] text-slate-500">{c.tasks.length} งานที่เชื่อมกับคดีนี้</p>
               <Link href={`/tasks?search=${c.caseNumber}`} className="text-[12px] text-blue-600 hover:underline">ดูทั้งหมดใน Tasks →</Link>
@@ -368,7 +368,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
 
         {/* ── Court ───────────────────────────────────── */}
         {activeTab === 'ศาล' && (
-          <div className="max-w-3xl space-y-3">
+          <div className="space-y-3">
             {canEdit && isActive && (
               <button onClick={() => setShowCourtModal(true)} className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-purple-500 transition-colors">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>

@@ -289,7 +289,7 @@ export default function AppointmentsClient({
       <div className="flex-1 overflow-y-auto p-4 lg:p-6">
         {selectedEvent ? (
           /* ── Event detail ── */
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-3xl">
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -349,7 +349,7 @@ export default function AppointmentsClient({
           </div>
         ) : (
           /* ── Day events list ── */
-          <div className="max-w-2xl mx-auto">
+          <div>
             {/* Today summary */}
             {isCeo && summary && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">

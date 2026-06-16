@@ -33,7 +33,7 @@ export default async function ApprovalChainsPage() {
         title="Approval Chain"
         subtitle="กำหนดขั้นตอนการอนุมัติการลา"
       />
-      <div className="flex-1 p-4 md:p-6 max-w-4xl mx-auto w-full space-y-6">
+      <div className="flex-1 p-4 md:p-6 w-full space-y-6">
         <ApprovalChainManager
           initialChains={JSON.parse(JSON.stringify(chains))}
           users={JSON.parse(JSON.stringify(users))}

@@ -50,7 +50,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const allowed = [
     'firstName', 'lastName', 'caseNumber', 'taskId', 'nationalId',
-    'phone', 'phone2', 'lineId', 'email', 'address', 'province',
+    'phone', 'phone2', 'phone3', 'lineId', 'email', 'facebook',
+    'address', 'province', 'workplace', 'occupation', 'incomeEstimate',
+    'riskLevel', 'preferredContactTime', 'contactPreference', 'tags',
+    'workplaceAddress', 'registeredAddress', 'assetAddress',
     'assignedToId', 'status', 'totalDebt', 'startDate', 'note',
   ]
 

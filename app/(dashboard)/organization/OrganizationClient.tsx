@@ -139,7 +139,7 @@ export default function OrganizationClient({ branches }: { branches: Branch[] })
   const list = tab === 'divisions' ? divisions : tab === 'departments' ? departments : sections
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-4xl">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
         <label className="text-xs text-slate-500 block mb-1">สาขา</label>
         <select
