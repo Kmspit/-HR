@@ -98,20 +98,6 @@ function WelcomeContent() {
           </div>
         </div>
 
-        {/* Demo accounts */}
-        <div className="mt-2.5 rounded-2xl px-4 py-3.5 text-xs"
-          style={{ background: 'rgba(13,19,33,0.7)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <p className="mb-2 flex items-center gap-1.5 font-semibold text-slate-300 text-[11px]">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />Demo Accounts
-          </p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 font-mono text-[10px] text-slate-400">
-            <span>manager@demo.com</span><span className="text-slate-600">Manager/HR</span>
-            <span>admin@demo.com</span><span className="text-slate-600">Admin</span>
-            <span>employee@demo.com</span><span className="text-slate-600">Employee</span>
-            <span>lawyer@demo.com</span><span className="text-slate-600">Lawyer</span>
-          </div>
-          <p className="mt-1.5 text-slate-600 text-[10px]">Password: demo1234 · แอปจริง: http://localhost:3000</p>
-        </div>
       </div>
 
       <p className="relative mt-6 text-[10px] text-slate-700">© 2026 บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>

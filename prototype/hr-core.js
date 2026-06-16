@@ -449,11 +449,11 @@ function getCompanySettings() {
 function getEmployees() {
   // baseSalary ถูกลบออกจาก default — เก็บเฉพาะใน HR settings ที่ปลอดภัย
   return lsGet('employees', [
-    { id: 'e1', name: 'สมหญิง ประสาน', email: 'manager@demo.com', role: 'MANAGER_HR', dept: 'HR',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
-    { id: 'e2', name: 'สมชาย อนุมัติ',  email: 'admin@demo.com',   role: 'ADMIN',      dept: 'IT',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
-    { id: 'e3', name: 'มานี รักงาน',    email: 'employee@demo.com', role: 'EMPLOYEE',   dept: 'Marketing', sso: 'IN_SSO',  lineId: '',  isCoworker: false },
-    { id: 'e4', name: 'วิชัย กฎหมาย',  email: 'lawyer@demo.com',   role: 'LAWYER',     dept: 'Legal',     sso: 'OUT_SSO', lineId: '',  isCoworker: false },
-    { id: 'e5', name: 'ปิยะ ฟรีแลนซ์', email: 'cowork@demo.com',   role: 'EMPLOYEE',   dept: 'Design',    sso: 'OUT_SSO', lineId: '',  isCoworker: true  },
+    { id: 'e1', name: 'สมหญิง ประสาน', email: 'manager@kmserviceplus.com', role: 'MANAGER_HR', dept: 'HR',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
+    { id: 'e2', name: 'สมชาย อนุมัติ',  email: 'admin@kmserviceplus.com',   role: 'ADMIN',      dept: 'IT',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
+    { id: 'e3', name: 'มานี รักงาน',    email: 'employee@kmserviceplus.com', role: 'EMPLOYEE',   dept: 'Marketing', sso: 'IN_SSO',  lineId: '',  isCoworker: false },
+    { id: 'e4', name: 'วิชัย กฎหมาย',  email: 'lawyer@kmserviceplus.com',   role: 'LAWYER',     dept: 'Legal',     sso: 'OUT_SSO', lineId: '',  isCoworker: false },
+    { id: 'e5', name: 'ปิยะ ฟรีแลนซ์', email: 'cowork@kmserviceplus.com',   role: 'EMPLOYEE',   dept: 'Design',    sso: 'OUT_SSO', lineId: '',  isCoworker: true  },
   ]);
 }
 

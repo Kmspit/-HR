@@ -1,7 +1,12 @@
 /** Login + test authenticated APIs (run while npm run dev is up) */
 const BASE = process.env.BASE_URL || 'http://localhost:3000'
-const EMAIL = process.env.TEST_EMAIL || 'employee@demo.com'
-const PASSWORD = process.env.TEST_PASSWORD || 'demo1234'
+const EMAIL = process.env.TEST_EMAIL
+const PASSWORD = process.env.TEST_PASSWORD
+
+if (!EMAIL || !PASSWORD) {
+  console.error('Set TEST_EMAIL and TEST_PASSWORD env vars before running.')
+  process.exit(1)
+}
 
 const jar = new Map()
 

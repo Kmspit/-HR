@@ -62,13 +62,6 @@
         </button>
       </form>
 
-      <div style="margin-top: 20px; padding: 14px; background: var(--bg2); border-radius: var(--r); font-size: 12px; color: var(--text3);">
-        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text2);">บัญชีทดสอบ (Demo)</div>
-        <div>manager@demo.com / admin@demo.com</div>
-        <div>employee@demo.com / lawyer@demo.com</div>
-        <div style="margin-top: 4px;">รหัสผ่าน: <strong style="color:var(--text2)">demo1234</strong></div>
-      </div>
-
       <div class="auth-footer">
         ยังไม่มีบัญชี? <a href="#" class="auth-link">ติดต่อฝ่ายบุคคล</a>
       </div>
@@ -76,49 +69,11 @@
   </div>
 
 <script>
-const DEMO_ACCOUNTS = {
-  'manager@demo.com': { name: 'สมหญิง ประสาน', role: 'MANAGER_HR', dept: 'HR' },
-  'admin@demo.com':   { name: 'สมชาย อนุมัติ',  role: 'ADMIN',      dept: 'IT' },
-  'employee@demo.com':{ name: 'มานี รักงาน',    role: 'EMPLOYEE',   dept: 'Marketing' },
-  'lawyer@demo.com':  { name: 'วิชัย กฎหมาย',  role: 'LAWYER',     dept: 'Legal' },
-};
-const DEMO_PASS = 'demo1234';
-
 function handleLogin(e) {
   e.preventDefault();
-  const email    = document.getElementById('login-email').value.trim().toLowerCase();
-  const password = document.getElementById('login-password').value;
-  const roleEl   = document.getElementById('login-role');
-  const role     = roleEl.value;
-  const errEl    = document.getElementById('login-error');
-
-  if (!role) {
-    errEl.textContent = 'กรุณาเลือกตำแหน่ง / Role';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  // Demo login validation
-  const account = DEMO_ACCOUNTS[email];
-  if (!account || password !== DEMO_PASS) {
-    errEl.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาใช้บัญชีทดสอบ';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  errEl.style.display = 'none';
-
-  const user = { ...account, email, role };
-  localStorage.setItem('hrflow_user', JSON.stringify(user));
-
-  // Route based on role
-  const routes = {
-    MANAGER_HR: 'index.html',
-    ADMIN:      'index.html',
-    EMPLOYEE:   'attendance.html',
-    LAWYER:     'out-of-office.html',
-  };
-  window.location.href = routes[role] || 'index.html';
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = 'หน้านี้เป็นต้นแบบ HTML เท่านั้น กรุณาเข้าสู่ระบบที่แอปหลัก';
+  errEl.style.display = 'block';
 }
 </script>
 <script src="dev-banner.js"></script>

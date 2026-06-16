@@ -66,7 +66,6 @@ if (network.length) {
 } else {
   console.log('  LAN: ipconfig → IPv4:' + port)
 }
-console.log('  Login: employee@demo.com / demo1234')
 console.log('  If blocked: allow port ' + port + ' in Windows Firewall (see README)')
 console.log('')
 

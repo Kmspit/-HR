@@ -39,14 +39,6 @@ npm run dev
 
 เปิด http://localhost:3000
 
-## Demo Accounts
-| Email | Password | Role |
-|-------|----------|------|
-| manager@demo.com | demo1234 | Manager/HR |
-| admin@demo.com | demo1234 | Admin |
-| employee@demo.com | demo1234 | Employee |
-| lawyer@demo.com | demo1234 | Lawyer |
-
 ## Tech Stack
 - **Next.js 15** (App Router) + TypeScript
 - **TailwindCSS** + Dark theme
