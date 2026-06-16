@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
+import { triggerAutomation } from '@/lib/automation-engine'
 
 const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const CAN_CREATE  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
@@ -242,6 +243,15 @@ export async function POST(req: Request) {
       await sendLineMessage(assignedEmployeeId, `📁 คดีใหม่\n${caseNumber}: ${caseTitle.trim()}\nมอบหมายโดย: ${session.user.name}`)
     }
   }
+
+  triggerAutomation('CASE_CREATED', {
+    caseId:             newCase.id,
+    caseNumber:         newCase.caseNumber,
+    caseType:           newCase.caseType,
+    clientId:           client ?? null,
+    assignedToId:       assignedEmployeeId ?? null,
+    createdById:        session.user.id,
+  }, session.user.id).catch(() => undefined)
 
   return NextResponse.json({ case: newCase }, { status: 201 })
 }
