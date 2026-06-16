@@ -271,7 +271,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
             {c.debtAmount != null && (
               <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-[14px] mb-3">สรุปการเงิน</h3>
-                <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                   <div>
                     <p className="text-[18px] font-bold text-slate-900 dark:text-white">฿{thb(c.debtAmount)}</p>
                     <p className="text-[11px] text-slate-400">มูลหนี้รวม</p>

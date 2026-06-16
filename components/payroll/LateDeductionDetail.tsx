@@ -62,8 +62,8 @@ export default function LateDeductionDetail({
       </div>
 
       {lines.length > 0 && (
-        <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10">
-          <table className="w-full text-[11px]">
+        <div className="max-h-48 overflow-y-auto overflow-x-auto rounded-xl border border-white/10">
+          <table className="w-full text-[11px] min-w-[280px]">
             <thead className="sticky top-0 bg-slate-900/95">
               <tr className="border-b border-white/10 text-white/40">
                 <th className="text-left p-2">วันที่</th>

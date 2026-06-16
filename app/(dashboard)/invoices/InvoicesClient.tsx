@@ -258,7 +258,7 @@ function InvoiceDetail({ invoice, userId, userRole, canManage, activeTab, setAct
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 px-4">
+      <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 px-4">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
         ))}
@@ -296,7 +296,8 @@ function InvoiceInfoTab({ invoice }: { invoice: Invoice }) {
         <div>
           <p className="text-xs text-gray-400 mb-2">รายการบริการ</p>
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[380px]">
               <thead className="bg-gray-50 dark:bg-gray-700/40">
                 <tr>
                   {['รายการ', 'จำนวน', 'ราคาต่อหน่วย', 'รวม'].map(h => (
@@ -315,6 +316,7 @@ function InvoiceInfoTab({ invoice }: { invoice: Invoice }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -580,7 +582,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
             </div>
 
             {/* Tax */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div><label className="text-xs text-gray-500 mb-1 block">ยอดก่อนภาษี</label><p className="text-sm font-semibold p-2">฿{fmt(subtotal)}</p></div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">VAT (%)</label>

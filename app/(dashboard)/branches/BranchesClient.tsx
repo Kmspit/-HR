@@ -246,7 +246,7 @@ export default function BranchesClient({ initial }: Props) {
               }
             />
 
-            <div className="grid grid-cols-3 gap-2 mt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
               <div>
                 <label className="text-[10px] text-white/40 block mb-1">Latitude</label>
                 <input

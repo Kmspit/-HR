@@ -302,8 +302,8 @@ export default function HolidayManagePanel({
         </div>
       )}
 
-      <div className="max-h-56 overflow-y-auto rounded-xl border dark:border-white/10 light:border-slate-200">
-        <table className="w-full text-sm">
+      <div className="max-h-56 overflow-y-auto overflow-x-auto rounded-xl border dark:border-white/10 light:border-slate-200">
+        <table className="w-full text-sm min-w-[420px]">
           <thead className="sticky top-0 dark:bg-slate-900/95 light:bg-slate-50">
             <tr className="border-b dark:border-white/10 light:border-slate-200">
               {['ชื่อ', 'วันที่', 'ประเภท', 'สาขา', ''].map((h) => (
