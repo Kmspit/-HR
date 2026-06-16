@@ -421,7 +421,7 @@ export default function Sidebar({ user }: Props) {
       {/* ── Desktop sidebar ── */}
       <aside
         className={cn(
-          'hidden md:flex h-full flex-col overflow-hidden transition-[width] duration-300 ease-in-out',
+          'hidden md:flex shrink-0 h-full flex-col overflow-hidden transition-[width] duration-300 ease-in-out',
           collapsed ? 'w-14' : 'w-60',
           'bg-white border-r border-slate-200/80 shadow-sm',
           'dark:[background:linear-gradient(180deg,#0d1424_0%,#0a0f1e_100%)] dark:border-r dark:border-white/[0.05] dark:shadow-none',

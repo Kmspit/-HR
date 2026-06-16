@@ -21,7 +21,7 @@ export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
       {/* Mobile menu — delegates to Sidebar.tsx which owns the drawer */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('hrflow:open-sidebar'))}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border transition-all md:hidden
+        className="flex h-11 w-11 items-center justify-center rounded-xl border transition-all md:hidden
           border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm
           dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-400 dark:hover:bg-white/[0.1] dark:hover:text-white"
         aria-label="เปิดเมนู"
