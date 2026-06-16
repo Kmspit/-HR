@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import CaseDocumentsTab from './CaseDocumentsTab'
+import CourtEventsTab from './CourtEventsTab'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type CaseType     = 'DEBT_COLLECTION' | 'LEGAL' | 'COURT' | 'ASSET_INVESTIGATION' | 'ENFORCEMENT' | 'INTERNAL_LEGAL'
@@ -119,7 +120,6 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
   const [caseData,   setCaseData]   = useState<CaseData>(initialCase)
   const [activeTab,  setActiveTab]  = useState<Tab>('ภาพรวม')
   const [showStatus, setShowStatus] = useState(false)
-  const [showCourtModal, setShowCourtModal] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [posting,    setPosting]    = useState(false)
 
@@ -368,52 +368,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
 
         {/* ── Court ───────────────────────────────────── */}
         {activeTab === 'ศาล' && (
-          <div className="space-y-3">
-            {canEdit && isActive && (
-              <button onClick={() => setShowCourtModal(true)} className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-purple-500 transition-colors">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                เพิ่มนัดศาล
-              </button>
-            )}
-            {c.courts.length === 0 ? (
-              <p className="text-[13px] text-slate-400">ยังไม่มีนัดศาล</p>
-            ) : c.courts.map(court => {
-              const isUpcoming = new Date(court.courtDate) >= new Date()
-              const daysUntil  = Math.ceil((new Date(court.courtDate).getTime() - Date.now()) / 86400000)
-              return (
-                <div key={court.id} className={`rounded-2xl bg-white dark:bg-slate-900/60 border shadow-sm p-4 ${isUpcoming && daysUntil <= 3 ? 'border-red-300 dark:border-red-800' : 'border-slate-200 dark:border-white/[0.07]'}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-slate-900 dark:text-white text-[14px]">⚖️ {court.courtName}</p>
-                        {isUpcoming && daysUntil <= 7 && (
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${daysUntil <= 1 ? 'bg-red-100 text-red-700' : daysUntil <= 3 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                            {daysUntil === 0 ? 'วันนี้!' : daysUntil === 1 ? 'พรุ่งนี้' : `อีก ${daysUntil} วัน`}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[13px] text-slate-700 dark:text-slate-300 mt-0.5">
-                        {fmtDate(court.courtDate)}{court.appointmentTime ? ` เวลา ${court.appointmentTime}` : ''}
-                      </p>
-                      {court.judgeName && <p className="text-[12px] text-slate-400 mt-0.5">ผู้พิพากษา: {court.judgeName}</p>}
-                      {court.result   && <p className="text-[12px] text-green-600 dark:text-green-400 mt-0.5">ผล: {court.result}</p>}
-                      {court.note     && <p className="text-[12px] text-slate-400 mt-1 whitespace-pre-wrap">{court.note}</p>}
-                    </div>
-                    {canEdit && (
-                      <button onClick={async () => {
-                        if (!confirm('ลบนัดศาลนี้?')) return
-                        await fetch(`/api/cases/${c.id}/court/${court.id}`, { method: 'DELETE' })
-                        await refetch()
-                      }} className="h-7 w-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-2">เพิ่มโดย: {court.createdBy.name}</p>
-                </div>
-              )
-            })}
-          </div>
+          <CourtEventsTab caseId={c.id} canEdit={canEdit && isActive} />
         )}
 
         {/* ── Debtor ──────────────────────────────────── */}
@@ -454,14 +409,6 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
         )}
       </div>
 
-      {/* Court Add Modal */}
-      {showCourtModal && (
-        <CourtModal
-          caseId={c.id}
-          onClose={() => setShowCourtModal(false)}
-          onSaved={async () => { setShowCourtModal(false); await refetch() }}
-        />
-      )}
     </div>
   )
 }
@@ -834,70 +781,3 @@ function Stat({ label, value, color, small }: { label: string; value: number | s
   )
 }
 
-function CourtModal({ caseId, onClose, onSaved }: { caseId: string; onClose: () => void; onSaved: () => void }) {
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
-  const [form, setForm]     = useState({ courtName: '', courtDate: '', appointmentTime: '', judgeName: '', result: '', note: '' })
-  function set(k: keyof typeof form, v: string) { setForm(p => ({ ...p, [k]: v })) }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.courtName || !form.courtDate) { setError('กรุณาระบุชื่อศาลและวันนัด'); return }
-    setSaving(true); setError('')
-    const res = await fetch(`/api/cases/${caseId}/court`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const d = await res.json()
-    if (!res.ok) { setError(d.error ?? 'เกิดข้อผิดพลาด'); setSaving(false); return }
-    onSaved()
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="w-full md:max-w-md bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06]">
-          <h2 className="font-bold text-slate-900 dark:text-white">เพิ่มนัดศาล</h2>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <form onSubmit={submit} className="p-5 space-y-3">
-          <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อศาล <span className="text-red-500">*</span></label>
-            <input value={form.courtName} onChange={e => set('courtName', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="เช่น ศาลแพ่งกรุงเทพใต้" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันนัด <span className="text-red-500">*</span></label>
-              <input type="date" value={form.courtDate} onChange={e => set('courtDate', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เวลา</label>
-              <input type="time" value={form.appointmentTime} onChange={e => set('appointmentTime', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้พิพากษา</label>
-            <input value={form.judgeName} onChange={e => set('judgeName', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" />
-          </div>
-          <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผลการพิจารณา (ถ้ามี)</label>
-            <input value={form.result} onChange={e => set('result', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="เช่น ศาลนัดไกล่เกลี่ย" />
-          </div>
-          <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">หมายเหตุ</label>
-            <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
-          </div>
-          {error && <p className="text-[13px] text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
-          <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 py-2.5 text-[14px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04]">ยกเลิก</button>
-            <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-purple-600 py-2.5 text-[14px] font-semibold text-white hover:bg-purple-500 disabled:opacity-60">
-              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}

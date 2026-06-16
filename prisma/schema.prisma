@@ -275,6 +275,43 @@ enum CasePriority {
   CRITICAL
 }
 
+enum CourtType {
+  CIVIL
+  CRIMINAL
+  BANKRUPTCY
+  EXECUTION
+  LABOR
+  ADMINISTRATIVE
+  OTHER
+}
+
+enum AppointmentType {
+  HEARING
+  MEDIATION
+  FILING
+  WITNESS
+  JUDGEMENT
+  ENFORCEMENT
+  NEGOTIATION
+  OTHER
+}
+
+enum CourtEventStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  MISSED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum CourtPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
 // ── COMPANY BRANCH ──────────────────────────────
 
 model CompanyBranch {
@@ -556,6 +593,9 @@ model User {
   caseChecklistDone         CaseChecklist[]      @relation("CaseChecklistDoneBy")
   caseDebtorActivities      CaseDebtorActivity[] @relation("CaseDebtorActivityActor")
   caseFinancialUpdates      CaseFinancial[]      @relation("CaseFinancialUpdater")
+  // Phase 14 — Court Calendar
+  courtEventsCreated        CourtEvent[]         @relation("CourtEventCreator")
+  courtEventsAssigned       CourtEvent[]         @relation("CourtEventLawyer")
 
   @@map("users")
 }
@@ -2580,6 +2620,7 @@ model Case {
   documents        CaseDocument[]
   recoveryPayments RecoveryPayment[]
   calendarEvents   CalendarEvent[] @relation("CalendarEventCase")
+  courtEvents      CourtEvent[]
 
   @@index([status])
   @@index([caseType])
@@ -2830,4 +2871,39 @@ model CaseFinancial {
   updatedBy User? @relation("CaseFinancialUpdater", fields: [updatedById], references: [id])
 
   @@map("case_financials")
+}
+
+// ── COURT CALENDAR PHASE 1 ────────────────────────────────────────────────────
+
+model CourtEvent {
+  id                String           @id @default(cuid())
+  caseId            String           @map("case_id")
+  courtName         String           @map("court_name")
+  courtType         CourtType        @default(CIVIL) @map("court_type")
+  appointmentType   AppointmentType  @default(HEARING) @map("appointment_type")
+  appointmentDate   DateTime         @map("appointment_date")
+  appointmentTime   String?          @map("appointment_time")
+  location          String?
+  judgeName         String?          @map("judge_name")
+  roomNumber        String?          @map("room_number")
+  appointmentNumber String?          @map("appointment_number")
+  status            CourtEventStatus @default(SCHEDULED)
+  priority          CourtPriority    @default(NORMAL)
+  assignedLawyerId  String?          @map("assigned_lawyer_id")
+  assignedTeamId    String?          @map("assigned_team_id")
+  note              String?
+  documentId        String?          @map("document_id")
+  createdById       String           @map("created_by_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  case           Case  @relation(fields: [caseId],           references: [id], onDelete: Cascade)
+  assignedLawyer User? @relation("CourtEventLawyer",  fields: [assignedLawyerId], references: [id])
+  createdBy      User  @relation("CourtEventCreator", fields: [createdById],      references: [id])
+
+  @@index([caseId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@index([assignedLawyerId])
+  @@map("court_events")
 }

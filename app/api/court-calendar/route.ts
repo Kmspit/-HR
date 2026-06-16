@@ -160,7 +160,25 @@ export async function GET(req: NextRequest) {
     taskCourtWhere.assigneeId = session.user.id
   }
 
-  const [calendarEvents, caseCourts, taskCourts] = await Promise.all([
+  // 4. CourtEvent records (primary production model)
+  const courtEventWhere: Record<string, unknown> = {
+    appointmentDate: { gte: fromDate, lte: toDate },
+  }
+  if (!EXEC_ROLES.includes(session.user.role)) {
+    if (session.user.role === 'MANAGER' && session.user.department) {
+      courtEventWhere.case = { department: session.user.department }
+    } else {
+      courtEventWhere.OR = [
+        { createdById: session.user.id },
+        { assignedLawyerId: session.user.id },
+      ]
+    }
+  }
+  if (priority) courtEventWhere.priority = priority
+  if (status)   courtEventWhere.status   = status
+  if (lawyerId) courtEventWhere.assignedLawyerId = lawyerId
+
+  const [calendarEvents, caseCourts, taskCourts, courtEvents] = await Promise.all([
     prisma.calendarEvent.findMany({
       where: calendarWhere,
       include: { createdBy: { select: { id: true, name: true, role: true } } },
@@ -181,6 +199,16 @@ export async function GET(req: NextRequest) {
       select: { id: true, title: true, status: true, courtDate: true, caseNumber: true, assigneeId: true, assignee: { select: { id: true, name: true } } },
       orderBy: { courtDate: 'asc' },
       take: 100,
+    }),
+    prisma.courtEvent.findMany({
+      where: courtEventWhere,
+      include: {
+        case:           { select: { id: true, caseNumber: true, caseTitle: true } },
+        assignedLawyer: { select: { id: true, name: true } },
+        createdBy:      { select: { id: true, name: true } },
+      },
+      orderBy: { appointmentDate: 'asc' },
+      take: 200,
     }),
   ])
 
@@ -219,8 +247,44 @@ export async function GET(req: NextRequest) {
   const caseCourtMapped = caseCourts.map(mapCaseCourt)
   const taskCourtMapped = taskCourts.map(mapTaskCourt).filter(Boolean)
 
+  const courtEventMapped = courtEvents.map(e => ({
+    id:                 e.id,
+    source:             'court_event' as const,
+    eventType:          e.appointmentType,
+    title:              `${e.courtName} — ${e.case.caseTitle}`,
+    description:        e.note,
+    startAt:            e.appointmentDate.toISOString(),
+    startTime:          e.appointmentTime,
+    endTime:            null,
+    courtName:          e.courtName,
+    caseNumber:         e.case.caseNumber,
+    caseId:             e.caseId,
+    courtId:            e.id,
+    status:             e.status as string,
+    priority:           e.priority as string,
+    assignedLawyerId:   e.assignedLawyerId,
+    assignedEmployeeId: e.assignedLawyerId,
+    location:           e.location,
+    googleMapsUrl:      e.location ? `https://maps.google.com/?q=${encodeURIComponent(e.location)}` : null,
+    reminderEnabled:    true,
+    isEditable:         true,
+    link:               `/cases/${e.caseId}`,
+    createdBy:          e.createdBy,
+    allDay:             false,
+    department:         null,
+    note:               e.note,
+    judgeName:          e.judgeName,
+    clientName:         null,
+    debtorName:         null,
+    courtType:          e.courtType as string,
+    appointmentType:    e.appointmentType as string,
+    roomNumber:         e.roomNumber,
+    appointmentNumber:  e.appointmentNumber,
+    assignedLawyer:     e.assignedLawyer,
+  }))
+
   // Merge all, sort by startAt
-  const all = [...calendarMapped, ...caseCourtMapped, ...taskCourtMapped]
+  const all = [...calendarMapped, ...caseCourtMapped, ...taskCourtMapped, ...courtEventMapped]
   all.sort((a, b) => new Date(a!.startAt).getTime() - new Date(b!.startAt).getTime())
 
   return NextResponse.json({ events: all })
