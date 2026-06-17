@@ -427,12 +427,12 @@ function AttachmentItem({
         </p>
       </div>
       <a href={att.fileUrl} target="_blank" rel="noopener noreferrer"
-        className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="เปิดไฟล์">
+        className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="เปิดไฟล์">
         <Download className="w-3.5 h-3.5" />
       </a>
       {canDelete && (
         <button type="button" disabled={isDeleting} onClick={onDelete}
-          className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40" title="ลบไฟล์">
+          className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40" title="ลบไฟล์">
           {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
         </button>
       )}
@@ -487,7 +487,7 @@ function FileUploadZone({
               <span className="flex-1 text-[13px] text-slate-700 dark:text-slate-300 truncate">{f.name}</span>
               <span className="text-[11px] text-slate-400 flex-shrink-0">{fmtFileSize(f.size)}</span>
               <button type="button" disabled={uploading} onClick={() => onRemove(i)}
-                className="flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:text-red-500 disabled:opacity-40">
+                className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:text-red-500 disabled:opacity-40">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -574,8 +574,8 @@ function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; 
                   <span className="text-[10px] text-slate-400 truncate max-w-[80px]">{item.completedBy.name}</span>
                 )}
                 <button type="button" onClick={() => deleteItem(item.id)} disabled={loading === item.id}
-                  className="flex-shrink-0 text-slate-300 hover:text-red-400 transition-colors disabled:opacity-40">
-                  <X className="w-3 h-3" />
+                  className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
@@ -673,8 +673,8 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
                   <span className="text-[10px] text-slate-400">{fmtRelative(c.createdAt)}</span>
                   {c.user.id === currentUserId && (
                     <button type="button" disabled={deleting === c.id} onClick={() => deleteComment(c.id)}
-                      className="text-slate-300 hover:text-red-400 transition-colors disabled:opacity-40">
-                      {deleting === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
+                      {deleting === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     </button>
                   )}
                 </div>
@@ -697,8 +697,8 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
                         <span className="text-[10px] text-slate-400">{fmtRelative(r.createdAt)}</span>
                         {r.user.id === currentUserId && (
                           <button type="button" disabled={deleting === r.id} onClick={() => deleteComment(r.id)}
-                            className="text-slate-300 hover:text-red-400 transition-colors disabled:opacity-40">
-                            {deleting === r.id ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Trash2 className="w-2.5 h-2.5" />}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
+                            {deleting === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                           </button>
                         )}
                       </div>
@@ -926,7 +926,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
               )}
             </div>
             <button type="button" onClick={onClose}
-              className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
+              className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1381,7 +1381,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-white/[0.06]">
             <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">สร้างงาน / รับเรื่อง</h2>
             <button type="button" onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
+              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
               <X className="w-4 h-4" />
             </button>
           </div>
