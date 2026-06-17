@@ -24,6 +24,13 @@ export async function GET(req: NextRequest) {
   }
 
   if (userId) {
+    if (isManager && userId !== session.user.id) {
+      const targetUser = await prisma.user.findFirst({
+        where: branchUserWhere(scope, { id: userId }),
+        select: { id: true },
+      })
+      if (!targetUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     const payrolls = await prisma.payroll.findMany({
       where: { month, year, userId },
       include: {

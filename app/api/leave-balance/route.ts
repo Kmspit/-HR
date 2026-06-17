@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/rbac'
+import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { getLeaveBalanceStats, ensureLeaveBalance, getLeaveUsedByYear } from '@/lib/leave-balance'
 import { createAuditLog } from '@/lib/notifications'
 import type { Role } from '@prisma/client'
@@ -23,8 +24,9 @@ export async function GET(req: NextRequest) {
 
     // HR requesting all users
     if (searchParams.get('all') === '1' && canManageUsers(session.user.role as Role)) {
+      const scope = buildBranchScope(session.user, {})
       const users = await prisma.user.findMany({
-        where: { status: 'ACTIVE' },
+        where: branchUserWhere(scope, { status: 'ACTIVE' }),
         select: { id: true, name: true, role: true, department: true, position: true, startDate: true },
         orderBy: { name: 'asc' },
       })

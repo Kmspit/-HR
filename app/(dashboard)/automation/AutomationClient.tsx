@@ -589,7 +589,7 @@ export default function AutomationClient({
       {/* Manual work reduced */}
       <div className="rounded-xl border border-green-200 bg-green-50 p-5">
         <h3 className="font-semibold text-green-800 mb-3">💡 Manual Work Reduced</h3>
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-2xl font-bold text-green-700">{fmt(insights.manualWorkReduced.tasksAutoCreated)}</p>
             <p className="text-xs text-green-600">งานที่สร้างอัตโนมัติ</p>
@@ -653,7 +653,7 @@ export default function AutomationClient({
 
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <h3 className="font-semibold text-gray-800 mb-2">สถิติการทำงาน (30 วันล่าสุด)</h3>
-        <div className="grid grid-cols-3 gap-4 text-center text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center text-sm">
           <div><p className="text-xl font-bold text-gray-800">{fmt(insights.recentExecutions)}</p><p className="text-gray-500">Executions</p></div>
           <div><p className="text-xl font-bold text-green-600">{fmt(insights.successExecutions)}</p><p className="text-gray-500">สำเร็จ</p></div>
           <div><p className="text-xl font-bold text-red-500">{fmt(insights.failExecutions)}</p><p className="text-gray-500">ล้มเหลว</p></div>

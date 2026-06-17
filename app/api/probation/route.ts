@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 
 const HR_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as const
 
@@ -76,8 +77,9 @@ export async function GET(req: NextRequest) {
     }
 
     // HR: list all employees who have reached probation end date but no evaluation
+    const scope = buildBranchScope(session.user, {})
     const employees = await prisma.user.findMany({
-      where: { status: 'ACTIVE', startDate: { not: null } },
+      where: branchUserWhere(scope, { status: 'ACTIVE', startDate: { not: null } }),
       select: {
         id: true,
         name: true,

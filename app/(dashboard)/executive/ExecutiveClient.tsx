@@ -82,9 +82,9 @@ export default function ExecutiveClient({ role, department }: { role: string; de
     let cancelled = false
     setLoading(true)
     Promise.all([
-      fetch('/api/executive/overview').then(r => r.json()),
-      fetch('/api/executive/team').then(r => r.json()),
-      fetch('/api/executive/analytics').then(r => r.json()),
+      fetch('/api/executive/overview').then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() }),
+      fetch('/api/executive/team').then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() }),
+      fetch('/api/executive/analytics').then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() }),
     ]).then(([ov, tm, an]) => {
       if (cancelled) return
       setOverview(ov)
@@ -99,9 +99,9 @@ export default function ExecutiveClient({ role, department }: { role: string; de
   function refresh() {
     setLoading(true)
     Promise.all([
-      fetch('/api/executive/overview').then(r => r.json()),
-      fetch('/api/executive/team').then(r => r.json()),
-      fetch('/api/executive/analytics').then(r => r.json()),
+      fetch('/api/executive/overview').then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() }),
+      fetch('/api/executive/team').then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() }),
+      fetch('/api/executive/analytics').then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() }),
     ]).then(([ov, tm, an]) => {
       setOverview(ov); setTeam(tm); setAnalytics(an)
       setLastUpdate(new Date()); setLoading(false)
@@ -418,7 +418,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
             {/* Time saved */}
             <div className="rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4">
               <p className="text-[13px] font-bold text-green-700 dark:text-green-400 mb-2">⚡ Manual Work Reduced (30 วัน)</p>
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                 <div><p className="text-xl font-bold text-green-700">{fmt(analytics.automation.manualWorkReduced.tasksAutoCreated)}</p><p className="text-[11px] text-green-600">Tasks Auto-Created</p></div>
                 <div><p className="text-xl font-bold text-green-700">{fmt(analytics.automation.manualWorkReduced.notificationsAutoSent)}</p><p className="text-[11px] text-green-600">Notifs Auto-Sent</p></div>
                 <div><p className="text-xl font-bold text-green-700">{fmt(analytics.automation.manualWorkReduced.minutesSaved)}</p><p className="text-[11px] text-green-600">นาทีที่ประหยัด</p></div>
