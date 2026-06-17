@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import { createAuditLog } from '@/lib/notifications'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -207,6 +208,17 @@ export async function PATCH(req: NextRequest) {
       })
     } catch { /* ignore slip errors — non-critical */ }
   }
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  await createAuditLog({
+    actorId: session.user.id,
+    targetId: payroll.userId,
+    targetType: 'Payroll',
+    action: status === 'APPROVED' ? 'APPROVE' : status === 'REJECTED' ? 'REJECT' : 'UPDATE',
+    after: { payrollId: payroll.id, status, month: payroll.month, year: payroll.year, note: note ?? null },
+    ip,
+    userAgent: req.headers.get('user-agent') ?? undefined,
+  })
 
   return NextResponse.json({ payroll })
 }

@@ -7,6 +7,7 @@ import { generateEmployeeId } from '@/lib/utils'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
+import { rateLimit } from '@/lib/rate-limit'
 
 const registerSchema = z.object({
   name:          z.string().min(2, 'กรุณากรอกชื่อ-นามสกุล'),
@@ -41,6 +42,15 @@ function emptyToNull(v?: string | null) {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const { allowed } = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'คำขอมากเกินไป กรุณารอ 1 ชั่วโมงแล้วลองใหม่' },
+        { status: 429 },
+      )
+    }
+
     await ensureDbSchema()
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)

@@ -1286,3 +1286,60 @@ nav.mobile-bottom-nav svg,
 @media (min-width: 1024px) {
   .ds-form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
+
+/* ── 26. Mobile Enterprise Safe Layout Utilities ── */
+
+/* Horizontally-scrollable table wrapper — prevents overflow on narrow screens */
+.mobile-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive stat grid: 1-col on phone, 2-col on sm, 3-col on md */
+.mobile-grid-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 480px) {
+  .mobile-grid-stats { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 768px) {
+  .mobile-grid-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Card with mobile-safe padding */
+.mobile-card {
+  border-radius: 0.875rem;
+  padding: 1rem;
+  background: var(--card, white);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+.dark .mobile-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Safe-area bottom padding (above MobileNav) */
+.mobile-safe-bottom {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .mobile-safe-bottom { padding-bottom: 0; }
+}
+
+/* Full bleed section that allows horizontal scroll on mobile */
+.mobile-overflow-section {
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 768px) {
+  .mobile-overflow-section {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
