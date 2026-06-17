@@ -252,14 +252,8 @@
   }
 
   @keyframes fade-in-sm {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
   /* Smooth transitions for interactive UI */
@@ -1305,6 +1299,33 @@ nav.mobile-bottom-nav svg,
   html, body        { overflow-x: clip; }
   .dashboard-shell  { align-items: flex-start; }
   .dashboard-main   { overflow: visible; }
+}
+
+/* ── Mobile: GPU compositor fix (Android Chrome rendering corruption) ──
+   backdrop-filter on position:fixed or position:sticky elements forces Android
+   Chrome to create GPU compositing layers. When multiple such layers coexist
+   (fixed MobileNav + sticky Header + animated page-enter), the GPU compositor
+   fails → screen tearing, horizontal artifact lines, duplicated rendering,
+   and scroll freeze. iOS Safari uses Apple Metal which handles this correctly.
+
+   Fix: disable ALL backdrop-filter on mobile. Use opaque backgrounds instead.
+   The page-enter transform (translateY) also promotes a layer — removed from
+   the keyframe in favour of opacity-only fade. */
+@media (max-width: 767px) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Compensate with opaque backgrounds where glass/blur was providing visual separation */
+  .glass      { background: rgba(255, 255, 255, 0.98) !important; }
+  .glass-light { background: rgba(255, 255, 255, 0.06) !important; }
+  .glass-card { background: #ffffff !important; }
+  .dark .glass      { background: rgba(15, 23, 42, 0.98) !important; }
+  .dark .glass-card { background: rgba(15, 23, 42, 0.98) !important; }
+  .ds-page-header   { background: rgba(255, 255, 255, 0.99) !important; }
+  .dark .ds-page-header { background: rgba(7, 11, 20, 0.99) !important; }
 }
 
 /* ── 26. Mobile Enterprise Safe Layout Utilities ── */

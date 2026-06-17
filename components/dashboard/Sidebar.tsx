@@ -414,7 +414,7 @@ export default function Sidebar({ user }: Props) {
         <div className="md:hidden">
           {/* Backdrop — z-[55] sits above header (z-50) and MobileNav (z-50) */}
           <div
-            className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm animate-[fadeIn_0.15s_ease]"
+            className="fixed inset-0 z-[55] bg-black/70 animate-[fadeIn_0.15s_ease]"
             onClick={closeMobile}
             aria-hidden
           />
