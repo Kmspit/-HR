@@ -1290,14 +1290,21 @@ nav.mobile-bottom-nav svg,
   .ds-form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
 
-/* ── Mobile: body-scroll fix (Android Chrome inner-scroll bug) ──
-   Flex `align-items: stretch` locks .dashboard-main to exactly 100dvh,
-   trapping content inside and disabling body scroll.
-   On mobile we switch to body scroll: flex-start lets .dashboard-main
-   grow with its content; min-height: 100dvh keeps it at least full-screen. */
+/* ── Mobile: Android Chrome scroll fix (definitive) ──
+   ROOT CAUSE: overflow-x: hidden on html/body forces overflow-y: auto (CSS spec).
+   That makes body a CSS scroll container. Combined with overscroll-behavior-y: contain,
+   body absorbs all touch-scroll events but never overflows itself (no fixed height),
+   blocking propagation to the viewport. Android Chrome is strict; iOS Safari routes
+   touch directly to the viewport and is immune.
+
+   FIX: overflow-x: clip is visually identical to overflow-x: hidden but does NOT
+   create a scroll container and does NOT force overflow-y: auto.
+   Without a body scroll container, touch events propagate to the viewport and the
+   page scrolls natively — including URL-bar collapse on Android Chrome. */
 @media (max-width: 767px) {
-  .dashboard-shell { align-items: flex-start; }
-  .dashboard-main  { min-height: 100dvh; overflow: visible; }
+  html, body        { overflow-x: clip; }
+  .dashboard-shell  { align-items: flex-start; }
+  .dashboard-main   { overflow: visible; }
 }
 
 /* ── 26. Mobile Enterprise Safe Layout Utilities ── */
