@@ -1306,74 +1306,24 @@ nav.mobile-bottom-nav svg,
   body { overscroll-behavior-y: contain; }
 }
 
-/* ── BINARY ISOLATION: Android Chrome rendering corruption + scroll freeze ──
-   Four categories disabled simultaneously. Each can be re-enabled one at a
-   time to identify the exact offender.
+/* ── Mobile: GPU compositor fix (Android Chrome rendering corruption) ──
+   backdrop-filter on position:fixed or position:sticky elements forces Android
+   Chrome to create GPU compositing layers. When multiple such layers coexist
+   (fixed MobileNav + sticky Header + animated page-enter), the GPU compositor
+   fails → screen tearing, horizontal artifact lines, duplicated rendering,
+   and scroll freeze. iOS Safari uses Apple Metal which handles this correctly.
 
-   CONFIRMED BUG: Dark mode body had overflow-x:hidden (higher specificity than
-   the clip fix) keeping body as a scroll container, blocking Android scroll.
-   Fixed above with !important.
-
-   ISOLATION STEP 1: Un-fix all position:fixed/sticky layers.
-   MobileNav (fixed bottom), DashboardHeader (sticky), AiFloatingButton (fixed),
-   ds-page-header (sticky) all forced into document flow. If Android scrolls
-   after this, one of these layers is the GPU layer culprit.
-
-   ISOLATION STEP 2: Kill all animations + transforms.
-   Any animated GPU layer (translateY, rotate, scale) creates a compositing
-   boundary. Disabling them removes the third competing layer.
-
-   ISOLATION STEP 3: Kill backdrop-filter, box-shadow, filter.
-   Each creates a separate compositing layer on Android Chrome / OpenGL ES.
-
-   ISOLATION STEP 4: Kill shimmer animations on skeleton loaders. */
+   Fix: disable ALL backdrop-filter on mobile. Use opaque backgrounds instead.
+   The page-enter transform (translateY) also promotes a layer — removed from
+   the keyframe in favour of opacity-only fade. */
 @media (max-width: 767px) {
-
-  /* ── Step 1: Remove all fixed/sticky positioning ── */
-  nav.mobile-bottom-nav {
-    position: relative !important;
-    bottom: auto !important;
-    left: auto !important;
-    right: auto !important;
-  }
-  .dashboard-main > header {
-    position: relative !important;
-    top: auto !important;
-  }
-  /* AiFloatingButton is a direct child button of dashboard-shell */
-  .dashboard-shell > button {
-    position: relative !important;
-    bottom: auto !important;
-    right: auto !important;
-  }
-  .ds-page-header {
-    position: relative !important;
-    top: auto !important;
-  }
-
-  /* ── Step 2: Kill all animations and transforms ── */
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    animation-duration: 0s !important;
-    transition: none !important;
-    transition-duration: 0s !important;
-    transform: none !important;
-    will-change: auto !important;
-  }
-
-  /* ── Step 3: Kill all GPU-layer-promoting properties ── */
   *,
   *::before,
   *::after {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    filter: none !important;
-    box-shadow: none !important;
   }
-
-  /* ── Opaque background compensations (visual fallback for blur removal) ── */
+  /* Compensate with opaque backgrounds where glass/blur was providing visual separation */
   .glass       { background: rgba(255, 255, 255, 0.98) !important; }
   .glass-light { background: rgba(255, 255, 255, 0.06) !important; }
   .glass-card  { background: #ffffff !important; }
