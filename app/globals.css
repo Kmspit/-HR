@@ -1287,6 +1287,16 @@ nav.mobile-bottom-nav svg,
   .ds-form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
 
+/* ── Mobile: body-scroll fix (Android Chrome inner-scroll bug) ──
+   Flex `align-items: stretch` locks .dashboard-main to exactly 100dvh,
+   trapping content inside and disabling body scroll.
+   On mobile we switch to body scroll: flex-start lets .dashboard-main
+   grow with its content; min-height: 100dvh keeps it at least full-screen. */
+@media (max-width: 767px) {
+  .dashboard-shell { align-items: flex-start; }
+  .dashboard-main  { min-height: 100dvh; }
+}
+
 /* ── 26. Mobile Enterprise Safe Layout Utilities ── */
 
 /* Horizontally-scrollable table wrapper — prevents overflow on narrow screens */
