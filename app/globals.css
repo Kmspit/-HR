@@ -1296,11 +1296,19 @@ nav.mobile-bottom-nav svg,
    Without a body scroll container, touch events propagate to the viewport and the
    page scrolls natively — including URL-bar collapse on Android Chrome. */
 @media (max-width: 767px) {
-  /* !important required: .dark body { overflow-x: hidden } has specificity (0,1,1)
-     which beats this rule's (0,0,1) without !important. Dark mode was broken. */
-  html, body        { overflow-x: clip !important; }
-  .dashboard-shell  { align-items: flex-start; }
-  .dashboard-main   { overflow: visible; }
+  /* body only — NOT html.
+     overflow:clip on html triggers a Chrome/Android bug: position:fixed elements
+     reference html as their containing block instead of the viewport. With html as
+     the containing block, bottom:0 resolves to the bottom of html's box, which can
+     be near the top of the visible area when the box collapses — causing MobileNav
+     to appear at the top of the page and compressing dashboard-main width.
+     iOS Safari (Metal compositor) is immune; Android Chrome (OpenGL ES) is not.
+
+     body { overflow-x: clip } is the only fix needed:
+     clip does NOT force overflow-y: auto (unlike hidden), so body is NOT a scroll
+     container, touch events propagate to the viewport, and Android scroll works.
+     !important beats .dark body { overflow-x: hidden } (specificity 0,1,1 vs 0,0,1). */
+  body { overflow-x: clip !important; }
 }
 @media (min-width: 768px) {
   body { overscroll-behavior-y: contain; }
