@@ -616,7 +616,10 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  /* overflow: hidden is desktop-only — see @media (min-width:768px) below */
+}
+@media (min-width: 768px) {
+  .dashboard-main { overflow: hidden; }
 }
 
 /* ป้องกัน SVG ขยายเต็มจอ */
@@ -1294,7 +1297,7 @@ nav.mobile-bottom-nav svg,
    grow with its content; min-height: 100dvh keeps it at least full-screen. */
 @media (max-width: 767px) {
   .dashboard-shell { align-items: flex-start; }
-  .dashboard-main  { min-height: 100dvh; }
+  .dashboard-main  { min-height: 100dvh; overflow: visible; }
 }
 
 /* ── 26. Mobile Enterprise Safe Layout Utilities ── */
