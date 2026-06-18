@@ -26,7 +26,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{
   scroll-behavior:smooth;
-  overflow:hidden;   /* app pages: .content เป็น scroll root — ไม่ให้ html/body scroll แข่ง */
+  overflow-x:hidden;
 }
 body{
   background:var(--bg);
@@ -38,7 +38,7 @@ body{
   text-rendering: optimizeLegibility;
   letter-spacing: 0.015em;
   min-height:100vh;
-  overflow:hidden;   /* clip — .content เป็นตัว scroll จริง */
+  overflow-x:hidden;
 }
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px}
@@ -194,8 +194,7 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
 .main{
   margin-left:var(--sidebar-w);
   display:flex;flex-direction:column;
-  height:100vh;         /* layout container — ไม่ scroll เอง */
-  overflow:hidden;      /* clip ไม่ scroll — .content เป็นตัว scroll */
+  min-height:100vh;
   transition:margin-left .3s ease;
 }
 
@@ -243,13 +242,10 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
 .btn-primary:hover{background:linear-gradient(135deg,#2563eb,var(--accent2));box-shadow:0 0 30px rgba(59,130,246,.5);transform:translateY(-1px)}
 .btn-primary:active{transform:translateY(0)}
 
-/* ── CONTENT ── THE scroll container จริงๆ */
+/* ── CONTENT ── */
 .content{
   padding:24px;
   flex:1;
-  min-height:0;                      /* flexbox: อนุญาตให้ item หดตัวได้ → overflow-y ทำงาน */
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
 }
 
 /* ── HERO STRIP ── */
