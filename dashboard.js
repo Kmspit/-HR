@@ -1,10 +1,25 @@
-﻿// ── CLOCK ──
+﻿// ── CLOCK + DATE ──
+const _DAY_NAMES=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+const _MONTH_NAMES=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 function tick(){
   const n=new Date();
-  document.getElementById('clock').textContent=
-    n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const clockEl=document.getElementById('clock');
+  if(clockEl) clockEl.textContent=n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const dateEl=document.getElementById('datestr');
+  if(dateEl) dateEl.textContent=_DAY_NAMES[n.getDay()]+'ที่ '+n.getDate()+' '+_MONTH_NAMES[n.getMonth()]+' '+(n.getFullYear()+543);
 }
 tick();setInterval(tick,1000);
+
+// ── GREETING ──
+(function(){
+  const h=new Date().getHours();
+  const greet=h<12?'สวัสดีตอนเช้า':h<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
+  const el=document.querySelector('.hero-text h2');
+  if(!el) return;
+  const user=typeof getCurrentUser==='function'?getCurrentUser():null;
+  const name=user?user.name:'คุณสมหญิง';
+  el.textContent=greet+', '+name+' 👋';
+})();
 
 function updateDashWorkTimer(){
   const wrap=document.getElementById('dash-work-timer');
@@ -62,22 +77,48 @@ data.forEach((d,i)=>{
 });
 
 // ── MINI CALENDAR ──
-const heads=['อา','จ','อ','พ','พฤ','ศ','ส'];
-const grid=document.getElementById('cal-grid');
-heads.forEach(h=>{
-  const d=document.createElement('div');d.className='cal-head';d.textContent=h;grid.appendChild(d);
-});
-// May 2026 starts Thursday (offset 4)
-const offset=4,days31=31;
-for(let i=0;i<offset;i++){const d=document.createElement('div');d.className='cal-day other-month';d.textContent=27+i;grid.appendChild(d);}
-for(let d=1;d<=days31;d++){
-  const el=document.createElement('div');
-  el.className='cal-day'+(d===25?' today':'');
-  if([1,5,8,12,15,19,22].includes(d)) el.classList.add('has-event');
-  if([3,10,17,24].includes(d)) el.classList.add('has-leave');
-  el.textContent=d;
-  grid.appendChild(el);
+const CAL_HEADS=['อา','จ','อ','พ','พฤ','ศ','ส'];
+let _calYear=new Date().getFullYear(), _calMonth=new Date().getMonth();
+
+function renderMiniCal(year,month){
+  const grid=document.getElementById('cal-grid');
+  const monthLabel=document.querySelector('.cal-month');
+  if(!grid) return;
+  grid.innerHTML='';
+  CAL_HEADS.forEach(h=>{
+    const d=document.createElement('div');d.className='cal-head';d.textContent=h;grid.appendChild(d);
+  });
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const prevDays=new Date(year,month,0).getDate();
+  const today=new Date();
+  const isCurMonth=today.getFullYear()===year&&today.getMonth()===month;
+  for(let i=0;i<firstDay;i++){
+    const d=document.createElement('div');d.className='cal-day other-month';
+    d.textContent=prevDays-firstDay+i+1;grid.appendChild(d);
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const el=document.createElement('div');
+    el.className='cal-day'+(isCurMonth&&d===today.getDate()?' today':'');
+    if([1,5,8,12,15,19,22].includes(d)) el.classList.add('has-event');
+    if([3,10,17,24].includes(d)) el.classList.add('has-leave');
+    el.textContent=d;grid.appendChild(el);
+  }
+  if(monthLabel) monthLabel.textContent=_MONTH_NAMES[month]+' '+(year+543);
 }
+renderMiniCal(_calYear,_calMonth);
+
+document.addEventListener('DOMContentLoaded',function(){
+  const btns=document.querySelectorAll('.cal-btn');
+  if(btns[0]) btns[0].addEventListener('click',function(){
+    _calMonth--;if(_calMonth<0){_calMonth=11;_calYear--;}
+    renderMiniCal(_calYear,_calMonth);
+  });
+  if(btns[1]) btns[1].addEventListener('click',function(){
+    _calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}
+    renderMiniCal(_calYear,_calMonth);
+  });
+});
 
 // ── APPROVE / REJECT ──
 function approve(btn){
