@@ -101,7 +101,11 @@
   }
   function lsSetSafe(key, value) {
     if (typeof lsSet === 'function') return lsSet(key, value);
-    localStorage.setItem('hrflow_' + key, JSON.stringify(value));
+    try {
+      localStorage.setItem('hrflow_' + key, JSON.stringify(value));
+    } catch (e) {
+      console.warn('[lsSetSafe] localStorage write failed:', key, e);
+    }
   }
 
   // ── Config ───────────────────────────────────────────────────────────────────

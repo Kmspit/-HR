@@ -424,8 +424,14 @@ function lsGet(key, fallback = []) {
 }
 
 function lsSet(key, value) {
-  localStorage.setItem('hrflow_' + key, JSON.stringify(value));
-  if (key === 'settings') _settingsCache = null; // invalidate on save
+  try {
+    localStorage.setItem('hrflow_' + key, JSON.stringify(value));
+    if (key === 'settings') _settingsCache = null;
+    return true;
+  } catch (e) {
+    console.warn('[lsSet] localStorage write failed:', key, e);
+    return false;
+  }
 }
 
 // Cache parsed settings for 5 s — avoids repeated JSON.parse on every GPS tick
