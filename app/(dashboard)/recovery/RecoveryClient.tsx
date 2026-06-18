@@ -252,7 +252,7 @@ export default function RecoveryClient({ userId, userRole, userName }: {
               <div className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10 sticky top-0 bg-white dark:bg-slate-900 z-10">
                   <span className="font-semibold text-sm">รายละเอียดการชำระ</span>
-                  <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
+                  <button type="button" onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
                 </div>
                 <PaymentDetail
                   payment={selected}

@@ -431,7 +431,7 @@ export default function SopClient({
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {editing ? '✏️ แก้ไข SOP' : '+ สร้าง SOP ใหม่'}
               </h2>
-              <button onClick={() => { setCreate(false); setEditing(false) }} className="text-gray-400 text-xl">✕</button>
+              <button type="button" onClick={() => { setCreate(false); setEditing(false) }} className="text-gray-400 text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -462,7 +462,7 @@ export default function SopClient({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">ขั้นตอน</label>
-                  <button onClick={addStep} className="text-xs text-indigo-600 hover:text-indigo-700">+ เพิ่มขั้นตอน</button>
+                  <button type="button" onClick={addStep} className="text-xs text-indigo-600 hover:text-indigo-700">+ เพิ่มขั้นตอน</button>
                 </div>
                 <div className="space-y-2">
                   {form.steps.map((s, i) => (
@@ -476,7 +476,7 @@ export default function SopClient({
                           className="w-full px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-xs"
                           placeholder="รายละเอียด (ถ้ามี)" />
                       </div>
-                      <button onClick={() => removeStep(i)} className="text-red-400 text-xs mt-2">✕</button>
+                      <button type="button" onClick={() => removeStep(i)} className="text-red-400 text-xs mt-2">✕</button>
                     </div>
                   ))}
                 </div>
@@ -486,7 +486,7 @@ export default function SopClient({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Checklist</label>
-                  <button onClick={addCheckItem} className="text-xs text-indigo-600 hover:text-indigo-700">+ เพิ่มรายการ</button>
+                  <button type="button" onClick={addCheckItem} className="text-xs text-indigo-600 hover:text-indigo-700">+ เพิ่มรายการ</button>
                 </div>
                 <div className="space-y-1">
                   {form.checklist.map((c, i) => (
@@ -504,9 +504,9 @@ export default function SopClient({
               </div>
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-              <button onClick={() => { setCreate(false); setEditing(false) }}
+              <button type="button" onClick={() => { setCreate(false); setEditing(false) }}
                 className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">ยกเลิก</button>
-              <button onClick={saveSop} disabled={saving || !form.title || !form.department}
+              <button type="button" onClick={saveSop} disabled={saving || !form.title || !form.department}
                 className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50">
                 {saving ? 'กำลังบันทึก…' : editing ? 'บันทึก' : 'สร้าง'}
               </button>

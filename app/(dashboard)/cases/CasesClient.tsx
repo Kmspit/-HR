@@ -449,7 +449,7 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06]">
           <h2 className="font-bold text-slate-900 dark:text-white text-[16px]">สร้างคดีใหม่</h2>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400">
+          <button type="button" onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>

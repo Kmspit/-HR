@@ -474,7 +474,7 @@ export default function TrainingClient({
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">+ สร้างหลักสูตร</h2>
-              <button onClick={() => setCreate(false)} className="text-gray-400 text-xl">✕</button>
+              <button type="button" onClick={() => setCreate(false)} className="text-gray-400 text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 p-6 space-y-4">
               <div>
@@ -540,9 +540,9 @@ export default function TrainingClient({
               </div>
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-              <button onClick={() => setCreate(false)}
+              <button type="button" onClick={() => setCreate(false)}
                 className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">ยกเลิก</button>
-              <button onClick={saveModule} disabled={saving || !form.title}
+              <button type="button" onClick={saveModule} disabled={saving || !form.title}
                 className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50">
                 {saving ? 'กำลังบันทึก…' : 'สร้าง'}
               </button>

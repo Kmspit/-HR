@@ -221,7 +221,7 @@ function RuleModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'}</h2>
-          <button onClick={onClose} className="rounded p-1 text-gray-500 hover:bg-gray-100">✕</button>
+          <button type="button" onClick={onClose} className="rounded p-1 text-gray-500 hover:bg-gray-100">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">

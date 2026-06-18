@@ -301,7 +301,7 @@ function CourtEventModal({ caseId, editing, onClose, onSaved }: {
       <div className="w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06] sticky top-0 bg-white dark:bg-slate-900 z-10">
           <h2 className="font-bold text-slate-900 dark:text-white">{editing ? 'แก้ไขนัดศาล' : 'เพิ่มนัดศาล'}</h2>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400">
+          <button type="button" onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
