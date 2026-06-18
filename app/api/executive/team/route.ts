@@ -18,68 +18,74 @@ export async function GET() {
     ? session.user.department
     : null
 
-  // Task completion by user (this month)
-  const taskStats = await prisma.taskAssignment.groupBy({
-    by: ['assigneeId'],
-    where: {
-      createdAt: { gte: monthStart },
-      ...(deptScope ? { assignee: { department: deptScope } } : {}),
-    },
-    _count: { id: true },
-  })
-
-  const taskCompletedStats = await prisma.taskAssignment.groupBy({
-    by: ['assigneeId'],
-    where: {
-      status: 'COMPLETED',
-      updatedAt: { gte: monthStart },
-      ...(deptScope ? { assignee: { department: deptScope } } : {}),
-    },
-    _count: { id: true },
-  })
-
-  // Recovery by user (this month)
-  const recoveryByUser = await prisma.recoveryPayment.groupBy({
-    by: ['collectorId'],
-    where: { paymentDate: { gte: monthStart }, status: 'CONFIRMED' },
-    _sum: { amount: true },
-    _count: { id: true },
-    orderBy: { _sum: { amount: 'desc' } },
-  })
-
-  // Attendance this month (late count per user)
-  const lateByUser = await prisma.attendance.groupBy({
-    by: ['userId'],
-    where: {
-      date: { gte: monthStart },
-      lateMinutes: { gt: 0 },
-      ...(deptScope ? { user: { department: deptScope } } : {}),
-    },
-    _count: { id: true },
-    orderBy: { _count: { id: 'desc' } },
-  })
-
-  const totalAttendance = await prisma.attendance.groupBy({
-    by: ['userId'],
-    where: {
-      date: { gte: monthStart },
-      ...(deptScope ? { user: { department: deptScope } } : {}),
-    },
-    _count: { id: true },
-  })
-
-  // Today's attendance
-  const presentToday = await prisma.attendance.count({
-    where: { date: { gte: todayStart, lte: todayEnd }, checkIn: { not: null } },
-  })
-
-  // Active employee count
-  const activeEmployees = await prisma.user.count({
-    where: {
-      status: 'ACTIVE',
-      ...(deptScope ? { department: deptScope } : {}),
-    },
-  })
+  const [
+    taskStats,
+    taskCompletedStats,
+    recoveryByUser,
+    lateByUser,
+    totalAttendance,
+    presentToday,
+    activeEmployees,
+  ] = await Promise.all([
+    // Task completion by user (this month)
+    prisma.taskAssignment.groupBy({
+      by: ['assigneeId'],
+      where: {
+        createdAt: { gte: monthStart },
+        ...(deptScope ? { assignee: { department: deptScope } } : {}),
+      },
+      _count: { id: true },
+    }),
+    // Completed tasks by user (this month)
+    prisma.taskAssignment.groupBy({
+      by: ['assigneeId'],
+      where: {
+        status: 'COMPLETED',
+        updatedAt: { gte: monthStart },
+        ...(deptScope ? { assignee: { department: deptScope } } : {}),
+      },
+      _count: { id: true },
+    }),
+    // Recovery by user (this month)
+    prisma.recoveryPayment.groupBy({
+      by: ['collectorId'],
+      where: { paymentDate: { gte: monthStart }, status: 'CONFIRMED' },
+      _sum: { amount: true },
+      _count: { id: true },
+      orderBy: { _sum: { amount: 'desc' } },
+    }),
+    // Late attendance by user (this month)
+    prisma.attendance.groupBy({
+      by: ['userId'],
+      where: {
+        date: { gte: monthStart },
+        lateMinutes: { gt: 0 },
+        ...(deptScope ? { user: { department: deptScope } } : {}),
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+    }),
+    // Total attendance by user (this month)
+    prisma.attendance.groupBy({
+      by: ['userId'],
+      where: {
+        date: { gte: monthStart },
+        ...(deptScope ? { user: { department: deptScope } } : {}),
+      },
+      _count: { id: true },
+    }),
+    // Today's attendance
+    prisma.attendance.count({
+      where: { date: { gte: todayStart, lte: todayEnd }, checkIn: { not: null } },
+    }),
+    // Active employee count
+    prisma.user.count({
+      where: {
+        status: 'ACTIVE',
+        ...(deptScope ? { department: deptScope } : {}),
+      },
+    }),
+  ])
 
   // Collect all user IDs we need
   const allUserIds = new Set<string>([
