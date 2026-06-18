@@ -24,12 +24,8 @@
   --sidebar-w-collapsed: 68px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html, body {
-  height: 100%;
-  overflow: visible;
-}
-html {
-  scroll-behavior: smooth;
+html{
+  scroll-behavior:smooth;
 }
 body{
   background:var(--bg);
@@ -40,6 +36,8 @@ body{
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   letter-spacing: 0.015em;
+  min-height:100vh;
+  overflow-y:auto;
 }
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px}
@@ -196,7 +194,7 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
   margin-left:var(--sidebar-w);
   display:flex;flex-direction:column;
   min-height:100vh;
-  overflow:visible;
+  overflow-y:auto;
   transition:margin-left .3s ease;
 }
 
@@ -248,8 +246,7 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
 .content{
   padding:24px;
   flex:1;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
+  overflow-y:visible;
 }
 
 /* ── HERO STRIP ── */
