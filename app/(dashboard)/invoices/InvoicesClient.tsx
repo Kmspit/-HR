@@ -307,7 +307,7 @@ function InvoiceInfoTab({ invoice }: { invoice: Invoice }) {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {lineItems.map((item, i) => (
-                  <tr key={i}>
+                  <tr key={`${i}-${item.description}`}>
                     <td className="py-2 px-3">{item.description}</td>
                     <td className="py-2 px-3">{item.qty}</td>
                     <td className="py-2 px-3">฿{fmt(item.unitPrice)}</td>
@@ -481,7 +481,7 @@ function ReceiptsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
 
 // ─── Create invoice modal ─────────────────────────────────────────────────────
 
-interface LineItemForm { description: string; qty: string; unitPrice: string }
+interface LineItemForm { _key: string; description: string; qty: string; unitPrice: string }
 
 function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: () => void; onSave: () => void }) {
   const [form, setForm] = useState({
@@ -490,7 +490,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
     dueDate: '', vatRate: '0.07', whtRate: '0', note: '',
     clientCompanyId: '',
   })
-  const [lineItems, setLineItems] = useState<LineItemForm[]>([{ description: '', qty: '1', unitPrice: '' }])
+  const [lineItems, setLineItems] = useState<LineItemForm[]>([{ _key: '0', description: '', qty: '1', unitPrice: '' }])
   const [companies, setCompanies] = useState<Company[]>([])
   const [saving,    setSaving]    = useState(false)
 
@@ -508,7 +508,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
     }))
   }
 
-  const addLine    = () => setLineItems(p => [...p, { description: '', qty: '1', unitPrice: '' }])
+  const addLine    = () => setLineItems(p => [...p, { _key: String(Date.now()), description: '', qty: '1', unitPrice: '' }])
   const removeLine = (i: number) => setLineItems(p => p.filter((_, idx) => idx !== i))
 
   // Computed totals
@@ -592,7 +592,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
               </div>
               <div className="space-y-2">
                 {lineItems.map((l, i) => (
-                  <div key={i} className="grid grid-cols-12 gap-2">
+                  <div key={l._key} className="grid grid-cols-12 gap-2">
                     <input value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} placeholder="รายการ" className="col-span-6 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                     <input type="number" value={l.qty} onChange={e => updateLine(i, 'qty', e.target.value)} placeholder="จำนวน" className="col-span-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                     <input type="number" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} placeholder="ราคา" className="col-span-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />

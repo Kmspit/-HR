@@ -10,6 +10,7 @@ import type { Role } from '@prisma/client'
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type StepDraft = {
+  _key: string
   stepOrder: number
   stepName: string
   approverRole: string
@@ -46,6 +47,7 @@ type Props = {
 const APPROVAL_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN', 'ENFORCEMENT']
 
 const emptyStep = (): StepDraft => ({
+  _key: String(Date.now() + Math.random()),
   stepOrder: 1,
   stepName: '',
   approverRole: 'MANAGER',
@@ -142,6 +144,7 @@ function ChainForm({
   const [isDefault, setIsDefault] = useState(initial?.isDefault ?? false)
   const [steps, setSteps] = useState<StepDraft[]>(
     initial?.steps.map((s) => ({
+      _key:         s.id,
       stepOrder:    s.stepOrder,
       stepName:     s.stepName,
       approverRole: s.approverRole ?? '',
@@ -224,7 +227,7 @@ function ChainForm({
         <p className="text-xs font-semibold text-slate-400 uppercase">ขั้นตอนการอนุมัติ</p>
         {steps.map((s, idx) => (
           <StepRow
-            key={idx}
+            key={s._key}
             step={s} idx={idx} total={steps.length}
             onChange={(u) => updateStep(idx, u)}
             onRemove={() => removeStep(idx)}

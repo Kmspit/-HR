@@ -214,7 +214,7 @@ export default function CalendarClient({
 
         <div className="grid grid-cols-7">
           {cells.map((day, idx) => {
-            if (!day) return <div key={idx} className="min-h-[48px] md:h-16" />
+            if (!day) return <div key={'empty-' + idx} className="min-h-[48px] md:h-16" />
             const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const rec = attendanceMap[key]
             const holiday = holidayMap[key]

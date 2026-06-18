@@ -82,7 +82,7 @@ type Task = {
   isBlocked?: boolean
 }
 
-type TaskLink     = { label: string; url: string }
+type TaskLink     = { label: string; url: string; _key?: string }
 type ProgressNote = { note: string; timestamp: string; userId: string; userName: string }
 
 type CommentUser  = { id: string; name: string; role: string }
@@ -316,7 +316,7 @@ function effectiveStatus(task: Task): string {
 
 function parseLinks(raw: string | null): TaskLink[] {
   if (!raw) return []
-  try { return JSON.parse(raw) as TaskLink[] } catch { return [] }
+  try { return (JSON.parse(raw) as TaskLink[]).map((l, i) => ({ ...l, _key: l._key ?? String(i) + l.url })) } catch { return [] }
 }
 
 function parseNotes(raw: string | null): ProgressNote[] {
@@ -483,7 +483,7 @@ function FileUploadZone({
       {pendingFiles.length > 0 && (
         <div className="space-y-1.5">
           {pendingFiles.map((f, i) => (
-            <div key={i} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+            <div key={f.name + '-' + f.size} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
               <div className="flex-shrink-0">{fileIcon(f.type)}</div>
               <span className="flex-1 text-[13px] text-slate-700 dark:text-slate-300 truncate">{f.name}</span>
               <span className="text-[11px] text-slate-400 flex-shrink-0">{fmtFileSize(f.size)}</span>
@@ -1112,8 +1112,8 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
                   <MessageSquare className="w-3 h-3" />ประวัติการอัปเดต
                 </p>
                 <div className="relative pl-4 space-y-2 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-px before:bg-slate-200 dark:before:bg-white/[0.06]">
-                  {noteHist.map((n, i) => (
-                    <div key={i} className="relative">
+                  {noteHist.map((n) => (
+                    <div key={n.timestamp} className="relative">
                       <div className="absolute -left-[11px] top-2 w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500 ring-2 ring-white dark:ring-slate-900" />
                       <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
                         <div className="flex items-center justify-between gap-2 mb-1">
@@ -1281,7 +1281,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
   const [pendingFiles,     setPendingFiles]= useState<File[]>([])
   const [uploading,        setUploading]   = useState(false)
   const [error,            setError]       = useState<string | null>(null)
-  const [checklistItems,   setChecklistItems] = useState<string[]>([])
+  const [checklistItems,   setChecklistItems] = useState<{ _key: string; value: string }[]>([])
   const [dueTime,          setDueTime]        = useState('')
 
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
@@ -1297,7 +1297,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
     if (tpl.defaultSlaHours) { /* slaHours not in current state — skip */ }
     try {
       const items: { title: string }[] = JSON.parse(tpl.defaultChecklist)
-      if (items.length > 0) setChecklistItems(items.map((i) => i.title))
+      if (items.length > 0) setChecklistItems(items.map((item, i) => ({ _key: String(Date.now() + i), value: item.title })))
     } catch { /* ignore */ }
     setSelectedTemplateId(tpl.id)
     setShowTemplatePicker(false)
@@ -1348,8 +1348,8 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
           courtDate:        courtDate               || null,
           appointmentPlace: appointmentPlace.trim() || null,
           notes:            notes.trim()            || null,
-          taskLinks:        cleanLinks.length > 0 ? cleanLinks : undefined,
-          checklist:        checklistItems.filter(t => t.trim()).map(t => ({ title: t.trim() })),
+          taskLinks:        cleanLinks.length > 0 ? cleanLinks.map(({ _key: _, ...rest }) => rest) : undefined,
+          checklist:        checklistItems.filter(c => c.value.trim()).map(c => ({ title: c.value.trim() })),
           dueTime:          dueTime || null,
           templateId:       selectedTemplateId || null,
         }),
@@ -1560,7 +1560,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</label>
-                  <button type="button" onClick={() => setLinks((p) => [...p, { label: '', url: '' }])}
+                  <button type="button" onClick={() => setLinks((p) => [...p, { _key: String(Date.now()), label: '', url: '' }])}
                     className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
                     <Plus className="w-3.5 h-3.5" />เพิ่มลิงก์
                   </button>
@@ -1568,7 +1568,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
                 {links.length > 0 && (
                   <div className="space-y-2">
                     {links.map((lk, i) => (
-                      <div key={i} className="flex gap-2 items-start">
+                      <div key={lk._key ?? String(i)} className="flex gap-2 items-start">
                         <div className="flex-1 space-y-1.5">
                           <input type="text" value={lk.label}
                             onChange={(e) => setLinks((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
@@ -1593,7 +1593,7 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
                   <label className="text-[12px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <CheckSquare className="w-3.5 h-3.5" />รายการตรวจสอบ (ไม่บังคับ)
                   </label>
-                  <button type="button" onClick={() => setChecklistItems((p) => [...p, ''])}
+                  <button type="button" onClick={() => setChecklistItems((p) => [...p, { _key: String(Date.now()), value: '' }])}
                     className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
                     <Plus className="w-3.5 h-3.5" />เพิ่ม
                   </button>
@@ -1601,10 +1601,10 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
                 {checklistItems.length > 0 && (
                   <div className="space-y-1.5">
                     {checklistItems.map((item, i) => (
-                      <div key={i} className="flex gap-2 items-center">
+                      <div key={item._key} className="flex gap-2 items-center">
                         <Square className="w-3.5 h-3.5 flex-shrink-0 text-slate-300 dark:text-slate-600" />
-                        <input type="text" value={item}
-                          onChange={(e) => setChecklistItems((p) => p.map((x, idx) => idx === i ? e.target.value : x))}
+                        <input type="text" value={item.value}
+                          onChange={(e) => setChecklistItems((p) => p.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))}
                           placeholder={`รายการที่ ${i + 1}...`} className={`flex-1 ${inputCls}`} />
                         <button type="button" onClick={() => setChecklistItems((p) => p.filter((_, idx) => idx !== i))}
                           className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 transition-colors">
