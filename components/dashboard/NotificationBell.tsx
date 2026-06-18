@@ -103,8 +103,8 @@ export default function NotificationBell({ initialCount }: Props) {
       setItems(data.notifications ?? [])
       setCount(data.unreadCount ?? 0)
       setLoaded(true)
-    } catch {
-      // silent
+    } catch (error) {
+      console.error('[NotificationBell] fetch error:', error)
     } finally {
       setLoading(false)
     }

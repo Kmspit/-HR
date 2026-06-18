@@ -304,7 +304,8 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           setHint(scan.descriptor ? PROMPT_ALIGN : PROMPT_DEFAULT)
           timer = setTimeout(() => void tick(), 400)
         }
-      } catch {
+      } catch (error) {
+        console.error('[FaceScan] detection loop error:', error)
         timer = setTimeout(() => void tick(), 600)
       }
     }

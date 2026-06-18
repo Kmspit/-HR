@@ -136,7 +136,9 @@ export default function CheckInPanel({
           )
           const data = await res.json()
           address = data.display_name ?? address
-        } catch {}
+        } catch (error) {
+          console.warn('[CheckIn] reverse geocode failed (address will use coordinates):', error)
+        }
         setLocation({ lat, lng, address, accuracy })
       },
       () => {},
@@ -189,7 +191,9 @@ export default function CheckInPanel({
           )
           const data = await res.json()
           address = data.display_name ?? address
-        } catch {}
+        } catch (error) {
+          console.warn('[CheckIn] reverse geocode failed (address will use coordinates):', error)
+        }
 
         // Client-side geofence check for company check-in
         if (type === 'checkin' && locationType === 'company' && companyGeofence) {
@@ -406,7 +410,9 @@ export default function CheckInPanel({
               isMobile: /Android|iPhone|iPad/i.test(navigator.userAgent || ''),
             })
             formData.append('deviceInfo', deviceInfo)
-          } catch {}
+          } catch (error) {
+            console.warn('[CheckIn] deviceInfo stringify failed (will submit without it):', error)
+          }
           const { ok, data, status } = await apiJson<{
             lateMinutes?: number
             isOutside?: boolean
