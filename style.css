@@ -247,6 +247,7 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
 .content{
   padding:24px;
   flex:1;
+  min-height:0;                      /* flexbox: อนุญาตให้ item หดตัวได้ → overflow-y ทำงาน */
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
 }
