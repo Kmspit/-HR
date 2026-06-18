@@ -362,11 +362,18 @@ function PaymentsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
   const save = async () => {
     if (!form.amount) return
     setSaving(true)
-    await fetch(`/api/invoices/${invoice.id}/payments`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, amount: Number(form.amount) }),
-    })
-    setSaving(false); setShowForm(false); onRefresh()
+    try {
+      await fetch(`/api/invoices/${invoice.id}/payments`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+      })
+      setShowForm(false); onRefresh()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const payments = invoice.payments ?? []
@@ -433,11 +440,18 @@ function ReceiptsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
 
   const issueReceipt = async () => {
     setSaving(true)
-    await fetch(`/api/invoices/${invoice.id}/receipt`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ receiverName: invoice.clientName }),
-    })
-    setSaving(false); onRefresh()
+    try {
+      await fetch(`/api/invoices/${invoice.id}/receipt`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverName: invoice.clientName }),
+      })
+      onRefresh()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const receipts = invoice.receipts ?? []
@@ -514,18 +528,25 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
   const save = async () => {
     if (!form.clientName || !form.serviceType || !form.issueDate || !form.dueDate) return
     setSaving(true)
-    await fetch('/api/invoices', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...form,
-        clientCompanyId: form.clientCompanyId || null,
-        lineItems: items,
-        subtotal,
-        vatRate:  Number(form.vatRate),
-        whtRate:  Number(form.whtRate),
-      }),
-    })
-    setSaving(false); onSave()
+    try {
+      await fetch('/api/invoices', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          clientCompanyId: form.clientCompanyId || null,
+          lineItems: items,
+          subtotal,
+          vatRate:  Number(form.vatRate),
+          whtRate:  Number(form.whtRate),
+        }),
+      })
+      onSave()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

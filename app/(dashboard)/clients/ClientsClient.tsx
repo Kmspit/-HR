@@ -86,20 +86,26 @@ export default function ClientsClient({ userRole }: Props) {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setCreating(true)
-    const res = await fetch('/api/clients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    if (res.ok) {
-      setShowCreate(false)
-      setForm({ name: '', email: '', phone: '', password: '', companyName: '' })
-      fetchClients()
-    } else {
-      const err = await res.json()
-      alert(err.error ?? 'เกิดข้อผิดพลาด')
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setShowCreate(false)
+        setForm({ name: '', email: '', phone: '', password: '', companyName: '' })
+        fetchClients()
+      } else {
+        const err = await res.json()
+        alert(err.error ?? 'เกิดข้อผิดพลาด')
+      }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setCreating(false)
     }
-    setCreating(false)
   }
 
   async function handleDelete(id: string) {
@@ -145,16 +151,22 @@ export default function ClientsClient({ userRole }: Props) {
     e.preventDefault()
     if (!showHistory || !historyForm.status.trim()) return
     setAddingHistory(true)
-    const res = await fetch(`/api/tasks/${showHistory.taskId}/status-history`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(historyForm),
-    })
-    if (res.ok) {
-      setShowHistory(null)
-      setHistoryForm({ status: '', note: '' })
+    try {
+      const res = await fetch(`/api/tasks/${showHistory.taskId}/status-history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(historyForm),
+      })
+      if (res.ok) {
+        setShowHistory(null)
+        setHistoryForm({ status: '', note: '' })
+      }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setAddingHistory(false)
     }
-    setAddingHistory(false)
   }
 
   const CLIENT_STATUSES = ['รับเรื่องแล้ว', 'กำลังดำเนินการ', 'ยื่นฟ้องแล้ว', 'รอศาล', 'อยู่ระหว่างบังคับคดี', 'เสร็จสิ้น']

@@ -56,7 +56,8 @@ type Task = {
   createdAt: string
   taskLinks: string | null
   progressNotes: string | null
-  attachments: TaskAttachment[]
+  attachments?: TaskAttachment[]
+  _count?: { attachments: number }
   assignee: UserSnip
   assignedBy: UserSnip
   // Phase 1 — department workflow
@@ -839,6 +840,7 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
     fetch(`/api/tasks/${task.id}`).then(r => r.json()).then((d: { task?: Task }) => {
       if (d.task?.checklist) setChecklist(d.task.checklist)
       if (d.task?.comments) setComments(d.task.comments)
+      if (d.task?.attachments) setAttachments(d.task.attachments)
     }).catch(() => {})
   }, [task.id, loadedDetail])
 
@@ -1766,9 +1768,9 @@ function TaskRow({
             <User2 className="w-2.5 h-2.5 flex-shrink-0" />{task.clientName}
           </p>
         )}
-        {task.attachments.length > 0 && (
+        {(task._count?.attachments ?? task.attachments?.length ?? 0) > 0 && (
           <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 mt-0.5">
-            <Paperclip className="w-2.5 h-2.5" />{task.attachments.length}
+            <Paperclip className="w-2.5 h-2.5" />{task._count?.attachments ?? task.attachments?.length}
           </span>
         )}
       </td>

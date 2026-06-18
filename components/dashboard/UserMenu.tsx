@@ -19,21 +19,35 @@ export default function UserMenu({ user, showName = true }: Props) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const { showLoading } = useLoading()
+  const mounted = useRef(true)
+  const { showLoading, hideLoading } = useLoading()
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      mounted.current = false
+    }
   }, [])
 
   async function handleSignOut() {
     setSigningOut(true)
     setOpen(false)
     showLoading('กำลังออกจากระบบ...')
-    await signOut({ callbackUrl: '/' })
+    try {
+      await signOut({ callbackUrl: '/' })
+    } finally {
+      // On successful redirect the component unmounts before finally runs.
+      // Guard prevents setState on an unmounted component.
+      // On error the component is still mounted — UI resets so the user can retry.
+      if (mounted.current) {
+        hideLoading()
+        setSigningOut(false)
+      }
+    }
   }
 
   return (

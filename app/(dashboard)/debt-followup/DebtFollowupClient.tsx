@@ -69,16 +69,22 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
   const save = async () => {
     if (!selDebtor || !fResult) return
     setSaving(true)
-    const r = await fetch(`/api/debtors/${selDebtor.id}/followups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ method: fMethod, followedAt: fAt, result: fResult, note: fNote || null, nextFollowUp: fNextFU || null }),
-    })
-    setSaving(false)
-    if (r.ok) {
-      setShowForm(false)
-      setSelDebtor(null); setSearchDeb(''); setFResult(''); setFNote(''); setFNextFU('')
-      loadItems()
+    try {
+      const r = await fetch(`/api/debtors/${selDebtor.id}/followups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: fMethod, followedAt: fAt, result: fResult, note: fNote || null, nextFollowUp: fNextFU || null }),
+      })
+      if (r.ok) {
+        setShowForm(false)
+        setSelDebtor(null); setSearchDeb(''); setFResult(''); setFNote(''); setFNextFU('')
+        loadItems()
+      }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
     }
   }
 

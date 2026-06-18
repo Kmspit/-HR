@@ -408,11 +408,18 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
   const save = async () => {
     if (!form.serviceType || !form.startDate || !form.endDate) return
     setSaving(true)
-    await fetch(`/api/client-companies/${company.id}/contracts`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, value: Number(form.value || 0) }),
-    })
-    setSaving(false); setShowForm(false); setForm({ serviceType: '', startDate: '', endDate: '', value: '', slaAgreement: '', paymentTerms: '', note: '' }); onRefresh()
+    try {
+      await fetch(`/api/client-companies/${company.id}/contracts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, value: Number(form.value || 0) }),
+      })
+      setShowForm(false); setForm({ serviceType: '', startDate: '', endDate: '', value: '', slaAgreement: '', paymentTerms: '', note: '' }); onRefresh()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const updateStatus = async (id: string, status: string) => {
@@ -495,16 +502,23 @@ function SlaTab({ company, userId, onRefresh }: { company: ClientCompany; userId
 
   const save = async () => {
     setSaving(true)
-    await fetch(`/api/client-companies/${company.id}/sla`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        slaType: form.slaType, targetHours: Number(form.targetHours),
-        actualHours: form.actualHours ? Number(form.actualHours) : null,
-        met: form.met !== '' ? form.met === 'true' : null,
-        note: form.note || null,
-      }),
-    })
-    setSaving(false); setShowForm(false); onRefresh()
+    try {
+      await fetch(`/api/client-companies/${company.id}/sla`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slaType: form.slaType, targetHours: Number(form.targetHours),
+          actualHours: form.actualHours ? Number(form.actualHours) : null,
+          met: form.met !== '' ? form.met === 'true' : null,
+          note: form.note || null,
+        }),
+      })
+      setShowForm(false); onRefresh()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const records = company.slaRecords ?? []
@@ -654,10 +668,18 @@ function FilesTab({ company, onRefresh }: { company: ClientCompany; onRefresh: (
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    const fd = new FormData()
-    fd.append('file', file); fd.append('docType', docType)
-    await fetch(`/api/client-companies/${company.id}/files`, { method: 'POST', body: fd })
-    setUploading(false); e.target.value = ''; onRefresh()
+    try {
+      const fd = new FormData()
+      fd.append('file', file); fd.append('docType', docType)
+      await fetch(`/api/client-companies/${company.id}/files`, { method: 'POST', body: fd })
+      onRefresh()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   const del = async (fileId: string) => {
@@ -719,9 +741,15 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
     const url    = mode === 'create' ? '/api/client-companies'          : `/api/client-companies/${company!.id}`
     const method = mode === 'create' ? 'POST'                           : 'PATCH'
     const body   = { ...form, creditLimit: form.creditLimit ? Number(form.creditLimit) : null, startDate: form.startDate || null, endDate: form.endDate || null }
-    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    setSaving(false)
-    if (r.ok) onSave()
+    try {
+      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (r.ok) onSave()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const fields = [

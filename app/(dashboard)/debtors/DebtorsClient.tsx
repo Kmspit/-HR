@@ -604,22 +604,28 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
 
   const save = async () => {
     setSaving(true)
-    const r = await fetch(`/api/debtors/${debtor.id}/contacts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        channel, direction, result, note: note || null,
-        promisedAt: promisedAt || null,
-        promisedAmount: promisedAmount ? Number(promisedAmount) : null,
-        nextContactAt: nextContactAt || null,
-      }),
-    })
-    setSaving(false)
-    if (r.ok) {
-      const c = await r.json()
-      setContacts(prev => [c, ...prev])
-      setShowForm(false); setNote(''); setPromisedAt(''); setPromisedAmt(''); setNextContact('')
-      onRefresh()
+    try {
+      const r = await fetch(`/api/debtors/${debtor.id}/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel, direction, result, note: note || null,
+          promisedAt: promisedAt || null,
+          promisedAmount: promisedAmount ? Number(promisedAmount) : null,
+          nextContactAt: nextContactAt || null,
+        }),
+      })
+      if (r.ok) {
+        const c = await r.json()
+        setContacts(prev => [c, ...prev])
+        setShowForm(false); setNote(''); setPromisedAt(''); setPromisedAmt(''); setNextContact('')
+        onRefresh()
+      }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -742,17 +748,23 @@ function PromisesTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
   const save = async () => {
     if (!promisedAmount || !promisedDate) return
     setSaving(true)
-    const r = await fetch(`/api/debtors/${debtor.id}/promises`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ promisedAmount: Number(promisedAmount), promisedDate, note: note || null }),
-    })
-    setSaving(false)
-    if (r.ok) {
-      const p = await r.json()
-      setPromises(prev => [p, ...prev])
-      setShowForm(false); setAmount(''); setDate(''); setNote('')
-      onRefresh()
+    try {
+      const r = await fetch(`/api/debtors/${debtor.id}/promises`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promisedAmount: Number(promisedAmount), promisedDate, note: note || null }),
+      })
+      if (r.ok) {
+        const p = await r.json()
+        setPromises(prev => [p, ...prev])
+        setShowForm(false); setAmount(''); setDate(''); setNote('')
+        onRefresh()
+      }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -851,13 +863,19 @@ function FollowUpTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
   const save = async () => {
     if (!result) return
     setSaving(true)
-    const r = await fetch(`/api/debtors/${debtor.id}/followups`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ method, followedAt, result, note: note || null, nextFollowUp: nextFU || null }),
-    })
-    setSaving(false)
-    if (r.ok) { setShowForm(false); setResult(''); setNote(''); setNextFU(''); onRefresh() }
+    try {
+      const r = await fetch(`/api/debtors/${debtor.id}/followups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method, followedAt, result, note: note || null, nextFollowUp: nextFU || null }),
+      })
+      if (r.ok) { setShowForm(false); setResult(''); setNote(''); setNextFU(''); onRefresh() }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const list = debtor.followUps ?? []
@@ -927,13 +945,19 @@ function PaymentTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
   const save = async () => {
     if (!amount) return
     setSaving(true)
-    const r = await fetch(`/api/debtors/${debtor.id}/payments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: Number(amount), paidAt, channel, note: note || null, receivedById: userId }),
-    })
-    setSaving(false)
-    if (r.ok) { setShowForm(false); setAmount(''); setNote(''); onRefresh() }
+    try {
+      const r = await fetch(`/api/debtors/${debtor.id}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(amount), paidAt, channel, note: note || null, receivedById: userId }),
+      })
+      if (r.ok) { setShowForm(false); setAmount(''); setNote(''); onRefresh() }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const list = debtor.payments ?? []
@@ -1000,13 +1024,19 @@ function ApptTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: string
   const save = async () => {
     if (!appointDate) return
     setSaving(true)
-    const r = await fetch(`/api/debtors/${debtor.id}/appointments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointDate, agreedAmount: Number(agreedAmount || 0), location: location || null, note: note || null }),
-    })
-    setSaving(false)
-    if (r.ok) { setShowForm(false); setApptDate(''); setAgreed(''); setLocation(''); setNote(''); onRefresh() }
+    try {
+      const r = await fetch(`/api/debtors/${debtor.id}/appointments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointDate, agreedAmount: Number(agreedAmount || 0), location: location || null, note: note || null }),
+      })
+      if (r.ok) { setShowForm(false); setApptDate(''); setAgreed(''); setLocation(''); setNote(''); onRefresh() }
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   const updateApptStatus = async (apptId: string, status: string) => {
@@ -1087,13 +1117,19 @@ function FilesTab({ debtor, onRefresh }: { debtor: Debtor; onRefresh: () => void
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('docType', docType)
-    const r = await fetch(`/api/debtors/${debtor.id}/files`, { method: 'POST', body: fd })
-    setUploading(false)
-    e.target.value = ''
-    if (r.ok) onRefresh()
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('docType', docType)
+      const r = await fetch(`/api/debtors/${debtor.id}/files`, { method: 'POST', body: fd })
+      if (r.ok) onRefresh()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   const deleteFile = async (fileId: string) => {
@@ -1194,9 +1230,15 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
       registeredAddress: form.registeredAddress || null,
       assetAddress: form.assetAddress || null,
     }
-    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    setSaving(false)
-    if (r.ok) onSave()
+    try {
+      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (r.ok) onSave()
+    } catch (error) {
+      console.error('[SAVE ERROR]', error)
+      throw error
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

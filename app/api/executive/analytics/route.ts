@@ -256,5 +256,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json(result)
+  return NextResponse.json(result, {
+    headers: {
+      'Cache-Control': 's-maxage=60, stale-while-revalidate=300',
+      'Vary': 'Cookie',
+    },
+  })
 }

@@ -109,8 +109,13 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
   }, [onClose])
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    console.log('[SCROLL LOCK] AttendanceDetailModal')
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = previousOverflow
+      console.log('[SCROLL UNLOCK] AttendanceDetailModal')
+    }
   }, [])
 
   const photos: AttendancePhotoItem[] = detail ? [

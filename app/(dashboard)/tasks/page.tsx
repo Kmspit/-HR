@@ -7,12 +7,7 @@ const CAN_ASSIGN:  string[] = ['SUPER_ADMIN','CEO','MANAGER_HR','HR','ADMIN','MA
 const CAN_SEE_ALL: string[] = ['SUPER_ADMIN','CEO','MANAGER_HR','HR']
 
 const userSelect = { id: true, name: true, department: true, employeeId: true, role: true }
-const attachmentInclude = {
-  attachments: {
-    include: { uploadedBy: { select: { id: true, name: true } } },
-    orderBy: { createdAt: 'asc' as const },
-  },
-}
+const attachmentCount = { _count: { select: { attachments: true } } }
 
 // JSON.stringify/parse converts Date → ISO string at runtime.
 // Return type is `any` so callers can assign to string-dated client types.
@@ -28,7 +23,7 @@ export default async function TasksPage() {
 
   const myTasks = await prisma.taskAssignment.findMany({
     where:   { assigneeId: userId },
-    include: { assignee: { select: userSelect }, assignedBy: { select: userSelect }, ...attachmentInclude },
+    include: { assignee: { select: userSelect }, assignedBy: { select: userSelect }, ...attachmentCount },
     orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
     take: 100,
   })
@@ -36,7 +31,7 @@ export default async function TasksPage() {
   const assignedByMeTasks = CAN_ASSIGN.includes(role)
     ? await prisma.taskAssignment.findMany({
         where:   { assignedById: userId },
-        include: { assignee: { select: userSelect }, assignedBy: { select: userSelect }, ...attachmentInclude },
+        include: { assignee: { select: userSelect }, assignedBy: { select: userSelect }, ...attachmentCount },
         orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
         take: 100,
       })
@@ -44,7 +39,7 @@ export default async function TasksPage() {
 
   const allTasks = CAN_SEE_ALL.includes(role)
     ? await prisma.taskAssignment.findMany({
-        include: { assignee: { select: userSelect }, assignedBy: { select: userSelect }, ...attachmentInclude },
+        include: { assignee: { select: userSelect }, assignedBy: { select: userSelect }, ...attachmentCount },
         orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
         take: 200,
       })

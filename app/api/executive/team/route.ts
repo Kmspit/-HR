@@ -45,7 +45,6 @@ export async function GET() {
     _sum: { amount: true },
     _count: { id: true },
     orderBy: { _sum: { amount: 'desc' } },
-    take: 20,
   })
 
   // Attendance this month (late count per user)
@@ -58,7 +57,6 @@ export async function GET() {
     },
     _count: { id: true },
     orderBy: { _count: { id: 'desc' } },
-    take: 20,
   })
 
   const totalAttendance = await prisma.attendance.groupBy({
@@ -92,7 +90,10 @@ export async function GET() {
   ])
 
   const users = await prisma.user.findMany({
-    where: { id: { in: [...allUserIds] } },
+    where: {
+      status: 'ACTIVE',
+      ...(deptScope ? { department: deptScope } : {}),
+    },
     select: { id: true, name: true, department: true, role: true, employeeId: true },
   })
   const userMap = Object.fromEntries(users.map(u => [u.id, u]))
@@ -104,12 +105,14 @@ export async function GET() {
   const totalAttMap     = Object.fromEntries(totalAttendance.map(r => [r.userId, r._count.id]))
 
   // Build leaderboard
+  const recoveryMap = Object.fromEntries(recoveryByUser.map(r => [r.collectorId, r._sum.amount ?? 0]))
+
   const leaderboard = users.map(u => {
     const total     = taskTotalMap[u.id]    ?? 0
     const done      = taskDoneMap[u.id]     ?? 0
     const lateCount = lateCountMap[u.id]    ?? 0
     const attTotal  = totalAttMap[u.id]     ?? 0
-    const recovery  = recoveryByUser.find(r => r.collectorId === u.id)?._sum?.amount ?? 0
+    const recovery  = recoveryMap[u.id]     ?? 0
 
     return {
       userId:          u.id,
@@ -127,28 +130,41 @@ export async function GET() {
 
   leaderboard.sort((a, b) => b.completionRate - a.completionRate)
 
-  // Department aggregates
+  // Department aggregates — in-memory from existing query results (no extra DB queries)
   const depts = ['Legal', 'Collection', 'Enforcement', 'HR', 'Admin']
-  const deptStats = await Promise.all(
-    depts.map(async dept => {
-      const [taskTotal, taskDone, lateCount, totalAtt, recovery] = await Promise.all([
-        prisma.taskAssignment.count({ where: { createdAt: { gte: monthStart }, assignee: { department: dept } } }),
-        prisma.taskAssignment.count({ where: { status: 'COMPLETED', updatedAt: { gte: monthStart }, assignee: { department: dept } } }),
-        prisma.attendance.count({ where: { date: { gte: monthStart }, lateMinutes: { gt: 0 }, user: { department: dept } } }),
-        prisma.attendance.count({ where: { date: { gte: monthStart }, user: { department: dept } } }),
-        prisma.recoveryPayment.aggregate({ where: { paymentDate: { gte: monthStart }, status: 'CONFIRMED', collector: { department: dept } }, _sum: { amount: true } }),
-      ])
-      return {
-        dept,
-        tasksTotal:     taskTotal,
-        tasksCompleted: taskDone,
-        completionRate: taskTotal > 0 ? Math.round((taskDone / taskTotal) * 100) : 0,
-        lateCount,
-        attendancePct:  totalAtt > 0 ? Math.round(((totalAtt - lateCount) / totalAtt) * 100) : 100,
-        recoveryAmount: recovery._sum.amount ?? 0,
-      }
-    })
-  )
+  const deptStats = depts.map(dept => {
+    const deptUserIds = new Set(users.filter(u => u.department === dept).map(u => u.id))
+
+    const tasksTotal = taskStats
+      .filter(r => deptUserIds.has(r.assigneeId))
+      .reduce((sum, r) => sum + r._count.id, 0)
+
+    const tasksCompleted = taskCompletedStats
+      .filter(r => deptUserIds.has(r.assigneeId))
+      .reduce((sum, r) => sum + r._count.id, 0)
+
+    const lateCount = lateByUser
+      .filter(r => deptUserIds.has(r.userId))
+      .reduce((sum, r) => sum + r._count.id, 0)
+
+    const totalAtt = totalAttendance
+      .filter(r => deptUserIds.has(r.userId))
+      .reduce((sum, r) => sum + r._count.id, 0)
+
+    const recoveryAmount = recoveryByUser
+      .filter(r => deptUserIds.has(r.collectorId))
+      .reduce((sum, r) => sum + (r._sum.amount ?? 0), 0)
+
+    return {
+      dept,
+      tasksTotal,
+      tasksCompleted,
+      completionRate: tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0,
+      lateCount,
+      attendancePct:  totalAtt > 0 ? Math.round(((totalAtt - lateCount) / totalAtt) * 100) : 100,
+      recoveryAmount,
+    }
+  })
 
   // Top/bottom 5 performers
   const topPerformers    = [...leaderboard].sort((a, b) => b.completionRate - a.completionRate).slice(0, 5)
@@ -164,6 +180,11 @@ export async function GET() {
       bottomPerformers,
       topCollectors,
       frequentLate,
+    },
+  }, {
+    headers: {
+      'Cache-Control': 's-maxage=60, stale-while-revalidate=300',
+      'Vary': 'Cookie',
     },
   })
 }
