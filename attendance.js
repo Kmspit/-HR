@@ -132,7 +132,14 @@ async function onGPSUpdate(position) {
     const user = getCurrentUser();
     if (_gpsWriteTimer) clearTimeout(_gpsWriteTimer);
     _gpsWriteTimer = setTimeout(function() {
-      const locs = JSON.parse(localStorage.getItem('hrflow_liveLocations') || '{}');
+      let locs = {};
+      try {
+        const raw = localStorage.getItem('hrflow_liveLocations');
+        locs = raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        console.error('[attendance] corrupted hrflow_liveLocations, clearing:', e);
+        localStorage.removeItem('hrflow_liveLocations');
+      }
       locs[user.email] = { lat, lng, name: user.name, role: user.role, dept: user.dept, addr, updatedAt: new Date().toISOString(), inRange };
       localStorage.setItem('hrflow_liveLocations', JSON.stringify(locs));
       refreshAllMap();
@@ -179,7 +186,14 @@ function refreshAllMap() {
   const card = document.getElementById('all-emp-map-card');
   if (!card || card.style.display === 'none') return;
 
-  const locs = JSON.parse(localStorage.getItem('hrflow_liveLocations') || '{}');
+  let locs = {};
+  try {
+    const raw = localStorage.getItem('hrflow_liveLocations');
+    locs = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('[attendance] corrupted hrflow_liveLocations, clearing:', e);
+    localStorage.removeItem('hrflow_liveLocations');
+  }
   if (!allMap) initAllMap();
 
   const listEl = document.getElementById('emp-location-list');
@@ -317,7 +331,11 @@ function getTodayData() {
       return migrated;
     }
     return { sessions: [] };
-  } catch { return { sessions: [] }; }
+  } catch (e) {
+    console.error('[attendance] corrupted today data, clearing:', e);
+    try { localStorage.removeItem(todayStorageKey()); } catch {}
+    return { sessions: [] };
+  }
 }
 
 function saveTodayData(data) {
@@ -365,7 +383,10 @@ function _cleanOldAttendanceLogs() {
   try {
     const logs = JSON.parse(localStorage.getItem('hrflow_faceScanLogs') || '[]');
     if (logs.length > 50) localStorage.setItem('hrflow_faceScanLogs', JSON.stringify(logs.slice(0, 50)));
-  } catch {}
+  } catch (e) {
+    console.warn('[attendance] corrupted hrflow_faceScanLogs, clearing:', e);
+    try { localStorage.removeItem('hrflow_faceScanLogs'); } catch {}
+  }
 }
 
 function _showStorageWarning() {
@@ -1473,7 +1494,7 @@ function getLateHistory() {
           sessionIdx:  s.sessionIndex || 1,
         });
       });
-    } catch { /* skip malformed */ }
+    } catch (e) { console.warn('[attendance] malformed data at key:', key, e); }
   }
   records.sort(function(a, b) { return (b.dateKey || '').localeCompare(a.dateKey || ''); });
   return records;
@@ -1544,7 +1565,7 @@ function getAllAttendanceData() {
           faceVerified: s.faceVerified ? 'ผ่าน' : 'ไม่ผ่าน',
         });
       });
-    } catch {}
+    } catch (e) { console.warn('[attendance] malformed data at key:', key, e); }
   }
   rows.sort(function(a, b) { return (b.date + b.email).localeCompare(a.date + a.email); });
   return rows;
@@ -1712,7 +1733,10 @@ function cleanExpiredGpsLocations() {
       }
     });
     if (changed) localStorage.setItem('hrflow_liveLocations', JSON.stringify(locs));
-  } catch {}
+  } catch (e) {
+    console.warn('[attendance] corrupted hrflow_liveLocations during cleanup, clearing:', e);
+    try { localStorage.removeItem('hrflow_liveLocations'); } catch {}
+  }
 }
 
 // ── [11] FACE PROFILE BACKUP WARNING ─────────────────────────────────────────
