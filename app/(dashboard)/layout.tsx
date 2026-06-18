@@ -42,7 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   })
 
   return (
-    <div className="dashboard-shell flex min-h-[100dvh] bg-[#F7F9FC] dark:bg-[#070b14]">
+    <div className="dashboard-shell flex min-h-[100dvh] md:h-[100dvh] bg-[#F7F9FC] dark:bg-[#070b14]">
       <DeviceBinder />
       {/* Sidebar — always in DOM so fixed mobile drawer can render; aside hides itself on mobile */}
       <Sidebar user={user} />
