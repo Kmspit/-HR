@@ -29,20 +29,24 @@ export async function GET(req: NextRequest) {
   if (status)   where.status  = status
   if (expiring) where.endDate = { lte: d90, gte: now }
 
-  const [items, total] = await Promise.all([
-    prisma.clientContract.findMany({
-      where,
-      include: {
-        clientCompany: { select: { id: true, clientCode: true, companyName: true, phone: true } },
-        createdBy:     { select: userSel },
-        _count:        { select: { files: true, slaRecords: true } },
-      },
-      orderBy: { endDate: 'asc' },
-      skip:    (page - 1) * limit,
-      take:    limit,
-    }),
-    prisma.clientContract.count({ where }),
-  ])
-
-  return NextResponse.json({ items, total, page, pages: Math.ceil(total / limit) })
+  try {
+    const [items, total] = await Promise.all([
+      prisma.clientContract.findMany({
+        where,
+        include: {
+          clientCompany: { select: { id: true, clientCode: true, companyName: true, phone: true } },
+          createdBy:     { select: userSel },
+          _count:        { select: { files: true, slaRecords: true } },
+        },
+        orderBy: { endDate: 'asc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+      }),
+      prisma.clientContract.count({ where }),
+    ])
+    return NextResponse.json({ items, total, page, pages: Math.ceil(total / limit) })
+  } catch (error) {
+    console.error('[contracts GET]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

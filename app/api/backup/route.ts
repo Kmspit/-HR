@@ -17,12 +17,16 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const records = await prisma.backupRecord.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
-
-  return NextResponse.json({ records })
+  try {
+    const records = await prisma.backupRecord.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+    return NextResponse.json({ records })
+  } catch (error) {
+    console.error('[backup GET]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -39,27 +43,32 @@ export async function POST(req: NextRequest) {
     'expenseClaims', 'payrolls', 'warnings', 'auditLogs', 'securityEvents',
   ] as const
 
-  const data     = await createBackupData([...tables])
-  const json     = JSON.stringify(data, null, 2)
-  const bytes    = Buffer.byteLength(json, 'utf8')
-  const filename = buildBackupFilename()
+  try {
+    const data     = await createBackupData([...tables])
+    const json     = JSON.stringify(data, null, 2)
+    const bytes    = Buffer.byteLength(json, 'utf8')
+    const filename = buildBackupFilename()
 
-  const record = await registerBackupRecord({
-    filename,
-    sizeBytes:   bytes,
-    tables:      [...tables],
-    createdById: session.user.id,
-    note:        body.note,
-  })
+    const record = await registerBackupRecord({
+      filename,
+      sizeBytes:   bytes,
+      tables:      [...tables],
+      createdById: session.user.id,
+      note:        body.note,
+    })
 
-  await logSecurityEvent({
-    userId:      session.user.id,
-    eventType:   'BACKUP_CREATED',
-    severity:    'INFO',
-    description: `Manual backup created: ${filename}`,
-    ip:          req.headers.get('x-forwarded-for') ?? undefined,
-    userAgent:   req.headers.get('user-agent') ?? undefined,
-  })
+    await logSecurityEvent({
+      userId:      session.user.id,
+      eventType:   'BACKUP_CREATED',
+      severity:    'INFO',
+      description: `Manual backup created: ${filename}`,
+      ip:          req.headers.get('x-forwarded-for') ?? undefined,
+      userAgent:   req.headers.get('user-agent') ?? undefined,
+    })
 
-  return NextResponse.json({ record, filename, sizeBytes: bytes })
+    return NextResponse.json({ record, filename, sizeBytes: bytes })
+  } catch (error) {
+    console.error('[backup POST]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

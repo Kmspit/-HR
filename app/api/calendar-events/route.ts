@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
 
   const where: Record<string, unknown> = {}
   if (!isAdmin) {
-    // Non-admin sees own events or events they're attending
     where.createdById = userId
   }
   if (startDate) where.startAt = { ...(where.startAt as object ?? {}), gte: new Date(startDate) }
@@ -31,14 +30,18 @@ export async function GET(req: NextRequest) {
   if (department) where.department = department
   if (status && status !== 'ALL') where.status = status
 
-  const items = await prisma.calendarEvent.findMany({
-    where,
-    include: { createdBy: { select: { name: true, position: true } } },
-    orderBy: { startAt: 'asc' },
-    take: 200,
-  })
-
-  return NextResponse.json({ items })
+  try {
+    const items = await prisma.calendarEvent.findMany({
+      where,
+      include: { createdBy: { select: { name: true, position: true } } },
+      orderBy: { startAt: 'asc' },
+      take: 200,
+    })
+    return NextResponse.json({ items })
+  } catch (error) {
+    console.error('[calendar-events GET]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -57,20 +60,24 @@ export async function POST(req: NextRequest) {
 
   if (!title || !startAt) return NextResponse.json({ error: 'title and startAt required' }, { status: 400 })
 
-  const event = await prisma.calendarEvent.create({
-    data: {
-      title, eventType,
-      startAt: new Date(startAt),
-      endAt: endAt ? new Date(endAt) : null,
-      allDay, location, locationLat, locationLng, description,
-      courtName, caseNumber, clientName, debtorName, debtAmount,
-      status, priority, department,
-      attendees: JSON.stringify(attendees),
-      note,
-      createdById: session.user.id,
-    },
-    include: { createdBy: { select: { name: true } } },
-  })
-
-  return NextResponse.json(event, { status: 201 })
+  try {
+    const event = await prisma.calendarEvent.create({
+      data: {
+        title, eventType,
+        startAt: new Date(startAt),
+        endAt: endAt ? new Date(endAt) : null,
+        allDay, location, locationLat, locationLng, description,
+        courtName, caseNumber, clientName, debtorName, debtAmount,
+        status, priority, department,
+        attendees: JSON.stringify(attendees),
+        note,
+        createdById: session.user.id,
+      },
+      include: { createdBy: { select: { name: true } } },
+    })
+    return NextResponse.json(event, { status: 201 })
+  } catch (error) {
+    console.error('[calendar-events POST]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

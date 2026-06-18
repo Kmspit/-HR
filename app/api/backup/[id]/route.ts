@@ -1,7 +1,7 @@
 /**
- * GET    /api/backup/[id]          — get backup record metadata
+ * GET    /api/backup/[id]            — get backup record metadata
  * GET    /api/backup/[id]?download=1 — stream backup JSON as file download
- * DELETE /api/backup/[id]          — delete backup record
+ * DELETE /api/backup/[id]            — delete backup record
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -20,27 +20,31 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id } = await params
-  const record = await prisma.backupRecord.findUnique({ where: { id } })
-  if (!record) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  try {
+    const { id } = await params
+    const record = await prisma.backupRecord.findUnique({ where: { id } })
+    if (!record) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const download = new URL(req.url).searchParams.get('download') === '1'
+    const download = new URL(req.url).searchParams.get('download') === '1'
 
-  if (!download) {
-    return NextResponse.json({ record })
+    if (!download) {
+      return NextResponse.json({ record })
+    }
+
+    const tables = record.tables.split(',') as BackupTableName[]
+    const data   = await createBackupData(tables)
+    const json   = JSON.stringify(data, null, 2)
+
+    return new NextResponse(json, {
+      headers: {
+        'Content-Type':        'application/json',
+        'Content-Disposition': `attachment; filename="${record.filename}"`,
+      },
+    })
+  } catch (error) {
+    console.error('[backup/[id] GET]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  // Regenerate the data on-demand (JSON stored in DB metadata only, not files)
-  const tables = record.tables.split(',') as BackupTableName[]
-  const data   = await createBackupData(tables)
-  const json   = JSON.stringify(data, null, 2)
-
-  return new NextResponse(json, {
-    headers: {
-      'Content-Type':        'application/json',
-      'Content-Disposition': `attachment; filename="${record.filename}"`,
-    },
-  })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
@@ -50,7 +54,12 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id } = await params
-  await prisma.backupRecord.delete({ where: { id } })
-  return NextResponse.json({ ok: true })
+  try {
+    const { id } = await params
+    await prisma.backupRecord.delete({ where: { id } })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('[backup/[id] DELETE]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
