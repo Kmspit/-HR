@@ -193,7 +193,6 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
   margin-left:var(--sidebar-w);
   display:flex;flex-direction:column;
   min-height:100vh;
-  overflow-x:hidden;
   transition:margin-left .3s ease;
 }
 
