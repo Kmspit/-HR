@@ -24,8 +24,12 @@
   --sidebar-w-collapsed: 68px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{
-  scroll-behavior:smooth;
+html, body {
+  height: 100%;
+  overflow: visible;
+}
+html {
+  scroll-behavior: smooth;
 }
 body{
   background:var(--bg);
@@ -36,7 +40,6 @@ body{
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   letter-spacing: 0.015em;
-  min-height:100vh;
 }
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px}
@@ -193,6 +196,7 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
   margin-left:var(--sidebar-w);
   display:flex;flex-direction:column;
   min-height:100vh;
+  overflow:visible;
   transition:margin-left .3s ease;
 }
 
@@ -244,6 +248,8 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
 .content{
   padding:24px;
   flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 
 /* ── HERO STRIP ── */
@@ -594,7 +600,6 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
   justify-content: center;
   background: radial-gradient(circle at top right, #1e293b, #0a0d14);
   position: relative;
-  overflow: hidden;
   padding: 20px;
 }
 .auth-wrapper::before {
