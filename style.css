@@ -247,9 +247,8 @@ body.sidebar-collapsed .sidebar-nav{padding:12px 6px}
 .content{
   padding:24px;
   flex:1;
-  overflow-y:auto;                   /* เลื่อนแนวตั้งได้ */
-  overflow-x:hidden;                 /* ตัดแนวนอน */
-  -webkit-overflow-scrolling:touch;  /* iOS momentum scroll */
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 
 /* ── HERO STRIP ── */
