@@ -109,7 +109,11 @@ function handleLogin(e) {
   errEl.style.display = 'none';
 
   const user = { ...account, email, role };
-  localStorage.setItem('hrflow_user', JSON.stringify(user));
+  try {
+    localStorage.setItem('hrflow_user', JSON.stringify(user));
+  } catch (e) {
+    console.warn('[login] localStorage.setItem failed:', e);
+  }
 
   // Route based on role
   const routes = {
