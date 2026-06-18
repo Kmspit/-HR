@@ -116,7 +116,11 @@ export async function POST(req: NextRequest) {
   }
 
   const events = body.events ?? []
-  await Promise.all(events.map((ev) => handleLineWebhookEvent(ev)))
+  try {
+    await Promise.all(events.map((ev) => handleLineWebhookEvent(ev)))
+  } catch (error) {
+    console.error('[LINE webhook] event handler error:', error)
+  }
 
   return NextResponse.json({ ok: true })
 }
