@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {/* Main content */}
       <div className="dashboard-main flex flex-1 flex-col min-w-0 md:overflow-hidden">
         <DashboardHeader user={user} unreadCount={unreadCount} />
-        <main className="dashboard-main-scroll pb-[calc(5rem+env(safe-area-inset-bottom))] md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:pb-0">
+        <main className="dashboard-main-scroll pb-[calc(5rem+env(safe-area-inset-bottom))] md:flex-1 md:min-h-0 md:overflow-y-auto md:overflow-x-hidden md:pb-0">
           {needsOrgSetup && <OrgSetupBanner />}
           <div className="page-enter">
             {children}
