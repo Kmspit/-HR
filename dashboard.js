@@ -148,7 +148,17 @@ function reject(btn){
 
 // ── NOTIFICATION SYSTEM ──
 const _NOTIF_KEY = 'hrflow_notifications';
-function getNotifications() { return (typeof lsGet==='function')?lsGet('notifications',[]):JSON.parse(localStorage.getItem('hrflow_notifications')||'[]'); }
+function getNotifications() {
+  if (typeof lsGet === 'function') return lsGet('notifications', []);
+  try {
+    const raw = localStorage.getItem('hrflow_notifications');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('[dashboard] corrupted notifications data, clearing:', e);
+    localStorage.removeItem('hrflow_notifications');
+    return [];
+  }
+}
 function saveNotifications(n) { if(typeof lsSet==='function') lsSet('notifications',n); else localStorage.setItem('hrflow_notifications',JSON.stringify(n)); }
 function pushNotification(item) {
   const list=getNotifications();

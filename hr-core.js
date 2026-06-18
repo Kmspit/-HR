@@ -910,7 +910,9 @@ async function sendLineOAMsg(message, imageUrl) {
         }),
       });
       if (res.ok) return { ok: true, via: 'relay' };
-    } catch {}
+    } catch (e) {
+      console.error('[hr-core] Make.com relay failed:', e);
+    }
   }
 
   // 3. LINE Messaging API direct (มักถูก CORS บล็อกใน browser)
