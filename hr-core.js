@@ -1036,9 +1036,13 @@ async function apiFetch(path, options) {
   if (!useHrApi()) return null;
   try {
     const res = await fetch(HR_API_BASE + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options || {}));
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('[apiFetch] HTTP error:', res.status, path);
+      return null;
+    }
     return await res.json();
-  } catch {
+  } catch (e) {
+    console.error('[apiFetch] network/parse error:', path, e);
     return null;
   }
 }
