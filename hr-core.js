@@ -40,7 +40,7 @@ function initRole() {
   if (nameEl) nameEl.textContent = user.name;
   if (roleEl) roleEl.textContent = (roleLabelMap[user.role] || user.role) + (user.dept ? ' · ' + user.dept : '');
 
-  // Show/hide role-gated elements
+  // Show/hide role-gated elements — toggle .role-visible so CSS fallback works
   const allRoleEls = document.querySelectorAll('[class*="role-only"]');
   allRoleEls.forEach(el => {
     const show =
@@ -49,7 +49,7 @@ function initRole() {
       (el.classList.contains('role-employee-only') && user.role === 'EMPLOYEE') ||
       (el.classList.contains('role-lawyer-only')  && user.role === 'LAWYER') ||
       (el.classList.contains('role-hr-admin-only') && (user.role === 'MANAGER_HR' || user.role === 'ADMIN'));
-    el.style.display = show ? '' : 'none';
+    el.classList.toggle('role-visible', show);
   });
 
   initSidebar();

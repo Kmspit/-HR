@@ -940,3 +940,8 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
 @media(max-width:900px){
   .dash-page .bottom-grid{grid-template-columns:1fr}
 }
+
+/* Role gate — hidden by default so content is never exposed before JS runs.
+   initRole() adds .role-visible to permitted elements; the :not() selector
+   then stops matching and the element uses its own natural display value. */
+[class*="role-only"]:not(.role-visible) { display: none !important; }
