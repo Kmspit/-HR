@@ -96,10 +96,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result, { status: 201 })
   } catch (err: any) {
     console.error('[case-documents UPLOAD]', err)
-    return NextResponse.json({
-      error: 'Cannot save document',
-      debug: err?.message || String(err),
-      code:  err?.code,
-    }, { status: 500 })
+    return NextResponse.json({ error: 'Cannot save document' }, { status: 500 })
   }
 }

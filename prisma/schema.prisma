@@ -1605,8 +1605,8 @@ model CaseDocument {
   // Document Center Phase 1 — FK to Case + Debtor
   caseId       String?   @map("case_id")
   debtorId     String?   @map("debtor_id")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt      @map("updated_at")
 
   uploadedBy User                    @relation("CaseDocUploader",  fields: [uploadedById],  references: [id])
   assignedTo User?                   @relation("CaseDocAssignee",  fields: [assignedToId],  references: [id])
@@ -1636,7 +1636,7 @@ model CaseDocumentFile {
   fileSize     Int?     @map("file_size")
   version      Int      @default(1)
   uploadedById String   @map("uploaded_by_id")
-  createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
 
   document   CaseDocument @relation(fields: [documentId],   references: [id], onDelete: Cascade)
   uploadedBy User         @relation("CaseDocFileUploader", fields: [uploadedById], references: [id])
@@ -1655,7 +1655,7 @@ model CaseDocumentSignature {
   signatureData  String?  @map("signature_data")
   signatureUrl   String?  @map("signature_url")
   typedName      String?  @map("typed_name")
-  signedAt       DateTime @default(now())
+  signedAt       DateTime @default(now()) @map("signed_at")
 
   document CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
   signedBy User         @relation("CaseDocSigner",    fields: [signedById], references: [id])
@@ -1670,7 +1670,7 @@ model CaseDocumentVersion {
   changeNote    String?  @map("change_note")
   changedById   String   @map("changed_by_id")
   changedByName String   @map("changed_by_name")
-  createdAt     DateTime @default(now())
+  createdAt     DateTime @default(now()) @map("created_at")
 
   document  CaseDocument @relation(fields: [documentId],  references: [id], onDelete: Cascade)
   changedBy User         @relation("CaseDocVersioner", fields: [changedById], references: [id])
