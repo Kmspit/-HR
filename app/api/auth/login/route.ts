@@ -51,7 +51,6 @@ async function loadUserForRedirect(userId: string, fallback: {
  * ล็อกอิน + สร้าง session + คืน URL ปลายทาง
  */
 export async function POST(req: NextRequest) {
-  console.log('[LOGIN START]')
   try {
     try {
       await ensureDbSchema()
@@ -65,7 +64,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
     const email = typeof body.email === 'string' ? body.email : ''
     const password = typeof body.password === 'string' ? body.password : ''
-    console.log('[EMAIL]', email)
 
     // Phase 15: brute-force check
     const lockCheck = await checkLoginAllowed(email).catch(() => ({ allowed: true }))
@@ -78,7 +76,6 @@ export async function POST(req: NextRequest) {
 
     const verified = await verifyLoginCredentials(email, password)
     if (!verified.ok) {
-      console.log('[api/auth/login] credentials failed:', verified.error, 'for:', email)
       await recordLoginAttempt(email, false, { ip, userAgent, reason: verified.error }).catch(() => {})
       return NextResponse.json(
         { ok: false, error: verified.error },
@@ -116,7 +113,6 @@ export async function POST(req: NextRequest) {
       departmentId: null,
       sectionId: null,
     }
-    console.log('[api/auth/login] resolving path for role:', resolveInput.role)
     const { path, message } = resolvePostLoginPath(resolveInput)
 
     const response = NextResponse.json({
@@ -125,7 +121,6 @@ export async function POST(req: NextRequest) {
       message,
     })
 
-    console.log('[LOGIN SUCCESS PATH]')
     return await attachSessionCookie(response, verified.user)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
