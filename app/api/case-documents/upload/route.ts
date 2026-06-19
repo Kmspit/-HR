@@ -95,9 +95,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result, { status: 201 })
   } catch (err: any) {
-    console.error('[case-documents UPLOAD] Error message:', err?.message)
-    console.error('[case-documents UPLOAD] Error code:', err?.code)
-    console.error('[case-documents UPLOAD] Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
-    return NextResponse.json({ error: 'Cannot save document' }, { status: 500 })
+    console.error('[case-documents UPLOAD]', err)
+    return NextResponse.json({
+      error: 'Cannot save document',
+      debug: err?.message || String(err),
+      code:  err?.code,
+    }, { status: 500 })
   }
 }
