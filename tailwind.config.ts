@@ -80,8 +80,8 @@ const config: Config = {
           to: { opacity: '1', transform: 'translateY(0)' },
         },
         'fade-in-sm': {
-          from: { opacity: '0', transform: 'translateY(6px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
+          from: { opacity: '0' },
+          to: { opacity: '1' },
         },
         'fade-in-slow': {
           from: { opacity: '0' },
