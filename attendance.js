@@ -343,11 +343,11 @@ function getTodayData() {
 
 function saveTodayData(data) {
   const json = JSON.stringify(data);
-  console.log('[ATT] saveTodayData ~' + Math.round(json.length / 1024) + 'KB, sessions:', data.sessions.length);
+  // console.log('[ATT] saveTodayData ~' + Math.round(json.length / 1024) + 'KB, sessions:', data.sessions.length);
   try {
     localStorage.setItem(todayStorageKey(), json);
     _pendingAttendanceData = null; // clear memory fallback on successful save
-    console.log('[ATT] saveTodayData OK');
+    // console.log('[ATT] saveTodayData OK');
   } catch (e) {
     if (e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
       console.warn('[ATT] localStorage quota exceeded, cleaning old logs...');
@@ -355,7 +355,7 @@ function saveTodayData(data) {
       try {
         localStorage.setItem(todayStorageKey(), json);
         _pendingAttendanceData = null;
-        console.log('[ATT] saveTodayData OK after cleanup');
+        // console.log('[ATT] saveTodayData OK after cleanup');
       } catch {
         console.error('[ATT] saveTodayData FAILED even after cleanup — using memory fallback');
         _showStorageWarning();
@@ -524,7 +524,7 @@ async function autoScanTick() {
   if (!video?.srcObject) { autoScanTimer = setTimeout(autoScanTick, 400); return; }
   // readyState 4 = HAVE_ENOUGH_DATA — required on iOS Safari and Android Chrome
   if (video.readyState < 4 || !video.videoWidth || !video.videoHeight) {
-    console.log('[CAM] video not ready yet (readyState=' + video.readyState + ' w=' + video.videoWidth + ') — waiting...');
+    // console.log('[CAM] video not ready yet (readyState=' + video.readyState + ' w=' + video.videoWidth + ') — waiting...');
     autoScanTimer = setTimeout(autoScanTick, 300);
     return;
   }
@@ -559,7 +559,7 @@ async function runMatch(video) {
   if (matching) return;
   // Guard: video must have HAVE_ENOUGH_DATA before capture
   if (!video || video.readyState < 4 || !video.videoWidth || !video.videoHeight) {
-    console.log('[CAM] runMatch: video not ready (readyState=' + video?.readyState + ' w=' + video?.videoWidth + ') — aborting');
+    // console.log('[CAM] runMatch: video not ready (readyState=' + video?.readyState + ' w=' + video?.videoWidth + ') — aborting');
     autoScanTimer = setTimeout(autoScanTick, 300);
     return;
   }
@@ -580,7 +580,7 @@ async function runMatch(video) {
       autoScanTimer = setTimeout(autoScanTick, 300);
       return;
     }
-    console.log('[CAM] runMatch: readyState=' + video.readyState + ' w=' + video.videoWidth + ' h=' + video.videoHeight);
+    // console.log('[CAM] runMatch: readyState=' + video.readyState + ' w=' + video.videoWidth + ' h=' + video.videoHeight);
 
     // Capture still and resize to max 480×360 / quality 0.75 before storing
     const still = FaceCore.captureStill(video, { quality: 0.92 });
@@ -591,7 +591,7 @@ async function runMatch(video) {
       const cx = Math.floor(still.canvas.width / 2), cy = Math.floor(still.canvas.height / 2);
       const px = sctx.getImageData(cx, cy, 1, 1).data;
       const brightness = px[0] + px[1] + px[2]; // 0–765
-      console.log('[CAM] center pixel brightness=' + brightness + ' (0=black, 765=white)');
+      // console.log('[CAM] center pixel brightness=' + brightness + ' (0=black, 765=white)');
       if (brightness < 30) {
         console.warn('[CAM] black frame detected — camera warming up, will retry');
         autoScanActive = true; // restore so the retry tick can proceed
@@ -611,7 +611,7 @@ async function runMatch(video) {
         lastCapturedPhoto = still.canvas.toDataURL('image/jpeg', 0.75);
       }
     }
-    console.log('[PHOTO] runMatch captured, size ~' + Math.round(lastCapturedPhoto.length / 1024) + 'KB');
+    // console.log('[PHOTO] runMatch captured, size ~' + Math.round(lastCapturedPhoto.length / 1024) + 'KB');
     const previewShot = FaceCore.captureStill(video, { mirror: true, quality: 0.85 }).dataUrl;
 
     const employeeId = FaceCore.getCurrentEmployeeId();
@@ -681,7 +681,7 @@ function capturePhotoDataUrl() {
   // Max 480×360 at quality 0.75 — keeps file small enough for localStorage (~20–40 KB)
   const MAX_W = 480, MAX_H = 360, QUALITY = 0.75;
   if (lastCapturedPhoto) {
-    console.log('[PHOTO] using lastCapturedPhoto, size ~' + Math.round(lastCapturedPhoto.length / 1024) + 'KB');
+    // console.log('[PHOTO] using lastCapturedPhoto, size ~' + Math.round(lastCapturedPhoto.length / 1024) + 'KB');
     return lastCapturedPhoto; // already resized in runMatch()
   }
   // Fallback: capture directly from live video
@@ -698,7 +698,7 @@ function capturePhotoDataUrl() {
   canvas.height = Math.round(sh * scale);
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
   const url = canvas.toDataURL('image/jpeg', QUALITY);
-  console.log('[PHOTO] fallback capture from video, size ~' + Math.round(url.length / 1024) + 'KB');
+  // console.log('[PHOTO] fallback capture from video, size ~' + Math.round(url.length / 1024) + 'KB');
   return url;
 }
 
@@ -716,7 +716,7 @@ function submitActiveAction() {
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'กำลังบันทึกข้อมูล...'; }
   try {
   const photoUrl = capturePhotoDataUrl();
-  console.log('[ATT] photoUrl captured:', photoUrl ? 'YES (~' + Math.round(photoUrl.length / 1024) + 'KB)' : 'NULL');
+  // console.log('[ATT] photoUrl captured:', photoUrl ? 'YES (~' + Math.round(photoUrl.length / 1024) + 'KB)' : 'NULL');
   const faceMeta = faceMatch ? {
     faceVerified: faceMatch.decision === 'accept' || !!faceMatch.userConfirmed,
     faceConfidence: faceMatch.confidence,
@@ -728,7 +728,7 @@ function submitActiveAction() {
   const dist = calculateDistance(userCoords.lat, userCoords.lng, office.lat, office.lng);
   const inRange = dist <= office.radius;
   let rec = getActiveSession();
-  console.log('[ATT] action:', activePanel, '| rec:', JSON.stringify(rec));
+  // console.log('[ATT] action:', activePanel, '| rec:', JSON.stringify(rec));
   const completedCount = getCompletedSessions().length;
   const nextSessionIndex = completedCount + (rec ? 0 : 1);
 
@@ -805,8 +805,8 @@ function submitActiveAction() {
   if (typeof syncWorkTimeFields === 'function') syncWorkTimeFields(rec);
   saveTodayRecord(rec);
   const _savedRec = getTodayDisplayRecord();
-  console.log('[ATT] saved. sessions:', getTodayData().sessions.length, 'nextKey:', getNextActionKey(),
-    '| photoUrl in storage:', _savedRec ? (_savedRec.photoUrl ? '✓ ~' + Math.round(_savedRec.photoUrl.length / 1024) + 'KB' : 'MISSING') : 'no rec');
+  // console.log('[ATT] saved. sessions:', getTodayData().sessions.length, 'nextKey:', getNextActionKey(),
+  //   '| photoUrl in storage:', _savedRec ? (_savedRec.photoUrl ? '✓ ~' + Math.round(_savedRec.photoUrl.length / 1024) + 'KB' : 'MISSING') : 'no rec');
   const _scanType = activePanel; // capture before closePanel resets it
   const _wasCheckout = _scanType === 'checkout';
   closePanel();
@@ -962,7 +962,7 @@ function renderPhotos(rec) {
   container.innerHTML = items.map((it) => {
     const url = it.cdn || it.local;
     const urlDesc = url ? (url.startsWith('data:') ? 'data:~' + Math.round(url.length / 1024) + 'KB' : url.substring(0, 70)) : 'null';
-    console.log('[PHOTO] rendering ' + it.label + ' url=' + urlDesc);
+    // console.log('[PHOTO] rendering ' + it.label + ' url=' + urlDesc);
     return `<div class="att-photo-slot">
       ${url ? `<img src="${url}" alt="" onerror="_attPhotoError(this)">` : `<div class="att-photo-ph">—</div>`}
       <p>${it.label}${it.time ? ' · ' + fmtTime(it.time) : ''}</p>
@@ -1198,7 +1198,7 @@ async function initCamera() {
     });
 
     await video.play().catch(() => {});
-    console.log('[CAM] initCamera: readyState=' + video.readyState + ' w=' + video.videoWidth + ' h=' + video.videoHeight);
+    // console.log('[CAM] initCamera: readyState=' + video.readyState + ' w=' + video.videoWidth + ' h=' + video.videoHeight);
     setScanStatus('มองกล้องตรงเพื่อสแกนใบหน้า', 'var(--text2)');
     if (typeof FaceCore !== 'undefined') FaceCore.loadModels().catch(() => {});
   } catch (err) {
@@ -1440,7 +1440,7 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
       'checkin-company': 'checkin', 'checkin-outside': 'checkin',
       'lunch-out': 'lunch-out', 'lunch-in': 'lunch-in', 'checkout': 'checkout',
     };
-    console.log('[CDN] upload started for', scanType);
+    // console.log('[CDN] upload started for', scanType);
     const cdnResult = await uploadToCloudinary(photoDataUrl, {
       folder: 'attendance/' + (user.id || 'unknown') + '/' + (folderMap[scanType] || scanType),
       tags: 'attendance,' + scanType + ',' + (user.id || 'unknown'),
@@ -1451,8 +1451,8 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
       console.error('[CDN] Cloudinary response missing valid secure_url:', JSON.stringify(cdnResult).substring(0, 200));
       return;
     }
-    console.log('[CDN] upload result secure_url:', secureUrl);
-    console.log('[CDN] saved attendance image url:', secureUrl);
+    // console.log('[CDN] upload result secure_url:', secureUrl);
+    // console.log('[CDN] saved attendance image url:', secureUrl);
 
     const stored = getTodayRecord();
     if (stored) {
@@ -1465,7 +1465,7 @@ async function uploadAttendancePhotoCdn(rec, scanType, photoDataUrl) {
       if (field) {
         stored[field] = secureUrl;
         saveTodayRecord(stored);
-        console.log('[CDN] saved CDN URL to field:', field, secureUrl);
+        // console.log('[CDN] saved CDN URL to field:', field, secureUrl);
         // Re-render so UI picks up the CDN URL immediately (was showing data URL before)
         if (typeof renderAttendanceUI === 'function') renderAttendanceUI();
       }
