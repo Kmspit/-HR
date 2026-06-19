@@ -26,6 +26,8 @@ export async function GET(req: Request) {
   const filter    = searchParams.get('filter')    ?? undefined // 'overdue' | 'high_priority' | 'due_today' | 'due_week' | 'my_team'
   const priority  = searchParams.get('priority')  ?? undefined
   const dept      = searchParams.get('department')  ?? undefined
+  const page      = Math.max(1, parseInt(searchParams.get('page')  ?? '1'))
+  const limit     = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '50')))
 
   const role   = session.user.role
   const userId = session.user.id
@@ -94,19 +96,23 @@ export async function GET(req: Request) {
     ]
   }
 
-  const tasks = await prisma.taskAssignment.findMany({
-    where,
-    include: {
-      assignee:    { select: userSelect },
-      assignedBy:  { select: userSelect },
-      attachments: {
-        include: { uploadedBy: { select: { id: true, name: true } } },
-        orderBy: { createdAt: 'asc' },
+  const [tasks, total] = await Promise.all([
+    prisma.taskAssignment.findMany({
+      where,
+      include: {
+        assignee:    { select: userSelect },
+        assignedBy:  { select: userSelect },
+        attachments: {
+          include: { uploadedBy: { select: { id: true, name: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
       },
-    },
-    orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
-    take: 200,
-  })
+      orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
+      take: limit,
+      skip: (page - 1) * limit,
+    }),
+    prisma.taskAssignment.count({ where }),
+  ])
 
   // Compute isBlocked: has unresolved dependency (prerequisite not COMPLETED)
   const taskIds = tasks.map((t) => t.id)
@@ -122,7 +128,7 @@ export async function GET(req: Request) {
   }
 
   const tasksWithBlocked = tasks.map((t) => ({ ...t, isBlocked: blockedIds.has(t.id) }))
-  return NextResponse.json({ tasks: tasksWithBlocked })
+  return NextResponse.json({ tasks: tasksWithBlocked, total, page, pages: Math.ceil(total / limit) })
 }
 
 export async function POST(req: Request) {
