@@ -885,6 +885,7 @@ async function sendLineOAMsg(message, imageUrl) {
     const apiBase = getLineNotifyApiBase();
     const res = await fetch(apiBase + '/api/line/prototype-notify', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, imageUrl: imageUrl || null }),
     });
