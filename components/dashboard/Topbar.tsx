@@ -29,8 +29,9 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
   return (
     <div
       className={cn(
+        'sticky top-16 md:top-0 z-10',
         'border-b border-slate-200 dark:border-white/[0.05]',
-        'bg-white/80 dark:bg-transparent',
+        'bg-white dark:bg-[rgba(7,11,20,0.98)] md:bg-white/80 md:dark:bg-transparent',
         'backdrop-blur-sm',
         stats ? 'px-5 pt-3 pb-0 md:px-6 md:pt-4' : 'px-5 py-3 md:px-6 md:py-4',
       )}
