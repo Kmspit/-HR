@@ -680,7 +680,8 @@ export default function CaseDocumentsClient({ userId, userName, role, department
       setDocs(data.docs ?? [])
       setTotal(data.total ?? 0)
       setPages(data.pages ?? 1)
-    } catch {
+    } catch (err) {
+      console.error('[case-docs load]', err)
       toast.error('โหลดข้อมูลไม่สำเร็จ')
     } finally {
       setLoading(false)
