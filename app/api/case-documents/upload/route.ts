@@ -39,58 +39,65 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'publicId, secureUrl, fileName required' }, { status: 400 })
   }
 
-  const doc = await prisma.caseDocument.create({
-    data: {
-      title:       title.trim(),
-      description: description?.trim() ?? null,
-      category:    category ?? 'OTHER',
-      docType:     docType  ?? 'OTHER',
-      caseId:      caseId   ?? null,
-      caseNumber:  caseNumber?.trim() ?? null,
-      taskId:      taskId   ?? null,
-      debtorId:    debtorId ?? null,
-      clientName:  clientName?.trim() ?? null,
-      department:  department ?? session.user.department ?? null,
-      tags:        tags?.trim() ?? null,
-      uploadedById: session.user.id,
-    },
-  })
+  try {
+    const doc = await prisma.caseDocument.create({
+      data: {
+        title:       title.trim(),
+        description: description?.trim() ?? null,
+        category:    category ?? 'OTHER',
+        docType:     docType  ?? 'OTHER',
+        caseId:      caseId   ?? null,
+        caseNumber:  caseNumber?.trim() ?? null,
+        taskId:      taskId   ?? null,
+        debtorId:    debtorId ?? null,
+        clientName:  clientName?.trim() ?? null,
+        department:  department ?? session.user.department ?? null,
+        tags:        tags?.trim() ?? null,
+        uploadedById: session.user.id,
+      },
+    })
 
-  const file = await prisma.caseDocumentFile.create({
-    data: {
-      documentId:   doc.id,
-      fileName:     fileName,
-      fileUrl:      fileUrl ?? secureUrl,
-      secureUrl:    secureUrl,
-      publicId:     publicId,
-      fileType:     fileType ?? mimeType ?? 'application/octet-stream',
-      mimeType:     mimeType ?? null,
-      resourceType: resourceType ?? null,
-      format:       format ?? null,
-      fileSize:     fileSize ? Number(fileSize) : null,
-      version:      1,
-      uploadedById: session.user.id,
-    },
-  })
+    const file = await prisma.caseDocumentFile.create({
+      data: {
+        documentId:   doc.id,
+        fileName:     fileName,
+        fileUrl:      fileUrl ?? secureUrl,
+        secureUrl:    secureUrl,
+        publicId:     publicId,
+        fileType:     fileType ?? mimeType ?? 'application/octet-stream',
+        mimeType:     mimeType ?? null,
+        resourceType: resourceType ?? null,
+        format:       format ?? null,
+        fileSize:     fileSize ? Number(fileSize) : null,
+        version:      1,
+        uploadedById: session.user.id,
+      },
+    })
 
-  await prisma.caseDocumentVersion.create({
-    data: {
-      documentId:    doc.id,
-      versionNumber: 1,
-      changeNote:    'สร้างเอกสาร',
-      changedById:   session.user.id,
-      changedByName: session.user.name ?? '',
-    },
-  })
+    await prisma.caseDocumentVersion.create({
+      data: {
+        documentId:    doc.id,
+        versionNumber: 1,
+        changeNote:    'สร้างเอกสาร',
+        changedById:   session.user.id,
+        changedByName: session.user.name ?? '',
+      },
+    })
 
-  const result = await prisma.caseDocument.findUnique({
-    where: { id: doc.id },
-    include: {
-      uploadedBy: { select: { id: true, name: true, role: true } },
-      files:      { orderBy: { version: 'desc' } },
-      versions:   { orderBy: { versionNumber: 'desc' } },
-    },
-  })
+    const result = await prisma.caseDocument.findUnique({
+      where: { id: doc.id },
+      include: {
+        uploadedBy: { select: { id: true, name: true, role: true } },
+        files:      { orderBy: { version: 'desc' } },
+        versions:   { orderBy: { versionNumber: 'desc' } },
+      },
+    })
 
-  return NextResponse.json(result, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
+  } catch (err: any) {
+    console.error('[case-documents UPLOAD] Error message:', err?.message)
+    console.error('[case-documents UPLOAD] Error code:', err?.code)
+    console.error('[case-documents UPLOAD] Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
+    return NextResponse.json({ error: 'Cannot save document' }, { status: 500 })
+  }
 }
