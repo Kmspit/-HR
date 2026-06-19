@@ -9,8 +9,7 @@ const CAN_SEE_ALL: string[] = ['SUPER_ADMIN','CEO','MANAGER_HR','HR']
 const userSelect = { id: true, name: true, department: true, employeeId: true, role: true }
 const attachmentCount = { _count: { select: { attachments: true } } }
 
-// JSON.stringify/parse converts Date → ISO string at runtime.
-// Return type is `any` so callers can assign to string-dated client types.
+// JSON.stringify/parse converts Date → ISO string; `any` is intentional — TypeScript cannot express Date→string transformation.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serialize(v: unknown): any { return JSON.parse(JSON.stringify(v)) }
 

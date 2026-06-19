@@ -110,11 +110,9 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
-    console.log('[SCROLL LOCK] AttendanceDetailModal')
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = previousOverflow
-      console.log('[SCROLL UNLOCK] AttendanceDetailModal')
     }
   }, [])
 

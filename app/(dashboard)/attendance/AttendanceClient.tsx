@@ -261,7 +261,7 @@ export default function AttendanceClient({
             { id: 'history', label: 'ประวัติ', icon: <Calendar className="w-3.5 h-3.5" /> },
             ...(isManager ? [{ id: 'team', label: 'ทีม', icon: <Users className="w-3.5 h-3.5" /> }] : []),
           ].map((tab) => (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); setSelectedType(null) }}
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id as 'today' | 'history' | 'team'); setSelectedType(null) }}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white/80'
               }`}>

@@ -12,8 +12,7 @@ const DEPT_LABELS: Record<string, string> = {
 }
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serialize(v: unknown): any { return JSON.parse(JSON.stringify(v)) }
+function serialize<T>(v: T): T { return JSON.parse(JSON.stringify(v)) }
 
 export default async function PerformancePage() {
   const session = await auth()
