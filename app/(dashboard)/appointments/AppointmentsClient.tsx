@@ -231,7 +231,7 @@ export default function AppointmentsClient({
                 const dayEvs = eventsByDay[key] ?? []
                 const dow = day.getDay()
                 return (
-                  <button key={i} onClick={() => setSelectedDay(key)}
+                  <button key={key} onClick={() => setSelectedDay(key)}
                     className={`relative min-h-[32px] flex flex-col items-center py-0.5 rounded text-[11px] transition-colors
                       ${isSelected ? 'bg-blue-500 text-white' : isToday ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : ''}
                       ${!isCurrentMonth ? 'opacity-30' : ''}

@@ -347,7 +347,7 @@ export default function SopClient({
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">📝 ขั้นตอนการทำงาน</h3>
                     <div className="space-y-3">
                       {(JSON.parse(selected.steps) as SopStep[]).map((step, i) => (
-                        <div key={i} className="flex gap-3">
+                        <div key={step.order} className="flex gap-3">
                           <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                             {step.order ?? i + 1}
                           </div>
@@ -366,8 +366,8 @@ export default function SopClient({
                   <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">✅ Checklist</h3>
                     <ul className="space-y-2">
-                      {(JSON.parse(selected.checklist) as CheckItem[]).map((item, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      {(JSON.parse(selected.checklist) as CheckItem[]).map((item) => (
+                        <li key={item.text} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                           <span className={item.required ? 'text-red-500' : 'text-gray-400'}>
                             {item.required ? '☑' : '○'}
                           </span>
@@ -384,8 +384,8 @@ export default function SopClient({
                   <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">📎 เอกสารที่เกี่ยวข้อง</h3>
                     <ul className="space-y-1">
-                      {(JSON.parse(selected.relatedDocs) as string[]).map((doc, i) => (
-                        <li key={i} className="text-sm text-indigo-600 dark:text-indigo-400">• {doc}</li>
+                      {(JSON.parse(selected.relatedDocs) as string[]).map((doc) => (
+                        <li key={doc} className="text-sm text-indigo-600 dark:text-indigo-400">• {doc}</li>
                       ))}
                     </ul>
                   </div>
@@ -466,7 +466,7 @@ export default function SopClient({
                 </div>
                 <div className="space-y-2">
                   {form.steps.map((s, i) => (
-                    <div key={i} className="flex gap-2 items-start">
+                    <div key={String(s.order) + '-' + s.title} className="flex gap-2 items-start">
                       <span className="text-xs text-gray-400 mt-2 w-5 flex-shrink-0">{i + 1}.</span>
                       <div className="flex-1 space-y-1">
                         <input value={s.title} onChange={(e) => updateStep(i, 'title', e.target.value)}
@@ -490,7 +490,7 @@ export default function SopClient({
                 </div>
                 <div className="space-y-1">
                   {form.checklist.map((c, i) => (
-                    <div key={i} className="flex gap-2 items-center">
+                    <div key={c.text || String(i)} className="flex gap-2 items-center">
                       <input value={c.text} onChange={(e) => updateCheck(i, 'text', e.target.value)}
                         className="flex-1 px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-xs"
                         placeholder="รายการ checklist" />

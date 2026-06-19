@@ -304,11 +304,11 @@ export default function ExecutiveClient({ role, department }: { role: string; de
             {/* Daily trend */}
             <SectionCard title="การเก็บเงิน 30 วันล่าสุด">
               <div className="flex items-end gap-0.5 h-20">
-                {analytics.recovery.dailyTrend.map((d, i) => {
+                {analytics.recovery.dailyTrend.map((d) => {
                   const max = Math.max(...analytics.recovery!.dailyTrend.map(x => x.amount), 1)
                   const h   = Math.max(4, Math.round((d.amount / max) * 72))
                   return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative" title={`${fmtDate(d.date)}: ฿${fmtB(d.amount)}`}>
+                    <div key={d.date} className="flex-1 flex flex-col items-center gap-0.5 group relative" title={`${fmtDate(d.date)}: ฿${fmtB(d.amount)}`}>
                       <div className="w-full rounded-t bg-green-400 dark:bg-green-500 transition-all" style={{ height: `${h}px` }} />
                     </div>
                   )

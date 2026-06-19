@@ -224,7 +224,7 @@ function MonthView({ anchor, events, onSelectDay, onSelectEvent, today }: {
           const isToday = dateKey === today
           return (
             <div
-              key={i}
+              key={cell.date ? isoDate(cell.date) : 'empty-' + i}
               onClick={() => cell.date && onSelectDay(cell.date)}
               className={`border-r border-b border-white/[0.04] min-h-[80px] p-1 cursor-pointer hover:bg-white/[0.03] transition ${!cell.date ? 'bg-white/[0.01]' : ''}`}
             >

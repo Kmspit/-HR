@@ -566,8 +566,8 @@ function CrmTab({ debtor }: { debtor: Debtor }) {
         <div>
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Tags</p>
           <div className="flex flex-wrap gap-1.5">
-            {parsedTags.map((tag, i) => (
-              <span key={i} className="text-xs px-2.5 py-1 bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 rounded-full border border-slate-200 dark:border-white/[0.08]">
+            {parsedTags.map((tag) => (
+              <span key={tag} className="text-xs px-2.5 py-1 bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 rounded-full border border-slate-200 dark:border-white/[0.08]">
                 {tag}
               </span>
             ))}

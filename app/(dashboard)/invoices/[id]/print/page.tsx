@@ -144,7 +144,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
               </thead>
               <tbody>
                 {lineItems.map((item, i) => (
-                  <tr key={i}>
+                  <tr key={item.description || String(i)}>
                     <td>{i + 1}</td>
                     <td>{item.description}</td>
                     <td className="amount-col">{item.qty}</td>

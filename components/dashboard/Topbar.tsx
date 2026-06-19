@@ -39,7 +39,7 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
       {breadcrumb && breadcrumb.length > 0 && (
         <nav className="mb-1.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
           {breadcrumb.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-1.5">
+            <span key={crumb.label} className="flex items-center gap-1.5">
               {i > 0 && <span>/</span>}
               {crumb.href ? (
                 <a href={crumb.href} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
@@ -75,9 +75,9 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
       {/* Stats chips row */}
       {stats && stats.length > 0 && (
         <div className="flex items-center gap-2 mt-3 mb-0 overflow-x-auto no-scrollbar pb-3">
-          {stats.map((s, i) => (
+          {stats.map((s) => (
             <div
-              key={i}
+              key={s.label}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11.5px] font-medium flex-shrink-0',
                 CHIP_COLORS[s.color ?? 'slate'],

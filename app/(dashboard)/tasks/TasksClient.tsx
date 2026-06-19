@@ -1026,8 +1026,8 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
               <div>
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">ลิงก์ที่เกี่ยวข้อง</p>
                 <div className="space-y-1.5">
-                  {links.map((lk, i) => (
-                    <a key={i} href={lk.url} target="_blank" rel="noopener noreferrer"
+                  {links.map((lk) => (
+                    <a key={lk._key ?? lk.url} href={lk.url} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors group">
                       <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-60 group-hover:opacity-100" />
                       <span className="flex-1 truncate">{lk.label || lk.url}</span>

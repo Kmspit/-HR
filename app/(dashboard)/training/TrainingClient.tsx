@@ -270,8 +270,8 @@ export default function TrainingClient({
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-2">ไม่ผ่านล่าสุด</p>
-              {dashboard.failedEnrollments.slice(0, 5).map((fe, i) => (
-                <div key={i} className="text-xs py-1 border-b border-gray-100 dark:border-gray-800">
+              {dashboard.failedEnrollments.slice(0, 5).map((fe) => (
+                <div key={fe.user.name + '-' + fe.module.title} className="text-xs py-1 border-b border-gray-100 dark:border-gray-800">
                   <span className="font-medium text-gray-800 dark:text-gray-200">{fe.user.name}</span>
                   <span className="text-gray-500"> — {fe.module.title}</span>
                   {fe.score !== null && <span className="text-red-500 ml-1">({fe.score}%)</span>}
@@ -323,8 +323,8 @@ export default function TrainingClient({
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
               <h3 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">ผู้เรียนที่ไม่ผ่าน</h3>
               <div className="space-y-2">
-                {dashboard.failedEnrollments.map((fe, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                {dashboard.failedEnrollments.map((fe) => (
+                  <div key={fe.user.name + '-' + fe.module.title} className="flex items-center justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
                     <div>
                       <span className="font-medium text-gray-900 dark:text-gray-100">{fe.user.name}</span>
                       <span className="text-gray-500"> — {fe.module.title}</span>

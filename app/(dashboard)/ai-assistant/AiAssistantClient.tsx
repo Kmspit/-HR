@@ -141,9 +141,9 @@ export default function AiAssistantClient({ userName, userRole }: Props) {
               <div className="w-full max-w-md">
                 <p className="text-xs text-gray-400 mb-2">คำถามแนะนำ</p>
                 <div className="grid grid-cols-1 gap-2">
-                  {suggestions.map((s, i) => (
+                  {suggestions.map((s) => (
                     <button
-                      key={i}
+                      key={s}
                       onClick={() => sendMessage(s)}
                       className="text-left text-sm px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 transition-colors"
                     >
@@ -199,9 +199,9 @@ export default function AiAssistantClient({ userName, userRole }: Props) {
       {/* Suggestions row (after first message) */}
       {messages.length > 0 && suggestions.length > 0 && !loading && (
         <div className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-none">
-          {suggestions.map((s, i) => (
+          {suggestions.map((s) => (
             <button
-              key={i}
+              key={s}
               onClick={() => sendMessage(s)}
               className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300 transition-colors whitespace-nowrap"
             >

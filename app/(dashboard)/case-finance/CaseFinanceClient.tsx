@@ -268,8 +268,8 @@ export default function CaseFinanceClient({ userRole }: Props) {
                         <th className="text-right pb-2 font-medium">กำไรสุทธิ</th>
                       </tr></thead>
                       <tbody>
-                        {summary.byCase.map((c,i) => (
-                          <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                        {summary.byCase.map((c) => (
+                          <tr key={c.caseNumber} className="border-b last:border-0 hover:bg-gray-50">
                             <td className="py-2 text-gray-800">{c.caseNumber}</td>
                             <td className="py-2 text-right text-green-600">฿{fmt(c.income)}</td>
                             <td className="py-2 text-right text-red-500">฿{fmt(c.expense)}</td>

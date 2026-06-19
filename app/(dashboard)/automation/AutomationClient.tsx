@@ -256,7 +256,7 @@ function RuleModal({
             {conditions.length === 0 && <p className="text-xs text-gray-400 italic">ไม่มีเงื่อนไข — rule จะทำงานทุกครั้งที่ trigger เกิดขึ้น</p>}
             <div className="space-y-2">
               {conditions.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={c.field + '-' + c.operator} className="flex items-center gap-2">
                   <select value={c.field} onChange={e => updateCondition(i, 'field', e.target.value)} className="hr-input flex-1 text-sm">
                     {CONDITION_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                   </select>
@@ -279,7 +279,7 @@ function RuleModal({
             {actions.length === 0 && <p className="text-xs text-gray-400 italic">ยังไม่มีการกระทำ</p>}
             <div className="space-y-3">
               {actions.map((a, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 p-3 space-y-2">
+                <div key={a.type + '-' + String(i)} className="rounded-lg border border-gray-200 p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <select value={a.type} onChange={e => updateActionType(i, e.target.value)} className="hr-input flex-1 text-sm mr-2">
                       {ACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -471,8 +471,8 @@ export default function AutomationClient({
                     <p className="font-medium text-gray-600 mb-1">Conditions ({(parseSafe(rule.conditions) as Condition[]).length})</p>
                     {(parseSafe(rule.conditions) as Condition[]).length === 0
                       ? <p className="text-gray-400 italic">ไม่มีเงื่อนไข (ทำงานเสมอ)</p>
-                      : (parseSafe(rule.conditions) as Condition[]).map((c, i) => (
-                        <div key={i} className="rounded bg-blue-50 px-2 py-1 mb-1">
+                      : (parseSafe(rule.conditions) as Condition[]).map((c) => (
+                        <div key={c.field + '-' + c.operator} className="rounded bg-blue-50 px-2 py-1 mb-1">
                           {c.field} {c.operator} {c.value}
                         </div>
                       ))
@@ -481,7 +481,7 @@ export default function AutomationClient({
                   <div>
                     <p className="font-medium text-gray-600 mb-1">Actions ({(parseSafe(rule.actions) as AutomationActionDef[]).length})</p>
                     {(parseSafe(rule.actions) as AutomationActionDef[]).map((a, i) => (
-                      <div key={i} className="rounded bg-green-50 px-2 py-1 mb-1">
+                      <div key={a.type + '-' + String(i)} className="rounded bg-green-50 px-2 py-1 mb-1">
                         {ACTION_TYPES.find(t => t.value === a.type)?.label ?? a.type}
                       </div>
                     ))}
