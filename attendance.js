@@ -37,7 +37,10 @@ async function reverseGeocode(lat, lng) {
     const data = await res.json();
     const a    = data.address || {};
     return [a.road, a.suburb, a.city_district, a.city || a.town || a.village].filter(Boolean).join(', ') || data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  } catch { return `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
+  } catch (e) {
+    console.warn('[attendance] reverseGeocode failed:', e);
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
 }
 
 // ── สร้างแผนที่ Leaflet (individual) ──
@@ -327,13 +330,13 @@ function getTodayData() {
     // migrate รูปแบบเก่า (record เดียวต่อวัน) และ save กลับทันที
     if (raw && raw.checkIn) {
       const migrated = { sessions: [{ sessionIndex: 1, ...raw }] };
-      try { localStorage.setItem(todayStorageKey(), JSON.stringify(migrated)); } catch {}
+      try { localStorage.setItem(todayStorageKey(), JSON.stringify(migrated)); } catch { /* intentional: cleanup failure is non-critical, safe to ignore */ }
       return migrated;
     }
     return { sessions: [] };
   } catch (e) {
     console.error('[attendance] corrupted today data, clearing:', e);
-    try { localStorage.removeItem(todayStorageKey()); } catch {}
+    try { localStorage.removeItem(todayStorageKey()); } catch { /* intentional: cleanup failure is non-critical, safe to ignore */ }
     return { sessions: [] };
   }
 }
@@ -378,14 +381,14 @@ function _cleanOldAttendanceLogs() {
     const m = key.match(/(\d{4}-\d{2}-\d{2})$/);
     if (m && m[1] < cutoffKey) toRemove.push(key);
   }
-  toRemove.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  toRemove.forEach(k => { try { localStorage.removeItem(k); } catch { /* intentional: cleanup failure is non-critical, safe to ignore */ } });
   // ลบ faceScanLogs ที่สะสมเยอะ
   try {
     const logs = JSON.parse(localStorage.getItem('hrflow_faceScanLogs') || '[]');
     if (logs.length > 50) localStorage.setItem('hrflow_faceScanLogs', JSON.stringify(logs.slice(0, 50)));
   } catch (e) {
     console.warn('[attendance] corrupted hrflow_faceScanLogs, clearing:', e);
-    try { localStorage.removeItem('hrflow_faceScanLogs'); } catch {}
+    try { localStorage.removeItem('hrflow_faceScanLogs'); } catch { /* intentional: cleanup failure is non-critical, safe to ignore */ }
   }
 }
 
@@ -1150,7 +1153,7 @@ let _cameraStream = null; // track active stream for cleanup
 
 function cleanupCamera() {
   if (_cameraStream) {
-    _cameraStream.getTracks().forEach(function(t) { try { t.stop(); } catch {} });
+    _cameraStream.getTracks().forEach(function(t) { try { t.stop(); } catch { /* intentional: cleanup failure is non-critical, safe to ignore */ } });
     _cameraStream = null;
   }
   const video = document.getElementById('checkin-video');
@@ -1735,7 +1738,7 @@ function cleanExpiredGpsLocations() {
     if (changed) localStorage.setItem('hrflow_liveLocations', JSON.stringify(locs));
   } catch (e) {
     console.warn('[attendance] corrupted hrflow_liveLocations during cleanup, clearing:', e);
-    try { localStorage.removeItem('hrflow_liveLocations'); } catch {}
+    try { localStorage.removeItem('hrflow_liveLocations'); } catch { /* intentional: cleanup failure is non-critical, safe to ignore */ }
   }
 }
 
