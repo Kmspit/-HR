@@ -18,13 +18,13 @@ const CORS_ORIGINS = [
 
 function corsHeaders(origin: string | null): HeadersInit {
   const allow =
-    !origin ||
-    CORS_ORIGINS.some((o) => origin === o) ||
-    origin.endsWith('.vercel.app')
+    !!origin &&
+    (CORS_ORIGINS.some((o) => origin === o) || origin.endsWith('.vercel.app'))
   return {
-    'Access-Control-Allow-Origin': allow && origin ? origin : '*',
+    'Access-Control-Allow-Origin': allow ? origin : 'null',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    ...(allow ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
   }
 }
 
