@@ -141,9 +141,21 @@ function formatDateTime(iso: string) {
 
 function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   const latestFile = doc.files[0]
+  const [signedUrl, setSignedUrl]   = useState<string | null>(null)
+  const [loadingUrl, setLoadingUrl] = useState(!!latestFile)
+
+  useEffect(() => {
+    if (!latestFile) return
+    setLoadingUrl(true)
+    fetch(`/api/case-documents/${doc.id}/preview-url?fileId=${latestFile.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.url) setSignedUrl(d.url) })
+      .catch(() => {})
+      .finally(() => setLoadingUrl(false))
+  }, [doc.id, latestFile?.id])
 
   function getPreviewUrl(file: DocFile) {
-    return file.secureUrl ?? file.fileUrl
+    return signedUrl ?? file.secureUrl ?? file.fileUrl
   }
 
   function renderPreview(file: DocFile) {
@@ -238,7 +250,11 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 
         {/* Preview area */}
         <div className="flex-1 overflow-hidden p-4 flex flex-col gap-4 min-h-0">
-          {latestFile ? renderPreview(latestFile) : (
+          {loadingUrl ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-white/30" />
+            </div>
+          ) : latestFile ? renderPreview(latestFile) : (
             <div className="flex-1 flex flex-col items-center justify-center text-white/30 gap-3">
               <FileText className="w-12 h-12 opacity-30" />
               <p className="text-sm">ยังไม่มีไฟล์แนบ</p>
