@@ -8,6 +8,7 @@ import { ensureDbSchema } from '@/lib/ensure-db-schema'
 export const runtime = 'nodejs'
 
 const CORS_ORIGINS = [
+  'https://apphrqm.vercel.app',
   'https://hrflow-app-gamma.vercel.app',
   'https://app-hr-km1.vercel.app',
   'https://hrprogramkm.vercel.app',
