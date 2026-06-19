@@ -160,6 +160,9 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 
   function renderPreview(file: DocFile) {
     const url  = getPreviewUrl(file)
+    console.log('[Preview] signedUrl:', signedUrl)
+    console.log('[Preview] final URL used:', url)
+    console.log('[Preview] mime:', file.mimeType, '| format:', file.format, '| resourceType:', file.resourceType)
     const mime = file.mimeType ?? ''
     const fmt  = (file.format ?? '').toLowerCase()
     const isImg = file.resourceType === 'image' && !fmt.includes('pdf') && !mime.includes('pdf')
