@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfiguredAsync } from '@/lib/line-config'
 import { getHrLineRecipients } from '@/lib/attendance-line-recipients'
@@ -42,6 +43,11 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return json({ error: 'Unauthorized' }, 401, origin)
+    }
+
     await ensureDbSchema().catch(() => {})
 
     if (!(await isLineOaConfiguredAsync())) {
