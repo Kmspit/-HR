@@ -946,6 +946,38 @@ async function runEnsure(): Promise<boolean> {
     // All patches above are idempotent PRAGMA-based; this entry just tracks the baseline.
   })
 
+  // ── Migration 1: case_documents missing columns from Phase 4 migration ───────
+  // migrate-turso-case-documents.mjs omitted is_archived, category, case_id,
+  // debtor_id, and client_id — Prisma always queries them so the GET handler
+  // throws "no such column" on every request, causing a 500 → non-JSON body →
+  // res.json() SyntaxError → toast 'โหลดข้อมูลไม่สำเร็จ' on every device.
+  await runMigration(1, 'case-documents-missing-columns', async () => {
+    for (const ddl of [
+      `ALTER TABLE case_documents ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE case_documents ADD COLUMN category     TEXT NOT NULL DEFAULT 'OTHER'`,
+      `ALTER TABLE case_documents ADD COLUMN case_id      TEXT`,
+      `ALTER TABLE case_documents ADD COLUMN debtor_id    TEXT`,
+      `ALTER TABLE case_documents ADD COLUMN client_id    TEXT`,
+    ]) {
+      try { await prisma.$executeRawUnsafe(ddl) } catch { /* column already exists */ }
+    }
+  })
+
+  // ── Migration 2: case_document_files missing Cloudinary columns ──────────────
+  // Prisma selects all model fields in every `include: { files: ... }` call.
+  // secure_url, mime_type, resource_type, format are nullable so missing rows
+  // read as NULL once the columns exist — no data loss.
+  await runMigration(2, 'case-document-files-cloudinary-columns', async () => {
+    for (const ddl of [
+      `ALTER TABLE case_document_files ADD COLUMN secure_url    TEXT`,
+      `ALTER TABLE case_document_files ADD COLUMN mime_type     TEXT`,
+      `ALTER TABLE case_document_files ADD COLUMN resource_type TEXT`,
+      `ALTER TABLE case_document_files ADD COLUMN format        TEXT`,
+    ]) {
+      try { await prisma.$executeRawUnsafe(ddl) } catch { /* column already exists */ }
+    }
+  })
+
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
 

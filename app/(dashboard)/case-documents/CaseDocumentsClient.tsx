@@ -675,6 +675,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
       if (catFilter)  p.set('category', catFilter)
 
       const res = await fetch(`/api/case-documents?${p}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setDocs(data.docs ?? [])
       setTotal(data.total ?? 0)

@@ -81,22 +81,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [docs, total] = await Promise.all([
-    prisma.caseDocument.findMany({
-      where,
-      include: {
-        uploadedBy: { select: { id: true, name: true, role: true } },
-        assignedTo: { select: { id: true, name: true, role: true } },
-        files:      { orderBy: { version: 'desc' }, take: 1 },
-        signatures: { orderBy: { signedAt: 'asc' }, select: { id: true, signerName: true, signedAt: true } },
-        _count:     { select: { files: true, versions: true } },
-      },
-      orderBy: { updatedAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.caseDocument.count({ where }),
-  ])
+  let docs, total
+  try {
+    ;[docs, total] = await Promise.all([
+      prisma.caseDocument.findMany({
+        where,
+        include: {
+          uploadedBy: { select: { id: true, name: true, role: true } },
+          assignedTo: { select: { id: true, name: true, role: true } },
+          files:      { orderBy: { version: 'desc' }, take: 1 },
+          signatures: { orderBy: { signedAt: 'asc' }, select: { id: true, signerName: true, signedAt: true } },
+          _count:     { select: { files: true, versions: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.caseDocument.count({ where }),
+    ])
+  } catch (err) {
+    console.error('[case-documents GET]', err)
+    return NextResponse.json({ error: 'Database error', docs: [], total: 0, page, pages: 1 }, { status: 500 })
+  }
 
   return NextResponse.json({
     docs,
