@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const { name, key } = configure()
+    const { name, key, sec } = configure()
     const { searchParams } = req.nextUrl
     const context = searchParams.get('context') ?? 'documents'
     const now = Math.floor(Date.now() / 1000)
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       folder,
     }
 
-    const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET!.trim())
+    const signature = cloudinary.utils.api_sign_request(paramsToSign, sec)
 
     return NextResponse.json({
       signature,
