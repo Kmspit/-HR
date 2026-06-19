@@ -1,14 +1,19 @@
-﻿import { auth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import AiAssistantClient from '@/app/(dashboard)/ai-assistant/AiAssistantClient'
+﻿import { redirect } from 'next/navigation'
 
-export const metadata = { title: 'AI Assistant — Client Portal' }
+// AI Assistant temporarily disabled — restore the full implementation below to re-enable:
+// import { auth } from '@/lib/auth'
+// import AiAssistantClient from '@/app/(dashboard)/ai-assistant/AiAssistantClient'
+// export const metadata = { title: 'AI Assistant — Client Portal' }
 
+export default async function ClientAiPage() {
+  redirect('/client-portal')
+}
+
+/* Full implementation — restore when re-enabling:
 export default async function ClientAiPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
   if (session.user.role !== 'CLIENT') redirect('/ai-assistant')
-
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 to-blue-50 font-sans">
       <div className="pt-4">
@@ -24,3 +29,4 @@ export default async function ClientAiPage() {
     </div>
   )
 }
+*/

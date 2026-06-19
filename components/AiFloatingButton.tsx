@@ -6,9 +6,14 @@ interface Props {
   isClientPortal?: boolean
 }
 
+// Set to true to re-enable the AI floating button
+const AI_ASSISTANT_ENABLED = false
+
 export default function AiFloatingButton({ isClientPortal = false }: Props) {
   const router = useRouter()
   const target = isClientPortal ? '/client-portal/ai' : '/ai-assistant'
+
+  if (!AI_ASSISTANT_ENABLED) return null
 
   return (
     <button
