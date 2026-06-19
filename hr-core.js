@@ -135,6 +135,7 @@ const SIDEBAR_NAV = [
       { href: 'settings.html#permissions', icon: '🔐', label: 'สิทธิ์การใช้งาน', roles: ['admin'] },
       { href: 'line-oa.html', icon: '💬', label: 'LINE OA', roles: ['admin'] },
       { href: 'settings.html#profile', icon: '👤', label: 'โปรไฟล์' },
+      { href: 'manual.html', icon: '📖', label: 'คู่มือการใช้งาน' },
     ],
   },
 ];

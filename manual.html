@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="เค เอ็ม เซอร์วิส พลัส" />
+<title>คู่มือการใช้งาน — เค เอ็ม เซอร์วิส พลัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+.manual-tabs { display:flex; gap:4px; padding:4px; background:var(--bg2); border-radius:14px; width:fit-content; margin-bottom:20px; }
+.manual-tab { padding:8px 20px; border-radius:10px; border:none; background:transparent; color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; transition:background .15s, color .15s; font-family:inherit; }
+.manual-tab.active { background:var(--card); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+.manual-tab:hover:not(.active) { color:var(--text); }
+
+.manual-section { border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:8px; }
+.manual-section-hd { display:flex; align-items:center; gap:12px; padding:14px 16px; background:var(--card); cursor:pointer; user-select:none; transition:background .15s; }
+.manual-section-hd:hover { background:var(--bg2); }
+.manual-section-icon { font-size:20px; flex-shrink:0; width:28px; text-align:center; }
+.manual-section-title { flex:1; font-size:14px; font-weight:600; color:var(--text); }
+.manual-section-arrow { color:var(--text3); font-size:11px; transition:transform .2s; }
+.manual-section.open .manual-section-arrow { transform:rotate(180deg); }
+.manual-section-body { display:none; padding:12px 16px 16px; background:var(--bg2); border-top:1px solid var(--border); }
+.manual-section.open .manual-section-body { display:block; }
+.manual-steps { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+.manual-steps li { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--text2); line-height:1.5; }
+.step-num { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:rgba(59,130,246,.15); color:#3b82f6; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+
+.manual-note { margin-top:24px; padding:12px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; font-size:12px; color:var(--text3); line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⚡</div>
+    <div>
+      <div class="logo-text">เค เอ็ม เซอร์วิส พลัส</div>
+      <div class="logo-badge">จำกัด</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav"></nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">HR</div>
+      <div class="user-info">
+        <div class="user-name">สมหญิง ประสาน</div>
+        <div class="user-role">Manager / HR</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <button type="button" class="hamburger" aria-label="เปิดเมนู" onclick="openSidebar()">☰</button>
+    <div class="topbar-title">คู่มือการใช้งาน <span class="topbar-subtitle">/ ขั้นตอนการใช้ระบบ</span></div>
+  </header>
+
+  <main class="content">
+    <!-- Tab switcher -->
+    <div class="manual-tabs" role="tablist">
+      <button class="manual-tab active" role="tab" aria-selected="true" onclick="switchTab(this,'employee')">พนักงานทั่วไป</button>
+      <button class="manual-tab" role="tab" aria-selected="false" onclick="switchTab(this,'hr')">HR / Admin</button>
+    </div>
+
+    <!-- Employee tab -->
+    <div id="tab-employee">
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">⏱️</span>
+          <span class="manual-section-title">การเช็คอิน / เช็คเอาท์</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>ลงเวลางาน</strong></span></li>
+            <li><span class="step-num">2</span><span>กด <strong>เช็คอิน</strong> เมื่อเริ่มงาน — ระบบถ่ายรูปและบันทึก GPS อัตโนมัติ</span></li>
+            <li><span class="step-num">3</span><span>กด <strong>พักเที่ยง</strong> เมื่อออกพัก และ <strong>กลับจากพัก</strong> เมื่อเริ่มงานต่อ</span></li>
+            <li><span class="step-num">4</span><span>กด <strong>เช็คเอาท์</strong> เมื่อเลิกงาน</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📸</span>
+          <span class="manual-section-title">การสแกนใบหน้า</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่หน้า <strong>ลงเวลางาน</strong> และเลือกประเภทการลงเวลา</span></li>
+            <li><span class="step-num">2</span><span>กด <strong>สแกนใบหน้า</strong> — ระบบเปิดกล้องอัตโนมัติ</span></li>
+            <li><span class="step-num">3</span><span>หันหน้าตรงเข้ากล้อง ระบบจะตรวจจับและยืนยันตัวตนเอง</span></li>
+            <li><span class="step-num">4</span><span>รอข้อความยืนยัน เช็คอินสำเร็จ / ล้มเหลว</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📅</span>
+          <span class="manual-section-title">การขอลาหยุด</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>ขอหยุด</strong></span></li>
+            <li><span class="step-num">2</span><span>เลือกประเภทการลา กำหนดวันที่ และใส่เหตุผล</span></li>
+            <li><span class="step-num">3</span><span>กด <strong>ส่งคำขอ</strong> — ระบบส่งแจ้งเตือน HR ทันที</span></li>
+            <li><span class="step-num">4</span><span>ติดตามสถานะในหน้าเดิม: <strong>รออนุมัติ / อนุมัติ / ปฏิเสธ</strong></span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">🧾</span>
+          <span class="manual-section-title">การดูสลิปเงินเดือน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>สลิปเงินเดือน</strong></span></li>
+            <li><span class="step-num">2</span><span>เลือกเดือนที่ต้องการดู</span></li>
+            <li><span class="step-num">3</span><span>กด <strong>ดาวน์โหลด PDF</strong> เพื่อบันทึกสลิป</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">🗓️</span>
+          <span class="manual-section-title">การดูปฏิทินและแผนงาน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>ปฏิทิน</strong></span></li>
+            <li><span class="step-num">2</span><span>ดูวันหยุด งานนัดหมาย และกิจกรรมขององค์กร</span></li>
+            <li><span class="step-num">3</span><span>กดที่วันที่ในปฏิทินเพื่อดูรายละเอียดกิจกรรม</span></li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HR / Admin tab -->
+    <div id="tab-hr" style="display:none;">
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">✅</span>
+          <span class="manual-section-title">การอนุมัติคำขอลา</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>อนุมัติ</strong></span></li>
+            <li><span class="step-num">2</span><span>ดูรายการคำขอที่รออนุมัติ</span></li>
+            <li><span class="step-num">3</span><span>กด <strong>อนุมัติ</strong> หรือ <strong>ปฏิเสธ</strong> พร้อมใส่หมายเหตุ (ถ้ามี)</span></li>
+            <li><span class="step-num">4</span><span>ระบบส่งแจ้งเตือนกลับไปยังพนักงานอัตโนมัติ</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">🔔</span>
+          <span class="manual-section-title">การออกใบเตือนพนักงาน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>แจ้งเตือน</strong> → กด <strong>สร้างใบเตือน</strong></span></li>
+            <li><span class="step-num">2</span><span>เลือกพนักงาน ประเภทความผิด และระดับโทษ</span></li>
+            <li><span class="step-num">3</span><span>ระบุรายละเอียดและวันที่ → กด <strong>บันทึก</strong></span></li>
+            <li><span class="step-num">4</span><span>ระบบบันทึกในประวัติและแจ้งเตือนพนักงานอัตโนมัติ</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📍</span>
+          <span class="manual-section-title">การดูตำแหน่ง GPS พนักงาน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>ลงเวลางาน</strong> → กดแท็บ <strong>แผนที่ / GPS</strong></span></li>
+            <li><span class="step-num">2</span><span>ดูตำแหน่งเช็คอิน/เช็คเอาท์ของพนักงานแต่ละคน</span></li>
+            <li><span class="step-num">3</span><span>กรองตามวันที่หรือสาขา</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">👥</span>
+          <span class="manual-section-title">การจัดการพนักงาน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>พนักงาน</strong></span></li>
+            <li><span class="step-num">2</span><span>กด <strong>เพิ่มพนักงาน</strong> → ใส่ข้อมูลส่วนตัว บทบาท และแผนก</span></li>
+            <li><span class="step-num">3</span><span>แก้ไขข้อมูลได้โดยกดปุ่ม ⋮ ที่แถวพนักงาน</span></li>
+            <li><span class="step-num">4</span><span>กำหนดสิทธิ์เข้าถึงระบบได้จากแท็บ <strong>บทบาท</strong></span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">💰</span>
+          <span class="manual-section-title">การจัดการเงินเดือน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>เงินเดือน</strong> → เลือกรอบเงินเดือน</span></li>
+            <li><span class="step-num">2</span><span>ตรวจสอบชั่วโมงทำงาน OT และการขาด/ลา</span></li>
+            <li><span class="step-num">3</span><span>กด <strong>คำนวณ</strong> ตรวจสอบผลลัพธ์ แล้วกด <strong>ยืนยัน</strong></span></li>
+            <li><span class="step-num">4</span><span>ระบบออกสลิปให้พนักงานแต่ละคนอัตโนมัติ</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📈</span>
+          <span class="manual-section-title">การดูรายงานรายเดือน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>รายงานรายเดือน</strong></span></li>
+            <li><span class="step-num">2</span><span>เลือกเดือนและแผนกที่ต้องการดู</span></li>
+            <li><span class="step-num">3</span><span>ดูสรุปการลา OT และชั่วโมงทำงานรวม</span></li>
+            <li><span class="step-num">4</span><span>กด <strong>ส่งออก Excel</strong> เพื่อดาวน์โหลด</span></li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="manual-note">
+      📌 หากพบปัญหาหรือต้องการความช่วยเหลือเพิ่มเติม กรุณาติดต่อ Admin หรือ HR ขององค์กร
+    </div>
+  </main>
+</div>
+
+<nav class="mobile-nav">
+  <div class="mobile-nav-grid">
+    <a href="index.html" class="mnav-item"><span class="icon">📊</span>หน้าหลัก</a>
+    <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
+    <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
+    <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="manual.html" class="mnav-item active"><span class="icon">📖</span>คู่มือ</a>
+  </div>
+</nav>
+
+<script src="hr-core.js"></script>
+<script src="dev-banner.js"></script>
+<script>
+function toggleSection(hd) {
+  hd.closest('.manual-section').classList.toggle('open');
+}
+
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.manual-tab').forEach(function(t) {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  document.getElementById('tab-employee').style.display = tabId === 'employee' ? '' : 'none';
+  document.getElementById('tab-hr').style.display = tabId === 'hr' ? '' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function() { initRole(); });
+</script>
+</body>
+</html>
