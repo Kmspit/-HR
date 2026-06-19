@@ -62,7 +62,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/clients':            CLIENT_MGMT_ROLES,
   '/case-finance':            [...CAN_VIEW_FINANCE],
   '/expense-claim':           ALL_ROLES,
-  '/ai-assistant':            ALL_ROLES,
   // Phase 8 — Debt Collection CRM
   '/debtors':                 ALL_ROLES,
   '/debt-followup':           ALL_ROLES,

@@ -4,7 +4,6 @@ import Sidebar from '@/components/dashboard/Sidebar'
 import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
-import AiFloatingButton from '@/components/AiFloatingButton'
 import { prisma } from '@/lib/prisma'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
@@ -60,7 +59,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       {/* Mobile bottom nav */}
       <MobileNav role={user.role} />
-      <AiFloatingButton />
     </div>
   )
 }

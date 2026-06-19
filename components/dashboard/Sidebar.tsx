@@ -99,7 +99,6 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'งาน & ผลงาน',
     items: [
-      // { href: '/ai-assistant', icon: 'ai', label: 'AI Assistant' }, // HIDDEN: AI temporarily disabled
       { href: '/tasks',        icon: 'tasks',       label: 'มอบหมายงาน' },
       { href: '/performance',  icon: 'performance', label: 'KPI / ผลงาน' },
       { href: '/knowledge',    icon: 'knowledge',   label: 'คลังความรู้' },
