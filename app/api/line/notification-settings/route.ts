@@ -33,7 +33,7 @@ export async function GET() {
     if (user?.lineNotifSettings) {
       try {
         settings = { ...DEFAULT, ...(JSON.parse(user.lineNotifSettings) as Partial<LineNotifSettings>) }
-      } catch { /* use default */ }
+      } catch (e) { console.warn('[notification-settings] corrupted settings, using default:', e) }
     }
 
     return NextResponse.json({ settings, linked: !!user?.lineUserId })
@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest) {
     let current: LineNotifSettings = DEFAULT
     if (user?.lineNotifSettings) {
       try { current = { ...DEFAULT, ...(JSON.parse(user.lineNotifSettings) as Partial<LineNotifSettings>) } }
-      catch { /* use default */ }
+      catch (e) { console.warn('[notification-settings] corrupted settings, using default:', e) }
     }
 
     const updated: LineNotifSettings = {
