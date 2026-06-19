@@ -4,10 +4,25 @@ import { v2 as cloudinary } from 'cloudinary'
 
 const ROOT = (process.env.CLOUDINARY_ROOT_FOLDER ?? 'hr-system').replace(/^\/|\/$/g, '')
 
+function parseCloudinaryUrl(url: string): { name: string; key: string; sec: string } | null {
+  try {
+    const u = new URL(url.replace(/^cloudinary:\/\//, 'https://'))
+    const name = u.hostname; const key = u.username; const sec = u.password
+    if (name && key && sec) return { name, key, sec }
+  } catch {}
+  return null
+}
+
 function configure() {
-  const name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
-  const key  = process.env.CLOUDINARY_API_KEY?.trim()
-  const sec  = process.env.CLOUDINARY_API_SECRET?.trim()
+  let name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
+  let key  = process.env.CLOUDINARY_API_KEY?.trim()
+  let sec  = process.env.CLOUDINARY_API_SECRET?.trim()
+
+  if ((!name || !key || !sec) && process.env.CLOUDINARY_URL) {
+    const p = parseCloudinaryUrl(process.env.CLOUDINARY_URL)
+    if (p) { name = name || p.name; key = key || p.key; sec = sec || p.sec }
+  }
+
   if (!name || !key || !sec) throw new Error('Cloudinary not configured')
   cloudinary.config({ cloud_name: name, api_key: key, api_secret: sec, secure: true })
   return { name, key, sec }

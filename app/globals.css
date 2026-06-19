@@ -153,6 +153,10 @@
   .light ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
   .light ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
 
+  /* Hide scrollbar while keeping scroll functionality (used for tab bars on mobile) */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
   /* มือถือ: ช่องวันที่/เวลาไม่ล้นซ้อนกัน */
   input[type='date'],
   input[type='time'],

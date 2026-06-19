@@ -3,6 +3,19 @@ import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import CaseDetailClient from './CaseDetailClient'
 
+function resolveCloudName(): string {
+  const name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
+  if (name) return name
+  try {
+    const url = process.env.CLOUDINARY_URL ?? ''
+    if (url) {
+      const u = new URL(url.replace(/^cloudinary:\/\//, 'https://'))
+      if (u.hostname) return u.hostname
+    }
+  } catch {}
+  return ''
+}
+
 export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
@@ -59,7 +72,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       role={role}
       userId={userId}
       canEdit={canEdit}
-      cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
+      cloudName={resolveCloudName()}
     />
   )
 }
