@@ -99,9 +99,11 @@ export async function GET(req: NextRequest) {
       }),
       prisma.caseDocument.count({ where }),
     ])
-  } catch (err) {
-    console.error('[case-documents GET]', err)
-    return NextResponse.json({ error: 'Database error', docs: [], total: 0, page, pages: 1 }, { status: 500 })
+  } catch (err: any) {
+    console.error('[case-documents GET] Error message:', err?.message)
+    console.error('[case-documents GET] Error code:', err?.code)
+    console.error('[case-documents GET] Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
+    return NextResponse.json({ docs: [], total: 0 }, { status: 500 })
   }
 
   return NextResponse.json({
