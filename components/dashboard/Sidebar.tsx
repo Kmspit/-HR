@@ -70,6 +70,7 @@ const ICONS: Record<string, string> = {
   chevronRight: 'M9 5l7 7-7 7',
   chevronDown:  'M19 9l-7 7-7-7',
   close:        'M6 18L18 6M6 6l12 12',
+  manual:       'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
 }
 
 type NavItem = { href: string; icon: keyof typeof ICONS; label: string; roles?: Role[]; badge?: string }
@@ -159,6 +160,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/announcements', icon: 'announce', label: 'ประกาศ',         roles: ['CEO', 'MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] as Role[] },
       { href: '/line-oa',       icon: 'lineoa',   label: 'LINE OA',        roles: ['CEO', 'MANAGER_HR', 'ADMIN'] as Role[] },
       { href: '/notifications', icon: 'notif',    label: 'แจ้งเตือน',     roles: ['CEO', 'MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] as Role[] },
+      { href: '/manual',        icon: 'manual',   label: 'คู่มือการใช้งาน' },
     ],
   },
 ]
