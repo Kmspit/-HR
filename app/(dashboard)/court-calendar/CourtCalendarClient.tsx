@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -682,7 +682,7 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[95vh]"
         onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">

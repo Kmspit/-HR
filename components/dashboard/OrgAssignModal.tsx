@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { X, Loader2, Layers } from 'lucide-react'
@@ -73,7 +73,7 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60">
       <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

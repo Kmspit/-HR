@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef } from 'react'
 import { MapPin, Clock, Loader2, History, CheckCircle2, Edit3, X, Check, Paperclip, ExternalLink } from 'lucide-react'
@@ -95,7 +95,7 @@ function EditPlaceModal({
   const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-white/10 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-white">แก้ไขรายละเอียด (HR)</h3>

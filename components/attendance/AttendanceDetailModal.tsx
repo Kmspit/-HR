@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { X, Building2, Navigation, AlertCircle, MapPin } from 'lucide-react'
@@ -129,7 +129,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px]"
+        className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
@@ -139,7 +139,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
         role="dialog"
         aria-modal
         aria-label="รายละเอียดการลงเวลา"
-        className="fixed z-50 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4"
+        className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4"
       >
         <div
           className="relative w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[88vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"

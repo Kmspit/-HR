@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { FileText, Plus, Loader2, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
@@ -190,7 +190,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
 
       {/* HR action modal */}
       {hrAction && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3">
             <h3 className="text-white font-semibold">อัปเดตสถานะ</h3>
             <div className="flex gap-2">

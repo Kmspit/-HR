@@ -90,7 +90,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   const isOffice = ['doc','docx','xls','xlsx'].includes(fmt) || mime.includes('word') || mime.includes('sheet')
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
@@ -208,7 +208,7 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-sm shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-white/[0.07] flex items-center justify-between">

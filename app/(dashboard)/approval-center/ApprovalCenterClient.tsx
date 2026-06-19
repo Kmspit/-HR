@@ -728,7 +728,7 @@ export default function ApprovalCenterClient({
 
       {/* ── Action Modal ── */}
       {showActModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               {actAction === 'APPROVE' ? '✅ อนุมัติคำขอ' :
@@ -768,7 +768,7 @@ export default function ApprovalCenterClient({
 
       {/* ── Signature Pad Modal ── */}
       {showSigPad && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">✍️ ลงนามดิจิทัล</h3>

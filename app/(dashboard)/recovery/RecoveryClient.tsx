@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 
@@ -643,7 +643,7 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
   const selectedDebtor = debtors.find(d => d.id === form.debtorId)
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
       <div className="flex min-h-full items-end md:items-center justify-center p-0 md:p-4">
         <div className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-xl">
           <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-200 dark:border-white/[0.06]">

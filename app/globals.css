@@ -600,24 +600,6 @@ select option {
     font-size: 16px !important; /* Prevents iOS zoom on focus */
     -webkit-tap-highlight-color: transparent;
   }
-
-  /*
-   * Raise all fixed full-viewport overlays (modals/drawers) above MobileNav (z-50).
-   * Targets: .fixed.inset-0.z-50  — combined backdrop+modal (most modals)
-   *           .fixed.inset-x-0.z-50 — two-part modal containers (tasks, attendance)
-   * Does NOT affect: MobileNav (bottom-0, no inset-0), Header (top-0, no inset-0),
-   *                  Sidebar backdrop/drawer (z-[55]/z-[60], not z-50)
-   */
-  .fixed.inset-0.z-50,
-  .fixed.inset-x-0.z-50 {
-    z-index: 60;
-  }
-}
-
-/* Raise modal overlays above sticky topbar on ALL screen sizes (topbar is z-40) */
-.fixed.inset-0.z-50,
-.fixed.inset-x-0.z-50 {
-  z-index: 60;
 }
 
 /* AI chat — pad bottom above MobileNav + safe area on mobile, reset on desktop */

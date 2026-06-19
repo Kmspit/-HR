@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
@@ -550,7 +550,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-3xl">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">

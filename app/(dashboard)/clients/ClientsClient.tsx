@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 
@@ -288,7 +288,7 @@ export default function ClientsClient({ userRole }: Props) {
 
       {/* ── Create Modal ── */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800">เพิ่มบัญชีลูกค้า</h2>
@@ -324,7 +324,7 @@ export default function ClientsClient({ userRole }: Props) {
 
       {/* ── Status History Modal ── */}
       {showHistory && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4">
             <h2 className="font-semibold text-gray-800 text-sm">อัพเดทสถานะคดี (ลูกค้าจะเห็น)</h2>
@@ -361,7 +361,7 @@ export default function ClientsClient({ userRole }: Props) {
 
       {/* ── Link Task Modal ── */}
       {showLinkTask && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]">
             <h2 className="font-semibold text-gray-800">เลือกคดีที่จะเชื่อม</h2>

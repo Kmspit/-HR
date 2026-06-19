@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -899,8 +899,8 @@ function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModal
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-modal className="fixed z-50 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
+      <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div role="dialog" aria-modal className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
         <div className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[90vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
           onClick={(e) => e.stopPropagation()}>
 
@@ -1372,8 +1372,8 @@ function CreateTaskModal({ employees, assignerName, onClose, onCreated, template
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-modal className="fixed z-50 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
+      <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div role="dialog" aria-modal className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
         <div className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[92vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
           onClick={(e) => e.stopPropagation()}>
 

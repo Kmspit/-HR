@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import {
@@ -396,7 +396,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
 
       {/* ── INCOME MODAL ─────────────────────────────────────────────────── */}
       {showModal === 'income' && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
               <h2 className="font-semibold text-gray-800 text-lg mb-4">{editItem ? 'แก้ไขรายรับ' : 'เพิ่มรายรับคดี'}</h2>
@@ -454,7 +454,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
 
       {/* ── EXPENSE MODAL ────────────────────────────────────────────────── */}
       {showModal === 'expense' && (
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
               <h2 className="font-semibold text-gray-800 text-lg mb-4">{editItem ? 'แก้ไขค่าใช้จ่าย' : 'เพิ่มค่าใช้จ่ายคดี'}</h2>

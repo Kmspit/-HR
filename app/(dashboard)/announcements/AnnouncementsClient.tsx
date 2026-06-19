@@ -697,7 +697,7 @@ export default function AnnouncementsClient({
 
       {/* ── Archive Modal ── */}
       {showArchive && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
           onClick={() => setShowArchive(false)}>
           <div className="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl dark:bg-slate-900 light:bg-white border dark:border-white/10 light:border-slate-200 shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}>
@@ -789,7 +789,7 @@ function FileViewer({ attachment, onClose }: { attachment: Attachment; onClose: 
   const isImageFile = isImage(attachment.type)
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-60 flex flex-col bg-black/90 backdrop-blur-sm" onClick={onClose}>
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-black/40" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
