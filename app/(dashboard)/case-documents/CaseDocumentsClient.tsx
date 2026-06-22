@@ -160,13 +160,15 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 
   function renderPreview(file: DocFile) {
     const url  = getPreviewUrl(file)
-    console.log('[Preview] signedUrl:', signedUrl)
-    console.log('[Preview] final URL used:', url)
-    console.log('[Preview] mime:', file.mimeType, '| format:', file.format, '| resourceType:', file.resourceType)
     const mime = file.mimeType ?? ''
     const fmt  = (file.format ?? '').toLowerCase()
-    const isImg = file.resourceType === 'image' && !fmt.includes('pdf') && !mime.includes('pdf')
-    const isPdf = mime.includes('pdf') || fmt === 'pdf' || file.resourceType === 'image'
+
+    const isPdf    = mime.includes('pdf') || fmt === 'pdf'
+    const isImg    = !isPdf && (file.resourceType === 'image' || mime.startsWith('image/') || ['jpg','jpeg','png','gif','webp','svg'].includes(fmt))
+    const isVideo  = file.resourceType === 'video' || mime.startsWith('video/') || ['mp4','mov','webm','avi','mkv'].includes(fmt)
+    const isOffice = ['doc','docx','xls','xlsx','ppt','pptx'].includes(fmt) ||
+      mime.includes('word') || mime.includes('sheet') || mime.includes('excel') ||
+      mime.includes('powerpoint') || mime.includes('presentation')
 
     if (isImg) {
       return (
@@ -183,21 +185,29 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
         </div>
       )
     }
-    // For office docs: Google Docs viewer
-    const isOffice = ['doc','docx','xls','xlsx'].includes(fmt) ||
-      mime.includes('word') || mime.includes('sheet') || mime.includes('excel')
+    if (isVideo) {
+      return (
+        <div className="flex-1 rounded-xl overflow-hidden bg-black/40 flex items-center justify-center p-4">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video src={url} controls className="max-h-[60vh] max-w-full rounded-lg" />
+        </div>
+      )
+    }
     if (isOffice) {
-      const googleUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`
       return (
         <div className="flex-1 rounded-xl overflow-hidden bg-black/20">
-          <iframe src={googleUrl} className="w-full h-[60vh]" title={file.fileName} />
+          <iframe
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+            className="w-full h-[60vh]"
+            title={file.fileName}
+          />
         </div>
       )
     }
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/50">
         <FileIcon mimeType={file.mimeType} format={file.format} resourceType={file.resourceType} className="w-16 h-16" />
-        <p className="text-sm">ไม่รองรับการแสดงตัวอย่างไฟล์ประเภทนี้</p>
+        <p className="text-sm">ไม่สามารถ preview ได้ กรุณากด Download</p>
         <a
           href={url}
           download={file.fileName}

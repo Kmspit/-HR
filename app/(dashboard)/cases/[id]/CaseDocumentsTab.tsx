@@ -98,9 +98,13 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   const url  = signedUrl ?? f.secureUrl ?? f.fileUrl
   const mime = f.mimeType ?? ''
   const fmt  = (f.format ?? '').toLowerCase()
-  const isImg = f.resourceType === 'image' && !fmt.includes('pdf') && !mime.includes('pdf')
-  const isPdf = mime.includes('pdf') || fmt === 'pdf' || (f.resourceType === 'image' && !isImg)
-  const isOffice = ['doc','docx','xls','xlsx'].includes(fmt) || mime.includes('word') || mime.includes('sheet')
+
+  const isPdf    = mime.includes('pdf') || fmt === 'pdf'
+  const isImg    = !isPdf && (f.resourceType === 'image' || mime.startsWith('image/') || ['jpg','jpeg','png','gif','webp','svg'].includes(fmt))
+  const isVideo  = f.resourceType === 'video' || mime.startsWith('video/') || ['mp4','mov','webm','avi','mkv'].includes(fmt)
+  const isOffice = ['doc','docx','xls','xlsx','ppt','pptx'].includes(fmt) ||
+    mime.includes('word') || mime.includes('sheet') || mime.includes('excel') ||
+    mime.includes('powerpoint') || mime.includes('presentation')
 
   return (
     <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
@@ -132,14 +136,30 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
             </div>
           ) : isPdf ? (
             <iframe src={url} className="w-full h-[55vh] rounded-xl" title={doc.title} />
+          ) : isVideo ? (
+            <div className="flex items-center justify-center h-[55vh] bg-black/40 rounded-xl overflow-hidden">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={url} controls className="max-h-[55vh] max-w-full rounded-lg" />
+            </div>
           ) : isOffice ? (
-            <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
-              className="w-full h-[55vh] rounded-xl" title={doc.title} />
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+              className="w-full h-[55vh] rounded-xl"
+              title={doc.title}
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center h-40 text-white/40 gap-3">
-              <File className="w-10 h-10 opacity-30" />
-              <p className="text-sm">ไม่รองรับตัวอย่าง</p>
-              <a href={url} download={f.fileName} className="text-blue-400 text-sm hover:underline">ดาวน์โหลดไฟล์</a>
+            <div className="flex flex-col items-center justify-center h-[55vh] text-white/40 gap-4">
+              <File className="w-12 h-12 opacity-30" />
+              <p className="text-sm">ไม่สามารถ preview ได้ กรุณากด Download</p>
+              <a
+                href={url}
+                download={f.fileName}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+              >
+                <Download className="w-4 h-4" /> ดาวน์โหลด
+              </a>
             </div>
           )}
         </div>
