@@ -21,22 +21,23 @@ export async function GET(
 
   const file = await prisma.caseDocumentFile.findFirst({
     where: { id: fileId, documentId: id },
-    select: { publicId: true, format: true, resourceType: true, mimeType: true },
+    select: { publicId: true, format: true, resourceType: true, mimeType: true, secureUrl: true, fileUrl: true },
   })
   if (!file) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
-    console.log('[preview-url] Cloud name:', process.env.CLOUDINARY_CLOUD_NAME)
-    console.log('[preview-url] API Secret length:', process.env.CLOUDINARY_API_SECRET?.length ?? 0)
-    console.log('[preview-url] CLOUDINARY_URL set:', !!process.env.CLOUDINARY_URL)
-    const fmt = file.format ?? (file.mimeType?.includes('pdf') ? 'pdf' : 'jpg')
+    const cloudinaryType = file.secureUrl?.includes('/authenticated/')
+      ? 'authenticated'
+      : 'upload'
 
-    // Reuse getSignedUrl() — the same function used for face scan photos which works correctly.
-    // It calls private_download_url() without extra params that corrupt the signature string.
-    const url = getSignedUrl(file.publicId, { expiresInSec: 900, format: fmt })
-    if (!url) return NextResponse.json({ error: 'Failed to sign URL' }, { status: 500 })
+    if (cloudinaryType === 'authenticated') {
+      const fmt = file.format ?? (file.mimeType?.includes('pdf') ? 'pdf' : 'jpg')
+      const url = getSignedUrl(file.publicId, { expiresInSec: 900, format: fmt })
+      if (!url) return NextResponse.json({ error: 'Failed to sign URL' }, { status: 500 })
+      return NextResponse.json({ url })
+    }
 
-    return NextResponse.json({ url })
+    return NextResponse.json({ url: file.secureUrl ?? file.fileUrl })
   } catch (err: any) {
     console.error('[preview-url GET]', err)
     return NextResponse.json({ error: 'Failed to generate signed URL' }, { status: 500 })
