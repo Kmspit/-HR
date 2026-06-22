@@ -1,8 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { ensureCloudinaryConfig } from '@/lib/cloudinary-service'
-import { v2 as cloudinary } from 'cloudinary'
+import { getSignedUrl } from '@/lib/cloudinary-service'
 
 // GET /api/case-documents/[id]/preview-url?fileId=<fileId>
 // Returns a short-lived signed Cloudinary URL for inline preview.
@@ -27,20 +26,12 @@ export async function GET(
   if (!file) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
-    ensureCloudinaryConfig()
-    const resourceType = (file.resourceType as 'image' | 'video' | 'raw') ?? 'image'
     const fmt = file.format ?? (file.mimeType?.includes('pdf') ? 'pdf' : 'jpg')
 
-    // cloudinary.url() + sign_url:true + expires_at generates a CDN auth-token signature
-    // that Cloudinary accepts for type:authenticated delivery.
-    const url = cloudinary.url(file.publicId, {
-      resource_type: resourceType as 'image' | 'video' | 'raw',
-      type:          'authenticated',
-      format:        fmt,
-      sign_url:      true,
-      secure:        true,
-      expires_at:    Math.floor(Date.now() / 1000) + 900,
-    })
+    // Reuse getSignedUrl() — the same function used for face scan photos which works correctly.
+    // It calls private_download_url() without extra params that corrupt the signature string.
+    const url = getSignedUrl(file.publicId, { expiresInSec: 900, format: fmt })
+    if (!url) return NextResponse.json({ error: 'Failed to sign URL' }, { status: 500 })
 
     return NextResponse.json({ url })
   } catch (err: any) {
