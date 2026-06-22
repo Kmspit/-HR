@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       employeeName, ownerName, workType, distance, distanceLimit, routeType,
     } = body
 
-    if (!date || !startTime || !endTime || !place || !purpose || !googleMapsUrl) {
+    if (!date || !startTime || !endTime || !place || !purpose) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
     }
 

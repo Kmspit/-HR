@@ -62,6 +62,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       purpose?: string; client?: string; date?: string; googleMapsUrl?: string
       employeeName?: string; ownerName?: string; workType?: string
       distance?: number | string; distanceLimit?: number | string; routeType?: string
+      approvalStatus?: string; status?: string
     }
 
     if (body.place !== undefined && !body.place?.trim()) {
@@ -85,6 +86,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.distance     !== undefined) updateData.distance     = body.distance ? Number(body.distance) : null
     if (body.distanceLimit!== undefined) updateData.distanceLimit= body.distanceLimit ? Number(body.distanceLimit) : null
     if (body.routeType    !== undefined) updateData.routeType    = body.routeType?.trim() || null
+
+    if (isHR) {
+      if (body.approvalStatus !== undefined) updateData.approvalStatus = body.approvalStatus || null
+      if (body.status         !== undefined) updateData.status         = body.status
+    }
 
     const updated = await prisma.outsideWorkRequest.update({ where: { id }, data: updateData })
 
