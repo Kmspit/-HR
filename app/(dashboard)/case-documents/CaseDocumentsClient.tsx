@@ -355,6 +355,7 @@ function UploadModal({
       formData.append('timestamp', String(sig.timestamp))
       formData.append('signature', sig.signature)
       formData.append('folder', sig.folder)
+      formData.append('type', sig.type ?? 'authenticated')
 
       const uploadRes = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,

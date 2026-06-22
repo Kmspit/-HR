@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
     const paramsToSign: Record<string, string | number> = {
       timestamp: now,
       folder,
+      type: 'authenticated',
     }
 
     const signature = cloudinary.utils.api_sign_request(paramsToSign, sec)
@@ -53,6 +54,7 @@ export async function GET(req: NextRequest) {
       apiKey: key,
       cloudName: name,
       folder,
+      type: 'authenticated',
     })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

@@ -80,9 +80,22 @@ function formatDate(iso: string) {
 
 function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   const f = doc.files[0]
+  const [signedUrl, setSignedUrl]   = useState<string | null>(null)
+  const [loadingUrl, setLoadingUrl] = useState(!!f)
+
+  useEffect(() => {
+    if (!f) return
+    setLoadingUrl(true)
+    fetch(`/api/case-documents/${doc.id}/preview-url?fileId=${f.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.url) setSignedUrl(d.url) })
+      .catch(() => {})
+      .finally(() => setLoadingUrl(false))
+  }, [doc.id, f?.id])
+
   if (!f) return null
 
-  const url  = f.secureUrl ?? f.fileUrl
+  const url  = signedUrl ?? f.secureUrl ?? f.fileUrl
   const mime = f.mimeType ?? ''
   const fmt  = (f.format ?? '').toLowerCase()
   const isImg = f.resourceType === 'image' && !fmt.includes('pdf') && !mime.includes('pdf')
@@ -108,7 +121,11 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
           </button>
         </div>
         <div className="flex-1 overflow-hidden p-4 min-h-0">
-          {isImg ? (
+          {loadingUrl ? (
+            <div className="flex items-center justify-center h-[55vh]">
+              <Loader2 className="w-7 h-7 animate-spin text-white/30" />
+            </div>
+          ) : isImg ? (
             <div className="flex items-center justify-center h-full bg-black/30 rounded-xl overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt={doc.title} className="max-h-[55vh] max-w-full object-contain" />
@@ -170,6 +187,7 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
       formData.append('timestamp', String(sig.timestamp))
       formData.append('signature', sig.signature)
       formData.append('folder', sig.folder)
+      formData.append('type', sig.type ?? 'authenticated')
 
       const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
         method: 'POST', body: formData,
