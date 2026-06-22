@@ -31,14 +31,15 @@ export async function GET(
     const resourceType = (file.resourceType as 'image' | 'video' | 'raw') ?? 'image'
     const fmt = file.format ?? (file.mimeType?.includes('pdf') ? 'pdf' : 'jpg')
 
-    // private_download_url is required for type:authenticated assets — cloudinary.url()
-    // with sign_url:true only works for type:upload and returns a 401 for authenticated.
-    // attachment:false keeps the browser in preview/inline mode instead of forcing download.
-    const url = cloudinary.utils.private_download_url(file.publicId, fmt, {
-      resource_type: resourceType,
+    // cloudinary.url() + sign_url:true + expires_at generates a CDN auth-token signature
+    // that Cloudinary accepts for type:authenticated delivery.
+    const url = cloudinary.url(file.publicId, {
+      resource_type: resourceType as 'image' | 'video' | 'raw',
       type:          'authenticated',
-      expires_at:    Math.floor(Date.now() / 1000) + 900, // 15 minutes
-      attachment:    false,
+      format:        fmt,
+      sign_url:      true,
+      secure:        true,
+      expires_at:    Math.floor(Date.now() / 1000) + 900,
     })
 
     return NextResponse.json({ url })
