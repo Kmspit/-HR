@@ -784,6 +784,14 @@ async function runEnsure(): Promise<boolean> {
   await addOutsideWorkColumnIfMissing('attachment_url',  `ALTER TABLE outside_work_requests ADD COLUMN attachment_url TEXT`)
   await addOutsideWorkColumnIfMissing('attachment_name', `ALTER TABLE outside_work_requests ADD COLUMN attachment_name TEXT`)
 
+  // ── Outside work Excel form fields ───────────────────────────────────────
+  await addOutsideWorkColumnIfMissing('employee_name',  `ALTER TABLE outside_work_requests ADD COLUMN employee_name TEXT`)
+  await addOutsideWorkColumnIfMissing('owner_name',     `ALTER TABLE outside_work_requests ADD COLUMN owner_name TEXT`)
+  await addOutsideWorkColumnIfMissing('work_type',      `ALTER TABLE outside_work_requests ADD COLUMN work_type TEXT`)
+  await addOutsideWorkColumnIfMissing('distance',       `ALTER TABLE outside_work_requests ADD COLUMN distance REAL`)
+  await addOutsideWorkColumnIfMissing('distance_limit', `ALTER TABLE outside_work_requests ADD COLUMN distance_limit REAL`)
+  await addOutsideWorkColumnIfMissing('route_type',     `ALTER TABLE outside_work_requests ADD COLUMN route_type TEXT`)
+
   // ── Weekly plan day GPS columns ───────────────────────────────────────────
   await addWeeklyPlanDayColumnIfMissing('plan_lat', `ALTER TABLE weekly_plan_days ADD COLUMN plan_lat REAL`)
   await addWeeklyPlanDayColumnIfMissing('plan_lng', `ALTER TABLE weekly_plan_days ADD COLUMN plan_lng REAL`)

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef } from 'react'
 import { MapPin, Clock, Loader2, History, CheckCircle2, Edit3, X, Check, Paperclip, ExternalLink } from 'lucide-react'
@@ -25,6 +25,12 @@ type Request = {
   attachmentUrl?: string | null
   attachmentName?: string | null
   approvalStatus?: string | null
+  employeeName?: string | null
+  ownerName?: string | null
+  workType?: string | null
+  distance?: number | null
+  distanceLimit?: number | null
+  routeType?: string | null
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -48,93 +54,123 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 type Props = {
+  userId: string
   canViewAll: boolean
   canApproveOutside: boolean
   requests: Request[]
 }
 
-function EditPlaceModal({
-  requestId,
-  currentPlace,
-  currentNote,
-  currentStartTime,
-  currentEndTime,
+function EditRequestModal({
+  request,
+  isHR,
   onClose,
   onSaved,
 }: {
-  requestId: string
-  currentPlace: string
-  currentNote: string
-  currentStartTime: string
-  currentEndTime: string
+  request: Request
+  isHR: boolean
   onClose: () => void
   onSaved: () => void
 }) {
-  const [place, setPlace] = useState(currentPlace)
-  const [note, setNote] = useState(currentNote)
-  const [startTime, setStartTime] = useState(currentStartTime)
-  const [endTime, setEndTime] = useState(currentEndTime)
+  const [form, setForm] = useState({
+    place:         request.place        ?? '',
+    note:          request.note         ?? '',
+    startTime:     request.startTime    ?? '',
+    endTime:       request.endTime      ?? '',
+    purpose:       request.purpose      ?? '',
+    client:        request.client       ?? '',
+    employeeName:  request.employeeName ?? '',
+    ownerName:     request.ownerName    ?? '',
+    workType:      request.workType     ?? '',
+    distance:      request.distance     != null ? String(request.distance)      : '',
+    distanceLimit: request.distanceLimit!= null ? String(request.distanceLimit) : '',
+    routeType:     request.routeType    ?? '',
+  })
   const [saving, setSaving] = useState(false)
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const save = async () => {
-    if (!place.trim()) { toast.error('กรุณาระบุสถานที่'); return }
+    if (!form.place.trim()) { toast.error('กรุณาระบุสถานที่'); return }
     setSaving(true)
     try {
-      const { ok, data, status } = await apiJson(`/api/outside-work/${requestId}`, {
+      const { ok, data, status } = await apiJson(`/api/outside-work/${request.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ place, note, startTime, endTime }),
+        body: JSON.stringify({
+          ...form,
+          distance:      form.distance      ? Number(form.distance)      : null,
+          distanceLimit: form.distanceLimit ? Number(form.distanceLimit) : null,
+        }),
       })
       if (!ok) { toast.error(apiErrorMessage(data, 'บันทึกไม่สำเร็จ', status)); return }
-      toast.success('แก้ไขสถานที่เรียบร้อย')
+      toast.success('แก้ไขเรียบร้อย')
       onSaved()
     } catch { toast.error('เกิดข้อผิดพลาด') }
     finally { setSaving(false) }
   }
 
-  const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50'
+  const ic = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50'
 
   return (
-    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-white/10 p-5 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-white/10 p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white">แก้ไขรายละเอียด (HR)</h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+          <h3 className="font-semibold text-white">{isHR ? 'แก้ไขรายละเอียด (HR)' : 'แก้ไขคำขอของฉัน'}</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">สถานที่ *</label>
-            <input value={place} onChange={(e) => setPlace(e.target.value)} className={inputCls} placeholder="ชื่อสถานที่" />
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'เวลาออก', key: 'startTime' as const, type: 'time' },
+              { label: 'เวลากลับ', key: 'endTime' as const, type: 'time' },
+            ].map(({ label, key, type }) => (
+              <div key={key} className="space-y-1.5 col-span-1">
+                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{label}</label>
+                <input type={type} value={form[key]} onChange={(e) => set(key, e.target.value)} className={ic} />
+              </div>
+            ))}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          {[
+            { label: 'สถานที่ *',              key: 'place'        as const, placeholder: 'ชื่อสถานที่' },
+            { label: 'วัตถุประสงค์',           key: 'purpose'      as const, placeholder: '' },
+            { label: 'ลูกค้า / หน่วยงาน',     key: 'client'       as const, placeholder: '(ถ้ามี)' },
+            { label: 'ชื่อพนักงาน / ร้อยตรี', key: 'employeeName' as const, placeholder: '(ถ้ามี)' },
+            { label: 'ชื่อเจ้าของกิจการ',      key: 'ownerName'    as const, placeholder: '(ถ้ามี)' },
+            { label: 'ประเภทการทำงาน',         key: 'workType'     as const, placeholder: '' },
+            { label: isHR ? 'หมายเหตุ (HR)' : 'หมายเหตุ', key: 'note' as const, placeholder: '(ถ้ามี)' },
+          ].map(({ label, key, placeholder }) => (
+            <div key={key} className="space-y-1.5">
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{label}</label>
+              <input value={form[key]} onChange={(e) => set(key, e.target.value)} placeholder={placeholder} className={ic} />
+            </div>
+          ))}
+
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">เวลาออก</label>
-              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">ระยะทาง (กม.)</label>
+              <input type="number" min="0" step="0.1" value={form.distance} onChange={(e) => set('distance', e.target.value)} placeholder="0" className={ic} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">เวลากลับ</label>
-              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} />
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">เส้นทางกำหนด (กม/เดือน)</label>
+              <input type="number" min="0" step="0.1" value={form.distanceLimit} onChange={(e) => set('distanceLimit', e.target.value)} placeholder="0" className={ic} />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">หมายเหตุ HR</label>
-            <input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="(ถ้ามี)" />
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">เส้นทาง</label>
+              <select value={form.routeType} onChange={(e) => set('routeType', e.target.value)} className={ic}>
+                <option value="">-- เลือก --</option>
+                <option value="ไป">ไป</option>
+                <option value="กลับ">กลับ</option>
+                <option value="ไป-กลับ">ไป-กลับ</option>
+              </select>
+            </div>
           </div>
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm">
-            ยกเลิก
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
-          >
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm">ยกเลิก</button>
+          <button type="button" onClick={save} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             บันทึก
           </button>
@@ -144,7 +180,7 @@ function EditPlaceModal({
   )
 }
 
-export default function OutsideWorkClient({ canViewAll, canApproveOutside, requests: init }: Props) {
+export default function OutsideWorkClient({ canViewAll, canApproveOutside, requests: init, userId }: Props) {
   const [tab, setTab] = useState<'request' | 'history'>('request')
   const [step, setStep] = useState<1 | 2>(1)
   const [form, setForm] = useState({
@@ -156,10 +192,16 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
     client: '',
     note: '',
     googleMapsUrl: '',
+    employeeName: '',
+    ownerName: '',
+    workType: '',
+    distance: '',
+    distanceLimit: '',
+    routeType: '',
   })
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingRequest, setEditingRequest] = useState<Request | null>(null)
   const [requests, setRequests] = useState<Request[]>(init)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -202,7 +244,7 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
         return
       }
       toast.success('ส่งคำขอแล้ว รอ CEO อนุมัติ')
-      setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '', googleMapsUrl: '' })
+      setForm({ date: '', startTime: '09:00', endTime: '17:00', place: '', purpose: '', client: '', note: '', googleMapsUrl: '', employeeName: '', ownerName: '', workType: '', distance: '', distanceLimit: '', routeType: '' })
       setAttachmentFile(null)
       setStep(1)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -217,25 +259,20 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
   }
 
   const handleSaved = () => {
-    setEditingId(null)
+    setEditingRequest(null)
     router.refresh()
   }
 
   const inputCls =
     'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
 
-  const editingRequest = editingId ? requests.find((r) => r.id === editingId) : null
-
   return (
     <div className="p-4 md:p-5 space-y-5 max-w-full overflow-x-hidden">
       {editingRequest && (
-        <EditPlaceModal
-          requestId={editingRequest.id}
-          currentPlace={editingRequest.place}
-          currentNote={editingRequest.note}
-          currentStartTime={editingRequest.startTime}
-          currentEndTime={editingRequest.endTime}
-          onClose={() => setEditingId(null)}
+        <EditRequestModal
+          request={editingRequest}
+          isHR={canApproveOutside}
+          onClose={() => setEditingRequest(null)}
           onSaved={handleSaved}
         />
       )}
@@ -359,6 +396,9 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
               {[
                 { label: 'วัตถุประสงค์ / รายละเอียดงาน *', key: 'purpose' as const, placeholder: 'เหตุผล / ภารกิจที่ต้องดำเนินการ' },
                 { label: 'ลูกค้า / หน่วยงาน', key: 'client' as const, placeholder: '(ถ้ามี)' },
+                { label: 'ชื่อพนักงาน / ร้อยตรี', key: 'employeeName' as const, placeholder: '(ถ้ามี)' },
+                { label: 'ชื่อเจ้าของกิจการ', key: 'ownerName' as const, placeholder: '(ถ้ามี)' },
+                { label: 'ประเภทการทำงาน', key: 'workType' as const, placeholder: 'เช่น เยี่ยมลูกค้า, ติดตามหนี้' },
                 { label: 'หมายเหตุ', key: 'note' as const, placeholder: '' },
               ].map(({ label, key, placeholder }) => (
                 <div key={key} className="space-y-1.5">
@@ -371,6 +411,46 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
                   />
                 </div>
               ))}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ระยะทาง (กม.)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={form.distance}
+                    onChange={(e) => set('distance', e.target.value)}
+                    placeholder="0"
+                    className={inputCls}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เส้นทางที่กำหนด (กม/เดือน)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={form.distanceLimit}
+                    onChange={(e) => set('distanceLimit', e.target.value)}
+                    placeholder="0"
+                    className={inputCls}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เส้นทาง</label>
+                  <select
+                    value={form.routeType}
+                    onChange={(e) => set('routeType', e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">-- เลือก --</option>
+                    <option value="ไป">ไป</option>
+                    <option value="กลับ">กลับ</option>
+                    <option value="ไป-กลับ">ไป-กลับ</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -480,11 +560,11 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
                     <div className="flex items-center gap-2 text-white font-medium">
                       <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
                       <span className="truncate">{r.place}</span>
-                      {canApproveOutside && (
+                      {(canApproveOutside || (r.userId === userId && (r.status === 'PENDING' || r.approvalStatus === 'pending_ceo'))) && (
                         <button
                           type="button"
-                          onClick={() => setEditingId(r.id)}
-                          title="แก้ไขสถานที่ (HR)"
+                          onClick={() => setEditingRequest(r)}
+                          title={canApproveOutside ? 'แก้ไข (HR)' : 'แก้ไขคำขอ'}
                           className="ml-1 text-slate-500 hover:text-blue-400 flex-shrink-0"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -493,7 +573,17 @@ export default function OutsideWorkClient({ canViewAll, canApproveOutside, reque
                     </div>
 
                     <p className="text-slate-400 text-sm">{r.purpose}</p>
-                    {r.client && <p className="text-slate-500 text-xs">ลูกค้า / หน่วยงาน: {r.client}</p>}
+                    {r.client        && <p className="text-slate-500 text-xs">ลูกค้า / หน่วยงาน: {r.client}</p>}
+                    {r.employeeName  && <p className="text-slate-500 text-xs">พนักงาน: {r.employeeName}</p>}
+                    {r.ownerName     && <p className="text-slate-500 text-xs">เจ้าของกิจการ: {r.ownerName}</p>}
+                    {r.workType      && <p className="text-slate-500 text-xs">ประเภทงาน: {r.workType}</p>}
+                    {(r.distance != null || r.routeType) && (
+                      <p className="text-slate-500 text-xs">
+                        {r.routeType && `เส้นทาง: ${r.routeType}`}
+                        {r.distance  != null && ` · ระยะทาง: ${r.distance} กม.`}
+                        {r.distanceLimit != null && ` / กำหนด: ${r.distanceLimit} กม/เดือน`}
+                      </p>
+                    )}
                     {r.note && <p className="text-slate-500 text-xs">หมายเหตุ: {r.note}</p>}
 
                     {r.googleMapsUrl && (

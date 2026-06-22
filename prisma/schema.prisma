@@ -876,6 +876,12 @@ model OutsideWorkRequest {
   attachmentUrl  String?       @map("attachment_url")
   attachmentName String?       @map("attachment_name")
   approvalStatus String?       @map("approval_status")
+  employeeName   String?       @map("employee_name")
+  ownerName      String?       @map("owner_name")
+  workType       String?       @map("work_type")
+  distance       Float?
+  distanceLimit  Float?        @map("distance_limit")
+  routeType      String?       @map("route_type")
   status         RequestStatus @default(PENDING)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

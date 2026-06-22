@@ -39,46 +39,60 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 }
 
-/** HR/Admin แก้ไขสถานที่ + หมายเหตุ พร้อม audit log */
+/** เจ้าของแก้คำขอที่ยัง PENDING ได้ / HR-Admin แก้ได้ทุก field */
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    if (!hasPermission(session.user.role as Role, 'approve_outside_work')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
-
     const { id } = await params
     const existing = await prisma.outsideWorkRequest.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const body = (await req.json()) as { place?: string; note?: string; startTime?: string; endTime?: string }
+    const isHR    = hasPermission(session.user.role as Role, 'approve_outside_work')
+    const isOwner = existing.userId === session.user.id
+    const isPending = existing.status === 'PENDING' || existing.approvalStatus === 'pending_ceo'
 
-    if (body.place !== undefined && !body.place.trim()) {
+    if (!isHR && !(isOwner && isPending)) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
+
+    const body = await req.json() as {
+      place?: string; note?: string; startTime?: string; endTime?: string
+      purpose?: string; client?: string; date?: string; googleMapsUrl?: string
+      employeeName?: string; ownerName?: string; workType?: string
+      distance?: number | string; distanceLimit?: number | string; routeType?: string
+    }
+
+    if (body.place !== undefined && !body.place?.trim()) {
       return NextResponse.json({ error: 'กรุณาระบุสถานที่' }, { status: 400 })
     }
 
     const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
 
-    const updateData: Record<string, string | null> = {}
-    if (body.place !== undefined)     updateData.place     = body.place.trim()
-    if (body.note !== undefined)      updateData.note      = body.note?.trim() || null
-    if (body.startTime !== undefined) updateData.startTime = body.startTime
-    if (body.endTime !== undefined)   updateData.endTime   = body.endTime
+    const updateData: Record<string, unknown> = {}
+    if (body.place        !== undefined) updateData.place        = body.place?.trim()
+    if (body.note         !== undefined) updateData.note         = body.note?.trim() || null
+    if (body.startTime    !== undefined) updateData.startTime    = body.startTime
+    if (body.endTime      !== undefined) updateData.endTime      = body.endTime
+    if (body.purpose      !== undefined) updateData.purpose      = body.purpose?.trim()
+    if (body.client       !== undefined) updateData.client       = body.client?.trim() || null
+    if (body.date         !== undefined) updateData.date         = new Date(body.date)
+    if (body.googleMapsUrl!== undefined) updateData.googleMapsUrl= body.googleMapsUrl?.trim() || null
+    if (body.employeeName !== undefined) updateData.employeeName = body.employeeName?.trim() || null
+    if (body.ownerName    !== undefined) updateData.ownerName    = body.ownerName?.trim() || null
+    if (body.workType     !== undefined) updateData.workType     = body.workType?.trim() || null
+    if (body.distance     !== undefined) updateData.distance     = body.distance ? Number(body.distance) : null
+    if (body.distanceLimit!== undefined) updateData.distanceLimit= body.distanceLimit ? Number(body.distanceLimit) : null
+    if (body.routeType    !== undefined) updateData.routeType    = body.routeType?.trim() || null
 
-    const updated = await prisma.outsideWorkRequest.update({
-      where: { id },
-      data: updateData,
-    })
+    const updated = await prisma.outsideWorkRequest.update({ where: { id }, data: updateData })
 
     await createAuditLog({
-      actorId:    session.user.id,
-      targetId:   id,
-      targetType: 'OutsideWorkRequest',
-      action:     'UPDATE',
-      before:     { place: existing.place, note: existing.note, startTime: existing.startTime, endTime: existing.endTime },
-      after:      { place: updated.place,  note: updated.note,  startTime: updated.startTime,  endTime: updated.endTime },
+      actorId: session.user.id, targetId: id, targetType: 'OutsideWorkRequest',
+      action: 'UPDATE',
+      before: { place: existing.place, note: existing.note },
+      after:  { place: updated.place,  note: updated.note },
       ip,
     })
 

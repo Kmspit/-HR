@@ -53,28 +53,38 @@ export default async function OutsideWorkPage({
         </Suspense>
       )}
       <OutsideWorkClient
+        userId={session.user.id}
         canViewAll={canViewAll}
         canApproveOutside={canApproveOutside}
-        requests={requests.map((r) => ({
-          id: r.id,
-          userId: r.userId,
-          userName: r.user.name,
-          userDept: r.user.department ?? '',
-          userPosition: r.user.position ?? '',
-          date: r.date.toISOString(),
-          startTime: r.startTime,
-          endTime: r.endTime,
-          place: r.place,
-          purpose: r.purpose,
-          client: r.client ?? '',
-          note: r.note ?? '',
-          status: r.status,
-          createdAt: r.createdAt.toISOString(),
-          googleMapsUrl: (r as Record<string, unknown>).googleMapsUrl as string | null ?? null,
-          attachmentUrl: (r as Record<string, unknown>).attachmentUrl as string | null ?? null,
-          attachmentName: (r as Record<string, unknown>).attachmentName as string | null ?? null,
-          approvalStatus: (r as Record<string, unknown>).approvalStatus as string | null ?? null,
-        }))}
+        requests={requests.map((r) => {
+          const raw = r as Record<string, unknown>
+          return {
+            id: r.id,
+            userId: r.userId,
+            userName: r.user.name,
+            userDept: r.user.department ?? '',
+            userPosition: r.user.position ?? '',
+            date: r.date.toISOString(),
+            startTime: r.startTime,
+            endTime: r.endTime,
+            place: r.place,
+            purpose: r.purpose,
+            client: r.client ?? '',
+            note: r.note ?? '',
+            status: r.status,
+            createdAt: r.createdAt.toISOString(),
+            googleMapsUrl:  raw.googleMapsUrl  as string | null ?? null,
+            attachmentUrl:  raw.attachmentUrl  as string | null ?? null,
+            attachmentName: raw.attachmentName as string | null ?? null,
+            approvalStatus: raw.approvalStatus as string | null ?? null,
+            employeeName:   raw.employeeName   as string | null ?? null,
+            ownerName:      raw.ownerName      as string | null ?? null,
+            workType:       raw.workType       as string | null ?? null,
+            distance:       raw.distance       as number | null ?? null,
+            distanceLimit:  raw.distanceLimit  as number | null ?? null,
+            routeType:      raw.routeType      as string | null ?? null,
+          }
+        })}
       />
     </div>
   )

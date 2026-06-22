@@ -38,7 +38,11 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { date, startTime, endTime, place, purpose, client, note, googleMapsUrl, attachmentUrl, attachmentName } = body
+    const {
+      date, startTime, endTime, place, purpose, client, note, googleMapsUrl,
+      attachmentUrl, attachmentName,
+      employeeName, ownerName, workType, distance, distanceLimit, routeType,
+    } = body
 
     if (!date || !startTime || !endTime || !place || !purpose || !googleMapsUrl) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
@@ -52,11 +56,17 @@ export async function POST(req: NextRequest) {
         endTime,
         place,
         purpose,
-        client: client || null,
-        note: note || null,
-        googleMapsUrl: googleMapsUrl || null,
-        attachmentUrl: attachmentUrl || null,
+        client:         client        || null,
+        note:           note          || null,
+        googleMapsUrl:  googleMapsUrl || null,
+        attachmentUrl:  attachmentUrl || null,
         attachmentName: attachmentName || null,
+        employeeName:   employeeName  || null,
+        ownerName:      ownerName     || null,
+        workType:       workType      || null,
+        distance:       distance      ? Number(distance)      : null,
+        distanceLimit:  distanceLimit ? Number(distanceLimit) : null,
+        routeType:      routeType     || null,
         approvalStatus: 'pending_ceo',
       },
     })
