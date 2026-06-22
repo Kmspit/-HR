@@ -26,6 +26,9 @@ export async function GET(
   if (!file) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
+    console.log('[preview-url] Cloud name:', process.env.CLOUDINARY_CLOUD_NAME)
+    console.log('[preview-url] API Secret length:', process.env.CLOUDINARY_API_SECRET?.length ?? 0)
+    console.log('[preview-url] CLOUDINARY_URL set:', !!process.env.CLOUDINARY_URL)
     const fmt = file.format ?? (file.mimeType?.includes('pdf') ? 'pdf' : 'jpg')
 
     // Reuse getSignedUrl() — the same function used for face scan photos which works correctly.

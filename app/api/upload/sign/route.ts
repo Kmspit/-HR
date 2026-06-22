@@ -33,6 +33,9 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
+    console.log('[upload/sign] CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME)
+    console.log('[upload/sign] CLOUDINARY_API_SECRET length:', process.env.CLOUDINARY_API_SECRET?.length ?? 0)
+    console.log('[upload/sign] CLOUDINARY_URL set:', !!process.env.CLOUDINARY_URL)
     const { name, key, sec } = configure()
     const { searchParams } = req.nextUrl
     const context = searchParams.get('context') ?? 'documents'
