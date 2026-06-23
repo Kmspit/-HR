@@ -31,6 +31,9 @@
 .step-num { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:rgba(59,130,246,.15); color:#3b82f6; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; }
 
 .manual-note { margin-top:24px; padding:12px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; font-size:12px; color:var(--text3); line-height:1.6; }
+.manual-tip { display:flex; align-items:flex-start; gap:8px; margin-top:12px; padding:10px 14px; background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.2); border-radius:8px; font-size:12px; color:var(--text2); line-height:1.5; }
+.tip-icon { flex-shrink:0; font-size:14px; }
+.manual-desc { font-size:13px; color:var(--text2); line-height:1.6; margin:0 0 10px; }
 .manual-section.open .manual-section-body { animation: fade-in-sm 0.2s ease forwards; }
 </style>
 </head>
@@ -166,6 +169,68 @@
             <li><span class="step-num">2</span><span>ดูวันหยุด งานนัดหมาย และกิจกรรมขององค์กร</span></li>
             <li><span class="step-num">3</span><span>กดที่วันที่ในปฏิทินเพื่อดูรายละเอียดกิจกรรม</span></li>
           </ol>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📊</span>
+          <span class="manual-section-title">การดูรายงานการเข้างาน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>รายงานการเข้างาน</strong> หรือ <strong>ประวัติการเข้างาน</strong></span></li>
+            <li><span class="step-num">2</span><span>เลือกช่วงเวลาที่ต้องการ — รายวัน รายสัปดาห์ หรือรายเดือน</span></li>
+            <li><span class="step-num">3</span><span>ตรวจสอบเวลาเช็คอิน / เช็คเอาท์ สถานที่ และสถานะการเข้างาน</span></li>
+            <li><span class="step-num">4</span><span>หากพบข้อผิดพลาด เช่น ลืมเช็คเอาท์ กด <strong>ขอแก้ไขเวลา</strong> เพื่อแจ้ง HR</span></li>
+          </ol>
+          <div class="manual-tip">
+            <span class="tip-icon">💡</span>
+            ข้อมูลการเข้างานอัปเดตทุกวันหลังเที่ยงคืน — หากพบความคลาดเคลื่อนให้รอจนวันถัดไปก่อนแจ้ง HR
+          </div>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">🖨️</span>
+          <span class="manual-section-title">การดูและพิมพ์สลิปเงินเดือน</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>สลิปเงินเดือน</strong></span></li>
+            <li><span class="step-num">2</span><span>เลือกเดือนและปีที่ต้องการ จากนั้นกด <strong>ดูสลิป</strong></span></li>
+            <li><span class="step-num">3</span><span>ตรวจสอบรายละเอียด — เงินเดือน ภาษี ประกันสังคม และยอดสุทธิ</span></li>
+            <li><span class="step-num">4</span><span>กด <strong>ดาวน์โหลด PDF</strong> เพื่อบันทึกไฟล์ลงเครื่อง</span></li>
+            <li><span class="step-num">5</span><span>เปิดไฟล์ PDF แล้วกด <strong>Ctrl+P</strong> (หรือ ⌘P บน Mac) เพื่อพิมพ์</span></li>
+          </ol>
+          <div class="manual-tip">
+            <span class="tip-icon">💡</span>
+            สลิปเงินเดือนจะออกช้าสุดวันที่ 5 ของเดือนถัดไป — หากยังไม่มีข้อมูลให้ติดต่อ HR
+          </div>
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📞</span>
+          <span class="manual-section-title">การติดต่อ HR</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <p class="manual-desc">หากพบปัญหาการใช้งาน หรือต้องการข้อมูลเพิ่มเติม ติดต่อ HR ได้ผ่านช่องทางต่อไปนี้</p>
+          <ul class="manual-steps" style="list-style:none;padding:0;">
+            <li><span class="step-num">💬</span><span><strong>LINE OA</strong> — เพิ่มเพื่อน Line ID ของบริษัทแล้วส่งข้อความ</span></li>
+            <li><span class="step-num">📧</span><span><strong>อีเมล</strong> — ส่งอีเมลมาที่ HR พร้อมระบุชื่อ-นามสกุลและรหัสพนักงาน</span></li>
+            <li><span class="step-num">🏢</span><span><strong>ติดต่อโดยตรง</strong> — แวะที่แผนก HR ในเวลาทำการ จันทร์–ศุกร์ 08:30–17:30</span></li>
+            <li><span class="step-num">🔔</span><span><strong>แจ้งเตือนในระบบ</strong> — กด <strong>แจ้งปัญหา</strong> ในเมนูโปรไฟล์ เพื่อส่งคำขอผ่านระบบโดยตรง</span></li>
+          </ul>
+          <div class="manual-tip">
+            <span class="tip-icon">⏰</span>
+            HR จะตอบกลับภายใน 1 วันทำการ — กรณีเร่งด่วนโทรติดต่อโดยตรง
+          </div>
         </div>
       </div>
 
