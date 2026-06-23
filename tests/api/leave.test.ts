@@ -104,7 +104,7 @@ describe('POST /api/leave', () => {
 
   it('creates leave request and returns 200', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
-    const created = { id: 'leave-1', ...validLeave, userId: 'user-1', status: 'PENDING' }
+    const created = { id: 'leave-1', ...validLeave, userId: 'user-1', status: 'PENDING', user: { name: 'Employee' } }
     vi.mocked(prisma.leaveRequest.create).mockResolvedValue(created as never)
 
     const res = await POST(makeJsonReq(validLeave))

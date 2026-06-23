@@ -18,6 +18,29 @@ import {
 import { getDefaultChain, applyChainToLeave } from '@/lib/approval-chain'
 import { createAuditLog } from '@/lib/notifications'
 
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const url = new URL(req.url)
+    const isHr = session.user.role === 'ADMIN' || session.user.role === 'MANAGER_HR'
+    const filterUserId = isHr
+      ? (url.searchParams.get('userId') ?? undefined)
+      : session.user.id
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: filterUserId ? { userId: filterUserId } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { name: true, employeeId: true } } },
+    })
+
+    return NextResponse.json({ leaves })
+  } catch (err) {
+    return apiError(err)
+  }
+}
+
 const leaveTypes = LEAVE_TYPE_OPTIONS.map((o) => o.value) as [LeaveType, ...LeaveType[]]
 
 const leaveSchema = z.object({

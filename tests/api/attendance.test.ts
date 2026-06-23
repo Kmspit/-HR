@@ -14,7 +14,7 @@ vi.mock('@/lib/prisma', () => ({
       update:     vi.fn(),
     },
     user:            { findUnique: vi.fn() },
-    companySettings: { findFirst: vi.fn() },
+    companySettings: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     outsideWorkRequest: { findFirst: vi.fn().mockResolvedValue(null) },
     weeklyLawyerPlan:   { findFirst: vi.fn().mockResolvedValue(null) },
     weeklyPlanDay:      { findFirst: vi.fn().mockResolvedValue(null) },
@@ -91,13 +91,18 @@ vi.mock('@/lib/datetime-bangkok', () => ({
 
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>()
-  return actual
+  return {
+    ...actual,
+    after: vi.fn(),
+  }
 })
 
 // ── Imports (after mocks) ──────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { formHasFaceImage } from '@/lib/attendance-face-scan'
+import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import { POST as checkinPost } from '@/app/api/attendance/checkin/route'
 import { POST as checkoutPost } from '@/app/api/attendance/checkout/route'
 
@@ -124,14 +129,16 @@ describe('POST /api/attendance/checkin', () => {
 
   it('creates check-in record for authenticated user', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(formHasFaceImage).mockReturnValue(true)
 
     const mockSettings = {
+      id: 'singleton',
       workStartTime: '08:30', lunchStartTime: '12:00', lunchReturnTime: '13:00',
-      lateGraceMinutes: 5, companyLat: 13.83, companyLng: 100.68, radiusMeters: 200,
+      lateGraceMin: 5, geofenceLat: null, geofenceLng: null, geofenceRadius: 200,
     }
-    vi.mocked(prisma.companySettings.findFirst).mockResolvedValue(mockSettings as never)
+    vi.mocked(prisma.companySettings.findUnique).mockResolvedValue(mockSettings as never)
 
-    const mockUser = { id: 'user-1', name: 'Employee', role: 'EMPLOYEE', branchId: 'branch-hq' }
+    const mockUser = { id: 'user-1', name: 'Employee', role: 'EMPLOYEE', branchId: null, branch: null }
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never)
 
     const newRecord = {
@@ -139,6 +146,7 @@ describe('POST /api/attendance/checkin', () => {
       sessionIndex: 1, attendanceStatus: 'active',
     }
     vi.mocked(prisma.attendance.create).mockResolvedValue(newRecord as never)
+    vi.mocked(finalizeAttendanceRecord).mockResolvedValue({ id: 'att-1' } as never)
 
     const res = await checkinPost(
       makeFormReq('http://localhost/api/attendance/checkin', {
@@ -165,8 +173,8 @@ describe('POST /api/attendance/checkout', () => {
     const { findActiveAttendanceSession } = await import('@/lib/attendance-session')
     vi.mocked(findActiveAttendanceSession).mockResolvedValue(null)
 
-    const mockSettings = { workStartTime: '08:30', lunchStartTime: '12:00', lunchReturnTime: '13:00', lateGraceMinutes: 5, companyLat: 13.83, companyLng: 100.68, radiusMeters: 200 }
-    vi.mocked(prisma.companySettings.findFirst).mockResolvedValue(mockSettings as never)
+    const mockSettings = { id: 'singleton', workStartTime: '08:30', lunchStartTime: '12:00', lunchReturnTime: '13:00', lateGraceMin: 5, geofenceLat: null, geofenceLng: null, geofenceRadius: 200 }
+    vi.mocked(prisma.companySettings.findUnique).mockResolvedValue(mockSettings as never)
 
     const res = await checkoutPost(
       makeFormReq('http://localhost/api/attendance/checkout', { lat: '13.83', lng: '100.68', address: 'สำนักงาน' })
