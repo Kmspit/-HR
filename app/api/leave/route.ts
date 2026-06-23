@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const url = new URL(req.url)
-    const isHr = session.user.role === 'ADMIN' || session.user.role === 'MANAGER_HR'
+    const isHr = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
     const filterUserId = isHr
       ? (url.searchParams.get('userId') ?? undefined)
       : session.user.id
