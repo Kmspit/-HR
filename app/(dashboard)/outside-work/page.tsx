@@ -8,6 +8,7 @@ import { buildBranchScope, branchNestedUserWhere, parseBranchQueryParam } from '
 import { Suspense } from 'react'
 import { hasPermission } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
 
 export default async function OutsideWorkPage({
   searchParams,
@@ -23,6 +24,9 @@ export default async function OutsideWorkPage({
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
+
+  // run idempotent column migrations before querying new fields
+  await ensureDbSchema()
 
   const requests = await prisma.outsideWorkRequest.findMany({
     where: canViewAll
@@ -56,42 +60,39 @@ export default async function OutsideWorkPage({
         userId={session.user.id}
         canViewAll={canViewAll}
         canApproveOutside={canApproveOutside}
-        requests={requests.map((r) => {
-          const raw = r as Record<string, unknown>
-          return {
-            id: r.id,
-            userId: r.userId,
-            userName: r.user.name,
-            userDept: r.user.department ?? '',
-            userPosition: r.user.position ?? '',
-            date: r.date.toISOString(),
-            startTime: r.startTime,
-            endTime: r.endTime,
-            place: r.place,
-            purpose: r.purpose,
-            client: r.client ?? '',
-            note: r.note ?? '',
-            status: r.status,
-            createdAt: r.createdAt.toISOString(),
-            googleMapsUrl:  raw.googleMapsUrl  as string | null ?? null,
-            attachmentUrl:  raw.attachmentUrl  as string | null ?? null,
-            attachmentName: raw.attachmentName as string | null ?? null,
-            approvalStatus: raw.approvalStatus as string | null ?? null,
-            employeeName:   raw.employeeName   as string | null ?? null,
-            ownerName:      raw.ownerName      as string | null ?? null,
-            workType:       raw.workType       as string | null ?? null,
-            distance:       raw.distance       as number | null ?? null,
-            distanceLimit:  raw.distanceLimit  as number | null ?? null,
-            routeType:      raw.routeType      as string | null ?? null,
-            timeSlot:       raw.timeSlot       as string | null ?? null,
-            caseNumber:     raw.caseNumber     as string | null ?? null,
-            productWork:    raw.productWork    as string | null ?? null,
-            workBranch:     raw.workBranch     as string | null ?? null,
-            caseCount:      raw.caseCount      as number | null ?? null,
-            adminChecked:   raw.adminChecked   as string | null ?? null,
-            supervisedBy:   raw.supervisedBy   as string | null ?? null,
-          }
-        })}
+        requests={requests.map((r) => ({
+          id:            r.id,
+          userId:        r.userId,
+          userName:      r.user.name,
+          userDept:      r.user.department  ?? '',
+          userPosition:  r.user.position    ?? '',
+          date:          r.date.toISOString(),
+          startTime:     r.startTime,
+          endTime:       r.endTime,
+          place:         r.place,
+          purpose:       r.purpose,
+          client:        r.client           ?? '',
+          note:          r.note             ?? '',
+          status:        r.status,
+          createdAt:     r.createdAt.toISOString(),
+          googleMapsUrl:  r.googleMapsUrl   ?? null,
+          attachmentUrl:  r.attachmentUrl   ?? null,
+          attachmentName: r.attachmentName  ?? null,
+          approvalStatus: r.approvalStatus  ?? null,
+          employeeName:   r.employeeName    ?? null,
+          ownerName:      r.ownerName       ?? null,
+          workType:       r.workType        ?? null,
+          distance:       r.distance        ?? null,
+          distanceLimit:  r.distanceLimit   ?? null,
+          routeType:      r.routeType       ?? null,
+          timeSlot:       r.timeSlot        ?? null,
+          caseNumber:     r.caseNumber      ?? null,
+          productWork:    r.productWork     ?? null,
+          workBranch:     r.workBranch      ?? null,
+          caseCount:      r.caseCount       ?? null,
+          adminChecked:   r.adminChecked    ?? null,
+          supervisedBy:   r.supervisedBy    ?? null,
+        }))}
       />
     </div>
   )
