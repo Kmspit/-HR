@@ -35,7 +35,12 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:org": "tsx scripts/seed-org-structure.ts",
-    "db:purge-user": "node scripts/purge-user.mjs"
+    "db:purge-user": "node scripts/purge-user.mjs",
+    "db:audit:cloudinary": "node scripts/migrate-cloudinary-types.mjs",
+    "db:migrate:cloudinary-types": "node scripts/migrate-cloudinary-types.mjs --migrate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -59,6 +64,7 @@
     "@radix-ui/react-slot": "^1.1.2",
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
+    "@sentry/nextjs": "^10.59.0",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "@vladmandic/face-api": "^1.7.15",
@@ -89,6 +95,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.9",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "^15.3.9",
@@ -96,6 +103,7 @@
     "prisma": "^6.8.2",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.22.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }

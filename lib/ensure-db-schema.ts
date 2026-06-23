@@ -31,21 +31,33 @@ function pragmaColumnNames(rows: unknown[]): string[] {
     .filter(Boolean)
 }
 
-async function userColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(users)')
-  return pragmaColumnNames(rows)
+/**
+ * Single-point column migration with structured logging.
+ * Uses PRAGMA to check before ALTER TABLE — duplicate column errors are
+ * impossible in normal operation but still caught as a safety net.
+ */
+async function addColumnIfMissing(table: string, column: string, ddl: string): Promise<void> {
+  const rows = await prisma.$queryRawUnsafe<unknown[]>(`PRAGMA table_info(${table})`)
+  const existing = pragmaColumnNames(rows)
+  if (existing.includes(column)) {
+    console.log(`[MIGRATION] "${column}" in "${table}" already exists, skipping`)
+    return
+  }
+  try {
+    await prisma.$executeRawUnsafe(ddl)
+    console.log(`[MIGRATION] Added column "${column}" to "${table}"`)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('duplicate column') || msg.includes('no such table')) {
+      console.warn(`[MIGRATION] Could not add "${column}" to "${table}": ${msg}`)
+      return
+    }
+    throw err
+  }
 }
 
 async function addUserColumnIfMissing(column: string, ddl: string) {
-  const cols = await userColumns()
-  if (cols.includes(column)) return
-  console.log('[PATCH COLUMN]', column)
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('users', column, ddl)
 }
 
 /**
@@ -81,7 +93,8 @@ async function runMigration(version: number, name: string, fn: () => Promise<voi
  */
 async function validateCriticalSchema(): Promise<void> {
   try {
-    const cols = await userColumns()
+    const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(users)')
+    const cols = pragmaColumnNames(rows)
     const critical = ['id', 'email', 'passwordHash', 'name', 'role', 'status', 'branchId', 'locked_until', 'password_changed_at', 'isCoworker']
     const missing = critical.filter(c => !cols.includes(c))
     if (missing.length > 0) {
@@ -127,18 +140,12 @@ async function runEnsure(): Promise<boolean> {
     )
   `)
   // Add geofence + Google Maps columns to existing company_branches table (idempotent)
-  for (const col of [
-    `ALTER TABLE company_branches ADD COLUMN lat REAL`,
-    `ALTER TABLE company_branches ADD COLUMN lng REAL`,
-    `ALTER TABLE company_branches ADD COLUMN radiusMeters REAL NOT NULL DEFAULT 100`,
-    `ALTER TABLE company_branches ADD COLUMN googleMapPlaceId TEXT`,
-  ]) {
-    try { await prisma.$executeRawUnsafe(col) } catch { /* column already exists */ }
-  }
+  await addColumnIfMissing('company_branches', 'lat',              `ALTER TABLE company_branches ADD COLUMN lat REAL`)
+  await addColumnIfMissing('company_branches', 'lng',              `ALTER TABLE company_branches ADD COLUMN lng REAL`)
+  await addColumnIfMissing('company_branches', 'radiusMeters',     `ALTER TABLE company_branches ADD COLUMN radiusMeters REAL NOT NULL DEFAULT 100`)
+  await addColumnIfMissing('company_branches', 'googleMapPlaceId', `ALTER TABLE company_branches ADD COLUMN googleMapPlaceId TEXT`)
   // Add branchId column to attendances table (idempotent)
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE attendances ADD COLUMN branchId TEXT`)
-  } catch { /* column already exists */ }
+  await addColumnIfMissing('attendances', 'branchId', `ALTER TABLE attendances ADD COLUMN branchId TEXT`)
 
   await addUserColumnIfMissing('nameEn',    `ALTER TABLE users ADD COLUMN nameEn TEXT`)
   await addUserColumnIfMissing('nickname',  `ALTER TABLE users ADD COLUMN nickname TEXT`)
@@ -993,177 +1000,49 @@ async function runEnsure(): Promise<boolean> {
   return true
 }
 
-async function userFaceProfileColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<unknown[]>(
-    'PRAGMA table_info(user_face_profiles)',
-  )
-  return pragmaColumnNames(rows)
-}
+// ── Column helpers — all delegate to addColumnIfMissing ───────────────────────
 
 async function addUserFaceProfileColumnIfMissing(column: string, ddl: string) {
-  const cols = await userFaceProfileColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('user_face_profiles', column, ddl)
 }
-
-async function companySettingsColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<unknown[]>(
-    'PRAGMA table_info(company_settings)',
-  )
-  return pragmaColumnNames(rows)
-}
-
 async function addCompanySettingsColumnIfMissing(column: string, ddl: string) {
-  const cols = await companySettingsColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('company_settings', column, ddl)
 }
-
-async function faceScanColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<unknown[]>(
-    'PRAGMA table_info(attendance_face_scans)',
-  )
-  return pragmaColumnNames(rows)
-}
-
 async function addFaceScanColumnIfMissing(column: string, ddl: string) {
-  const cols = await faceScanColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('attendance_face_scans', column, ddl)
 }
-
-async function lineNotifyColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>(
-    'PRAGMA table_info(attendance_line_notify_logs)',
-  )
-  return rows.map((r) => r.name)
-}
-
 async function addLineNotifyColumnIfMissing(column: string, ddl: string) {
-  const cols = await lineNotifyColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('attendance_line_notify_logs', column, ddl)
 }
-
-async function attendanceColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(attendances)')
-  return rows.map((r) => r.name)
-}
-
 async function addAttendanceColumnIfMissing(column: string, ddl: string) {
-  const cols = await attendanceColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('attendances', column, ddl)
 }
-
-async function warningColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(warnings)')
-  return rows.map((r) => r.name)
-}
-
 async function addWarningColumnIfMissing(column: string, ddl: string) {
-  const cols = await warningColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('warnings', column, ddl)
 }
-
-async function payrollColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(payrolls)')
-  return rows.map((r) => r.name)
-}
-
 async function addPayrollColumnIfMissing(column: string, ddl: string) {
-  const cols = await payrollColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('payrolls', column, ddl)
 }
-
-async function weeklyPlanColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(weekly_lawyer_plans)')
-  return rows.map((r) => r.name)
-}
-
 async function addWeeklyPlanColumnIfMissing(column: string, ddl: string) {
-  const cols = await weeklyPlanColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('weekly_lawyer_plans', column, ddl)
 }
-
-async function weeklyPlanDayColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(weekly_plan_days)')
-  return rows.map((r) => r.name)
-}
-
 async function addWeeklyPlanDayColumnIfMissing(column: string, ddl: string) {
-  const cols = await weeklyPlanDayColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('weekly_plan_days', column, ddl)
 }
-
-async function outsideWorkColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(outside_work_requests)')
-  return rows.map((r) => r.name)
-}
-
 async function addOutsideWorkColumnIfMissing(column: string, ddl: string) {
-  const cols = await outsideWorkColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
+  await addColumnIfMissing('outside_work_requests', column, ddl)
+}
+async function addLeaveRequestColumnIfMissing(column: string, ddl: string) {
+  await addColumnIfMissing('leave_requests', column, ddl)
+}
+async function addAnnouncementColumnIfMissing(column: string, ddl: string) {
+  await addColumnIfMissing('announcements', column, ddl)
 }
 
 /** รองรับหลายรอบเช็คอินต่อวัน — เปลี่ยน unique จาก (userId,date) เป็น (userId,date,sessionIndex) */
 async function migrateAttendanceMultiSessionUnique() {
-  const cols = await attendanceColumns()
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>('PRAGMA table_info(attendances)')
+  const cols = rows.map(r => r.name)
   if (!cols.includes('sessionIndex')) return
 
   const indexes = await prisma.$queryRawUnsafe<{ name: string; sql: string }[]>(
@@ -1194,36 +1073,4 @@ async function migrateAttendanceMultiSessionUnique() {
     CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
     ON attendances (userId, date, sessionIndex)
   `)
-}
-
-async function leaveRequestColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(leave_requests)')
-  return pragmaColumnNames(rows)
-}
-
-async function addLeaveRequestColumnIfMissing(column: string, ddl: string) {
-  const cols = await leaveRequestColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
-}
-
-async function announcementColumns(): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<unknown[]>('PRAGMA table_info(announcements)')
-  return pragmaColumnNames(rows)
-}
-
-async function addAnnouncementColumnIfMissing(column: string, ddl: string) {
-  const cols = await announcementColumns()
-  if (cols.includes(column)) return
-  try {
-    await prisma.$executeRawUnsafe(ddl)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.includes('duplicate column') && !msg.includes('no such table')) throw err
-  }
 }

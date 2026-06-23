@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
   async redirects() {
@@ -42,4 +43,16 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@vladmandic/face-api'],
 }
 
-export default nextConfig
+// Wrap with Sentry only when DSN is configured (skips source-map upload in dev)
+const sentryOptions = {
+  org:            process.env.SENTRY_ORG,
+  project:        process.env.SENTRY_PROJECT,
+  silent:         true,   // suppress build-time Sentry log output
+  disableLogger:  true,   // strip Sentry logger from client bundle
+  hideSourceMaps: true,   // don't expose source maps publicly
+  telemetry:      false,  // don't send build telemetry to Sentry
+}
+
+export default process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? withSentryConfig(nextConfig, sentryOptions)
+  : nextConfig

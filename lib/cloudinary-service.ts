@@ -1,3 +1,24 @@
+/**
+ * CLOUDINARY DELIVERY TYPE POLICY
+ * ─────────────────────────────────────────────────────────────────────────────
+ * type: 'authenticated'  — private, server-signed URL that expires in minutes.
+ *   Required for: employee documents, case files, payslips, HR-sensitive images,
+ *                 face-scan photos, any asset that must not be publicly linkable.
+ *   Access flow:  client → /api/.../preview-url → getSignedUrl() → private_download_url()
+ *   Upload:       sign route must include  type: 'authenticated'  in paramsToSign.
+ *
+ * type: 'upload'  — permanent, CDN-cached URL (default Cloudinary delivery).
+ *   Acceptable for: public logos, marketing images, non-sensitive assets.
+ *   Never use for HR/legal documents.
+ *
+ * To detect which type a stored file uses, inspect its secureUrl path:
+ *   /authenticated/ → signed URL required (getSignedUrl)
+ *   /upload/        → direct URL safe to embed
+ *
+ * Migration: run  node scripts/migrate-cloudinary-types.mjs  to audit
+ * existing files and re-upload public → authenticated as needed.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { v2 as cloudinary } from 'cloudinary'
 import { prisma } from '@/lib/prisma'
 
