@@ -29,9 +29,8 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
   return (
     <div
       className={cn(
-        'sticky top-16 md:top-0 z-10',
         'border-b border-slate-200 dark:border-white/[0.05]',
-        'bg-white dark:bg-[rgba(7,11,20,0.98)] md:bg-white/80 md:dark:bg-transparent',
+        'bg-white/80 dark:bg-transparent',
         'backdrop-blur-sm',
         stats ? 'px-5 pt-3 pb-0 md:px-6 md:pt-4' : 'px-5 py-3 md:px-6 md:py-4',
       )}
@@ -40,7 +39,7 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
       {breadcrumb && breadcrumb.length > 0 && (
         <nav className="mb-1.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
           {breadcrumb.map((crumb, i) => (
-            <span key={crumb.label} className="flex items-center gap-1.5">
+            <span key={i} className="flex items-center gap-1.5">
               {i > 0 && <span>/</span>}
               {crumb.href ? (
                 <a href={crumb.href} className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
@@ -76,9 +75,9 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
       {/* Stats chips row */}
       {stats && stats.length > 0 && (
         <div className="flex items-center gap-2 mt-3 mb-0 overflow-x-auto no-scrollbar pb-3">
-          {stats.map((s) => (
+          {stats.map((s, i) => (
             <div
-              key={s.label}
+              key={i}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11.5px] font-medium flex-shrink-0',
                 CHIP_COLORS[s.color ?? 'slate'],

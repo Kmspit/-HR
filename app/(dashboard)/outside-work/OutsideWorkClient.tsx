@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useCallback } from 'react'
 import {
@@ -378,42 +378,33 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
     finally  { setApprovingId(null) }
   }
 
-  const exportCsv = () => {
-    const headers = canViewAll
-      ? ['ชื่อพนักงาน', 'สาขา', 'ตำแหน่ง', 'วัน', 'วันที่', 'สถานที่', 'วัตถุประสงค์', 'เจ้าของกิจการ', 'ประเภทงาน', 'เวลาออก', 'เวลากลับ', 'ระยะทาง(กม)', 'เส้นทาง', 'สถานะ']
-      : ['วัน', 'วันที่', 'สถานที่', 'วัตถุประสงค์', 'เจ้าของกิจการ', 'ประเภทงาน', 'เวลาออก', 'เวลากลับ', 'ระยะทาง(กม)', 'เส้นทาง', 'สถานะ']
-
-    const rows = filteredRequests.map(r => {
-      const d = new Date(r.date)
-      const day = DAY_FULL_TH[d.getUTCDay()]
-      const common = [
-        day,
-        fmtDateShort(r.date),
-        r.place,
-        r.purpose,
-        r.ownerName ?? '',
-        r.workType ?? '',
-        r.startTime,
-        r.endTime,
-        r.distance != null ? String(r.distance) : '',
-        r.routeType ?? '',
-        STATUS_LABEL[effectiveStatus(r)] ?? effectiveStatus(r),
-      ]
-      return canViewAll ? [r.userName, r.userDept, r.userPosition, ...common] : common
-    })
-
-    const BOM = '\uFEFF'
-    const csvContent = BOM + [headers, ...rows]
-      .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url  = URL.createObjectURL(blob)
-    const a    = Object.assign(document.createElement('a'), { href: url, download: `outside-work-${toYmd(weekStart)}.csv` })
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+  const [exporting, setExporting] = useState(false)
 
   const weekLabel = `${weekStart.getDate()} ${MONTH_TH[weekStart.getMonth()]} – ${weekEnd.getDate()} ${MONTH_TH[weekEnd.getMonth()]} ${weekEnd.getFullYear() + 543}`
+
+  const exportXlsx = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/outside-work/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekLabel, canViewAll, requests: filteredRequests }),
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = Object.assign(document.createElement('a'), {
+        href: url,
+        download: `outside-work-${toYmd(weekStart)}.xlsx`,
+      })
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('ไม่สามารถ export ได้ กรุณาลองใหม่')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const th = 'px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap'
 
@@ -474,9 +465,9 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
           สัปดาห์นี้
         </button>
         <div className="flex-1" />
-        <button type="button" onClick={exportCsv}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 text-slate-400 text-sm hover:bg-white/5 hover:text-white transition">
-          <Download className="w-4 h-4" /> Export CSV
+        <button type="button" onClick={exportXlsx} disabled={exporting}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 text-slate-400 text-sm hover:bg-white/5 hover:text-white transition disabled:opacity-50">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Export Excel
         </button>
         <button type="button" onClick={() => setModal({ open: true, editing: null })}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition">

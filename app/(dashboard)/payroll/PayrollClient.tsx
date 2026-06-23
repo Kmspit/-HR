@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { DollarSign, Download, Loader2, RefreshCw, Clock, X } from 'lucide-react'
@@ -343,7 +343,7 @@ export default function PayrollClient({
       </div>
 
       {detailRow && detailRow.hasPayroll && (
-        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-4 bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-white/10 p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>

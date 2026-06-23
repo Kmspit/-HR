@@ -55,7 +55,6 @@ export async function GET(req: NextRequest) {
         issuedBy: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
     })
     return NextResponse.json({ warnings })
   } catch (err) {

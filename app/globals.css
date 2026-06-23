@@ -153,10 +153,6 @@
   .light ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
   .light ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
 
-  /* Hide scrollbar while keeping scroll functionality (used for tab bars on mobile) */
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
   /* มือถือ: ช่องวันที่/เวลาไม่ล้นซ้อนกัน */
   input[type='date'],
   input[type='time'],
@@ -252,7 +248,7 @@
 
   /* Page enter */
   .page-enter {
-    animation: fade-in-sm 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fade-in-sm 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   @keyframes fade-in-sm {
@@ -575,18 +571,6 @@
   color: rgb(241 245 249);
 }
 
-/* Fix: native <select> dropdown option popup — OS renders options with its own bg,
-   inheriting text-white from dark-mode selects → white-on-white = invisible.
-   Force opaque, contrasting colors on every <option> globally. */
-select option {
-  background-color: #ffffff;
-  color: rgb(15 23 42);
-}
-.dark select option {
-  background-color: rgb(15 23 42);
-  color: rgb(248 250 252);
-}
-
 /* Safe area helpers */
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom), 0px);
@@ -603,6 +587,18 @@ select option {
   input, select, textarea {
     font-size: 16px !important; /* Prevents iOS zoom on focus */
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+   * Raise all fixed full-viewport overlays (modals/drawers) above MobileNav (z-50).
+   * Targets: .fixed.inset-0.z-50  — combined backdrop+modal (most modals)
+   *           .fixed.inset-x-0.z-50 — two-part modal containers (tasks, attendance)
+   * Does NOT affect: MobileNav (bottom-0, no inset-0), Header (top-0, no inset-0),
+   *                  Sidebar backdrop/drawer (z-[55]/z-[60], not z-50)
+   */
+  .fixed.inset-0.z-50,
+  .fixed.inset-x-0.z-50 {
+    z-index: 60;
   }
 }
 
@@ -1370,7 +1366,7 @@ nav.mobile-bottom-nav svg,
   .glass-card  { background: #ffffff !important; }
   .dark .glass      { background: rgba(15, 23, 42, 0.98) !important; }
   .dark .glass-card { background: rgba(15, 23, 42, 0.98) !important; }
-  .ds-page-header        { background: rgba(255, 255, 255, 0.99) !important; top: 4rem !important; }
+  .ds-page-header        { background: rgba(255, 255, 255, 0.99) !important; }
   .dark .ds-page-header  { background: rgba(7, 11, 20, 0.99) !important; }
 }
 

@@ -25,6 +25,17 @@ export async function GET(
   })
   if (!file) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  console.log('[preview-url] file lookup ok', {
+    fileId, documentId: id,
+    publicId:    file.publicId,
+    format:      file.format,
+    resourceType:file.resourceType,
+    mimeType:    file.mimeType,
+    hasSecureUrl:!!file.secureUrl,
+    hasFileUrl:  !!file.fileUrl,
+    isAuthenticated: file.secureUrl?.includes('/authenticated/'),
+  })
+
   try {
     const cloudinaryType = file.secureUrl?.includes('/authenticated/')
       ? 'authenticated'
@@ -32,11 +43,14 @@ export async function GET(
 
     if (cloudinaryType === 'authenticated') {
       const fmt = file.format ?? (file.mimeType?.includes('pdf') ? 'pdf' : 'jpg')
+      console.log('[preview-url] signing authenticated URL', { publicId: file.publicId, fmt, expiresInSec: 900 })
       const url = getSignedUrl(file.publicId, { expiresInSec: 900, format: fmt })
       if (!url) return NextResponse.json({ error: 'Failed to sign URL' }, { status: 500 })
+      console.log('[preview-url] signed URL ok, length=', url.length)
       return NextResponse.json({ url })
     }
 
+    console.log('[preview-url] returning public URL (upload type)')
     return NextResponse.json({ url: file.secureUrl ?? file.fileUrl })
   } catch (err: any) {
     console.error('[preview-url GET]', err)

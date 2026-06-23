@@ -192,7 +192,7 @@ export async function PATCH(req: NextRequest) {
             monthlyTax: td.monthlyWithholding ?? 0,
           },
         })
-      } catch (e) { console.error('[payroll/report] DB error (non-critical):', e) }
+      } catch { /* ignore tax history errors — non-critical */ }
     }
 
     try {
@@ -206,7 +206,7 @@ export async function PATCH(req: NextRequest) {
         },
         update: { issuedAt: new Date() },
       })
-    } catch (e) { console.error('[payroll/report] DB error (non-critical):', e) }
+    } catch { /* ignore slip errors — non-critical */ }
   }
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'

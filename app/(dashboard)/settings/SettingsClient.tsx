@@ -53,7 +53,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
   const [saving, setSaving] = useState(false)
   const [lineTab, setLineTab] = useState<'config' | 'send'>('send')
 
-  const set = (key: keyof Settings, value: Settings[keyof Settings]) => setForm((f) => ({ ...f, [key]: value }))
+  const set = (key: keyof Settings, value: any) => setForm((f) => ({ ...f, [key]: value }))
 
   const getLocation = () => {
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -81,13 +81,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
     }
   }
 
-  const Input = ({ label, value, onChange, type = 'text', placeholder = '' }: {
-    label: string
-    value: string | number | null | undefined
-    onChange: (v: string | number) => void
-    type?: string
-    placeholder?: string
-  }) => (
+  const Input = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
     <div className="min-w-0">
       <label className="block text-sm text-white/50 mb-1">{label}</label>
       <input
@@ -120,8 +114,8 @@ export default function SettingsClient({ settings }: { settings: Settings | null
           <Building2 className="w-4 h-4 text-blue-400" /> ข้อมูลบริษัท
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="ชื่อบริษัท (ไทย)" value={form.companyName} onChange={(v) => set('companyName', v)} />
-          <Input label="ชื่อบริษัท (อังกฤษ)" value={form.companyNameEn} onChange={(v) => set('companyNameEn', v)} />
+          <Input label="ชื่อบริษัท (ไทย)" value={form.companyName} onChange={(v: string) => set('companyName', v)} />
+          <Input label="ชื่อบริษัท (อังกฤษ)" value={form.companyNameEn} onChange={(v: string) => set('companyNameEn', v)} />
         </div>
       </section>
 
@@ -132,19 +126,19 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="min-w-0">
-            <Input label="เวลาเข้างาน" value={form.workStartTime} onChange={(v) => set('workStartTime', v)} type="time" />
+            <Input label="เวลาเข้างาน" value={form.workStartTime} onChange={(v: string) => set('workStartTime', v)} type="time" />
           </div>
           <div className="min-w-0">
-            <Input label="เวลาออกงาน" value={form.workEndTime} onChange={(v) => set('workEndTime', v)} type="time" />
+            <Input label="เวลาออกงาน" value={form.workEndTime} onChange={(v: string) => set('workEndTime', v)} type="time" />
           </div>
           <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <Input label="ผ่อนผันสาย (นาที)" value={form.lateGraceMin} onChange={(v) => set('lateGraceMin', v as number)} type="number" />
+            <Input label="ผ่อนผันสาย (นาที)" value={form.lateGraceMin} onChange={(v: number) => set('lateGraceMin', v)} type="number" />
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Input label="วันลาป่วย/ปี" value={form.sickDaysYear} onChange={(v) => set('sickDaysYear', v as number)} type="number" />
-          <Input label="วันพักร้อน/ปี" value={form.vacationDaysYear} onChange={(v) => set('vacationDaysYear', v as number)} type="number" />
-          <Input label="วันลากิจ/ปี" value={form.personalDaysYear} onChange={(v) => set('personalDaysYear', v as number)} type="number" />
+          <Input label="วันลาป่วย/ปี" value={form.sickDaysYear} onChange={(v: number) => set('sickDaysYear', v)} type="number" />
+          <Input label="วันพักร้อน/ปี" value={form.vacationDaysYear} onChange={(v: number) => set('vacationDaysYear', v)} type="number" />
+          <Input label="วันลากิจ/ปี" value={form.personalDaysYear} onChange={(v: number) => set('personalDaysYear', v)} type="number" />
         </div>
       </section>
 
@@ -152,8 +146,8 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
         <h2 className="font-semibold text-white">การหักเงิน</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="หักสาย (บาท/นาที)" value={form.lateDeductRate} onChange={(v) => set('lateDeductRate', v as number)} type="number" placeholder="0 = ไม่หัก" />
-          <Input label="หักขาดงาน (บาท/วัน เพิ่มเติม)" value={form.absentDeductRate} onChange={(v) => set('absentDeductRate', v as number)} type="number" placeholder="0 = คิดตามฐาน" />
+          <Input label="หักสาย (บาท/นาที)" value={form.lateDeductRate} onChange={(v: number) => set('lateDeductRate', v)} type="number" placeholder="0 = ไม่หัก" />
+          <Input label="หักขาดงาน (บาท/วัน เพิ่มเติม)" value={form.absentDeductRate} onChange={(v: number) => set('absentDeductRate', v)} type="number" placeholder="0 = คิดตามฐาน" />
         </div>
         <p className="text-xs text-white/30">* ขาดงานจะหักตามอัตราเงินเดือนรายวันเสมอ ค่านี้เป็นเพิ่มเติม</p>
       </section>
@@ -190,9 +184,9 @@ export default function SettingsClient({ settings }: { settings: Settings | null
           <MapPin className="w-4 h-4 text-blue-400" /> Geofence เช็คอิน
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Input label="Latitude" value={form.geofenceLat} onChange={(v) => set('geofenceLat', v as number)} type="number" placeholder="13.xxxx" />
-          <Input label="Longitude" value={form.geofenceLng} onChange={(v) => set('geofenceLng', v as number)} type="number" placeholder="100.xxxx" />
-          <Input label="รัศมี (เมตร)" value={form.geofenceRadius} onChange={(v) => set('geofenceRadius', v as number)} type="number" />
+          <Input label="Latitude" value={form.geofenceLat} onChange={(v: number) => set('geofenceLat', v)} type="number" placeholder="13.xxxx" />
+          <Input label="Longitude" value={form.geofenceLng} onChange={(v: number) => set('geofenceLng', v)} type="number" placeholder="100.xxxx" />
+          <Input label="รัศมี (เมตร)" value={form.geofenceRadius} onChange={(v: number) => set('geofenceRadius', v)} type="number" />
         </div>
         <button
           onClick={getLocation}
@@ -244,10 +238,10 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4">
-              <Input label="LINE Channel Access Token (Messaging API)" value={form.lineAccessToken} onChange={(v) => set('lineAccessToken', v as string)} type="password" placeholder="ดูได้ที่ LINE Developers Console" />
-              <Input label="LINE Notify Token (สำหรับ broadcast)" value={form.lineNotifyToken} onChange={(v) => set('lineNotifyToken', v as string)} type="password" />
-              <Input label="LINE Channel ID" value={form.lineChannelId} onChange={(v) => set('lineChannelId', v as string)} />
-              <Input label="LINE Channel Secret" value={form.lineChannelSecret} onChange={(v) => set('lineChannelSecret', v as string)} type="password" />
+              <Input label="LINE Channel Access Token (Messaging API)" value={form.lineAccessToken} onChange={(v: string) => set('lineAccessToken', v)} type="password" placeholder="ดูได้ที่ LINE Developers Console" />
+              <Input label="LINE Notify Token (สำหรับ broadcast)" value={form.lineNotifyToken} onChange={(v: string) => set('lineNotifyToken', v)} type="password" />
+              <Input label="LINE Channel ID" value={form.lineChannelId} onChange={(v: string) => set('lineChannelId', v)} />
+              <Input label="LINE Channel Secret" value={form.lineChannelSecret} onChange={(v: string) => set('lineChannelSecret', v)} type="password" />
             </div>
             <p className="text-xs text-white/30">
               * Production ใช้ env บน Vercel (LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN) —
