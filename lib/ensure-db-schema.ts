@@ -988,4 +988,13 @@ async function migrateAttendanceMultiSessionUnique() {
     CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
     ON attendances (userId, date, sessionIndex)
   `)
+
+  // ── outside_work_requests — ฟอร์มบริษัท ฉ.2 columns ──────────────────────
+  await addColumnIfMissing('outside_work_requests', 'time_slot',    `ALTER TABLE outside_work_requests ADD COLUMN time_slot TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'case_number',  `ALTER TABLE outside_work_requests ADD COLUMN case_number TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'product_work', `ALTER TABLE outside_work_requests ADD COLUMN product_work TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'work_branch',  `ALTER TABLE outside_work_requests ADD COLUMN work_branch TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'case_count',   `ALTER TABLE outside_work_requests ADD COLUMN case_count INTEGER`)
+  await addColumnIfMissing('outside_work_requests', 'admin_checked',`ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'supervised_by',`ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
 }

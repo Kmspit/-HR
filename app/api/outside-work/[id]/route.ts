@@ -63,6 +63,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       employeeName?: string; ownerName?: string; workType?: string
       distance?: number | string; distanceLimit?: number | string; routeType?: string
       approvalStatus?: string; status?: string
+      timeSlot?: string; caseNumber?: string; productWork?: string; workBranch?: string
+      caseCount?: number | string; adminChecked?: string; supervisedBy?: string
     }
 
     if (body.place !== undefined && !body.place?.trim()) {
@@ -86,6 +88,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.distance     !== undefined) updateData.distance     = body.distance ? Number(body.distance) : null
     if (body.distanceLimit!== undefined) updateData.distanceLimit= body.distanceLimit ? Number(body.distanceLimit) : null
     if (body.routeType    !== undefined) updateData.routeType    = body.routeType?.trim() || null
+    if (body.timeSlot     !== undefined) updateData.timeSlot     = body.timeSlot?.trim()  || null
+    if (body.caseNumber   !== undefined) updateData.caseNumber   = body.caseNumber?.trim() || null
+    if (body.productWork  !== undefined) updateData.productWork  = body.productWork?.trim() || null
+    if (body.workBranch   !== undefined) updateData.workBranch   = body.workBranch?.trim() || null
+    if (body.caseCount    !== undefined) updateData.caseCount    = body.caseCount ? Number(body.caseCount) : null
+    if (body.adminChecked !== undefined) updateData.adminChecked = body.adminChecked?.trim() || null
+    if (body.supervisedBy !== undefined) updateData.supervisedBy = body.supervisedBy?.trim() || null
 
     if (isHR) {
       if (body.approvalStatus !== undefined) updateData.approvalStatus = body.approvalStatus || null

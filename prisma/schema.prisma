@@ -882,6 +882,14 @@ model OutsideWorkRequest {
   distance       Float?
   distanceLimit  Float?        @map("distance_limit")
   routeType      String?       @map("route_type")
+  // ── ฟอร์มบริษัท (ฉ.2) ───────────────────────────────────────
+  timeSlot       String?       @map("time_slot")      // เช้า / บ่าย / เต็มวัน
+  caseNumber     String?       @map("case_number")    // หมายเลขคดีดำ
+  productWork    String?       @map("product_work")   // งานโปรดักส์
+  workBranch     String?       @map("work_branch")    // งานของสาขาไหน
+  caseCount      Int?          @map("case_count")     // จำนวนคดีที่ไปดำเนินการ
+  adminChecked   String?       @map("admin_checked")  // มี / ไม่มี
+  supervisedBy   String?       @map("supervised_by")  // ผู้สั่งงาน
   status         RequestStatus @default(PENDING)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

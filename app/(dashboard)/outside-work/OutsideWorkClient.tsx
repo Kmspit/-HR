@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useMemo, useCallback } from 'react'
 import {
@@ -36,6 +36,14 @@ type Request = {
   distance?: number | null
   distanceLimit?: number | null
   routeType?: string | null
+  // ── ฟอร์มบริษัท ──
+  timeSlot?: string | null       // เช้า / บ่าย / เต็มวัน
+  caseNumber?: string | null     // หมายเลขคดีดำ
+  productWork?: string | null    // งานโปรดักส์
+  workBranch?: string | null     // งานของสาขาไหน
+  caseCount?: number | null      // จำนวนคดีที่ไปดำเนินการ
+  adminChecked?: string | null   // มี / ไม่มี
+  supervisedBy?: string | null   // ผู้สั่งงาน
 }
 
 type Props = {
@@ -68,9 +76,9 @@ function toYmd(d: Date): string {
 const DAY_FULL_TH = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 const MONTH_TH   = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
-function fmtDateShort(iso: string): string {
+function fmtDateTH(iso: string): string {
   const d = new Date(iso)
-  return `${d.getUTCDate()} ${MONTH_TH[d.getUTCMonth()]}`
+  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}/${d.getUTCFullYear() + 543}`
 }
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
@@ -139,37 +147,56 @@ function SummaryCards({ data }: { data: Request[] }) {
 // ── Add / Edit modal ──────────────────────────────────────────────────────────
 
 type FormState = {
-  date: string; startTime: string; endTime: string
-  place: string; purpose: string; client: string; note: string
+  date: string
+  timeSlot: string
+  place: string
+  purpose: string
+  caseNumber: string
+  productWork: string
+  workBranch: string
+  caseCount: string
+  adminChecked: string
+  supervisedBy: string
+  note: string
+  // legacy fields (kept for DB compat)
+  startTime: string; endTime: string; client: string
   googleMapsUrl: string; employeeName: string
   ownerName: string; workType: string
   distance: string; distanceLimit: string; routeType: string
 }
 
 const EMPTY: FormState = {
-  date: '', startTime: '09:00', endTime: '17:00',
-  place: '', purpose: '', client: '', note: '',
-  googleMapsUrl: '', employeeName: '',
-  ownerName: '', workType: '',
+  date: '', timeSlot: '', place: '', purpose: '',
+  caseNumber: '', productWork: '', workBranch: '',
+  caseCount: '', adminChecked: '', supervisedBy: '', note: '',
+  startTime: '', endTime: '', client: '', googleMapsUrl: '',
+  employeeName: '', ownerName: '', workType: '',
   distance: '', distanceLimit: '', routeType: '',
 }
 
 function toForm(r: Request): FormState {
   return {
     date:          r.date.slice(0, 10),
-    startTime:     r.startTime,
-    endTime:       r.endTime,
+    timeSlot:      r.timeSlot      ?? '',
     place:         r.place,
     purpose:       r.purpose,
-    client:        r.client ?? '',
-    note:          r.note ?? '',
+    caseNumber:    r.caseNumber    ?? '',
+    productWork:   r.productWork   ?? '',
+    workBranch:    r.workBranch    ?? '',
+    caseCount:     r.caseCount     != null ? String(r.caseCount) : '',
+    adminChecked:  r.adminChecked  ?? '',
+    supervisedBy:  r.supervisedBy  ?? '',
+    note:          r.note          ?? '',
+    startTime:     r.startTime,
+    endTime:       r.endTime,
+    client:        r.client        ?? '',
     googleMapsUrl: r.googleMapsUrl ?? '',
-    employeeName:  r.employeeName ?? '',
-    ownerName:     r.ownerName ?? '',
-    workType:      r.workType ?? '',
-    distance:      r.distance != null ? String(r.distance) : '',
+    employeeName:  r.employeeName  ?? '',
+    ownerName:     r.ownerName     ?? '',
+    workType:      r.workType      ?? '',
+    distance:      r.distance      != null ? String(r.distance) : '',
     distanceLimit: r.distanceLimit != null ? String(r.distanceLimit) : '',
-    routeType:     r.routeType ?? '',
+    routeType:     r.routeType     ?? '',
   }
 }
 
@@ -188,23 +215,31 @@ function AddEditModal({
     editing ? toForm(editing) : { ...EMPTY, date: defaultDate ?? '' }
   )
   const [saving, setSaving] = useState(false)
-  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const set = (k: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm(f => ({ ...f, [k]: e.target.value }))
 
   const save = async () => {
-    if (!form.date)           { toast.error('กรุณาเลือกวันที่');         return }
-    if (!form.place.trim())   { toast.error('กรุณาระบุสถานที่');          return }
-    if (!form.purpose.trim()) { toast.error('กรุณาระบุวัตถุประสงค์');    return }
+    if (!form.date)           { toast.error('กรุณาเลือกวันที่');      return }
+    if (!form.place.trim())   { toast.error('กรุณาระบุสถานที่');      return }
+    if (!form.purpose.trim()) { toast.error('กรุณาระบุสิ่งที่ไปดำเนินการ'); return }
     setSaving(true)
     try {
       const body = {
         ...form,
+        caseCount:     form.caseCount     ? Number(form.caseCount)     : null,
         distance:      form.distance      ? Number(form.distance)      : null,
         distanceLimit: form.distanceLimit ? Number(form.distanceLimit) : null,
-        googleMapsUrl: form.googleMapsUrl || null,
-        client:        form.client        || null,
+        timeSlot:      form.timeSlot      || null,
+        caseNumber:    form.caseNumber    || null,
+        productWork:   form.productWork   || null,
+        workBranch:    form.workBranch    || null,
+        adminChecked:  form.adminChecked  || null,
+        supervisedBy:  form.supervisedBy  || null,
         note:          form.note          || null,
-        employeeName:  form.employeeName  || null,
+        client:        form.client        || null,
+        googleMapsUrl: form.googleMapsUrl || null,
         ownerName:     form.ownerName     || null,
         workType:      form.workType      || null,
         routeType:     form.routeType     || null,
@@ -221,6 +256,7 @@ function AddEditModal({
   }
 
   const ic = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/25 transition'
+  const lb = 'text-[11px] text-slate-400 font-semibold uppercase tracking-wider'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -230,63 +266,88 @@ function AddEditModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white">{editing ? 'แก้ไขแผนงาน' : 'เพิ่มแผนงาน'}</h3>
+          <h3 className="font-semibold text-white">{editing ? 'แก้ไขแผนงาน' : 'เพิ่มแผนงานออกนอกพื้นที่'}</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Date + Time row */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Row 1: วันที่ + ช่วงเวลา */}
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">วันที่ *</label>
+            <label className={lb}>วันที่ *</label>
             <input type="date" value={form.date} onChange={set('date')} className={ic} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">เวลาออก</label>
-            <input type="time" value={form.startTime} onChange={set('startTime')} className={ic} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">เวลากลับ</label>
-            <input type="time" value={form.endTime} onChange={set('endTime')} className={ic} />
+            <label className={lb}>ช่วงเวลา</label>
+            <select value={form.timeSlot} onChange={set('timeSlot')} className={ic}>
+              <option value="">-- เลือก --</option>
+              <option value="เช้า">เช้า</option>
+              <option value="บ่าย">บ่าย</option>
+              <option value="เต็มวัน">เต็มวัน</option>
+            </select>
           </div>
         </div>
 
-        {/* Main fields */}
-        {([
-          ['สถานที่ *',          'place',        'ชื่อสถานที่ / ที่อยู่'            ],
-          ['วัตถุประสงค์ *',     'purpose',      'รายละเอียดภารกิจ'                  ],
-          ['ลูกค้า / หน่วยงาน', 'client',       '(ถ้ามี)'                            ],
-          ['ชื่อเจ้าของกิจการ',  'ownerName',    '(ถ้ามี)'                            ],
-          ['ประเภทการทำงาน',     'workType',     'เช่น เยี่ยมลูกค้า, ติดตามหนี้'     ],
-          ['Google Maps URL',    'googleMapsUrl','https://maps.google.com/...'        ],
-          ['หมายเหตุ',           'note',         '(ถ้ามี)'                            ],
-        ] as [string, keyof FormState, string][]).map(([label, key, ph]) => (
-          <div key={key} className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{label}</label>
-            <input value={form[key] as string} onChange={set(key)} placeholder={ph} className={ic} />
-          </div>
-        ))}
+        {/* สถานที่ + สิ่งที่ไปดำเนินการ */}
+        <div className="space-y-1.5">
+          <label className={lb}>สถานที่ไปทำงาน *</label>
+          <input value={form.place} onChange={set('place')} placeholder="ชื่อสถานที่ / ที่อยู่" className={ic} />
+        </div>
+        <div className="space-y-1.5">
+          <label className={lb}>สิ่งที่ไปดำเนินการ *</label>
+          <textarea value={form.purpose} onChange={set('purpose')} rows={2} placeholder="รายละเอียดภารกิจ" className={`${ic} resize-none`} />
+        </div>
 
-        {/* Distance + Route row */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Row: หมายเลขคดีดำ + งานโปรดักส์ */}
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">ระยะทาง (กม.)</label>
-            <input type="number" min="0" step="0.1" value={form.distance} onChange={set('distance')} placeholder="0" className={ic} />
+            <label className={lb}>หมายเลขคดีดำ</label>
+            <input value={form.caseNumber} onChange={set('caseNumber')} placeholder="เช่น 2567-001" className={ic} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">เส้นทางกำหนด (กม.)</label>
-            <input type="number" min="0" step="0.1" value={form.distanceLimit} onChange={set('distanceLimit')} placeholder="0" className={ic} />
+            <label className={lb}>งานโปรดักส์</label>
+            <input value={form.productWork} onChange={set('productWork')} placeholder="ประเภทงาน" className={ic} />
+          </div>
+        </div>
+
+        {/* Row: สาขา + จำนวนคดี */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className={lb}>งานของสาขาไหน</label>
+            <input value={form.workBranch} onChange={set('workBranch')} placeholder="เช่น สาขากรุงเทพ" className={ic} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">เส้นทาง</label>
-            <select value={form.routeType} onChange={set('routeType')} className={ic}>
+            <label className={lb}>จำนวนคดีที่ไปดำเนินการ</label>
+            <input type="number" min="0" value={form.caseCount} onChange={set('caseCount')} placeholder="0" className={ic} />
+          </div>
+        </div>
+
+        {/* Row: แอดมินตรวจสอบ + ผู้สั่งงาน */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className={lb}>แอดมินโปรดักส์ตรวจสอบ</label>
+            <select value={form.adminChecked} onChange={set('adminChecked')} className={ic}>
               <option value="">-- เลือก --</option>
-              <option value="ไป">ไป</option>
-              <option value="กลับ">กลับ</option>
-              <option value="ไป-กลับ">ไป-กลับ</option>
+              <option value="มี">มี</option>
+              <option value="ไม่มี">ไม่มี</option>
             </select>
           </div>
+          <div className="space-y-1.5">
+            <label className={lb}>ผู้สั่งงาน</label>
+            <select value={form.supervisedBy} onChange={set('supervisedBy')} className={ic}>
+              <option value="">-- เลือก --</option>
+              <option value="แอดมิน">แอดมิน</option>
+              <option value="หัวหน้า">หัวหน้า</option>
+              <option value="ทนายวางแผนตามเอง">ทนายวางแผนตามเอง</option>
+            </select>
+          </div>
+        </div>
+
+        {/* หมายเหตุ */}
+        <div className="space-y-1.5">
+          <label className={lb}>หมายเหตุ</label>
+          <input value={form.note} onChange={set('note')} placeholder="(ถ้ามี)" className={ic} />
         </div>
 
         {/* Actions */}
@@ -317,30 +378,27 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
   const [modal, setModal] = useState<{ open: boolean; editing: Request | null; defaultDate?: string }>({ open: false, editing: null })
   const [approvingId, setApprovingId]   = useState<string | null>(null)
 
-  // Week range
   const weekEnd  = addDays(weekStart, 6)
   const weekYmds = useMemo(() => Array.from({ length: 7 }, (_, i) => toYmd(addDays(weekStart, i))), [weekStart])
 
-  // Filtered rows for current week
   const filteredRequests = useMemo(() => {
     return requests
       .filter(r => {
         const ymd = r.date.slice(0, 10)
-        if (!weekYmds.includes(ymd))                     return false
-        if (!canViewAll && r.userId !== userId)           return false
-        if (filterEmp && r.userId !== filterEmp)          return false
+        if (!weekYmds.includes(ymd))              return false
+        if (!canViewAll && r.userId !== userId)    return false
+        if (filterEmp && r.userId !== filterEmp)  return false
         if (filterStatus) {
           const s = effectiveStatus(r)
-          if (filterStatus === 'pending'  && !isPending(r))                                    return false
-          if (filterStatus === 'approved' && !['APPROVED', 'approved_by_ceo'].includes(s))     return false
-          if (filterStatus === 'rejected' && !['REJECTED', 'rejected_by_ceo'].includes(s))     return false
+          if (filterStatus === 'pending'  && !isPending(r))                                return false
+          if (filterStatus === 'approved' && !['APPROVED', 'approved_by_ceo'].includes(s)) return false
+          if (filterStatus === 'rejected' && !['REJECTED', 'rejected_by_ceo'].includes(s)) return false
         }
         return true
       })
-      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.timeSlot ?? '').localeCompare(b.timeSlot ?? ''))
   }, [requests, weekYmds, canViewAll, userId, filterEmp, filterStatus])
 
-  // Week data (all, for summary cards)
   const weekRequests = useMemo(() =>
     requests.filter(r => {
       const ymd = r.date.slice(0, 10)
@@ -349,7 +407,6 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
     [requests, weekYmds, canViewAll, userId]
   )
 
-  // Employee list for admin filter dropdown
   const employees = useMemo(() => {
     const map = new Map<string, string>()
     requests.forEach(r => map.set(r.userId, r.userName))
@@ -379,7 +436,6 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
   }
 
   const [exporting, setExporting] = useState(false)
-
   const weekLabel = `${weekStart.getDate()} ${MONTH_TH[weekStart.getMonth()]} – ${weekEnd.getDate()} ${MONTH_TH[weekEnd.getMonth()]} ${weekEnd.getFullYear() + 543}`
 
   const exportXlsx = async () => {
@@ -388,7 +444,7 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
       const res = await fetch('/api/outside-work/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weekLabel, canViewAll, requests: filteredRequests }),
+        body: JSON.stringify({ weekLabel, weekStart: toYmd(weekStart), weekEnd: toYmd(weekEnd), canViewAll, requests: filteredRequests }),
       })
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
@@ -406,11 +462,13 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
     }
   }
 
-  const th = 'px-4 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap'
+  const th = 'px-3 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap'
+
+  // total columns for empty state colspan
+  const colCount = (canViewAll ? 2 : 0) + 13 + 1  // employee cols + 13 data cols + action
 
   return (
     <div className="p-4 md:p-6 space-y-5">
-      {/* Modal */}
       {modal.open && (
         <AddEditModal
           editing={modal.editing}
@@ -420,25 +478,18 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
         />
       )}
 
-      {/* Summary cards */}
       <SummaryCards data={weekRequests} />
 
       {/* Admin filters */}
       {canViewAll && (
         <div className="flex flex-wrap gap-3">
-          <select
-            value={filterEmp}
-            onChange={e => setFilterEmp(e.target.value)}
-            className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50 transition"
-          >
+          <select value={filterEmp} onChange={e => setFilterEmp(e.target.value)}
+            className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50 transition">
             <option value="">พนักงานทั้งหมด</option>
             {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50 transition"
-          >
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50 transition">
             <option value="">ทุกสถานะ</option>
             <option value="pending">รออนุมัติ</option>
             <option value="approved">อนุมัติแล้ว</option>
@@ -475,34 +526,38 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
         </button>
       </div>
 
-      {/* Table */}
+      {/* Table — matches Excel column order */}
       <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse" style={{ minWidth: canViewAll ? 960 : 760 }}>
+          <table className="w-full text-sm border-collapse" style={{ minWidth: canViewAll ? 1300 : 1100 }}>
             <thead>
               <tr className="bg-slate-900/80 border-b border-white/[0.07]">
                 {canViewAll && (
                   <>
                     <th className={`${th} text-left`}>ชื่อพนักงาน</th>
-                    <th className={`${th} text-left`}>สาขา</th>
+                    <th className={`${th} text-left`}>สาขา/แผนก</th>
                   </>
                 )}
-                <th className={`${th} text-left`}>วัน</th>
-                <th className={`${th} text-left`}>วันที่</th>
-                <th className={`${th} text-left`}>สถานที่</th>
-                <th className={`${th} text-left`}>ชื่อเจ้าของกิจการ</th>
-                <th className={`${th} text-left`}>ประเภทงาน</th>
-                <th className={`${th} text-left`}>เวลา</th>
-                <th className={`${th} text-right`}>ระยะทาง</th>
-                <th className={`${th} text-left`}>เส้นทาง</th>
-                <th className={`${th} text-left`}>สถานะ</th>
+                <th className={`${th} text-center`}>วัน</th>
+                <th className={`${th} text-center`}>ว/ด/ปี</th>
+                <th className={`${th} text-center`}>ช่วงเวลา</th>
+                <th className={`${th} text-left`}>สถานที่ไปทำงาน</th>
+                <th className={`${th} text-left`}>สิ่งที่ไปดำเนินการ</th>
+                <th className={`${th} text-center`}>หมายเลขคดีดำ</th>
+                <th className={`${th} text-left`}>งานโปรดักส์</th>
+                <th className={`${th} text-center`}>สาขาไหน</th>
+                <th className={`${th} text-center`}>จำนวนคดี</th>
+                <th className={`${th} text-center`}>แอดมินตรวจสอบ</th>
+                <th className={`${th} text-center`}>ผู้สั่งงาน</th>
+                <th className={`${th} text-center`}>สถานะ</th>
+                <th className={`${th} text-left`}>หมายเหตุ</th>
                 <th className={`${th} text-center`}>จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={canViewAll ? 12 : 10} className="py-14 text-center text-slate-500 text-sm">
+                  <td colSpan={colCount} className="py-14 text-center text-slate-500 text-sm">
                     ไม่มีแผนงานในสัปดาห์นี้
                     <button type="button" onClick={() => setModal({ open: true, editing: null })}
                       className="block mx-auto mt-3 text-xs text-blue-400 hover:text-blue-300 transition">
@@ -521,36 +576,62 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
                     <tr key={r.id} className="bg-slate-900/40 hover:bg-white/[0.025] transition-colors">
                       {canViewAll && (
                         <>
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-nowrap">
                             <p className="text-xs font-medium text-white">{r.userName}</p>
                             <p className="text-[10px] text-slate-500">{r.userPosition || '—'}</p>
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{r.userDept || '—'}</td>
+                          <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap">{r.userDept || '—'}</td>
                         </>
                       )}
-                      <td className="px-4 py-3 text-xs font-semibold text-slate-300 whitespace-nowrap">
+                      <td className="px-3 py-3 text-xs font-semibold text-slate-300 text-center whitespace-nowrap">
                         {DAY_FULL_TH[dayIndex]}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
-                        {fmtDateShort(r.date)}
+                      <td className="px-3 py-3 text-xs text-slate-400 text-center whitespace-nowrap">
+                        {fmtDateTH(r.date)}
                       </td>
-                      <td className="px-4 py-3 max-w-[160px]">
+                      <td className="px-3 py-3 text-center">
+                        {r.timeSlot
+                          ? <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${r.timeSlot === 'เช้า' ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : r.timeSlot === 'บ่าย' ? 'bg-sky-500/10 text-sky-300 border-sky-500/20' : 'bg-slate-700/50 text-slate-400 border-slate-600/50'}`}>{r.timeSlot}</span>
+                          : <span className="text-slate-600 text-xs">—</span>
+                        }
+                      </td>
+                      <td className="px-3 py-3 max-w-[150px]">
                         <p className="text-xs font-medium text-white truncate">{r.place}</p>
-                        {r.purpose && <p className="text-[10px] text-slate-500 truncate">{r.purpose}</p>}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{r.ownerName || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{r.workType  || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
-                        {r.startTime} – {r.endTime}
+                      <td className="px-3 py-3 max-w-[160px]">
+                        <p className="text-xs text-slate-300 line-clamp-2">{r.purpose}</p>
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 text-right whitespace-nowrap">
-                        {r.distance != null ? `${r.distance} กม.` : '—'}
+                      <td className="px-3 py-3 text-xs text-slate-400 text-center whitespace-nowrap">
+                        {r.caseNumber || '—'}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{r.routeType || '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 py-3 text-xs text-slate-400 max-w-[120px] truncate">
+                        {r.productWork || '—'}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-slate-400 text-center whitespace-nowrap">
+                        {r.workBranch || '—'}
+                      </td>
+                      <td className="px-3 py-3 text-xs text-center">
+                        {r.caseCount != null
+                          ? <span className="font-semibold text-white">{r.caseCount}</span>
+                          : <span className="text-slate-600">—</span>
+                        }
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        {r.adminChecked
+                          ? <span className={`text-xs font-semibold ${r.adminChecked === 'มี' ? 'text-green-400' : 'text-slate-500'}`}>{r.adminChecked}</span>
+                          : <span className="text-slate-600 text-xs">—</span>
+                        }
+                      </td>
+                      <td className="px-3 py-3 text-xs text-slate-400 text-center whitespace-nowrap">
+                        {r.supervisedBy || '—'}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <StatusBadge status={s} />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 py-3 text-xs text-slate-500 max-w-[120px] truncate">
+                        {r.note || '—'}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           {canEdit && (
                             <button type="button"
@@ -562,19 +643,13 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
                           )}
                           {canApproveOutside && isPending(r) && (
                             <>
-                              <button type="button"
-                                disabled={isApproving}
-                                onClick={() => handleApprove(r, 'approve')}
-                                title="อนุมัติ"
+                              <button type="button" disabled={isApproving}
+                                onClick={() => handleApprove(r, 'approve')} title="อนุมัติ"
                                 className="p-1.5 rounded-lg text-slate-500 hover:text-green-400 hover:bg-green-500/10 transition disabled:opacity-40">
-                                {isApproving
-                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                {isApproving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                               </button>
-                              <button type="button"
-                                disabled={isApproving}
-                                onClick={() => handleApprove(r, 'reject')}
-                                title="ปฏิเสธ"
+                              <button type="button" disabled={isApproving}
+                                onClick={() => handleApprove(r, 'reject')} title="ปฏิเสธ"
                                 className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40">
                                 <XCircle className="w-3.5 h-3.5" />
                               </button>

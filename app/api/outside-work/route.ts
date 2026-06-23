@@ -42,9 +42,10 @@ export async function POST(req: NextRequest) {
       date, startTime, endTime, place, purpose, client, note, googleMapsUrl,
       attachmentUrl, attachmentName,
       employeeName, ownerName, workType, distance, distanceLimit, routeType,
+      timeSlot, caseNumber, productWork, workBranch, caseCount, adminChecked, supervisedBy,
     } = body
 
-    if (!date || !startTime || !endTime || !place || !purpose) {
+    if (!date || !place || !purpose) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
     }
 
@@ -52,8 +53,8 @@ export async function POST(req: NextRequest) {
       data: {
         userId: session.user.id,
         date: new Date(date),
-        startTime,
-        endTime,
+        startTime:      startTime     || '',
+        endTime:        endTime       || '',
         place,
         purpose,
         client:         client        || null,
@@ -67,6 +68,13 @@ export async function POST(req: NextRequest) {
         distance:       distance      ? Number(distance)      : null,
         distanceLimit:  distanceLimit ? Number(distanceLimit) : null,
         routeType:      routeType     || null,
+        timeSlot:       timeSlot      || null,
+        caseNumber:     caseNumber    || null,
+        productWork:    productWork   || null,
+        workBranch:     workBranch    || null,
+        caseCount:      caseCount     ? Number(caseCount)     : null,
+        adminChecked:   adminChecked  || null,
+        supervisedBy:   supervisedBy  || null,
         approvalStatus: 'pending_ceo',
       },
     })

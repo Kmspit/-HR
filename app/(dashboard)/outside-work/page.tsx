@@ -83,6 +83,13 @@ export default async function OutsideWorkPage({
             distance:       raw.distance       as number | null ?? null,
             distanceLimit:  raw.distanceLimit  as number | null ?? null,
             routeType:      raw.routeType      as string | null ?? null,
+            timeSlot:       raw.timeSlot       as string | null ?? null,
+            caseNumber:     raw.caseNumber     as string | null ?? null,
+            productWork:    raw.productWork    as string | null ?? null,
+            workBranch:     raw.workBranch     as string | null ?? null,
+            caseCount:      raw.caseCount      as number | null ?? null,
+            adminChecked:   raw.adminChecked   as string | null ?? null,
+            supervisedBy:   raw.supervisedBy   as string | null ?? null,
           }
         })}
       />
