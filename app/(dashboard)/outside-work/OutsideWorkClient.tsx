@@ -402,10 +402,11 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
       return canViewAll ? [r.userName, r.userDept, r.userPosition, ...common] : common
     })
 
-    const csv = [headers, ...rows]
+    const BOM = '\uFEFF'
+    const csvContent = BOM + [headers, ...rows]
       .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
       .join('\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url  = URL.createObjectURL(blob)
     const a    = Object.assign(document.createElement('a'), { href: url, download: `outside-work-${toYmd(weekStart)}.csv` })
     a.click()
