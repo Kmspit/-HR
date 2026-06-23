@@ -925,6 +925,8 @@ tbody td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10
 .warn-reason{font-size:11px;color:var(--text3)}
 .warn-btn{margin-left:auto;background:transparent;border:1px solid var(--red);color:var(--red);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit;transition:.15s;flex-shrink:0}
 .warn-btn:hover{background:rgba(239,68,68,.1)}
+@keyframes fade-in-sm { from { opacity: 0; } to { opacity: 1; } }
+.fade-in-sm { animation: fade-in-sm 0.2s ease forwards; }
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .dash-page .content > *{animation:fadeUp .4s ease both}
 .dash-page .content > *:nth-child(1){animation-delay:.05s}
