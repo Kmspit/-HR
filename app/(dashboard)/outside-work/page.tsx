@@ -28,33 +28,11 @@ export default async function OutsideWorkPage({
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
   console.log('[OW] step 3: scope built, canViewAll=', canViewAll)
 
-  const requests = await (async () => {
-    try {
-      console.log('[OW] step 4: ensureDbSchema start')
-      const ok = await ensureDbSchema()
-      console.log('[OW] step 5: ensureDbSchema done, ok=', ok, '— findMany start')
-      const rows = await prisma.outsideWorkRequest.findMany({
-        where: canViewAll
-          ? nestedUser
-            ? { user: nestedUser }
-            : {}
-          : { userId: session.user.id },
-        include: {
-          user: { select: { name: true, department: true, position: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: canViewAll ? 200 : 100,
-      })
-      console.log('[OW] step 6: findMany done, rows=', rows.length)
-      return rows
-    } catch (error: unknown) {
-      const err = error as { message?: string; code?: string; meta?: unknown }
-      console.error('[outside-work PAGE ERROR]', err?.message, err?.code, JSON.stringify(err?.meta))
-      throw error
-    }
-  })()
+  console.log('[OW] step 4: ensureDbSchema start')
+  const schemaOk = await ensureDbSchema().catch(() => false)
+  console.log('[OW] step 5: ensureDbSchema done, ok=', schemaOk)
 
-  return (
+  const pageShell = (requests: Parameters<typeof OutsideWorkClient>[0]['requests']) => (
     <div className="flex flex-col">
       <Topbar
         title="ออกนอกสถานที่"
@@ -73,40 +51,69 @@ export default async function OutsideWorkPage({
         userId={session.user.id}
         canViewAll={canViewAll}
         canApproveOutside={canApproveOutside}
-        requests={requests.map((r) => ({
-          id:            r.id,
-          userId:        r.userId,
-          userName:      r.user.name,
-          userDept:      r.user.department  ?? '',
-          userPosition:  r.user.position    ?? '',
-          date:          r.date.toISOString(),
-          startTime:     r.startTime,
-          endTime:       r.endTime,
-          place:         r.place,
-          purpose:       r.purpose,
-          client:        r.client           ?? '',
-          note:          r.note             ?? '',
-          status:        r.status,
-          createdAt:     r.createdAt.toISOString(),
-          googleMapsUrl:  r.googleMapsUrl   ?? null,
-          attachmentUrl:  r.attachmentUrl   ?? null,
-          attachmentName: r.attachmentName  ?? null,
-          approvalStatus: r.approvalStatus  ?? null,
-          employeeName:   r.employeeName    ?? null,
-          ownerName:      r.ownerName       ?? null,
-          workType:       r.workType        ?? null,
-          distance:       r.distance        ?? null,
-          distanceLimit:  r.distanceLimit   ?? null,
-          routeType:      r.routeType       ?? null,
-          timeSlot:       r.timeSlot        ?? null,
-          caseNumber:     r.caseNumber      ?? null,
-          productWork:    r.productWork     ?? null,
-          workBranch:     r.workBranch      ?? null,
-          caseCount:      r.caseCount       ?? null,
-          adminChecked:   r.adminChecked    ?? null,
-          supervisedBy:   r.supervisedBy    ?? null,
-        }))}
+        requests={requests}
       />
     </div>
   )
+
+  if (!schemaOk) {
+    console.error('[OW] ensureDbSchema returned false — showing empty state')
+    return pageShell([])
+  }
+
+  try {
+    console.log('[OW] step 6: findMany start')
+    const rows = await prisma.outsideWorkRequest.findMany({
+      where: canViewAll
+        ? nestedUser
+          ? { user: nestedUser }
+          : {}
+        : { userId: session.user.id },
+      include: {
+        user: { select: { name: true, department: true, position: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: canViewAll ? 200 : 100,
+    })
+    console.log('[OW] step 7: findMany done, rows=', rows.length)
+
+    return pageShell(rows.map((r) => ({
+      id:            r.id,
+      userId:        r.userId,
+      userName:      r.user.name,
+      userDept:      r.user.department  ?? '',
+      userPosition:  r.user.position    ?? '',
+      date:          r.date.toISOString(),
+      startTime:     r.startTime,
+      endTime:       r.endTime,
+      place:         r.place,
+      purpose:       r.purpose,
+      client:        r.client           ?? '',
+      note:          r.note             ?? '',
+      status:        r.status,
+      createdAt:     r.createdAt.toISOString(),
+      googleMapsUrl:  r.googleMapsUrl   ?? null,
+      attachmentUrl:  r.attachmentUrl   ?? null,
+      attachmentName: r.attachmentName  ?? null,
+      approvalStatus: r.approvalStatus  ?? null,
+      employeeName:   r.employeeName    ?? null,
+      ownerName:      r.ownerName       ?? null,
+      workType:       r.workType        ?? null,
+      distance:       r.distance        ?? null,
+      distanceLimit:  r.distanceLimit   ?? null,
+      routeType:      r.routeType       ?? null,
+      timeSlot:       r.timeSlot        ?? null,
+      caseNumber:     r.caseNumber      ?? null,
+      productWork:    r.productWork     ?? null,
+      workBranch:     r.workBranch      ?? null,
+      caseCount:      r.caseCount       ?? null,
+      adminChecked:   r.adminChecked    ?? null,
+      supervisedBy:   r.supervisedBy    ?? null,
+    })))
+  } catch (error: unknown) {
+    const err = error as { message?: string; code?: string; meta?: unknown }
+    console.error('[outside-work PAGE ERROR]', err?.message, err?.code, JSON.stringify(err?.meta))
+    // findMany failed even though ensureDbSchema said ok — show empty state, do not crash
+    return pageShell([])
+  }
 }
