@@ -31,8 +31,8 @@ export default async function OutsideWorkPage({
   const requests = await (async () => {
     try {
       console.log('[OW] step 4: ensureDbSchema start')
-      await ensureDbSchema()
-      console.log('[OW] step 5: ensureDbSchema done, findMany start')
+      const ok = await ensureDbSchema()
+      console.log('[OW] step 5: ensureDbSchema done, ok=', ok, '— findMany start')
       const rows = await prisma.outsideWorkRequest.findMany({
         where: canViewAll
           ? nestedUser
