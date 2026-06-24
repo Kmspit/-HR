@@ -25,21 +25,28 @@ export default async function OutsideWorkPage({
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
 
-  // run idempotent column migrations before querying new fields
-  await ensureDbSchema()
-
-  const requests = await prisma.outsideWorkRequest.findMany({
-    where: canViewAll
-      ? nestedUser
-        ? { user: nestedUser }
-        : {}
-      : { userId: session.user.id },
-    include: {
-      user: { select: { name: true, department: true, position: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: canViewAll ? 200 : 100,
-  })
+  const requests = await (async () => {
+    try {
+      // run idempotent column migrations before querying new fields
+      await ensureDbSchema()
+      return await prisma.outsideWorkRequest.findMany({
+        where: canViewAll
+          ? nestedUser
+            ? { user: nestedUser }
+            : {}
+          : { userId: session.user.id },
+        include: {
+          user: { select: { name: true, department: true, position: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: canViewAll ? 200 : 100,
+      })
+    } catch (error: unknown) {
+      const err = error as { message?: string; code?: string; meta?: unknown }
+      console.error('[outside-work PAGE ERROR]', err?.message, err?.code, err?.meta)
+      throw error
+    }
+  })()
 
   return (
     <div className="flex flex-col">
