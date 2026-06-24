@@ -815,6 +815,8 @@ model Attendance {
   branch CompanyBranch?  @relation(fields: [branchId], references: [id])
 
   @@unique([userId, date, sessionIndex])
+  @@index([userId, date])
+  @@index([branchId, date])
   @@map("attendances")
 }
 
@@ -840,6 +842,8 @@ model LeaveRequest {
   chainConfig  ApprovalChainConfig? @relation("LeaveChain", fields: [chainConfigId], references: [id])
   stepLogs     LeaveApprovalStep[]
 
+  @@index([userId])
+  @@index([status])
   @@map("leave_requests")
 }
 
@@ -897,6 +901,9 @@ model OutsideWorkRequest {
   user      User              @relation(fields: [userId], references: [id])
   approvals ApprovalHistory[]
 
+  @@index([userId])
+  @@index([date])
+  @@index([status])
   @@map("outside_work_requests")
 }
 

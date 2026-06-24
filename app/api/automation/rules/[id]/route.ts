@@ -25,31 +25,36 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!ADMIN_ROLES.includes(session.user.role))
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  try {
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!ADMIN_ROLES.includes(session.user.role))
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id } = await params
-  const body = await req.json()
-  const { name, description, trigger, conditions, actions, priority, testMode, isActive } = body
+    const { id } = await params
+    const body = await req.json()
+    const { name, description, trigger, conditions, actions, priority, testMode, isActive } = body
 
-  const updated = await prisma.automationRule.update({
-    where: { id },
-    data: {
-      ...(name !== undefined        ? { name } : {}),
-      ...(description !== undefined ? { description } : {}),
-      ...(trigger !== undefined     ? { trigger } : {}),
-      ...(conditions !== undefined  ? { conditions: JSON.stringify(conditions) } : {}),
-      ...(actions !== undefined     ? { actions: JSON.stringify(actions) } : {}),
-      ...(priority !== undefined    ? { priority } : {}),
-      ...(testMode !== undefined    ? { testMode } : {}),
-      ...(isActive !== undefined    ? { isActive } : {}),
-    },
-    include: { createdBy: { select: { id: true, name: true } } },
-  })
+    const updated = await prisma.automationRule.update({
+      where: { id },
+      data: {
+        ...(name !== undefined        ? { name } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(trigger !== undefined     ? { trigger } : {}),
+        ...(conditions !== undefined  ? { conditions: JSON.stringify(conditions) } : {}),
+        ...(actions !== undefined     ? { actions: JSON.stringify(actions) } : {}),
+        ...(priority !== undefined    ? { priority } : {}),
+        ...(testMode !== undefined    ? { testMode } : {}),
+        ...(isActive !== undefined    ? { isActive } : {}),
+      },
+      include: { createdBy: { select: { id: true, name: true } } },
+    })
 
-  return NextResponse.json(updated)
+    return NextResponse.json(updated)
+  } catch (err) {
+    console.error('[PATCH /api/automation/rules/[id]]', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

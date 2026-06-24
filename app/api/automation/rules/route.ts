@@ -37,31 +37,36 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!ADMIN_ROLES.includes(session.user.role))
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  try {
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!ADMIN_ROLES.includes(session.user.role))
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const body = await req.json()
-  const { name, description, trigger, conditions, actions, priority, testMode } = body
+    const body = await req.json()
+    const { name, description, trigger, conditions, actions, priority, testMode } = body
 
-  if (!name || !trigger)
-    return NextResponse.json({ error: 'name and trigger are required' }, { status: 400 })
+    if (!name || !trigger)
+      return NextResponse.json({ error: 'name and trigger are required' }, { status: 400 })
 
-  const rule = await prisma.automationRule.create({
-    data: {
-      id:          randomUUID(),
-      name,
-      description: description ?? null,
-      trigger,
-      conditions:  JSON.stringify(Array.isArray(conditions) ? conditions : []),
-      actions:     JSON.stringify(Array.isArray(actions) ? actions : []),
-      priority:    typeof priority === 'number' ? priority : 0,
-      testMode:    testMode === true,
-      createdById: session.user.id,
-    },
-    include: { createdBy: { select: { id: true, name: true } } },
-  })
+    const rule = await prisma.automationRule.create({
+      data: {
+        id:          randomUUID(),
+        name,
+        description: description ?? null,
+        trigger,
+        conditions:  JSON.stringify(Array.isArray(conditions) ? conditions : []),
+        actions:     JSON.stringify(Array.isArray(actions) ? actions : []),
+        priority:    typeof priority === 'number' ? priority : 0,
+        testMode:    testMode === true,
+        createdById: session.user.id,
+      },
+      include: { createdBy: { select: { id: true, name: true } } },
+    })
 
-  return NextResponse.json(rule, { status: 201 })
+    return NextResponse.json(rule, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/automation/rules]', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

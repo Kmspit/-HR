@@ -135,6 +135,7 @@ export async function GET(req: NextRequest) {
       },
       assignedBy: { select: { id: true, lineUserId: true } },
     },
+    take: 200,
   })
 
   for (const taskRaw of overdueTasks) {
@@ -316,6 +317,7 @@ export async function GET(req: NextRequest) {
       updatedAt: { lt: waitingCutoff },
     },
     select: { id: true, title: true, assignedById: true, caseNumber: true },
+    take: 50,
   })
   for (const t of waitingTasks) {
     try {

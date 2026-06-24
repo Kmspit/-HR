@@ -908,6 +908,24 @@ async function runEnsure(): Promise<boolean> {
     }
   })
 
+  // ── outside_work_requests — ฟอร์มบริษัท ฉ.2 columns ──────────────────────
+  await addColumnIfMissing('outside_work_requests', 'time_slot',    `ALTER TABLE outside_work_requests ADD COLUMN time_slot TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'case_number',  `ALTER TABLE outside_work_requests ADD COLUMN case_number TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'product_work', `ALTER TABLE outside_work_requests ADD COLUMN product_work TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'work_branch',  `ALTER TABLE outside_work_requests ADD COLUMN work_branch TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'case_count',   `ALTER TABLE outside_work_requests ADD COLUMN case_count INTEGER`)
+  await addColumnIfMissing('outside_work_requests', 'admin_checked',`ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'supervised_by',`ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
+
+  // ── Query-performance indexes ─────────────────────────────────────────────
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_attendances_userId_date   ON attendances (userId, date)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_attendances_branchId_date ON attendances (branchId, date)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_userId       ON outside_work_requests (userId)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_date         ON outside_work_requests (date)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_status       ON outside_work_requests (status)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_leave_requests_userId     ON leave_requests (userId)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_leave_requests_status     ON leave_requests (status)`)
+
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
 
@@ -988,13 +1006,4 @@ async function migrateAttendanceMultiSessionUnique() {
     CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
     ON attendances (userId, date, sessionIndex)
   `)
-
-  // ── outside_work_requests — ฟอร์มบริษัท ฉ.2 columns ──────────────────────
-  await addColumnIfMissing('outside_work_requests', 'time_slot',    `ALTER TABLE outside_work_requests ADD COLUMN time_slot TEXT`)
-  await addColumnIfMissing('outside_work_requests', 'case_number',  `ALTER TABLE outside_work_requests ADD COLUMN case_number TEXT`)
-  await addColumnIfMissing('outside_work_requests', 'product_work', `ALTER TABLE outside_work_requests ADD COLUMN product_work TEXT`)
-  await addColumnIfMissing('outside_work_requests', 'work_branch',  `ALTER TABLE outside_work_requests ADD COLUMN work_branch TEXT`)
-  await addColumnIfMissing('outside_work_requests', 'case_count',   `ALTER TABLE outside_work_requests ADD COLUMN case_count INTEGER`)
-  await addColumnIfMissing('outside_work_requests', 'admin_checked',`ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)
-  await addColumnIfMissing('outside_work_requests', 'supervised_by',`ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
 }
