@@ -15,8 +15,10 @@ export default async function OutsideWorkPage({
 }: {
   searchParams: Promise<{ branchId?: string }>
 }) {
+  console.log('[OW] step 1: auth start')
   const session = await auth()
   if (!session?.user?.id) redirect('/')
+  console.log('[OW] step 2: auth ok, role=', session.user.role)
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
@@ -24,12 +26,14 @@ export default async function OutsideWorkPage({
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
+  console.log('[OW] step 3: scope built, canViewAll=', canViewAll)
 
   const requests = await (async () => {
     try {
-      // run idempotent column migrations before querying new fields
+      console.log('[OW] step 4: ensureDbSchema start')
       await ensureDbSchema()
-      return await prisma.outsideWorkRequest.findMany({
+      console.log('[OW] step 5: ensureDbSchema done, findMany start')
+      const rows = await prisma.outsideWorkRequest.findMany({
         where: canViewAll
           ? nestedUser
             ? { user: nestedUser }
@@ -41,9 +45,11 @@ export default async function OutsideWorkPage({
         orderBy: { createdAt: 'desc' },
         take: canViewAll ? 200 : 100,
       })
+      console.log('[OW] step 6: findMany done, rows=', rows.length)
+      return rows
     } catch (error: unknown) {
       const err = error as { message?: string; code?: string; meta?: unknown }
-      console.error('[outside-work PAGE ERROR]', err?.message, err?.code, err?.meta)
+      console.error('[outside-work PAGE ERROR]', err?.message, err?.code, JSON.stringify(err?.meta))
       throw error
     }
   })()
