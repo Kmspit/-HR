@@ -6,15 +6,9 @@ import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 const DAY_TH   = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 const MONTH_TH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
-
-function fmtDateTH(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}/${d.getUTCFullYear() + 543}`
-}
-
 function fmtRangeTH(from: string, to: string): string {
-  const d1 = new Date(from)
-  const d2 = new Date(to)
+  const d1 = new Date(from + 'T00:00:00.000Z')
+  const d2 = new Date(to   + 'T00:00:00.000Z')
   const sameMonth = d1.getUTCMonth() === d2.getUTCMonth() && d1.getUTCFullYear() === d2.getUTCFullYear()
   if (sameMonth) {
     return `${d1.getUTCDate()} - ${d2.getUTCDate()} ${MONTH_TH[d1.getUTCMonth()]} ${d1.getUTCFullYear() + 543}`
@@ -22,191 +16,332 @@ function fmtRangeTH(from: string, to: string): string {
   return `${d1.getUTCDate()} ${MONTH_TH[d1.getUTCMonth()]} - ${d2.getUTCDate()} ${MONTH_TH[d2.getUTCMonth()]} ${d2.getUTCFullYear() + 543}`
 }
 
+// weekStart is a local YYYY-MM-DD string; treat as UTC midnight for day arithmetic
+function addDaysToYmd(ymd: string, n: number): string {
+  const d = new Date(ymd + 'T00:00:00.000Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
 type ExportRequest = {
+  userId: string
   userName: string; userDept: string; userPosition: string
-  date: string
+  date: string                    // ISO string from Prisma
   timeSlot?: string | null
   place: string; purpose: string
   caseNumber?: string | null; productWork?: string | null; workBranch?: string | null
   caseCount?: number | null; adminChecked?: string | null; supervisedBy?: string | null
   status: string; approvalStatus?: string | null
   note?: string | null
+  documentNumber?: string | null
 }
 
-// POST /api/outside-work/export
+// 13 data columns — no employee columns; employee name goes in row 11 header
+const COLS = [
+  { key: 'day',          label: 'วัน',                         sub: '',                                        width: 10 },
+  { key: 'date',         label: 'ว/ด/ปี',                     sub: '',                                        width: 12 },
+  { key: 'timeSlot',     label: 'ช่วงเวลา',                   sub: '(เช้า/บ่าย/เต็มวัน)',                     width: 13 },
+  { key: 'place',        label: 'สถานที่ไปทำงาน',             sub: '',                                        width: 28 },
+  { key: 'purpose',      label: 'สิ่งที่ไปดำเนินการ',         sub: '',                                        width: 30 },
+  { key: 'caseNumber',   label: 'หมายเลขคดีดำ',              sub: '',                                        width: 14 },
+  { key: 'productWork',  label: 'งานโปรดักส์',                sub: '',                                        width: 16 },
+  { key: 'workBranch',   label: 'งานของสาขาไหน',             sub: '',                                        width: 14 },
+  { key: 'caseCount',    label: 'จำนวนคดีที่ไปดำเนินการ',    sub: '',                                        width: 14 },
+  { key: 'adminChecked', label: 'แอดมินโปรดักส์ตรวจสอบ',     sub: '(มี/ไม่มี)',                              width: 14 },
+  { key: 'supervisedBy', label: 'ผู้สั่งงาน',                 sub: '(แอดมิน/หัวหน้า/ทนายวางแผนตามเอง)',     width: 22 },
+  { key: 'status',       label: 'อนุมัติ/ไม่อนุมัติ',        sub: '',                                        width: 13 },
+  { key: 'note',         label: 'หมายเหตุ',                   sub: '',                                        width: 20 },
+]
+const NC = COLS.length // 13
+
+function thinBorder(argb = 'FFB0C4DE') {
+  return {
+    top:    { style: 'thin' as const, color: { argb } },
+    bottom: { style: 'thin' as const, color: { argb } },
+    left:   { style: 'thin' as const, color: { argb } },
+    right:  { style: 'thin' as const, color: { argb } },
+  }
+}
+
+// Columns whose data cells are centre-aligned
+const CENTRE_COLS = new Set([1, 2, 3, 6, 8, 9, 10, 11, 12])
+
+function applyStatusColour(cell: ExcelJS.Cell, label: string) {
+  if (!label) return
+  if (label === STATUS_LABEL['approved_by_ceo'] || label === STATUS_LABEL['APPROVED']) {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
+    cell.font = { color: { argb: 'FF065F46' }, bold: true, size: 10, name: 'TH SarabunPSK' }
+  } else if (label === STATUS_LABEL['rejected_by_ceo'] || label === STATUS_LABEL['REJECTED']) {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
+    cell.font = { color: { argb: 'FF991B1B' }, bold: true, size: 10, name: 'TH SarabunPSK' }
+  } else {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } }
+    cell.font = { color: { argb: 'FF78350F' }, bold: true, size: 10, name: 'TH SarabunPSK' }
+  }
+}
+
+function buildEmployeeSheet(
+  ws: ExcelJS.Worksheet,
+  employeeName: string,
+  weekStart: string,   // YYYY-MM-DD (local Bangkok date)
+  weekEnd:   string,
+  requests:  ExportRequest[],
+) {
+  ws.columns = COLS.map(c => ({ key: c.key, width: c.width }))
+
+  // ── Rows 1–4: blank area (logo / letterhead space) ──────────────────────
+  for (let i = 0; i < 4; i++) {
+    const r = ws.addRow([])
+    r.height = i === 0 ? 40 : 16
+  }
+
+  // ── Row 5: Company name ──────────────────────────────────────────────────
+  const r5 = ws.addRow(['บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'])
+  ws.mergeCells(5, 1, 5, NC)
+  r5.height = 28
+  r5.getCell(1).font      = { bold: true, size: 14, name: 'TH SarabunPSK' }
+  r5.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  // ── Row 6: Address ───────────────────────────────────────────────────────
+  const r6 = ws.addRow(['เลขที่ 99/1 หมู่ที่ 1 ถนนพหลโยธิน ตำบลคลองหนึ่ง อำเภอคลองหลวง จังหวัดปทุมธานี 12120'])
+  ws.mergeCells(6, 1, 6, NC)
+  r6.height = 20
+  r6.getCell(1).font      = { size: 11, name: 'TH SarabunPSK' }
+  r6.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  // ── Row 7: Phone / Email ─────────────────────────────────────────────────
+  const r7 = ws.addRow(['โทรศัพท์: 02-XXX-XXXX  |  Email: info@kmserviceplus.com'])
+  ws.mergeCells(7, 1, 7, NC)
+  r7.height = 20
+  r7.getCell(1).font      = { size: 11, name: 'TH SarabunPSK' }
+  r7.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  // ── Row 8: blank ─────────────────────────────────────────────────────────
+  ws.addRow([]).height = 10
+
+  // ── Row 9: Form title ────────────────────────────────────────────────────
+  const r9 = ws.addRow(['แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท'])
+  ws.mergeCells(9, 1, 9, NC)
+  r9.height = 26
+  r9.getCell(1).font      = { bold: true, size: 13, name: 'TH SarabunPSK' }
+  r9.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  // ── Row 10: Date range ───────────────────────────────────────────────────
+  const r10 = ws.addRow([`แผนงานช่วงวันที่  ${fmtRangeTH(weekStart, weekEnd)}`])
+  ws.mergeCells(10, 1, 10, NC)
+  r10.height = 22
+  r10.getCell(1).font      = { size: 12, name: 'TH SarabunPSK' }
+  r10.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+
+  // ── Row 11: Employee name ────────────────────────────────────────────────
+  const r11 = ws.addRow([`บังคับคดีผู้จัดทำแผน  ${employeeName}`])
+  ws.mergeCells(11, 1, 11, NC)
+  r11.height = 22
+  r11.getCell(1).font      = { size: 12, name: 'TH SarabunPSK' }
+  r11.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 2 }
+
+  // ── Rows 12–13: blank ────────────────────────────────────────────────────
+  ws.addRow([]).height = 8
+  ws.addRow([]).height = 8
+
+  // ── Rows 14–15: Table header (2 rows with sub-labels) ───────────────────
+  const HDR_BG   = 'FF1A3A5C'
+  const HDR_FONT = { bold: true, size: 10, color: { argb: 'FFFFFFFF' }, name: 'TH SarabunPSK' }
+  const HDR_ALN  = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }
+
+  const r14 = ws.addRow(COLS.map(c => c.label))
+  r14.height = 30
+  r14.eachCell(cell => {
+    cell.font      = HDR_FONT
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: HDR_BG } }
+    cell.alignment = HDR_ALN
+    cell.border    = thinBorder('FF4A7AB5')
+  })
+
+  const r15 = ws.addRow(COLS.map(c => c.sub))
+  r15.height = 20
+  r15.eachCell(cell => {
+    cell.font      = { ...HDR_FONT, bold: false, size: 9 }
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: HDR_BG } }
+    cell.alignment = HDR_ALN
+    cell.border    = thinBorder('FF4A7AB5')
+  })
+
+  // Columns without sub-label: merge rows 14–15 vertically
+  COLS.forEach((col, i) => {
+    if (!col.sub) ws.mergeCells(14, i + 1, 15, i + 1)
+  })
+
+  // ── Data: 7 days × 2 rows (เช้า / บ่าย) ─────────────────────────────────
+  const byDate: Record<string, ExportRequest[]> = {}
+  requests.forEach(r => {
+    const ymd = r.date.slice(0, 10)
+    if (!byDate[ymd]) byDate[ymd] = []
+    byDate[ymd].push(r)
+  })
+
+  const STRIPE_A = 'FFF5F8FF'
+  const STRIPE_B = 'FFFAFCFF'
+
+  let nextRow = 16
+
+  for (let i = 0; i < 7; i++) {
+    const ymd       = addDaysToYmd(weekStart, i)
+    const d         = new Date(ymd + 'T00:00:00.000Z')
+    const dayName   = DAY_TH[d.getUTCDay()]
+    const dateTH    = `${d.getUTCDate()}/${d.getUTCMonth() + 1}/${d.getUTCFullYear() + 543}`
+    const bg        = i % 2 === 0 ? STRIPE_A : STRIPE_B
+    const dayReqs   = byDate[ymd] ?? []
+
+    // Slot: เช้า row → timeSlot is เช้า / เต็มวัน / null / empty
+    const morningReq   = dayReqs.find(r =>
+      !r.timeSlot || r.timeSlot === 'เช้า' || r.timeSlot === 'เต็มวัน'
+    ) ?? null
+    // Slot: บ่าย row
+    const afternoonReq = dayReqs.find(r => r.timeSlot === 'บ่าย') ?? null
+
+    function slotValues(req: ExportRequest | null, slotLabel: string): (string | number)[] {
+      const statusLabel = req
+        ? (STATUS_LABEL[req.approvalStatus ?? req.status] ?? (req.approvalStatus ?? req.status))
+        : ''
+      return [
+        dayName,
+        dateTH,
+        req?.timeSlot ?? slotLabel,
+        req?.place       ?? '',
+        req?.purpose     ?? '',
+        req?.caseNumber  ?? '',
+        req?.productWork ?? '',
+        req?.workBranch  ?? '',
+        req?.caseCount != null ? req.caseCount : '',
+        req?.adminChecked ?? '',
+        req?.supervisedBy ?? '',
+        statusLabel,
+        req?.note ?? '',
+      ]
+    }
+
+    const rMorn = ws.addRow(slotValues(morningReq,   'เช้า'))
+    const rAftn = ws.addRow(slotValues(afternoonReq, 'บ่าย'))
+    rMorn.height = 20
+    rAftn.height = 20
+
+    ;[rMorn, rAftn].forEach(row => {
+      row.eachCell((cell, col) => {
+        cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } }
+        cell.border    = thinBorder()
+        cell.font      = { size: 10, name: 'TH SarabunPSK' }
+        cell.alignment = {
+          vertical:   'middle',
+          horizontal: CENTRE_COLS.has(col) ? 'center' : 'left',
+          wrapText:   col >= 4,
+        }
+      })
+      // Status column (12) colour
+      const statusCell  = row.getCell(12)
+      applyStatusColour(statusCell, statusCell.value as string)
+    })
+
+    // Merge วัน (col 1) and ว/ด/ปี (col 2) across the 2 slot rows
+    const r1 = nextRow
+    const r2 = nextRow + 1
+    ws.mergeCells(r1, 1, r2, 1)
+    ws.mergeCells(r1, 2, r2, 2)
+    rMorn.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
+    rMorn.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' }
+
+    nextRow += 2
+  }
+
+  // ── Footer note ──────────────────────────────────────────────────────────
+  ws.addRow([]).height = 12
+
+  const rNote = ws.addRow(['หมายเหตุ: '])
+  ws.mergeCells(rNote.number, 1, rNote.number, NC)
+  rNote.height = 20
+  rNote.getCell(1).font      = { size: 10, name: 'TH SarabunPSK' }
+  rNote.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
+
+  // ── Signature rows ───────────────────────────────────────────────────────
+  ws.addRow([]).height = 20
+
+  const rSig1 = ws.addRow([])
+  rSig1.getCell(3).value = 'ลงชื่อ ___________________________'
+  rSig1.getCell(9).value = 'ลงชื่อ ___________________________'
+  ws.mergeCells(rSig1.number, 3, rSig1.number, 7)
+  ws.mergeCells(rSig1.number, 9, rSig1.number, NC)
+  rSig1.height = 24
+  ;[3, 9].forEach(col => {
+    rSig1.getCell(col).alignment = { horizontal: 'center', vertical: 'middle' }
+    rSig1.getCell(col).font = { size: 11, name: 'TH SarabunPSK' }
+  })
+
+  const rSig2 = ws.addRow([])
+  rSig2.getCell(3).value = '(ผู้จัดทำแผน)'
+  rSig2.getCell(9).value = '(ผู้อนุมัติ / CEO)'
+  ws.mergeCells(rSig2.number, 3, rSig2.number, 7)
+  ws.mergeCells(rSig2.number, 9, rSig2.number, NC)
+  rSig2.height = 20
+  ;[3, 9].forEach(col => {
+    rSig2.getCell(col).alignment = { horizontal: 'center', vertical: 'middle' }
+    rSig2.getCell(col).font = { size: 10, name: 'TH SarabunPSK' }
+  })
+
+  // Freeze top 15 rows (header + company info)
+  ws.views = [{ state: 'frozen', ySplit: 15, xSplit: 0 }]
+}
+
+// ── POST /api/outside-work/export ────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { weekStart = '', weekEnd = '', canViewAll = false, requests = [] } = body as {
-    weekStart: string
-    weekEnd: string
-    canViewAll: boolean
-    requests: ExportRequest[]
+  const {
+    weekStart    = '',
+    weekEnd      = '',
+    canViewAll   = false,
+    requests     = [],
+    filterUserId = null,
+  } = body as {
+    weekStart:    string
+    weekEnd:      string
+    canViewAll:   boolean
+    requests:     ExportRequest[]
+    filterUserId: string | null
   }
 
+  // Derive weekEnd from weekStart if not provided
+  const resolvedWeekEnd = weekEnd || (weekStart ? addDaysToYmd(weekStart, 6) : '')
+
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'HRflow'
-  wb.created = new Date()
-  const ws = wb.addWorksheet('แผนงานออกนอกพื้นที่')
+  wb.creator  = 'HRflow'
+  wb.created  = new Date()
 
-  // ── Column definitions (13 Excel columns) ────────────────────────────────────
-  const dataCols = [
-    { header: 'วัน',                             key: 'day',          width: 10 },
-    { header: 'ว/ด/ปี',                          key: 'date',         width: 12 },
-    { header: 'ช่วงเวลา\n(เช้า/บ่าย)',           key: 'timeSlot',     width: 12 },
-    { header: 'สถานที่\nไปทำงาน',                key: 'place',        width: 28 },
-    { header: 'สิ่งที่ไป\nดำเนินการ',            key: 'purpose',      width: 30 },
-    { header: 'หมายเลขคดีดำ',                    key: 'caseNumber',   width: 14 },
-    { header: 'งานโปรดักส์',                     key: 'productWork',  width: 16 },
-    { header: 'งานของ\nสาขาไหน',                key: 'workBranch',   width: 14 },
-    { header: 'จำนวนคดี\nที่ไปดำเนินการ',        key: 'caseCount',    width: 13 },
-    { header: 'แอดมินโปรดักส์\nตรวจสอบ',        key: 'adminChecked', width: 14 },
-    { header: 'ผู้สั่งงาน',                       key: 'supervisedBy', width: 20 },
-    { header: 'อนุมัติ/\nไม่อนุมัติ',            key: 'status',       width: 13 },
-    { header: 'หมายเหตุ',                         key: 'note',         width: 20 },
-  ]
-  const employeeCols = canViewAll ? [
-    { header: 'ชื่อ-สกุล',  key: 'name',     width: 20 },
-    { header: 'สาขา/แผนก', key: 'dept',     width: 16 },
-    { header: 'ตำแหน่ง',   key: 'position', width: 16 },
-  ] : []
-  ws.columns = [...employeeCols, ...dataCols]
-  const totalCols = ws.columns.length
-
-  // ── Row 1: Company name ───────────────────────────────────────────────────────
-  ws.addRow(['บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'])
-  ws.mergeCells(1, 1, 1, totalCols)
-  const r1 = ws.getRow(1)
-  r1.getCell(1).font      = { bold: true, size: 14 }
-  r1.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
-  r1.height = 30
-
-  // ── Row 2: Title + date range ─────────────────────────────────────────────────
-  const rangeStr = weekStart && weekEnd ? fmtRangeTH(weekStart, weekEnd) : ''
-  ws.addRow([`แผนการดำเนินการออกนอกพื้นที่  ช่วงวันที่ ${rangeStr}`])
-  ws.mergeCells(2, 1, 2, totalCols)
-  const r2 = ws.getRow(2)
-  r2.getCell(1).font      = { bold: true, size: 12 }
-  r2.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' }
-  r2.height = 26
-
-  // ── Row 3: Prepared by ───────────────────────────────────────────────────────
-  const names = canViewAll
-    ? [...new Set(requests.map(r => r.userName))].join(', ')
-    : requests[0]?.userName ?? session.user.name ?? ''
-  ws.addRow([`ผู้จัดทำแผน : ${names}`])
-  ws.mergeCells(3, 1, 3, totalCols)
-  const r3 = ws.getRow(3)
-  r3.getCell(1).font      = { size: 11 }
-  r3.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
-  r3.height = 22
-
-  // ── Row 4: Column headers ─────────────────────────────────────────────────────
-  const headerRow = ws.addRow([...employeeCols, ...dataCols].map(c => c.header))
-  headerRow.height = 36
-  headerRow.eachCell(cell => {
-    cell.font      = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } }
-    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A3A5C' } }
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    cell.border    = {
-      top:    { style: 'thin', color: { argb: 'FF4A7AB5' } },
-      bottom: { style: 'thin', color: { argb: 'FF4A7AB5' } },
-      left:   { style: 'thin', color: { argb: 'FF4A7AB5' } },
-      right:  { style: 'thin', color: { argb: 'FF4A7AB5' } },
-    }
-  })
-
-  // ── Data rows ─────────────────────────────────────────────────────────────────
-  requests.forEach((r, idx) => {
-    const d      = new Date(r.date)
-    const status = STATUS_LABEL[r.approvalStatus ?? r.status] ?? (r.approvalStatus ?? r.status)
-    const rowBg  = idx % 2 === 0 ? 'FFFAFCFF' : 'FFF0F5FA'
-
-    const rowData: (string | number)[] = [
-      ...(canViewAll ? [r.userName, r.userDept, r.userPosition] : []),
-      DAY_TH[d.getUTCDay()],
-      fmtDateTH(r.date),
-      r.timeSlot     ?? '',
-      r.place,
-      r.purpose,
-      r.caseNumber   ?? '',
-      r.productWork  ?? '',
-      r.workBranch   ?? '',
-      r.caseCount    ?? '',
-      r.adminChecked ?? '',
-      r.supervisedBy ?? '',
-      status,
-      r.note         ?? '',
-    ]
-
-    const dataRow = ws.addRow(rowData)
-    dataRow.height = 20
-    dataRow.eachCell((cell, colNum) => {
-      cell.alignment = { vertical: 'middle', wrapText: colNum >= (canViewAll ? 5 : 2) }
-      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } }
-      cell.border    = {
-        bottom: { style: 'thin', color: { argb: 'FFD0DCE8' } },
-        left:   { style: 'thin', color: { argb: 'FFD0DCE8' } },
-        right:  { style: 'thin', color: { argb: 'FFD0DCE8' } },
-      }
+  if (canViewAll && !filterUserId) {
+    // Multiple employees → one sheet per employee
+    const byEmp = new Map<string, { name: string; reqs: ExportRequest[] }>()
+    requests.forEach(r => {
+      if (!byEmp.has(r.userId)) byEmp.set(r.userId, { name: r.userName, reqs: [] })
+      byEmp.get(r.userId)!.reqs.push(r)
     })
 
-    // centre certain columns
-    const centreKeys = ['day', 'date', 'timeSlot', 'caseNumber', 'workBranch', 'caseCount', 'adminChecked', 'status']
-    centreKeys.forEach(key => {
-      const col = ws.columns.find(c => (c as { key?: string }).key === key)
-      if (col && col.number) dataRow.getCell(col.number).alignment = { horizontal: 'center', vertical: 'middle' }
-    })
-
-    // status colour
-    const statusColIdx = ws.columns.findIndex(c => (c as { key?: string }).key === 'status') + 1
-    if (statusColIdx > 0) {
-      const statusCell = dataRow.getCell(statusColIdx)
-      if (status === 'อนุมัติ') {
-        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
-        statusCell.font = { color: { argb: 'FF065F46' }, bold: true }
-      } else if (status === 'ไม่อนุมัติ') {
-        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
-        statusCell.font = { color: { argb: 'FF991B1B' }, bold: true }
-      } else {
-        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } }
-        statusCell.font = { color: { argb: 'FF78350F' }, bold: true }
-      }
+    if (byEmp.size === 0) {
+      buildEmployeeSheet(wb.addWorksheet('ไม่มีข้อมูล'), '', weekStart, resolvedWeekEnd, [])
+    } else {
+      byEmp.forEach(({ name, reqs }) => {
+        const sheetName = name.replace(/[\\/*?[\]:]/g, '').slice(0, 31) || 'พนักงาน'
+        buildEmployeeSheet(wb.addWorksheet(sheetName), name, weekStart, resolvedWeekEnd, reqs)
+      })
     }
-  })
+  } else {
+    // Single employee view
+    const filteredReqs = filterUserId ? requests.filter(r => r.userId === filterUserId) : requests
+    const empName      = filteredReqs[0]?.userName ?? session.user.name ?? ''
+    buildEmployeeSheet(wb.addWorksheet('แผนงานออกนอกพื้นที่'), empName, weekStart, resolvedWeekEnd, filteredReqs)
+  }
 
-  // ── Signature footer ──────────────────────────────────────────────────────────
-  ws.addRow([])
-  const sigRow = ws.addRow([
-    '', '', '',
-    'ลงชื่อ ___________________',
-    '', '', '', '', '', '', '',
-    'ลงชื่อ ___________________',
-    '',
-  ])
-  ws.mergeCells(sigRow.number, 4, sigRow.number, 7)
-  ws.mergeCells(sigRow.number, 8, sigRow.number, 11)
-  ws.mergeCells(sigRow.number, 12, sigRow.number, totalCols)
-  sigRow.height = 24
-
-  const sig2Row = ws.addRow([
-    '', '', '',
-    '(ผู้จัดทำแผน)',
-    '', '', '', '', '', '', '',
-    '(ผู้อนุมัติ)',
-    '',
-  ])
-  sig2Row.eachCell((cell, col) => {
-    if (col === 4 || col === 12) cell.alignment = { horizontal: 'center' }
-  })
-
-  // ── Freeze + filter ───────────────────────────────────────────────────────────
-  ws.views = [{ state: 'frozen', ySplit: 4, xSplit: canViewAll ? 2 : 0 }]
-  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: totalCols } }
-
-  const buffer = await wb.xlsx.writeBuffer()
+  const buffer  = await wb.xlsx.writeBuffer()
   const dateTag = weekStart ? weekStart.slice(0, 7) : new Date().toISOString().slice(0, 7)
   return new NextResponse(buffer, {
     headers: {

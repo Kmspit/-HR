@@ -445,7 +445,7 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
       const res = await fetch('/api/outside-work/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weekLabel, weekStart: toYmd(weekStart), weekEnd: toYmd(weekEnd), canViewAll, requests: filteredRequests }),
+        body: JSON.stringify({ weekLabel, weekStart: toYmd(weekStart), weekEnd: toYmd(weekEnd), canViewAll, requests: filteredRequests, filterUserId: filterEmp || null }),
       })
       if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
