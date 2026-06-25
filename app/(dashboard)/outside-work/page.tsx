@@ -49,6 +49,7 @@ export default async function OutsideWorkPage({
       )}
       <OutsideWorkClient
         userId={session.user.id}
+        userName={session.user.name ?? ''}
         canViewAll={canViewAll}
         canApproveOutside={canApproveOutside}
         requests={requests}
