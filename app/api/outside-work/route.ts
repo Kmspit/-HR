@@ -52,6 +52,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
     }
 
+    const year  = new Date().getFullYear() + 543
+    const count = await prisma.outsideWorkRequest.count()
+    const documentNumber = `OW-${year}-${String(count + 1).padStart(3, '0')}`
+
     const request = await prisma.outsideWorkRequest.create({
       data: {
         userId: session.user.id,
@@ -78,6 +82,7 @@ export async function POST(req: NextRequest) {
         caseCount:      caseCount     ? Number(caseCount)     : null,
         adminChecked:   adminChecked  || null,
         supervisedBy:   supervisedBy  || null,
+        documentNumber,
         approvalStatus: 'pending_ceo',
       },
     })

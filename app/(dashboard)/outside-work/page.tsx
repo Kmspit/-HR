@@ -109,6 +109,7 @@ export default async function OutsideWorkPage({
       caseCount:      r.caseCount       ?? null,
       adminChecked:   r.adminChecked    ?? null,
       supervisedBy:   r.supervisedBy    ?? null,
+      documentNumber: r.documentNumber  ?? null,
     })))
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string; meta?: unknown }

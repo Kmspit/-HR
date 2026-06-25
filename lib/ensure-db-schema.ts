@@ -914,8 +914,9 @@ async function runEnsure(): Promise<boolean> {
   await addColumnIfMissing('outside_work_requests', 'product_work', `ALTER TABLE outside_work_requests ADD COLUMN product_work TEXT`)
   await addColumnIfMissing('outside_work_requests', 'work_branch',  `ALTER TABLE outside_work_requests ADD COLUMN work_branch TEXT`)
   await addColumnIfMissing('outside_work_requests', 'case_count',   `ALTER TABLE outside_work_requests ADD COLUMN case_count INTEGER`)
-  await addColumnIfMissing('outside_work_requests', 'admin_checked',`ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)
-  await addColumnIfMissing('outside_work_requests', 'supervised_by',`ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'admin_checked',   `ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'supervised_by',   `ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'document_number', `ALTER TABLE outside_work_requests ADD COLUMN document_number TEXT`)
 
   // ── Query-performance indexes ─────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_attendances_userId_date   ON attendances (userId, date)`)
@@ -923,6 +924,7 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_userId       ON outside_work_requests (userId)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_date         ON outside_work_requests (date)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_status       ON outside_work_requests (status)`)
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS idx_outside_work_doc_num ON outside_work_requests (document_number) WHERE document_number IS NOT NULL`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_leave_requests_userId     ON leave_requests (userId)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_leave_requests_status     ON leave_requests (status)`)
 

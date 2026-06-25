@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import {
   ChevronLeft, ChevronRight, Plus, Edit3, Check, X, Loader2,
-  Download, CheckCircle2, XCircle,
+  Download, CheckCircle2, XCircle, Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -46,6 +46,7 @@ type Request = {
   caseCount?: number | null      // จำนวนคดีที่ไปดำเนินการ
   adminChecked?: string | null   // มี / ไม่มี
   supervisedBy?: string | null   // ผู้สั่งงาน
+  documentNumber?: string | null // OW-2567-001
 }
 
 type Props = {
@@ -458,7 +459,7 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
   const th = 'px-3 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap'
 
   // total columns for empty state colspan
-  const colCount = (canViewAll ? 2 : 0) + 13 + 1  // employee cols + 13 data cols + action
+  const colCount = (canViewAll ? 2 : 0) + 14 + 1  // employee cols + 14 data cols + action
 
   return (
     <div className="p-4 md:p-6 space-y-5">
@@ -531,6 +532,7 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
                     <th className={`${th} text-left`}>สาขา/แผนก</th>
                   </>
                 )}
+                <th className={`${th} text-center`}>เลขที่</th>
                 <th className={`${th} text-center`}>วัน</th>
                 <th className={`${th} text-center`}>ว/ด/ปี</th>
                 <th className={`${th} text-center`}>ช่วงเวลา</th>
@@ -576,6 +578,9 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
                           <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap">{r.userDept || '—'}</td>
                         </>
                       )}
+                      <td className="px-3 py-3 text-center whitespace-nowrap">
+                        <span className="text-[10px] font-mono text-slate-400">{r.documentNumber ?? '—'}</span>
+                      </td>
                       <td className="px-3 py-3 text-xs font-semibold text-slate-300 text-center whitespace-nowrap">
                         {DAY_FULL_TH[dayIndex]}
                       </td>
@@ -634,6 +639,12 @@ export default function OutsideWorkClient({ userId, canViewAll, canApproveOutsid
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          <button type="button"
+                            onClick={() => window.open(`/outside-work/${r.id}/print`, '_blank')}
+                            title="พิมพ์ / บันทึก PDF"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-violet-500/10 transition">
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
                           {canApproveOutside && isPending(r) && (
                             <>
                               <button type="button" disabled={isApproving}
