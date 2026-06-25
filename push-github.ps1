@@ -18,6 +18,12 @@ foreach ($file in @("style.css", "hr-core.js", "dev-banner.js", "face-core.js", 
         Copy-Item $path $dst -Force
     }
 }
+$workersSrc = Join-Path $src "workers"
+$workersDst = Join-Path $dst "workers"
+if (Test-Path $workersSrc) {
+    if (-not (Test-Path $workersDst)) { New-Item -ItemType Directory -Path $workersDst | Out-Null }
+    Copy-Item "$workersSrc\*.js" $workersDst -Force
+}
 
 Set-Location $hrflow
 node scripts/sync-prototype.mjs
