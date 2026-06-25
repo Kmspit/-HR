@@ -269,10 +269,10 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
   // ── CSS tokens ────────────────────────────────────────────────────────────
 
-  const TH = 'border border-black bg-gray-100 text-sm font-bold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
+  const TH = 'border border-black bg-gray-200 text-sm font-bold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
   const TD = 'border border-black align-top'
-  const INP = 'w-full bg-transparent text-sm text-gray-900 outline-none px-1 py-1 placeholder-gray-500 leading-snug'
-  const SEL = 'w-full bg-transparent text-sm text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug'
+  const INP = 'w-full bg-white text-sm text-gray-900 outline-none px-1 py-1 placeholder:text-gray-500 leading-snug'
+  const SEL = 'w-full bg-white text-sm text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -282,7 +282,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
         {/* Admin — employee switcher */}
         {canViewAll && (
-          <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm print:hidden">
+          <div className="flex items-center gap-3 bg-white border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm print:hidden">
             <span className="text-sm text-gray-700 font-semibold shrink-0">ดูแผนของ:</span>
             <select
               value={viewUserId}
@@ -301,20 +301,20 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
           {/* Company header */}
           <div className="border-b-2 border-gray-400 text-center px-4 py-3">
-            <p className="text-sm font-bold text-gray-900 tracking-wide">
+            <p className="text-base font-bold text-gray-900 tracking-wide">
               บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด
             </p>
-            <p className="text-xs text-gray-600">
+            <p className="text-sm text-gray-700">
               เลขที่ 99/1 หมู่ที่ 1 ถ.พหลโยธิน ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120
             </p>
-            <h1 className="mt-1.5 text-sm font-bold text-red-700 leading-snug">
+            <h1 className="mt-1.5 text-base font-bold text-red-700 leading-snug">
               แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท
             </h1>
           </div>
 
           {/* Week navigation */}
-          <div className="border-b border-gray-200 px-4 py-2 flex flex-wrap items-center justify-between gap-2 print:hidden">
-            <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+          <div className="border-b border-gray-300 px-4 py-2 flex flex-wrap items-center justify-between gap-2 print:hidden">
+            <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
               <button type="button" onClick={() => setWeekStart(w => addDays(w, -7))}
                 className="p-2 hover:bg-gray-200 transition text-gray-600">
                 <ChevronLeft className="w-4 h-4" />
@@ -328,7 +328,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
               </button>
             </div>
             <button type="button" onClick={() => setWeekStart(getMonday(new Date()))}
-              className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition">
+              className="px-3 py-1.5 text-sm border border-gray-400 rounded-lg hover:bg-gray-50 text-gray-800 font-medium transition">
               สัปดาห์นี้
             </button>
           </div>
@@ -374,7 +374,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                   const morn  = weekData[kM] ?? emptySlot()
                   const aftn  = weekData[kA] ?? emptySlot()
                   const today = ymd === todayYmd
-                  const stripe = dayIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'
+                  const stripe = dayIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   const mLock = !canEditForm || morn.approvalStatus === 'approved_by_ceo' || morn.approvalStatus === 'APPROVED'
                   const aLock = !canEditForm || aftn.approvalStatus === 'approved_by_ceo' || aftn.approvalStatus === 'APPROVED'
 
@@ -388,7 +388,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`border border-black text-center align-middle font-bold text-sm ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
                           <div className="flex flex-col items-center gap-0.5">
-                            {today && <span className="text-[10px] text-blue-600 font-normal">วันนี้</span>}
+                            {today && <span className="text-xs text-blue-700 font-semibold">วันนี้</span>}
                             {DAYS_TH[dayIdx]}
                           </div>
                         </td>
@@ -400,7 +400,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         </td>
 
                         {/* ช่วงเวลา */}
-                        <td className={`${TD} text-center align-middle bg-amber-50/80`}>
+                        <td className={`${TD} text-center align-middle bg-amber-50`}>
                           <span className="text-sm font-bold text-amber-800">เช้า</span>
                         </td>
 
@@ -408,48 +408,48 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.place} readOnly={mLock} placeholder="สถานที่..."
                             onChange={e => updateSlot(kM, 'place', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         {/* สิ่งที่ไปดำเนินการ */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.purpose} readOnly={mLock} placeholder="รายละเอียด..."
                             onChange={e => updateSlot(kM, 'purpose', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         {/* หมายเลขคดี */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.caseNumber} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'caseNumber', e.target.value)}
-                            className={`${INP} text-center ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} text-center ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         {/* งานผลิตภัณฑ์ */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.productWork} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'productWork', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         {/* สาขา */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.workBranch} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'workBranch', e.target.value)}
-                            className={`${INP} text-center ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} text-center ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         {/* จำนวนคดี */}
                         <td className={`${TD} ${stripe}`}>
                           <input type="number" min="0" value={morn.caseCount} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'caseCount', e.target.value)}
-                            className={`${INP} text-center ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} text-center ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         {/* แอดมินตรวจสอบ */}
                         <td className={`${TD} ${stripe} text-center`}>
                           {mLock
-                            ? <span className="text-sm text-gray-800">{morn.adminChecked || '—'}</span>
+                            ? <span className="text-sm font-medium text-gray-800">{morn.adminChecked || '—'}</span>
                             : <select value={morn.adminChecked} onChange={e => updateSlot(kM, 'adminChecked', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="มี">มี</option>
@@ -461,7 +461,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         {/* ผู้สั่งงาน */}
                         <td className={`${TD} ${stripe} text-center`}>
                           {mLock
-                            ? <span className="text-sm text-gray-800">{morn.supervisedBy || '—'}</span>
+                            ? <span className="text-sm font-medium text-gray-800">{morn.supervisedBy || '—'}</span>
                             : <select value={morn.supervisedBy} onChange={e => updateSlot(kM, 'supervisedBy', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="แอดมิน">แอดมิน</option>
@@ -489,7 +489,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-400 text-xs">—</span>
+                            : <span className="text-gray-500 text-sm">—</span>
                           }
                         </td>
 
@@ -497,7 +497,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.note} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'note', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
                       </tr>
 
@@ -505,49 +505,49 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                       <tr className={stripe}>
                         {/* วัน + ว/ด/ปี already covered by rowSpan */}
 
-                        <td className={`${TD} text-center align-middle bg-sky-50/80`}>
+                        <td className={`${TD} text-center align-middle bg-sky-50`}>
                           <span className="text-sm font-bold text-sky-800">บ่าย</span>
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.place} readOnly={aLock} placeholder="สถานที่..."
                             onChange={e => updateSlot(kA, 'place', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.purpose} readOnly={aLock} placeholder="รายละเอียด..."
                             onChange={e => updateSlot(kA, 'purpose', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.caseNumber} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'caseNumber', e.target.value)}
-                            className={`${INP} text-center ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} text-center ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.productWork} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'productWork', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.workBranch} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'workBranch', e.target.value)}
-                            className={`${INP} text-center ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} text-center ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input type="number" min="0" value={aftn.caseCount} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'caseCount', e.target.value)}
-                            className={`${INP} text-center ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} text-center ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe} text-center`}>
                           {aLock
-                            ? <span className="text-sm text-gray-800">{aftn.adminChecked || '—'}</span>
+                            ? <span className="text-sm font-medium text-gray-800">{aftn.adminChecked || '—'}</span>
                             : <select value={aftn.adminChecked} onChange={e => updateSlot(kA, 'adminChecked', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="มี">มี</option>
@@ -558,7 +558,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
                         <td className={`${TD} ${stripe} text-center`}>
                           {aLock
-                            ? <span className="text-sm text-gray-800">{aftn.supervisedBy || '—'}</span>
+                            ? <span className="text-sm font-medium text-gray-800">{aftn.supervisedBy || '—'}</span>
                             : <select value={aftn.supervisedBy} onChange={e => updateSlot(kA, 'supervisedBy', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="แอดมิน">แอดมิน</option>
@@ -585,14 +585,14 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-400 text-xs">—</span>
+                            : <span className="text-gray-500 text-sm">—</span>
                           }
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.note} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'note', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default' : ''}`} />
+                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
                         </td>
                       </tr>
 
@@ -604,8 +604,8 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
           </div>
 
           {/* Footer note */}
-          <div className="border-t border-gray-300 px-4 py-2 text-xs text-gray-700">
-            <span className="font-semibold text-gray-800">หมายเหตุ:</span>{' '}
+          <div className="border-t border-gray-300 px-4 py-2 text-sm text-gray-700">
+            <span className="font-semibold text-gray-900">หมายเหตุ:</span>{' '}
             กรอกข้อมูลให้ครบถ้วน แล้วกด &ldquo;บันทึกและส่งอนุมัติ&rdquo;
           </div>
 
@@ -623,15 +623,15 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
         {/* ── Approval history ─────────────────────────────────────── */}
         {viewReqs.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 print:hidden">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
-            <div className="divide-y divide-gray-100">
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 print:hidden">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
+            <div className="divide-y divide-gray-200">
               {viewReqs.map(r => (
-                <div key={r.id} className="flex items-center justify-between py-2 gap-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-700 min-w-0">
-                    <span className="font-mono text-xs text-gray-600 shrink-0">{r.documentNumber ?? '—'}</span>
+                <div key={r.id} className="flex items-center justify-between py-2.5 gap-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-800 min-w-0">
+                    <span className="font-mono text-sm text-gray-700 shrink-0">{r.documentNumber ?? '—'}</span>
                     <span className="shrink-0">{r.date.slice(0, 10)}</span>
-                    <span className="text-gray-500 shrink-0">({r.timeSlot ?? '—'})</span>
+                    <span className="text-gray-600 shrink-0">({r.timeSlot ?? '—'})</span>
                     <span className="font-medium truncate">{r.place}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -639,11 +639,11 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                     {canApproveOutside && (r.approvalStatus === 'pending_ceo' || r.status === 'PENDING') && (
                       <div className="flex gap-1">
                         <button onClick={() => handleApprove(r.id, 'approve')} disabled={approvingId === r.id}
-                          className="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-semibold transition disabled:opacity-40">
+                          className="px-3 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 text-sm font-semibold transition disabled:opacity-40">
                           อนุมัติ
                         </button>
                         <button onClick={() => handleApprove(r.id, 'reject')} disabled={approvingId === r.id}
-                          className="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-semibold transition disabled:opacity-40">
+                          className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 text-sm font-semibold transition disabled:opacity-40">
                           ปฏิเสธ
                         </button>
                       </div>
