@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,14 +88,6 @@ function effectiveStatus(r: Request): string {
   return r.approvalStatus ?? r.status
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING:          'รออนุมัติ',
-  pending_ceo:      'รออนุมัติ',
-  APPROVED:         'อนุมัติ',
-  approved_by_ceo:  'อนุมัติ',
-  REJECTED:         'ไม่อนุมัติ',
-  rejected_by_ceo:  'ไม่อนุมัติ',
-}
 
 const STATUS_CLS: Record<string, string> = {
   PENDING:          'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',

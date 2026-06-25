@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { CASE_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type CaseType     = 'DEBT_COLLECTION' | 'LEGAL' | 'COURT' | 'ASSET_INVESTIGATION' | 'ENFORCEMENT' | 'INTERNAL_LEGAL'
@@ -44,12 +45,6 @@ const TYPE_COLOR: Record<CaseType, string> = {
   ASSET_INVESTIGATION: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
   ENFORCEMENT:       'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
   INTERNAL_LEGAL:    'bg-slate-100 text-slate-700 dark:bg-slate-700/30 dark:text-slate-300',
-}
-const STATUS_LABELS: Record<CaseStatus, string> = {
-  NEW:              'ใหม่', ASSIGNED:  'มอบหมายแล้ว', INVESTIGATING: 'กำลังสืบสวน',
-  NEGOTIATING:      'เจรจา', WAITING_DOCUMENT: 'รอเอกสาร', FILED: 'ยื่นฟ้อง',
-  COURT_PROCESS:    'ชั้นศาล', ENFORCEMENT: 'บังคับคดี', SETTLED: 'ยุติ/ตกลง',
-  COMPLETED:        'เสร็จสิ้น', ON_HOLD: 'พักคดี', CANCELLED: 'ยกเลิก',
 }
 const STATUS_COLOR: Record<CaseStatus, string> = {
   NEW:           'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300',

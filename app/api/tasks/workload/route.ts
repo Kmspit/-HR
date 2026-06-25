@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { WORKLOAD_STATUS_LABEL as STATUS_LABEL_TH } from '@/lib/status-labels'
 
 const ACTIVE_STATUSES = [
   'PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS',
@@ -14,12 +15,6 @@ function calcWorkloadStatus(score: number): 'LOW' | 'NORMAL' | 'HIGH' | 'OVERLOA
   return 'OVERLOADED'
 }
 
-const STATUS_LABEL_TH: Record<string, string> = {
-  LOW:        'ภาระเบา',
-  NORMAL:     'ปกติ',
-  HIGH:       'ภาระหนัก',
-  OVERLOADED: 'เกินกำลัง',
-}
 
 export async function GET(req: Request) {
   const session = await auth()

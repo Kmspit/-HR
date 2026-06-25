@@ -1,15 +1,11 @@
 import { auth } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
+import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 
 const DAY_TH   = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 const MONTH_TH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'รออนุมัติ', pending_ceo: 'รออนุมัติ',
-  APPROVED: 'อนุมัติ',  approved_by_ceo: 'อนุมัติ',
-  REJECTED: 'ไม่อนุมัติ', rejected_by_ceo: 'ไม่อนุมัติ',
-}
 
 function fmtDateTH(iso: string): string {
   const d = new Date(iso)

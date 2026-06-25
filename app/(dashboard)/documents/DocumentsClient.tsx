@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { FileText, Plus, Loader2, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { DOCUMENT_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 type DocumentRequest = {
   id: string
@@ -24,12 +25,6 @@ const DOC_TYPES: Record<string, string> = {
   OTHER: 'เอกสารอื่นๆ',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'รอดำเนินการ',
-  PROCESSING: 'กำลังดำเนินการ',
-  READY: 'พร้อมรับเอกสาร',
-  REJECTED: 'ไม่อนุมัติ',
-}
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'text-amber-400 bg-amber-500/10 border-amber-500/20',

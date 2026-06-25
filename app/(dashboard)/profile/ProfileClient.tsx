@@ -27,15 +27,9 @@ import {
 import ProfileDataHistory, { type ProfileRecordInfo } from '@/components/profile/ProfileDataHistory'
 import LineLinkCard from '@/components/profile/LineLinkCard'
 import type { ProfileHistoryItem } from '@/lib/profile-history'
+import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 const PREFIXES = ['นาย', 'นาง', 'นางสาว', 'ดร.']
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'ใช้งานได้',
-  PENDING: 'รออนุมัติ',
-  DISABLED: 'ปิดการใช้งาน',
-  REJECTED: 'ถูกปฏิเสธ',
-}
 
 type ProfileData = {
   prefix: string

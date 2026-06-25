@@ -143,10 +143,15 @@ export async function POST(req: NextRequest) {
             link: `/announcements`,
           })),
         })
-        // Emit notification-count events per user
+        // Emit notification-count events per user — single groupBy instead of N+1 counts
+        const unreadCounts = await prisma.notification.groupBy({
+          by: ['userId'],
+          where: { userId: { in: userIds }, isRead: false },
+          _count: { id: true },
+        })
+        const countMap = Object.fromEntries(unreadCounts.map((r) => [r.userId, r._count.id]))
         for (const uid of userIds) {
-          const cnt = await prisma.notification.count({ where: { userId: uid, isRead: false } })
-          announcementEmitter.emit('notification-count', { userId: uid, count: cnt })
+          announcementEmitter.emit('notification-count', { userId: uid, count: countMap[uid] ?? 0 })
         }
       }
 

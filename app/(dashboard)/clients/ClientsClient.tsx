@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { CLIENT_TASK_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 interface ClientUser {
   id: string
@@ -33,10 +34,6 @@ interface Task {
   id: string; title: string; caseNumber: string | null; status: string
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  NEW: 'รับเรื่อง', ASSIGNED: 'มอบหมาย', IN_PROGRESS: 'ดำเนินการ',
-  WAITING_DOC: 'รอเอกสาร', COMPLETED: 'เสร็จสิ้น', OVERDUE: 'เกินกำหนด', PENDING: 'รอ',
-}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })

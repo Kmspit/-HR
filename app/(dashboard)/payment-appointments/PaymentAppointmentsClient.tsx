@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { PAYMENT_APPT_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 interface User { id: string; name: string; department: string | null; role: string }
 
@@ -17,7 +18,6 @@ interface Appointment {
 }
 
 const STATUSES    = ['PENDING', 'KEPT', 'MISSED', 'CANCELLED']
-const STATUS_LABELS: Record<string, string> = { PENDING: 'รอชำระ', KEPT: 'ชำระแล้ว', MISSED: 'ผิดนัด', CANCELLED: 'ยกเลิก' }
 const STATUS_COLORS: Record<string, string> = {
   PENDING:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   KEPT:      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',

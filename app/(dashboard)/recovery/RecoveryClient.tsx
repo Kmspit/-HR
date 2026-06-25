@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { RECOVERY_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,9 +48,6 @@ const STATUS_COLORS: Record<string, string> = {
   CONFIRMED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   REJECTED:  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   REFUNDED:  'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-}
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'รออนุมัติ', CONFIRMED: 'ยืนยันแล้ว', REJECTED: 'ปฏิเสธ', REFUNDED: 'คืนเงิน',
 }
 
 const CAN_CONFIRM = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']

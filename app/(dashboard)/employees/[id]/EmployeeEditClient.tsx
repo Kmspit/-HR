@@ -32,6 +32,7 @@ import {
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
 import { EMPLOYEE_TYPES } from '@/lib/rbac'
+import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 type Employee = {
   id: string
@@ -83,12 +84,6 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
 }
 const STATUS_LIST = ['ACTIVE', 'PENDING', 'DISABLED', 'REJECTED']
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'ใช้งาน',
-  PENDING: 'รออนุมัติ',
-  DISABLED: 'ระงับ',
-  REJECTED: 'ปฏิเสธ',
-}
 
 type TabKey = 'profile' | 'work' | 'system'
 type FormErrors = Partial<Record<string, string>>

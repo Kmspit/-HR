@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { CONTRACT_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 interface Company { id: string; clientCode: string; companyName: string; phone?: string }
 interface Contract {
@@ -17,9 +18,6 @@ const CONTRACT_STATUSES = ['ACTIVE', 'EXPIRED', 'TERMINATED', 'PENDING']
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700', EXPIRED: 'bg-red-100 text-red-700',
   TERMINATED: 'bg-gray-100 text-gray-600', PENDING: 'bg-yellow-100 text-yellow-700',
-}
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'มีผล', EXPIRED: 'หมดอายุ', TERMINATED: 'ยกเลิก', PENDING: 'รออนุมัติ',
 }
 
 const fmt     = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 0 })

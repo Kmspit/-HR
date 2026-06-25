@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { DEBTOR_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -95,11 +96,6 @@ const PROMISE_STATUS_COLORS: Record<string, string> = {
 }
 
 const STATUSES = ['NEW', 'FOLLOWING', 'PROMISE_TO_PAY', 'PARTIAL_PAYMENT', 'PAID', 'LEGAL_ACTION', 'OVERDUE', 'UNREACHABLE']
-const STATUS_LABELS: Record<string, string> = {
-  NEW: 'รับเรื่องใหม่', FOLLOWING: 'กำลังติดตาม', PROMISE_TO_PAY: 'นัดชำระแล้ว',
-  PARTIAL_PAYMENT: 'ชำระบางส่วน', PAID: 'ชำระแล้ว', LEGAL_ACTION: 'ดำเนินคดี',
-  OVERDUE: 'เกินกำหนด', UNREACHABLE: 'ติดต่อไม่ได้',
-}
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-gray-100 text-gray-700', FOLLOWING: 'bg-blue-100 text-blue-700',
   PROMISE_TO_PAY: 'bg-yellow-100 text-yellow-700', PARTIAL_PAYMENT: 'bg-orange-100 text-orange-700',

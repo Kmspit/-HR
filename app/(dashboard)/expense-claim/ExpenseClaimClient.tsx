@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { EXPENSE_CLAIM_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,13 +22,6 @@ const CAN_APPROVE_SUP = ['SUPER_ADMIN','CEO','MANAGER_HR','HR','MANAGER','TEAM_L
 const CAN_APPROVE_CEO = ['SUPER_ADMIN','CEO','MANAGER_HR']
 const CAN_PAY         = ['SUPER_ADMIN','CEO','MANAGER_HR','HR']
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING:             'รอการอนุมัติ',
-  SUPERVISOR_APPROVED: 'อนุมัติขั้น 1 แล้ว',
-  CEO_APPROVED:        'CEO อนุมัติแล้ว',
-  PAID:                'จ่ายเงินแล้ว',
-  REJECTED:            'ถูกปฏิเสธ',
-}
 const STATUS_COLOR: Record<string, string> = {
   PENDING:             'bg-yellow-100 text-yellow-700',
   SUPERVISOR_APPROVED: 'bg-blue-100 text-blue-700',

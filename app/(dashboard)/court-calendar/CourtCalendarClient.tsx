@@ -8,6 +8,7 @@ import {
   ExternalLink, Filter,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { COURT_EVENT_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -104,13 +105,6 @@ const STATUS_COLOR: Record<string, string> = {
   RESCHEDULED:  'text-amber-400',
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  SCHEDULED:   'กำหนดการ',
-  COMPLETED:   'เสร็จแล้ว',
-  MISSED:      'พลาด',
-  CANCELLED:   'ยกเลิก',
-  RESCHEDULED: 'เลื่อน',
-}
 
 const THAI_DAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
