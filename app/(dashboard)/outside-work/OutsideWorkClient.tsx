@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import {
   ChevronLeft, ChevronRight, Plus, Edit3, Check, X, Loader2,
   Download, CheckCircle2, XCircle, Printer,
@@ -73,7 +73,10 @@ function addDays(d: Date, n: number): Date {
 }
 
 function toYmd(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 const DAY_FULL_TH = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -366,6 +369,10 @@ function AddEditModal({
 export default function OutsideWorkClient({ userId, canViewAll, canApproveOutside, requests: init }: Props) {
   const router = useRouter()
   const [requests, setRequests] = useState<Request[]>(init)
+
+  useEffect(() => {
+    setRequests(init)
+  }, [init])
   const [weekStart, setWeekStart]       = useState(() => getMonday(new Date()))
   const [filterEmp, setFilterEmp]       = useState('')
   const [filterStatus, setFilterStatus] = useState('')
