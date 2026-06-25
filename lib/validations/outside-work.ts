@@ -11,7 +11,7 @@ export const outsideWorkSchema = z.object({
   caseNumber:   z.string().max(100, 'หมายเลขคดีต้องไม่เกิน 100 ตัวอักษร').optional(),
   productWork:  z.string().max(200, 'งานโปรดักส์ต้องไม่เกิน 200 ตัวอักษร').optional(),
   workBranch:   z.string().max(100, 'ชื่อสาขาต้องไม่เกิน 100 ตัวอักษร').optional(),
-  caseCount:    z.union([z.number().int().min(0, 'จำนวนคดีต้องไม่ติดลบ'), z.literal(''), z.null()]).optional(),
+  caseCount:    z.union([z.string().regex(/^\d*$/, 'จำนวนคดีต้องเป็นตัวเลข'), z.number().int().min(0, 'จำนวนคดีต้องไม่ติดลบ'), z.null()]).optional(),
   adminChecked: z.enum(['มี', 'ไม่มี']).optional().or(z.literal('')),
   supervisedBy: z.enum(['แอดมิน', 'หัวหน้า', 'ทนายวางแผนตามเอง']).optional().or(z.literal('')),
   note:         z.string().max(500, 'หมายเหตุต้องไม่เกิน 500 ตัวอักษร').optional(),
@@ -26,8 +26,8 @@ export const outsideWorkSchema = z.object({
   employeeName:  z.string().max(200).optional(),
   ownerName:     z.string().max(200).optional(),
   workType:      z.string().max(100).optional(),
-  distance:      z.union([z.number().min(0), z.literal(''), z.null()]).optional(),
-  distanceLimit: z.union([z.number().min(0), z.literal(''), z.null()]).optional(),
+  distance:      z.union([z.string().regex(/^\d*\.?\d*$/, 'ระยะทางต้องเป็นตัวเลข'), z.number().min(0), z.null()]).optional(),
+  distanceLimit: z.union([z.string().regex(/^\d*\.?\d*$/, 'ระยะทางต้องเป็นตัวเลข'), z.number().min(0), z.null()]).optional(),
   routeType:     z.string().max(100).optional(),
 })
 
