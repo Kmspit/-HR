@@ -143,14 +143,14 @@ function isPendingSlot(slot: SlotData) {
 
 function StatusBadge({ slot }: { slot: SlotData }) {
   const s = slot.approvalStatus ?? slot.status
-  if (!s) return <span className="text-gray-300 text-[9px]">—</span>
+  if (!s) return <span className="text-gray-400 text-xs">—</span>
   const label = STATUS_LABEL[s] ?? s
   const cls =
     s === 'approved_by_ceo' || s === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' :
     s === 'rejected_by_ceo' || s === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' :
     'bg-yellow-100 text-yellow-700 border-yellow-200'
   return (
-    <span className={`inline-block px-1 py-0.5 rounded border text-[9px] font-semibold leading-tight ${cls}`}>
+    <span className={`inline-block px-1 py-0.5 rounded border text-xs font-semibold leading-tight ${cls}`}>
       {label}
     </span>
   )
@@ -269,10 +269,10 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
   // ── CSS tokens ────────────────────────────────────────────────────────────
 
-  const TH = 'border border-black bg-gray-100 text-[10px] font-bold text-center px-1 py-1 leading-tight align-middle'
+  const TH = 'border border-black bg-gray-100 text-xs font-bold text-center px-1 py-1 leading-tight align-middle text-gray-900'
   const TD = 'border border-black align-top'
-  const INP = 'w-full bg-transparent text-[11px] text-gray-800 outline-none px-1 py-0.5 placeholder-gray-300 leading-tight'
-  const SEL = 'w-full bg-transparent text-[11px] text-gray-800 outline-none px-0.5 py-0.5 cursor-pointer leading-tight'
+  const INP = 'w-full bg-transparent text-sm text-gray-900 outline-none px-1 py-0.5 placeholder-gray-500 leading-tight'
+  const SEL = 'w-full bg-transparent text-sm text-gray-900 outline-none px-0.5 py-0.5 cursor-pointer leading-tight'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -283,7 +283,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
         {/* Admin — employee switcher */}
         {canViewAll && (
           <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm print:hidden">
-            <span className="text-sm text-gray-500 font-medium shrink-0">ดูแผนของ:</span>
+            <span className="text-sm text-gray-700 font-semibold shrink-0">ดูแผนของ:</span>
             <select
               value={viewUserId}
               onChange={e => setViewUserId(e.target.value)}
@@ -301,10 +301,10 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
           {/* Company header */}
           <div className="border-b-2 border-gray-400 text-center px-4 py-3">
-            <p className="text-[11px] font-bold text-gray-700 tracking-wide">
+            <p className="text-sm font-bold text-gray-900 tracking-wide">
               บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด
             </p>
-            <p className="text-[9px] text-gray-500">
+            <p className="text-xs text-gray-600">
               เลขที่ 99/1 หมู่ที่ 1 ถ.พหลโยธิน ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120
             </p>
             <h1 className="mt-1.5 text-sm font-bold text-red-700 leading-snug">
@@ -319,7 +319,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                 className="p-2 hover:bg-gray-200 transition text-gray-600">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 text-sm font-medium text-gray-700 select-none whitespace-nowrap">
+              <span className="px-3 text-sm font-semibold text-gray-800 select-none whitespace-nowrap">
                 {fmtRangeTH(weekStart, weekEnd)}
               </span>
               <button type="button" onClick={() => setWeekStart(w => addDays(w, 7))}
@@ -328,13 +328,13 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
               </button>
             </div>
             <button type="button" onClick={() => setWeekStart(getMonday(new Date()))}
-              className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-500 transition">
+              className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition">
               สัปดาห์นี้
             </button>
           </div>
 
           {/* Form meta */}
-          <div className="grid grid-cols-2 border-b border-gray-300 text-xs text-gray-700">
+          <div className="grid grid-cols-2 border-b border-gray-300 text-sm text-gray-800">
             <div className="px-4 py-1.5 border-r border-gray-200">
               <span className="font-semibold">แผนงานช่วงวันที่: </span>{fmtRangeTH(weekStart, weekEnd)}
             </div>
@@ -363,8 +363,8 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                   <th className={`${TH} w-[90px]`}     rowSpan={2}>หมายเหตุ</th>
                 </tr>
                 <tr>
-                  <th className={`${TH} font-normal text-[9px]`}>(มี/ไม่มี)</th>
-                  <th className={`${TH} font-normal text-[9px]`}>(แอดมิน/หัวหน้า/<br/>ทนายวางแผนตามเอง)</th>
+                  <th className={`${TH} font-medium text-xs`}>(มี/ไม่มี)</th>
+                  <th className={`${TH} font-medium text-xs`}>(แอดมิน/หัวหน้า/<br/>ทนายวางแผนตามเอง)</th>
                 </tr>
               </thead>
               <tbody>
@@ -385,23 +385,23 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                       <tr className={`${stripe} ${today ? 'outline outline-1 outline-blue-400 outline-offset-[-1px]' : ''}`}>
 
                         {/* วัน — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle font-bold text-[11px] ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle font-bold text-sm ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
                           <div className="flex flex-col items-center gap-0.5">
-                            {today && <span className="text-[8px] text-blue-500 font-normal">วันนี้</span>}
+                            {today && <span className="text-[10px] text-blue-600 font-normal">วันนี้</span>}
                             {DAYS_TH[dayIdx]}
                           </div>
                         </td>
 
                         {/* ว/ด/ปี — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle text-[10px] ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle text-xs ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
                           {fmtDateTH(ymd)}
                         </td>
 
                         {/* ช่วงเวลา */}
                         <td className={`${TD} text-center align-middle bg-amber-50/80`}>
-                          <span className="text-[10px] font-semibold text-amber-700">เช้า</span>
+                          <span className="text-xs font-bold text-amber-800">เช้า</span>
                         </td>
 
                         {/* สถานที่ */}
@@ -449,7 +449,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         {/* แอดมินตรวจสอบ */}
                         <td className={`${TD} ${stripe} text-center`}>
                           {mLock
-                            ? <span className="text-[10px]">{morn.adminChecked || '—'}</span>
+                            ? <span className="text-xs text-gray-800">{morn.adminChecked || '—'}</span>
                             : <select value={morn.adminChecked} onChange={e => updateSlot(kM, 'adminChecked', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="มี">มี</option>
@@ -461,7 +461,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         {/* ผู้สั่งงาน */}
                         <td className={`${TD} ${stripe} text-center`}>
                           {mLock
-                            ? <span className="text-[10px]">{morn.supervisedBy || '—'}</span>
+                            ? <span className="text-xs text-gray-800">{morn.supervisedBy || '—'}</span>
                             : <select value={morn.supervisedBy} onChange={e => updateSlot(kM, 'supervisedBy', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="แอดมิน">แอดมิน</option>
@@ -489,7 +489,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-200 text-[9px]">—</span>
+                            : <span className="text-gray-400 text-xs">—</span>
                           }
                         </td>
 
@@ -506,7 +506,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         {/* วัน + ว/ด/ปี already covered by rowSpan */}
 
                         <td className={`${TD} text-center align-middle bg-sky-50/80`}>
-                          <span className="text-[10px] font-semibold text-sky-700">บ่าย</span>
+                          <span className="text-xs font-bold text-sky-800">บ่าย</span>
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
@@ -547,7 +547,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
                         <td className={`${TD} ${stripe} text-center`}>
                           {aLock
-                            ? <span className="text-[10px]">{aftn.adminChecked || '—'}</span>
+                            ? <span className="text-xs text-gray-800">{aftn.adminChecked || '—'}</span>
                             : <select value={aftn.adminChecked} onChange={e => updateSlot(kA, 'adminChecked', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="มี">มี</option>
@@ -558,7 +558,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
                         <td className={`${TD} ${stripe} text-center`}>
                           {aLock
-                            ? <span className="text-[10px]">{aftn.supervisedBy || '—'}</span>
+                            ? <span className="text-xs text-gray-800">{aftn.supervisedBy || '—'}</span>
                             : <select value={aftn.supervisedBy} onChange={e => updateSlot(kA, 'supervisedBy', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="แอดมิน">แอดมิน</option>
@@ -585,7 +585,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-200 text-[9px]">—</span>
+                            : <span className="text-gray-400 text-xs">—</span>
                           }
                         </td>
 
@@ -604,8 +604,8 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
           </div>
 
           {/* Footer note */}
-          <div className="border-t border-gray-300 px-4 py-2 text-[10px] text-gray-500">
-            <span className="font-semibold text-gray-600">หมายเหตุ:</span>{' '}
+          <div className="border-t border-gray-300 px-4 py-2 text-xs text-gray-700">
+            <span className="font-semibold text-gray-800">หมายเหตุ:</span>{' '}
             กรอกข้อมูลให้ครบถ้วน แล้วกด &ldquo;บันทึกและส่งอนุมัติ&rdquo;
           </div>
 
@@ -624,14 +624,14 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
         {/* ── Approval history ─────────────────────────────────────── */}
         {viewReqs.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 print:hidden">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
             <div className="divide-y divide-gray-100">
               {viewReqs.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-2 gap-3">
-                  <div className="flex items-center gap-2 text-xs text-gray-600 min-w-0">
-                    <span className="font-mono text-[10px] text-gray-400 shrink-0">{r.documentNumber ?? '—'}</span>
+                  <div className="flex items-center gap-2 text-sm text-gray-700 min-w-0">
+                    <span className="font-mono text-xs text-gray-600 shrink-0">{r.documentNumber ?? '—'}</span>
                     <span className="shrink-0">{r.date.slice(0, 10)}</span>
-                    <span className="text-gray-400 shrink-0">({r.timeSlot ?? '—'})</span>
+                    <span className="text-gray-500 shrink-0">({r.timeSlot ?? '—'})</span>
                     <span className="font-medium truncate">{r.place}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -639,11 +639,11 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                     {canApproveOutside && (r.approvalStatus === 'pending_ceo' || r.status === 'PENDING') && (
                       <div className="flex gap-1">
                         <button onClick={() => handleApprove(r.id, 'approve')} disabled={approvingId === r.id}
-                          className="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-[10px] font-semibold transition disabled:opacity-40">
+                          className="px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 text-xs font-semibold transition disabled:opacity-40">
                           อนุมัติ
                         </button>
                         <button onClick={() => handleApprove(r.id, 'reject')} disabled={approvingId === r.id}
-                          className="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-[10px] font-semibold transition disabled:opacity-40">
+                          className="px-2 py-0.5 rounded bg-red-100 text-red-700 hover:bg-red-200 text-xs font-semibold transition disabled:opacity-40">
                           ปฏิเสธ
                         </button>
                       </div>
