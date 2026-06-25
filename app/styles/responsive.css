@@ -1,0 +1,757 @@
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Phase 2 Enterprise Consistency
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Normalize legacy gray palette → slate design system (dark mode) ── */
+/*
+   Many older pages use `dark:bg-gray-800 dark:border-gray-700`.
+   These overrides unify them to match the newer slate-900 design without
+   touching every file.
+*/
+.dark .dark\:bg-gray-800   { background-color: rgba(15, 23, 42, 0.85) !important; }
+.dark .dark\:bg-gray-900   { background-color: rgba(2, 6, 23, 0.92) !important; }
+.dark .dark\:bg-gray-700   { background-color: rgba(30, 41, 59, 0.80) !important; }
+.dark .dark\:bg-gray-50    { background-color: rgba(255, 255, 255, 0.02) !important; }
+.dark .dark\:bg-gray-100   { background-color: rgba(255, 255, 255, 0.04) !important; }
+
+.dark .dark\:border-gray-700 { border-color: rgba(255, 255, 255, 0.08) !important; }
+.dark .dark\:border-gray-600 { border-color: rgba(255, 255, 255, 0.10) !important; }
+.dark .dark\:border-gray-800 { border-color: rgba(255, 255, 255, 0.05) !important; }
+
+.dark .dark\:text-gray-100  { color: rgb(248 250 252) !important; }
+.dark .dark\:text-gray-200  { color: rgb(226 232 240) !important; }
+.dark .dark\:text-gray-300  { color: rgb(203 213 225) !important; }
+.dark .dark\:text-gray-400  { color: rgb(148 163 184) !important; }
+.dark .dark\:text-gray-500  { color: rgb(100 116 139) !important; }
+.dark .dark\:text-white     { color: rgb(248 250 252); }
+
+.dark .dark\:hover\:bg-gray-700:hover { background-color: rgba(30, 41, 59, 0.60) !important; }
+.dark .dark\:hover\:bg-gray-600:hover { background-color: rgba(51, 65, 85, 0.60) !important; }
+.dark .dark\:hover\:bg-gray-800:hover { background-color: rgba(15, 23, 42, 0.70) !important; }
+.dark .dark\:divide-gray-700 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* ── 2. Standard card ── */
+.ds-card {
+  background: hsl(var(--card));
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.dark .ds-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+.ds-card:hover {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+}
+.dark .ds-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+}
+
+/* ── 3. Section header inside a card ── */
+.ds-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  gap: 0.75rem;
+}
+.dark .ds-section-header {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+.ds-section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgb(15 23 42);
+}
+.dark .ds-section-title {
+  color: rgb(248 250 252);
+}
+
+/* ── 4. Page header bar (replaces per-page header divs) ── */
+.ds-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem 0.875rem 1.5rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.dark .ds-page-header {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+  background: rgba(7, 11, 20, 0.82);
+}
+.ds-page-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  line-height: 1.2;
+}
+.dark .ds-page-title {
+  color: rgb(248 250 252);
+}
+.ds-page-subtitle {
+  font-size: 0.8125rem;
+  color: rgb(100 116 139);
+  margin-top: 0.125rem;
+}
+.dark .ds-page-subtitle {
+  color: rgb(100 116 139);
+}
+
+/* ── 5. Search bar standard ── */
+.ds-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ds-search-input {
+  width: 100%;
+  height: 2.5rem;
+  padding-left: 2.5rem;
+  padding-right: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgb(15 23 42);
+  font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dark .ds-search-input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgb(248 250 252);
+}
+.ds-search-input::placeholder { color: rgb(148 163 184); }
+.ds-search-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+.dark .ds-search-input:focus {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+.ds-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: rgb(148 163 184);
+  pointer-events: none;
+}
+
+/* ── 6. Empty state ── */
+.ds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+.ds-empty-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.5rem;
+  color: rgb(148 163 184);
+}
+.dark .ds-empty-icon { color: rgb(71 85 105); }
+.ds-empty-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgb(51 65 85);
+}
+.dark .ds-empty-title { color: rgb(148 163 184); }
+.ds-empty-sub {
+  font-size: 0.8125rem;
+  color: rgb(100 116 139);
+  max-width: 20rem;
+}
+.dark .ds-empty-sub { color: rgb(100 116 139); }
+
+/* ── 7. Skeleton loader ── */
+.ds-skeleton {
+  background: rgb(226 232 240);
+  border-radius: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.dark .ds-skeleton { background: rgba(30, 41, 59, 0.80); }
+.ds-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: ds-shimmer 1.6s ease-in-out infinite;
+}
+.light .ds-skeleton::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%);
+  background-size: 200% 100%;
+}
+@keyframes ds-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.ds-skeleton-text  { height: 1rem; width: 100%; }
+.ds-skeleton-text-sm { height: 0.75rem; width: 60%; }
+.ds-skeleton-card  { height: 5rem; width: 100%; }
+.ds-skeleton-avatar { width: 2.5rem; height: 2.5rem; border-radius: 50%; }
+.ds-skeleton-row   { height: 3.5rem; width: 100%; }
+.ds-skeleton-badge { height: 1.5rem; width: 4rem; border-radius: 9999px; }
+
+/* ── 8. FAB (Floating Action Button) ── */
+.ds-fab {
+  position: fixed;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  right: 1.5rem;
+  z-index: 30;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.ds-fab:hover {
+  transform: scale(1.06) translateY(-1px);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.45);
+}
+.ds-fab:active { transform: scale(0.97); }
+@media (min-width: 768px) {
+  .ds-fab { display: none; }
+}
+
+/* ── 9. Status badge tokens ── */
+.ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+.ds-status-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── 10. Consistent input heights ── */
+.ds-input {
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: hsl(var(--card));
+  color: rgb(15 23 42);
+  font-size: 0.875rem;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dark .ds-input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgb(248 250 252);
+}
+.ds-input:focus {
+  outline: none;
+  border-color: rgb(59 130 246 / 0.6);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+.ds-input::placeholder { color: rgb(148 163 184); }
+
+/* ── 11. Consistent select ── */
+.ds-select {
+  height: 2.75rem;
+  padding: 0 2.25rem 0 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background-color: hsl(var(--card));
+  color: rgb(15 23 42);
+  font-size: 0.875rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  transition: border-color 0.15s;
+}
+.dark .ds-select {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgb(248 250 252);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+.ds-select:focus {
+  outline: none;
+  border-color: rgb(59 130 246 / 0.6);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+/* ── 12. Consistent button sizes ── */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ds-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ds-btn-primary {
+  background: #3b82f6;
+  color: #fff;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+.ds-btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+.ds-btn-primary:active { transform: translateY(0); }
+
+.ds-btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  color: rgb(51 65 85);
+}
+.dark .ds-btn-secondary {
+  border-color: rgba(255, 255, 255, 0.10);
+  color: rgb(203 213 225);
+}
+.ds-btn-secondary:hover {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.22);
+}
+.dark .ds-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.ds-btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+.ds-btn-danger:hover { background: #dc2626; }
+
+.ds-btn-ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgb(100 116 139);
+}
+.ds-btn-ghost:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: rgb(51 65 85);
+}
+.dark .ds-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgb(203 213 225);
+}
+
+/* ── 13. Kanban column header ── */
+.ds-kanban-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 16rem;
+  max-width: 20rem;
+  flex-shrink: 0;
+}
+.ds-kanban-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* ── 14. Tab bar ── */
+.ds-tabs {
+  display: flex;
+  gap: 0.125rem;
+  background: rgb(241 245 249);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+}
+.dark .ds-tabs {
+  background: rgba(15, 23, 42, 0.60);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.ds-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ds-tab:hover { color: rgb(51 65 85); }
+.dark .ds-tab:hover { color: rgb(203 213 225); }
+.ds-tab-active {
+  background: hsl(var(--card));
+  color: rgb(15 23 42);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  font-weight: 600;
+}
+.dark .ds-tab-active {
+  background: rgba(30, 41, 59, 0.90);
+  color: rgb(248 250 252);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ── 15. List item row ── */
+.ds-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.ds-list-item:last-child { border-bottom: none; }
+.ds-list-item:hover { background: rgba(15, 23, 42, 0.02); }
+.dark .ds-list-item { border-bottom-color: rgba(255, 255, 255, 0.04); }
+.dark .ds-list-item:hover { background: rgba(255, 255, 255, 0.03); }
+
+/* ── 16. Mobile-only card for table replacement ── */
+@media (max-width: 767px) {
+  .ds-table-hidden { display: none !important; }
+  .ds-mobile-cards { display: flex !important; flex-direction: column; gap: 0.625rem; }
+}
+@media (min-width: 768px) {
+  .ds-mobile-cards { display: none !important; }
+}
+
+/* ── 17. Tooltip (basic) ── */
+.ds-tooltip {
+  position: relative;
+}
+.ds-tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(15 23 42);
+  color: #fff;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 50;
+}
+.ds-tooltip:hover::after { opacity: 1; }
+
+/* ── 18. Consistent filter pill bar ── */
+.ds-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.ds-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: hsl(var(--card));
+  color: rgb(51 65 85);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.dark .ds-filter-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgb(148 163 184);
+}
+.ds-filter-pill:hover,
+.ds-filter-pill.active {
+  background: rgb(239 246 255);
+  border-color: rgb(147 197 253);
+  color: rgb(29 78 216);
+}
+.dark .ds-filter-pill:hover,
+.dark .ds-filter-pill.active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.30);
+  color: rgb(147 197 253);
+}
+
+/* ── 19. Priority & severity indicators ── */
+.ds-priority-critical { color: rgb(239 68 68); }
+.ds-priority-high     { color: rgb(249 115 22); }
+.ds-priority-medium   { color: rgb(234 179 8); }
+.ds-priority-low      { color: rgb(148 163 184); }
+
+/* ── 20. Scrollable horizontal container (for kanban etc.) ── */
+.ds-scroll-x {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100,116,139,0.3) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.ds-scroll-x::-webkit-scrollbar { height: 4px; }
+.ds-scroll-x::-webkit-scrollbar-track { background: transparent; }
+.ds-scroll-x::-webkit-scrollbar-thumb {
+  background: rgba(100,116,139,0.3);
+  border-radius: 9999px;
+}
+
+/* ── 21. Timeline thread ── */
+.ds-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ds-timeline-item {
+  display: flex;
+  gap: 0.875rem;
+  padding-bottom: 1.25rem;
+  position: relative;
+}
+.ds-timeline-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 1.75rem;
+  flex-shrink: 0;
+}
+.ds-timeline-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: rgb(59 130 246);
+  border: 2px solid rgb(219 234 254);
+  margin-top: 0.3rem;
+  flex-shrink: 0;
+}
+.dark .ds-timeline-dot { border-color: rgba(59, 130, 246, 0.25); }
+.ds-timeline-connector {
+  width: 2px;
+  flex: 1;
+  background: rgba(15, 23, 42, 0.08);
+  margin-top: 0.25rem;
+  min-height: 0.5rem;
+}
+.dark .ds-timeline-connector { background: rgba(255, 255, 255, 0.06); }
+
+/* ── 22. KPI value display ── */
+.ds-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.ds-kpi-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.ds-kpi-label {
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+  font-weight: 500;
+}
+
+/* ── 23. Notification dot ── */
+.ds-notif-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: rgb(239 68 68);
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+/* ── 24. Panel divider ── */
+.ds-divider {
+  border: none;
+  height: 1px;
+  background: rgba(15, 23, 42, 0.07);
+  margin: 0;
+}
+.dark .ds-divider { background: rgba(255, 255, 255, 0.06); }
+
+/* ── 25. Responsive 2-col form grid ── */
+.ds-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .ds-form-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 1024px) {
+  .ds-form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* ── Mobile: Android Chrome scroll fix (definitive) ──
+   ROOT CAUSE: overflow-x: hidden on html/body forces overflow-y: auto (CSS spec).
+   That makes body a CSS scroll container. Combined with overscroll-behavior-y: contain,
+   body absorbs all touch-scroll events but never overflows itself (no fixed height),
+   blocking propagation to the viewport. Android Chrome is strict; iOS Safari routes
+   touch directly to the viewport and is immune.
+
+   FIX: overflow-x: clip is visually identical to overflow-x: hidden but does NOT
+   create a scroll container and does NOT force overflow-y: auto.
+   Without a body scroll container, touch events propagate to the viewport and the
+   page scrolls natively — including URL-bar collapse on Android Chrome. */
+@media (max-width: 767px) {
+  /* body only — NOT html.
+     overflow:clip on html triggers a Chrome/Android bug: position:fixed elements
+     reference html as their containing block instead of the viewport. With html as
+     the containing block, bottom:0 resolves to the bottom of html's box, which can
+     be near the top of the visible area when the box collapses — causing MobileNav
+     to appear at the top of the page and compressing dashboard-main width.
+     iOS Safari (Metal compositor) is immune; Android Chrome (OpenGL ES) is not.
+
+     body { overflow-x: clip } is the only fix needed:
+     clip does NOT force overflow-y: auto (unlike hidden), so body is NOT a scroll
+     container, touch events propagate to the viewport, and Android scroll works.
+     !important beats .dark body { overflow-x: hidden } (specificity 0,1,1 vs 0,0,1). */
+  body { overflow-x: clip !important; }
+}
+@media (min-width: 768px) {
+  body { overscroll-behavior-y: contain; }
+}
+
+/* ── Mobile: GPU compositor fix (Android Chrome rendering corruption) ──
+   backdrop-filter on position:fixed or position:sticky elements forces Android
+   Chrome to create GPU compositing layers. When multiple such layers coexist
+   (fixed MobileNav + sticky Header + animated page-enter), the GPU compositor
+   fails → screen tearing, horizontal artifact lines, duplicated rendering,
+   and scroll freeze. iOS Safari uses Apple Metal which handles this correctly.
+
+   Fix: disable ALL backdrop-filter on mobile. Use opaque backgrounds instead.
+   The page-enter transform (translateY) also promotes a layer — removed from
+   the keyframe in favour of opacity-only fade. */
+@media (max-width: 767px) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Compensate with opaque backgrounds where glass/blur was providing visual separation */
+  .glass       { background: rgba(255, 255, 255, 0.98) !important; }
+  .glass-light { background: rgba(255, 255, 255, 0.06) !important; }
+  .glass-card  { background: hsl(var(--card)) !important; }
+  .dark .glass      { background: rgba(15, 23, 42, 0.98) !important; }
+  .dark .glass-card { background: rgba(15, 23, 42, 0.98) !important; }
+  .ds-page-header        { background: rgba(255, 255, 255, 0.99) !important; }
+  .dark .ds-page-header  { background: rgba(7, 11, 20, 0.99) !important; }
+}
+
+/* ── 26. Mobile Enterprise Safe Layout Utilities ── */
+
+/* Horizontally-scrollable table wrapper — prevents overflow on narrow screens */
+.mobile-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive stat grid: 1-col on phone, 2-col on sm, 3-col on md */
+.mobile-grid-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 480px) {
+  .mobile-grid-stats { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 768px) {
+  .mobile-grid-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Card with mobile-safe padding */
+.mobile-card {
+  border-radius: 0.875rem;
+  padding: 1rem;
+  background: var(--card, white);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+.dark .mobile-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Safe-area bottom padding (above MobileNav) */
+.mobile-safe-bottom {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .mobile-safe-bottom { padding-bottom: 0; }
+}
+
+/* Full bleed section that allows horizontal scroll on mobile */
+.mobile-overflow-section {
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 768px) {
+  .mobile-overflow-section {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}

@@ -1,0 +1,252 @@
+/* ── Light mode component overrides ── */
+.light .glass {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+}
+
+.light .glass-card {
+  background: hsl(var(--card)) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.06) !important;
+  color: rgb(15 23 42);
+}
+
+.light .nav-active {
+  background: linear-gradient(135deg, rgba(30,58,95,0.09) 0%, rgba(59,130,246,0.07) 100%) !important;
+  border: 1px solid rgba(30,58,95,0.18) !important;
+}
+
+.light .gradient-text {
+  @apply bg-gradient-to-r from-blue-600 via-violet-600 to-cyan-600 bg-clip-text text-transparent;
+}
+
+.light .gradient-text-blue {
+  @apply bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent;
+}
+
+.light .badge-blue   { @apply bg-blue-50 text-blue-700 border-blue-200; }
+.light .badge-green  { @apply bg-green-50 text-green-700 border-green-200; }
+.light .badge-yellow { @apply bg-yellow-50 text-yellow-700 border-yellow-200; }
+.light .badge-red    { @apply bg-red-50 text-red-700 border-red-200; }
+.light .badge-violet { @apply bg-violet-50 text-violet-700 border-violet-200; }
+.light .badge-slate  { @apply bg-slate-100 text-slate-600 border-slate-200; }
+
+.light .stat-blue   { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
+.light .stat-violet { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-color: #ddd6fe; }
+.light .stat-green  { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0; }
+.light .stat-amber  { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #fde68a; }
+.light .stat-red    { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-color: #fecaca; }
+
+.dark .skeleton { @apply bg-slate-800/80; }
+.light .skeleton { @apply bg-slate-200/90; }
+
+/* ── Mobile utilities ── */
+@media (max-width: 768px) {
+  /* Larger touch targets on mobile */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Page container on mobile */
+  .page-container {
+    @apply px-4 py-4;
+  }
+
+  /* Mobile-friendly stat cards */
+  .stat-card-mobile {
+    @apply p-3.5;
+  }
+
+  /* Scrollable tables */
+  .table-scroll {
+    @apply overflow-x-auto -mx-4 px-4;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .table-scroll::after {
+    content: 'เลื่อนซ้าย-ขวา →';
+    display: block;
+    font-size: 10px;
+    text-align: center;
+    padding: 6px 0 2px;
+  }
+  .dark .table-scroll::after { color: rgb(100 116 139); }
+  .light .table-scroll::after { color: rgb(71 85 105); }
+  .table-scroll table {
+    @apply min-w-[480px];
+  }
+
+  .page-container {
+    @apply px-3 py-3;
+  }
+
+  nav.mobile-bottom-nav {
+    min-height: 56px;
+  }
+
+  .warnings-table th,
+  .warnings-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+}
+
+/* Tables — shared HR data table readability */
+.warnings-table,
+.hr-table {
+  @apply w-full border-collapse text-sm;
+}
+.warnings-table thead th,
+.hr-table thead th {
+  @apply px-4 py-3.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+         bg-slate-50 text-slate-600
+         dark:bg-slate-900/55 dark:text-slate-400;
+}
+.warnings-table tbody tr:nth-child(even),
+.hr-table tbody tr:nth-child(even),
+.glass-card table tbody tr:nth-child(even) {
+  @apply bg-slate-50/80 dark:bg-white/[0.025];
+}
+.warnings-table tbody td,
+.glass-card .table-scroll table tbody td {
+  @apply px-4 py-3.5 align-middle text-[13.5px] leading-relaxed;
+}
+
+/* ── Light mode: fix legacy dark-only text utilities inside cards ── */
+.light .glass-card :is(h1, h2, h3, h4, p, span, label, td, th, div).text-white:not(
+    :is(button, a, .btn-primary, [class*='bg-blue-'], [class*='bg-red-'], [class*='bg-green-'], [class*='bg-amber-'])
+  ) {
+  color: rgb(15 23 42) !important;
+}
+.light .text-white\/30 { color: rgb(148 163 184) !important; }
+.light .text-white\/40 { color: rgb(100 116 139) !important; }
+.light .text-white\/50 { color: rgb(100 116 139) !important; }
+.light .text-white\/60 { color: rgb(71 85 105) !important; }
+.light .text-white\/70 { color: rgb(51 65 85) !important; }
+.light .text-white\/80 { color: rgb(30 41 59) !important; }
+.light .text-white\/90 { color: rgb(15 23 42) !important; }
+
+.light .border-white\/5 { border-color: rgb(226 232 240) !important; }
+.light .border-white\/10 { border-color: rgb(226 232 240) !important; }
+.light .border-white\/15 { border-color: rgb(203 213 225) !important; }
+.light .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(241 245 249);
+}
+.light .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(226 232 240);
+}
+
+/* Native inputs in dashboard (no input-field class) */
+.light main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.light main select,
+.light main textarea {
+  color: rgb(15 23 42);
+}
+.dark main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.dark main select,
+.dark main textarea {
+  color: rgb(241 245 249);
+}
+
+/* Safe area helpers */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+.mb-nav {
+  margin-bottom: 72px;
+}
+@media (min-width: 768px) {
+  .mb-nav { margin-bottom: 0; }
+}
+
+/* Better mobile form inputs */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+   * Raise all fixed full-viewport overlays (modals/drawers) above MobileNav (z-50).
+   * Targets: .fixed.inset-0.z-50  — combined backdrop+modal (most modals)
+   *           .fixed.inset-x-0.z-50 — two-part modal containers (tasks, attendance)
+   * Does NOT affect: MobileNav (bottom-0, no inset-0), Header (top-0, no inset-0),
+   *                  Sidebar backdrop/drawer (z-[55]/z-[60], not z-50)
+   */
+  .fixed.inset-0.z-50,
+  .fixed.inset-x-0.z-50 {
+    z-index: 60;
+  }
+}
+
+/* AI chat — pad bottom above MobileNav + safe area on mobile, reset on desktop */
+.pb-mobile-nav {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .pb-mobile-nav { padding-bottom: 1rem; }
+}
+
+/* ── Critical layout fallback (เมื่อ Tailwind/CSS โหลดไม่ครบ) ── */
+.dashboard-shell {
+  display: flex;
+  min-height: 100dvh;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+@media (min-width: 768px) {
+  .dashboard-shell { height: 100dvh; }
+}
+.dark .dashboard-shell {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.dashboard-sidebar-slot {
+  display: none;
+  width: 14rem;
+  flex-shrink: 0;
+}
+@media (min-width: 768px) {
+  .dashboard-sidebar-slot {
+    display: flex;
+  }
+}
+.dashboard-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  /* overflow: hidden is desktop-only — see @media (min-width:768px) below */
+}
+@media (min-width: 768px) {
+  .dashboard-main { overflow: hidden; }
+}
+
+/* ป้องกัน SVG ขยายเต็มจอ */
+.hr-icon,
+aside svg,
+nav.mobile-bottom-nav svg,
+.nav-link-icon svg {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+  max-width: 1.125rem;
+  max-height: 1.125rem;
+  flex-shrink: 0;
+}
+.hr-icon-lg {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  max-width: 2.25rem;
+  max-height: 2.25rem;
+}
+.hr-icon-sm {
+  width: 1rem !important;
+  height: 1rem !important;
+  max-width: 1rem;
+  max-height: 1rem;
+}

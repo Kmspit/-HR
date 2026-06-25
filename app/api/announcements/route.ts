@@ -44,13 +44,16 @@ export async function GET(req: NextRequest) {
     const archive = searchParams.get('archive') === 'true'
     const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : null
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : null
+    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '20')))
 
     const now = new Date()
     const isHR = HR_ROLES.includes(session.user.role)
     const userId = session.user.id
 
-    const announcements = await prisma.announcement.findMany({
-      where: archive && month && year
+    // Archive path — keep existing simple behavior, just add total
+    if (archive) {
+      const where = month && year
         ? {
             isArchived: true,
             publishAt: {
@@ -58,34 +61,72 @@ export async function GET(req: NextRequest) {
               lte: new Date(year, month, 0, 23, 59, 59),
             },
           }
-        : { isArchived: archive, publishAt: { lte: now } },
-      orderBy: { publishAt: 'desc' },
-      take: 50,
-    })
-
-    // Non-HR: filter to only announcements targeted at the user
-    let filtered = announcements
-    if (!isHR && !archive) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { branchId: true, divisionId: true, departmentId: true, sectionId: true },
+        : { isArchived: true }
+      const rows = await prisma.announcement.findMany({
+        where,
+        orderBy: { publishAt: 'desc' },
+        take: 50,
       })
-      filtered = announcements.filter((a) => {
-        if (a.targetType === 'ALL') return true
-        const ids: string[] = a.targetIds ? JSON.parse(a.targetIds) : []
-        if (ids.length === 0) return a.targetType === 'ALL'
-        switch (a.targetType) {
-          case 'INDIVIDUAL':   return ids.includes(userId)
-          case 'BRANCH':       return !!user?.branchId && ids.includes(user.branchId)
-          case 'DIVISION':     return !!user?.divisionId && ids.includes(user.divisionId)
-          case 'DEPARTMENT':   return !!user?.departmentId && ids.includes(user.departmentId)
-          case 'SECTION':      return !!user?.sectionId && ids.includes(user.sectionId)
-          default:             return true
-        }
+      return NextResponse.json({
+        announcements: rows.map((a) => toAnnDto(a, userId)),
+        total: rows.length,
+        page: 1,
+        pages: 1,
       })
     }
 
-    return NextResponse.json({ announcements: filtered.map((a) => toAnnDto(a, userId)) })
+    const baseWhere = { isArchived: false, publishAt: { lte: now } }
+
+    // HR path — use DB-level pagination with parallel count
+    if (isHR) {
+      const [rows, total] = await Promise.all([
+        prisma.announcement.findMany({
+          where: baseWhere,
+          orderBy: { publishAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.announcement.count({ where: baseWhere }),
+      ])
+      return NextResponse.json({
+        announcements: rows.map((a) => toAnnDto(a, userId)),
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+      })
+    }
+
+    // Non-HR path — fetch a large batch, filter in-memory (targeting), then paginate
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { branchId: true, divisionId: true, departmentId: true, sectionId: true },
+    })
+    const rows = await prisma.announcement.findMany({
+      where: baseWhere,
+      orderBy: { publishAt: 'desc' },
+      take: 200,
+    })
+    const filtered = rows.filter((a) => {
+      if (a.targetType === 'ALL') return true
+      const ids: string[] = a.targetIds ? JSON.parse(a.targetIds) : []
+      if (ids.length === 0) return a.targetType === 'ALL'
+      switch (a.targetType) {
+        case 'INDIVIDUAL':   return ids.includes(userId)
+        case 'BRANCH':       return !!user?.branchId && ids.includes(user.branchId)
+        case 'DIVISION':     return !!user?.divisionId && ids.includes(user.divisionId)
+        case 'DEPARTMENT':   return !!user?.departmentId && ids.includes(user.departmentId)
+        case 'SECTION':      return !!user?.sectionId && ids.includes(user.sectionId)
+        default:             return true
+      }
+    })
+    const total = filtered.length
+    const paginated = filtered.slice((page - 1) * limit, page * limit)
+    return NextResponse.json({
+      announcements: paginated.map((a) => toAnnDto(a, userId)),
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    })
   } catch (err) {
     return apiError(err)
   }

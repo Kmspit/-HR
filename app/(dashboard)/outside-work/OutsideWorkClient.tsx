@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
+import { outsideWorkSchema } from '@/lib/validations/outside-work'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -214,9 +215,8 @@ function AddEditModal({
       setForm(f => ({ ...f, [k]: e.target.value }))
 
   const save = async () => {
-    if (!form.date)           { toast.error('กรุณาเลือกวันที่');      return }
-    if (!form.place.trim())   { toast.error('กรุณาระบุสถานที่');      return }
-    if (!form.purpose.trim()) { toast.error('กรุณาระบุสิ่งที่ไปดำเนินการ'); return }
+    const validation = outsideWorkSchema.safeParse(form)
+    if (!validation.success) { toast.error(validation.error.issues[0].message); return }
     setSaving(true)
     try {
       const body = {

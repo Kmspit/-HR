@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ── Light mode (default) — professional clean palette ── */
+  :root,
+  .light {
+    --background: 213 27% 98%;      /* #F7F9FC */
+    --foreground: 215 28% 17%;      /* #1F2937 */
+    --card: 0 0% 100%;              /* #FFFFFF */
+    --card-foreground: 215 28% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+    --primary: 214 52% 25%;         /* #1E3A5F navy */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 91% 60%;       /* #3B82F6 blue */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 213 27% 94%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 45% 92%;
+    --accent-foreground: 214 52% 25%;
+    --destructive: 0 72% 51%;       /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 27% 87%;
+    --input: 213 27% 91%;
+    --ring: 217 91% 60%;            /* #3B82F6 */
+    --radius: 0.75rem;
+    --surface: 213 27% 97%;
+    --surface-elevated: 0 0% 100%;
+    --text-primary: 215 28% 17%;
+    --text-secondary: 215 20% 35%;
+    --text-muted: 215 14% 52%;
+  }
+
+  /* ── Dark mode ── */
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 222 47% 11%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 223 47% 11%;
+    --muted-foreground: 215 16% 62%;
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 216 28% 22%;
+    --input: 216 28% 18%;
+    --ring: 221 83% 58%;
+    --radius: 0.75rem;
+    --surface: 222 47% 7%;
+    --surface-elevated: 222 40% 11%;
+    --text-primary: 210 40% 98%;
+    --text-secondary: 215 18% 72%;
+    --text-muted: 215 14% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    overflow-x: clip;
+  }
+
+  body {
+    font-family: "LINE Seed Sans TH", var(--font-thai), var(--font-jakarta), -apple-system, sans-serif;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    background-attachment: fixed;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: clip;
+    max-width: 100vw;
+    /* overscroll-behavior-y scoped to desktop — see @media (min-width: 768px) below */
+  }
+
+  /* Accessible focus — keyboard navigation */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .card-hover:hover {
+      transform: none !important;
+    }
+  }
+
+  /* Dark mode body */
+  .dark body {
+    @apply bg-[#070b14] text-slate-100 antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.1) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
+  }
+
+  @media (max-width: 768px) {
+    body, .dark body {
+      background-attachment: scroll;
+    }
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "LINE Seed Sans TH", var(--font-thai), sans-serif;
+    font-weight: 700;
+    color: hsl(var(--primary));
+  }
+  .dark h1, .dark h2, .dark h3, .dark h4 {
+    color: inherit;
+  }
+
+  /* Dark scrollbar */
+  .dark ::-webkit-scrollbar { width: 4px; height: 4px; }
+  .dark ::-webkit-scrollbar-track { background: transparent; }
+  .dark ::-webkit-scrollbar-thumb { @apply bg-slate-700/60 rounded-full; }
+  .dark ::-webkit-scrollbar-thumb:hover { @apply bg-slate-600; }
+
+  /* Light scrollbar */
+  .light ::-webkit-scrollbar { width: 4px; height: 4px; }
+  .light ::-webkit-scrollbar-track { background: transparent; }
+  .light ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+  .light ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+
+  /* มือถือ: ช่องวันที่/เวลาไม่ล้นซ้อนกัน */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}

@@ -85,6 +85,11 @@ export default function AnnouncementsClient({
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
 
+  // ── Pagination (load more)
+  const [apiPage, setApiPage] = useState(1)
+  const [hasMore, setHasMore] = useState(init.length >= 20)
+  const [loadingMore, setLoadingMore] = useState(false)
+
   // ── Form state
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -133,9 +138,11 @@ export default function AnnouncementsClient({
         }
         // New announcement — refetch to apply server-side targeting filter
         try {
-          const { data: d } = await apiJson<{ announcements: Announcement[] }>('/api/announcements')
+          const { data: d } = await apiJson<{ announcements: Announcement[]; total?: number; page?: number; pages?: number }>('/api/announcements')
           if (d?.announcements) {
             setItems(d.announcements)
+            setApiPage(1)
+            setHasMore((d.total ?? d.announcements.length) > d.announcements.length)
             toast.info(`📢 ประกาศใหม่: ${data.title}`, { duration: 5000 })
           }
         } catch {}
@@ -329,13 +336,36 @@ export default function AnnouncementsClient({
     if (ok) { setItems((prev) => prev.filter((a) => a.id !== id)); toast.success('ลบแล้ว') }
   }
 
+  // ── Load more ──────────────────────────────────────────────────────────
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const nextPage = apiPage + 1
+      const { data } = await apiJson<{ announcements: Announcement[]; total?: number; pages?: number }>(
+        `/api/announcements?page=${nextPage}&limit=20`,
+      )
+      if (data?.announcements?.length) {
+        setItems((prev) => {
+          const ids = new Set(prev.map((a) => a.id))
+          return [...prev, ...data.announcements.filter((a) => !ids.has(a.id))]
+        })
+        setApiPage(nextPage)
+        setHasMore(nextPage < (data.pages ?? 1))
+      } else {
+        setHasMore(false)
+      }
+    } catch { toast.error('โหลดเพิ่มเติมไม่สำเร็จ') }
+    finally { setLoadingMore(false) }
+  }
+
   // ── Archive loader ─────────────────────────────────────────────────────
   const loadArchive = async () => {
     setArchiveLoading(true)
     try {
       let url = '/api/announcements?archive=true'
       if (selectedMonth) { const [yr, mo] = selectedMonth.split('-'); url += `&year=${yr}&month=${mo}` }
-      const { data } = await apiJson<{ announcements: Announcement[] }>(url)
+      const { data } = await apiJson<{ announcements: Announcement[]; total?: number }>(url)
       setArchive(data?.announcements ?? [])
     } catch { toast.error('โหลดข้อมูล archive ไม่สำเร็จ') }
     finally { setArchiveLoading(false) }
@@ -672,6 +702,20 @@ export default function AnnouncementsClient({
             })
           )}
         </div>
+
+        {/* Load more */}
+        {hasMore && filter === 'all' && (
+          <div className="px-4 py-3 border-t dark:border-white/[0.06] light:border-slate-100 flex justify-center">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border dark:border-white/10 light:border-slate-200 text-xs font-medium dark:text-slate-400 light:text-slate-500 hover:dark:text-white hover:light:text-slate-800 transition-colors disabled:opacity-50"
+            >
+              {loadingMore ? <Loader2 size={13} className="animate-spin" /> : <ChevronDown size={13} />}
+              {loadingMore ? 'กำลังโหลด...' : 'โหลดเพิ่มเติม'}
+            </button>
+          </div>
+        )}
 
         {/* Mobile bottom bar */}
         {(unreadCount > 0 || isHR) && (

@@ -8,6 +8,7 @@ import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { LEAVE_TYPE_OPTIONS, LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import type { LeaveBalanceStats } from '@/lib/leave-balance'
+import { leaveSchema } from '@/lib/validations/leave'
 
 type Leave = {
   id: string
@@ -118,7 +119,8 @@ export default function LeavePanel({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.startDate || !form.endDate || !form.reason) { toast.error('กรุณากรอกข้อมูลให้ครบ'); return }
+    const validation = leaveSchema.safeParse(form)
+    if (!validation.success) { toast.error(validation.error.issues[0].message); return }
     const days = Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 86400000) + 1
     if (days < 1) { toast.error('วันที่ไม่ถูกต้อง'); return }
     if (holidayBlock && !isOrdination) { toast.error(holidayBlock.message); return }

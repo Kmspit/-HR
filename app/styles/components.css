@@ -1,0 +1,252 @@
+@layer utilities {
+  /* Glass effects — light mode defaults to clean white card */
+  .glass {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+  }
+  .glass-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+  .glass-light {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+  .gradient-text-blue {
+    @apply bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+
+  /* Glow effects */
+  .glow-blue { box-shadow: 0 0 40px rgba(59, 130, 246, 0.15), 0 0 80px rgba(59, 130, 246, 0.05); }
+  .glow-sm { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+
+  /* Card hover */
+  .card-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+  .card-hover:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+  .light .card-hover:hover {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.07) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+  .light .skeleton::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.65) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Page enter */
+  .page-enter {
+    animation: fade-in-sm 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes fade-in-sm {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Smooth transitions for interactive UI */
+  .smooth-transition {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Gradient borders */
+  .border-gradient {
+    position: relative;
+    background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1));
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  /* Sidebar active — light mode: solid blue-50 with blue-200 border (clearly visible) */
+  .nav-active {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+  }
+  /* Dark mode nav-active — blue (unchanged) */
+  .dark .nav-active {
+    background: linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.15) 100%);
+    border: 1px solid rgba(59,130,246,0.25);
+    box-shadow: 0 0 20px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* Stat card gradients */
+  .stat-blue { background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(37,99,235,0.06) 100%); border: 1px solid rgba(59,130,246,0.2); }
+  .stat-violet { background: linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(109,40,217,0.06) 100%); border: 1px solid rgba(139,92,246,0.2); }
+  .stat-green { background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(21,128,61,0.06) 100%); border: 1px solid rgba(34,197,94,0.2); }
+  .stat-amber { background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(180,83,9,0.06) 100%); border: 1px solid rgba(245,158,11,0.2); }
+  .stat-red { background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(185,28,28,0.06) 100%); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* Badge — light-mode-first, dark mode via dark: variants */
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
+  .badge-blue {
+    @apply badge bg-blue-100 text-blue-700 border border-blue-200;
+    @apply dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/25;
+  }
+  .badge-green {
+    @apply badge bg-green-100 text-green-700 border border-green-200;
+    @apply dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/25;
+  }
+  .badge-yellow {
+    @apply badge bg-amber-100 text-amber-700 border border-amber-200;
+    @apply dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/25;
+  }
+  .badge-red {
+    @apply badge bg-red-100 text-red-700 border border-red-200;
+    @apply dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25;
+  }
+  .badge-violet {
+    @apply badge bg-violet-100 text-violet-700 border border-violet-200;
+    @apply dark:bg-violet-500/15 dark:text-violet-400 dark:border-violet-500/25;
+  }
+  .badge-slate {
+    @apply badge bg-slate-100 text-slate-600 border border-slate-200;
+    @apply dark:bg-slate-500/15 dark:text-slate-400 dark:border-slate-500/25;
+  }
+
+  /* Semantic text utilities */
+  .text-theme {
+    @apply dark:text-slate-100 light:text-slate-900;
+  }
+  .text-theme-secondary {
+    @apply dark:text-slate-300 light:text-slate-700;
+  }
+  .text-theme-muted {
+    @apply dark:text-slate-400 light:text-slate-600;
+  }
+
+  /* Input */
+  .input-field {
+    @apply w-full rounded-xl border px-4 py-3 text-[14px] leading-relaxed transition-all duration-150
+           border-slate-300 bg-white text-slate-900 placeholder-slate-400
+           dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
+           dark:focus:border-blue-500/70 dark:focus:bg-slate-900/90 dark:focus:ring-blue-500/15;
+  }
+
+  /* Form label */
+  .form-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5;
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white
+           shadow-lg shadow-blue-600/25 transition-all duration-150
+           hover:bg-blue-500 hover:-translate-y-0.5 hover:shadow-blue-500/30
+           active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+           dark:focus-visible:ring-offset-slate-900 light:focus-visible:ring-offset-white;
+  }
+  .btn-secondary {
+    @apply flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-all duration-150
+           dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200
+           dark:hover:border-white/20 dark:hover:bg-white/[0.1] dark:hover:text-white
+           light:border-slate-300 light:bg-white light:text-slate-700 light:shadow-sm
+           light:hover:border-slate-400 light:hover:bg-slate-50 light:hover:text-slate-900
+           hover:-translate-y-0.5 active:translate-y-0
+           focus-visible:ring-2 focus-visible:ring-blue-500/30;
+  }
+  .btn-ghost {
+    @apply flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition-all duration-150
+           dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100
+           light:text-slate-600 light:hover:bg-slate-100 light:hover:text-slate-900;
+  }
+
+  /* hr-btn-* / hr-input — aliases used by AutomationClient and similar pages */
+  .hr-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white
+           shadow-sm cursor-pointer transition-all duration-150
+           hover:bg-blue-500 hover:-translate-y-0.5
+           active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+           dark:focus-visible:ring-offset-slate-900;
+  }
+  .hr-btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium cursor-pointer transition-all duration-150
+           border-slate-300 bg-white text-slate-700 shadow-sm
+           hover:bg-slate-50 hover:border-slate-400 hover:-translate-y-0.5
+           active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200
+           dark:hover:bg-white/[0.1] dark:hover:border-white/20
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30;
+  }
+  .hr-input {
+    @apply rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400
+           transition-colors duration-150
+           dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
+           dark:focus:border-blue-500/70 dark:focus:bg-slate-900/90;
+  }
+
+  /* Table */
+  .table-row-hover {
+    @apply border-b transition-colors
+           dark:border-white/[0.06] dark:hover:bg-white/[0.04]
+           light:border-slate-200/90 light:hover:bg-slate-50/90;
+  }
+  .hr-table {
+    @apply w-full text-sm border-collapse;
+  }
+  .hr-table thead tr {
+    @apply border-b dark:border-white/10 light:border-slate-200;
+  }
+  .hr-table thead th {
+    @apply px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+           dark:bg-slate-900/60 dark:text-slate-400
+           bg-slate-50 text-slate-600;
+  }
+  .hr-table tbody td {
+    @apply px-4 py-3.5 align-middle whitespace-nowrap text-[13.5px] leading-relaxed
+           dark:text-slate-200 text-slate-700;
+  }
+  .hr-table tbody tr:nth-child(even) {
+    @apply dark:bg-white/[0.02] light:bg-slate-50/70;
+  }
+}
