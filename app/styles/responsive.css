@@ -131,9 +131,9 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .dark .ds-search-input {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgb(248 250 252);
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(248 250 252) !important;
 }
 .ds-search-input::placeholder { color: rgb(148 163 184); }
 .ds-search-input:focus {
@@ -278,9 +278,9 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .dark .ds-input {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgb(248 250 252);
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(248 250 252) !important;
 }
 .ds-input:focus {
   outline: none;
@@ -309,9 +309,9 @@
 }
 .dark .ds-select,
 .dark .dashboard-select {
-  background-color: rgb(30 41 59);
-  border-color: rgb(71 85 105);
-  color: rgb(255 255 255);
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(248 250 252) !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 .ds-select:hover:not(:disabled),

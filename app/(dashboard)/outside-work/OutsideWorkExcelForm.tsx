@@ -271,7 +271,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
   const TH = 'border border-black bg-gray-200 text-sm font-semibold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
   const TD = 'border border-black align-top text-sm text-gray-900'
-  const INP = 'w-full bg-white text-sm !text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-400 leading-snug rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  const INP = 'form-on-light w-full bg-white text-sm !text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-400 leading-snug rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
   const SEL = 'select-on-light w-full bg-white text-sm !text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug border border-gray-300 shadow-sm rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
   const INP_RO = 'cursor-default bg-slate-100 !text-gray-900'
   const RO_SPAN = 'text-sm font-medium text-gray-900'
@@ -289,7 +289,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <select
               value={viewUserId}
               onChange={e => setViewUserId(e.target.value)}
-              className="select-on-light flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="form-on-light select-on-light flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             >
               {employees.map(e => (
                 <option key={e.id} value={e.id}>{e.name}{e.id === userId ? ' (ตัวเอง)' : ''}</option>

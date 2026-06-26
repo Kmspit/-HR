@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { modalFieldInput } from '@/lib/theme-classes'
+import { modalFieldInput, dashboardDialogPanel } from '@/lib/theme-classes'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
@@ -399,7 +399,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
       {showModal === 'income' && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <div className={`${dashboardDialogPanel} w-full max-w-lg p-6`}>
               <h2 className="font-semibold text-gray-800 text-lg mb-4">{editItem ? 'แก้ไขรายรับ' : 'เพิ่มรายรับคดี'}</h2>
               <form onSubmit={saveIncome} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -457,7 +457,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
       {showModal === 'expense' && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <div className={`${dashboardDialogPanel} w-full max-w-lg p-6`}>
               <h2 className="font-semibold text-gray-800 text-lg mb-4">{editItem ? 'แก้ไขค่าใช้จ่าย' : 'เพิ่มค่าใช้จ่ายคดี'}</h2>
               <form onSubmit={saveExpense} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">

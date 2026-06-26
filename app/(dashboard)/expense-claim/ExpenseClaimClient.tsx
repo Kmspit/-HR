@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { EXPENSE_CLAIM_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
-import { modalFieldInput } from '@/lib/theme-classes'
+import { modalFieldInput, dashboardDialogPanel } from '@/lib/theme-classes'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -312,7 +312,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
       {/* ── SUBMIT TAB ───────────────────────────────────────────────────── */}
       {tab === 'submit' && (
         <div className="max-w-lg">
-          <div className="bg-white rounded-xl border shadow-sm p-6">
+          <div className={`${dashboardDialogPanel} max-w-lg border shadow-sm p-6`}>
             <h2 className="font-semibold text-gray-800 mb-4">ยื่นเบิกค่าใช้จ่าย</h2>
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">

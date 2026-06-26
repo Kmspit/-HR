@@ -141,48 +141,117 @@
   border-color: rgb(226 232 240);
 }
 
-/* Modal fields — opt out of main input/select global overrides (e.g. .bg-white select → white) */
-.light main input.modal-field-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
-.light main textarea.modal-field-input,
-.dark main input.modal-field-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
-.dark main textarea.modal-field-input,
-.light main select.modal-field-input,
-.dark main select.modal-field-input,
-.dark main .bg-white select.modal-field-input,
-.dark main .bg-white input.modal-field-input:not([type='checkbox']):not([type='radio']),
-.dark main .bg-white textarea.modal-field-input {
-  background-color: rgb(31 41 55) !important;
-  color: rgb(255 255 255) !important;
-  border-color: rgb(75 85 99) !important;
+/*
+ * ── Dashboard form controls — dark theme (global) ──
+ * Target: slate-800 inputs, slate-900 dropdown panels, slate-600 borders.
+ * Opt-out on intentional light surfaces: .form-on-light / .select-on-light
+ */
+
+/* Shared utility classes (explicit on components) */
+.dashboard-form-control,
+.modal-field-input {
+  appearance: none;
 }
-.light main select.modal-field-input:has(> option[value='']:checked),
-.dark main select.modal-field-input:has(> option[value='']:checked) {
+
+.dark .dashboard-form-control,
+.dark .modal-field-input,
+.dark .dashboard-select,
+.dark .ds-select,
+.dark .ds-input {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(248 250 252) !important;
+}
+
+.dark .dashboard-form-control::placeholder,
+.dark .modal-field-input::placeholder,
+.dark .ds-input::placeholder {
+  color: rgb(148 163 184) !important;
+}
+
+/* ── Dark: all native controls in dashboard main ── */
+.dark main input:not(.form-on-light):not(.select-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']):not([type='range']):not([type='submit']):not([type='button']):not([type='reset']),
+.dark main textarea:not(.form-on-light),
+.dark main select:not(.select-on-light):not(.form-on-light) {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(248 250 252) !important;
+  appearance: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.dark main input:not(.form-on-light):not(.select-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']):not([type='range']):not([type='submit']):not([type='button']):not([type='reset'])::placeholder,
+.dark main textarea:not(.form-on-light)::placeholder {
+  color: rgb(148 163 184) !important;
+}
+
+.dark main input:not(.form-on-light):not(.select-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']):not([type='range']):not([type='submit']):not([type='button']):not([type='reset']):hover:not(:disabled),
+.dark main textarea:not(.form-on-light):hover:not(:disabled),
+.dark main select:not(.select-on-light):not(.form-on-light):hover:not(:disabled) {
+  background-color: rgb(51 65 85) !important;
+  border-color: rgb(59 130 246) !important;
+}
+
+.dark main input:not(.form-on-light):not(.select-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']):not([type='range']):not([type='submit']):not([type='button']):not([type='reset']):focus,
+.dark main input:not(.form-on-light):not(.select-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']):not([type='range']):not([type='submit']):not([type='button']):not([type='reset']):focus-visible,
+.dark main textarea:not(.form-on-light):focus,
+.dark main textarea:not(.form-on-light):focus-visible,
+.dark main select:not(.select-on-light):not(.form-on-light):focus,
+.dark main select:not(.select-on-light):not(.form-on-light):focus-visible {
+  outline: none;
+  border-color: rgb(59 130 246) !important;
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+
+.dark main select:not(.select-on-light):not(.form-on-light):has(> option[value='']:checked),
+.dark main select:not(.select-on-light):not(.form-on-light):has(> option[value='all']:checked) {
   color: rgb(203 213 225) !important;
 }
 
-/* Native inputs in dashboard (no input-field class) */
-.light main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
-.light main textarea {
+/* Modal / dialog form fields — always dark even inside legacy white shells */
+.dark main .modal-field-input,
+.dark main .dashboard-form-control,
+.dark .modal-field-input,
+.dark .dashboard-form-control {
+  background-color: rgb(30 41 59) !important;
+  color: rgb(248 250 252) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+.light main input.modal-field-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.light main textarea.modal-field-input,
+.light main select.modal-field-input,
+.dark main input.modal-field-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.dark main textarea.modal-field-input,
+.dark main select.modal-field-input {
+  background-color: rgb(30 41 59) !important;
+  color: rgb(248 250 252) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+/* Light surfaces (Excel forms, print tables) — explicit opt-out only */
+.dark main input.form-on-light:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.dark main textarea.form-on-light,
+.dark main select.select-on-light,
+.dark main select.form-on-light {
+  background-color: rgb(255 255 255) !important;
+  color: rgb(17 24 39) !important;
+  border-color: rgb(203 213 225) !important;
+}
+
+/* Light theme — dashboard forms */
+.light main input:not(.form-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.light main textarea:not(.form-on-light) {
   color: rgb(15 23 42);
 }
-.dark main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
-.dark main textarea {
-  color: rgb(241 245 249);
-}
 
-/*
- * ── Dashboard native select — global readability (dark + light) ──
- * Applies to all <select> in dashboard <main> unless .select-on-light opt-out.
- * Explicit utility: .dashboard-select (same rules, usable outside main).
- */
-
-/* Light theme — closed state */
 .light main select:not(.select-on-light),
 .light .dashboard-select {
   color: rgb(15 23 42);
   background-color: rgb(255 255 255);
   border-color: rgb(203 213 225);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  appearance: none;
 }
 .light main select:not(.select-on-light):hover:not(:disabled),
 .light .dashboard-select:hover:not(:disabled) {
@@ -204,76 +273,40 @@
   color: rgb(71 85 105);
 }
 
-/* Dark theme — closed state (slate-800 trigger) */
-.dark main select:not(.select-on-light),
-.dark .dashboard-select {
-  background-color: rgb(30 41 59) !important;
-  border-color: rgb(71 85 105) !important;
-  color: rgb(255 255 255);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-.dark main select:not(.select-on-light):hover:not(:disabled),
-.dark .dashboard-select:hover:not(:disabled) {
-  background-color: rgb(51 65 85) !important;
-  border-color: rgb(59 130 246) !important;
-}
-.dark main select:not(.select-on-light):focus,
-.dark main select:not(.select-on-light):focus-visible,
-.dark .dashboard-select:focus,
-.dark .dashboard-select:focus-visible {
-  outline: none;
-  border-color: rgb(59 130 246) !important;
-  box-shadow: 0 0 0 2px rgb(59 130 246);
-}
-/* Placeholder / empty filter — text-slate-300 */
-.dark main select:not(.select-on-light):has(> option[value='']:checked),
-.dark main select:not(.select-on-light):has(> option[value='all']:checked),
-.dark .dashboard-select:has(> option[value='']:checked),
-.dark .dashboard-select:has(> option[value='all']:checked) {
-  color: rgb(203 213 225) !important;
-}
-
-/*
- * Dark theme + white/light UI blocks (Excel forms, table cells, etc.)
- * Keep select text dark on light surfaces — do not force slate-800 background.
- */
-.dark main select.select-on-light,
-.dark main select[class*='bg-white'],
-.dark main select[class*='!text-gray'],
-.dark main select[class*='text-gray-'],
-.dark main select[class*='text-slate-9'],
-.dark main .bg-white select,
-.dark main .bg-slate-50 select,
-.dark main tr.bg-white select,
-.dark main tr.bg-slate-50 select,
-.dark main table[class*='text-gray-'] select {
-  color: rgb(17 24 39) !important;
-  background-color: rgb(255 255 255) !important;
-  border-color: rgb(203 213 225) !important;
-}
-.dark main select.select-on-light:has(> option[value='']:checked),
-.dark main select.select-on-light:has(> option[value='all']:checked),
-.dark main select[class*='bg-white']:has(> option[value='']:checked),
-.dark main select[class*='bg-white']:has(> option[value='all']:checked) {
-  color: rgb(55 65 81) !important;
-}
-
-/* Native dropdown panel + items */
+/* Native select dropdown panel + items */
 select option,
 .dashboard-select option {
   background-color: #ffffff;
   color: #111827;
 }
 .dark select option,
-.dark .dashboard-select option {
-  background-color: rgb(30 41 59);
+.dark .dashboard-select option,
+.dark main select:not(.select-on-light) option {
+  background-color: rgb(15 23 42);
   color: rgb(226 232 240);
 }
 .dark select option:checked,
-.dark .dashboard-select option:checked {
+.dark .dashboard-select option:checked,
+.dark main select:not(.select-on-light) option:checked {
   background-color: rgb(37 99 235);
   color: rgb(255 255 255);
+}
+
+/* Dialog / modal panels */
+.dark .dashboard-dialog-panel {
+  background-color: rgb(2 6 23);
+  border-color: rgb(30 41 59);
+  color: rgb(248 250 252);
+}
+
+/* Date/time pickers — browser popup dark */
+.dark input[type='date'],
+.dark input[type='time'],
+.dark input[type='datetime-local'],
+.dark main input[type='date'],
+.dark main input[type='time'],
+.dark main input[type='datetime-local'] {
+  color-scheme: dark;
 }
 
 /* Safe area helpers */
