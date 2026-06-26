@@ -141,6 +141,25 @@
   border-color: rgb(226 232 240);
 }
 
+/* Modal fields — opt out of main input/select global overrides (e.g. .bg-white select → white) */
+.light main input.modal-field-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.light main textarea.modal-field-input,
+.dark main input.modal-field-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
+.dark main textarea.modal-field-input,
+.light main select.modal-field-input,
+.dark main select.modal-field-input,
+.dark main .bg-white select.modal-field-input,
+.dark main .bg-white input.modal-field-input:not([type='checkbox']):not([type='radio']),
+.dark main .bg-white textarea.modal-field-input {
+  background-color: rgb(31 41 55) !important;
+  color: rgb(255 255 255) !important;
+  border-color: rgb(75 85 99) !important;
+}
+.light main select.modal-field-input:has(> option[value='']:checked),
+.dark main select.modal-field-input:has(> option[value='']:checked) {
+  color: rgb(203 213 225) !important;
+}
+
 /* Native inputs in dashboard (no input-field class) */
 .light main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
 .light main textarea {

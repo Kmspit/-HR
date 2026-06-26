@@ -26,9 +26,15 @@ export const fieldSelect =
   'hover:border-blue-500 dark:hover:bg-slate-700 dark:hover:border-blue-500 ' +
   'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
 
-/** Modal form fields — dark inputs consistent across dashboard modals */
+/** Modal form fields — dark inputs; use with modalFieldStyle inline override when globals conflict */
 export const modalFieldInput =
-  'w-full rounded-lg px-3 py-2 bg-gray-800 border border-gray-600 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+  'modal-field-input w-full rounded-lg px-3 py-2 !bg-gray-800 !border !border-gray-600 !text-white placeholder:!text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+export const modalFieldStyle = {
+  backgroundColor: 'rgb(31 41 55)',
+  color: 'white',
+  borderColor: 'rgb(75 85 99)',
+} as const
 
 export const tableWrap = 'table-scroll'
 export const dataTable = 'warnings-table hr-table'

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { CLIENT_TASK_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
-import { modalFieldInput } from '@/lib/theme-classes'
+import { modalFieldInput, modalFieldStyle } from '@/lib/theme-classes'
 
 interface ClientUser {
   id: string
@@ -288,8 +288,8 @@ export default function ClientsClient({ userRole }: Props) {
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
-            <h2 className="font-semibold text-gray-800">เพิ่มบัญชีลูกค้า</h2>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4">
+            <h2 className="font-semibold text-white">เพิ่มบัญชีลูกค้า</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
               {[
                 { label: 'ชื่อ-นามสกุล *', key: 'name', type: 'text', req: true },
@@ -299,11 +299,12 @@ export default function ClientsClient({ userRole }: Props) {
                 { label: 'รหัสผ่านเริ่มต้น *', key: 'password', type: 'password', req: true },
               ].map(({ label, key, type, req }) => (
                 <div key={key} className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">{label}</label>
+                  <label className="text-xs font-medium text-gray-300">{label}</label>
                   <input required={req} type={type}
                     value={form[key as keyof typeof form]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    className={modalFieldInput} />
+                    className={modalFieldInput}
+                    style={modalFieldStyle} />
                 </div>
               ))}
               <div className="flex gap-2 justify-end pt-1">
@@ -324,24 +325,27 @@ export default function ClientsClient({ userRole }: Props) {
       {showHistory && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4">
-            <h2 className="font-semibold text-gray-800 text-sm">อัพเดทสถานะคดี (ลูกค้าจะเห็น)</h2>
-            <div className="text-xs text-gray-500">{showHistory.taskTitle}</div>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4">
+            <h2 className="font-semibold text-white text-sm">อัพเดทสถานะคดี (ลูกค้าจะเห็น)</h2>
+            <div className="text-xs text-gray-400">{showHistory.taskTitle}</div>
             <form onSubmit={addStatusHistory} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">สถานะ *</label>
+                <label className="text-xs font-medium text-gray-300">สถานะ *</label>
                 <select required value={historyForm.status}
                   onChange={(e) => setHistoryForm({ ...historyForm, status: e.target.value })}
-                  className={modalFieldInput}>
+                  className={modalFieldInput}
+                  style={modalFieldStyle}>
                   <option value="">-- เลือกสถานะ --</option>
                   {CLIENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
+                <label className="text-xs font-medium text-gray-300">หมายเหตุ</label>
                 <textarea rows={2} value={historyForm.note}
                   onChange={(e) => setHistoryForm({ ...historyForm, note: e.target.value })}
-                  className={`${modalFieldInput} resize-none`} placeholder="รายละเอียดเพิ่มเติม..." />
+                  className={`${modalFieldInput} resize-none`}
+                  style={modalFieldStyle}
+                  placeholder="รายละเอียดเพิ่มเติม..." />
               </div>
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowHistory(null)}
@@ -361,12 +365,14 @@ export default function ClientsClient({ userRole }: Props) {
       {showLinkTask && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]">
-            <h2 className="font-semibold text-gray-800">เลือกคดีที่จะเชื่อม</h2>
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]">
+            <h2 className="font-semibold text-white">เลือกคดีที่จะเชื่อม</h2>
             <div className="flex gap-2">
               <input value={taskSearchQ} onChange={(e) => setTaskSearchQ(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchAvailableTasks(taskSearchQ)}
-                placeholder="ค้นหาคดี / เลขคดี..." className={`flex-1 ${modalFieldInput}`} />
+                placeholder="ค้นหาคดี / เลขคดี..."
+                className={`flex-1 ${modalFieldInput}`}
+                style={modalFieldStyle} />
               <button onClick={() => fetchAvailableTasks(taskSearchQ)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm">ค้นหา</button>
             </div>
             <div className="flex-1 overflow-y-auto flex flex-col gap-1.5">
