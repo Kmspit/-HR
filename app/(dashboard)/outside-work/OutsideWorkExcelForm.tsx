@@ -624,16 +624,16 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
         {/* ── Approval history ─────────────────────────────────────── */}
         {viewReqs.length > 0 && (
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 print:hidden">
+          <div className="bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm p-4 print:hidden">
             <h3 className="text-base font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
             <div className="divide-y divide-gray-300">
               {viewReqs.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-2.5 gap-3">
                   <div className="flex items-center gap-2 text-sm text-gray-800 min-w-0">
                     <span className="font-mono text-sm text-gray-800 shrink-0">{r.documentNumber ?? '—'}</span>
-                    <span className="shrink-0 font-medium">{r.date.slice(0, 10)}</span>
+                    <span className="shrink-0 font-medium text-gray-900">{r.date.slice(0, 10)}</span>
                     <span className="text-gray-800 shrink-0">({r.timeSlot ?? '—'})</span>
-                    <span className="font-medium truncate">{r.place}</span>
+                    <span className="font-medium truncate text-gray-900">{r.place}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge slot={{ approvalStatus: r.approvalStatus, status: r.status, place:'', purpose:'', caseNumber:'', productWork:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }} />
