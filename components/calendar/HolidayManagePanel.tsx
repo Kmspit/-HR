@@ -36,7 +36,7 @@ const TYPE_BADGE: Record<HolidayType, string> = {
 }
 
 const inputCls =
-  'w-full rounded-xl border dark:border-white/10 light:border-slate-200 dark:bg-slate-800/60 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:border-blue-500/50'
+  'dashboard-select w-full rounded-xl border dark:border-slate-600 light:border-slate-200 dark:bg-slate-800 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
 
 type Props = {
   initialHolidays: HolidayItem[]

@@ -13,10 +13,18 @@ export const cardTitle = 'text-sm font-semibold dark:text-white light:text-slate
 
 export const fieldInput =
   'w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150 ' +
-  'dark:border-white/12 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-500 ' +
-  'light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-500 ' +
-  'focus:outline-none focus:ring-2 focus:ring-blue-500/25 ' +
-  'dark:focus:border-blue-500/70 light:focus:border-blue-500'
+  'dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-300 ' +
+  'light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-400 ' +
+  'hover:border-blue-500 dark:hover:bg-slate-700 dark:hover:border-blue-500 ' +
+  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+
+/** Native <select> on dark dashboard surfaces — also auto-applied via utilities.css */
+export const fieldSelect =
+  'dashboard-select w-full rounded-xl border px-3 py-2.5 text-sm shadow-sm cursor-pointer ' +
+  'border-slate-300 bg-white text-slate-900 ' +
+  'dark:border-slate-600 dark:bg-slate-800 dark:text-white ' +
+  'hover:border-blue-500 dark:hover:bg-slate-700 dark:hover:border-blue-500 ' +
+  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
 
 export const tableWrap = 'table-scroll'
 export const dataTable = 'warnings-table hr-table'

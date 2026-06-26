@@ -151,18 +151,75 @@
   color: rgb(241 245 249);
 }
 
-/* Select closed-state color */
-.light main select {
+/*
+ * ── Dashboard native select — global readability (dark + light) ──
+ * Applies to all <select> in dashboard <main> unless .select-on-light opt-out.
+ * Explicit utility: .dashboard-select (same rules, usable outside main).
+ */
+
+/* Light theme — closed state */
+.light main select:not(.select-on-light),
+.light .dashboard-select {
   color: rgb(15 23 42);
+  background-color: rgb(255 255 255);
+  border-color: rgb(203 213 225);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
-.dark main select {
-  color: rgb(241 245 249);
+.light main select:not(.select-on-light):hover:not(:disabled),
+.light .dashboard-select:hover:not(:disabled) {
+  background-color: rgb(248 250 252);
+  border-color: rgb(59 130 246);
+}
+.light main select:not(.select-on-light):focus,
+.light main select:not(.select-on-light):focus-visible,
+.light .dashboard-select:focus,
+.light .dashboard-select:focus-visible {
+  outline: none;
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+.light main select:not(.select-on-light):has(> option[value='']:checked),
+.light main select:not(.select-on-light):has(> option[value='all']:checked),
+.light .dashboard-select:has(> option[value='']:checked),
+.light .dashboard-select:has(> option[value='all']:checked) {
+  color: rgb(71 85 105);
+}
+
+/* Dark theme — closed state (slate-800 trigger) */
+.dark main select:not(.select-on-light),
+.dark .dashboard-select {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(255 255 255);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.dark main select:not(.select-on-light):hover:not(:disabled),
+.dark .dashboard-select:hover:not(:disabled) {
+  background-color: rgb(51 65 85) !important;
+  border-color: rgb(59 130 246) !important;
+}
+.dark main select:not(.select-on-light):focus,
+.dark main select:not(.select-on-light):focus-visible,
+.dark .dashboard-select:focus,
+.dark .dashboard-select:focus-visible {
+  outline: none;
+  border-color: rgb(59 130 246) !important;
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+/* Placeholder / empty filter — text-slate-300 */
+.dark main select:not(.select-on-light):has(> option[value='']:checked),
+.dark main select:not(.select-on-light):has(> option[value='all']:checked),
+.dark .dashboard-select:has(> option[value='']:checked),
+.dark .dashboard-select:has(> option[value='all']:checked) {
+  color: rgb(203 213 225) !important;
 }
 
 /*
- * Dark theme + white/light UI blocks (Excel forms, filters on white cards, etc.)
- * Keep select text dark so it stays readable on bg-white / bg-slate-50 surfaces.
+ * Dark theme + white/light UI blocks (Excel forms, table cells, etc.)
+ * Keep select text dark on light surfaces — do not force slate-800 background.
  */
+.dark main select.select-on-light,
 .dark main select[class*='bg-white'],
 .dark main select[class*='!text-gray'],
 .dark main select[class*='text-gray-'],
@@ -173,16 +230,31 @@
 .dark main tr.bg-slate-50 select,
 .dark main table[class*='text-gray-'] select {
   color: rgb(17 24 39) !important;
+  background-color: rgb(255 255 255) !important;
+  border-color: rgb(203 213 225) !important;
+}
+.dark main select.select-on-light:has(> option[value='']:checked),
+.dark main select.select-on-light:has(> option[value='all']:checked),
+.dark main select[class*='bg-white']:has(> option[value='']:checked),
+.dark main select[class*='bg-white']:has(> option[value='all']:checked) {
+  color: rgb(55 65 81) !important;
 }
 
-/* Native dropdown list — option popup readability */
-select option {
+/* Native dropdown panel + items */
+select option,
+.dashboard-select option {
   background-color: #ffffff;
   color: #111827;
 }
-.dark select option {
-  background-color: #1f2937;
-  color: #f9fafb;
+.dark select option,
+.dark .dashboard-select option {
+  background-color: rgb(30 41 59);
+  color: rgb(226 232 240);
+}
+.dark select option:checked,
+.dark .dashboard-select option:checked {
+  background-color: rgb(37 99 235);
+  color: rgb(255 255 255);
 }
 
 /* Safe area helpers */

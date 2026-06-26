@@ -289,31 +289,53 @@
 }
 .ds-input::placeholder { color: rgb(148 163 184); }
 
-/* ── 11. Consistent select ── */
-.ds-select {
-  height: 2.75rem;
-  padding: 0 2.25rem 0 0.875rem;
+/* ── 11. Consistent select (alias of .dashboard-select + chevron) ── */
+.ds-select,
+.dashboard-select {
+  min-height: 2.75rem;
+  padding: 0.5rem 2.25rem 0.5rem 0.875rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background-color: hsl(var(--card));
+  border: 1px solid rgb(203 213 225);
+  background-color: rgb(255 255 255);
   color: rgb(15 23 42);
   font-size: 0.875rem;
   appearance: none;
+  cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
-  transition: border-color 0.15s;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
-.dark .ds-select {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgb(248 250 252);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+.dark .ds-select,
+.dark .dashboard-select {
+  background-color: rgb(30 41 59);
+  border-color: rgb(71 85 105);
+  color: rgb(255 255 255);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
-.ds-select:focus {
+.ds-select:hover:not(:disabled),
+.dashboard-select:hover:not(:disabled) {
+  border-color: rgb(59 130 246);
+}
+.dark .ds-select:hover:not(:disabled),
+.dark .dashboard-select:hover:not(:disabled) {
+  background-color: rgb(51 65 85);
+  border-color: rgb(59 130 246);
+}
+.ds-select:focus,
+.ds-select:focus-visible,
+.dashboard-select:focus,
+.dashboard-select:focus-visible {
   outline: none;
-  border-color: rgb(59 130 246 / 0.6);
-  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+}
+.dark .ds-select:has(> option[value='']:checked),
+.dark .ds-select:has(> option[value='all']:checked),
+.dark .dashboard-select:has(> option[value='']:checked),
+.dark .dashboard-select:has(> option[value='all']:checked) {
+  color: rgb(203 213 225);
 }
 
 /* ── 12. Consistent button sizes ── */
