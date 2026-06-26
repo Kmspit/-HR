@@ -143,14 +143,46 @@
 
 /* Native inputs in dashboard (no input-field class) */
 .light main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
-.light main select,
 .light main textarea {
   color: rgb(15 23 42);
 }
 .dark main input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']),
-.dark main select,
 .dark main textarea {
   color: rgb(241 245 249);
+}
+
+/* Select closed-state color */
+.light main select {
+  color: rgb(15 23 42);
+}
+.dark main select {
+  color: rgb(241 245 249);
+}
+
+/*
+ * Dark theme + white/light UI blocks (Excel forms, filters on white cards, etc.)
+ * Keep select text dark so it stays readable on bg-white / bg-slate-50 surfaces.
+ */
+.dark main select[class*='bg-white'],
+.dark main select[class*='!text-gray'],
+.dark main select[class*='text-gray-'],
+.dark main select[class*='text-slate-9'],
+.dark main .bg-white select,
+.dark main .bg-slate-50 select,
+.dark main tr.bg-white select,
+.dark main tr.bg-slate-50 select,
+.dark main table[class*='text-gray-'] select {
+  color: rgb(17 24 39) !important;
+}
+
+/* Native dropdown list — option popup readability */
+select option {
+  background-color: #ffffff;
+  color: #111827;
+}
+.dark select option {
+  background-color: #1f2937;
+  color: #f9fafb;
 }
 
 /* Safe area helpers */

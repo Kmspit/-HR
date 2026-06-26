@@ -289,7 +289,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <select
               value={viewUserId}
               onChange={e => setViewUserId(e.target.value)}
-              className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             >
               {employees.map(e => (
                 <option key={e.id} value={e.id}>{e.name}{e.id === userId ? ' (ตัวเอง)' : ''}</option>
