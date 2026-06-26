@@ -270,10 +270,11 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
   // ── CSS tokens ────────────────────────────────────────────────────────────
 
   const TH = 'border border-black bg-gray-200 text-sm font-semibold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
-  const TD = 'border border-black align-top text-sm text-gray-800'
-  const INP = 'w-full bg-white text-sm text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-700 leading-snug rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-  const SEL = 'w-full bg-white text-sm text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug border border-gray-300 shadow-sm rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-  const INP_RO = 'cursor-default bg-slate-100'
+  const TD = 'border border-black align-top text-sm text-gray-900'
+  const INP = 'w-full bg-white text-sm !text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-400 leading-snug rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  const SEL = 'w-full bg-white text-sm !text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug border border-gray-300 shadow-sm rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  const INP_RO = 'cursor-default bg-slate-100 !text-gray-900'
+  const RO_SPAN = 'text-sm font-medium text-gray-900'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
         )}
 
         {/* ── Form card ───────────────────────────────────────────────── */}
-        <div className="bg-white border border-gray-400 rounded-lg shadow-sm overflow-hidden print:shadow-none print:rounded-none">
+        <div className="bg-white text-gray-900 border border-gray-400 rounded-lg shadow-sm overflow-hidden print:shadow-none print:rounded-none">
 
           {/* Company header */}
           <div className="border-b-2 border-gray-400 text-center px-4 py-3">
@@ -335,7 +336,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
           </div>
 
           {/* Form meta */}
-          <div className="grid grid-cols-2 border-b border-gray-300 text-sm text-gray-800">
+          <div className="grid grid-cols-2 border-b border-gray-300 text-sm text-gray-900">
             <div className="px-4 py-1.5 border-r border-gray-300">
               <span className="font-semibold">แผนงานช่วงวันที่: </span>{fmtRangeTH(weekStart, weekEnd)}
             </div>
@@ -346,7 +347,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
           {/* ── Weekly table ─────────────────────────────────────────── */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 920 }}>
+            <table className="w-full border-collapse text-gray-900" style={{ minWidth: 920 }}>
               <thead>
                 <tr>
                   <th className={`${TH} w-[58px]`}     rowSpan={2}>วัน</th>
@@ -386,16 +387,16 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                       <tr className={`${stripe} ${today ? 'outline outline-1 outline-blue-400 outline-offset-[-1px]' : ''}`}>
 
                         {/* วัน — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle font-bold text-sm ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle font-bold text-sm text-gray-900 ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
-                          <div className="flex flex-col items-center gap-0.5">
+                          <div className="flex flex-col items-center gap-0.5 text-gray-900">
                             {today && <span className="text-xs text-blue-800 font-semibold">วันนี้</span>}
                             {DAYS_TH[dayIdx]}
                           </div>
                         </td>
 
                         {/* ว/ด/ปี — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle text-sm text-gray-800 ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle text-sm text-gray-900 ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
                           {fmtDateTH(ymd)}
                         </td>
@@ -450,7 +451,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         {/* แอดมินตรวจสอบ */}
                         <td className={`${TD} ${stripe} text-center`}>
                           {mLock
-                            ? <span className="text-sm font-medium text-gray-800">{morn.adminChecked || '—'}</span>
+                            ? <span className={RO_SPAN}>{morn.adminChecked || '—'}</span>
                             : <select value={morn.adminChecked} onChange={e => updateSlot(kM, 'adminChecked', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="มี">มี</option>
@@ -462,7 +463,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         {/* ผู้สั่งงาน */}
                         <td className={`${TD} ${stripe} text-center`}>
                           {mLock
-                            ? <span className="text-sm font-medium text-gray-800">{morn.supervisedBy || '—'}</span>
+                            ? <span className={RO_SPAN}>{morn.supervisedBy || '—'}</span>
                             : <select value={morn.supervisedBy} onChange={e => updateSlot(kM, 'supervisedBy', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="แอดมิน">แอดมิน</option>
@@ -490,7 +491,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-700 text-sm font-medium">—</span>
+                            : <span className="text-gray-900 text-sm font-medium">—</span>
                           }
                         </td>
 
@@ -548,7 +549,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
                         <td className={`${TD} ${stripe} text-center`}>
                           {aLock
-                            ? <span className="text-sm font-medium text-gray-800">{aftn.adminChecked || '—'}</span>
+                            ? <span className={RO_SPAN}>{aftn.adminChecked || '—'}</span>
                             : <select value={aftn.adminChecked} onChange={e => updateSlot(kA, 'adminChecked', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="มี">มี</option>
@@ -559,7 +560,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
                         <td className={`${TD} ${stripe} text-center`}>
                           {aLock
-                            ? <span className="text-sm font-medium text-gray-800">{aftn.supervisedBy || '—'}</span>
+                            ? <span className={RO_SPAN}>{aftn.supervisedBy || '—'}</span>
                             : <select value={aftn.supervisedBy} onChange={e => updateSlot(kA, 'supervisedBy', e.target.value)} className={SEL}>
                                 <option value="">—</option>
                                 <option value="แอดมิน">แอดมิน</option>
@@ -586,7 +587,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-700 text-sm font-medium">—</span>
+                            : <span className="text-gray-900 text-sm font-medium">—</span>
                           }
                         </td>
 
