@@ -143,12 +143,12 @@ function isPendingSlot(slot: SlotData) {
 
 function StatusBadge({ slot }: { slot: SlotData }) {
   const s = slot.approvalStatus ?? slot.status
-  if (!s) return <span className="text-gray-400 text-sm">—</span>
+  if (!s) return <span className="text-gray-700 text-sm">—</span>
   const label = STATUS_LABEL[s] ?? s
   const cls =
-    s === 'approved_by_ceo' || s === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' :
-    s === 'rejected_by_ceo' || s === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' :
-    'bg-yellow-100 text-yellow-700 border-yellow-200'
+    s === 'approved_by_ceo' || s === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-300' :
+    s === 'rejected_by_ceo' || s === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-300' :
+    'bg-yellow-100 text-yellow-800 border-yellow-300'
   return (
     <span className={`inline-block px-1.5 py-0.5 rounded border text-sm font-semibold leading-tight ${cls}`}>
       {label}
@@ -269,10 +269,11 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
   // ── CSS tokens ────────────────────────────────────────────────────────────
 
-  const TH = 'border border-black bg-gray-200 text-sm font-bold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
-  const TD = 'border border-black align-top'
-  const INP = 'w-full bg-white text-sm text-gray-900 outline-none px-1 py-1 placeholder:text-gray-500 leading-snug'
-  const SEL = 'w-full bg-white text-sm text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug'
+  const TH = 'border border-black bg-gray-200 text-sm font-semibold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
+  const TD = 'border border-black align-top text-sm text-gray-800'
+  const INP = 'w-full bg-white text-sm text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-700 leading-snug rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  const SEL = 'w-full bg-white text-sm text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug border border-gray-300 shadow-sm rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  const INP_RO = 'cursor-default bg-slate-100'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -287,7 +288,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <select
               value={viewUserId}
               onChange={e => setViewUserId(e.target.value)}
-              className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-blue-500 transition"
+              className="flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             >
               {employees.map(e => (
                 <option key={e.id} value={e.id}>{e.name}{e.id === userId ? ' (ตัวเอง)' : ''}</option>
@@ -307,7 +308,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <p className="text-sm text-gray-700">
               เลขที่ 99/1 หมู่ที่ 1 ถ.พหลโยธิน ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120
             </p>
-            <h1 className="mt-1.5 text-base font-bold text-red-700 leading-snug">
+            <h1 className="mt-1.5 text-base font-bold text-red-800 leading-snug">
               แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท
             </h1>
           </div>
@@ -316,26 +317,26 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
           <div className="border-b border-gray-300 px-4 py-2 flex flex-wrap items-center justify-between gap-2 print:hidden">
             <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
               <button type="button" onClick={() => setWeekStart(w => addDays(w, -7))}
-                className="p-2 hover:bg-gray-200 transition text-gray-600">
+                className="p-2 hover:bg-gray-200 transition text-gray-800">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 text-sm font-semibold text-gray-800 select-none whitespace-nowrap">
+              <span className="px-3 text-sm font-semibold text-gray-900 select-none whitespace-nowrap">
                 {fmtRangeTH(weekStart, weekEnd)}
               </span>
               <button type="button" onClick={() => setWeekStart(w => addDays(w, 7))}
-                className="p-2 hover:bg-gray-200 transition text-gray-600">
+                className="p-2 hover:bg-gray-200 transition text-gray-800">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
             <button type="button" onClick={() => setWeekStart(getMonday(new Date()))}
-              className="px-3 py-1.5 text-sm border border-gray-400 rounded-lg hover:bg-gray-50 text-gray-800 font-medium transition">
+              className="px-3 py-1.5 text-sm border border-gray-400 rounded-lg shadow-sm hover:bg-slate-100 hover:border-gray-500 text-gray-900 font-semibold transition">
               สัปดาห์นี้
             </button>
           </div>
 
           {/* Form meta */}
           <div className="grid grid-cols-2 border-b border-gray-300 text-sm text-gray-800">
-            <div className="px-4 py-1.5 border-r border-gray-200">
+            <div className="px-4 py-1.5 border-r border-gray-300">
               <span className="font-semibold">แผนงานช่วงวันที่: </span>{fmtRangeTH(weekStart, weekEnd)}
             </div>
             <div className="px-4 py-1.5">
@@ -363,8 +364,8 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                   <th className={`${TH} w-[90px]`}     rowSpan={2}>หมายเหตุ</th>
                 </tr>
                 <tr>
-                  <th className={`${TH} font-medium`}>(มี/ไม่มี)</th>
-                  <th className={`${TH} font-medium`}>(แอดมิน/หัวหน้า/<br/>ทนายวางแผนตามเอง)</th>
+                  <th className={`${TH} font-semibold`}>(มี/ไม่มี)</th>
+                  <th className={`${TH} font-semibold`}>(แอดมิน/หัวหน้า/<br/>ทนายวางแผนตามเอง)</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,7 +375,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                   const morn  = weekData[kM] ?? emptySlot()
                   const aftn  = weekData[kA] ?? emptySlot()
                   const today = ymd === todayYmd
-                  const stripe = dayIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  const stripe = dayIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
                   const mLock = !canEditForm || morn.approvalStatus === 'approved_by_ceo' || morn.approvalStatus === 'APPROVED'
                   const aLock = !canEditForm || aftn.approvalStatus === 'approved_by_ceo' || aftn.approvalStatus === 'APPROVED'
 
@@ -388,13 +389,13 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`border border-black text-center align-middle font-bold text-sm ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
                           <div className="flex flex-col items-center gap-0.5">
-                            {today && <span className="text-xs text-blue-700 font-semibold">วันนี้</span>}
+                            {today && <span className="text-xs text-blue-800 font-semibold">วันนี้</span>}
                             {DAYS_TH[dayIdx]}
                           </div>
                         </td>
 
                         {/* ว/ด/ปี — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle text-sm ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle text-sm text-gray-800 ${today ? 'bg-blue-50' : stripe}`}
                           rowSpan={2}>
                           {fmtDateTH(ymd)}
                         </td>
@@ -408,42 +409,42 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.place} readOnly={mLock} placeholder="สถานที่..."
                             onChange={e => updateSlot(kM, 'place', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${mLock ? INP_RO : ''}`} />
                         </td>
 
                         {/* สิ่งที่ไปดำเนินการ */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.purpose} readOnly={mLock} placeholder="รายละเอียด..."
                             onChange={e => updateSlot(kM, 'purpose', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${mLock ? INP_RO : ''}`} />
                         </td>
 
                         {/* หมายเลขคดี */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.caseNumber} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'caseNumber', e.target.value)}
-                            className={`${INP} text-center ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} text-center ${mLock ? INP_RO : ''}`} />
                         </td>
 
                         {/* งานผลิตภัณฑ์ */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.productWork} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'productWork', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${mLock ? INP_RO : ''}`} />
                         </td>
 
                         {/* สาขา */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.workBranch} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'workBranch', e.target.value)}
-                            className={`${INP} text-center ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} text-center ${mLock ? INP_RO : ''}`} />
                         </td>
 
                         {/* จำนวนคดี */}
                         <td className={`${TD} ${stripe}`}>
                           <input type="number" min="0" value={morn.caseCount} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'caseCount', e.target.value)}
-                            className={`${INP} text-center ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} text-center ${mLock ? INP_RO : ''}`} />
                         </td>
 
                         {/* แอดมินตรวจสอบ */}
@@ -479,17 +480,17 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                 {canApproveOutside && isPendingSlot(morn) && (
                                   <div className="flex gap-0.5 mt-0.5">
                                     <button onClick={() => handleApprove(morn.id!, 'approve')} disabled={approvingId === morn.id}
-                                      title="อนุมัติ" className="p-0.5 rounded hover:bg-green-50 text-green-600 transition disabled:opacity-40">
+                                      title="อนุมัติ" className="p-0.5 rounded hover:bg-green-100 text-green-800 transition disabled:opacity-40">
                                       {approvingId === morn.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                                     </button>
                                     <button onClick={() => handleApprove(morn.id!, 'reject')} disabled={approvingId === morn.id}
-                                      title="ปฏิเสธ" className="p-0.5 rounded hover:bg-red-50 text-red-600 transition disabled:opacity-40">
+                                      title="ปฏิเสธ" className="p-0.5 rounded hover:bg-red-100 text-red-800 transition disabled:opacity-40">
                                       <XCircle className="w-3 h-3" />
                                     </button>
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-500 text-sm">—</span>
+                            : <span className="text-gray-700 text-sm font-medium">—</span>
                           }
                         </td>
 
@@ -497,7 +498,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.note} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'note', e.target.value)}
-                            className={`${INP} ${mLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${mLock ? INP_RO : ''}`} />
                         </td>
                       </tr>
 
@@ -512,37 +513,37 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.place} readOnly={aLock} placeholder="สถานที่..."
                             onChange={e => updateSlot(kA, 'place', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${aLock ? INP_RO : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.purpose} readOnly={aLock} placeholder="รายละเอียด..."
                             onChange={e => updateSlot(kA, 'purpose', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${aLock ? INP_RO : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.caseNumber} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'caseNumber', e.target.value)}
-                            className={`${INP} text-center ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} text-center ${aLock ? INP_RO : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.productWork} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'productWork', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${aLock ? INP_RO : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.workBranch} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'workBranch', e.target.value)}
-                            className={`${INP} text-center ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} text-center ${aLock ? INP_RO : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input type="number" min="0" value={aftn.caseCount} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'caseCount', e.target.value)}
-                            className={`${INP} text-center ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} text-center ${aLock ? INP_RO : ''}`} />
                         </td>
 
                         <td className={`${TD} ${stripe} text-center`}>
@@ -575,24 +576,24 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                                 {canApproveOutside && isPendingSlot(aftn) && (
                                   <div className="flex gap-0.5 mt-0.5">
                                     <button onClick={() => handleApprove(aftn.id!, 'approve')} disabled={approvingId === aftn.id}
-                                      title="อนุมัติ" className="p-0.5 rounded hover:bg-green-50 text-green-600 transition disabled:opacity-40">
+                                      title="อนุมัติ" className="p-0.5 rounded hover:bg-green-100 text-green-800 transition disabled:opacity-40">
                                       {approvingId === aftn.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                                     </button>
                                     <button onClick={() => handleApprove(aftn.id!, 'reject')} disabled={approvingId === aftn.id}
-                                      title="ปฏิเสธ" className="p-0.5 rounded hover:bg-red-50 text-red-600 transition disabled:opacity-40">
+                                      title="ปฏิเสธ" className="p-0.5 rounded hover:bg-red-100 text-red-800 transition disabled:opacity-40">
                                       <XCircle className="w-3 h-3" />
                                     </button>
                                   </div>
                                 )}
                               </div>
-                            : <span className="text-gray-500 text-sm">—</span>
+                            : <span className="text-gray-700 text-sm font-medium">—</span>
                           }
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
                           <input value={aftn.note} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'note', e.target.value)}
-                            className={`${INP} ${aLock ? 'cursor-default bg-gray-50' : ''}`} />
+                            className={`${INP} ${aLock ? INP_RO : ''}`} />
                         </td>
                       </tr>
 
@@ -611,9 +612,9 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
 
           {/* Action buttons */}
           {canEditForm && (
-            <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2 bg-gray-50 print:hidden">
+            <div className="border-t border-gray-300 px-4 py-3 flex justify-end gap-2 bg-slate-50 print:hidden">
               <button type="button" onClick={save} disabled={saving}
-                className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition">
+                className="flex items-center gap-2 px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow-sm transition">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {saving ? 'กำลังบันทึก...' : 'บันทึกและส่งอนุมัติ'}
               </button>
@@ -625,13 +626,13 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
         {viewReqs.length > 0 && (
           <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 print:hidden">
             <h3 className="text-base font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-300">
               {viewReqs.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-2.5 gap-3">
                   <div className="flex items-center gap-2 text-sm text-gray-800 min-w-0">
-                    <span className="font-mono text-sm text-gray-700 shrink-0">{r.documentNumber ?? '—'}</span>
-                    <span className="shrink-0">{r.date.slice(0, 10)}</span>
-                    <span className="text-gray-600 shrink-0">({r.timeSlot ?? '—'})</span>
+                    <span className="font-mono text-sm text-gray-800 shrink-0">{r.documentNumber ?? '—'}</span>
+                    <span className="shrink-0 font-medium">{r.date.slice(0, 10)}</span>
+                    <span className="text-gray-800 shrink-0">({r.timeSlot ?? '—'})</span>
                     <span className="font-medium truncate">{r.place}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -639,11 +640,11 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                     {canApproveOutside && (r.approvalStatus === 'pending_ceo' || r.status === 'PENDING') && (
                       <div className="flex gap-1">
                         <button onClick={() => handleApprove(r.id, 'approve')} disabled={approvingId === r.id}
-                          className="px-3 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 text-sm font-semibold transition disabled:opacity-40">
+                          className="px-3 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 text-sm font-bold transition disabled:opacity-40">
                           อนุมัติ
                         </button>
                         <button onClick={() => handleApprove(r.id, 'reject')} disabled={approvingId === r.id}
-                          className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 text-sm font-semibold transition disabled:opacity-40">
+                          className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 text-sm font-bold transition disabled:opacity-40">
                           ปฏิเสธ
                         </button>
                       </div>
