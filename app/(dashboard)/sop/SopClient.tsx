@@ -1,8 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { modalFieldInput } from '@/lib/theme-classes'
 
 type SopStep  = { order: number; title: string; detail: string }
 type CheckItem = { text: string; required: boolean }
@@ -438,13 +437,13 @@ export default function SopClient({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อ SOP *</label>
                   <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
+                    className={modalFieldInput}
                     placeholder="ชื่อขั้นตอน" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย *</label>
                   <select value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm">
+                    className={modalFieldInput}>
                     {DEPARTMENTS.filter((d) => d.value !== 'ALL').map((d) => (
                       <option key={d.value} value={d.value}>{d.label}</option>
                     ))}
@@ -454,7 +453,7 @@ export default function SopClient({
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำอธิบาย</label>
                 <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={2} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm resize-none"
+                  rows={2} className={`${modalFieldInput} resize-none`}
                   placeholder="อธิบายขั้นตอนโดยย่อ" />
               </div>
 
@@ -470,10 +469,10 @@ export default function SopClient({
                       <span className="text-xs text-gray-400 mt-2 w-5 flex-shrink-0">{i + 1}.</span>
                       <div className="flex-1 space-y-1">
                         <input value={s.title} onChange={(e) => updateStep(i, 'title', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-xs"
+                          className={`${modalFieldInput} text-xs`}
                           placeholder="ชื่อขั้นตอน" />
                         <input value={s.detail} onChange={(e) => updateStep(i, 'detail', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-xs"
+                          className={`${modalFieldInput} text-xs`}
                           placeholder="รายละเอียด (ถ้ามี)" />
                       </div>
                       <button type="button" onClick={() => removeStep(i)} className="text-red-400 text-xs mt-2">✕</button>
@@ -492,7 +491,7 @@ export default function SopClient({
                   {form.checklist.map((c, i) => (
                     <div key={c.text || String(i)} className="flex gap-2 items-center">
                       <input value={c.text} onChange={(e) => updateCheck(i, 'text', e.target.value)}
-                        className="flex-1 px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-xs"
+                        className={`flex-1 ${modalFieldInput} text-xs`}
                         placeholder="รายการ checklist" />
                       <label className="flex items-center gap-1 text-xs text-gray-600">
                         <input type="checkbox" checked={c.required} onChange={(e) => updateCheck(i, 'required', e.target.checked)} />

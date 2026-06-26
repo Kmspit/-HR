@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { modalFieldInput } from '@/lib/theme-classes'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
@@ -404,23 +405,23 @@ export default function CaseFinanceClient({ userRole }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">ประเภทรายรับ *</label>
-                    <select required value={incomeForm.incomeType} onChange={e => setIncomeForm({...incomeForm,incomeType:e.target.value})} className="border rounded px-2 py-2 text-sm">
+                    <select required value={incomeForm.incomeType} onChange={e => setIncomeForm({...incomeForm,incomeType:e.target.value})} className={modalFieldInput}>
                       {INCOME_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">จำนวนเงิน (บาท) *</label>
-                    <input required type="number" min="0" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({...incomeForm,amount:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="0.00" />
+                    <input required type="number" min="0" step="0.01" value={incomeForm.amount} onChange={e => setIncomeForm({...incomeForm,amount:e.target.value})} className={modalFieldInput} placeholder="0.00" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">วันที่ *</label>
-                    <input required type="date" value={incomeForm.date} onChange={e => setIncomeForm({...incomeForm,date:e.target.value})} className="border rounded px-3 py-2 text-sm" />
+                    <input required type="date" value={incomeForm.date} onChange={e => setIncomeForm({...incomeForm,date:e.target.value})} className={modalFieldInput} />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">ฝ่าย</label>
-                    <select value={incomeForm.department} onChange={e => setIncomeForm({...incomeForm,department:e.target.value})} className="border rounded px-2 py-2 text-sm">
+                    <select value={incomeForm.department} onChange={e => setIncomeForm({...incomeForm,department:e.target.value})} className={modalFieldInput}>
                       <option value="">-- ไม่ระบุ --</option>
                       {Object.entries(DEPT_LABELS).map(([v,l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
@@ -429,16 +430,16 @@ export default function CaseFinanceClient({ userRole }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">เลขคดี</label>
-                    <input value={incomeForm.caseNumber} onChange={e => setIncomeForm({...incomeForm,caseNumber:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="เลขคดี" />
+                    <input value={incomeForm.caseNumber} onChange={e => setIncomeForm({...incomeForm,caseNumber:e.target.value})} className={modalFieldInput} placeholder="เลขคดี" />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">ชื่อลูกค้า</label>
-                    <input value={incomeForm.clientName} onChange={e => setIncomeForm({...incomeForm,clientName:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="ชื่อลูกค้า" />
+                    <input value={incomeForm.clientName} onChange={e => setIncomeForm({...incomeForm,clientName:e.target.value})} className={modalFieldInput} placeholder="ชื่อลูกค้า" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
-                  <textarea rows={2} value={incomeForm.note} onChange={e => setIncomeForm({...incomeForm,note:e.target.value})} className="border rounded px-3 py-2 text-sm resize-none" />
+                  <textarea rows={2} value={incomeForm.note} onChange={e => setIncomeForm({...incomeForm,note:e.target.value})} className={`${modalFieldInput} resize-none`} />
                 </div>
                 <div className="flex gap-2 justify-end pt-2">
                   <button type="button" onClick={() => { setShowModal(null); setEditItem(null) }} className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600">ยกเลิก</button>
@@ -462,23 +463,23 @@ export default function CaseFinanceClient({ userRole }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">ประเภทค่าใช้จ่าย *</label>
-                    <select required value={expenseForm.expenseType} onChange={e => setExpenseForm({...expenseForm,expenseType:e.target.value})} className="border rounded px-2 py-2 text-sm">
+                    <select required value={expenseForm.expenseType} onChange={e => setExpenseForm({...expenseForm,expenseType:e.target.value})} className={modalFieldInput}>
                       {EXPENSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">จำนวนเงิน (บาท) *</label>
-                    <input required type="number" min="0" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm,amount:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="0.00" />
+                    <input required type="number" min="0" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm,amount:e.target.value})} className={modalFieldInput} placeholder="0.00" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">วันที่ *</label>
-                    <input required type="date" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm,date:e.target.value})} className="border rounded px-3 py-2 text-sm" />
+                    <input required type="date" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm,date:e.target.value})} className={modalFieldInput} />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">พนักงาน *</label>
-                    <select required value={expenseForm.employeeId} onChange={e => setExpenseForm({...expenseForm,employeeId:e.target.value})} className="border rounded px-2 py-2 text-sm">
+                    <select required value={expenseForm.employeeId} onChange={e => setExpenseForm({...expenseForm,employeeId:e.target.value})} className={modalFieldInput}>
                       <option value="">-- เลือกพนักงาน --</option>
                       {employees.map(em => <option key={em.id} value={em.id}>{em.name}</option>)}
                     </select>
@@ -487,11 +488,11 @@ export default function CaseFinanceClient({ userRole }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">เลขคดี</label>
-                    <input value={expenseForm.caseNumber} onChange={e => setExpenseForm({...expenseForm,caseNumber:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="เลขคดี" />
+                    <input value={expenseForm.caseNumber} onChange={e => setExpenseForm({...expenseForm,caseNumber:e.target.value})} className={modalFieldInput} placeholder="เลขคดี" />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">ฝ่าย</label>
-                    <select value={expenseForm.department} onChange={e => setExpenseForm({...expenseForm,department:e.target.value})} className="border rounded px-2 py-2 text-sm">
+                    <select value={expenseForm.department} onChange={e => setExpenseForm({...expenseForm,department:e.target.value})} className={modalFieldInput}>
                       <option value="">-- ไม่ระบุ --</option>
                       {Object.entries(DEPT_LABELS).map(([v,l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
@@ -499,7 +500,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
-                  <textarea rows={2} value={expenseForm.note} onChange={e => setExpenseForm({...expenseForm,note:e.target.value})} className="border rounded px-3 py-2 text-sm resize-none" />
+                  <textarea rows={2} value={expenseForm.note} onChange={e => setExpenseForm({...expenseForm,note:e.target.value})} className={`${modalFieldInput} resize-none`} />
                 </div>
                 <div className="flex gap-2 justify-end pt-2">
                   <button type="button" onClick={() => { setShowModal(null); setEditItem(null) }} className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600">ยกเลิก</button>

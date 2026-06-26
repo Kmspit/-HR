@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { CLIENT_TASK_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import { modalFieldInput } from '@/lib/theme-classes'
 
 interface ClientUser {
   id: string
@@ -302,7 +303,7 @@ export default function ClientsClient({ userRole }: Props) {
                   <input required={req} type={type}
                     value={form[key as keyof typeof form]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm" />
+                    className={modalFieldInput} />
                 </div>
               ))}
               <div className="flex gap-2 justify-end pt-1">
@@ -331,7 +332,7 @@ export default function ClientsClient({ userRole }: Props) {
                 <label className="text-xs font-medium text-gray-700">สถานะ *</label>
                 <select required value={historyForm.status}
                   onChange={(e) => setHistoryForm({ ...historyForm, status: e.target.value })}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm">
+                  className={modalFieldInput}>
                   <option value="">-- เลือกสถานะ --</option>
                   {CLIENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -340,7 +341,7 @@ export default function ClientsClient({ userRole }: Props) {
                 <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
                 <textarea rows={2} value={historyForm.note}
                   onChange={(e) => setHistoryForm({ ...historyForm, note: e.target.value })}
-                  className="border border-gray-300 rounded px-3 py-2 text-sm resize-none" placeholder="รายละเอียดเพิ่มเติม..." />
+                  className={`${modalFieldInput} resize-none`} placeholder="รายละเอียดเพิ่มเติม..." />
               </div>
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowHistory(null)}
@@ -365,7 +366,7 @@ export default function ClientsClient({ userRole }: Props) {
             <div className="flex gap-2">
               <input value={taskSearchQ} onChange={(e) => setTaskSearchQ(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchAvailableTasks(taskSearchQ)}
-                placeholder="ค้นหาคดี / เลขคดี..." className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm" />
+                placeholder="ค้นหาคดี / เลขคดี..." className={`flex-1 ${modalFieldInput}`} />
               <button onClick={() => fetchAvailableTasks(taskSearchQ)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm">ค้นหา</button>
             </div>
             <div className="flex-1 overflow-y-auto flex flex-col gap-1.5">

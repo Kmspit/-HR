@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { EXPENSE_CLAIM_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
+import { modalFieldInput } from '@/lib/theme-classes'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -317,35 +318,35 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-700">หัวข้อการเบิก *</label>
                 <input required value={form.title} onChange={e => setForm({...form,title:e.target.value})}
-                  className="border rounded px-3 py-2 text-sm" placeholder="เช่น ค่าเดินทางไปศาล อาทิตย์ที่ 2 มิ.ย." />
+                  className={modalFieldInput} placeholder="เช่น ค่าเดินทางไปศาล อาทิตย์ที่ 2 มิ.ย." />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-700">ประเภทค่าใช้จ่าย *</label>
-                  <select required value={form.expenseType} onChange={e => setForm({...form,expenseType:e.target.value})} className="border rounded px-2 py-2 text-sm">
+                  <select required value={form.expenseType} onChange={e => setForm({...form,expenseType:e.target.value})} className={modalFieldInput}>
                     {EXPENSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-700">จำนวนเงิน (บาท) *</label>
                   <input required type="number" min="0" step="0.01" value={form.amount}
-                    onChange={e => setForm({...form,amount:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="0.00" />
+                    onChange={e => setForm({...form,amount:e.target.value})} className={modalFieldInput} placeholder="0.00" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-700">วันที่ *</label>
-                  <input required type="date" value={form.date} onChange={e => setForm({...form,date:e.target.value})} className="border rounded px-3 py-2 text-sm" />
+                  <input required type="date" value={form.date} onChange={e => setForm({...form,date:e.target.value})} className={modalFieldInput} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-700">เลขคดี</label>
-                  <input value={form.caseNumber} onChange={e => setForm({...form,caseNumber:e.target.value})} className="border rounded px-3 py-2 text-sm" placeholder="เลขคดี (ถ้ามี)" />
+                  <input value={form.caseNumber} onChange={e => setForm({...form,caseNumber:e.target.value})} className={modalFieldInput} placeholder="เลขคดี (ถ้ามี)" />
                 </div>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
                 <textarea rows={2} value={form.note} onChange={e => setForm({...form,note:e.target.value})}
-                  className="border rounded px-3 py-2 text-sm resize-none" placeholder="รายละเอียดเพิ่มเติม..." />
+                  className={`${modalFieldInput} resize-none`} placeholder="รายละเอียดเพิ่มเติม..." />
               </div>
 
               {/* File attachments */}

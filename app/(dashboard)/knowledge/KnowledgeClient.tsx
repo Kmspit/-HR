@@ -1,8 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { modalFieldInput } from '@/lib/theme-classes'
 
 type Article = {
   id: string
@@ -332,7 +331,7 @@ export default function KnowledgeClient({
                 <input
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
+                  className={modalFieldInput}
                   placeholder="ชื่อบทความ"
                 />
               </div>
@@ -342,7 +341,7 @@ export default function KnowledgeClient({
                   <select
                     value={form.category}
                     onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
+                    className={modalFieldInput}
                   >
                     {CATEGORIES.filter((c) => c.value !== 'ALL').map((c) => (
                       <option key={c.value} value={c.value}>{c.label}</option>
@@ -354,7 +353,7 @@ export default function KnowledgeClient({
                   <input
                     value={form.department}
                     onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
+                    className={modalFieldInput}
                     placeholder="เช่น LAW, DEBT, HR"
                   />
                 </div>
@@ -364,7 +363,7 @@ export default function KnowledgeClient({
                 <input
                   value={form.tags}
                   onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
+                  className={modalFieldInput}
                   placeholder="tag1, tag2, tag3"
                 />
               </div>
@@ -374,7 +373,7 @@ export default function KnowledgeClient({
                   value={form.content}
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                   rows={10}
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm resize-none"
+                  className={`${modalFieldInput} resize-none`}
                   placeholder="เขียนเนื้อหาบทความ..."
                 />
               </div>
@@ -383,7 +382,7 @@ export default function KnowledgeClient({
                 <select
                   value={form.status}
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
+                  className={modalFieldInput}
                 >
                   <option value="DRAFT">ร่าง</option>
                   <option value="PUBLISHED">เผยแพร่</option>
