@@ -96,6 +96,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   OTHER:            'bg-white/5 text-white/40 border-white/10',
 }
 
+/** Native select trigger — visible on dark page background */
+const SELECT_TRIGGER =
+  'bg-slate-800 border border-slate-600 shadow-sm rounded-xl px-3 py-2.5 text-sm ' +
+  'focus:outline-none focus:border-blue-500 transition-colors hover:border-blue-500 cursor-pointer'
+
 function FileIcon({ mimeType, format, resourceType, className = 'w-5 h-5' }: {
   mimeType?: string | null
   format?: string | null
@@ -498,7 +503,7 @@ function UploadModal({
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50"
+              className={`w-full ${SELECT_TRIGGER} !text-white font-medium`}
             >
               {Object.entries(CATEGORIES).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -782,7 +787,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
         <select
           value={catFilter}
           onChange={(e) => { setCatFilter(e.target.value); setPage(1) }}
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50"
+          className={`${SELECT_TRIGGER} ${catFilter ? '!text-white font-medium' : '!text-slate-300'}`}
         >
           <option value="">ทุกประเภท</option>
           {Object.entries(CATEGORIES).map(([k, v]) => (
