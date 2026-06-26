@@ -630,10 +630,10 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <div className="divide-y divide-gray-300">
               {viewReqs.map(r => (
                 <div key={r.id} className="flex items-center justify-between py-2.5 gap-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-800 min-w-0">
-                    <span className="font-mono text-sm text-gray-800 shrink-0">{r.documentNumber ?? '—'}</span>
+                  <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
+                    <span className="font-mono text-sm text-gray-900 shrink-0">{r.documentNumber ?? '—'}</span>
                     <span className="shrink-0 font-medium text-gray-900">{r.date.slice(0, 10)}</span>
-                    <span className="text-gray-800 shrink-0">({r.timeSlot ?? '—'})</span>
+                    <span className="text-gray-900 shrink-0">({r.timeSlot ?? '—'})</span>
                     <span className="font-medium truncate text-gray-900">{r.place}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
