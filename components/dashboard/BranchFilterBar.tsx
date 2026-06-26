@@ -23,7 +23,7 @@ export default async function BranchFilterBar({ role, filterBranchId }: Props) {
   }
 
   return (
-    <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/8 bg-slate-950/40">
+    <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/8 bg-[#070b14] md:bg-slate-950/40">
       <BranchFilter
         branches={branches}
         currentBranchId={filterBranchId || 'all'}

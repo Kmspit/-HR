@@ -25,8 +25,8 @@ function SummaryCard({
   gradient: string; glow: string; iconPath: string; href: string
 }) {
   return (
-    <Link href={href} className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-      <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-15 blur-2xl" style={{ background: gradient }} />
+    <Link href={href} className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 transition-all duration-200 md:hover:-translate-y-0.5 md:hover:shadow-md md:active:scale-[0.98]">
+      <div className="pointer-events-none absolute -right-3 -top-3 hidden h-16 w-16 rounded-full opacity-15 blur-2xl md:block" style={{ background: gradient }} />
       <div className="relative flex items-center gap-3">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: gradient, boxShadow: `0 4px 12px ${glow}` }}>
           <svg width={18} height={18} className="h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
@@ -274,7 +274,7 @@ export default async function DashboardPage({
         </div>
 
         {/* ─── Needs Attention ─── */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ต้องดำเนินการ</h2>
@@ -297,7 +297,7 @@ export default async function DashboardPage({
 
         {/* ─── Task KPI (manager/CEO/HR) ─── */}
         {showTaskKpi && taskTotal > 0 && (
-          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมงาน</h2>
               <Link href="/tasks" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
@@ -350,7 +350,7 @@ export default async function DashboardPage({
 
         {/* ─── Case KPI (legal/debt roles) ─── */}
         {showCaseKpi && caseActive > 0 && (
-          <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมคดี</h2>
               <Link href="/cases" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">ดูทั้งหมด →</Link>

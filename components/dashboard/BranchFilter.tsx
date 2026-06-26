@@ -57,14 +57,14 @@ export default function BranchFilter({
     'group flex min-h-[48px] min-w-[120px] flex-1 sm:flex-none sm:max-w-[220px] flex-col items-start justify-center rounded-xl border px-4 py-2.5 text-left transition-all duration-200 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
 
   const btnActive =
-    'border-blue-400/70 bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
+    'border-blue-400/70 bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 md:scale-[1.02]'
 
   const btnIdle =
-    'border-white/15 bg-slate-800/90 text-slate-200 hover:border-blue-400/50 hover:bg-slate-700/90 hover:text-white hover:shadow-md hover:shadow-black/20 active:scale-[0.98]'
+    'border-white/15 bg-slate-800 md:bg-slate-800/90 text-slate-200 hover:border-blue-400/50 hover:bg-slate-700 md:hover:bg-slate-700/90 hover:text-white hover:shadow-md hover:shadow-black/20 md:active:scale-[0.98]'
 
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3.5 shadow-inner"
+      className="rounded-2xl border border-white/10 bg-slate-900 md:bg-slate-900/70 px-4 py-3.5 shadow-inner"
       role="group"
       aria-label="เลือกสาขาที่ต้องการดูข้อมูล"
     >
