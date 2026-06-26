@@ -306,9 +306,6 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <p className="text-base font-bold text-gray-900 tracking-wide">
               บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด
             </p>
-            <p className="text-sm text-gray-700">
-              เลขที่ 99/1 หมู่ที่ 1 ถ.พหลโยธิน ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120
-            </p>
             <h1 className="mt-1.5 text-base font-bold text-red-800 leading-snug">
               แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท
             </h1>
