@@ -85,29 +85,27 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
           </div>
         </div>
 
-        {/* Android compositor diagnostic — quick menu temporarily disabled for testing */}
-        {false && (
-        <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-5 md:p-6">
-          <h2 className="font-semibold text-slate-900 dark:text-white text-[16px] mb-4">เมนูด่วน</h2>
+        {/* Quick menu — Android-safe: solid colors, no shadow/gradient/transition/hover */}
+        <div className="rounded-2xl border border-slate-800 bg-[#111827] shadow-none p-5 md:p-6 transition-none transform-none">
+          <h2 className="font-semibold text-white text-[16px] mb-4">เมนูด่วน</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {quickActions.map((a) => (
               <Link
                 key={a.href}
                 href={a.href}
-                className="flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] transition-none transform-none"
+                className="flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-800 bg-[#111827] text-white transition-none transform-none"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-800 transition-none transform-none">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-800 bg-[#111827] transition-none transform-none">
                   <svg width={20} height={20} className="hr-icon-sm h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
                   </svg>
                 </div>
-                <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">{a.label}</span>
-                <span className="text-[11px] text-slate-400 dark:text-slate-500">{a.sub}</span>
+                <span className="text-[13px] font-semibold text-white">{a.label}</span>
+                <span className="text-[11px] text-slate-400">{a.sub}</span>
               </Link>
             ))}
           </div>
         </div>
-        )}
       </div>
     </div>
   )
