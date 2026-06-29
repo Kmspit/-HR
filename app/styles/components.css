@@ -1,14 +1,12 @@
 @layer utilities {
-  /* Glass effects — light mode defaults to clean white card */
+  /* Glass effects — opaque fallback; backdrop-filter gated via @supports below */
   .glass {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    background: rgba(255, 255, 255, 0.98);
     border: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
   .dark .glass {
-    background: rgba(15, 23, 42, 0.75);
+    background: rgba(15, 23, 42, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: none;
   }
@@ -18,16 +16,12 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   }
   .dark .glass-card {
-    background: rgba(15, 23, 42, 0.88);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(15, 23, 42, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.18);
   }
   .glass-light {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.06);
   }
 
   /* Gradient text */
@@ -81,14 +75,15 @@
     background-size: 200% 100%;
   }
 
-  /* Page enter */
+  /* Page enter — opacity-only (no transform; avoids Android GPU layer promotion) */
   .page-enter {
     animation: fade-in-sm 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform: none;
   }
 
   @keyframes fade-in-sm {
-    from { opacity: 0; }
-    to   { opacity: 1; }
+    from { opacity: 0; transform: none; }
+    to   { opacity: 1; transform: none; }
   }
 
   /* Smooth transitions for interactive UI */
@@ -268,5 +263,45 @@
   }
   .hr-table tbody tr:nth-child(even) {
     @apply dark:bg-white/[0.02] light:bg-slate-50/70;
+  }
+}
+
+/* Glass backdrop-filter — only when supported; Android uses opaque fallback above + mobile override */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.75);
+  }
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-light {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .light .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+  .light .glass-card {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-card {
+    background: hsl(var(--card) / 0.98);
+  }
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.98);
   }
 }

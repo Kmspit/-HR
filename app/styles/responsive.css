@@ -83,16 +83,25 @@
   gap: 0.75rem;
   padding: 0.875rem 1.5rem 0.875rem 1.5rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
-  background: rgba(255, 255, 255, 0.80);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.99);
   position: sticky;
   top: 0;
   z-index: 20;
 }
 .dark .ds-page-header {
   border-bottom-color: rgba(255, 255, 255, 0.05);
-  background: rgba(7, 11, 20, 0.82);
+  background: rgba(7, 11, 20, 0.99);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ds-page-header {
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .dark .ds-page-header {
+    background: rgba(7, 11, 20, 0.82);
+  }
 }
 .ds-page-title {
   font-size: 1.0625rem;
