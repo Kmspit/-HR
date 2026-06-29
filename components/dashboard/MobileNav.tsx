@@ -43,8 +43,8 @@ export default function MobileNav({ role }: { role: Role }) {
       className="fixed bottom-0 left-0 right-0 z-50 md:hidden mobile-bottom-nav"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="absolute inset-0 bg-white dark:bg-[rgba(8,12,22,0.98)]" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-slate-200 dark:bg-white/[0.06]" />
+      <div className="absolute inset-0 bg-white dark:bg-[#080c16]" />
+      <div className="absolute top-0 left-0 right-0 border-t border-slate-200 dark:border-slate-800" />
 
       <div className="relative flex items-stretch justify-around px-1 py-1">
         {items.map((item) => {

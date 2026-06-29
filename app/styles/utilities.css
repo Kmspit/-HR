@@ -380,6 +380,9 @@ select option,
 @media (min-width: 768px) {
   .dashboard-main { overflow: hidden; }
 }
+.dashboard-main-scroll {
+  -webkit-overflow-scrolling: touch;
+}
 
 /* ป้องกัน SVG ขยายเต็มจอ */
 .hr-icon,
