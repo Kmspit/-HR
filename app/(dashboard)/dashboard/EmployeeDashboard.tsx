@@ -55,7 +55,7 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
       <div className="p-5 md:p-6 space-y-6">
         {/* Stat cards */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 card-hover">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 transition-none transform-none">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">สถานะวันนี้</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">
               {progress.dayComplete ? 'ลงเวลาครบแล้ว' : displaySession?.checkIn ? 'กำลังทำงาน' : 'ยังไม่เช็คอิน'}
@@ -71,36 +71,36 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
               </p>
             )}
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 card-hover">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 transition-none transform-none">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">ลาป่วยคงเหลือ</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">{leaveBalance?.sick ?? 30} วัน</p>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 card-hover">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 transition-none transform-none">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">ลาพักร้อน</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">{leaveBalance?.vacation ?? 6} วัน</p>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 card-hover">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 transition-none transform-none">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">แจ้งเตือน</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">{unreadCount} รายการ</p>
           </div>
         </div>
 
         {/* Quick menu */}
-        <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5 md:p-6">
           <h2 className="font-semibold text-slate-900 dark:text-white text-[16px] mb-4">เมนูด่วน</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {quickActions.map((a) => (
               <Link
                 key={a.href}
                 href={a.href}
-                className="group card-hover flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-200 dark:border-white/[0.05] bg-slate-50 dark:bg-slate-900 md:dark:bg-white/[0.02] hover:border-slate-300 dark:hover:border-white/[0.1] hover:bg-slate-100 dark:hover:bg-slate-800 md:dark:hover:bg-white/[0.04] transition-colors"
+                className="flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-200 dark:border-white/[0.05] bg-slate-50 dark:bg-slate-800 transition-none transform-none"
               >
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${a.gradient} md:group-hover:scale-105 transition-transform`}>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-800 transition-none transform-none">
                   <svg width={20} height={20} className="hr-icon-sm h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
                   </svg>
                 </div>
-                <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{a.label}</span>
+                <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">{a.label}</span>
                 <span className="text-[11px] text-slate-400 dark:text-slate-500">{a.sub}</span>
               </Link>
             ))}
