@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/rbac'
 import type { ChainEntityType } from '@/lib/approval-chain'
+import { parseChainEntityType } from '@/lib/approval-chain-shared'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
@@ -76,7 +77,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
       data: {
         ...(body.name        !== undefined ? { name:        body.name.trim() }              : {}),
         ...(body.description !== undefined ? { description: body.description?.trim() || null } : {}),
-        ...(body.entityType  !== undefined ? { entityType:  body.entityType === 'OUTSIDE_WORK' ? 'OUTSIDE_WORK' : 'LEAVE' } : {}),
+        ...(body.entityType !== undefined
+          ? { entityType: parseChainEntityType(body.entityType) ?? existing.entityType }
+          : {}),
         ...(body.isActive    !== undefined ? { isActive:    body.isActive }                 : {}),
         ...(body.isDefault   !== undefined ? { isDefault:   body.isDefault }                : {}),
         ...(body.steps ? {

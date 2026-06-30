@@ -5,6 +5,11 @@ import { toast } from 'sonner'
 import { Plus, Trash2, GripVertical, CheckCircle2, Star, StarOff, Power, PowerOff, Edit3, X, Save, ChevronDown, ChevronUp } from 'lucide-react'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { ROLE_LABELS, ROLE_ICONS } from '@/lib/permissions'
+import {
+  CHAIN_ENTITY_LABELS,
+  CHAIN_ENTITY_TYPES,
+  type ChainEntityType,
+} from '@/lib/approval-chain-shared'
 import type { Role } from '@prisma/client'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -32,7 +37,7 @@ type Chain = {
   id: string
   name: string
   description: string | null
-  entityType: 'LEAVE' | 'OUTSIDE_WORK'
+  entityType: ChainEntityType
   isActive: boolean
   isDefault: boolean
   steps: ChainStep[]
@@ -137,7 +142,7 @@ function ChainForm({
 }: {
   initial?: Chain
   users: User[]
-  entityType: 'LEAVE' | 'OUTSIDE_WORK'
+  entityType: ChainEntityType
   onSave: (chain: Chain) => void
   onCancel: () => void
 }) {
@@ -222,7 +227,7 @@ function ChainForm({
 
       <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
         <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="accent-blue-500" />
-        ใช้เป็น Default Chain ({entityType === 'OUTSIDE_WORK' ? 'ออกนอกสถานที่' : 'การลา'})
+        ใช้เป็น Default Chain ({CHAIN_ENTITY_LABELS[entityType]})
       </label>
 
       <div className="space-y-2">
@@ -314,7 +319,7 @@ function ChainCard({
               </span>
             )}
             <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-[10px] font-medium text-slate-300">
-              {chain.entityType === 'OUTSIDE_WORK' ? 'Outside Work' : 'Leave'}
+              {CHAIN_ENTITY_LABELS[chain.entityType]}
             </span>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chain.isActive ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
               {chain.isActive ? 'Active' : 'Inactive'}
@@ -361,7 +366,7 @@ function ChainCard({
 export default function ApprovalChainManager({ initialChains, users }: Props) {
   const [chains, setChains] = useState<Chain[]>(initialChains)
   const [creating, setCreating] = useState(false)
-  const [entityFilter, setEntityFilter] = useState<'LEAVE' | 'OUTSIDE_WORK'>('LEAVE')
+  const [entityFilter, setEntityFilter] = useState<ChainEntityType>('LEAVE')
 
   const filteredChains = chains.filter((c) => c.entityType === entityFilter)
 
@@ -407,7 +412,7 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-400">กำหนดขั้นตอนการอนุมัติ (Leave / Outside Work)</p>
+          <p className="text-sm text-slate-400">กำหนดขั้นตอนการอนุมัติ (ลา · นอกสถานที่ · แผนงาน · แก้เวลา)</p>
           <p className="text-xs text-slate-500 mt-0.5">Default chain จะถูกใช้กับคำขอใหม่ของประเภทนั้นอัตโนมัติ</p>
         </div>
         {!creating && (
@@ -421,8 +426,8 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
         )}
       </div>
 
-      <div className="flex gap-2">
-        {(['LEAVE', 'OUTSIDE_WORK'] as const).map((t) => (
+      <div className="flex flex-wrap gap-2">
+        {CHAIN_ENTITY_TYPES.map((t) => (
           <button
             key={t}
             type="button"
@@ -433,7 +438,7 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
                 : 'bg-slate-800 text-slate-400 hover:text-white'
             }`}
           >
-            {t === 'OUTSIDE_WORK' ? 'Outside Work' : 'Leave'}
+            {CHAIN_ENTITY_LABELS[t]}
           </button>
         ))}
       </div>
@@ -450,7 +455,7 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
       {filteredChains.length === 0 && !creating && (
         <div className="rounded-2xl border border-dashed border-white/10 bg-slate-800/20 py-12 text-center">
           <CheckCircle2 className="mx-auto h-8 w-8 text-slate-600 mb-3" />
-          <p className="text-sm text-slate-500">ยังไม่มี Approval Chain สำหรับ {entityFilter === 'OUTSIDE_WORK' ? 'Outside Work' : 'Leave'}</p>
+          <p className="text-sm text-slate-500">ยังไม่มี Approval Chain สำหรับ {CHAIN_ENTITY_LABELS[entityFilter]}</p>
           <p className="text-xs text-slate-600 mt-1">กดปุ่ม "สร้าง Chain" เพื่อเริ่มต้น</p>
         </div>
       )}

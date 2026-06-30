@@ -5,8 +5,9 @@ import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
 import type { ChainEntityType } from '@/lib/approval-chain'
+import { parseChainEntityType } from '@/lib/approval-chain-shared'
 
-// GET — list chains (HR/Admin only), optional ?entityType=LEAVE|OUTSIDE_WORK
+// GET — list chains (HR/Admin only), optional ?entityType=LEAVE|OUTSIDE_WORK|WEEKLY_PLAN|FORGOT_SCAN
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
-    const entityType = new URL(req.url).searchParams.get('entityType') as ChainEntityType | null
+    const entityType = parseChainEntityType(new URL(req.url).searchParams.get('entityType'))
 
     const chains = await prisma.approvalChainConfig.findMany({
       where: entityType ? { entityType } : undefined,
@@ -64,7 +65,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ต้องมีอย่างน้อย 1 ขั้นตอน' }, { status: 400 })
     }
 
-    const entityType: ChainEntityType = body.entityType === 'OUTSIDE_WORK' ? 'OUTSIDE_WORK' : 'LEAVE'
+    const parsed = parseChainEntityType(body.entityType)
+    const entityType: ChainEntityType = parsed ?? 'LEAVE'
 
     // If setting as default, unset other defaults for same entityType first
     if (body.isDefault) {

@@ -13,17 +13,44 @@ const { auth } = NextAuth(authConfig)
 const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password']
 const AUTH_ROUTES   = ['/login', '/register', '/forgot-password']
 
+/** API routes always allowed (auth, webhooks, cron) — not module-scoped */
+const API_DEPLOY_PROFILE_EXEMPT = [
+  '/api/auth',
+  '/api/line/webhook',
+  '/api/webhook',
+  '/api/cron',
+  '/api/register',
+]
+
+function isApiDeployProfileExempt(pathname: string): boolean {
+  return API_DEPLOY_PROFILE_EXEMPT.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  )
+}
+
 export default auth(async function middleware(req: NextRequest & { auth: { user?: { role: Role; status: string } } | null }) {
   const { pathname } = req.nextUrl
   const session = req.auth
 
-  // Allow public assets, API routes (handlers return JSON errors)
+  // Static assets
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.')
   ) {
+    return NextResponse.next()
+  }
+
+  // API — deploy profile gate (404 if module hidden in this profile)
+  if (pathname.startsWith('/api/')) {
+    if (!isApiDeployProfileExempt(pathname) && isPathHiddenByDeployProfile(pathname)) {
+      logAccessDenied('deploy_profile_denied', {
+        path: pathname,
+        role: session?.user?.role,
+        api: true,
+      })
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
     return NextResponse.next()
   }
 

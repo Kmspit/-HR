@@ -23,6 +23,16 @@ export const HR_ADMIN_PATHS = [
   '/line-oa', '/automation', '/reports',
 ] as const
 
+/** Work modules hidden on hr-only deploy */
+export const WORK_MODULE_PATHS = [
+  '/tasks', '/performance', '/knowledge', '/sop', '/training',
+] as const
+
+/** Extra paths hidden on legal-only deploy */
+export const LEGAL_EXTRA_PATHS = [
+  '/settings', '/executive', '/security', '/documents',
+] as const
+
 function readProfile(): DeployProfile {
   const raw = (
     process.env.NEXT_PUBLIC_DEPLOY_PROFILE ??
@@ -66,18 +76,28 @@ export function resetDeployProfileCache(): void {
 }
 
 function pathsHiddenByProfile(profile: DeployProfile): readonly string[] {
-  if (profile === 'hr') return [...LEGAL_PATHS, ...FINANCE_PATHS]
-  if (profile === 'legal') return HR_ADMIN_PATHS
+  if (profile === 'hr') return [...LEGAL_PATHS, ...FINANCE_PATHS, ...WORK_MODULE_PATHS]
+  if (profile === 'legal') return [...HR_ADMIN_PATHS, ...LEGAL_EXTRA_PATHS]
   return []
+}
+
+/** Map page or /api/* pathname to profile check path (/api/foo → /foo). */
+export function toDeployProfilePath(pathname: string): string {
+  if (pathname.startsWith('/api/')) {
+    const rest = pathname.slice(4)
+    return rest.startsWith('/') ? rest : `/${rest}`
+  }
+  return pathname
 }
 
 export function isPathHiddenByDeployProfile(path: string): boolean {
   const profile = getDeployProfile()
+  const normalized = toDeployProfilePath(path)
   for (const prefix of pathsHiddenByProfile(profile)) {
-    if (path === prefix || path.startsWith(`${prefix}/`)) return true
+    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) return true
   }
   for (const frozen of getFrozenPaths()) {
-    if (path === frozen || path.startsWith(`${frozen}/`)) return true
+    if (normalized === frozen || normalized.startsWith(`${frozen}/`)) return true
   }
   return false
 }

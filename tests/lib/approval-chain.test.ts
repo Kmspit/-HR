@@ -29,6 +29,22 @@ describe('canUserActOnStep', () => {
     )).toBe(true)
   })
 
+  it('allows MANAGER_HR on HR approverRole step', () => {
+    expect(canUserActOnStep(
+      { ...base, approverId: null, approverRole: 'HR' },
+      'mgr-hr-1',
+      'MANAGER_HR',
+    )).toBe(true)
+  })
+
+  it('denies EMPLOYEE on HR approverRole step', () => {
+    expect(canUserActOnStep(
+      { ...base, approverId: null, approverRole: 'HR' },
+      'emp-1',
+      'EMPLOYEE',
+    )).toBe(false)
+  })
+
   it('denies when no approver configured', () => {
     expect(canUserActOnStep(
       { ...base, approverId: null, approverRole: null },

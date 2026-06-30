@@ -32,6 +32,23 @@ export function canUserActOnStep(
   userRole: Role,
 ): boolean {
   if (step.approverId) return step.approverId === userId
-  if (step.approverRole) return step.approverRole === userRole
+  if (!step.approverRole) return false
+  if (step.approverRole === userRole) return true
+  // HR step — MANAGER_HR can act (role hierarchy)
+  if (step.approverRole === 'HR' && userRole === 'MANAGER_HR') return true
   return false
+}
+
+export const CHAIN_ENTITY_TYPES = ['LEAVE', 'OUTSIDE_WORK', 'WEEKLY_PLAN', 'FORGOT_SCAN'] as const
+
+export function parseChainEntityType(raw: string | undefined | null): ChainEntityType | null {
+  if (!raw) return null
+  return (CHAIN_ENTITY_TYPES as readonly string[]).includes(raw) ? (raw as ChainEntityType) : null
+}
+
+export const CHAIN_ENTITY_LABELS: Record<ChainEntityType, string> = {
+  LEAVE:        'การลา',
+  OUTSIDE_WORK: 'ออกนอกสถานที่',
+  WEEKLY_PLAN:  'แผนงานทนาย',
+  FORGOT_SCAN:  'แก้ไขเวลา',
 }
