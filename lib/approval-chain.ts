@@ -1,7 +1,10 @@
-import type { PrismaClient, Role } from '@prisma/client'
+import type { ApprovalStepStatus, PrismaClient, Role } from '@prisma/client'
 import { createNotification } from '@/lib/notifications'
+import { canApproverActOnRequester } from '@/lib/org-scope'
 
 // ── Types ───────────────────────────────────────────────────────────────────
+
+export type ChainEntityType = 'LEAVE' | 'OUTSIDE_WORK'
 
 export type ChainStepRow = {
   id: string
@@ -12,7 +15,7 @@ export type ChainStepRow = {
   canSkip: boolean
 }
 
-export type LeaveStepRow = {
+export type ApprovalStepRow = {
   id: string
   stepOrder: number
   stepName: string
@@ -25,7 +28,37 @@ export type LeaveStepRow = {
   actor?: { name: string } | null
 }
 
-// ── Apply chain to a newly created leave request ────────────────────────────
+/** @deprecated use ApprovalStepRow */
+export type LeaveStepRow = ApprovalStepRow
+
+type TemplateStep = {
+  id: string
+  stepOrder: number
+  stepName: string
+  approverRole: Role | null
+  approverId: string | null
+  canSkip: boolean
+}
+
+// ── Org supervisor resolution (Outside Work step 1) ───────────────────────────
+
+export function isOrgSupervisorTemplateStep(step: Pick<TemplateStep, 'stepOrder' | 'approverRole' | 'approverId' | 'canSkip'>): boolean {
+  return step.stepOrder === 1 && step.canSkip && !step.approverRole && !step.approverId
+}
+
+export async function resolveOrgSupervisorId(
+  prisma: PrismaClient,
+  requesterId: string,
+): Promise<string | null> {
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { teamLeaderId: true, managerId: true },
+  })
+  if (!requester) return null
+  return requester.teamLeaderId ?? requester.managerId ?? null
+}
+
+// ── Apply chain to leave ────────────────────────────────────────────────────
 
 export async function applyChainToLeave(
   prisma: PrismaClient,
@@ -38,7 +71,6 @@ export async function applyChainToLeave(
   })
   if (!chain || !chain.isActive) return
 
-  // Create a LeaveApprovalStep record for every step in the chain
   await prisma.leaveApprovalStep.createMany({
     data: chain.steps.map((s) => ({
       leaveRequestId: leaveId,
@@ -51,7 +83,6 @@ export async function applyChainToLeave(
     })),
   })
 
-  // Activate the first step + attach chain to leave
   const firstOrder = chain.steps[0]?.stepOrder ?? 1
   await prisma.leaveRequest.update({
     where: { id: leaveId },
@@ -59,56 +90,181 @@ export async function applyChainToLeave(
   })
 }
 
-// ── Resolve the active default chain (if any) ───────────────────────────────
+// ── Apply chain to outside work ─────────────────────────────────────────────
 
-export async function getDefaultChain(prisma: PrismaClient) {
+export async function applyChainToOutsideWork(
+  prisma: PrismaClient,
+  requestId: string,
+  chainId: string,
+  requesterId: string,
+): Promise<void> {
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { role: true },
+  })
+
+  // CEO / SUPER_ADMIN self-request → auto-approve
+  if (requester?.role === 'CEO' || requester?.role === 'SUPER_ADMIN') {
+    await prisma.outsideWorkRequest.update({
+      where: { id: requestId },
+      data: {
+        chainConfigId:  chainId,
+        currentStepOrder: 0,
+        status:         'APPROVED',
+        approvalStatus: 'approved',
+      },
+    })
+    return
+  }
+
+  const chain = await prisma.approvalChainConfig.findUnique({
+    where: { id: chainId },
+    include: { steps: { orderBy: { stepOrder: 'asc' } } },
+  })
+  if (!chain || !chain.isActive) return
+
+  const supervisorId = await resolveOrgSupervisorId(prisma, requesterId)
+
+  const instanceSteps = chain.steps.map((s) => {
+    let approverId = s.approverId
+    let approverRole = s.approverRole
+    let status: ApprovalStepStatus = 'PENDING'
+
+    if (isOrgSupervisorTemplateStep(s)) {
+      approverId = supervisorId
+      approverRole = null
+      if (!approverId) {
+        status = 'SKIPPED'
+      }
+    }
+
+    return {
+      requestId,
+      chainStepId:  s.id,
+      stepOrder:    s.stepOrder,
+      stepName:     s.stepName,
+      approverRole,
+      approverId,
+      status,
+    }
+  })
+
+  await prisma.outsideWorkApprovalStep.createMany({ data: instanceSteps })
+
+  const firstPending = instanceSteps
+    .filter((s) => s.status === 'PENDING')
+    .sort((a, b) => a.stepOrder - b.stepOrder)[0]
+
+  if (!firstPending) {
+    await prisma.outsideWorkRequest.update({
+      where: { id: requestId },
+      data: {
+        chainConfigId:  chainId,
+        currentStepOrder: 0,
+        status:         'APPROVED',
+        approvalStatus: 'approved',
+      },
+    })
+    await createNotification({
+      userId: requesterId,
+      type: 'OUTSIDE_APPROVED',
+      title: '✅ คำขอออกนอกสถานที่ได้รับการอนุมัติแล้ว',
+      message: 'คำขอของคุณผ่านขั้นตอนการอนุมัติทั้งหมดแล้ว',
+      link: '/outside-work',
+    })
+    return
+  }
+
+  await prisma.outsideWorkRequest.update({
+    where: { id: requestId },
+    data: {
+      chainConfigId:  chainId,
+      currentStepOrder: firstPending.stepOrder,
+      status:         'PENDING',
+      approvalStatus: 'pending_chain',
+    },
+  })
+
+  await notifyOutsideStepApprovers(prisma, requestId, firstPending.stepName, firstPending.approverId, firstPending.approverRole)
+}
+
+// ── Default chain lookup ────────────────────────────────────────────────────
+
+export async function getDefaultChain(
+  prisma: PrismaClient,
+  entityType: ChainEntityType = 'LEAVE',
+) {
   return prisma.approvalChainConfig.findFirst({
-    where: { isDefault: true, isActive: true },
+    where: { isDefault: true, isActive: true, entityType },
     include: { steps: { orderBy: { stepOrder: 'asc' } } },
   })
 }
 
-// ── Determine if a user can act on the current pending step ─────────────────
+// ── Permission check ────────────────────────────────────────────────────────
 
 export function canUserActOnStep(
-  step: ChainStepRow,
+  step: { approverId?: string | null; approverRole?: Role | null },
   userId: string,
   userRole: Role,
 ): boolean {
-  // Specific user override takes precedence
   if (step.approverId) return step.approverId === userId
-  // Role check
   if (step.approverRole) return step.approverRole === userRole
-  // No restriction set → any authenticated user can act
-  return true
+  return false
 }
 
-// ── Get the steps for a leave request, including actor details ───────────────
+// ── Step queries ────────────────────────────────────────────────────────────
 
 export async function getLeaveSteps(
   prisma: PrismaClient,
   leaveId: string,
-): Promise<LeaveStepRow[]> {
+): Promise<ApprovalStepRow[]> {
   const steps = await prisma.leaveApprovalStep.findMany({
     where: { leaveRequestId: leaveId },
     orderBy: { stepOrder: 'asc' },
     include: { actor: { select: { name: true } } },
   })
-  return steps.map((s) => ({
-    id:          s.id,
-    stepOrder:   s.stepOrder,
-    stepName:    s.stepName,
-    approverRole: s.approverRole,
-    approverId:  s.approverId,
-    status:      s.status as LeaveStepRow['status'],
-    actorId:     s.actorId,
-    comment:     s.comment,
-    actedAt:     s.actedAt,
-    actor:       s.actor,
-  }))
+  return steps.map(mapStepRow)
 }
 
-// ── Advance chain after a step is approved ──────────────────────────────────
+export async function getOutsideWorkSteps(
+  prisma: PrismaClient,
+  requestId: string,
+): Promise<ApprovalStepRow[]> {
+  const steps = await prisma.outsideWorkApprovalStep.findMany({
+    where: { requestId },
+    orderBy: { stepOrder: 'asc' },
+    include: { actor: { select: { name: true } } },
+  })
+  return steps.map(mapStepRow)
+}
+
+function mapStepRow(s: {
+  id: string
+  stepOrder: number
+  stepName: string
+  approverRole: Role | null
+  approverId: string | null
+  status: ApprovalStepStatus
+  actorId: string | null
+  comment: string | null
+  actedAt: Date | null
+  actor?: { name: string } | null
+}): ApprovalStepRow {
+  return {
+    id:           s.id,
+    stepOrder:    s.stepOrder,
+    stepName:     s.stepName,
+    approverRole: s.approverRole,
+    approverId:   s.approverId,
+    status:       s.status as ApprovalStepRow['status'],
+    actorId:      s.actorId,
+    comment:      s.comment,
+    actedAt:      s.actedAt,
+    actor:        s.actor,
+  }
+}
+
+// ── Advance / reject — leave ────────────────────────────────────────────────
 
 export async function advanceLeaveChain(
   prisma: PrismaClient,
@@ -120,7 +276,6 @@ export async function advanceLeaveChain(
   })
   if (!leave?.chainConfigId) return { finalized: false, nextStepOrder: null }
 
-  // Find next PENDING step
   const nextStep = await prisma.leaveApprovalStep.findFirst({
     where: {
       leaveRequestId: leaveId,
@@ -135,14 +290,14 @@ export async function advanceLeaveChain(
       where: { id: leaveId },
       data: { currentStepOrder: nextStep.stepOrder },
     })
-    // Notify next approver (by role)
     if (nextStep.approverRole) {
-      await notifyNextApprovers(prisma, leaveId, nextStep.approverRole, nextStep.stepName)
+      await notifyLeaveRoleApprovers(prisma, leaveId, nextStep.approverRole, nextStep.stepName)
+    } else if (nextStep.approverId) {
+      await notifyUser(prisma, nextStep.approverId, 'LEAVE_REQUEST', leaveId, nextStep.stepName, '/approvals')
     }
     return { finalized: false, nextStepOrder: nextStep.stepOrder }
   }
 
-  // All steps done → finalize
   await prisma.leaveRequest.update({
     where: { id: leaveId },
     data: { status: 'APPROVED', currentStepOrder: 0 },
@@ -159,20 +314,17 @@ export async function advanceLeaveChain(
   return { finalized: true, nextStepOrder: null }
 }
 
-// ── Reject leave chain — mark all remaining steps as skipped ────────────────
-
 export async function rejectLeaveChain(
   prisma: PrismaClient,
   leaveId: string,
   currentStepId: string,
-  actorId: string,
+  _actorId: string,
   comment: string,
-  ip: string,
+  _ip: string,
 ): Promise<void> {
-  // Mark all subsequent PENDING steps as SKIPPED
   const leave = await prisma.leaveRequest.findUnique({
     where: { id: leaveId },
-    select: { currentStepOrder: true, userId: true },
+    select: { userId: true },
   })
 
   await prisma.leaveApprovalStep.updateMany({
@@ -200,9 +352,93 @@ export async function rejectLeaveChain(
   }
 }
 
-// ── Notify users of a given role that the chain has advanced ────────────────
+// ── Advance / reject — outside work ─────────────────────────────────────────
 
-async function notifyNextApprovers(
+export async function advanceOutsideWorkChain(
+  prisma: PrismaClient,
+  requestId: string,
+): Promise<{ finalized: boolean; nextStepOrder: number | null }> {
+  const request = await prisma.outsideWorkRequest.findUnique({
+    where: { id: requestId },
+    select: { currentStepOrder: true, chainConfigId: true, userId: true },
+  })
+  if (!request?.chainConfigId) return { finalized: false, nextStepOrder: null }
+
+  const nextStep = await prisma.outsideWorkApprovalStep.findFirst({
+    where: {
+      requestId,
+      status: 'PENDING',
+      stepOrder: { gt: request.currentStepOrder },
+    },
+    orderBy: { stepOrder: 'asc' },
+  })
+
+  if (nextStep) {
+    await prisma.outsideWorkRequest.update({
+      where: { id: requestId },
+      data: { currentStepOrder: nextStep.stepOrder, approvalStatus: 'pending_chain' },
+    })
+    await notifyOutsideStepApprovers(prisma, requestId, nextStep.stepName, nextStep.approverId, nextStep.approverRole)
+    return { finalized: false, nextStepOrder: nextStep.stepOrder }
+  }
+
+  await prisma.outsideWorkRequest.update({
+    where: { id: requestId },
+    data: { status: 'APPROVED', approvalStatus: 'approved', currentStepOrder: 0 },
+  })
+
+  await createNotification({
+    userId: request.userId,
+    type: 'OUTSIDE_APPROVED',
+    title: '✅ คำขอออกนอกสถานที่ได้รับการอนุมัติแล้ว',
+    message: 'คำขอของคุณผ่านขั้นตอนการอนุมัติทั้งหมดแล้ว',
+    link: '/outside-work',
+  })
+
+  return { finalized: true, nextStepOrder: null }
+}
+
+export async function rejectOutsideWorkChain(
+  prisma: PrismaClient,
+  requestId: string,
+  currentStepId: string,
+  _actorId: string,
+  comment: string,
+  _ip: string,
+): Promise<void> {
+  const request = await prisma.outsideWorkRequest.findUnique({
+    where: { id: requestId },
+    select: { userId: true },
+  })
+
+  await prisma.outsideWorkApprovalStep.updateMany({
+    where: {
+      requestId,
+      status: 'PENDING',
+      id: { not: currentStepId },
+    },
+    data: { status: 'SKIPPED' },
+  })
+
+  await prisma.outsideWorkRequest.update({
+    where: { id: requestId },
+    data: { status: 'REJECTED', approvalStatus: 'rejected', currentStepOrder: 0 },
+  })
+
+  if (request?.userId) {
+    await createNotification({
+      userId: request.userId,
+      type: 'OUTSIDE_REJECTED',
+      title: '❌ คำขอออกนอกสถานที่ถูกปฏิเสธ',
+      message: comment || 'คำขอถูกปฏิเสธโดยผู้อนุมัติ',
+      link: '/outside-work',
+    })
+  }
+}
+
+// ── Notifications ───────────────────────────────────────────────────────────
+
+async function notifyLeaveRoleApprovers(
   prisma: PrismaClient,
   leaveId: string,
   approverRole: Role,
@@ -222,4 +458,163 @@ async function notifyNextApprovers(
       link: '/approvals',
     })),
   })
+}
+
+async function notifyOutsideStepApprovers(
+  prisma: PrismaClient,
+  requestId: string,
+  stepName: string,
+  approverId: string | null,
+  approverRole: Role | null,
+): Promise<void> {
+  if (approverId) {
+    await notifyUser(prisma, approverId, 'OUTSIDE_REQUEST', requestId, stepName, '/approvals')
+    return
+  }
+  if (!approverRole) return
+  const approvers = await prisma.user.findMany({
+    where: { role: approverRole, status: 'ACTIVE' },
+    select: { id: true },
+  })
+  if (approvers.length === 0) return
+  await prisma.notification.createMany({
+    data: approvers.map((u) => ({
+      userId: u.id,
+      type: 'OUTSIDE_REQUEST' as const,
+      title: `📋 รอการอนุมัติ: ${stepName}`,
+      message: `คำขอออกนอกสถานที่ ID ${requestId} รอการอนุมัติในขั้น "${stepName}"`,
+      link: '/approvals',
+    })),
+  })
+}
+
+async function notifyUser(
+  prisma: PrismaClient,
+  userId: string,
+  type: 'LEAVE_REQUEST' | 'OUTSIDE_REQUEST',
+  requestId: string,
+  stepName: string,
+  link: string,
+): Promise<void> {
+  await prisma.notification.create({
+    data: {
+      userId,
+      type,
+      title: `📋 รอการอนุมัติ: ${stepName}`,
+      message: `คำขอ ID ${requestId} รอการอนุมัติในขั้น "${stepName}"`,
+      link,
+    },
+  })
+}
+
+// ── Shared step actions (used by step-approve routes + /api/approvals) ────────
+
+export type StepActionResult = {
+  success: true
+  action: 'APPROVE' | 'REJECT'
+  finalized: boolean
+  nextStepOrder: number | null
+  stepName: string
+}
+
+export async function executeLeaveStepAction(
+  prisma: PrismaClient,
+  leaveId: string,
+  actorId: string,
+  role: Role,
+  action: 'APPROVE' | 'REJECT',
+  comment: string | undefined,
+  ip: string,
+): Promise<StepActionResult | { error: string; status: number }> {
+  const leave = await prisma.leaveRequest.findUnique({
+    where: { id: leaveId },
+    select: { id: true, status: true, chainConfigId: true, currentStepOrder: true, userId: true },
+  })
+  if (!leave) return { error: 'ไม่พบคำขอลา', status: 404 }
+  if (!leave.chainConfigId) return { error: 'USE_LEGACY_APPROVAL', status: 409 }
+  if (leave.status === 'APPROVED' || leave.status === 'REJECTED') {
+    return { error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว', status: 400 }
+  }
+
+  const currentStep = await prisma.leaveApprovalStep.findFirst({
+    where: { leaveRequestId: leaveId, stepOrder: leave.currentStepOrder, status: 'PENDING' },
+  })
+  if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+
+  if (!canUserActOnStep(currentStep, actorId, role)) {
+    return { error: `คุณไม่มีสิทธิ์อนุมัติขั้นนี้`, status: 403 }
+  }
+  if (!(await canApproverActOnRequester(prisma, actorId, role, leave.userId))) {
+    return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
+  }
+
+  await prisma.leaveApprovalStep.update({
+    where: { id: currentStep.id },
+    data: {
+      status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+      actorId,
+      comment: comment?.trim() || null,
+      ip,
+      actedAt: new Date(),
+    },
+  })
+
+  if (action === 'APPROVE') {
+    const { finalized, nextStepOrder } = await advanceLeaveChain(prisma, leaveId)
+    return { success: true, action, finalized, nextStepOrder, stepName: currentStep.stepName }
+  }
+
+  await rejectLeaveChain(prisma, leaveId, currentStep.id, actorId, comment ?? '', ip)
+  return { success: true, action, finalized: true, nextStepOrder: null, stepName: currentStep.stepName }
+}
+
+export async function executeOutsideWorkStepAction(
+  prisma: PrismaClient,
+  requestId: string,
+  actorId: string,
+  role: Role,
+  action: 'APPROVE' | 'REJECT',
+  comment: string | undefined,
+  ip: string,
+): Promise<StepActionResult | { error: string; status: number }> {
+  const request = await prisma.outsideWorkRequest.findUnique({
+    where: { id: requestId },
+    select: { id: true, status: true, chainConfigId: true, currentStepOrder: true, userId: true },
+  })
+  if (!request) return { error: 'ไม่พบคำขอ', status: 404 }
+  if (!request.chainConfigId) return { error: 'USE_LEGACY_APPROVAL', status: 409 }
+  if (request.status === 'APPROVED' || request.status === 'REJECTED') {
+    return { error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว', status: 400 }
+  }
+
+  const currentStep = await prisma.outsideWorkApprovalStep.findFirst({
+    where: { requestId, stepOrder: request.currentStepOrder, status: 'PENDING' },
+  })
+  if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+
+  if (!canUserActOnStep(currentStep, actorId, role)) {
+    return { error: 'คุณไม่มีสิทธิ์อนุมัติขั้นนี้', status: 403 }
+  }
+  if (!(await canApproverActOnRequester(prisma, actorId, role, request.userId))) {
+    return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
+  }
+
+  await prisma.outsideWorkApprovalStep.update({
+    where: { id: currentStep.id },
+    data: {
+      status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+      actorId,
+      comment: comment?.trim() || null,
+      ip,
+      actedAt: new Date(),
+    },
+  })
+
+  if (action === 'APPROVE') {
+    const { finalized, nextStepOrder } = await advanceOutsideWorkChain(prisma, requestId)
+    return { success: true, action, finalized, nextStepOrder, stepName: currentStep.stepName }
+  }
+
+  await rejectOutsideWorkChain(prisma, requestId, currentStep.id, actorId, comment ?? '', ip)
+  return { success: true, action, finalized: true, nextStepOrder: null, stepName: currentStep.stepName }
 }

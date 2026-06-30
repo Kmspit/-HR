@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_COMPANY_BRANCHES, HQ_BRANCH_ID, NMA_BRANCH_ID } from '@/lib/company-branches'
 import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
+import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
@@ -563,12 +564,18 @@ async function runEnsure(): Promise<boolean> {
   await addLeaveRequestColumnIfMissing('chainConfigId',    `ALTER TABLE leave_requests ADD COLUMN chainConfigId TEXT`)
   await addLeaveRequestColumnIfMissing('currentStepOrder', `ALTER TABLE leave_requests ADD COLUMN currentStepOrder INTEGER NOT NULL DEFAULT 0`)
 
+  await addColumnIfMissing('approval_chain_configs', 'entityType', `ALTER TABLE approval_chain_configs ADD COLUMN entityType TEXT NOT NULL DEFAULT 'LEAVE'`)
+
+  await addOutsideWorkColumnIfMissing('chainConfigId',    `ALTER TABLE outside_work_requests ADD COLUMN chainConfigId TEXT`)
+  await addOutsideWorkColumnIfMissing('currentStepOrder', `ALTER TABLE outside_work_requests ADD COLUMN currentStepOrder INTEGER NOT NULL DEFAULT 0`)
+
   // ── Approval chain tables (created by prisma db push in db43056 — ensure they exist) ──
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS approval_chain_configs (
       id TEXT NOT NULL PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
+      entityType TEXT NOT NULL DEFAULT 'LEAVE',
       isActive INTEGER NOT NULL DEFAULT 1,
       isDefault INTEGER NOT NULL DEFAULT 0,
       createdById TEXT NOT NULL,
@@ -610,6 +617,28 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS leave_approval_steps_request_idx ON leave_approval_steps (leaveRequestId)
   `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS outside_work_approval_steps (
+      id TEXT NOT NULL PRIMARY KEY,
+      requestId TEXT NOT NULL,
+      chainStepId TEXT NOT NULL,
+      stepOrder INTEGER NOT NULL,
+      stepName TEXT NOT NULL,
+      approverRole TEXT,
+      approverId TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      actorId TEXT,
+      comment TEXT,
+      ip TEXT,
+      actedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS outside_work_approval_steps_request_idx ON outside_work_approval_steps (requestId)
+  `)
+
+  await seedDefaultOutsideWorkChain(prisma)
 
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`

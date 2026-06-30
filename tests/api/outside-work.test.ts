@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-// ── Mocks ──────────────────────────────────────────────────────────────────────
-
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn(),
 }))
@@ -14,6 +12,7 @@ vi.mock('@/lib/prisma', () => ({
       findMany:   vi.fn(),
       findUnique: vi.fn(),
       update:     vi.fn(),
+      count:      vi.fn().mockResolvedValue(0),
     },
   },
 }))
@@ -32,14 +31,24 @@ vi.mock('@/lib/rbac', () => ({
   hasPermission: vi.fn((role: string, _perm: string) => role === 'CEO' || role === 'ADMIN'),
 }))
 
-// ── Imports (after mocks) ──────────────────────────────────────────────────────
+vi.mock('@/lib/ensure-db-schema', () => ({
+  ensureDbSchema: vi.fn().mockResolvedValue(true),
+}))
+
+vi.mock('@/lib/approval-chain', () => ({
+  getDefaultChain: vi.fn().mockResolvedValue({
+    id: 'chain-ow-1',
+    entityType: 'OUTSIDE_WORK',
+    steps: [],
+  }),
+  applyChainToOutsideWork: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getDefaultChain, applyChainToOutsideWork } from '@/lib/approval-chain'
 import { POST, GET } from '@/app/api/outside-work/route'
 import { PATCH } from '@/app/api/outside-work/[id]/route'
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
 
 const mockSession = { user: { id: 'user-1', name: 'Test User', role: 'EMPLOYEE' } }
 const mockHrSession = { user: { id: 'hr-1', name: 'HR Admin', role: 'CEO' } }
@@ -68,8 +77,6 @@ const validPayload = {
   purpose:   'ยื่นฟ้อง',
 }
 
-// ── Tests ──────────────────────────────────────────────────────────────────────
-
 describe('POST /api/outside-work', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -85,18 +92,50 @@ describe('POST /api/outside-work', () => {
     expect(res.status).toBe(400)
   })
 
-  it('creates outside-work request and returns 200', async () => {
+  it('creates outside-work request and applies approval chain', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
-    const created = { id: 'req-1', ...validPayload, userId: 'user-1', status: 'PENDING', approvalStatus: 'pending_ceo' }
+    const created = { id: 'req-1', ...validPayload, userId: 'user-1', status: 'PENDING' }
     vi.mocked(prisma.outsideWorkRequest.create).mockResolvedValue(created as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({
+      ...created,
+      approvalStatus: 'pending_chain',
+      chainConfigId: 'chain-ow-1',
+    } as never)
 
     const res = await POST(makePostReq(validPayload))
     const data = await res.json()
 
     expect(res.status).toBe(200)
     expect(data.success).toBe(true)
-    expect(data.request.id).toBe('req-1')
-    expect(prisma.outsideWorkRequest.create).toHaveBeenCalledOnce()
+    expect(data.chainApplied).toBe(true)
+    expect(getDefaultChain).toHaveBeenCalledWith(prisma, 'OUTSIDE_WORK')
+    expect(applyChainToOutsideWork).toHaveBeenCalledWith(prisma, 'req-1', 'chain-ow-1', 'user-1')
+  })
+
+  it('falls back to CEO-only when no default chain', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(getDefaultChain).mockResolvedValue(null as never)
+    const created = { id: 'req-2', ...validPayload, userId: 'user-1', status: 'PENDING' }
+    vi.mocked(prisma.outsideWorkRequest.create).mockResolvedValue(created as never)
+    vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({
+      ...created,
+      approvalStatus: 'pending_ceo',
+    } as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({
+      ...created,
+      approvalStatus: 'pending_ceo',
+    } as never)
+
+    const res = await POST(makePostReq(validPayload))
+    const data = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(data.chainApplied).toBe(false)
+    expect(prisma.outsideWorkRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { approvalStatus: 'pending_ceo' },
+      }),
+    )
   })
 })
 
@@ -147,7 +186,7 @@ describe('PATCH /api/outside-work/[id]', () => {
     expect(data.success).toBe(true)
   })
 
-  it('allows HR to approve by setting approvalStatus', async () => {
+  it('allows CEO to approve legacy pending_ceo via PATCH', async () => {
     vi.mocked(auth).mockResolvedValue(mockHrSession as never)
     vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue(existing as never)
     vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({
@@ -161,11 +200,6 @@ describe('PATCH /api/outside-work/[id]', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
-    expect(prisma.outsideWorkRequest.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ approvalStatus: 'approved_by_ceo' }),
-      }),
-    )
   })
 
   it('forbids non-owner non-HR from editing', async () => {

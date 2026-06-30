@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { isPrototypeBridgeEnabled, prototypeBridgeDisabledResponse } from '@/lib/prototype-bridge'
 import type { LeaveType } from '@prisma/client'
 
 const VALID_TYPES: LeaveType[] = [
@@ -12,20 +13,15 @@ const VALID_TYPES: LeaveType[] = [
 
 const CORS_ORIGINS = [
   'https://hrflow-app-gamma.vercel.app',
-  'https://app-hr-km1.vercel.app',
-  'https://hrprogramkm.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:5500',
   'http://localhost:5500',
 ]
 
 function corsHeaders(origin: string | null): HeadersInit {
-  const allow =
-    !origin ||
-    CORS_ORIGINS.some((o) => origin === o) ||
-    origin.endsWith('.vercel.app')
+  const allow = !!origin && CORS_ORIGINS.some((o) => origin === o)
   return {
-    'Access-Control-Allow-Origin': allow && origin ? origin : '*',
+    'Access-Control-Allow-Origin': allow && origin ? origin : 'null',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   }
@@ -48,6 +44,9 @@ export async function OPTIONS(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
+  if (!isPrototypeBridgeEnabled()) {
+    return prototypeBridgeDisabledResponse()
+  }
   try {
     await ensureDbSchema().catch(() => {})
 

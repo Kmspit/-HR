@@ -31,7 +31,7 @@ export default async function ApprovalChainsPage() {
     <div className="flex flex-col min-h-[100dvh]">
       <Topbar
         title="Approval Chain"
-        subtitle="กำหนดขั้นตอนการอนุมัติการลา"
+        subtitle="กำหนดขั้นตอนการอนุมัติ (Leave / Outside Work)"
       />
       <div className="flex-1 p-4 md:p-6 w-full space-y-6">
         <ApprovalChainManager

@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Apply approval chain if a default one is configured
-    const defaultChain = await getDefaultChain(prisma)
+    const defaultChain = await getDefaultChain(prisma, 'LEAVE')
     if (defaultChain) {
       await applyChainToLeave(prisma, leave.id, defaultChain.id)
       const firstStep = defaultChain.steps[0]

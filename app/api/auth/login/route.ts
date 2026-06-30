@@ -6,6 +6,7 @@ import { resolvePostLoginPath } from '@/lib/post-login-path'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { checkLoginAllowed, recordLoginAttempt } from '@/lib/login-protection'
 import { logSecurityEvent } from '@/lib/security-events'
+import { rateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,15 @@ export async function POST(req: NextRequest) {
 
     const ip        = req.headers.get('x-forwarded-for') ?? undefined
     const userAgent = req.headers.get('user-agent') ?? undefined
+
+    const ipKey = ip?.split(',')[0]?.trim() || 'unknown'
+    const { allowed: ipAllowed } = rateLimit(`login:ip:${ipKey}`, 30, 15 * 60 * 1000)
+    if (!ipAllowed) {
+      return NextResponse.json(
+        { ok: false, error: 'RATE_LIMITED', message: 'ลองใหม่ภายหลัง' },
+        { status: 429 },
+      )
+    }
 
     const body = await req.json().catch(() => ({}))
     const email = typeof body.email === 'string' ? body.email : ''

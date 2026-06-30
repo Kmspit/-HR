@@ -50,6 +50,7 @@ export default async function OutsideWorkPage({
       <OutsideWorkClient
         userId={session.user.id}
         userName={session.user.name ?? ''}
+        currentUserRole={session.user.role as Role}
         canViewAll={canViewAll}
         canApproveOutside={canApproveOutside}
         requests={requests}
@@ -72,6 +73,10 @@ export default async function OutsideWorkPage({
         : { userId: session.user.id },
       include: {
         user: { select: { name: true, department: true, position: true } },
+        stepLogs: {
+          orderBy: { stepOrder: 'asc' },
+          include: { actor: { select: { name: true } } },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: canViewAll ? 200 : 100,
@@ -92,6 +97,20 @@ export default async function OutsideWorkPage({
       client:        r.client           ?? '',
       note:          r.note             ?? '',
       status:        r.status,
+      chainConfigId: r.chainConfigId ?? null,
+      currentStepOrder: r.currentStepOrder ?? 0,
+      steps: r.stepLogs.map((s) => ({
+        id: s.id,
+        stepOrder: s.stepOrder,
+        stepName: s.stepName,
+        approverRole: s.approverRole,
+        approverId: s.approverId,
+        status: s.status as 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED',
+        actorId: s.actorId,
+        comment: s.comment,
+        actedAt: s.actedAt,
+        actor: s.actor,
+      })),
       createdAt:     r.createdAt.toISOString(),
       googleMapsUrl:  r.googleMapsUrl   ?? null,
       attachmentUrl:  r.attachmentUrl   ?? null,

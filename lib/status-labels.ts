@@ -2,7 +2,10 @@
 
 export const REQUEST_STATUS_LABEL: Record<string, string> = {
   PENDING:          'รออนุมัติ',
-  pending_ceo:      'รออนุมัติ',
+  pending_ceo:      'รอ CEO อนุมัติ',
+  pending_chain:    'รออนุมัติ',
+  approved:         'อนุมัติแล้ว',
+  rejected:         'ปฏิเสธแล้ว',
   APPROVED:         'อนุมัติ',
   approved_by_ceo:  'อนุมัติ',
   REJECTED:         'ไม่อนุมัติ',

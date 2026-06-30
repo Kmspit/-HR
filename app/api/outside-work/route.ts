@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { notifyRole } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { getDefaultChain, applyChainToOutsideWork } from '@/lib/approval-chain'
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    await ensureDbSchema()
 
     const body = await req.json()
     const {
@@ -83,21 +86,31 @@ export async function POST(req: NextRequest) {
         adminChecked:   adminChecked  || null,
         supervisedBy:   supervisedBy  || null,
         documentNumber,
-        approvalStatus: 'pending_ceo',
       },
     })
 
-    await runNotify(() =>
-      notifyRole(
-        'CEO',
-        'OUTSIDE_REQUEST',
-        'คำขอออกนอกสถานที่ — รอ CEO อนุมัติ',
-        `${session.user.name} ขอออกนอกสถานที่วันที่ ${new Date(date).toLocaleDateString('th-TH')}`,
-        '/approvals',
-      ),
-    )
+    const defaultChain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
+    if (defaultChain) {
+      await applyChainToOutsideWork(prisma, request.id, defaultChain.id, session.user.id)
+    } else {
+      await prisma.outsideWorkRequest.update({
+        where: { id: request.id },
+        data: { approvalStatus: 'pending_ceo' },
+      })
+      await runNotify(() =>
+        notifyRole(
+          'CEO',
+          'OUTSIDE_REQUEST',
+          'คำขอออกนอกสถานที่ — รอ CEO อนุมัติ',
+          `${session.user.name} ขอออกนอกสถานที่วันที่ ${new Date(date).toLocaleDateString('th-TH')}`,
+          '/approvals',
+        ),
+      )
+    }
 
-    return NextResponse.json({ success: true, request })
+    const refreshed = await prisma.outsideWorkRequest.findUnique({ where: { id: request.id } })
+
+    return NextResponse.json({ success: true, request: refreshed ?? request, chainApplied: !!defaultChain })
   } catch (err) {
     return apiError(err)
   }

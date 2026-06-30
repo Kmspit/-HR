@@ -3,53 +3,32 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import ApprovalPanel from '@/components/dashboard/ApprovalPanel'
-import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
-import {
-  buildBranchScope,
-  requestUserWhere,
-  branchNestedUserWhere,
-  parseBranchQueryParam,
-} from '@/lib/branch-scope'
-import { Suspense } from 'react'
+import { getPendingLeaveForApprover, getPendingOutsideForApprover } from '@/lib/approval-inbox'
+import { hasPermission } from '@/lib/rbac'
+import type { Role } from '@prisma/client'
 
-export default async function ApprovalsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ branchId?: string }>
-}) {
+const APPROVER_ROLES: Role[] = [
+  'SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER',
+]
+
+export default async function ApprovalsPage() {
   const session = await auth()
   if (!session?.user) redirect('/')
 
-  const { role } = session.user
-  if (role !== 'MANAGER_HR' && role !== 'ADMIN' && role !== 'CEO') redirect('/dashboard')
-
-  const sp = await searchParams
-  const branchParam = parseBranchQueryParam(sp.branchId)
-  const scope = buildBranchScope(session.user, { branchId: branchParam })
-  const nestedUser = branchNestedUserWhere(scope)
-
-  // Admin sees PENDING, Manager sees ADMIN_APPROVED, CEO sees both
-  const leaveStatus = role === 'ADMIN' ? 'PENDING' : 'ADMIN_APPROVED'
-  const outsideStatus = leaveStatus
+  const { role, id: userId } = session.user
+  if (!APPROVER_ROLES.includes(role as Role)) redirect('/dashboard')
+  if (
+    !hasPermission(role as Role, 'approve_leave') &&
+    !hasPermission(role as Role, 'approve_outside_work') &&
+    !hasPermission(role as Role, 'approve_weekly_plan') &&
+    role !== 'CEO' && role !== 'ADMIN'
+  ) {
+    redirect('/dashboard')
+  }
 
   const [leaveRequests, outsideRequests, weeklyPlans] = await Promise.all([
-    prisma.leaveRequest.findMany({
-      where: role === 'CEO'
-        ? { OR: [{ status: 'PENDING' }, { status: 'ADMIN_APPROVED' }] }
-        : requestUserWhere(scope, { status: leaveStatus }),
-      include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.outsideWorkRequest.findMany({
-      where: role === 'CEO'
-        ? { OR: [{ status: 'PENDING' }, { status: 'ADMIN_APPROVED' }], approvalStatus: 'pending_ceo' }
-        : { status: outsideStatus, NOT: [{ approvalStatus: 'pending_ceo' }], ...(nestedUser ? { user: nestedUser } : {}) },
-      include: { user: { select: { name: true, email: true, department: true, position: true, role: true } } },
-      orderBy: { createdAt: 'desc' },
-    }),
-    // MANAGER_HR = หัวหน้างาน (Step 1): sees pending_supervisor or legacy PENDING
-    // ADMIN = ผู้บริหาร (Step 2): sees pending_executive or legacy ADMIN_APPROVED
-    // CEO = sees all pending at any step
+    getPendingLeaveForApprover(prisma, userId, role as Role),
+    getPendingOutsideForApprover(prisma, userId, role as Role),
     role === 'CEO'
       ? prisma.weeklyLawyerPlan.findMany({
           where: {
@@ -63,33 +42,31 @@ export default async function ApprovalsPage({
           include: { lawyer: { select: { name: true, email: true } }, days: true },
           orderBy: { createdAt: 'desc' },
         })
-      : role === 'MANAGER_HR'
+      : role === 'MANAGER_HR' || role === 'HR'
       ? prisma.weeklyLawyerPlan.findMany({
           where: {
             OR: [{ approvalStatus: 'pending_supervisor' }, { approvalStatus: null, status: 'PENDING' }],
-            ...(nestedUser ? { lawyer: nestedUser } : {}),
           },
           include: { lawyer: { select: { name: true, email: true } }, days: true },
           orderBy: { createdAt: 'desc' },
         })
-      : prisma.weeklyLawyerPlan.findMany({
+      : role === 'ADMIN'
+      ? prisma.weeklyLawyerPlan.findMany({
           where: {
             OR: [{ approvalStatus: 'pending_executive' }, { approvalStatus: null, status: 'ADMIN_APPROVED' }],
-            ...(nestedUser ? { lawyer: nestedUser } : {}),
           },
           include: { lawyer: { select: { name: true, email: true } }, days: true },
           orderBy: { createdAt: 'desc' },
-        }),
+        })
+      : Promise.resolve([]),
   ])
-
-  const user = { name: session.user.name ?? '', email: session.user.email ?? '', role, department: session.user.department }
 
   return (
     <div className="flex flex-col">
-      <Topbar title="อนุมัติคำขอ" subtitle={role === 'CEO' ? 'ผู้บริหาร (CEO) — อนุมัติทุกขั้นตอน' : role === 'ADMIN' ? 'ผู้บริหาร — คำขอลา Step 1 · แผนงาน Final Approve' : 'หัวหน้างาน — คำขอลา Final Approve · แผนงาน Step 1'} />
-      <Suspense fallback={null}>
-        <BranchFilterBar role={role} filterBranchId={branchParam} />
-      </Suspense>
+      <Topbar
+        title="ศูนย์อนุมัติ"
+        subtitle="คำขอที่รอการอนุมัติจากคุณ — ลา · ออกนอกสถานที่ · แผนงาน"
+      />
       <ApprovalPanel
         leaveRequests={JSON.parse(JSON.stringify(leaveRequests))}
         outsideRequests={JSON.parse(JSON.stringify(outsideRequests))}

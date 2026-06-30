@@ -32,6 +32,7 @@ type Chain = {
   id: string
   name: string
   description: string | null
+  entityType: 'LEAVE' | 'OUTSIDE_WORK'
   isActive: boolean
   isDefault: boolean
   steps: ChainStep[]
@@ -44,7 +45,7 @@ type Props = {
   users: User[]
 }
 
-const APPROVAL_ROLES: Role[] = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN', 'ENFORCEMENT']
+const APPROVAL_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN', 'ENFORCEMENT']
 
 const emptyStep = (): StepDraft => ({
   _key: String(Date.now() + Math.random()),
@@ -132,10 +133,11 @@ function StepRow({
 // ── Create / Edit form ─────────────────────────────────────────────────────
 
 function ChainForm({
-  initial, users, onSave, onCancel,
+  initial, users, entityType, onSave, onCancel,
 }: {
   initial?: Chain
   users: User[]
+  entityType: 'LEAVE' | 'OUTSIDE_WORK'
   onSave: (chain: Chain) => void
   onCancel: () => void
 }) {
@@ -190,7 +192,7 @@ function ChainForm({
       const { ok, data, status } = await apiJson<{ chain?: Chain }>(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), description: desc.trim() || null, isDefault, steps }),
+        body: JSON.stringify({ name: name.trim(), description: desc.trim() || null, entityType: initial?.entityType ?? entityType, isDefault, steps }),
       })
       if (!ok) { toast.error(apiErrorMessage(data as Record<string, unknown>, 'บันทึกไม่สำเร็จ', status)); return }
       toast.success(initial ? 'อัปเดต chain เรียบร้อย' : 'สร้าง chain เรียบร้อย')
@@ -220,7 +222,7 @@ function ChainForm({
 
       <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
         <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="accent-blue-500" />
-        ใช้เป็น Default Chain (ใช้กับคำขอลาใหม่ทุกคำขออัตโนมัติ)
+        ใช้เป็น Default Chain ({entityType === 'OUTSIDE_WORK' ? 'ออกนอกสถานที่' : 'การลา'})
       </label>
 
       <div className="space-y-2">
@@ -293,7 +295,7 @@ function ChainCard({
   if (editing) {
     return (
       <ChainForm
-        initial={chain} users={users}
+        initial={chain} users={users} entityType={chain.entityType}
         onSave={(updated) => { onUpdate(updated); setEditing(false) }}
         onCancel={() => setEditing(false)}
       />
@@ -311,6 +313,9 @@ function ChainCard({
                 <Star size={10} /> Default
               </span>
             )}
+            <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+              {chain.entityType === 'OUTSIDE_WORK' ? 'Outside Work' : 'Leave'}
+            </span>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chain.isActive ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
               {chain.isActive ? 'Active' : 'Inactive'}
             </span>
@@ -356,13 +361,19 @@ function ChainCard({
 export default function ApprovalChainManager({ initialChains, users }: Props) {
   const [chains, setChains] = useState<Chain[]>(initialChains)
   const [creating, setCreating] = useState(false)
+  const [entityFilter, setEntityFilter] = useState<'LEAVE' | 'OUTSIDE_WORK'>('LEAVE')
+
+  const filteredChains = chains.filter((c) => c.entityType === entityFilter)
 
   const handleUpdate = (updated: Chain) => {
     setChains((prev) => {
       let next = prev.map((c) => (c.id === updated.id ? updated : c))
-      // If this chain was set as default, clear others
       if (updated.isDefault) {
-        next = next.map((c) => (c.id !== updated.id ? { ...c, isDefault: false } : c))
+        next = next.map((c) => (
+          c.id !== updated.id && c.entityType === updated.entityType
+            ? { ...c, isDefault: false }
+            : c
+        ))
       }
       return next
     })
@@ -371,7 +382,13 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
   const handleCreate = (chain: Chain) => {
     setChains((prev) => {
       let next = [chain, ...prev]
-      if (chain.isDefault) next = next.map((c) => (c.id !== chain.id ? { ...c, isDefault: false } : c))
+      if (chain.isDefault) {
+        next = next.map((c) => (
+          c.id !== chain.id && c.entityType === chain.entityType
+            ? { ...c, isDefault: false }
+            : c
+        ))
+      }
       return next
     })
     setCreating(false)
@@ -388,10 +405,10 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-400">กำหนดขั้นตอนการอนุมัติสำหรับคำขอลา</p>
-          <p className="text-xs text-slate-500 mt-0.5">Chain ที่ตั้งเป็น Default จะถูกใช้กับคำขอลาใหม่ทุกคำขออัตโนมัติ</p>
+          <p className="text-sm text-slate-400">กำหนดขั้นตอนการอนุมัติ (Leave / Outside Work)</p>
+          <p className="text-xs text-slate-500 mt-0.5">Default chain จะถูกใช้กับคำขอใหม่ของประเภทนั้นอัตโนมัติ</p>
         </div>
         {!creating && (
           <button
@@ -404,24 +421,42 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
         )}
       </div>
 
+      <div className="flex gap-2">
+        {(['LEAVE', 'OUTSIDE_WORK'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setEntityFilter(t)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              entityFilter === t
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            {t === 'OUTSIDE_WORK' ? 'Outside Work' : 'Leave'}
+          </button>
+        ))}
+      </div>
+
       {creating && (
         <ChainForm
           users={users}
+          entityType={entityFilter}
           onSave={handleCreate}
           onCancel={() => setCreating(false)}
         />
       )}
 
-      {chains.length === 0 && !creating && (
+      {filteredChains.length === 0 && !creating && (
         <div className="rounded-2xl border border-dashed border-white/10 bg-slate-800/20 py-12 text-center">
           <CheckCircle2 className="mx-auto h-8 w-8 text-slate-600 mb-3" />
-          <p className="text-sm text-slate-500">ยังไม่มี Approval Chain</p>
+          <p className="text-sm text-slate-500">ยังไม่มี Approval Chain สำหรับ {entityFilter === 'OUTSIDE_WORK' ? 'Outside Work' : 'Leave'}</p>
           <p className="text-xs text-slate-600 mt-1">กดปุ่ม "สร้าง Chain" เพื่อเริ่มต้น</p>
         </div>
       )}
 
       <div className="space-y-3">
-        {chains.map((chain) => (
+        {filteredChains.map((chain) => (
           <ChainCard
             key={chain.id}
             chain={chain}

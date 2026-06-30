@@ -10,8 +10,8 @@ import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { weeklyDayLabel } from '@/lib/weekly-plan-days'
 
 type Person = { name: string; email: string; department: string | null; position?: string | null; role: string }
-type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; user: Person }
-type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; user: Person; googleMapsUrl?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; approvalStatus?: string | null }
+type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; stepName?: string | null; user: Person }
+type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; stepName?: string | null; user: Person; googleMapsUrl?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; approvalStatus?: string | null }
 type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note?: string | null; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string; purpose: string }[] }
 
 type Props = {
@@ -173,11 +173,11 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
       : []),
   ]
 
-  const stepLabel = userRole === 'CEO'
+  const stepLabel = userRole === 'TEAM_LEADER' || userRole === 'MANAGER'
+    ? 'หัวหน้า — อนุมัติเฉพาะลูกทีมของคุณ'
+    : userRole === 'CEO'
     ? 'ผู้บริหาร (CEO) — อนุมัติทุกขั้นตอน'
-    : userRole === 'ADMIN'
-    ? 'ผู้บริหาร — Final Approve แผนงาน (Step 2)'
-    : 'หัวหน้างาน — ตรวจสอบแผนงาน (Step 1)'
+    : 'HR / Admin — อนุมัติตามขั้นตอนที่กำหนด'
 
   return (
     <div className="p-5 md:p-6 space-y-5 max-w-full">
@@ -211,7 +211,7 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
             </div>
           ) : leaveRequests.map((l) => (
             <div key={l.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
-              <PersonHeader name={l.user.name} subtitle={personSubtitle(l.user)} badge="รออนุมัติ" />
+              <PersonHeader name={l.user.name} subtitle={personSubtitle(l.user)} badge={l.stepName ? `ขั้น: ${l.stepName}` : 'รออนุมัติ'} />
               <ApprovalActions requestId={l.id} type="LEAVE" {...actionProps} />
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[13px]">
                 <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
@@ -243,7 +243,7 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
             </div>
           ) : outsideRequests.map((o) => (
             <div key={o.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
-              <PersonHeader name={o.user.name} subtitle={personSubtitle(o.user)} badge="รออนุมัติ" accent="purple" />
+              <PersonHeader name={o.user.name} subtitle={personSubtitle(o.user)} badge={o.stepName ? `ขั้น: ${o.stepName}` : 'รออนุมัติ'} accent="purple" />
               <ApprovalActions requestId={o.id} type="OUTSIDE" {...actionProps} />
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13px]">
                 <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">

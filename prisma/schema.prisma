@@ -499,8 +499,9 @@ model User {
   device              UserDevice?
   faceProfile         UserFaceProfile?
   faceLogs            AttendanceFaceLog[]
-  chainStepsAssigned  ApprovalChainStep[] @relation("ChainStepApprover")
-  leaveStepActions    LeaveApprovalStep[] @relation("LeaveStepActor")
+  chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
+  leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
+  outsideWorkStepActions   OutsideWorkApprovalStep[] @relation("OutsideStepActor")
   salarySlips         SalarySlip[]
   taxHistories        TaxHistory[]
   probationEvaluation      ProbationEvaluation?
@@ -895,12 +896,16 @@ model OutsideWorkRequest {
   adminChecked   String?       @map("admin_checked")   // มี / ไม่มี
   supervisedBy   String?       @map("supervised_by")   // ผู้สั่งงาน
   documentNumber String?       @unique @map("document_number") // OW-2567-001
-  status         RequestStatus @default(PENDING)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  status           RequestStatus @default(PENDING)
+  chainConfigId    String?
+  currentStepOrder Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  user      User              @relation(fields: [userId], references: [id])
-  approvals ApprovalHistory[]
+  user         User                      @relation(fields: [userId], references: [id])
+  approvals    ApprovalHistory[]
+  chainConfig  ApprovalChainConfig?      @relation("OutsideChain", fields: [chainConfigId], references: [id])
+  stepLogs     OutsideWorkApprovalStep[]
 
   @@index([userId])
   @@index([date])
@@ -1232,14 +1237,16 @@ model ApprovalChainConfig {
   id          String   @id @default(cuid())
   name        String
   description String?
+  entityType  String   @default("LEAVE") // LEAVE | OUTSIDE_WORK
   isActive    Boolean  @default(true)
-  isDefault   Boolean  @default(false) // auto-apply to new leave requests
+  isDefault   Boolean  @default(false) // auto-apply to new requests of entityType
   createdById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  steps         ApprovalChainStep[]
-  leaveRequests LeaveRequest[]      @relation("LeaveChain")
+  steps           ApprovalChainStep[]
+  leaveRequests   LeaveRequest[]         @relation("LeaveChain")
+  outsideRequests OutsideWorkRequest[] @relation("OutsideChain")
 
   @@map("approval_chain_configs")
 }
@@ -1255,9 +1262,10 @@ model ApprovalChainStep {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  chain      ApprovalChainConfig @relation(fields: [chainId], references: [id], onDelete: Cascade)
-  approver   User?               @relation("ChainStepApprover", fields: [approverId], references: [id])
-  stepLogs   LeaveApprovalStep[]
+  chain            ApprovalChainConfig       @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  approver         User?                     @relation("ChainStepApprover", fields: [approverId], references: [id])
+  stepLogs         LeaveApprovalStep[]
+  outsideStepLogs  OutsideWorkApprovalStep[]
 
   @@unique([chainId, stepOrder])
   @@map("approval_chain_steps")
@@ -1285,6 +1293,29 @@ model LeaveApprovalStep {
 
   @@index([leaveRequestId])
   @@map("leave_approval_steps")
+}
+
+model OutsideWorkApprovalStep {
+  id           String             @id @default(cuid())
+  requestId    String
+  chainStepId  String
+  stepOrder    Int
+  stepName     String
+  approverRole Role?
+  approverId   String?
+  status       ApprovalStepStatus @default(PENDING)
+  actorId      String?
+  comment      String?
+  ip           String?
+  actedAt      DateTime?
+  createdAt    DateTime           @default(now())
+
+  request   OutsideWorkRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  chainStep ApprovalChainStep  @relation(fields: [chainStepId], references: [id])
+  actor     User?              @relation("OutsideStepActor", fields: [actorId], references: [id])
+
+  @@index([requestId])
+  @@map("outside_work_approval_steps")
 }
 
 // ── ROLE PERMISSIONS (RBAC) ─────────────────────

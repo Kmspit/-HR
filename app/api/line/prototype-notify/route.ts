@@ -4,23 +4,19 @@ import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfiguredAsync } from '@/lib/line-config'
 import { getHrLineRecipients } from '@/lib/attendance-line-recipients'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { isPrototypeBridgeEnabled, prototypeBridgeDisabledResponse } from '@/lib/prototype-bridge'
 
 export const runtime = 'nodejs'
 
 const CORS_ORIGINS = [
-  'https://apphrqm.vercel.app',
   'https://hrflow-app-gamma.vercel.app',
-  'https://app-hr-km1.vercel.app',
-  'https://hrprogramkm.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5500',
 ]
 
 function corsHeaders(origin: string | null): HeadersInit {
-  const allow =
-    !!origin &&
-    (CORS_ORIGINS.some((o) => origin === o) || origin.endsWith('.vercel.app'))
+  const allow = !!origin && CORS_ORIGINS.some((o) => origin === o)
   return {
     'Access-Control-Allow-Origin': allow ? origin : 'null',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -43,6 +39,9 @@ export async function OPTIONS(req: NextRequest) {
 /** ส่งแจ้งเตือนลงเวลาไป LINE HR — ใช้จาก HTML prototype (หลีกเลี่ยง CORS ของ LINE API) */
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
+  if (!isPrototypeBridgeEnabled()) {
+    return prototypeBridgeDisabledResponse()
+  }
   try {
     const session = await auth()
     if (!session?.user) {

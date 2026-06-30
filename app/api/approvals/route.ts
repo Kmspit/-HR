@@ -6,6 +6,7 @@ import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { headers } from 'next/headers'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { hasPermission } from '@/lib/rbac'
+import { executeLeaveStepAction, executeOutsideWorkStepAction } from '@/lib/approval-chain'
 import type { Role } from '@prisma/client'
 
 type ApprovalBody = {
@@ -36,9 +37,29 @@ export async function POST(req: NextRequest) {
 
   // ── LEAVE REQUEST ─────────────────────────────────────
   if (body.type === 'LEAVE') {
-    if (!isHrAdmin) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     const leave = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })
     if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    if (leave.chainConfigId) {
+      const chainResult = await executeLeaveStepAction(
+        prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,
+      )
+      if ('error' in chainResult) {
+        if (chainResult.error !== 'USE_LEGACY_APPROVAL') {
+          return NextResponse.json({ error: chainResult.error }, { status: chainResult.status })
+        }
+      } else {
+        await runNotify(() => createAuditLog({
+          actorId, targetId: body.requestId, targetType: 'LeaveRequest',
+          action: body.action === 'APPROVE' ? 'APPROVE' : 'REJECT',
+          after: { stepName: chainResult.stepName, finalized: chainResult.finalized },
+          ip,
+        }))
+        return NextResponse.json({ ...chainResult })
+      }
+    }
+
+    if (!isHrAdmin) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
 
     // CEO bypasses steps — direct final approval from any pending state
     if (role === 'CEO') {
@@ -120,14 +141,43 @@ export async function POST(req: NextRequest) {
 
   // ── OUTSIDE WORK ─────────────────────────────────────
   if (body.type === 'OUTSIDE') {
-    if (!canApproveOutside) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-
     const req_ = await prisma.outsideWorkRequest.findUnique({ where: { id: body.requestId } })
     if (!req_) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     if (req_.status === 'APPROVED' || req_.status === 'REJECTED') {
       return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
     }
+
+    if (req_.chainConfigId && req_.approvalStatus === 'pending_chain') {
+      const chainResult = await executeOutsideWorkStepAction(
+        prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,
+      )
+      if ('error' in chainResult) {
+        if (chainResult.error !== 'USE_LEGACY_APPROVAL') {
+          return NextResponse.json({ error: chainResult.error }, { status: chainResult.status })
+        }
+      } else {
+        await prisma.approvalHistory.create({
+          data: {
+            approvedById: actorId,
+            action: body.action,
+            reason: body.reason,
+            step: req_.currentStepOrder,
+            ip,
+            outsideRequestId: body.requestId,
+          },
+        })
+        await runNotify(() => createAuditLog({
+          actorId, targetId: body.requestId, targetType: 'OutsideWorkRequest',
+          action: body.action === 'APPROVE' ? 'APPROVE' : 'REJECT',
+          after: { stepName: chainResult.stepName, finalized: chainResult.finalized },
+          ip,
+        }))
+        return NextResponse.json({ ...chainResult })
+      }
+    }
+
+    if (!canApproveOutside) return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
 
     // ── CEO-only flow for new outside work requests ──
     if ((req_ as Record<string, unknown>).approvalStatus === 'pending_ceo') {

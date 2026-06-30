@@ -4,9 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
+import type { ChainEntityType } from '@/lib/approval-chain'
 
-// GET — list all chains (HR/Admin only)
-export async function GET() {
+// GET — list chains (HR/Admin only), optional ?entityType=LEAVE|OUTSIDE_WORK
+export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -14,7 +15,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
+    const entityType = new URL(req.url).searchParams.get('entityType') as ChainEntityType | null
+
     const chains = await prisma.approvalChainConfig.findMany({
+      where: entityType ? { entityType } : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
         steps: {
@@ -42,6 +46,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as {
       name?: string
       description?: string
+      entityType?: ChainEntityType
       isDefault?: boolean
       steps?: Array<{
         stepOrder: number
@@ -59,10 +64,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ต้องมีอย่างน้อย 1 ขั้นตอน' }, { status: 400 })
     }
 
-    // If setting as default, unset other defaults first
+    const entityType: ChainEntityType = body.entityType === 'OUTSIDE_WORK' ? 'OUTSIDE_WORK' : 'LEAVE'
+
+    // If setting as default, unset other defaults for same entityType first
     if (body.isDefault) {
       await prisma.approvalChainConfig.updateMany({
-        where: { isDefault: true },
+        where: { isDefault: true, entityType },
         data: { isDefault: false },
       })
     }
@@ -71,6 +78,7 @@ export async function POST(req: NextRequest) {
       data: {
         name:        body.name.trim(),
         description: body.description?.trim() || null,
+        entityType,
         isDefault:   body.isDefault ?? false,
         createdById: session.user.id,
         steps: {

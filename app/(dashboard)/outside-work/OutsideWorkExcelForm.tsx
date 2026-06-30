@@ -6,6 +6,9 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
+import ApprovalTimeline from '@/components/leave/ApprovalTimeline'
+import { canUserActOnStep, type ApprovalStepRow } from '@/lib/approval-chain'
+import type { Role } from '@prisma/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,9 @@ export type OWRequest = {
   note?: string | null
   status: string
   approvalStatus?: string | null
+  chainConfigId?: string | null
+  currentStepOrder?: number
+  steps?: ApprovalStepRow[]
   documentNumber?: string | null
   createdAt: string
 }
@@ -55,6 +61,7 @@ type WeekData = Record<string, SlotData>
 export type Props = {
   userId: string
   userName: string
+  currentUserRole: import('@prisma/client').Role
   canViewAll: boolean
   canApproveOutside: boolean
   requests: OWRequest[]
@@ -138,7 +145,31 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 function isPendingSlot(slot: SlotData) {
-  return slot.approvalStatus === 'pending_ceo' || slot.status === 'PENDING'
+  if (slot.status === 'APPROVED' || slot.status === 'REJECTED') return false
+  return slot.approvalStatus === 'pending_chain' || slot.approvalStatus === 'pending_ceo' || slot.status === 'PENDING'
+}
+
+function canUserApproveRequest(
+  req: Pick<OWRequest, 'chainConfigId' | 'currentStepOrder' | 'steps' | 'approvalStatus' | 'status'>,
+  userId: string,
+  userRole: Role,
+): boolean {
+  if (req.status === 'APPROVED' || req.status === 'REJECTED') return false
+  if (req.chainConfigId && req.steps?.length) {
+    const current = req.steps.find(
+      (s) => s.stepOrder === (req.currentStepOrder ?? 0) && s.status === 'PENDING',
+    )
+    if (!current) return false
+    return canUserActOnStep(
+      { approverRole: current.approverRole, approverId: current.approverId },
+      userId,
+      userRole,
+    )
+  }
+  if (!req.chainConfigId) {
+    return req.approvalStatus === 'pending_ceo' && userRole === 'CEO'
+  }
+  return false
 }
 
 function StatusBadge({ slot }: { slot: SlotData }) {
@@ -146,8 +177,8 @@ function StatusBadge({ slot }: { slot: SlotData }) {
   if (!s) return <span className="text-gray-700 text-sm">—</span>
   const label = STATUS_LABEL[s] ?? s
   const cls =
-    s === 'approved_by_ceo' || s === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-300' :
-    s === 'rejected_by_ceo' || s === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-300' :
+    s === 'approved_by_ceo' || s === 'approved' || s === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-300' :
+    s === 'rejected_by_ceo' || s === 'rejected' || s === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-300' :
     'bg-yellow-100 text-yellow-800 border-yellow-300'
   return (
     <span className={`inline-block px-1.5 py-0.5 rounded border text-sm font-semibold leading-tight ${cls}`}>
@@ -158,7 +189,7 @@ function StatusBadge({ slot }: { slot: SlotData }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function OutsideWorkExcelForm({ userId, userName, canViewAll, canApproveOutside, requests: initReqs }: Props) {
+export default function OutsideWorkExcelForm({ userId, userName, currentUserRole, canViewAll, canApproveOutside, requests: initReqs }: Props) {
   const router = useRouter()
   const [reqs, setReqs]           = useState<OWRequest[]>(initReqs)
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
@@ -242,7 +273,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
         const { ok, data, status } = await apiJson(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         if (!ok) { toast.error(apiErrorMessage(data, 'บันทึกไม่สำเร็จ', status)); return }
       }
-      toast.success('บันทึกสำเร็จ — รอ CEO อนุมัติ')
+      toast.success('บันทึกสำเร็จ — ส่งเข้าขั้นตอนอนุมัติแล้ว')
       router.refresh()
     } catch { toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่') }
     finally   { setSaving(false) }
@@ -251,8 +282,21 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
   // ── Approve ───────────────────────────────────────────────────────────────
 
   const handleApprove = async (reqId: string, action: 'approve' | 'reject') => {
+    const req = reqs.find((r) => r.id === reqId)
     setApprovingId(reqId)
     try {
+      if (req?.chainConfigId) {
+        const { ok, data, status: hs } = await apiJson(`/api/outside-work/${reqId}/step-approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action === 'approve' ? 'APPROVE' : 'REJECT' }),
+        })
+        if (!ok) { toast.error(apiErrorMessage(data, 'ดำเนินการไม่สำเร็จ', hs)); return }
+        toast.success(action === 'approve' ? 'อนุมัติขั้นตอนเรียบร้อย' : 'ปฏิเสธคำขอแล้ว')
+        router.refresh()
+        return
+      }
+
       const approvalStatus = action === 'approve' ? 'approved_by_ceo' : 'rejected_by_ceo'
       const status         = action === 'approve' ? 'APPROVED'        : 'REJECTED'
       const { ok, data, status: hs } = await apiJson(`/api/outside-work/${reqId}`, {
@@ -265,6 +309,15 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
       setReqs(prev => prev.map(r => r.id === reqId ? { ...r, approvalStatus, status } : r))
     } catch { toast.error('เกิดข้อผิดพลาด') }
     finally  { setApprovingId(null) }
+  }
+
+  const showApproveFor = (req: OWRequest) =>
+    canApproveOutside && canUserApproveRequest(req, userId, currentUserRole)
+
+  const canApproveSlotId = (id?: string) => {
+    if (!id) return false
+    const req = reqs.find((r) => r.id === id)
+    return req ? showApproveFor(req) : false
   }
 
   // ── CSS tokens ────────────────────────────────────────────────────────────
@@ -475,7 +528,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                           {morn.id
                             ? <div className="flex flex-col items-center gap-0.5 py-0.5">
                                 <StatusBadge slot={morn} />
-                                {canApproveOutside && isPendingSlot(morn) && (
+                                {canApproveSlotId(morn.id) && (
                                   <div className="flex gap-0.5 mt-0.5">
                                     <button onClick={() => handleApprove(morn.id!, 'approve')} disabled={approvingId === morn.id}
                                       title="อนุมัติ" className="p-0.5 rounded hover:bg-green-100 text-green-800 transition disabled:opacity-40">
@@ -571,7 +624,7 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
                           {aftn.id
                             ? <div className="flex flex-col items-center gap-0.5 py-0.5">
                                 <StatusBadge slot={aftn} />
-                                {canApproveOutside && isPendingSlot(aftn) && (
+                                {canApproveSlotId(aftn.id) && (
                                   <div className="flex gap-0.5 mt-0.5">
                                     <button onClick={() => handleApprove(aftn.id!, 'approve')} disabled={approvingId === aftn.id}
                                       title="อนุมัติ" className="p-0.5 rounded hover:bg-green-100 text-green-800 transition disabled:opacity-40">
@@ -626,28 +679,39 @@ export default function OutsideWorkExcelForm({ userId, userName, canViewAll, can
             <h3 className="text-base font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
             <div className="divide-y divide-gray-300">
               {viewReqs.map(r => (
-                <div key={r.id} className="flex items-center justify-between py-2.5 gap-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
-                    <span className="font-mono text-sm text-gray-900 shrink-0">{r.documentNumber ?? '—'}</span>
-                    <span className="shrink-0 font-medium text-gray-900">{r.date.slice(0, 10)}</span>
-                    <span className="text-gray-900 shrink-0">({r.timeSlot ?? '—'})</span>
-                    <span className="font-medium truncate text-gray-900">{r.place}</span>
+                <div key={r.id} className="py-3 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
+                      <span className="font-mono text-sm text-gray-900 shrink-0">{r.documentNumber ?? '—'}</span>
+                      <span className="shrink-0 font-medium text-gray-900">{r.date.slice(0, 10)}</span>
+                      <span className="text-gray-900 shrink-0">({r.timeSlot ?? '—'})</span>
+                      <span className="font-medium truncate text-gray-900">{r.place}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge slot={{ approvalStatus: r.approvalStatus, status: r.status, place:'', purpose:'', caseNumber:'', productWork:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }} />
+                      {showApproveFor(r) && (
+                        <div className="flex gap-1">
+                          <button onClick={() => handleApprove(r.id, 'approve')} disabled={approvingId === r.id}
+                            className="px-3 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 text-sm font-bold transition disabled:opacity-40">
+                            อนุมัติ
+                          </button>
+                          <button onClick={() => handleApprove(r.id, 'reject')} disabled={approvingId === r.id}
+                            className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 text-sm font-bold transition disabled:opacity-40">
+                            ปฏิเสธ
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <StatusBadge slot={{ approvalStatus: r.approvalStatus, status: r.status, place:'', purpose:'', caseNumber:'', productWork:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }} />
-                    {canApproveOutside && (r.approvalStatus === 'pending_ceo' || r.status === 'PENDING') && (
-                      <div className="flex gap-1">
-                        <button onClick={() => handleApprove(r.id, 'approve')} disabled={approvingId === r.id}
-                          className="px-3 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 text-sm font-bold transition disabled:opacity-40">
-                          อนุมัติ
-                        </button>
-                        <button onClick={() => handleApprove(r.id, 'reject')} disabled={approvingId === r.id}
-                          className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 text-sm font-bold transition disabled:opacity-40">
-                          ปฏิเสธ
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {r.steps && r.steps.length > 0 && (
+                    <div className="rounded-lg border border-gray-200 bg-slate-900 p-3">
+                      <ApprovalTimeline
+                        steps={r.steps}
+                        currentStepOrder={r.currentStepOrder ?? 0}
+                        requestStatus={r.status}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

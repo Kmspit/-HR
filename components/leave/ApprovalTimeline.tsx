@@ -1,18 +1,20 @@
 'use client'
 
 import { CheckCircle2, XCircle, Clock, SkipForward, User } from 'lucide-react'
-import type { LeaveStepRow } from '@/lib/approval-chain'
+import type { ApprovalStepRow } from '@/lib/approval-chain'
 import { ROLE_LABELS } from '@/lib/permissions'
 import type { Role } from '@prisma/client'
 
 type Props = {
-  steps: LeaveStepRow[]
+  steps: ApprovalStepRow[]
   currentStepOrder: number
-  leaveStatus: string
+  /** @deprecated use requestStatus */
+  leaveStatus?: string
+  requestStatus?: string
   className?: string
 }
 
-function StepIcon({ status }: { status: LeaveStepRow['status'] }) {
+function StepIcon({ status }: { status: ApprovalStepRow['status'] }) {
   switch (status) {
     case 'APPROVED': return <CheckCircle2 className="h-5 w-5 text-green-400" />
     case 'REJECTED': return <XCircle       className="h-5 w-5 text-red-400" />
@@ -21,7 +23,7 @@ function StepIcon({ status }: { status: LeaveStepRow['status'] }) {
   }
 }
 
-function stepLabel(status: LeaveStepRow['status'], isCurrent: boolean) {
+function stepLabel(status: ApprovalStepRow['status'], isCurrent: boolean) {
   if (status === 'APPROVED') return 'อนุมัติแล้ว'
   if (status === 'REJECTED') return 'ปฏิเสธแล้ว'
   if (status === 'SKIPPED')  return 'ข้ามขั้นตอน'
@@ -29,7 +31,7 @@ function stepLabel(status: LeaveStepRow['status'], isCurrent: boolean) {
   return 'รอขั้นก่อนหน้า'
 }
 
-function stepBorderColor(status: LeaveStepRow['status'], isCurrent: boolean) {
+function stepBorderColor(status: ApprovalStepRow['status'], isCurrent: boolean) {
   if (status === 'APPROVED') return 'border-green-500/40 bg-green-500/5'
   if (status === 'REJECTED') return 'border-red-500/40 bg-red-500/5'
   if (status === 'SKIPPED')  return 'border-slate-600/40 bg-slate-800/30'
@@ -37,10 +39,11 @@ function stepBorderColor(status: LeaveStepRow['status'], isCurrent: boolean) {
   return 'border-white/10 bg-slate-800/20'
 }
 
-export default function ApprovalTimeline({ steps, currentStepOrder, leaveStatus, className }: Props) {
+export default function ApprovalTimeline({ steps, currentStepOrder, leaveStatus, requestStatus, className }: Props) {
   if (!steps.length) return null
 
-  const isFinalized = leaveStatus === 'APPROVED' || leaveStatus === 'REJECTED'
+  const status = requestStatus ?? leaveStatus ?? 'PENDING'
+  const isFinalized = status === 'APPROVED' || status === 'REJECTED'
 
   return (
     <div className={`space-y-1 ${className ?? ''}`}>
@@ -79,11 +82,13 @@ export default function ApprovalTimeline({ steps, currentStepOrder, leaveStatus,
                     </span>
                   </div>
 
-                  {/* Approver role */}
-                  {step.approverRole && (
+                  {/* Approver role / specific user */}
+                  {(step.approverRole || step.approverId) && (
                     <p className="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {ROLE_LABELS[step.approverRole as Role] ?? step.approverRole}
+                      {step.approverRole
+                        ? (ROLE_LABELS[step.approverRole as Role] ?? step.approverRole)
+                        : 'ผู้อนุมัติที่กำหนด'}
                     </p>
                   )}
 
@@ -112,11 +117,11 @@ export default function ApprovalTimeline({ steps, currentStepOrder, leaveStatus,
       {/* Final status badge */}
       {isFinalized && (
         <div className={`mt-3 rounded-xl border px-3 py-2 text-center text-sm font-semibold ${
-          leaveStatus === 'APPROVED'
+          status === 'APPROVED'
             ? 'border-green-500/40 bg-green-500/10 text-green-400'
             : 'border-red-500/40 bg-red-500/10 text-red-400'
         }`}>
-          {leaveStatus === 'APPROVED' ? '✅ อนุมัติครบทุกขั้นตอน' : '❌ คำขอถูกปฏิเสธ'}
+          {status === 'APPROVED' ? '✅ อนุมัติครบทุกขั้นตอน' : '❌ คำขอถูกปฏิเสธ'}
         </div>
       )}
     </div>

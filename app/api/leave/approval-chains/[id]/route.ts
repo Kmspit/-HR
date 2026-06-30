@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/rbac'
+import type { ChainEntityType } from '@/lib/approval-chain'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
@@ -47,6 +48,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const body = (await req.json()) as {
       name?: string
       description?: string
+      entityType?: ChainEntityType
       isActive?: boolean
       isDefault?: boolean
       steps?: Array<{
@@ -61,10 +63,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const existing = await prisma.approvalChainConfig.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // If setting as default, unset other defaults first
+    // If setting as default, unset other defaults for same entityType first
     if (body.isDefault && !existing.isDefault) {
       await prisma.approvalChainConfig.updateMany({
-        where: { isDefault: true, id: { not: id } },
+        where: { isDefault: true, entityType: existing.entityType, id: { not: id } },
         data: { isDefault: false },
       })
     }
@@ -74,6 +76,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       data: {
         ...(body.name        !== undefined ? { name:        body.name.trim() }              : {}),
         ...(body.description !== undefined ? { description: body.description?.trim() || null } : {}),
+        ...(body.entityType  !== undefined ? { entityType:  body.entityType === 'OUTSIDE_WORK' ? 'OUTSIDE_WORK' : 'LEAVE' } : {}),
         ...(body.isActive    !== undefined ? { isActive:    body.isActive }                 : {}),
         ...(body.isDefault   !== undefined ? { isDefault:   body.isDefault }                : {}),
         ...(body.steps ? {

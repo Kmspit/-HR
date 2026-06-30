@@ -51,7 +51,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const isHR    = hasPermission(session.user.role as Role, 'approve_outside_work')
     const isOwner = existing.userId === session.user.id
-    const isPending = existing.status === 'PENDING' || existing.approvalStatus === 'pending_ceo'
+    const isPending = existing.status === 'PENDING'
+      || existing.approvalStatus === 'pending_ceo'
+      || existing.approvalStatus === 'pending_chain'
 
     if (!isHR && !(isOwner && isPending)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
@@ -69,6 +71,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (body.place !== undefined && !body.place?.trim()) {
       return NextResponse.json({ error: 'กรุณาระบุสถานที่' }, { status: 400 })
+    }
+
+    if (!isHR && (body.approvalStatus !== undefined || body.status !== undefined)) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
     const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
