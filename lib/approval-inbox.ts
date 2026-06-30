@@ -180,3 +180,26 @@ export async function getPendingOutsideForApprover(
   }
   return out
 }
+
+export type ApproverInboxCounts = {
+  leave: number
+  outside: number
+  total: number
+}
+
+/** Count items this user can act on in /approvals (org-scoped for TL/MANAGER). */
+export async function getApproverInboxCounts(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<ApproverInboxCounts> {
+  const [leaveRows, outsideRows] = await Promise.all([
+    getPendingLeaveForApprover(prisma, userId, role),
+    getPendingOutsideForApprover(prisma, userId, role),
+  ])
+  return {
+    leave: leaveRows.length,
+    outside: outsideRows.length,
+    total: leaveRows.length + outsideRows.length,
+  }
+}

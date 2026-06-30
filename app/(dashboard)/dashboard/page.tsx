@@ -7,6 +7,7 @@ import { ROLE_LABELS } from '@/lib/permissions'
 import { formatThaiDate } from '@/lib/utils'
 import Link from 'next/link'
 import EmployeeDashboard from './EmployeeDashboard'
+import ApproverDashboard from './ApproverDashboard'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import {
   buildBranchScope,
@@ -17,6 +18,9 @@ import {
 } from '@/lib/branch-scope'
 import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import { Suspense } from 'react'
+import { canAccessApprovals, canApproveOutsideWork, canManageEmployees } from '@/lib/permissions'
+import { getApproverInboxCounts } from '@/lib/approval-inbox'
+import type { Role } from '@prisma/client'
 
 function SummaryCard({
   label, value, sub, gradient, glow, iconPath, href,
@@ -97,6 +101,13 @@ export default async function DashboardPage({
     return <EmployeeDashboard userId={userId} name={name ?? ''} role={role} />
   }
 
+  if (role === 'TEAM_LEADER') {
+    return <ApproverDashboard userId={userId} name={name ?? ''} role={role} />
+  }
+
+  const userRole = role as Role
+  const usesInboxCounts = canAccessApprovals(userRole)
+
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const activeUserWhere = branchUserWhere(scope, { status: 'ACTIVE' })
   const pendingUserWhere = branchUserWhere(scope, { status: 'PENDING' })
@@ -114,9 +125,6 @@ export default async function DashboardPage({
   if (role === 'MANAGER') {
     const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
     taskManagedIds = managed.map(u => u.id)
-  } else if (role === 'TEAM_LEADER') {
-    const members = await prisma.user.findMany({ where: { teamLeaderId: userId }, select: { id: true } })
-    taskManagedIds = members.map(u => u.id)
   }
 
   const taskWhere = taskManagedIds !== null
@@ -130,7 +138,7 @@ export default async function DashboardPage({
   if (!CASE_EXEC.includes(role)) {
     if (role === 'MANAGER' && session.user.department) {
       caseWhere = { department: session.user.department }
-    } else if (['LAWYER', 'ENFORCEMENT', 'TEAM_LEADER'].includes(role)) {
+    } else if (['LAWYER', 'ENFORCEMENT'].includes(role)) {
       caseWhere = { OR: [{ assignedEmployeeId: userId }, { createdById: userId }] }
     }
   }
@@ -143,6 +151,7 @@ export default async function DashboardPage({
     pendingUsers, overdueTaskCount,
     taskTotal, taskCompleted, taskInProgress, taskWaitingReview, taskHighPriority,
     caseActive, caseOverdue, caseHighRisk, caseCourtThisWeek,
+    inboxCounts,
   ] = await Promise.all([
     prisma.user.count({ where: activeUserWhere }),
     prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
@@ -165,7 +174,12 @@ export default async function DashboardPage({
     showCaseKpi ? prisma.case.count({ where: { ...caseWhere, dueDate: { lt: now }, status: { in: activeStatuses } } }) : Promise.resolve(0),
     showCaseKpi ? prisma.case.count({ where: { ...caseActiveWhere, priority: { in: ['HIGH', 'CRITICAL'] as CasePriority[] } } }) : Promise.resolve(0),
     showCaseKpi ? prisma.caseCourt.count({ where: { courtDate: { gte: now, lte: weekEnd }, case: caseActiveWhere } }) : Promise.resolve(0),
+    usesInboxCounts ? getApproverInboxCounts(prisma, userId, userRole) : Promise.resolve(null),
   ])
+
+  const pendingLeaveCount = usesInboxCounts && inboxCounts ? inboxCounts.leave : pendingLeaves
+  const pendingOutsideCount = usesInboxCounts && inboxCounts ? inboxCounts.outside : 0
+  const pendingApprovalTotal = usesInboxCounts && inboxCounts ? inboxCounts.total : pendingLeaves
 
   const taskCompletionRate = taskTotal > 0 ? Math.round(taskCompleted / taskTotal * 100) : 0
   const taskOverdueRate    = taskTotal > 0 ? Math.round(overdueTaskCount / taskTotal * 100) : 0
@@ -180,13 +194,23 @@ export default async function DashboardPage({
       dotColor: 'bg-amber-400',
     },
     {
-      label: 'คำขอลารออนุมัติ',
-      count: pendingLeaves,
+      label: usesInboxCounts ? 'ลารออนุมัติ (ของคุณ)' : 'คำขอลารออนุมัติ',
+      count: pendingLeaveCount,
       href: '/approvals',
       emptyText: 'ไม่มีรายการค้าง',
       warnColor: 'text-blue-600',
       dotColor: 'bg-blue-400',
     },
+    ...(usesInboxCounts && canApproveOutsideWork(userRole)
+      ? [{
+          label: 'ออกนอกสถานที่รออนุมัติ',
+          count: pendingOutsideCount,
+          href: '/approvals',
+          emptyText: 'ไม่มีรายการค้าง',
+          warnColor: 'text-orange-600',
+          dotColor: 'bg-orange-400',
+        }]
+      : []),
     {
       label: 'งานเกินกำหนด',
       count: overdueTaskCount,
@@ -195,14 +219,16 @@ export default async function DashboardPage({
       warnColor: 'text-red-500',
       dotColor: 'bg-red-400',
     },
-    {
-      label: 'พนักงานรออนุมัติสมัคร',
-      count: pendingUsers,
-      href: '/employees?tab=pending',
-      emptyText: 'ไม่มีรายการรอ',
-      warnColor: 'text-violet-600',
-      dotColor: 'bg-violet-400',
-    },
+    ...(canManageEmployees(userRole)
+      ? [{
+          label: 'พนักงานรออนุมัติสมัคร',
+          count: pendingUsers,
+          href: '/employees?tab=pending',
+          emptyText: 'ไม่มีรายการรอ',
+          warnColor: 'text-violet-600',
+          dotColor: 'bg-violet-400',
+        }]
+      : []),
   ]
 
   const totalUrgent = actionItems.reduce((s, i) => s + i.count, 0)
@@ -264,9 +290,9 @@ export default async function DashboardPage({
           />
           <SummaryCard
             href="/approvals"
-            label="คำขอลา"
-            value={pendingLeaves}
-            sub="รอดำเนินการ"
+            label={usesInboxCounts ? 'ศูนย์อนุมัติ' : 'คำขอลา'}
+            value={pendingApprovalTotal}
+            sub={usesInboxCounts ? `ลา ${pendingLeaveCount}${canApproveOutsideWork(userRole) ? ` · นอก ${pendingOutsideCount}` : ''}` : 'รอดำเนินการ'}
             gradient="linear-gradient(135deg,#06b6d4,#0284c7)"
             glow="rgba(6,182,212,0.3)"
             iconPath="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
