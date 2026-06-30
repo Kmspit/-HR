@@ -502,6 +502,7 @@ model User {
   chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
   leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
   outsideWorkStepActions   OutsideWorkApprovalStep[] @relation("OutsideStepActor")
+  weeklyPlanStepActions    WeeklyPlanApprovalStep[]  @relation("WeeklyPlanStepActor")
   salarySlips         SalarySlip[]
   taxHistories        TaxHistory[]
   probationEvaluation      ProbationEvaluation?
@@ -925,6 +926,8 @@ model WeeklyLawyerPlan {
   approvalStatus String?       @map("approval_status")   // null = legacy record
   supervisorComment String?    @map("supervisor_comment")
   executiveComment  String?    @map("executive_comment")
+  chainConfigId     String?    @map("chain_config_id")
+  currentStepOrder  Int        @default(0) @map("current_step_order")
   note      String?
   isLate    Boolean       @default(false)
   createdAt DateTime      @default(now())
@@ -933,6 +936,8 @@ model WeeklyLawyerPlan {
   lawyer    User              @relation(fields: [lawyerId], references: [id])
   days      WeeklyPlanDay[]
   approvals ApprovalHistory[]
+  chain     ApprovalChainConfig? @relation("WeeklyPlanChain", fields: [chainConfigId], references: [id])
+  stepLogs  WeeklyPlanApprovalStep[]
 
   @@map("weekly_lawyer_plans")
 }
@@ -1249,6 +1254,7 @@ model ApprovalChainConfig {
   steps           ApprovalChainStep[]
   leaveRequests   LeaveRequest[]         @relation("LeaveChain")
   outsideRequests OutsideWorkRequest[] @relation("OutsideChain")
+  weeklyPlans     WeeklyLawyerPlan[]     @relation("WeeklyPlanChain")
 
   @@map("approval_chain_configs")
 }
@@ -1268,6 +1274,7 @@ model ApprovalChainStep {
   approver         User?                     @relation("ChainStepApprover", fields: [approverId], references: [id])
   stepLogs         LeaveApprovalStep[]
   outsideStepLogs  OutsideWorkApprovalStep[]
+  weeklyStepLogs   WeeklyPlanApprovalStep[]
 
   @@unique([chainId, stepOrder])
   @@map("approval_chain_steps")
@@ -1318,6 +1325,29 @@ model OutsideWorkApprovalStep {
 
   @@index([requestId])
   @@map("outside_work_approval_steps")
+}
+
+model WeeklyPlanApprovalStep {
+  id           String             @id @default(cuid())
+  weeklyPlanId String             @map("weekly_plan_id")
+  chainStepId  String             @map("chain_step_id")
+  stepOrder    Int
+  stepName     String
+  approverRole Role?
+  approverId   String?
+  status       ApprovalStepStatus @default(PENDING)
+  actorId      String?
+  comment      String?
+  ip           String?
+  actedAt      DateTime?
+  createdAt    DateTime           @default(now())
+
+  plan      WeeklyLawyerPlan  @relation(fields: [weeklyPlanId], references: [id], onDelete: Cascade)
+  chainStep ApprovalChainStep @relation(fields: [chainStepId], references: [id])
+  actor     User?             @relation("WeeklyPlanStepActor", fields: [actorId], references: [id])
+
+  @@index([weeklyPlanId])
+  @@map("weekly_plan_approval_steps")
 }
 
 // ── ROLE PERMISSIONS (RBAC) ─────────────────────

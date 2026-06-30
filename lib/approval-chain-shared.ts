@@ -2,7 +2,7 @@ import type { Role } from '@prisma/client'
 
 /** Client-safe types + pure helpers — no server imports. */
 
-export type ChainEntityType = 'LEAVE' | 'OUTSIDE_WORK'
+export type ChainEntityType = 'LEAVE' | 'OUTSIDE_WORK' | 'WEEKLY_PLAN'
 
 export type ApprovalStepRow = {
   id: string

@@ -4,14 +4,16 @@
  */
 import type { PrismaClient } from '@prisma/client'
 import { getDefaultChain, applyChainToLeave, applyChainToOutsideWork } from '@/lib/approval-chain'
+import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
 
-export type LegacyMigrationResult = { leave: number; outside: number }
+export type LegacyMigrationResult = { leave: number; outside: number; weekly: number }
 
 export async function migrateLegacyPendingApprovals(
   prisma: PrismaClient,
 ): Promise<LegacyMigrationResult> {
   let leave = 0
   let outside = 0
+  let weekly = 0
 
   const leaveChain = await getDefaultChain(prisma, 'LEAVE')
   if (leaveChain) {
@@ -65,9 +67,51 @@ export async function migrateLegacyPendingApprovals(
     }
   }
 
-  if (leave > 0 || outside > 0) {
-    console.log(`[MIGRATION] legacy approvals → chain: ${leave} leave, ${outside} outside`)
+  const weeklyChain = await getDefaultChain(prisma, 'WEEKLY_PLAN')
+  if (weeklyChain) {
+    const rows = await prisma.weeklyLawyerPlan.findMany({
+      where: {
+        chainConfigId: null,
+        status: { notIn: ['APPROVED', 'REJECTED'] },
+      },
+      select: { id: true, lawyerId: true, approvalStatus: true, status: true },
+    })
+    for (const row of rows) {
+      await applyChainToWeeklyPlan(prisma, row.id, weeklyChain.id, row.lawyerId)
+      if (
+        row.approvalStatus === 'pending_executive' ||
+        row.status === 'ADMIN_APPROVED'
+      ) {
+        const steps = await prisma.weeklyPlanApprovalStep.findMany({
+          where: { weeklyPlanId: row.id },
+          orderBy: { stepOrder: 'asc' },
+        })
+        for (const s of steps) {
+          if (s.status !== 'PENDING') continue
+          if (s.approverRole === 'ADMIN' || s.stepOrder === steps.length) break
+          await prisma.weeklyPlanApprovalStep.update({
+            where: { id: s.id },
+            data: { status: 'APPROVED', actedAt: new Date() },
+          })
+        }
+        const nextPending = await prisma.weeklyPlanApprovalStep.findFirst({
+          where: { weeklyPlanId: row.id, status: 'PENDING' },
+          orderBy: { stepOrder: 'asc' },
+        })
+        if (nextPending) {
+          await prisma.weeklyLawyerPlan.update({
+            where: { id: row.id },
+            data: { currentStepOrder: nextPending.stepOrder, approvalStatus: 'pending_chain' },
+          })
+        }
+      }
+      weekly += 1
+    }
   }
 
-  return { leave, outside }
+  if (leave > 0 || outside > 0 || weekly > 0) {
+    console.log(`[MIGRATION] legacy approvals → chain: ${leave} leave, ${outside} outside, ${weekly} weekly`)
+  }
+
+  return { leave, outside, weekly }
 }

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import ApprovalPanel from '@/components/dashboard/ApprovalPanel'
 import DocumentApprovalPanel from '@/components/dashboard/DocumentApprovalPanel'
-import { getPendingLeaveForApprover, getPendingOutsideForApprover } from '@/lib/approval-inbox'
+import { getPendingLeaveForApprover, getPendingOutsideForApprover, getPendingWeeklyForApprover } from '@/lib/approval-inbox'
 import { hasPermission } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
 
@@ -30,35 +30,8 @@ export default async function ApprovalsPage() {
   const [leaveRequests, outsideRequests, weeklyPlans] = await Promise.all([
     getPendingLeaveForApprover(prisma, userId, role as Role),
     getPendingOutsideForApprover(prisma, userId, role as Role),
-    role === 'CEO'
-      ? prisma.weeklyLawyerPlan.findMany({
-          where: {
-            OR: [
-              { approvalStatus: 'pending_supervisor' },
-              { approvalStatus: 'pending_executive' },
-              { approvalStatus: null, status: 'PENDING' },
-              { approvalStatus: null, status: 'ADMIN_APPROVED' },
-            ],
-          },
-          include: { lawyer: { select: { name: true, email: true } }, days: true },
-          orderBy: { createdAt: 'desc' },
-        })
-      : role === 'MANAGER_HR' || role === 'HR'
-      ? prisma.weeklyLawyerPlan.findMany({
-          where: {
-            OR: [{ approvalStatus: 'pending_supervisor' }, { approvalStatus: null, status: 'PENDING' }],
-          },
-          include: { lawyer: { select: { name: true, email: true } }, days: true },
-          orderBy: { createdAt: 'desc' },
-        })
-      : role === 'ADMIN'
-      ? prisma.weeklyLawyerPlan.findMany({
-          where: {
-            OR: [{ approvalStatus: 'pending_executive' }, { approvalStatus: null, status: 'ADMIN_APPROVED' }],
-          },
-          include: { lawyer: { select: { name: true, email: true } }, days: true },
-          orderBy: { createdAt: 'desc' },
-        })
+    hasPermission(role as Role, 'approve_weekly_plan') || role === 'CEO' || role === 'ADMIN'
+      ? getPendingWeeklyForApprover(prisma, userId, role as Role)
       : Promise.resolve([]),
   ])
 

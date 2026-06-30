@@ -3,6 +3,7 @@ import { DEFAULT_COMPANY_BRANCHES, HQ_BRANCH_ID, NMA_BRANCH_ID } from '@/lib/com
 import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
 import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
+import { seedDefaultWeeklyPlanChain } from '@/lib/seed-default-weekly-plan-chain'
 import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
 import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
@@ -639,9 +640,32 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS outside_work_approval_steps_request_idx ON outside_work_approval_steps (requestId)
   `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS weekly_plan_approval_steps (
+      id TEXT NOT NULL PRIMARY KEY,
+      weekly_plan_id TEXT NOT NULL,
+      chain_step_id TEXT NOT NULL,
+      stepOrder INTEGER NOT NULL,
+      stepName TEXT NOT NULL,
+      approverRole TEXT,
+      approverId TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      actorId TEXT,
+      comment TEXT,
+      ip TEXT,
+      actedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS weekly_plan_approval_steps_plan_idx ON weekly_plan_approval_steps (weekly_plan_id)
+  `)
+  await addWeeklyPlanColumnIfMissing('chain_config_id', `ALTER TABLE weekly_lawyer_plans ADD COLUMN chain_config_id TEXT`)
+  await addWeeklyPlanColumnIfMissing('current_step_order', `ALTER TABLE weekly_lawyer_plans ADD COLUMN current_step_order INTEGER NOT NULL DEFAULT 0`)
 
   await seedDefaultOutsideWorkChain(prisma)
   await seedDefaultLeaveChain(prisma)
+  await seedDefaultWeeklyPlanChain(prisma)
   await migrateLegacyPendingApprovals(prisma)
 
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { notifyRole, sendLineNotify } from '@/lib/notifications'
+import { sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { dateForPlanDay } from '@/lib/weekly-plan-days'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { getDefaultChain } from '@/lib/approval-chain'
+import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,8 +39,7 @@ export async function POST(req: NextRequest) {
         deadline,
         note: note || null,
         isLate:    !!isLate,
-        status:         'PENDING',
-        approvalStatus: 'pending_supervisor',
+        status: 'PENDING',
         days: {
           create: filledDays.map((d: { dayOfWeek: number; startTime: string; endTime: string; place: string; purpose: string; client: string; note: string; lat?: number | null; lng?: number | null }) => ({
             dayOfWeek: d.dayOfWeek,
@@ -57,11 +58,18 @@ export async function POST(req: NextRequest) {
       include: { lawyer: { select: { name: true } } },
     })
 
-    // Step 1: notify หัวหน้างาน (MANAGER_HR) first
-    await runNotify(() => notifyRole('MANAGER_HR', 'OUTSIDE_REQUEST', '📋 แผนงานทนายใหม่', `${plan.lawyer.name} ส่งแผนงานสัปดาห์${isLate ? ' (ส่งช้า ⚠️)' : ''} — รอหัวหน้างานอนุมัติ`, '/approvals'))
+    const defaultChain = await getDefaultChain(prisma, 'WEEKLY_PLAN')
+    if (!defaultChain) {
+      return NextResponse.json(
+        { error: 'ยังไม่ได้ตั้งค่าสายอนุมัติแผนงาน — ติดต่อ HR', code: 'NO_CHAIN' },
+        { status: 503 },
+      )
+    }
+    await applyChainToWeeklyPlan(prisma, plan.id, defaultChain.id, session.user.id)
+
     await runNotify(() => sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] แผนงานทนายใหม่\nชื่อ: ${plan.lawyer.name}\nสัปดาห์: ${new Date(weekStart).toLocaleDateString('th-TH')}`))
 
-    return NextResponse.json({ success: true, id: plan.id })
+    return NextResponse.json({ success: true, id: plan.id, chainApplied: true })
   } catch (err) {
     return apiError(err)
   }

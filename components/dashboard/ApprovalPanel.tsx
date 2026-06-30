@@ -12,7 +12,7 @@ import { weeklyDayLabel } from '@/lib/weekly-plan-days'
 type Person = { name: string; email: string; department: string | null; position?: string | null; role: string }
 type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; stepName?: string | null; user: Person }
 type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; stepName?: string | null; user: Person; googleMapsUrl?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; approvalStatus?: string | null }
-type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note?: string | null; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string; purpose: string }[] }
+type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note?: string | null; stepName?: string | null; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string | null; purpose: string | null }[] }
 
 type Props = {
   leaveRequests: LR[]
@@ -296,7 +296,10 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold text-[15px] text-slate-900 dark:text-white">{p.lawyer.name}</p>
-                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">ทนายความ · {formatThaiDate(p.weekStart)} — {formatThaiDate(p.weekEnd)}</p>
+                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    ทนายความ · {formatThaiDate(p.weekStart)} — {formatThaiDate(p.weekEnd)}
+                    {p.stepName ? ` · ${p.stepName}` : ''}
+                  </p>
                 </div>
                 {p.isLate && <span className="rounded-lg bg-red-100 dark:bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400">⚠️ ส่งช้า</span>}
               </div>
@@ -310,7 +313,7 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
                   p.days.map((d) => (
                     <div key={d.dayOfWeek} className="flex items-start gap-2.5 rounded-lg bg-slate-50 dark:bg-white/5 px-3 py-2.5 text-[13px]">
                       <span className="font-semibold text-blue-600 dark:text-blue-400 w-16 flex-shrink-0">วัน{weeklyDayLabel(d.dayOfWeek)}</span>
-                      <span className="text-slate-700 dark:text-slate-300">{d.place} — {d.purpose}</span>
+                      <span className="text-slate-700 dark:text-slate-300">{d.place ?? '—'} — {d.purpose ?? '—'}</span>
                     </div>
                   ))
                 )}

@@ -120,6 +120,59 @@ export async function getPendingOutsideForApprover(
   return out
 }
 
+export type InboxWeeklyItem = {
+  id: string
+  weekStart: Date
+  weekEnd: Date
+  status: string
+  isLate: boolean
+  note: string | null
+  stepName: string | null
+  lawyer: { name: string; email: string }
+  days: { dayOfWeek: number; place: string | null; purpose: string | null }[]
+}
+
+export async function getPendingWeeklyForApprover(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<InboxWeeklyItem[]> {
+  const rows = await prisma.weeklyLawyerPlan.findMany({
+    where: { status: { notIn: ['APPROVED', 'REJECTED'] } },
+    include: {
+      lawyer: { select: { id: true, name: true, email: true } },
+      stepLogs: true,
+      days: { select: { dayOfWeek: true, place: true, purpose: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 80,
+  })
+
+  const out: InboxWeeklyItem[] = []
+  for (const row of rows) {
+    if (!row.chainConfigId) continue
+    const step = row.stepLogs.find(
+      (s) => s.stepOrder === row.currentStepOrder && s.status === 'PENDING',
+    )
+    if (!step) continue
+    const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+    if (!ceoOverride && !canUserActOnStep(step, userId, role)) continue
+    if (!ceoOverride && !(await canApproverActOnRequester(prisma, userId, role, row.lawyerId))) continue
+    out.push({
+      id: row.id,
+      weekStart: row.weekStart,
+      weekEnd: row.weekEnd,
+      status: row.status,
+      isLate: row.isLate,
+      note: row.note,
+      stepName: step.stepName,
+      lawyer: { name: row.lawyer.name, email: row.lawyer.email },
+      days: row.days,
+    })
+  }
+  return out
+}
+
 export type ApproverInboxCounts = {
   leave: number
   outside: number
