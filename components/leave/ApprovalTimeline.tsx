@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle2, XCircle, Clock, SkipForward, User } from 'lucide-react'
-import type { ApprovalStepRow } from '@/lib/approval-chain'
+import type { ApprovalStepRow } from '@/lib/approval-chain-shared'
 import { ROLE_LABELS } from '@/lib/permissions'
 import type { Role } from '@prisma/client'
 

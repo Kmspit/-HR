@@ -1,8 +1,14 @@
 'use client'
 
-import OutsideWorkExcelForm, { type OWRequest, type Props } from './OutsideWorkExcelForm'
+import dynamic from 'next/dynamic'
+import type { Props } from './OutsideWorkExcelForm'
+import OutsideWorkSkeleton from './OutsideWorkSkeleton'
 
-export type { OWRequest }
+const OutsideWorkExcelForm = dynamic(() => import('./OutsideWorkExcelForm'), {
+  loading: () => <OutsideWorkSkeleton />,
+})
+
+export type { OWRequest } from './OutsideWorkExcelForm'
 
 export default function OutsideWorkClient(props: Props) {
   return <OutsideWorkExcelForm {...props} />

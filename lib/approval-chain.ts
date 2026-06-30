@@ -1,10 +1,21 @@
 import type { ApprovalStepStatus, PrismaClient, Role } from '@prisma/client'
 import { createNotification } from '@/lib/notifications'
 import { canApproverActOnRequester } from '@/lib/org-scope'
+import {
+  canUserActOnStep,
+  isOrgSupervisorTemplateStep,
+  type ApprovalStepRow,
+  type ChainEntityType,
+} from '@/lib/approval-chain-shared'
+
+export {
+  canUserActOnStep,
+  isOrgSupervisorTemplateStep,
+  type ApprovalStepRow,
+  type ChainEntityType,
+} from '@/lib/approval-chain-shared'
 
 // ── Types ───────────────────────────────────────────────────────────────────
-
-export type ChainEntityType = 'LEAVE' | 'OUTSIDE_WORK'
 
 export type ChainStepRow = {
   id: string
@@ -15,17 +26,18 @@ export type ChainStepRow = {
   canSkip: boolean
 }
 
-export type ApprovalStepRow = {
-  id: string
-  stepOrder: number
-  stepName: string
-  approverRole: Role | null
-  approverId: string | null
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SKIPPED'
-  actorId: string | null
-  comment: string | null
-  actedAt: Date | null
-  actor?: { name: string } | null
+// ── Org supervisor resolution (Outside Work step 1) ───────────────────────────
+
+export async function resolveOrgSupervisorId(
+  prisma: PrismaClient,
+  requesterId: string,
+): Promise<string | null> {
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { teamLeaderId: true, managerId: true },
+  })
+  if (!requester) return null
+  return requester.teamLeaderId ?? requester.managerId ?? null
 }
 
 /** @deprecated use ApprovalStepRow */
@@ -38,24 +50,6 @@ type TemplateStep = {
   approverRole: Role | null
   approverId: string | null
   canSkip: boolean
-}
-
-// ── Org supervisor resolution (Outside Work step 1) ───────────────────────────
-
-export function isOrgSupervisorTemplateStep(step: Pick<TemplateStep, 'stepOrder' | 'approverRole' | 'approverId' | 'canSkip'>): boolean {
-  return step.stepOrder === 1 && step.canSkip && !step.approverRole && !step.approverId
-}
-
-export async function resolveOrgSupervisorId(
-  prisma: PrismaClient,
-  requesterId: string,
-): Promise<string | null> {
-  const requester = await prisma.user.findUnique({
-    where: { id: requesterId },
-    select: { teamLeaderId: true, managerId: true },
-  })
-  if (!requester) return null
-  return requester.teamLeaderId ?? requester.managerId ?? null
 }
 
 // ── Apply chain to leave ────────────────────────────────────────────────────
@@ -272,18 +266,6 @@ export async function getDefaultChain(
     where: { isDefault: true, isActive: true, entityType },
     include: { steps: { orderBy: { stepOrder: 'asc' } } },
   })
-}
-
-// ── Permission check ────────────────────────────────────────────────────────
-
-export function canUserActOnStep(
-  step: { approverId?: string | null; approverRole?: Role | null },
-  userId: string,
-  userRole: Role,
-): boolean {
-  if (step.approverId) return step.approverId === userId
-  if (step.approverRole) return step.approverRole === userRole
-  return false
 }
 
 // ── Step queries ────────────────────────────────────────────────────────────

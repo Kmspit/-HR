@@ -5,10 +5,14 @@ import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle } from 
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
-import ApprovalTimeline from '@/components/leave/ApprovalTimeline'
-import { canUserActOnStep, type ApprovalStepRow } from '@/lib/approval-chain'
+import { canUserActOnStep, type ApprovalStepRow } from '@/lib/approval-chain-shared'
 import type { Role } from '@prisma/client'
+import dynamic from 'next/dynamic'
+import OutsideWorkStatusBadge from './OutsideWorkStatusBadge'
+
+const OutsideWorkApprovalHistory = dynamic(() => import('./OutsideWorkApprovalHistory'), {
+  loading: () => <div className="h-24 animate-pulse rounded-lg bg-white border border-gray-200" />,
+})
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -170,21 +174,6 @@ function canUserApproveRequest(
     return req.approvalStatus === 'pending_ceo' && userRole === 'CEO'
   }
   return false
-}
-
-function StatusBadge({ slot }: { slot: SlotData }) {
-  const s = slot.approvalStatus ?? slot.status
-  if (!s) return <span className="text-gray-700 text-sm">—</span>
-  const label = STATUS_LABEL[s] ?? s
-  const cls =
-    s === 'approved_by_ceo' || s === 'approved' || s === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-300' :
-    s === 'rejected_by_ceo' || s === 'rejected' || s === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-300' :
-    'bg-yellow-100 text-yellow-800 border-yellow-300'
-  return (
-    <span className={`inline-block px-1.5 py-0.5 rounded border text-sm font-semibold leading-tight ${cls}`}>
-      {label}
-    </span>
-  )
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -527,7 +516,7 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
                         <td className={`${TD} ${stripe} text-center`}>
                           {morn.id
                             ? <div className="flex flex-col items-center gap-0.5 py-0.5">
-                                <StatusBadge slot={morn} />
+                                <OutsideWorkStatusBadge slot={morn} />
                                 {canApproveSlotId(morn.id) && (
                                   <div className="flex gap-0.5 mt-0.5">
                                     <button onClick={() => handleApprove(morn.id!, 'approve')} disabled={approvingId === morn.id}
@@ -623,7 +612,7 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
                         <td className={`${TD} ${stripe} text-center`}>
                           {aftn.id
                             ? <div className="flex flex-col items-center gap-0.5 py-0.5">
-                                <StatusBadge slot={aftn} />
+                                <OutsideWorkStatusBadge slot={aftn} />
                                 {canApproveSlotId(aftn.id) && (
                                   <div className="flex gap-0.5 mt-0.5">
                                     <button onClick={() => handleApprove(aftn.id!, 'approve')} disabled={approvingId === aftn.id}
@@ -673,50 +662,12 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
           )}
         </div>
 
-        {/* ── Approval history ─────────────────────────────────────── */}
-        {viewReqs.length > 0 && (
-          <div className="bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm p-4 print:hidden">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">ประวัติรายการของสัปดาห์นี้</h3>
-            <div className="divide-y divide-gray-300">
-              {viewReqs.map(r => (
-                <div key={r.id} className="py-3 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
-                      <span className="font-mono text-sm text-gray-900 shrink-0">{r.documentNumber ?? '—'}</span>
-                      <span className="shrink-0 font-medium text-gray-900">{r.date.slice(0, 10)}</span>
-                      <span className="text-gray-900 shrink-0">({r.timeSlot ?? '—'})</span>
-                      <span className="font-medium truncate text-gray-900">{r.place}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge slot={{ approvalStatus: r.approvalStatus, status: r.status, place:'', purpose:'', caseNumber:'', productWork:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }} />
-                      {showApproveFor(r) && (
-                        <div className="flex gap-1">
-                          <button onClick={() => handleApprove(r.id, 'approve')} disabled={approvingId === r.id}
-                            className="px-3 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 border border-green-300 text-sm font-bold transition disabled:opacity-40">
-                            อนุมัติ
-                          </button>
-                          <button onClick={() => handleApprove(r.id, 'reject')} disabled={approvingId === r.id}
-                            className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 text-sm font-bold transition disabled:opacity-40">
-                            ปฏิเสธ
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {r.steps && r.steps.length > 0 && (
-                    <div className="rounded-lg border border-gray-200 bg-slate-900 p-3">
-                      <ApprovalTimeline
-                        steps={r.steps}
-                        currentStepOrder={r.currentStepOrder ?? 0}
-                        requestStatus={r.status}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <OutsideWorkApprovalHistory
+          viewReqs={viewReqs}
+          approvingId={approvingId}
+          showApproveFor={showApproveFor}
+          onApprove={handleApprove}
+        />
 
       </div>
     </div>

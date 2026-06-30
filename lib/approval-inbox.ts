@@ -1,5 +1,5 @@
 import type { PrismaClient, Role } from '@prisma/client'
-import { canUserActOnStep } from '@/lib/approval-chain'
+import { canUserActOnStep } from '@/lib/approval-chain-shared'
 import { canApproverActOnRequester } from '@/lib/org-scope'
 
 export type InboxLeaveItem = {

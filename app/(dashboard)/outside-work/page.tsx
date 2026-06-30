@@ -15,10 +15,8 @@ export default async function OutsideWorkPage({
 }: {
   searchParams: Promise<{ branchId?: string }>
 }) {
-  console.log('[OW] step 1: auth start')
   const session = await auth()
   if (!session?.user?.id) redirect('/')
-  console.log('[OW] step 2: auth ok, role=', session.user.role)
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
@@ -26,11 +24,8 @@ export default async function OutsideWorkPage({
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
-  console.log('[OW] step 3: scope built, canViewAll=', canViewAll)
 
-  console.log('[OW] step 4: ensureDbSchema start')
   const schemaOk = await ensureDbSchema().catch(() => false)
-  console.log('[OW] step 5: ensureDbSchema done, ok=', schemaOk)
 
   const pageShell = (requests: Parameters<typeof OutsideWorkClient>[0]['requests']) => (
     <div className="flex flex-col">
@@ -59,12 +54,10 @@ export default async function OutsideWorkPage({
   )
 
   if (!schemaOk) {
-    console.error('[OW] ensureDbSchema returned false — showing empty state')
     return pageShell([])
   }
 
   try {
-    console.log('[OW] step 6: findMany start')
     const rows = await prisma.outsideWorkRequest.findMany({
       where: canViewAll
         ? nestedUser
@@ -81,7 +74,6 @@ export default async function OutsideWorkPage({
       orderBy: { createdAt: 'desc' },
       take: canViewAll ? 200 : 100,
     })
-    console.log('[OW] step 7: findMany done, rows=', rows.length)
 
     return pageShell(rows.map((r) => ({
       id:            r.id,
