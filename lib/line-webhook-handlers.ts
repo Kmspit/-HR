@@ -8,7 +8,8 @@ import {
 } from '@/lib/line-link'
 import { getLineWebhookUrl } from '@/lib/line-config'
 import { prisma } from '@/lib/prisma'
-import type { TaskStatus } from '@prisma/client'
+import type { TaskStatus, Role } from '@prisma/client'
+import { runLineChainApproval } from '@/lib/line-chain-approval'
 import Anthropic from '@anthropic-ai/sdk'
 
 const APP = process.env.NEXT_PUBLIC_APP_NAME ?? 'HRFlow'
@@ -189,6 +190,8 @@ async function cmdSummary(userId: string, role: string): Promise<string> {
 
 type DocType = 'LEAVE' | 'EXPENSE' | 'OUTSIDE' | 'FORGOT_SCAN'
 
+const EXPENSE_APPROVER_ROLES: Role[] = ['CEO', 'SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN']
+
 async function handleApprovalPostback(
   lineUserId: string,
   replyToken: string,
@@ -203,34 +206,38 @@ async function handleApprovalPostback(
   }
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } })
-  const role = dbUser?.role ?? ''
-  const isApprover = ['CEO', 'SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN'].includes(role)
-  if (!isApprover) {
-    await replyLineText(replyToken, 'คุณไม่มีสิทธิ์อนุมัติรายการนี้')
-    return
-  }
+  const role = (dbUser?.role ?? 'EMPLOYEE') as Role
 
   const icon = action === 'APPROVE' ? '✅' : '❌'
   const actionLabel = action === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ'
 
   try {
-    if (docType === 'LEAVE') {
-      const leave = await prisma.leaveRequest.findUnique({ where: { id } })
-      if (!leave) { await replyLineText(replyToken, 'ไม่พบคำขอลา'); return }
-      if (leave.status !== 'PENDING' && leave.status !== 'ADMIN_APPROVED') {
-        await replyLineText(replyToken, `คำขอนี้ดำเนินการแล้ว (${leave.status})`); return
+    if (docType === 'LEAVE' || docType === 'OUTSIDE' || docType === 'FORGOT_SCAN') {
+      const result = await runLineChainApproval(
+        prisma,
+        docType,
+        id,
+        user.id,
+        role,
+        action,
+      )
+      if (!result.ok) {
+        await replyLineText(replyToken, result.message)
+        return
       }
-      const isFinalApprover = ['CEO', 'SUPER_ADMIN', 'MANAGER_HR', 'HR'].includes(role)
-      const newStatus = action === 'APPROVE'
-        ? (isFinalApprover ? 'APPROVED' : 'ADMIN_APPROVED')
-        : 'REJECTED'
-      await prisma.leaveRequest.update({ where: { id }, data: { status: newStatus } })
-      await prisma.approvalHistory.create({
-        data: { approvedById: user.id, action, step: isFinalApprover ? 2 : 1, leaveRequestId: id },
-      }).catch(() => {})
-      await replyLineText(replyToken, `${icon} ${actionLabel}คำขอลาสำเร็จ`)
+      await replyLineText(
+        replyToken,
+        `${icon} ${actionLabel}${result.docLabel} (${result.stepName})`,
+      )
+      return
+    }
 
-    } else if (docType === 'EXPENSE') {
+    if (docType === 'EXPENSE') {
+      if (!EXPENSE_APPROVER_ROLES.includes(role)) {
+        await replyLineText(replyToken, 'คุณไม่มีสิทธิ์อนุมัติรายการนี้')
+        return
+      }
+
       const exp = await prisma.expenseClaim.findUnique({ where: { id } })
       if (!exp) { await replyLineText(replyToken, 'ไม่พบคำขอเบิก'); return }
       if (!['PENDING', 'SUPERVISOR_APPROVED', 'CEO_APPROVED'].includes(exp.status)) {
@@ -239,40 +246,6 @@ async function handleApprovalPostback(
       const newExpStatus = action === 'APPROVE' ? 'CEO_APPROVED' : 'REJECTED'
       await prisma.expenseClaim.update({ where: { id }, data: { status: newExpStatus } })
       await replyLineText(replyToken, `${icon} ${actionLabel}คำขอเบิกค่าใช้จ่ายสำเร็จ`)
-
-    } else if (docType === 'OUTSIDE') {
-      const ow = await prisma.outsideWorkRequest.findUnique({ where: { id } })
-      if (!ow) { await replyLineText(replyToken, 'ไม่พบคำขอปฏิบัติงานนอก'); return }
-      if (ow.status !== 'PENDING') {
-        await replyLineText(replyToken, `คำขอนี้ดำเนินการแล้ว (${ow.status})`); return
-      }
-      const newOwStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
-      await prisma.outsideWorkRequest.update({ where: { id }, data: { status: newOwStatus } })
-      await replyLineText(replyToken, `${icon} ${actionLabel}คำขอปฏิบัติงานนอกสำเร็จ`)
-
-    } else if (docType === 'FORGOT_SCAN') {
-      const fs = await prisma.forgotScanRequest.findUnique({ where: { id } })
-      if (!fs) { await replyLineText(replyToken, 'ไม่พบคำขอลืมสแกน'); return }
-      if (fs.status === 'APPROVED' || fs.status === 'REJECTED') {
-        await replyLineText(replyToken, `คำขอนี้ดำเนินการแล้ว (${fs.status})`); return
-      }
-      if (fs.chainConfigId) {
-        const { executeForgotScanStepAction } = await import('@/lib/forgot-scan-chain')
-        const chainAction = action === 'APPROVE' ? 'APPROVE' : 'REJECT'
-        const result = await executeForgotScanStepAction(
-          prisma, id, user.id, role as import('@prisma/client').Role, chainAction, undefined, 'line-webhook',
-        )
-        if ('error' in result) {
-          await replyLineText(replyToken, result.error)
-          return
-        }
-        await replyLineText(replyToken, `${icon} ${actionLabel}คำขอแก้ไขเวลา (${result.stepName})`)
-        return
-      }
-      if (fs.status !== 'PENDING' && fs.status !== 'ADMIN_APPROVED') {
-        await replyLineText(replyToken, `คำขอนี้ดำเนินการแล้ว (${fs.status})`); return
-      }
-      await replyLineText(replyToken, 'กรุณาอนุมัติที่ศูนย์อนุมัติในแอป /approvals')
     }
   } catch (err) {
     console.error('[handleApprovalPostback]', err)
