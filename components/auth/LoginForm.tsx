@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react'
+import { englishOnlyFieldError, ENGLISH_ONLY_ERROR, isEnglishOnly } from '@/lib/english-input'
 
 const ERROR_MESSAGES: Record<string, string> = {
   MISSING_FIELDS: 'กรุณากรอกอีเมลและรหัสผ่าน',
@@ -38,12 +39,27 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
     const e: Record<string, string> = {}
     const id = form.email.trim()
     if (!id) e.email = 'กรุณากรอกอีเมลหรือรหัสพนักงาน'
+    else if (!isEnglishOnly(id)) e.email = ENGLISH_ONLY_ERROR
     else if (id.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)) {
       e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
     }
     if (!form.password) e.password = 'กรุณากรอกรหัสผ่าน'
+    else if (!isEnglishOnly(form.password)) e.password = ENGLISH_ONLY_ERROR
     return e
   }
+
+  const setEmail = (value: string) => {
+    setForm((f) => ({ ...f, email: value }))
+    setErrors((prev) => ({ ...prev, email: englishOnlyFieldError(value) ?? '' }))
+  }
+
+  const setPassword = (value: string) => {
+    setForm((f) => ({ ...f, password: value }))
+    setErrors((prev) => ({ ...prev, password: englishOnlyFieldError(value) ?? '' }))
+  }
+
+  const englishBlocked =
+    !!englishOnlyFieldError(form.email) || !!englishOnlyFieldError(form.password)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -198,7 +214,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
           placeholder="name@company.com หรือรหัสพนักงาน"
           className={errors.email ? inputError : inputBase}
           value={form.email}
-          onChange={(ev) => setForm((f) => ({ ...f, email: ev.target.value }))}
+          onChange={(ev) => setEmail(ev.target.value)}
           disabled={loading}
         />
         {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
@@ -215,7 +231,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
             placeholder="••••••••"
             className={`${errors.password ? inputError : inputBase} pr-12`}
             value={form.password}
-            onChange={(ev) => setForm((f) => ({ ...f, password: ev.target.value }))}
+            onChange={(ev) => setPassword(ev.target.value)}
             disabled={loading}
           />
           <button
@@ -231,7 +247,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || englishBlocked}
         className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
         style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
       >

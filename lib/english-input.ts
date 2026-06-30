@@ -1,0 +1,14 @@
+/** Email / password fields — ASCII letters, digits, and common credential symbols only. */
+
+export const ENGLISH_ONLY_ERROR = 'กรุณากรอกเป็นภาษาอังกฤษเท่านั้น'
+
+export const isEnglishOnly = (value: string) => /^[a-zA-Z0-9@._\-!#$%^&*]+$/.test(value)
+
+export function englishOnlyFieldError(value: string): string | undefined {
+  if (!value) return undefined
+  return isEnglishOnly(value) ? undefined : ENGLISH_ONLY_ERROR
+}
+
+export function hasEnglishOnlyFields(values: string[]): boolean {
+  return values.every((v) => !v || isEnglishOnly(v))
+}

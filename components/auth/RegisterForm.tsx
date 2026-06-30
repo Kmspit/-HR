@@ -11,6 +11,7 @@ import {
   HQ_BRANCH_ID,
 } from '@/lib/company-branches'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
+import { englishOnlyFieldError, ENGLISH_ONLY_ERROR, isEnglishOnly } from '@/lib/english-input'
 
 type BranchOption = {
   id: string
@@ -104,6 +105,17 @@ export default function RegisterForm() {
   const set = (key: keyof FormData, val: string | boolean) =>
     setForm((f) => ({ ...f, [key]: val }))
 
+  const setEnglishField = (key: 'email' | 'password' | 'confirmPassword', val: string) => {
+    setForm((f) => ({ ...f, [key]: val }))
+    const msg = englishOnlyFieldError(val)
+    if (msg) setErrors((prev) => ({ ...prev, [key]: msg }))
+    else setErrors((prev) => {
+      const next = { ...prev }
+      if (next[key] === ENGLISH_ONLY_ERROR) delete next[key]
+      return next
+    })
+  }
+
   const validateStep = (s: number): Partial<Record<keyof FormData, string>> => {
     const e: Partial<Record<keyof FormData, string>> = {}
     if (s === 0) {
@@ -111,6 +123,7 @@ export default function RegisterForm() {
       if (!form.firstName) e.firstName = 'กรุณากรอกชื่อจริง'
       if (!form.lastName)  e.lastName  = 'กรุณากรอกนามสกุล'
       if (!form.email)     e.email     = 'กรุณากรอกอีเมล'
+      else if (!isEnglishOnly(form.email)) e.email = ENGLISH_ONLY_ERROR
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
       if (!form.phone)     e.phone     = 'กรุณากรอกเบอร์โทร'
       else if (!/^0[0-9]{9}$/.test(form.phone.replace(/\D/g, ''))) e.phone = 'เบอร์ 10 หลัก เช่น 0812345678'
@@ -123,8 +136,10 @@ export default function RegisterForm() {
     }
     if (s === 2) {
       if (!form.password)         e.password        = 'กรุณากรอกรหัสผ่าน'
+      else if (!isEnglishOnly(form.password)) e.password = ENGLISH_ONLY_ERROR
       else if (form.password.length < 8) e.password  = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'
-      if (form.password !== form.confirmPassword) e.confirmPassword = 'รหัสผ่านไม่ตรงกัน'
+      if (!isEnglishOnly(form.confirmPassword)) e.confirmPassword = ENGLISH_ONLY_ERROR
+      else if (form.password !== form.confirmPassword) e.confirmPassword = 'รหัสผ่านไม่ตรงกัน'
     }
     return e
   }
@@ -294,7 +309,7 @@ export default function RegisterForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">อีเมล *</label>
-              <input type="email" placeholder="name@company.com" className={inputClass('email')} value={form.email} onChange={(e) => set('email', e.target.value)} />
+              <input type="email" placeholder="name@company.com" className={inputClass('email')} value={form.email} onChange={(e) => setEnglishField('email', e.target.value)} />
               {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
@@ -409,7 +424,7 @@ export default function RegisterForm() {
                 placeholder="อย่างน้อย 8 ตัวอักษร"
                 className={`${inputClass('password')} pr-11`}
                 value={form.password}
-                onChange={(e) => set('password', e.target.value)}
+                onChange={(e) => setEnglishField('password', e.target.value)}
               />
               <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -435,7 +450,7 @@ export default function RegisterForm() {
                 placeholder="••••••••"
                 className={`${inputClass('confirmPassword')} pr-11`}
                 value={form.confirmPassword}
-                onChange={(e) => set('confirmPassword', e.target.value)}
+                onChange={(e) => setEnglishField('confirmPassword', e.target.value)}
               />
               <button type="button" onClick={() => setShowCPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                 {showCPw ? <EyeOff size={16} /> : <Eye size={16} />}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Loader2, ArrowLeft } from 'lucide-react'
+import { englishOnlyFieldError, ENGLISH_ONLY_ERROR, isEnglishOnly } from '@/lib/english-input'
 
 type Step = 'email' | 'otp' | 'reset' | 'done'
 
@@ -14,10 +15,30 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [confirmError, setConfirmError] = useState('')
+
+  const onEmailChange = (value: string) => {
+    setEmail(value)
+    setEmailError(englishOnlyFieldError(value) ?? '')
+  }
+
+  const onPasswordChange = (value: string) => {
+    setPassword(value)
+    setPasswordError(englishOnlyFieldError(value) ?? '')
+  }
+
+  const onConfirmChange = (value: string) => {
+    setConfirm(value)
+    setConfirmError(englishOnlyFieldError(value) ?? '')
+  }
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
+    const err = englishOnlyFieldError(email) ?? (!email ? 'กรุณากรอกอีเมล' : '')
+    setEmailError(err)
+    if (err || !isEnglishOnly(email)) return
     setLoading(true)
     // Mock: simulate sending OTP
     await new Promise((r) => setTimeout(r, 1200))
@@ -34,6 +55,11 @@ export default function ForgotPasswordPage() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
+    const pErr = englishOnlyFieldError(password) ?? ''
+    const cErr = englishOnlyFieldError(confirm) ?? ''
+    setPasswordError(pErr)
+    setConfirmError(cErr)
+    if (pErr || cErr || !isEnglishOnly(password) || !isEnglishOnly(confirm)) return
     if (password.length < 8) { toast.error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return }
     if (password !== confirm) { toast.error('รหัสผ่านไม่ตรงกัน'); return }
     setLoading(true)
@@ -62,8 +88,11 @@ export default function ForgotPasswordPage() {
                 <p className="mt-1 text-sm text-slate-400">กรอกอีเมลเพื่อรับรหัส OTP</p>
               </div>
               <form onSubmit={handleSendOTP} className="space-y-4">
-                <input type="email" placeholder="name@company.com" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} required />
-                <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
+                <div>
+                  <input type="email" placeholder="name@company.com" className={`${inputCls} ${emailError ? 'border-red-500/50' : ''}`} value={email} onChange={(e) => onEmailChange(e.target.value)} required />
+                  {emailError && <p className="mt-1 text-xs text-red-400">{emailError}</p>}
+                </div>
+                <button type="submit" disabled={loading || !!emailError} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
                   {loading ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</> : 'ส่งรหัส OTP'}
                 </button>
               </form>
@@ -94,9 +123,15 @@ export default function ForgotPasswordPage() {
                 <h1 className="text-xl font-bold text-white">ตั้งรหัสผ่านใหม่</h1>
               </div>
               <form onSubmit={handleReset} className="space-y-4">
-                <input type="password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)" className={inputCls} value={password} onChange={(e) => setPassword(e.target.value)} required />
-                <input type="password" placeholder="ยืนยันรหัสผ่านใหม่" className={inputCls} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-                <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all disabled:opacity-60">
+                <div>
+                  <input type="password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)" className={`${inputCls} ${passwordError ? 'border-red-500/50' : ''}`} value={password} onChange={(e) => onPasswordChange(e.target.value)} required />
+                  {passwordError && <p className="mt-1 text-xs text-red-400">{passwordError}</p>}
+                </div>
+                <div>
+                  <input type="password" placeholder="ยืนยันรหัสผ่านใหม่" className={`${inputCls} ${confirmError ? 'border-red-500/50' : ''}`} value={confirm} onChange={(e) => onConfirmChange(e.target.value)} required />
+                  {confirmError && <p className="mt-1 text-xs text-red-400">{confirmError}</p>}
+                </div>
+                <button type="submit" disabled={loading || !!passwordError || !!confirmError} className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all disabled:opacity-60">
                   {loading ? <><Loader2 size={16} className="animate-spin" /> กำลังบันทึก...</> : 'บันทึกรหัสผ่านใหม่'}
                 </button>
               </form>

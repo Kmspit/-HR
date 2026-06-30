@@ -2,17 +2,38 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { englishOnlyFieldError, isEnglishOnly } from '@/lib/english-input'
 
 export default function PortalLoginPage() {
   const router = useRouter()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
+
+  const onEmailChange = (value: string) => {
+    setEmail(value)
+    setEmailError(englishOnlyFieldError(value) ?? '')
+  }
+
+  const onPasswordChange = (value: string) => {
+    setPassword(value)
+    setPasswordError(englishOnlyFieldError(value) ?? '')
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    const eErr = englishOnlyFieldError(email) ?? (!email ? 'กรุณากรอกอีเมล' : '')
+    const pErr = englishOnlyFieldError(password) ?? (!password ? 'กรุณากรอกรหัสผ่าน' : '')
+    setEmailError(eErr)
+    setPasswordError(pErr)
+    if (eErr || pErr) return
+    if (!isEnglishOnly(email) || !isEnglishOnly(password)) return
+
     setLoading(true)
 
     const res = await fetch('/api/client-portal/auth/login', {
@@ -33,6 +54,8 @@ export default function PortalLoginPage() {
     router.refresh()
   }
 
+  const englishBlocked = !!emailError || !!passwordError
+
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -52,12 +75,13 @@ export default function PortalLoginPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => onEmailChange(e.target.value)}
                 placeholder="email@company.com"
                 required
                 autoComplete="email"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${emailError ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {emailError && <p className="mt-1 text-xs text-red-600">{emailError}</p>}
             </div>
 
             <div>
@@ -65,12 +89,13 @@ export default function PortalLoginPage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => onPasswordChange(e.target.value)}
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${passwordError ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {passwordError && <p className="mt-1 text-xs text-red-600">{passwordError}</p>}
             </div>
 
             {error && (
@@ -81,7 +106,7 @@ export default function PortalLoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || englishBlocked}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl text-sm transition-colors mt-1"
             >
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
