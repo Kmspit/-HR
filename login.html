@@ -110,7 +110,9 @@ function handleLogin(e) {
 
   // Demo login validation
   const account = DEMO_ACCOUNTS[email];
-  if (!account || password !== DEMO_PASS) {
+  const storedKey = 'hrflow_demo_pass_' + email;
+  const expectedPass = localStorage.getItem(storedKey) || DEMO_PASS;
+  if (!account || password !== expectedPass) {
     errEl.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาใช้บัญชีทดสอบ';
     errEl.style.display = 'block';
     return;

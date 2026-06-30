@@ -70,6 +70,31 @@
       </div>
     </div>
 
+    <!-- Change password -->
+    <div class="settings-section" id="change-password">
+      <h3>🔑 เปลี่ยนรหัสผ่าน</h3>
+      <p style="font-size:12px;color:var(--text3);margin:-8px 0 14px;">ใช้ตัวอักษรภาษาอังกฤษ ตัวเลข และสัญลักษณ์ที่จำเป็นเท่านั้น (Demo — บันทึกใน localStorage)</p>
+      <div class="settings-grid" style="grid-template-columns:1fr;max-width:420px;">
+        <div class="form-group">
+          <label>รหัสผ่านปัจจุบัน</label>
+          <input id="pw-current" type="password" class="form-input" placeholder="••••••••" data-english-only autocomplete="current-password">
+          <p id="pw-current-error" style="display:none;margin-top:6px;font-size:12px;color:var(--red);"></p>
+        </div>
+        <div class="form-group">
+          <label>รหัสผ่านใหม่</label>
+          <input id="pw-new" type="password" class="form-input" placeholder="อย่างน้อย 8 ตัว" data-english-only autocomplete="new-password">
+          <p id="pw-new-error" style="display:none;margin-top:6px;font-size:12px;color:var(--red);"></p>
+        </div>
+        <div class="form-group">
+          <label>ยืนยันรหัสผ่านใหม่</label>
+          <input id="pw-confirm" type="password" class="form-input" placeholder="••••••••" data-english-only autocomplete="new-password">
+          <p id="pw-confirm-error" style="display:none;margin-top:6px;font-size:12px;color:var(--red);"></p>
+        </div>
+      </div>
+      <p id="pw-success" style="display:none;margin-top:12px;font-size:13px;color:var(--green);"></p>
+      <button type="button" class="btn-primary" style="margin-top:14px;" onclick="changeDemoPassword()">เปลี่ยนรหัสผ่าน</button>
+    </div>
+
     <!-- 1. Company info -->
     <div class="settings-section">
       <h3>🏢 ข้อมูลบริษัท</h3>
@@ -312,6 +337,7 @@
   </div>
 </nav>
 
+<script src="english-input.js"></script>
 <script src="hr-core.js"></script>
 <script src="face-core.js"></script>
 <script>
@@ -614,7 +640,54 @@ function clearFaceLogs() {
 // stop the registration camera when leaving the page
 window.addEventListener('beforeunload', () => { if (regStream) regStream.getTracks().forEach(t => t.stop()); });
 
+function changeDemoPassword() {
+  const validateCurrent = bindEnglishInput('pw-current', 'pw-current-error');
+  const validateNew = bindEnglishInput('pw-new', 'pw-new-error');
+  const validateConfirm = bindEnglishInput('pw-confirm', 'pw-confirm-error');
+  if (!validateCurrent() || !validateNew() || !validateConfirm()) return;
+
+  const current = document.getElementById('pw-current').value;
+  const next = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const successEl = document.getElementById('pw-success');
+  const errConfirm = document.getElementById('pw-confirm-error');
+
+  if (next !== confirm) {
+    errConfirm.textContent = 'รหัสผ่านใหม่ไม่ตรงกัน';
+    errConfirm.style.display = 'block';
+    return;
+  }
+  if (next.length < 8 || !/[a-zA-Z]/.test(next) || !/[0-9]/.test(next)) {
+    document.getElementById('pw-new-error').textContent = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข';
+    document.getElementById('pw-new-error').style.display = 'block';
+    return;
+  }
+
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem('hrflow_user') || '{}'); } catch (_) {}
+  const email = user.email || 'demo@local';
+  const storedKey = 'hrflow_demo_pass_' + email;
+  const expected = localStorage.getItem(storedKey) || 'demo1234';
+
+  if (current !== expected) {
+    document.getElementById('pw-current-error').textContent = 'รหัสผ่านปัจจุบันไม่ถูกต้อง';
+    document.getElementById('pw-current-error').style.display = 'block';
+    return;
+  }
+
+  localStorage.setItem(storedKey, next);
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  successEl.textContent = 'เปลี่ยนรหัสผ่านสำเร็จ (Demo)';
+  successEl.style.display = 'block';
+  setTimeout(() => { successEl.style.display = 'none'; }, 4000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  bindEnglishInput('pw-current', 'pw-current-error');
+  bindEnglishInput('pw-new', 'pw-new-error');
+  bindEnglishInput('pw-confirm', 'pw-confirm-error');
   initRole();
   loadSettings();
   renderFaceRegGrid();
