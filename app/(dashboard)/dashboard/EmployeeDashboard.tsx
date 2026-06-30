@@ -34,14 +34,14 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
       : 'เช็คอินได้'
 
   const quickActions = [
-    { href: '/attendance', label: 'ลงเวลางาน', sub: attSub, gradient: 'from-cyan-500 to-blue-500', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-    { href: '/leave', label: 'ขอลาหยุด', sub: pendingLeave > 0 ? `รออนุมัติ ${pendingLeave}` : 'ยื่นคำขอลา', gradient: 'from-violet-500 to-purple-500', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-    { href: '/outside-work', label: 'ออกนอกสถานที่', sub: 'ขออนุมัติ', gradient: 'from-orange-500 to-amber-500', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
-    { href: '/payslip', label: 'สลิปเงินเดือน', sub: 'ดูสลิป', gradient: 'from-emerald-500 to-teal-500', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-    { href: '/announcements', label: 'ประกาศ', sub: 'ข่าวบริษัท', gradient: 'from-blue-500 to-indigo-500', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' },
-    { href: '/notifications', label: 'แจ้งเตือน', sub: unreadCount > 0 ? `${unreadCount} ยังไม่อ่าน` : 'ไม่มีใหม่', gradient: 'from-slate-500 to-slate-600', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
+    { href: '/attendance', label: 'ลงเวลางาน', sub: attSub, iconClass: 'bg-blue-600 border-blue-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+    { href: '/leave', label: 'ขอลาหยุด', sub: pendingLeave > 0 ? `รออนุมัติ ${pendingLeave}` : 'ยื่นคำขอลา', iconClass: 'bg-violet-600 border-violet-700', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+    { href: '/outside-work', label: 'ออกนอกสถานที่', sub: 'ขออนุมัติ', iconClass: 'bg-orange-600 border-orange-700', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' },
+    { href: '/payslip', label: 'สลิปเงินเดือน', sub: 'ดูสลิป', iconClass: 'bg-emerald-600 border-emerald-700', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { href: '/announcements', label: 'ประกาศ', sub: 'ข่าวบริษัท', iconClass: 'bg-indigo-600 border-indigo-700', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' },
+    { href: '/notifications', label: 'แจ้งเตือน', sub: unreadCount > 0 ? `${unreadCount} ยังไม่อ่าน` : 'ไม่มีใหม่', iconClass: 'bg-slate-600 border-slate-700', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
     ...(role === 'LAWYER'
-      ? [{ href: '/weekly-plan', label: 'แผนงานสัปดาห์', sub: 'ส่งแผนให้ HR', gradient: 'from-amber-500 to-orange-500', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' }]
+      ? [{ href: '/weekly-plan', label: 'แผนงานสัปดาห์', sub: 'ส่งแผนให้ HR', iconClass: 'bg-amber-600 border-amber-700', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' }]
       : []),
   ]
 
@@ -85,23 +85,23 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
           </div>
         </div>
 
-        {/* Quick menu — Android-safe: solid colors, no shadow/gradient/transition/hover */}
-        <div className="rounded-2xl border border-slate-800 bg-[#111827] shadow-none p-5 md:p-6 transition-none transform-none">
-          <h2 className="font-semibold text-white text-[16px] mb-4">เมนูด่วน</h2>
+        {/* Quick menu — Android-safe: solid category colors, no gradient/blur/shadow/transition */}
+        <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-5 md:p-6 transition-none transform-none">
+          <h2 className="font-semibold text-slate-900 dark:text-white text-[16px] mb-4">เมนูด่วน</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {quickActions.map((a) => (
               <Link
                 key={a.href}
                 href={a.href}
-                className="flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-800 bg-[#111827] text-white transition-none transform-none"
+                className="flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] transition-none transform-none shadow-none"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-800 bg-[#111827] transition-none transform-none">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl border shadow-none transition-none transform-none ${a.iconClass}`}>
                   <svg width={20} height={20} className="hr-icon-sm h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
                   </svg>
                 </div>
-                <span className="text-[13px] font-semibold text-white">{a.label}</span>
-                <span className="text-[11px] text-slate-400">{a.sub}</span>
+                <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">{a.label}</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">{a.sub}</span>
               </Link>
             ))}
           </div>
