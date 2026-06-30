@@ -1,7 +1,10 @@
 import type { PrismaClient, Role } from '@prisma/client'
 import { canUserActOnStep } from '@/lib/approval-chain-shared'
 import { canApproverActOnRequester } from '@/lib/org-scope'
+import { hasPermission } from '@/lib/access-control'
 
+const FORGOT_SCAN_SUPERVISOR: Role[] = ['MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
+const FORGOT_SCAN_HR: Role[] = ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
 export type InboxLeaveItem = {
   id: string
   type: string
@@ -176,7 +179,59 @@ export async function getPendingWeeklyForApprover(
 export type ApproverInboxCounts = {
   leave: number
   outside: number
+  weekly: number
+  forgotScan: number
   total: number
+}
+
+function canSeeWeeklyInbox(role: Role): boolean {
+  return role === 'CEO' || role === 'ADMIN' || hasPermission(role, 'approve_weekly_plan')
+}
+
+function canSeeForgotScanInbox(role: Role): boolean {
+  return FORGOT_SCAN_SUPERVISOR.includes(role) || FORGOT_SCAN_HR.includes(role)
+}
+
+export async function getPendingForgotScanForApprover(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<{ id: string }[]> {
+  if (!canSeeForgotScanInbox(role)) return []
+
+  const isSupervisor = FORGOT_SCAN_SUPERVISOR.includes(role)
+  const isHR = FORGOT_SCAN_HR.includes(role)
+
+  const rows = await prisma.forgotScanRequest.findMany({
+    where: { status: { in: ['PENDING', 'ADMIN_APPROVED'] } },
+    select: { id: true, userId: true, status: true },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  })
+
+  const out: { id: string }[] = []
+  for (const row of rows) {
+    if (row.status === 'PENDING' && isSupervisor) {
+      if (await canApproverActOnRequester(prisma, userId, role, row.userId)) {
+        out.push({ id: row.id })
+      }
+    } else if (row.status === 'ADMIN_APPROVED' && isHR) {
+      out.push({ id: row.id })
+    }
+  }
+  return out
+}
+
+/** Short label for dashboard cards — e.g. "ลา 2 · นอก 1 · แผน 1" */
+export function formatInboxSummary(counts: ApproverInboxCounts, role: Role): string {
+  const parts: string[] = []
+  if (counts.leave > 0) parts.push(`ลา ${counts.leave}`)
+  if (counts.outside > 0 && hasPermission(role, 'approve_outside_work')) {
+    parts.push(`นอก ${counts.outside}`)
+  }
+  if (counts.weekly > 0 && canSeeWeeklyInbox(role)) parts.push(`แผน ${counts.weekly}`)
+  if (counts.forgotScan > 0 && canSeeForgotScanInbox(role)) parts.push(`แก้เวลา ${counts.forgotScan}`)
+  return parts.length > 0 ? parts.join(' · ') : 'ไม่มีรายการค้าง'
 }
 
 /** Count items this user can act on in /approvals (org-scoped for TL/MANAGER). */
@@ -185,13 +240,23 @@ export async function getApproverInboxCounts(
   userId: string,
   role: Role,
 ): Promise<ApproverInboxCounts> {
-  const [leaveRows, outsideRows] = await Promise.all([
+  const [leaveRows, outsideRows, weeklyRows, forgotRows] = await Promise.all([
     getPendingLeaveForApprover(prisma, userId, role),
     getPendingOutsideForApprover(prisma, userId, role),
+    canSeeWeeklyInbox(role)
+      ? getPendingWeeklyForApprover(prisma, userId, role)
+      : Promise.resolve([]),
+    getPendingForgotScanForApprover(prisma, userId, role),
   ])
+  const leave = leaveRows.length
+  const outside = outsideRows.length
+  const weekly = weeklyRows.length
+  const forgotScan = forgotRows.length
   return {
-    leave: leaveRows.length,
-    outside: outsideRows.length,
-    total: leaveRows.length + outsideRows.length,
+    leave,
+    outside,
+    weekly,
+    forgotScan,
+    total: leave + outside + weekly + forgotScan,
   }
 }

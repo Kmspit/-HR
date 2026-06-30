@@ -19,7 +19,8 @@ import {
 import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import { Suspense } from 'react'
 import { canAccessApprovals, canApproveOutsideWork, canManageEmployees } from '@/lib/permissions'
-import { getApproverInboxCounts } from '@/lib/approval-inbox'
+import { getApproverInboxCounts, formatInboxSummary } from '@/lib/approval-inbox'
+import { canApproveWeeklyPlan } from '@/lib/permissions'
 import type { Role } from '@prisma/client'
 
 function SummaryCard({
@@ -179,7 +180,12 @@ export default async function DashboardPage({
 
   const pendingLeaveCount = usesInboxCounts && inboxCounts ? inboxCounts.leave : pendingLeaves
   const pendingOutsideCount = usesInboxCounts && inboxCounts ? inboxCounts.outside : 0
+  const pendingWeeklyCount = usesInboxCounts && inboxCounts ? inboxCounts.weekly : 0
+  const pendingForgotScanCount = usesInboxCounts && inboxCounts ? inboxCounts.forgotScan : 0
   const pendingApprovalTotal = usesInboxCounts && inboxCounts ? inboxCounts.total : pendingLeaves
+  const inboxSummarySub = usesInboxCounts && inboxCounts
+    ? formatInboxSummary(inboxCounts, userRole)
+    : 'รอดำเนินการ'
 
   const taskCompletionRate = taskTotal > 0 ? Math.round(taskCompleted / taskTotal * 100) : 0
   const taskOverdueRate    = taskTotal > 0 ? Math.round(overdueTaskCount / taskTotal * 100) : 0
@@ -209,6 +215,26 @@ export default async function DashboardPage({
           emptyText: 'ไม่มีรายการค้าง',
           warnColor: 'text-orange-600',
           dotColor: 'bg-orange-400',
+        }]
+      : []),
+    ...(usesInboxCounts && (canApproveWeeklyPlan(userRole) || userRole === 'CEO' || userRole === 'ADMIN') && pendingWeeklyCount > 0
+      ? [{
+          label: 'แผนงานทนายรออนุมัติ',
+          count: pendingWeeklyCount,
+          href: '/approvals',
+          emptyText: 'ไม่มีรายการค้าง',
+          warnColor: 'text-amber-600',
+          dotColor: 'bg-amber-400',
+        }]
+      : []),
+    ...(usesInboxCounts && pendingForgotScanCount > 0
+      ? [{
+          label: 'แก้ไขเวลาลงงานรออนุมัติ',
+          count: pendingForgotScanCount,
+          href: '/forgot-scan',
+          emptyText: 'ไม่มีรายการค้าง',
+          warnColor: 'text-indigo-600',
+          dotColor: 'bg-indigo-400',
         }]
       : []),
     {
@@ -292,7 +318,7 @@ export default async function DashboardPage({
             href="/approvals"
             label={usesInboxCounts ? 'ศูนย์อนุมัติ' : 'คำขอลา'}
             value={pendingApprovalTotal}
-            sub={usesInboxCounts ? `ลา ${pendingLeaveCount}${canApproveOutsideWork(userRole) ? ` · นอก ${pendingOutsideCount}` : ''}` : 'รอดำเนินการ'}
+            sub={usesInboxCounts ? inboxSummarySub : 'รอดำเนินการ'}
             gradient="linear-gradient(135deg,#06b6d4,#0284c7)"
             glow="rgba(6,182,212,0.3)"
             iconPath="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"

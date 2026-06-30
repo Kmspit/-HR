@@ -6,7 +6,7 @@ import { formatThaiDate } from '@/lib/utils'
 import { findTodayAttendanceForDisplay } from '@/lib/attendance-session'
 import { getAttendanceProgress, ACTION_LABELS } from '@/lib/attendance-progress'
 import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
-import { getApproverInboxCounts } from '@/lib/approval-inbox'
+import { getApproverInboxCounts, formatInboxSummary } from '@/lib/approval-inbox'
 import type { Role } from '@prisma/client'
 
 type Props = {
@@ -67,7 +67,7 @@ export default async function ApproverDashboard({ userId, name, role }: Props) {
           >
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">รออนุมัติ</p>
             <p className="mt-1.5 text-2xl font-extrabold text-orange-600 dark:text-orange-400">{inbox.total}</p>
-            <p className="text-[11px] text-slate-500 mt-1">ลา {inbox.leave}{showOutside ? ` · นอก ${inbox.outside}` : ''}</p>
+            <p className="text-[11px] text-slate-500 mt-1">{formatInboxSummary(inbox, role)}</p>
           </Link>
           <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-4">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">ทีมโดยตรง</p>
