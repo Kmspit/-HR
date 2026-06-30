@@ -100,12 +100,17 @@ describe('GET /api/payroll/report', () => {
 
   it('returns payroll list for HR role', async () => {
     vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'A', employeeId: 'E1', department: 'IT', position: 'Dev', socialSecurity: true, baseSalary: 30000 },
+      { id: 'emp-2', name: 'B', employeeId: 'E2', department: 'HR', position: 'Staff', socialSecurity: true, baseSalary: 25000 },
+    ] as any)
     vi.mocked(prisma.payroll.findMany).mockResolvedValue([mockPayroll, { ...mockPayroll, id: 'pay-2', userId: 'emp-2' }] as any)
 
     const res = await reportGet(makeReportReq())
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(Array.isArray(json.payrolls)).toBe(true)
+    expect(json.payrolls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('returns specific user payroll for HR querying by userId', async () => {

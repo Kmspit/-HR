@@ -8,6 +8,7 @@ export type AccessDenyReason =
   | 'invalid_token'
   | 'inactive_account'
   | 'role_denied'
+  | 'deploy_profile_denied'
   | 'unauthorized_route'
   | 'device_denied'
   | 'face_denied'

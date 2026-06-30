@@ -69,9 +69,10 @@
 
 หลังรวบรวมคำตอบ:
 
-1. โมดูลที่ **ไม่เคยใช้** → เพิ่มใน `PHASE1_NAV_HIDDEN` (`lib/module-gates.ts`)
-2. โมดูลที่ **ใช้เฉพาะ role** → ปรับ `LEGAL_MODULE` / `FINANCE_MODULE` / `WORK_MODULE`
-3. ถ้า HR กับ Legal **ไม่ overlap** → พิจารณา Phase 4 (แยก deploy)
+1. โมดูลที่ **ไม่เคยใช้** → เพิ่มใน Vercel env `NEXT_PUBLIC_FROZEN_MODULES` (comma paths)  
+   ตัวอย่าง: `NEXT_PUBLIC_FROZEN_MODULES=/training,/automation,/sop`
+2. โมดูลที่ **ใช้เฉพาะ role** → ปรับ `LEGAL_MODULE` / `FINANCE_MODULE` / `WORK_MODULE` ใน `lib/module-gates.ts`
+3. ถ้า HR กับ Legal **ไม่ overlap** → สร้าง Vercel project แยก + ตั้ง `NEXT_PUBLIC_DEPLOY_PROFILE=hr` หรือ `legal` (ดู `docs/deploy-profiles.md`)
 
 ---
 

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { ROUTE_PERMISSIONS, ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
 import { logAccessDenied } from '@/lib/access-log'
+import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
 import type { Role } from '@prisma/client'
 
 const { auth } = NextAuth(authConfig)
@@ -87,6 +88,14 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
       url.pathname = '/unauthorized'
       return NextResponse.redirect(url)
     }
+  }
+
+  // Deploy profile / frozen modules (Phase 4 / Phase 2)
+  if (isPathHiddenByDeployProfile(pathname)) {
+    logAccessDenied('deploy_profile_denied', { path: pathname, role })
+    const url = req.nextUrl.clone()
+    url.pathname = '/unauthorized'
+    return NextResponse.redirect(url)
   }
 
   const requestHeaders = new Headers(req.headers)

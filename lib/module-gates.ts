@@ -1,8 +1,9 @@
 /**
  * Phase 1 — module visibility gates (nav + middleware).
- * Hide/freeze modules by role without deleting code. Tune here during Phase 2.
+ * Phase 4 — deploy profiles: lib/deploy-profile.ts
  */
 import type { Role } from '@prisma/client'
+import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
 
 /** All internal staff (not CLIENT portal). */
 export const CORE_STAFF: Role[] = [
@@ -45,5 +46,7 @@ export function canAccessModule(role: Role, allowed: Role[]): boolean {
 }
 
 export function isNavPathHidden(href: string): boolean {
-  return PHASE1_NAV_HIDDEN.has(href)
+  if (PHASE1_NAV_HIDDEN.has(href)) return true
+  if (isPathHiddenByDeployProfile(href)) return true
+  return false
 }
