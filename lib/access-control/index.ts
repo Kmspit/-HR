@@ -8,6 +8,21 @@
  */
 
 import type { Role } from '@prisma/client'
+import {
+  CORE_STAFF,
+  EXEC_ONLY,
+  HR_ADMIN,
+  HR_CORE,
+  APPR_ROLES,
+  MGR_UP,
+  EMPLOYEE_MGMT,
+  WEEKLY_PLAN,
+  SCAN_HISTORY,
+  LEGAL_MODULE,
+  CLIENT_MGMT,
+  FINANCE_MODULE,
+  WORK_MODULE,
+} from '@/lib/module-gates'
 
 // ── Permission types ──────────────────────────────────────────────────────────
 
@@ -139,68 +154,67 @@ export function getDefaultRolePermissionSeed(): Array<{ role: Role; permission: 
   return rows
 }
 
-// ── Route permissions (from permissions.ts) ───────────────────────────────────
+// ── Route permissions (Phase 1 — tightened module gates) ───────────────────────
 
-const ALL_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'EMPLOYEE', 'LAWYER', 'MANAGER', 'TEAM_LEADER', 'ENFORCEMENT']
-const HR_ROLES:  Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
-const MGR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER']
-const APPR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+const ALL_ROLES = CORE_STAFF
+const HR_ROLES = HR_CORE
 const CLIENT_ROLE: Role[] = ['CLIENT']
-const CLIENT_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
-const CAN_VIEW_FINANCE: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
-const WEEKLY_PLAN_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER']
-const SCAN_HISTORY_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
-const EMPLOYEE_MGMT_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
+  '/executive':          EXEC_ONLY,
   '/attendance':         ALL_ROLES,
   '/attendance/monthly': ALL_ROLES,
-  '/attendance/scans':   SCAN_HISTORY_ROLES,
+  '/attendance/scans':   SCAN_HISTORY,
   '/leave':              ALL_ROLES,
   '/outside-work':       ALL_ROLES,
-  '/weekly-plan':        WEEKLY_PLAN_ROLES,
+  '/weekly-plan':        WEEKLY_PLAN,
   '/calendar':           ALL_ROLES,
-  '/payroll':            HR_ROLES,
-  '/reports':            [...MGR_ROLES, 'ADMIN'],
+  '/forgot-scan':        ALL_ROLES,
+  '/payroll':            HR_CORE,
+  '/reports':            [...MGR_UP],
   '/payslip':            ALL_ROLES,
-  '/employees':          EMPLOYEE_MGMT_ROLES,
+  '/employees':          EMPLOYEE_MGMT,
   '/approvals':          APPR_ROLES,
+  '/approval-center':    APPR_ROLES,
   '/announcements':      ALL_ROLES,
-  '/line-oa':            [...HR_ROLES, 'ADMIN'],
+  '/line-oa':            HR_ADMIN,
   '/warnings':           ALL_ROLES,
   '/rules':              ALL_ROLES,
-  '/settings':           [...HR_ROLES, 'ADMIN'],
+  '/settings':           HR_ADMIN,
   '/notifications':      ALL_ROLES,
   '/profile':            ALL_ROLES,
-  '/branches':           [...HR_ROLES, 'ADMIN'],
-  '/organization':       [...HR_ROLES, 'ADMIN'],
+  '/branches':           HR_ADMIN,
+  '/organization':       HR_ADMIN,
   '/org-pending':        ALL_ROLES,
-  '/probation':          [...HR_ROLES, 'MANAGER'],
+  '/probation':          [...HR_CORE, 'MANAGER'],
   '/documents':          ALL_ROLES,
-  '/tasks':              ALL_ROLES,
-  '/performance':        ALL_ROLES,
-  '/case-documents':     ALL_ROLES,
-  '/clients':            CLIENT_MGMT_ROLES,
-  '/case-finance':            [...CAN_VIEW_FINANCE],
-  '/expense-claim':           ALL_ROLES,
-  '/debtors':                 ALL_ROLES,
-  '/debt-followup':           ALL_ROLES,
-  '/payment-appointments':    ALL_ROLES,
-  '/client-companies':        APPR_ROLES,
-  '/contracts':               APPR_ROLES,
-  '/client-history':          APPR_ROLES,
-  '/billing':                 [...HR_ROLES, 'ADMIN'],
-  '/invoices':                [...HR_ROLES, 'ADMIN'],
-  '/receipts':                [...HR_ROLES, 'ADMIN'],
-  '/approval-center':         [...APPR_ROLES],
-  '/knowledge':               ALL_ROLES,
-  '/sop':                     ALL_ROLES,
-  '/training':                ALL_ROLES,
-  '/court-calendar':          ALL_ROLES,
-  '/appointments':            ALL_ROLES,
-  '/forgot-scan':             ALL_ROLES,
-  '/security':                [...HR_ROLES, 'ADMIN'] as Role[],
+  '/tasks':              WORK_MODULE,
+  '/performance':        WORK_MODULE,
+  '/knowledge':          WORK_MODULE,
+  '/sop':                WORK_MODULE,
+  '/training':           WORK_MODULE,
+  '/cases':              LEGAL_MODULE,
+  '/case-documents':     LEGAL_MODULE,
+  '/clients':            CLIENT_MGMT,
+  '/debtors':            LEGAL_MODULE,
+  '/debt-followup':      LEGAL_MODULE,
+  '/payment-appointments': LEGAL_MODULE,
+  '/court-calendar':     LEGAL_MODULE,
+  '/appointments':       LEGAL_MODULE,
+  '/recovery':           LEGAL_MODULE,
+  '/case-finance':       [...FINANCE_MODULE, 'MANAGER', 'LAWYER'],
+  '/expense-claim':      [...FINANCE_MODULE, 'MANAGER', 'LAWYER'],
+  '/client-companies':   CLIENT_MGMT,
+  '/contracts':          CLIENT_MGMT,
+  '/client-history':     CLIENT_MGMT,
+  '/billing':            FINANCE_MODULE,
+  '/invoices':           FINANCE_MODULE,
+  '/receipts':           FINANCE_MODULE,
+  '/automation':         HR_ADMIN,
+  '/security':           [...EXEC_ONLY, 'MANAGER_HR', 'HR'],
+  '/manual':             HR_ADMIN,
+  '/system-logs':        HR_ADMIN,
   '/client-portal':      CLIENT_ROLE,
   '/unauthorized':       [...ALL_ROLES, 'CLIENT'],
 }

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Role } from '@prisma/client'
+import { APPR_ROLES } from '@/lib/module-gates'
 
 const MENU_ICON =
   'M4 6h16M4 12h16M4 18h16'
@@ -19,14 +20,15 @@ const NAV_ICONS: Record<string, string> = {
   outside:    'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z',
 }
 
+/** Mobile quick nav — universal items + role-specific slots */
 const MOBILE_ITEMS: { href: string; icon: keyof typeof NAV_ICONS; label: string; roles?: Role[] }[] = [
-  { href: '/dashboard',    icon: 'dashboard',  label: 'หน้าหลัก' },
-  { href: '/attendance',   icon: 'attendance', label: 'เช็คอิน',   roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-  { href: '/leave',        icon: 'leave',      label: 'ลาหยุด',    roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-  { href: '/approvals',    icon: 'approvals',  label: 'อนุมัติ',   roles: ['MANAGER_HR', 'ADMIN'] },
-  { href: '/outside-work', icon: 'outside',    label: 'นอกที่',    roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-  { href: '/payslip',      icon: 'payslip',    label: 'สลิป',      roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
-  { href: '/notifications',icon: 'notif',      label: 'แจ้ง',      roles: ['MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] },
+  { href: '/dashboard',     icon: 'dashboard',  label: 'หน้าหลัก' },
+  { href: '/attendance',    icon: 'attendance', label: 'เช็คอิน' },
+  { href: '/leave',         icon: 'leave',      label: 'ลาหยุด' },
+  { href: '/approvals',     icon: 'approvals',  label: 'อนุมัติ', roles: APPR_ROLES },
+  { href: '/outside-work',  icon: 'outside',    label: 'นอกที่' },
+  { href: '/payslip',       icon: 'payslip',    label: 'สลิป' },
+  { href: '/notifications', icon: 'notif',      label: 'แจ้ง' },
 ]
 
 export default function MobileNav({ role }: { role: Role }) {

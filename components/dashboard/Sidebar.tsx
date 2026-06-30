@@ -6,6 +6,21 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { Role } from '@prisma/client'
 import { useState, useEffect, useCallback } from 'react'
+import {
+  EXEC_ONLY,
+  HR_ADMIN,
+  HR_CORE,
+  APPR_ROLES,
+  MGR_UP,
+  EMPLOYEE_MGMT,
+  WEEKLY_PLAN,
+  SCAN_HISTORY,
+  LEGAL_MODULE,
+  CLIENT_MGMT,
+  FINANCE_MODULE,
+  WORK_MODULE,
+  isNavPathHidden,
+} from '@/lib/module-gates'
 
 const Icon = ({ d, className }: { d: string; className?: string }) => (
   <svg
@@ -72,36 +87,21 @@ const ICONS: Record<string, string> = {
   close:        'M6 18L18 6M6 6l12 12',
 }
 
-/** Internal-tool roles — legal/finance modules hidden from general staff */
-const LEGAL_ROLES: Role[] = [
-  'SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER',
-  'LAWYER', 'ENFORCEMENT',
-]
-
-const FINANCE_ROLES: Role[] = [
-  'SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER',
-  'LAWYER', 'ENFORCEMENT',
-]
-
-const WORK_ROLES: Role[] = [
-  'SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER',
-]
+/** Phase 1 section gates — see lib/module-gates.ts */
+const NAV_SECTION_ROLES: Record<string, Role[] | undefined> = {
+  'งาน & ผลงาน': WORK_MODULE,
+  'คดี & ลูกค้า': LEGAL_MODULE,
+  'การเงิน': FINANCE_MODULE,
+}
 
 type NavItem = { href: string; icon: keyof typeof ICONS; label: string; roles?: Role[]; badge?: string }
 
-const NAV_SECTION_ROLES: Record<string, Role[] | undefined> = {
-  'คดี & ลูกค้า': LEGAL_ROLES,
-  'การเงิน': FINANCE_ROLES,
-  'งาน & ผลงาน': WORK_ROLES,
-}
-
-/* ── 7 sections (consolidated from 11) ─────────────────────────────────────── */
 const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'หลัก',
     items: [
       { href: '/dashboard', icon: 'dashboard', label: 'แดชบอร์ด' },
-      { href: '/executive',  icon: 'executive', label: 'CEO Command Center', roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] as Role[] },
+      { href: '/executive', icon: 'executive', label: 'CEO Command Center', roles: EXEC_ONLY },
     ],
   },
   {
@@ -113,73 +113,72 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/leave',              icon: 'leave',      label: 'ขอลาหยุด' },
       { href: '/outside-work',       icon: 'outside',    label: 'ออกนอกสถานที่' },
       { href: '/forgot-scan',        icon: 'attendance', label: 'แก้ไขเวลาลงงาน' },
-      { href: '/weekly-plan',        icon: 'plan',       label: 'แผนงานสัปดาห์',    roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'LAWYER', 'MANAGER', 'TEAM_LEADER'] as Role[] },
-      { href: '/attendance/scans',   icon: 'attendance', label: 'ประวัติสแกนใบหน้า', roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] as Role[] },
+      { href: '/weekly-plan',        icon: 'plan',       label: 'แผนงานสัปดาห์',    roles: WEEKLY_PLAN },
+      { href: '/attendance/scans',   icon: 'attendance', label: 'ประวัติสแกนใบหน้า', roles: SCAN_HISTORY },
     ],
   },
   {
     title: 'งาน & ผลงาน',
     items: [
-      { href: '/ai-assistant', icon: 'ai',          label: 'AI Assistant', roles: WORK_ROLES },
-      { href: '/tasks',        icon: 'tasks',       label: 'มอบหมายงาน', roles: WORK_ROLES },
-      { href: '/performance',  icon: 'performance', label: 'KPI / ผลงาน', roles: WORK_ROLES },
-      { href: '/knowledge',    icon: 'knowledge',   label: 'คลังความรู้', roles: WORK_ROLES },
-      { href: '/sop',          icon: 'sop',         label: 'SOP ขั้นตอนงาน', roles: WORK_ROLES },
-      { href: '/training',     icon: 'training',    label: 'Training & Quiz', roles: WORK_ROLES },
+      { href: '/tasks',        icon: 'tasks',       label: 'มอบหมายงาน', roles: WORK_MODULE },
+      { href: '/performance',  icon: 'performance', label: 'KPI / ผลงาน', roles: WORK_MODULE },
+      { href: '/knowledge',    icon: 'knowledge',   label: 'คลังความรู้', roles: WORK_MODULE },
+      { href: '/sop',          icon: 'sop',         label: 'SOP ขั้นตอนงาน', roles: WORK_MODULE },
+      { href: '/training',     icon: 'training',    label: 'Training & Quiz', roles: WORK_MODULE },
     ],
   },
   {
     title: 'คดี & ลูกค้า',
     items: [
-      { href: '/cases',                icon: 'cases',     label: 'คดีความ', roles: LEGAL_ROLES },
-      { href: '/case-documents',       icon: 'casedocs',  label: 'เอกสารคดี', roles: LEGAL_ROLES },
-      { href: '/clients',              icon: 'clients',   label: 'จัดการลูกค้า',   roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] as Role[] },
-      { href: '/debtors',              icon: 'debt',      label: 'รายชื่อลูกหนี้', roles: LEGAL_ROLES },
-      { href: '/debt-followup',        icon: 'followup',  label: 'ติดตามหนี้', roles: LEGAL_ROLES },
-      { href: '/payment-appointments', icon: 'calendar2', label: 'นัดชำระ', roles: LEGAL_ROLES },
-      { href: '/court-calendar',       icon: 'courtcal',  label: 'นัดศาล', roles: LEGAL_ROLES },
-      { href: '/appointments',         icon: 'appt',      label: 'นัดหมาย', roles: LEGAL_ROLES },
-      { href: '/client-companies',     icon: 'building',  label: 'ลูกค้าองค์กร',   roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] as Role[] },
-      { href: '/contracts',            icon: 'contract',  label: 'สัญญา',           roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] as Role[] },
-      { href: '/client-history',       icon: 'history',   label: 'ประวัติลูกค้า',   roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] as Role[] },
+      { href: '/cases',                icon: 'cases',     label: 'คดีความ', roles: LEGAL_MODULE },
+      { href: '/case-documents',       icon: 'casedocs',  label: 'เอกสารคดี', roles: LEGAL_MODULE },
+      { href: '/clients',              icon: 'clients',   label: 'จัดการลูกค้า', roles: CLIENT_MGMT },
+      { href: '/debtors',              icon: 'debt',      label: 'รายชื่อลูกหนี้', roles: LEGAL_MODULE },
+      { href: '/debt-followup',        icon: 'followup',  label: 'ติดตามหนี้', roles: LEGAL_MODULE },
+      { href: '/payment-appointments', icon: 'calendar2', label: 'นัดชำระ', roles: LEGAL_MODULE },
+      { href: '/court-calendar',       icon: 'courtcal',  label: 'นัดศาล', roles: LEGAL_MODULE },
+      { href: '/appointments',         icon: 'appt',      label: 'นัดหมาย', roles: LEGAL_MODULE },
+      { href: '/client-companies',     icon: 'building',  label: 'ลูกค้าองค์กร', roles: CLIENT_MGMT },
+      { href: '/contracts',            icon: 'contract',  label: 'สัญญา', roles: CLIENT_MGMT },
+      { href: '/client-history',       icon: 'history',   label: 'ประวัติลูกค้า', roles: CLIENT_MGMT },
     ],
   },
   {
     title: 'การเงิน',
     items: [
-      { href: '/recovery',      icon: 'recovery', label: 'Recovery & Collection', roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT'] as Role[] },
-      { href: '/case-finance',  icon: 'finance',  label: 'การเงินคดี',    roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] as Role[] },
-      { href: '/expense-claim', icon: 'claim',    label: 'เบิกค่าใช้จ่าย', roles: FINANCE_ROLES },
-      { href: '/billing',       icon: 'billing',  label: 'วางบิล',        roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as Role[] },
-      { href: '/invoices',      icon: 'invoice',  label: 'ใบแจ้งหนี้',    roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as Role[] },
-      { href: '/receipts',      icon: 'receipt',  label: 'ใบเสร็จ',       roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as Role[] },
+      { href: '/recovery',      icon: 'recovery', label: 'Recovery & Collection', roles: LEGAL_MODULE },
+      { href: '/case-finance',  icon: 'finance',  label: 'การเงินคดี', roles: [...FINANCE_MODULE, 'MANAGER', 'LAWYER'] as Role[] },
+      { href: '/expense-claim', icon: 'claim',    label: 'เบิกค่าใช้จ่าย', roles: [...FINANCE_MODULE, 'MANAGER', 'LAWYER'] as Role[] },
+      { href: '/billing',       icon: 'billing',  label: 'วางบิล', roles: FINANCE_MODULE },
+      { href: '/invoices',      icon: 'invoice',  label: 'ใบแจ้งหนี้', roles: FINANCE_MODULE },
+      { href: '/receipts',      icon: 'receipt',  label: 'ใบเสร็จ', roles: FINANCE_MODULE },
     ],
   },
   {
     title: 'บุคคล & HR',
     items: [
-      { href: '/approvals',       icon: 'approvals',   label: 'ศูนย์อนุมัติ',       roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER'] as Role[] },
-      { href: '/employees',       icon: 'employees',   label: 'พนักงาน',             roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] as Role[] },
-      { href: '/payroll',         icon: 'payroll',     label: 'เงินเดือน',           roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR'] as Role[] },
+      { href: '/approvals',       icon: 'approvals',   label: 'ศูนย์อนุมัติ',       roles: APPR_ROLES },
+      { href: '/employees',       icon: 'employees',   label: 'พนักงาน',             roles: EMPLOYEE_MGMT },
+      { href: '/payroll',         icon: 'payroll',     label: 'เงินเดือน',           roles: HR_CORE },
       { href: '/payslip',         icon: 'payslip',     label: 'สลิปเงินเดือน' },
-      { href: '/reports',         icon: 'calendar',    label: 'รายงานรายเดือน',      roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'] as Role[] },
-      { href: '/probation',       icon: 'plan',        label: 'ประเมินทดลองงาน',     roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER'] as Role[] },
+      { href: '/reports',         icon: 'calendar',    label: 'รายงานรายเดือน',      roles: MGR_UP },
+      { href: '/probation',       icon: 'plan',        label: 'ประเมินทดลองงาน',     roles: [...HR_CORE, 'MANAGER'] as Role[] },
       { href: '/documents',       icon: 'plan',        label: 'ขอเอกสาร' },
       { href: '/warnings',        icon: 'warnings',    label: 'ใบเตือน' },
       { href: '/rules',           icon: 'rules',       label: 'กฎระเบียบ' },
-      { href: '/branches',        icon: 'settings',    label: 'จัดการสาขา',          roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as Role[] },
-      { href: '/organization',    icon: 'employees',   label: 'ฝ่าย/แผนก/ส่วนงาน',  roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as Role[] },
+      { href: '/branches',        icon: 'settings',    label: 'จัดการสาขา',          roles: HR_ADMIN },
+      { href: '/organization',    icon: 'employees',   label: 'ฝ่าย/แผนก/ส่วนงาน',  roles: HR_ADMIN },
     ],
   },
   {
     title: 'ระบบ',
     items: [
-      { href: '/automation',    icon: 'automation', label: 'Automation Rules', roles: ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as Role[] },
-      { href: '/settings',      icon: 'settings', label: 'ตั้งค่า',        roles: ['CEO', 'MANAGER_HR', 'ADMIN'] as Role[] },
-      { href: '/security',      icon: 'security', label: 'ความปลอดภัย',   roles: ['CEO', 'SUPER_ADMIN', 'HR', 'MANAGER_HR'] as Role[] },
-      { href: '/announcements', icon: 'announce', label: 'ประกาศ',         roles: ['CEO', 'MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] as Role[] },
-      { href: '/line-oa',       icon: 'lineoa',   label: 'LINE OA',        roles: ['CEO', 'MANAGER_HR', 'ADMIN'] as Role[] },
-      { href: '/notifications', icon: 'notif',    label: 'แจ้งเตือน',     roles: ['CEO', 'MANAGER_HR', 'ADMIN', 'EMPLOYEE', 'LAWYER'] as Role[] },
+      { href: '/automation',    icon: 'automation', label: 'Automation Rules', roles: HR_ADMIN },
+      { href: '/settings',      icon: 'settings', label: 'ตั้งค่า',        roles: HR_ADMIN },
+      { href: '/security',      icon: 'security', label: 'ความปลอดภัย',   roles: [...EXEC_ONLY, 'MANAGER_HR', 'HR'] as Role[] },
+      { href: '/announcements', icon: 'announce', label: 'ประกาศ' },
+      { href: '/line-oa',       icon: 'lineoa',   label: 'LINE OA',        roles: HR_ADMIN },
+      { href: '/notifications', icon: 'notif',    label: 'แจ้งเตือน' },
     ],
   },
 ]
@@ -209,6 +208,7 @@ function SidebarContent({
   const filteredSections = NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
+      if (isNavPathHidden(item.href)) return false
       if (item.roles && !item.roles.includes(user.role)) return false
       const sectionRoles = NAV_SECTION_ROLES[section.title]
       if (sectionRoles && !sectionRoles.includes(user.role)) return false

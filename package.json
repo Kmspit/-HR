@@ -40,7 +40,9 @@
     "db:migrate:cloudinary-types": "node scripts/migrate-cloudinary-types.mjs --migrate",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "audit:module-gates": "tsx scripts/audit-module-gates.ts",
+    "smoke:prod": "node scripts/smoke-production.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
