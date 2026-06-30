@@ -1013,6 +1013,8 @@ model AuditLog {
   actor  User  @relation("AuditActor", fields: [actorId], references: [id])
   target User? @relation("AuditUser", fields: [targetId], references: [id])
 
+  @@index([actorId, createdAt])
+  @@index([targetId, createdAt])
   @@map("audit_logs")
 }
 

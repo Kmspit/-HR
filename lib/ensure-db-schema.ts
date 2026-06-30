@@ -957,6 +957,9 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_leave_requests_userId     ON leave_requests (userId)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_leave_requests_status     ON leave_requests (status)`)
 
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_actor_created_idx ON audit_logs (actorId, createdAt)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_target_created_idx ON audit_logs (targetId, createdAt)`)
+
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
 

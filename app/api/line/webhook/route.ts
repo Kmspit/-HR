@@ -7,11 +7,26 @@ import {
   listLineChannelSecretCandidates,
   verifyLineWebhookWithCandidates,
 } from '@/lib/line-credentials'
+import { cronRequestAuthorized } from '@/lib/cron-secret'
 
 export const runtime = 'nodejs'
 
-/** LINE Platform verification + ตรวจ env (GET) */
-export async function GET() {
+/** Public ping — no secret fingerprints. Full diagnostics require CRON_SECRET. */
+export async function GET(req: NextRequest) {
+  const secret =
+    req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret')
+  const showDiagnostics = cronRequestAuthorized(req.headers.get('authorization'), secret)
+
+  if (!showDiagnostics) {
+    const diag = await getLineWebhookDiagnostics()
+    return NextResponse.json({
+      ok: true,
+      webhook: true,
+      configured: diag.configured,
+      webhookPath: '/api/line/webhook',
+    })
+  }
+
   const diag = await getLineWebhookDiagnostics()
 
   return NextResponse.json({

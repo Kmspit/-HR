@@ -14,7 +14,17 @@ const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
   { id: 'sections', label: 'ส่วนงาน', icon: Grid3X3 },
 ]
 
-export default function OrganizationClient({ branches }: { branches: Branch[] }) {
+export default function OrganizationClient({
+  branches,
+  hierarchyGaps = [],
+  hierarchyGapCount = 0,
+  hierarchyTotalActive = 0,
+}: {
+  branches: Branch[]
+  hierarchyGaps?: Array<{ id: string; name: string; email: string; missing: string[] }>
+  hierarchyGapCount?: number
+  hierarchyTotalActive?: number
+}) {
   const [branchId, setBranchId] = useState(branches.find((b) => b.code === 'HQ')?.id ?? branches[0]?.id ?? '')
   const [tab, setTab] = useState<Tab>('divisions')
   const [divisions, setDivisions] = useState<Record<string, unknown>[]>([])
@@ -140,6 +150,27 @@ export default function OrganizationClient({ branches }: { branches: Branch[] })
 
   return (
     <div className="p-4 md:p-6 space-y-4">
+      {hierarchyGapCount > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
+          <p className="text-sm font-semibold text-amber-200">
+            ⚠️ พนักงาน {hierarchyGapCount} / {hierarchyTotalActive} คน ยังไม่มีหัวหน้า/ผู้จัดการครบ
+          </p>
+          <p className="text-xs text-amber-100/80">
+            ขั้นอนุมัติ org-based (Outside Work / Leave) จะ skip หรือส่งผิดคนถ้าไม่ assign — แก้ที่{' '}
+            <a href="/employees" className="underline font-medium">พนักงาน</a>
+          </p>
+          <ul className="text-xs text-amber-100/90 space-y-1 max-h-32 overflow-y-auto">
+            {hierarchyGaps.map((g) => (
+              <li key={g.id}>
+                {g.name} — ขาด: {g.missing.map((m) => (m === 'teamLeader' ? 'หัวหน้า' : 'ผู้จัดการ')).join(', ')}
+              </li>
+            ))}
+            {hierarchyGapCount > hierarchyGaps.length && (
+              <li className="text-amber-200/70">… และอีก {hierarchyGapCount - hierarchyGaps.length} คน</li>
+            )}
+          </ul>
+        </div>
+      )}
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
         <label className="text-xs text-slate-500 block mb-1">สาขา</label>
         <select
