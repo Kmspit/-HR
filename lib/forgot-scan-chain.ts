@@ -11,6 +11,9 @@ import {
 } from '@/lib/approval-chain-shared'
 import { resolveOrgSupervisorId, type StepActionResult } from '@/lib/approval-chain'
 
+export const APPLY_ATTENDANCE_FAILED_MSG =
+  'ไม่สามารถ apply เวลาได้ — ไม่พบ attendance record ของวันนี้'
+
 const SCAN_TYPE_LABEL: Record<string, string> = {
   checkin:     'เข้างาน',
   'lunch-out': 'พักกลางวันออก',
@@ -25,12 +28,27 @@ const FIELD_MAP: Record<string, string> = {
   checkout:    'checkOut',
 }
 
-export async function applyToAttendance(requestId: string, prisma: PrismaClient): Promise<void> {
+export type ApplyToAttendanceOptions = {
+  /** Final approver — used for attendance editedById and request hrId/hrAt */
+  actorId?: string
+}
+
+/**
+ * Apply approved forgot-scan time to Attendance.
+ * @returns true if applied; false if request/field/attendance missing (non-checkin without row).
+ */
+export async function applyToAttendance(
+  requestId: string,
+  prisma: PrismaClient,
+  options?: ApplyToAttendanceOptions,
+): Promise<boolean> {
   const req = await prisma.forgotScanRequest.findUnique({ where: { id: requestId } })
-  if (!req) return
+  if (!req) return false
 
   const field = FIELD_MAP[req.scanType]
-  if (!field) return
+  if (!field) return false
+
+  const editedById = options?.actorId ?? req.hrId ?? undefined
 
   let att = await prisma.attendance.findFirst({
     where: { userId: req.userId, date: req.date },
@@ -51,18 +69,25 @@ export async function applyToAttendance(requestId: string, prisma: PrismaClient)
         workMinutes:       0,
         attendanceStatus:  'completed',
         note:              `แก้ไขโดยระบบ forgot-scan #${req.id}`,
-        editedById:        req.hrId ?? undefined,
+        editedById,
       },
     })
 
     await prisma.forgotScanRequest.update({
       where: { id: requestId },
-      data: { originalTime: null, attendanceId: att.id, appliedAt: new Date() },
+      data: {
+        originalTime: null,
+        attendanceId: att.id,
+        appliedAt:    new Date(),
+        ...(options?.actorId
+          ? { hrId: options.actorId, hrAt: new Date() }
+          : {}),
+      },
     })
-    return
+    return true
   }
 
-  if (!att) return
+  if (!att) return false
 
   const original = att[field as keyof typeof att] as Date | null
 
@@ -71,7 +96,7 @@ export async function applyToAttendance(requestId: string, prisma: PrismaClient)
     data: {
       [field]:    req.correctTime,
       note:       `แก้ไขโดยระบบ forgot-scan #${req.id}`,
-      editedById: req.hrId ?? undefined,
+      editedById,
     },
   })
 
@@ -81,6 +106,33 @@ export async function applyToAttendance(requestId: string, prisma: PrismaClient)
       originalTime: original ?? null,
       attendanceId: att.id,
       appliedAt:    new Date(),
+      ...(options?.actorId
+        ? { hrId: options.actorId, hrAt: new Date() }
+        : {}),
+    },
+  })
+
+  return true
+}
+
+/** Apply attendance first; set APPROVED + hrId only after success. */
+export async function finalizeForgotScanApproval(
+  prisma: PrismaClient,
+  requestId: string,
+  actorId: string,
+): Promise<void> {
+  const applied = await applyToAttendance(requestId, prisma, { actorId })
+  if (!applied) {
+    throw new Error(APPLY_ATTENDANCE_FAILED_MSG)
+  }
+
+  await prisma.forgotScanRequest.update({
+    where: { id: requestId },
+    data: {
+      status:           'APPROVED',
+      currentStepOrder: 0,
+      hrId:             actorId,
+      hrAt:             new Date(),
     },
   })
 }
@@ -130,13 +182,20 @@ export async function applyChainToForgotScan(
   if (!firstPending) {
     await prisma.forgotScanRequest.update({
       where: { id: requestId },
-      data: { chainConfigId: chainId, currentStepOrder: 0, status: 'APPROVED' },
+      data: { chainConfigId: chainId, currentStepOrder: 0 },
     })
-    try {
-      await applyToAttendance(requestId, prisma)
-    } catch (err) {
-      console.error('[forgot-scan apply]', err)
+
+    const applied = await applyToAttendance(requestId, prisma)
+    if (!applied) {
+      console.error('[forgot-scan apply] auto-approve skipped — no attendance row')
+      return
     }
+
+    await prisma.forgotScanRequest.update({
+      where: { id: requestId },
+      data: { status: 'APPROVED' },
+    })
+
     await createNotification({
       userId,
       type: 'FORGOT_SCAN_APPROVED',
@@ -186,6 +245,7 @@ async function notifyForgotScanStepApprovers(
 export async function advanceForgotScanChain(
   prisma: PrismaClient,
   requestId: string,
+  actorId: string,
 ): Promise<{ finalized: boolean; nextStepOrder: number | null }> {
   const req = await prisma.forgotScanRequest.findUnique({
     where: { id: requestId },
@@ -217,16 +277,7 @@ export async function advanceForgotScanChain(
     return { finalized: false, nextStepOrder: nextStep.stepOrder }
   }
 
-  await prisma.forgotScanRequest.update({
-    where: { id: requestId },
-    data: { status: 'APPROVED', currentStepOrder: 0 },
-  })
-
-  try {
-    await applyToAttendance(requestId, prisma)
-  } catch (err) {
-    console.error('[forgot-scan apply]', err)
-  }
+  await finalizeForgotScanApproval(prisma, requestId, actorId)
 
   const label = SCAN_TYPE_LABEL[req.scanType] ?? req.scanType
   await createNotification({
@@ -327,8 +378,24 @@ export async function executeForgotScanStepAction(
   })
 
   if (action === 'APPROVE') {
-    const { finalized, nextStepOrder } = await advanceForgotScanChain(prisma, requestId)
-    return { success: true, action, finalized, nextStepOrder, stepName: currentStep.stepName }
+    if (currentStep.stepOrder === 1) {
+      await prisma.forgotScanRequest.update({
+        where: { id: requestId },
+        data: {
+          supervisorId: actorId,
+          supervisorAt: new Date(),
+          ...(comment?.trim() ? { supervisorNote: comment.trim() } : {}),
+        },
+      })
+    }
+
+    try {
+      const { finalized, nextStepOrder } = await advanceForgotScanChain(prisma, requestId, actorId)
+      return { success: true, action, finalized, nextStepOrder, stepName: currentStep.stepName }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : APPLY_ATTENDANCE_FAILED_MSG
+      return { error: message, status: 422 }
+    }
   }
 
   await rejectForgotScanChain(

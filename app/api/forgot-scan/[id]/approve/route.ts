@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { createAuditLog, createNotification } from '@/lib/notifications'
-import { applyToAttendance } from '@/lib/forgot-scan-chain'
+import { applyToAttendance, APPLY_ATTENDANCE_FAILED_MSG } from '@/lib/forgot-scan-chain'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
@@ -101,6 +101,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       }
 
       if (body.action === 'APPROVE') {
+        const applied = await applyToAttendance(id, prisma, { actorId })
+        if (!applied) {
+          return NextResponse.json(
+            { error: APPLY_ATTENDANCE_FAILED_MSG },
+            { status: 422 },
+          )
+        }
+
         await prisma.forgotScanRequest.update({
           where: { id },
           data: {
@@ -110,13 +118,6 @@ export async function POST(req: NextRequest, { params }: Params) {
             hrAt:   new Date(),
           },
         })
-
-        // Auto-apply to attendance (best-effort — don't fail approval)
-        try {
-          await applyToAttendance(id, prisma)
-        } catch (err) {
-          console.error('[forgot-scan apply]', err)
-        }
 
         await createNotification({
           userId:  request.userId,
