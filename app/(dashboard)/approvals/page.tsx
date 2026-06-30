@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import ApprovalPanel from '@/components/dashboard/ApprovalPanel'
+import DocumentApprovalPanel from '@/components/dashboard/DocumentApprovalPanel'
 import { getPendingLeaveForApprover, getPendingOutsideForApprover } from '@/lib/approval-inbox'
 import { hasPermission } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
@@ -73,6 +74,9 @@ export default async function ApprovalsPage() {
         weeklyPlans={JSON.parse(JSON.stringify(weeklyPlans))}
         userRole={role}
       />
+      <div className="px-4 pb-8 md:px-6">
+        <DocumentApprovalPanel />
+      </div>
     </div>
   )
 }

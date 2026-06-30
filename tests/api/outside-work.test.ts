@@ -112,30 +112,18 @@ describe('POST /api/outside-work', () => {
     expect(applyChainToOutsideWork).toHaveBeenCalledWith(prisma, 'req-1', 'chain-ow-1', 'user-1')
   })
 
-  it('falls back to CEO-only when no default chain', async () => {
+  it('returns 503 when no default chain configured', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
     vi.mocked(getDefaultChain).mockResolvedValue(null as never)
     const created = { id: 'req-2', ...validPayload, userId: 'user-1', status: 'PENDING' }
     vi.mocked(prisma.outsideWorkRequest.create).mockResolvedValue(created as never)
-    vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({
-      ...created,
-      approvalStatus: 'pending_ceo',
-    } as never)
-    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({
-      ...created,
-      approvalStatus: 'pending_ceo',
-    } as never)
 
     const res = await POST(makePostReq(validPayload))
     const data = await res.json()
 
-    expect(res.status).toBe(200)
-    expect(data.chainApplied).toBe(false)
-    expect(prisma.outsideWorkRequest.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { approvalStatus: 'pending_ceo' },
-      }),
-    )
+    expect(res.status).toBe(503)
+    expect(data.code).toBe('NO_CHAIN')
+    expect(applyChainToOutsideWork).not.toHaveBeenCalled()
   })
 })
 

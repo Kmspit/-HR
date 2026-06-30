@@ -150,7 +150,7 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
 
 function isPendingSlot(slot: SlotData) {
   if (slot.status === 'APPROVED' || slot.status === 'REJECTED') return false
-  return slot.approvalStatus === 'pending_chain' || slot.approvalStatus === 'pending_ceo' || slot.status === 'PENDING'
+  return slot.approvalStatus === 'pending_chain' || slot.status === 'PENDING'
 }
 
 function canUserApproveRequest(
@@ -169,9 +169,6 @@ function canUserApproveRequest(
       userId,
       userRole,
     )
-  }
-  if (!req.chainConfigId) {
-    return req.approvalStatus === 'pending_ceo' && userRole === 'CEO'
   }
   return false
 }

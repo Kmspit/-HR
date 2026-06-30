@@ -148,14 +148,6 @@ export async function POST(req: NextRequest) {
     const defaultChain = await getDefaultChain(prisma, 'LEAVE')
     if (defaultChain) {
       await applyChainToLeave(prisma, leave.id, defaultChain.id, session.user.id)
-    } else {
-      // Legacy 2-step: notify ADMIN and MANAGER_HR as before
-      await runNotify(() =>
-        notifyRole('ADMIN', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
-      )
-      await runNotify(() =>
-        notifyRole('MANAGER_HR', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
-      )
     }
 
     await runNotify(() =>

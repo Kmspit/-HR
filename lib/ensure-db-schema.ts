@@ -3,6 +3,7 @@ import { DEFAULT_COMPANY_BRANCHES, HQ_BRANCH_ID, NMA_BRANCH_ID } from '@/lib/com
 import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
 import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
+import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
 import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
@@ -641,6 +642,7 @@ async function runEnsure(): Promise<boolean> {
 
   await seedDefaultOutsideWorkChain(prisma)
   await seedDefaultLeaveChain(prisma)
+  await migrateLegacyPendingApprovals(prisma)
 
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`

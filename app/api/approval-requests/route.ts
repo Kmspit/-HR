@@ -3,9 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { headers } from 'next/headers'
-
-const HR_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
-const MANAGER_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+import { APPR_ROLES, HR_ADMIN } from '@/lib/module-gates'
+import type { Role } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -25,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (status)  where.status  = status
   if (docType) where.docType = docType
 
-  if (mine || (!HR_ROLES.includes(role) && !MANAGER_ROLES.includes(role))) {
+  if (mine || (!HR_ADMIN.includes(role as Role) && !APPR_ROLES.includes(role as Role))) {
     where.requestedById = userId
   } else if (pending) {
     // Show requests where the current user is an approver on the active step
@@ -135,7 +134,7 @@ export async function POST(req: NextRequest) {
         type:   'APPROVAL_REQUESTED',
         title:  `รอการอนุมัติ: ${title}`,
         message: `${step1.stepName} — ${docType}`,
-        link:   '/approval-center',
+        link:   '/approvals',
       })
     } else if (step1.approverRole) {
       const approvers = await prisma.user.findMany({
@@ -149,7 +148,7 @@ export async function POST(req: NextRequest) {
             type:    'APPROVAL_REQUESTED' as const,
             title:   `รอการอนุมัติ: ${title}`,
             message: `${step1.stepName} — ${docType}`,
-            link:    '/approval-center',
+            link:    '/approvals',
           })),
         })
       }

@@ -70,28 +70,6 @@ export async function getPendingLeaveForApprover(
         stepName: step.stepName,
         user: row.user,
       })
-      continue
-    }
-
-    // Legacy 2-step (no chain)
-    const legacyOk =
-      (role === 'ADMIN' && row.status === 'PENDING') ||
-      (role === 'MANAGER_HR' && row.status === 'ADMIN_APPROVED') ||
-      (role === 'CEO' && (row.status === 'PENDING' || row.status === 'ADMIN_APPROVED'))
-    if (legacyOk && (await canApproverActOnRequester(prisma, userId, role, row.userId))) {
-      out.push({
-        id: row.id,
-        type: row.type,
-        startDate: row.startDate,
-        endDate: row.endDate,
-        days: row.days,
-        reason: row.reason,
-        status: row.status,
-        chainConfigId: null,
-        currentStepOrder: row.currentStepOrder,
-        stepName: row.status === 'PENDING' ? 'Admin อนุมัติ' : 'Manager HR อนุมัติ',
-        user: row.user,
-      })
     }
   }
   return out
@@ -135,45 +113,6 @@ export async function getPendingOutsideForApprover(
         chainConfigId: row.chainConfigId,
         currentStepOrder: row.currentStepOrder,
         stepName: step.stepName,
-        user: row.user,
-      })
-      continue
-    }
-
-    if (row.approvalStatus === 'pending_ceo' && role === 'CEO') {
-      out.push({
-        id: row.id,
-        date: row.date,
-        startTime: row.startTime,
-        endTime: row.endTime,
-        place: row.place,
-        purpose: row.purpose,
-        status: row.status,
-        approvalStatus: row.approvalStatus,
-        chainConfigId: null,
-        currentStepOrder: row.currentStepOrder,
-        stepName: 'CEO อนุมัติ',
-        user: row.user,
-      })
-      continue
-    }
-
-    const legacyOk =
-      (['ADMIN', 'MANAGER_HR', 'HR', 'CEO'].includes(role) && row.status === 'PENDING') ||
-      (role === 'CEO' && row.status === 'ADMIN_APPROVED')
-    if (legacyOk && (await canApproverActOnRequester(prisma, userId, role, row.userId))) {
-      out.push({
-        id: row.id,
-        date: row.date,
-        startTime: row.startTime,
-        endTime: row.endTime,
-        place: row.place,
-        purpose: row.purpose,
-        status: row.status,
-        approvalStatus: row.approvalStatus,
-        chainConfigId: null,
-        currentStepOrder: row.currentStepOrder,
-        stepName: 'อนุมัติ (legacy)',
         user: row.user,
       })
     }

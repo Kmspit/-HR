@@ -134,7 +134,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           type:   'APPROVAL_REQUESTED',
           title:  `รอการอนุมัติขั้น ${nextStep.stepOrder}: ${request.title}`,
           message: nextStep.stepName,
-          link:   '/approval-center',
+          link:   '/approvals',
         })
       } else if (nextStep.approverRole) {
         const approvers = await prisma.user.findMany({
@@ -148,7 +148,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               type:    'APPROVAL_REQUESTED' as const,
               title:   `รอการอนุมัติขั้น ${nextStep.stepOrder}: ${request.title}`,
               message: nextStep.stepName,
-              link:    '/approval-center',
+              link:    '/approvals',
             })),
           })
         }
@@ -193,7 +193,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     type:    notifType,
     title:   notifTitle,
     message: comment ?? '',
-    link:    '/approval-center',
+    link:    '/approvals',
   })
 
   return NextResponse.json({ success: true, status: finalStatus })

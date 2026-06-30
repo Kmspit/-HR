@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { notifyRole } from '@/lib/notifications'
-import { apiError, runNotify } from '@/lib/api-handler'
+import { apiError } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { getDefaultChain, applyChainToOutsideWork } from '@/lib/approval-chain'
 
@@ -90,27 +89,17 @@ export async function POST(req: NextRequest) {
     })
 
     const defaultChain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
-    if (defaultChain) {
-      await applyChainToOutsideWork(prisma, request.id, defaultChain.id, session.user.id)
-    } else {
-      await prisma.outsideWorkRequest.update({
-        where: { id: request.id },
-        data: { approvalStatus: 'pending_ceo' },
-      })
-      await runNotify(() =>
-        notifyRole(
-          'CEO',
-          'OUTSIDE_REQUEST',
-          'คำขอออกนอกสถานที่ — รอ CEO อนุมัติ',
-          `${session.user.name} ขอออกนอกสถานที่วันที่ ${new Date(date).toLocaleDateString('th-TH')}`,
-          '/approvals',
-        ),
+    if (!defaultChain) {
+      return NextResponse.json(
+        { error: 'ยังไม่ได้ตั้งค่าสายอนุมัติออกนอกสถานที่ — ติดต่อ HR', code: 'NO_CHAIN' },
+        { status: 503 },
       )
     }
+    await applyChainToOutsideWork(prisma, request.id, defaultChain.id, session.user.id)
 
     const refreshed = await prisma.outsideWorkRequest.findUnique({ where: { id: request.id } })
 
-    return NextResponse.json({ success: true, request: refreshed ?? request, chainApplied: !!defaultChain })
+    return NextResponse.json({ success: true, request: refreshed ?? request, chainApplied: true })
   } catch (err) {
     return apiError(err)
   }
