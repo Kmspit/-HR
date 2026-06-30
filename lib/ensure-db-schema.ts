@@ -4,6 +4,7 @@ import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
 import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
 import { seedDefaultWeeklyPlanChain } from '@/lib/seed-default-weekly-plan-chain'
+import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain'
 import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
 import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
@@ -660,12 +661,35 @@ async function runEnsure(): Promise<boolean> {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS weekly_plan_approval_steps_plan_idx ON weekly_plan_approval_steps (weekly_plan_id)
   `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS forgot_scan_approval_steps (
+      id TEXT NOT NULL PRIMARY KEY,
+      forgot_scan_id TEXT NOT NULL,
+      chain_step_id TEXT NOT NULL,
+      stepOrder INTEGER NOT NULL,
+      stepName TEXT NOT NULL,
+      approverRole TEXT,
+      approverId TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      actorId TEXT,
+      comment TEXT,
+      ip TEXT,
+      actedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS forgot_scan_approval_steps_request_idx ON forgot_scan_approval_steps (forgot_scan_id)
+  `)
   await addWeeklyPlanColumnIfMissing('chain_config_id', `ALTER TABLE weekly_lawyer_plans ADD COLUMN chain_config_id TEXT`)
   await addWeeklyPlanColumnIfMissing('current_step_order', `ALTER TABLE weekly_lawyer_plans ADD COLUMN current_step_order INTEGER NOT NULL DEFAULT 0`)
+  await addForgotScanColumnIfMissing('chain_config_id', `ALTER TABLE forgot_scan_requests ADD COLUMN chain_config_id TEXT`)
+  await addForgotScanColumnIfMissing('current_step_order', `ALTER TABLE forgot_scan_requests ADD COLUMN current_step_order INTEGER NOT NULL DEFAULT 0`)
 
   await seedDefaultOutsideWorkChain(prisma)
   await seedDefaultLeaveChain(prisma)
   await seedDefaultWeeklyPlanChain(prisma)
+  await seedDefaultForgotScanChain(prisma)
   await migrateLegacyPendingApprovals(prisma)
 
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
@@ -1029,6 +1053,9 @@ async function addOutsideWorkColumnIfMissing(column: string, ddl: string) {
 }
 async function addLeaveRequestColumnIfMissing(column: string, ddl: string) {
   await addColumnIfMissing('leave_requests', column, ddl)
+}
+async function addForgotScanColumnIfMissing(column: string, ddl: string) {
+  await addColumnIfMissing('forgot_scan_requests', column, ddl)
 }
 async function addAnnouncementColumnIfMissing(column: string, ddl: string) {
   await addColumnIfMissing('announcements', column, ddl)

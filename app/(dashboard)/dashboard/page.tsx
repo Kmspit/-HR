@@ -231,7 +231,7 @@ export default async function DashboardPage({
       ? [{
           label: 'แก้ไขเวลาลงงานรออนุมัติ',
           count: pendingForgotScanCount,
-          href: '/forgot-scan',
+          href: '/approvals',
           emptyText: 'ไม่มีรายการค้าง',
           warnColor: 'text-indigo-600',
           dotColor: 'bg-indigo-400',

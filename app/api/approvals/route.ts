@@ -7,10 +7,11 @@ import { headers } from 'next/headers'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { executeLeaveStepAction, executeOutsideWorkStepAction } from '@/lib/approval-chain'
 import { executeWeeklyPlanStepAction } from '@/lib/weekly-plan-chain'
+import { executeForgotScanStepAction } from '@/lib/forgot-scan-chain'
 import type { Role } from '@prisma/client'
 
 type ApprovalBody = {
-  type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN'
+  type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN' | 'FORGOT_SCAN'
   requestId: string
   action: 'APPROVE' | 'REJECT'
   reason?: string
@@ -114,6 +115,30 @@ export async function POST(req: NextRequest) {
       })
       await runNotify(() => createAuditLog({
         actorId, targetId: body.requestId, targetType: 'WeeklyLawyerPlan',
+        action: body.action === 'APPROVE' ? 'APPROVE' : 'REJECT',
+        after: { stepName: chainResult.stepName, finalized: chainResult.finalized },
+        ip,
+      }))
+      return NextResponse.json({ ...chainResult })
+    }
+
+    if (body.type === 'FORGOT_SCAN') {
+      const fs = await prisma.forgotScanRequest.findUnique({ where: { id: body.requestId } })
+      if (!fs) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!fs.chainConfigId) {
+        return NextResponse.json(
+          { error: 'คำขอยังไม่ได้เชื่อมสายอนุมัติ — ใช้หน้าแก้ไขเวลา (legacy)', code: 'NO_CHAIN' },
+          { status: 409 },
+        )
+      }
+      const chainResult = await executeForgotScanStepAction(
+        prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,
+      )
+      if ('error' in chainResult) {
+        return NextResponse.json({ error: chainResult.error }, { status: chainResult.status })
+      }
+      await runNotify(() => createAuditLog({
+        actorId, targetId: body.requestId, targetType: 'ForgotScanRequest',
         action: body.action === 'APPROVE' ? 'APPROVE' : 'REJECT',
         after: { stepName: chainResult.stepName, finalized: chainResult.finalized },
         ip,

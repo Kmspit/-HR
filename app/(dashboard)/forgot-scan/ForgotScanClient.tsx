@@ -34,6 +34,7 @@ type ForgotScanRequest = {
   reason: string
   evidenceUrl: string | null
   status: 'PENDING' | 'ADMIN_APPROVED' | 'APPROVED' | 'REJECTED' | 'ADMIN_REJECTED'
+  chainConfigId: string | null
   supervisorId: string | null
   supervisorNote: string | null
   supervisorAt: string | null
@@ -311,7 +312,12 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
   }
 
   const handleAction = async (id: string, action: 'APPROVE' | 'REJECT', note: string) => {
-    const { ok, data, status } = await apiJson<{ success?: boolean; error?: string }>(
+    const req = requests.find((r) => r.id === id)
+    if (req?.chainConfigId) {
+      toast.info('กรุณาอนุมัติที่ศูนย์อนุมัติ (/approvals)')
+      return
+    }
+    const { ok, data, status } = await apiJson<{ success?: boolean; error?: string; code?: string }>(
       `/api/forgot-scan/${id}/approve`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, note: note || undefined }) },
     )
@@ -325,7 +331,8 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
 
   // Decide if current user can act on a specific request
   const canActOn = (req: ForgotScanRequest): boolean => {
-    if (req.userId === userId && !isSupervisor && !isHR) return false // own requests — no
+    if (req.chainConfigId) return false
+    if (req.userId === userId && !isSupervisor && !isHR) return false
     if (req.status === 'PENDING' && isSupervisor) return true
     if (req.status === 'ADMIN_APPROVED' && isHR) return true
     return false

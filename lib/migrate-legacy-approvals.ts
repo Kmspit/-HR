@@ -5,8 +5,9 @@
 import type { PrismaClient } from '@prisma/client'
 import { getDefaultChain, applyChainToLeave, applyChainToOutsideWork } from '@/lib/approval-chain'
 import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
+import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
 
-export type LegacyMigrationResult = { leave: number; outside: number; weekly: number }
+export type LegacyMigrationResult = { leave: number; outside: number; weekly: number; forgotScan: number }
 
 export async function migrateLegacyPendingApprovals(
   prisma: PrismaClient,
@@ -14,6 +15,7 @@ export async function migrateLegacyPendingApprovals(
   let leave = 0
   let outside = 0
   let weekly = 0
+  let forgotScan = 0
 
   const leaveChain = await getDefaultChain(prisma, 'LEAVE')
   if (leaveChain) {
@@ -109,9 +111,46 @@ export async function migrateLegacyPendingApprovals(
     }
   }
 
-  if (leave > 0 || outside > 0 || weekly > 0) {
-    console.log(`[MIGRATION] legacy approvals → chain: ${leave} leave, ${outside} outside, ${weekly} weekly`)
+  const forgotChain = await getDefaultChain(prisma, 'FORGOT_SCAN')
+  if (forgotChain) {
+    const pendingRows = await prisma.forgotScanRequest.findMany({
+      where: { chainConfigId: null, status: 'PENDING' },
+      select: { id: true, userId: true },
+    })
+    for (const row of pendingRows) {
+      await applyChainToForgotScan(prisma, row.id, forgotChain.id, row.userId)
+      forgotScan += 1
+    }
+
+    const midRows = await prisma.forgotScanRequest.findMany({
+      where: { chainConfigId: null, status: 'ADMIN_APPROVED' },
+      select: { id: true, userId: true },
+    })
+    for (const row of midRows) {
+      await applyChainToForgotScan(prisma, row.id, forgotChain.id, row.userId)
+      const steps = await prisma.forgotScanApprovalStep.findMany({
+        where: { forgotScanId: row.id },
+        orderBy: { stepOrder: 'asc' },
+      })
+      const firstPending = steps.find((s) => s.status === 'PENDING')
+      if (firstPending) {
+        await prisma.forgotScanApprovalStep.update({
+          where: { id: firstPending.id },
+          data: { status: 'APPROVED', actedAt: new Date() },
+        })
+        const next = steps.find((s) => s.stepOrder > firstPending.stepOrder && s.status === 'PENDING')
+        await prisma.forgotScanRequest.update({
+          where: { id: row.id },
+          data: { currentStepOrder: next?.stepOrder ?? firstPending.stepOrder, status: 'PENDING' },
+        })
+      }
+      forgotScan += 1
+    }
   }
 
-  return { leave, outside, weekly }
+  if (leave > 0 || outside > 0 || weekly > 0 || forgotScan > 0) {
+    console.log(`[MIGRATION] legacy approvals → chain: ${leave} leave, ${outside} outside, ${weekly} weekly, ${forgotScan} forgot-scan`)
+  }
+
+  return { leave, outside, weekly, forgotScan }
 }

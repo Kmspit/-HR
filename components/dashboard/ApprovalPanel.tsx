@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, CheckCircle, XCircle, CalendarCheck, MapPin, FileText } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, CalendarCheck, MapPin, FileText, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -13,11 +13,20 @@ type Person = { name: string; email: string; department: string | null; position
 type LR = { id: string; type: string; startDate: string; endDate: string; days: number; reason: string; status: string; stepName?: string | null; user: Person }
 type OR = { id: string; date: string; startTime: string; endTime: string; place: string; purpose: string; status: string; stepName?: string | null; user: Person; googleMapsUrl?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; approvalStatus?: string | null }
 type WP = { id: string; weekStart: string; weekEnd: string; status: string; isLate: boolean; note?: string | null; stepName?: string | null; lawyer: { name: string; email: string }; days: { dayOfWeek: number; place: string | null; purpose: string | null }[] }
+type FS = { id: string; date: string; scanType: string; correctTime: string; reason: string; status: string; stepName?: string | null; user: Person }
+
+const SCAN_TYPE_LABELS: Record<string, string> = {
+  checkin: 'เข้างาน',
+  'lunch-out': 'พักกลางวันออก',
+  'lunch-in': 'กลับจากพัก',
+  checkout: 'ออกงาน',
+}
 
 type Props = {
   leaveRequests: LR[]
   outsideRequests: OR[]
   weeklyPlans: WP[]
+  forgotScanRequests: FS[]
   userRole: string
 }
 
@@ -40,13 +49,13 @@ function ApprovalActions({
   onAction,
 }: {
   requestId: string
-  type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN'
+  type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN' | 'FORGOT_SCAN'
   loading: string | null
   rejectingId: string | null
   reason: string
   setRejectingId: (id: string | null) => void
   setReason: (v: string) => void
-  onAction: (type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN', requestId: string, action: 'APPROVE' | 'REJECT') => void
+  onAction: (type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN' | 'FORGOT_SCAN', requestId: string, action: 'APPROVE' | 'REJECT') => void
 }) {
   const busy = loading === requestId
   const isRejecting = rejectingId === requestId
@@ -128,14 +137,14 @@ function PersonHeader({ name, subtitle, badge, accent = 'blue' }: { name: string
   )
 }
 
-export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPlans, userRole }: Props) {
-  const [tab, setTab] = useState<'leave' | 'outside' | 'weekly'>('leave')
+export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPlans, forgotScanRequests, userRole }: Props) {
+  const [tab, setTab] = useState<'leave' | 'outside' | 'weekly' | 'forgot'>('leave')
   const [loading, setLoading] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const router = useRouter()
 
-  const handleAction = async (type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN', requestId: string, action: 'APPROVE' | 'REJECT') => {
+  const handleAction = async (type: 'LEAVE' | 'OUTSIDE' | 'WEEKLY_PLAN' | 'FORGOT_SCAN', requestId: string, action: 'APPROVE' | 'REJECT') => {
     if (action === 'REJECT' && rejectingId !== requestId) {
       setRejectingId(requestId)
       return
@@ -170,6 +179,9 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
     { id: 'outside' as const, label: `🚗 นอกสถานที่`, count: outsideRequests.length },
     ...(weeklyPlans.length > 0 || userRole === 'MANAGER_HR' || userRole === 'ADMIN' || userRole === 'CEO'
       ? [{ id: 'weekly' as const, label: `📋 แผนทนาย`, count: weeklyPlans.length }]
+      : []),
+    ...(forgotScanRequests.length > 0 || ['HR', 'MANAGER_HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN', 'CEO', 'SUPER_ADMIN'].includes(userRole)
+      ? [{ id: 'forgot' as const, label: `🔍 แก้เวลา`, count: forgotScanRequests.length }]
       : []),
   ]
 
@@ -318,6 +330,41 @@ export default function ApprovalPanel({ leaveRequests, outsideRequests, weeklyPl
                   ))
                 )}
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'forgot' && (
+        <div className="space-y-3">
+          {forgotScanRequests.length === 0 ? (
+            <div className="rounded-2xl border border-white/5 bg-slate-900 py-14 text-center space-y-3">
+              <Clock className="w-12 h-12 mx-auto text-indigo-500/50" />
+              <p className="font-semibold text-white text-[15px]">ไม่มีคำขอแก้ไขเวลาค้างอยู่</p>
+              <p className="text-[13px] text-slate-500">ทุกคำขอได้รับการดำเนินการแล้ว</p>
+            </div>
+          ) : forgotScanRequests.map((f) => (
+            <div key={f.id} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm p-5">
+              <PersonHeader
+                name={f.user.name}
+                subtitle={personSubtitle(f.user)}
+                badge={f.stepName ? `ขั้น: ${f.stepName}` : 'รออนุมัติ'}
+                accent="purple"
+              />
+              <ApprovalActions requestId={f.id} type="FORGOT_SCAN" {...actionProps} />
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13px]">
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">วันที่</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">{formatThaiDate(f.date)}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent p-3">
+                  <p className="text-slate-500 text-[12px]">ประเภท / เวลา</p>
+                  <p className="font-semibold text-slate-900 dark:text-white mt-0.5">
+                    {SCAN_TYPE_LABELS[f.scanType] ?? f.scanType} · {new Date(f.correctTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+              {f.reason && <p className="mt-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-transparent px-3 py-2.5 text-[13px] text-slate-700 dark:text-slate-300">📝 {f.reason}</p>}
             </div>
           ))}
         </div>

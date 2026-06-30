@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { createAuditLog, createNotification } from '@/lib/notifications'
+import { applyToAttendance } from '@/lib/forgot-scan-chain'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
@@ -15,13 +16,6 @@ const SCAN_TYPE_LABEL: Record<string, string> = {
   'lunch-out': 'พักกลางวันออก',
   'lunch-in':  'กลับจากพัก',
   checkout:    'ออกงาน',
-}
-
-const FIELD_MAP: Record<string, string> = {
-  checkin:     'checkIn',
-  'lunch-out': 'lunchOut',
-  'lunch-in':  'lunchIn',
-  checkout:    'checkOut',
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -40,6 +34,13 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const request = await prisma.forgotScanRequest.findUnique({ where: { id } })
     if (!request) return NextResponse.json({ error: 'ไม่พบคำขอ' }, { status: 404 })
+
+    if (request.chainConfigId) {
+      return NextResponse.json(
+        { error: 'คำขอนี้ใช้สายอนุมัติใหม่ — กรุณาอนุมัติที่ศูนย์อนุมัติ', code: 'USE_CHAIN' },
+        { status: 409 },
+      )
+    }
 
     if (['APPROVED', 'REJECTED', 'ADMIN_REJECTED'].includes(request.status)) {
       return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
         // Auto-apply to attendance (best-effort — don't fail approval)
         try {
-          await applyToAttendance(id)
+          await applyToAttendance(id, prisma)
         } catch (err) {
           console.error('[forgot-scan apply]', err)
         }
@@ -158,73 +159,4 @@ export async function POST(req: NextRequest, { params }: Params) {
   } catch (err) {
     return apiError(err)
   }
-}
-
-// ── Auto-apply approved request to Attendance ────────────────────────────────
-
-async function applyToAttendance(requestId: string) {
-  const req = await prisma.forgotScanRequest.findUnique({ where: { id: requestId } })
-  if (!req) return
-
-  const field = FIELD_MAP[req.scanType]
-  if (!field) return
-
-  // Find attendance record for this user on this date (exact match — both stored as midnight Bangkok)
-  let att = await prisma.attendance.findFirst({
-    where: { userId: req.userId, date: req.date },
-    orderBy: { sessionIndex: 'desc' },
-  })
-
-  // For checkin with no existing record — create a new one
-  if (req.scanType === 'checkin' && !att) {
-    att = await prisma.attendance.create({
-      data: {
-        userId:           req.userId,
-        date:             req.date,
-        checkIn:          req.correctTime,
-        sessionIndex:     1,
-        status:           'NORMAL',
-        isOutside:        false,
-        lateMinutes:      0,
-        earlyLeaveMinutes: 0,
-        workMinutes:      0,
-        attendanceStatus: 'completed',
-        note:             `แก้ไขโดยระบบ forgot-scan #${req.id}`,
-        editedById:       req.hrId ?? undefined,
-      },
-    })
-
-    await prisma.forgotScanRequest.update({
-      where: { id: requestId },
-      data: {
-        originalTime: null,
-        attendanceId: att.id,
-        appliedAt:    new Date(),
-      },
-    })
-    return
-  }
-
-  if (!att) return // other scan types need an existing record
-
-  // Capture original value for audit
-  const original = att[field as keyof typeof att] as Date | null
-
-  await prisma.attendance.update({
-    where: { id: att.id },
-    data: {
-      [field]:    req.correctTime,
-      note:       `แก้ไขโดยระบบ forgot-scan #${req.id}`,
-      editedById: req.hrId ?? undefined,
-    },
-  })
-
-  await prisma.forgotScanRequest.update({
-    where: { id: requestId },
-    data: {
-      originalTime: original ?? null,
-      attendanceId: att.id,
-      appliedAt:    new Date(),
-    },
-  })
 }

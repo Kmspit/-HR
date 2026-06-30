@@ -503,6 +503,7 @@ model User {
   leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
   outsideWorkStepActions   OutsideWorkApprovalStep[] @relation("OutsideStepActor")
   weeklyPlanStepActions    WeeklyPlanApprovalStep[]  @relation("WeeklyPlanStepActor")
+  forgotScanStepActions    ForgotScanApprovalStep[]  @relation("ForgotScanStepActor")
   salarySlips         SalarySlip[]
   taxHistories        TaxHistory[]
   probationEvaluation      ProbationEvaluation?
@@ -1255,6 +1256,7 @@ model ApprovalChainConfig {
   leaveRequests   LeaveRequest[]         @relation("LeaveChain")
   outsideRequests OutsideWorkRequest[] @relation("OutsideChain")
   weeklyPlans     WeeklyLawyerPlan[]     @relation("WeeklyPlanChain")
+  forgotScanRequests ForgotScanRequest[] @relation("ForgotScanChain")
 
   @@map("approval_chain_configs")
 }
@@ -1275,6 +1277,7 @@ model ApprovalChainStep {
   stepLogs         LeaveApprovalStep[]
   outsideStepLogs  OutsideWorkApprovalStep[]
   weeklyStepLogs   WeeklyPlanApprovalStep[]
+  forgotScanStepLogs ForgotScanApprovalStep[]
 
   @@unique([chainId, stepOrder])
   @@map("approval_chain_steps")
@@ -1350,6 +1353,29 @@ model WeeklyPlanApprovalStep {
   @@map("weekly_plan_approval_steps")
 }
 
+model ForgotScanApprovalStep {
+  id           String             @id @default(cuid())
+  forgotScanId String             @map("forgot_scan_id")
+  chainStepId  String             @map("chain_step_id")
+  stepOrder    Int
+  stepName     String
+  approverRole Role?
+  approverId   String?
+  status       ApprovalStepStatus @default(PENDING)
+  actorId      String?
+  comment      String?
+  ip           String?
+  actedAt      DateTime?
+  createdAt    DateTime           @default(now())
+
+  request   ForgotScanRequest @relation(fields: [forgotScanId], references: [id], onDelete: Cascade)
+  chainStep ApprovalChainStep @relation(fields: [chainStepId], references: [id])
+  actor     User?             @relation("ForgotScanStepActor", fields: [actorId], references: [id])
+
+  @@index([forgotScanId])
+  @@map("forgot_scan_approval_steps")
+}
+
 // ── ROLE PERMISSIONS (RBAC) ─────────────────────
 
 model RolePermission {
@@ -1422,7 +1448,10 @@ model ForgotScanRequest {
   evidenceUrl   String?       // ไฟล์หลักฐาน (optional)
   status        RequestStatus @default(PENDING)
 
-  supervisorId  String?       // ผู้อนุมัติขั้น 1 (หัวหน้างาน)
+  chainConfigId    String? @map("chain_config_id")
+  currentStepOrder Int     @default(0) @map("current_step_order")
+
+  supervisorId  String?       // legacy step 1
   supervisorNote String?
   supervisorAt  DateTime?
 
@@ -1440,6 +1469,8 @@ model ForgotScanRequest {
   user          User          @relation("ForgotScanUser", fields: [userId], references: [id])
   supervisorRel User?         @relation("ForgotScanSupervisor", fields: [supervisorId], references: [id])
   hrRel         User?         @relation("ForgotScanHR", fields: [hrId], references: [id])
+  chainConfig   ApprovalChainConfig? @relation("ForgotScanChain", fields: [chainConfigId], references: [id])
+  stepLogs      ForgotScanApprovalStep[]
 
   @@map("forgot_scan_requests")
 }

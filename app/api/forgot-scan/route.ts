@@ -3,8 +3,11 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { notifyRole, createNotification } from '@/lib/notifications'
+import { createNotification } from '@/lib/notifications'
 import { saveUpload } from '@/lib/save-upload'
+import { ensureDbSchema } from '@/lib/ensure-db-schema'
+import { getDefaultChain } from '@/lib/approval-chain'
+import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
 import type { Prisma, Role } from '@prisma/client'
 
 const SCAN_TYPES = ['checkin', 'lunch-out', 'lunch-in', 'checkout'] as const
@@ -28,6 +31,7 @@ const NOTIFY_ROLES: Role[] = ['MANAGER', 'TEAM_LEADER', 'HR', 'MANAGER_HR']
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -73,19 +77,25 @@ export async function POST(req: NextRequest) {
     })
 
     const label = SCAN_TYPE_LABEL[parsed.scanType as ScanType]
-    const userName = session.user.name ?? 'พนักงาน'
 
-    runNotify(async () => {
-      for (const role of NOTIFY_ROLES) {
-        await notifyRole(
-          role,
-          'FORGOT_SCAN_REQUEST',
-          'คำขอแก้ไขเวลาลงเวลางาน',
-          `${userName} ขอแก้ไขเวลา${label} (${parsed.date})`,
-          '/forgot-scan',
-        )
-      }
-    })
+    const chain = await getDefaultChain(prisma, 'FORGOT_SCAN')
+    if (chain) {
+      await applyChainToForgotScan(prisma, request.id, chain.id, session.user.id)
+    } else {
+      runNotify(async () => {
+        const { notifyRole } = await import('@/lib/notifications')
+        const userName = session.user.name ?? 'พนักงาน'
+        for (const role of NOTIFY_ROLES) {
+          await notifyRole(
+            role,
+            'FORGOT_SCAN_REQUEST',
+            'คำขอแก้ไขเวลาลงเวลางาน',
+            `${userName} ขอแก้ไขเวลา${label} (${parsed.date})`,
+            '/approvals',
+          )
+        }
+      })
+    }
 
     return NextResponse.json({ success: true, id: request.id })
   } catch (err) {

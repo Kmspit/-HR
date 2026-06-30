@@ -5,6 +5,17 @@ import { hasPermission } from '@/lib/access-control'
 
 const FORGOT_SCAN_SUPERVISOR: Role[] = ['MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
 const FORGOT_SCAN_HR: Role[] = ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
+
+export type InboxForgotScanItem = {
+  id: string
+  date: Date
+  scanType: string
+  correctTime: Date
+  reason: string
+  status: string
+  stepName: string | null
+  user: { id: string; name: string; email: string; department: string | null; position: string | null; role: Role }
+}
 export type InboxLeaveItem = {
   id: string
   type: string
@@ -196,27 +207,67 @@ export async function getPendingForgotScanForApprover(
   prisma: PrismaClient,
   userId: string,
   role: Role,
-): Promise<{ id: string }[]> {
+): Promise<InboxForgotScanItem[]> {
   if (!canSeeForgotScanInbox(role)) return []
 
-  const isSupervisor = FORGOT_SCAN_SUPERVISOR.includes(role)
-  const isHR = FORGOT_SCAN_HR.includes(role)
-
   const rows = await prisma.forgotScanRequest.findMany({
-    where: { status: { in: ['PENDING', 'ADMIN_APPROVED'] } },
-    select: { id: true, userId: true, status: true },
+    where: { status: { notIn: ['APPROVED', 'REJECTED', 'ADMIN_REJECTED'] } },
+    include: {
+      user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } },
+      stepLogs: true,
+    },
     orderBy: { createdAt: 'desc' },
     take: 100,
   })
 
-  const out: { id: string }[] = []
+  const out: InboxForgotScanItem[] = []
   for (const row of rows) {
-    if (row.status === 'PENDING' && isSupervisor) {
-      if (await canApproverActOnRequester(prisma, userId, role, row.userId)) {
-        out.push({ id: row.id })
+    if (row.chainConfigId) {
+      const step = row.stepLogs.find(
+        (s) => s.stepOrder === row.currentStepOrder && s.status === 'PENDING',
+      )
+      if (!step) continue
+      const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+      if (!ceoOverride && !canUserActOnStep(step, userId, role)) continue
+      if (!ceoOverride && !(await canApproverActOnRequester(prisma, userId, role, row.userId))) continue
+      out.push({
+        id: row.id,
+        date: row.date,
+        scanType: row.scanType,
+        correctTime: row.correctTime,
+        reason: row.reason,
+        status: row.status,
+        stepName: step.stepName,
+        user: row.user,
+      })
+    } else {
+      const isSupervisor = FORGOT_SCAN_SUPERVISOR.includes(role)
+      const isHR = FORGOT_SCAN_HR.includes(role)
+      if (row.status === 'PENDING' && isSupervisor) {
+        if (await canApproverActOnRequester(prisma, userId, role, row.userId)) {
+          out.push({
+            id: row.id,
+            date: row.date,
+            scanType: row.scanType,
+            correctTime: row.correctTime,
+            reason: row.reason,
+            status: row.status,
+            stepName: 'หัวหน้า (legacy)',
+            user: row.user,
+          })
+        }
+      } else if (row.status === 'ADMIN_APPROVED' && isHR) {
+        out.push({
+          id: row.id,
+          date: row.date,
+          scanType: row.scanType,
+          correctTime: row.correctTime,
+          reason: row.reason,
+          status: row.status,
+          stepName: 'HR (legacy)',
+          user: row.user,
+        })
       }
-    } else if (row.status === 'ADMIN_APPROVED' && isHR) {
-      out.push({ id: row.id })
     }
   }
   return out

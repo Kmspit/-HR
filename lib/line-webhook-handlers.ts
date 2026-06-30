@@ -253,15 +253,26 @@ async function handleApprovalPostback(
     } else if (docType === 'FORGOT_SCAN') {
       const fs = await prisma.forgotScanRequest.findUnique({ where: { id } })
       if (!fs) { await replyLineText(replyToken, 'ไม่พบคำขอลืมสแกน'); return }
-      if (fs.status !== 'PENDING') {
+      if (fs.status === 'APPROVED' || fs.status === 'REJECTED') {
         await replyLineText(replyToken, `คำขอนี้ดำเนินการแล้ว (${fs.status})`); return
       }
-      const newFsStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
-      await prisma.forgotScanRequest.update({
-        where: { id },
-        data: { status: newFsStatus, hrId: user.id, hrAt: new Date() },
-      })
-      await replyLineText(replyToken, `${icon} ${actionLabel}คำขอลืมสแกนสำเร็จ`)
+      if (fs.chainConfigId) {
+        const { executeForgotScanStepAction } = await import('@/lib/forgot-scan-chain')
+        const chainAction = action === 'APPROVE' ? 'APPROVE' : 'REJECT'
+        const result = await executeForgotScanStepAction(
+          prisma, id, user.id, role as import('@prisma/client').Role, chainAction, undefined, 'line-webhook',
+        )
+        if ('error' in result) {
+          await replyLineText(replyToken, result.error)
+          return
+        }
+        await replyLineText(replyToken, `${icon} ${actionLabel}คำขอแก้ไขเวลา (${result.stepName})`)
+        return
+      }
+      if (fs.status !== 'PENDING' && fs.status !== 'ADMIN_APPROVED') {
+        await replyLineText(replyToken, `คำขอนี้ดำเนินการแล้ว (${fs.status})`); return
+      }
+      await replyLineText(replyToken, 'กรุณาอนุมัติที่ศูนย์อนุมัติในแอป /approvals')
     }
   } catch (err) {
     console.error('[handleApprovalPostback]', err)
