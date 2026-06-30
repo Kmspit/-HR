@@ -147,13 +147,7 @@ export async function POST(req: NextRequest) {
     // Apply approval chain if a default one is configured
     const defaultChain = await getDefaultChain(prisma, 'LEAVE')
     if (defaultChain) {
-      await applyChainToLeave(prisma, leave.id, defaultChain.id)
-      const firstStep = defaultChain.steps[0]
-      if (firstStep?.approverRole) {
-        await runNotify(() =>
-          notifyRole(firstStep.approverRole!, 'LEAVE_REQUEST', '📅 คำขอลาใหม่ — รออนุมัติขั้น 1', `${leave.user.name} ขอลา ${parsed.days} วัน`, '/approvals'),
-        )
-      }
+      await applyChainToLeave(prisma, leave.id, defaultChain.id, session.user.id)
     } else {
       // Legacy 2-step: notify ADMIN and MANAGER_HR as before
       await runNotify(() =>

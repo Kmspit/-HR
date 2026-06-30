@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { DEFAULT_COMPANY_BRANCHES, HQ_BRANCH_ID, NMA_BRANCH_ID } from '@/lib/company-branches'
 import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
 import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
+import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
 import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
@@ -639,6 +640,7 @@ async function runEnsure(): Promise<boolean> {
   `)
 
   await seedDefaultOutsideWorkChain(prisma)
+  await seedDefaultLeaveChain(prisma)
 
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`
