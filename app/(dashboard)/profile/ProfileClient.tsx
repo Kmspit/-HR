@@ -26,6 +26,7 @@ import {
 } from '@/lib/profile-validators-client'
 import ProfileDataHistory, { type ProfileRecordInfo } from '@/components/profile/ProfileDataHistory'
 import LineLinkCard from '@/components/profile/LineLinkCard'
+import ChangePasswordCard from '@/components/profile/ChangePasswordCard'
 import type { ProfileHistoryItem } from '@/lib/profile-history'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
@@ -362,6 +363,8 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
         </FormField>
         <LineLinkCard onLinked={() => router.refresh()} />
       </section>
+
+      <ChangePasswordCard />
 
       <ProfileDataHistory record={recordInfo} history={editHistory} />
 
