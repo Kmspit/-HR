@@ -959,6 +959,24 @@ function getLineNotifyApiBase() {
   return DEFAULT_LINE_NOTIFY_API;
 }
 
+/** Headers for prototype bridge APIs (x-prototype-bridge-secret when configured). */
+function getPrototypeBridgeHeaders() {
+  const s = getCompanySettings();
+  const headers = { 'Content-Type': 'application/json' };
+  const secret = (s.prototypeBridgeSecret || '').trim();
+  if (secret) headers['x-prototype-bridge-secret'] = secret;
+  return headers;
+}
+
+/** Sync leave request to Next.js via prototype bridge (optional — skips if bridge disabled). */
+function syncLeaveToPrototypeApi(payload) {
+  return fetch(getLineNotifyApiBase() + '/api/leave/prototype', {
+    method: 'POST',
+    headers: getPrototypeBridgeHeaders(),
+    body: JSON.stringify(payload),
+  }).then(function(r) { return r.json(); });
+}
+
 /**
  * Sends a LINE notification.
  * Order: (1) server API on hrflow-app, (2) Cloudflare relay, (3) direct (CORS มักล้ม)
@@ -980,7 +998,7 @@ async function sendLineOAMsg(message, imageUrl) {
     const res = await fetch(apiBase + '/api/line/prototype-notify', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getPrototypeBridgeHeaders(),
       body: JSON.stringify({ message, imageUrl: imageUrl || null }),
     });
     if (res.ok) {
