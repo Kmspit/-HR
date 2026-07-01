@@ -106,10 +106,10 @@ export async function POST(req: NextRequest) {
 
     // แจ้งเตือน HR/Admin
     await runNotify(() =>
-      notifyRole('ADMIN', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${user.name} ขอลา ${days} วัน`, '/approvals'),
+      notifyRole('ADMIN', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${user.name} ขอลา ${days} วัน`, '/approval-center'),
     )
     await runNotify(() =>
-      notifyRole('MANAGER_HR', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${user.name} ขอลา ${days} วัน`, '/approvals'),
+      notifyRole('MANAGER_HR', 'LEAVE_REQUEST', '📅 คำขอลาใหม่', `${user.name} ขอลา ${days} วัน`, '/approval-center'),
     )
     await runNotify(() =>
       sendLineNotify(`\n📅 คำขอลาใหม่\nชื่อ: ${user.name}\nประเภท: ${type}\nช่วงวัน: ${startDate} – ${endDate}\nเหตุผล: ${reason}`),

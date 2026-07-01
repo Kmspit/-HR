@@ -502,7 +502,7 @@ async function notifyLeaveStepApprovers(
   approverRole: Role | null,
 ): Promise<void> {
   if (approverId) {
-    await notifyUser(prisma, approverId, 'LEAVE_REQUEST', leaveId, stepName, '/approvals')
+    await notifyUser(prisma, approverId, 'LEAVE_REQUEST', leaveId, stepName, '/approval-center')
     return
   }
   if (!approverRole) return
@@ -526,7 +526,7 @@ async function notifyLeaveRoleApprovers(
       type: 'LEAVE_REQUEST' as const,
       title: `📋 รอการอนุมัติ: ${stepName}`,
       message: `คำขอลา ID ${leaveId} รอการอนุมัติในขั้น "${stepName}"`,
-      link: '/approvals',
+      link: '/approval-center',
     })),
   })
 }
@@ -539,7 +539,7 @@ async function notifyOutsideStepApprovers(
   approverRole: Role | null,
 ): Promise<void> {
   if (approverId) {
-    await notifyUser(prisma, approverId, 'OUTSIDE_REQUEST', requestId, stepName, '/approvals')
+    await notifyUser(prisma, approverId, 'OUTSIDE_REQUEST', requestId, stepName, '/approval-center')
     return
   }
   if (!approverRole) return
@@ -554,7 +554,7 @@ async function notifyOutsideStepApprovers(
       type: 'OUTSIDE_REQUEST' as const,
       title: `📋 รอการอนุมัติ: ${stepName}`,
       message: `คำขอออกนอกสถานที่ ID ${requestId} รอการอนุมัติในขั้น "${stepName}"`,
-      link: '/approvals',
+      link: '/approval-center',
     })),
   })
 }
@@ -567,14 +567,12 @@ async function notifyUser(
   stepName: string,
   link: string,
 ): Promise<void> {
-  await prisma.notification.create({
-    data: {
-      userId,
-      type,
-      title: `📋 รอการอนุมัติ: ${stepName}`,
-      message: `คำขอ ID ${requestId} รอการอนุมัติในขั้น "${stepName}"`,
-      link,
-    },
+  await createNotification({
+    userId,
+    type,
+    title: `📋 รอการอนุมัติ: ${stepName}`,
+    message: `คำขอ ID ${requestId} รอการอนุมัติในขั้น "${stepName}"`,
+    link,
   })
 }
 

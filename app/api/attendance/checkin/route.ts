@@ -325,11 +325,20 @@ export async function POST(req: NextRequest) {
     // Auto-warning: check late count after LATE check-in
     if (isFirstSessionOfDay && status === 'LATE') {
       const uidForWarning = session.user.id
+      const employeeName = session.user.name ?? 'พนักงาน'
+      const lateMsg = `${employeeName} เช็คอินมาสาย ${lateMinutes} นาที`
       after(async () => {
         const { checkAndCreateAutoWarning } = await import('@/lib/warning-auto')
         await checkAndCreateAutoWarning(uidForWarning).catch((err) =>
           console.error('[warning-auto]', err),
         )
+        try {
+          const { notifyRole } = await import('@/lib/notifications')
+          await notifyRole('MANAGER_HR', 'SYSTEM', '🕐 พนักงานมาสาย', lateMsg, '/attendance')
+          await notifyRole('TEAM_LEADER', 'SYSTEM', '🕐 พนักงานมาสาย', lateMsg, '/attendance')
+        } catch (err) {
+          console.error('[late-notify]', err)
+        }
       })
     }
 

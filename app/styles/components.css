@@ -86,9 +86,14 @@
     to   { opacity: 1; transform: none; }
   }
 
-  /* Smooth transitions for interactive UI */
-  .smooth-transition {
-    @apply transition-all duration-200 ease-out;
+  /* Button press — complements Framer Motion whileTap */
+  .btn-press {
+    @apply transition-transform duration-100 ease-out active:scale-[0.98];
+  }
+
+  /* Dashboard card hover shadow (Tailwind layer on motion cards) */
+  .motion-card-hover {
+    @apply transition-shadow duration-200 ease-out hover:shadow-md dark:hover:shadow-black/20;
   }
 
   /* Gradient borders */

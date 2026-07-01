@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { MapPin, CheckCircle, RotateCcw, Loader2, Building2, Navigation, BookmarkPlus, Camera, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { useSuccessAnimation } from '@/components/motion'
+import MotionButton from '@/components/motion/MotionButton'
 import { dataUrlToBlob } from '@/lib/utils'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
@@ -98,6 +100,7 @@ export default function CheckInPanel({
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [cameraError, setCameraError] = useState('')
+  const triggerSuccess = useSuccessAnimation()
 
   const accentGradient = isOutsideType
     ? 'linear-gradient(135deg,#f97316,#ef4444)'
@@ -437,6 +440,7 @@ export default function CheckInPanel({
           } else {
             toast.success(`เช็คอินสำเร็จ — ${data.isOutside ? 'นอกสถานที่' : 'ในบริษัท'}`)
           }
+          triggerSuccess('checkin')
           if (data.weeklyPlanWarning) {
             setTimeout(() => toast.warning(data.weeklyPlanWarning!, { duration: 8000 }), 600)
           }
@@ -497,6 +501,7 @@ export default function CheckInPanel({
       employeeCode,
       companyOffice,
       workPlaceName,
+      triggerSuccess,
     ],
   )
 
@@ -759,15 +764,16 @@ export default function CheckInPanel({
             >
               <RotateCcw className="w-3.5 h-3.5 inline mr-1" /> ถ่ายใหม่
             </button>
-            <button
+            <MotionButton
               type="button"
               onClick={() => void submitAttendance()}
               disabled={isLoading}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+              variant="primary"
+              className="flex-1 text-white border-0 disabled:opacity-50"
               style={{ background: accentGradient }}
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'ยืนยัน'}
-            </button>
+            </MotionButton>
           </div>
         </div>
       )}

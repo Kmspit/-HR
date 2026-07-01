@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
         enqueue(`event: notification\ndata: ${JSON.stringify({ count: data.count })}\n\n`)
       }
 
+      const onNewNotification = (data: { userId: string; notification: unknown }) => {
+        if (data.userId !== userId) return
+        enqueue(`event: new-notification\ndata: ${JSON.stringify({ notification: data.notification })}\n\n`)
+      }
+
       enqueue(`: connected\n\n`)
 
       const heartbeat = setInterval(() => {
@@ -37,11 +42,13 @@ export async function GET(req: NextRequest) {
 
       announcementEmitter.on('new-announcement', onAnnouncement)
       announcementEmitter.on('notification-count', onNotification)
+      announcementEmitter.on('new-notification', onNewNotification)
 
       req.signal.addEventListener('abort', () => {
         clearInterval(heartbeat)
         announcementEmitter.off('new-announcement', onAnnouncement)
         announcementEmitter.off('notification-count', onNotification)
+        announcementEmitter.off('new-notification', onNewNotification)
         try { controller.close() } catch {}
       })
     },

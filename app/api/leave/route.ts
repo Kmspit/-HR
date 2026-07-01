@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       // แจ้ง HR ว่ามีการลาบวชอัตโนมัติ
       await runNotify(() =>
         notifyRole('MANAGER_HR', 'LEAVE_APPROVED', '🙏 ลาบวชอัตโนมัติ',
-          `${leave.user.name} ลาบวช ${parsed.days} วัน (อนุมัติอัตโนมัติ)`, '/approvals'),
+          `${leave.user.name} ลาบวช ${parsed.days} วัน (อนุมัติอัตโนมัติ)`, '/approval-center'),
       )
       await runNotify(() =>
         sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] 🙏 ลาบวชอัตโนมัติ\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),

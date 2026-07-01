@@ -231,7 +231,7 @@ async function notifyForgotScanStepApprovers(
   const { notifyRole } = await import('@/lib/notifications')
   const title = `🔍 แก้ไขเวลารออนุมัติ — ${stepName}`
   const message = `ขั้นตอน: ${stepName}`
-  const link = '/approvals'
+  const link = '/approval-center'
 
   if (approverId) {
     await createNotification({ userId: approverId, type: 'FORGOT_SCAN_REQUEST', title, message, link })

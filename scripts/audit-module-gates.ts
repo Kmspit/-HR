@@ -16,7 +16,7 @@ const SIDEBAR_PATHS = [
   '/payment-appointments', '/court-calendar', '/appointments',
   '/client-companies', '/contracts', '/client-history',
   '/recovery', '/case-finance', '/expense-claim', '/billing', '/invoices', '/receipts',
-  '/approvals', '/employees', '/payroll', '/payslip', '/reports', '/probation',
+  '/approval-center', '/approvals', '/employees', '/payroll', '/payslip', '/reports', '/probation',
   '/documents', '/warnings', '/rules', '/branches', '/organization',
   '/automation', '/settings', '/security', '/announcements', '/line-oa', '/notifications',
 ] as const
@@ -28,14 +28,14 @@ const ROLE_EXPECTATIONS: Expect[] = [
   { role: 'EMPLOYEE', path: '/attendance', allow: true },
   { role: 'EMPLOYEE', path: '/leave', allow: true },
   { role: 'EMPLOYEE', path: '/payslip', allow: true },
-  { role: 'EMPLOYEE', path: '/approvals', allow: false },
+  { role: 'EMPLOYEE', path: '/approval-center', allow: false },
   { role: 'EMPLOYEE', path: '/cases', allow: false },
   { role: 'EMPLOYEE', path: '/tasks', allow: false },
   { role: 'EMPLOYEE', path: '/executive', allow: false },
   { role: 'EMPLOYEE', path: '/billing', allow: false },
   { role: 'EMPLOYEE', path: '/payroll', allow: false },
   // TEAM_LEADER — approver + HR ops, no legal/work modules
-  { role: 'TEAM_LEADER', path: '/approvals', allow: true },
+  { role: 'TEAM_LEADER', path: '/approval-center', allow: true },
   { role: 'TEAM_LEADER', path: '/attendance/scans', allow: true },
   { role: 'TEAM_LEADER', path: '/cases', allow: false },
   { role: 'TEAM_LEADER', path: '/tasks', allow: false },
@@ -51,7 +51,7 @@ const ROLE_EXPECTATIONS: Expect[] = [
   // HR — payroll + employees, not CEO executive
   { role: 'HR', path: '/payroll', allow: true },
   { role: 'HR', path: '/employees', allow: true },
-  { role: 'HR', path: '/approvals', allow: true },
+  { role: 'HR', path: '/approval-center', allow: true },
   { role: 'HR', path: '/executive', allow: false },
   { role: 'HR', path: '/cases', allow: true },
 ]

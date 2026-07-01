@@ -15,6 +15,7 @@ import {
   Shield,
   Send,
   Settings,
+  History,
   Clock,
   FileText,
   CheckSquare,
@@ -220,6 +221,7 @@ export default function EmployeeEditClient({
   ]
 
   const quickLinks = [
+    { href: `/employees/${employee.id}/timeline`, label: 'ไทม์ไลน์', Icon: History },
     { href: `/attendance/monthly?userId=${employee.id}`, label: 'เวลาทำงาน', Icon: Clock },
     { href: `/leave-history?userId=${employee.id}`, label: 'ประวัติลา', Icon: FileText },
     { href: `/warnings?userId=${employee.id}`, label: 'ใบเตือน', Icon: AlertTriangle },

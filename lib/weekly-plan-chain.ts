@@ -103,7 +103,7 @@ async function notifyWeeklyStepApprovers(
   void planId
   const title = `📋 แผนงานทนายรออนุมัติ — ${stepName}`
   const message = `ขั้นตอน: ${stepName}`
-  const link = '/approvals'
+  const link = '/approval-center'
 
   if (approverId) {
     await createNotification({ userId: approverId, type: 'WEEKLY_PLAN_DUE', title, message, link })

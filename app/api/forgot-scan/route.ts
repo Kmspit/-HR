@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
             'FORGOT_SCAN_REQUEST',
             'คำขอแก้ไขเวลาลงเวลางาน',
             `${userName} ขอแก้ไขเวลา${label} (${parsed.date})`,
-            '/approvals',
+            '/approval-center',
           )
         }
       })

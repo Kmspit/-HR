@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { AlertTriangle, Loader2, Paperclip, Info, Plus, FileText } from 'lucide-react'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { useSuccessAnimation } from '@/components/motion'
+import MotionButton from '@/components/motion/MotionButton'
 import { LEAVE_TYPE_OPTIONS, LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import type { LeaveBalanceStats } from '@/lib/leave-balance'
 import { leaveSchema } from '@/lib/validations/leave'
@@ -93,6 +95,7 @@ export default function LeavePanel({
   const [attachment, setAttachment] = useState<File | null>(null)
   const [form, setForm] = useState({ type: 'SICK', startDate: '', endDate: '', reason: '' })
   const router = useRouter()
+  const triggerSuccess = useSuccessAnimation()
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -146,6 +149,7 @@ export default function LeavePanel({
       } else {
         toast.success('ส่งคำขอลาเรียบร้อย รอ Admin อนุมัติ')
       }
+      triggerSuccess('leave')
       setForm({ type: 'SICK', startDate: '', endDate: '', reason: '' })
       setAttachment(null)
       router.refresh()
@@ -325,17 +329,16 @@ export default function LeavePanel({
             </label>
           </div>
 
-          <button
+          <MotionButton
             type="submit"
             disabled={loading || (!!holidayBlock && !isOrdination) || checkingHolidays}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:opacity-60 ${
-              isOrdination ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'
-            }`}
+            variant="primary"
+            className={`w-full ${isOrdination ? 'bg-purple-600 hover:bg-purple-500' : ''}`}
           >
             {loading
               ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</>
               : isOrdination ? '🙏 ส่งคำขอลาบวช (อัตโนมัติ)' : '📤 ส่งคำขออนุมัติ'}
-          </button>
+          </MotionButton>
         </div>
         </form>
       )}

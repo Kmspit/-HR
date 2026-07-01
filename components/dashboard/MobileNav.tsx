@@ -25,10 +25,10 @@ const MOBILE_ITEMS: { href: string; icon: keyof typeof NAV_ICONS; label: string;
   { href: '/dashboard',     icon: 'dashboard',  label: 'หน้าหลัก' },
   { href: '/attendance',    icon: 'attendance', label: 'เช็คอิน' },
   { href: '/leave',         icon: 'leave',      label: 'ลาหยุด' },
-  { href: '/approvals',     icon: 'approvals',  label: 'อนุมัติ', roles: APPR_ROLES },
+  { href: '/approval-center',     icon: 'approvals',  label: 'อนุมัติ', roles: APPR_ROLES },
   { href: '/outside-work',  icon: 'outside',    label: 'นอกที่' },
   { href: '/payslip',       icon: 'payslip',    label: 'สลิป' },
-  { href: '/notifications', icon: 'notif',      label: 'แจ้ง' },
+  { href: '/notifications', icon: 'notif',      label: 'แจ้งเตือน' },
 ]
 
 export default function MobileNav({ role }: { role: Role }) {

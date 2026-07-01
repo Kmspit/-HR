@@ -9,7 +9,7 @@ export const LINE_WEBHOOK_IP = 'line-webhook'
 
 export const LINE_NOT_YOUR_TURN_MSG = 'ไม่ใช่คิวของคุณในการอนุมัติขั้นนี้'
 
-export const LINE_USE_APP_MSG = 'กรุณาอนุมัติที่ศูนย์อนุมัติในแอป /approvals'
+export const LINE_USE_APP_MSG = 'กรุณาอนุมัติที่ศูนย์อนุมัติในแอป /approval-center'
 
 export type LineChainDocType = 'LEAVE' | 'OUTSIDE' | 'FORGOT_SCAN'
 

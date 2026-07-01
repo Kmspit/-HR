@@ -2,24 +2,44 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
-import NotificationList from '@/components/dashboard/NotificationList'
+import NotificationCenterClient from '@/components/notification-center/NotificationCenterClient'
+import { computeTabCounts } from '@/lib/notification-center/tab-counts'
 
 export default async function NotificationsPage() {
   const session = await auth()
-  if (!session?.user) redirect('/')
+  if (!session?.user) redirect('/login')
 
-  const notifications = await prisma.notification.findMany({
+  const rows = await prisma.notification.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
-    take: 50,
+    take: 200,
   })
 
-  const user = { name: session.user.name ?? '', email: session.user.email ?? '', role: session.user.role, department: session.user.department }
+  const notifications = rows.map((n) => ({
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    link: n.link,
+    isRead: n.isRead,
+    createdAt: n.createdAt.toISOString(),
+    taskId: n.taskId,
+  }))
+
+  const tabCounts = computeTabCounts(rows)
+  const unreadCount = tabCounts.all.unread
 
   return (
-    <div className="flex flex-col">
-      <Topbar title="แจ้งเตือน" subtitle={`${notifications.filter(n => !n.isRead).length} รายการที่ยังไม่ได้อ่าน`} />
-      <NotificationList notifications={JSON.parse(JSON.stringify(notifications))} />
+    <div className="flex flex-col min-h-full">
+      <Topbar
+        title="ศูนย์แจ้งเตือน"
+        subtitle={unreadCount > 0 ? `${unreadCount} รายการยังไม่ได้อ่าน` : 'อ่านครบแล้ว — อัปเดตแบบเรียลไทม์'}
+      />
+      <NotificationCenterClient
+        notifications={notifications}
+        unreadCount={unreadCount}
+        tabCounts={tabCounts}
+      />
     </div>
   )
 }

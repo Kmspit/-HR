@@ -8,6 +8,8 @@ import { prisma } from '@/lib/prisma'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
 import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
+import DashboardMotionShell from '@/components/motion/DashboardMotionShell'
+import FloatingQuickActions from '@/components/dashboard/FloatingQuickActions'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   try {
@@ -50,13 +52,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="dashboard-main flex flex-1 flex-col min-h-0 min-w-0 md:overflow-hidden">
         <DashboardHeader user={user} unreadCount={unreadCount} />
         <main className="dashboard-main-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
-          {needsOrgSetup && <OrgSetupBanner />}
-          {children}
+          <DashboardMotionShell>
+            {needsOrgSetup && <OrgSetupBanner />}
+            {children}
+          </DashboardMotionShell>
         </main>
       </div>
 
       {/* Mobile bottom nav */}
       <MobileNav role={user.role} />
+      <FloatingQuickActions role={user.role} />
     </div>
   )
 }

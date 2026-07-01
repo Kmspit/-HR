@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import type { NotificationType } from '@prisma/client'
+import { matchesTab } from '@/lib/notification-center/constants'
+import { computeTabCounts } from '@/lib/notification-center/tab-counts'
+import { broadcastNotificationUpdate } from '@/lib/notification-center/broadcast'
+import type { NotificationTab } from '@/lib/notification-center/types'
 
-const CATEGORY_TYPES: Record<string, string[]> = {
-  task:     ['TASK_ASSIGNED', 'TASK_SUBMITTED', 'TASK_APPROVED', 'TASK_REVISION', 'TASK_WAITING_DOC'],
-  court:    ['TASK_COURT_REMINDER', 'TASK_APPOINTMENT_REMINDER'],
-  deadline: ['TASK_DEADLINE_REMINDER', 'TASK_OVERDUE'],
-}
+const VALID_TABS: NotificationTab[] = ['all', 'approvals', 'attendance', 'warnings', 'system']
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,26 +15,39 @@ export async function GET(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(req.url)
-    const limit    = parseInt(searchParams.get('limit') ?? '20')
-    const unread   = searchParams.get('unread') === 'true'
-    const category = searchParams.get('category') ?? ''
-    const typeFilter = CATEGORY_TYPES[category]
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 100)
+    const unreadOnly = searchParams.get('unread') === 'true'
+    const tabParam = (searchParams.get('tab') ?? 'all') as NotificationTab
+    const tab: NotificationTab = VALID_TABS.includes(tabParam) ? tabParam : 'all'
 
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userId: session.user.id,
-        ...(unread ? { isRead: false } : {}),
-        ...(typeFilter ? { type: { in: typeFilter as NotificationType[] } } : {}),
-      },
+    const allRows = await prisma.notification.findMany({
+      where: { userId: session.user.id },
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: 200,
+      select: {
+        id: true, type: true, title: true, message: true, link: true,
+        isRead: true, createdAt: true, taskId: true,
+      },
     })
 
-    const unreadCount = await prisma.notification.count({
-      where: { userId: session.user.id, isRead: false },
-    })
+    const tabCounts = computeTabCounts(allRows)
 
-    return NextResponse.json({ notifications, unreadCount })
+    let filtered = allRows
+    if (tab !== 'all') {
+      filtered = filtered.filter((n) => matchesTab(n.type, n.title, n.message, tab))
+    }
+    if (unreadOnly) {
+      filtered = filtered.filter((n) => !n.isRead)
+    }
+
+    const notifications = filtered.slice(0, limit).map((n) => ({
+      ...n,
+      createdAt: n.createdAt.toISOString(),
+    }))
+
+    const unreadCount = tabCounts.all.unread
+
+    return NextResponse.json({ notifications, unreadCount, tabCounts })
   } catch (err) {
     return apiError(err)
   }
@@ -47,18 +59,21 @@ export async function PATCH(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json() as { id?: string }
+    const userId = session.user.id
 
     if (body.id) {
       await prisma.notification.updateMany({
-        where: { id: body.id, userId: session.user.id },
+        where: { id: body.id, userId },
         data: { isRead: true },
       })
     } else {
       await prisma.notification.updateMany({
-        where: { userId: session.user.id, isRead: false },
+        where: { userId, isRead: false },
         data: { isRead: true },
       })
     }
+
+    await broadcastNotificationUpdate(userId)
 
     return NextResponse.json({ success: true })
   } catch (err) {

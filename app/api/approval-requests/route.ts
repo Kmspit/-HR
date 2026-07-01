@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
         type:   'APPROVAL_REQUESTED',
         title:  `รอการอนุมัติ: ${title}`,
         message: `${step1.stepName} — ${docType}`,
-        link:   '/approvals',
+        link:   '/approval-center',
       })
     } else if (step1.approverRole) {
       const approvers = await prisma.user.findMany({
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
             type:    'APPROVAL_REQUESTED' as const,
             title:   `รอการอนุมัติ: ${title}`,
             message: `${step1.stepName} — ${docType}`,
-            link:    '/approvals',
+            link:    '/approval-center',
           })),
         })
       }

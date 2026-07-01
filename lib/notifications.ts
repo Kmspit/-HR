@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import type { NotificationType, Role } from '@prisma/client'
 import { pushLineMessages, pushLineText } from '@/lib/line-api'
+import { broadcastNotificationUpdate, broadcastNotificationUpdates, toNotificationItem } from '@/lib/notification-center/broadcast'
 
 // ─── Create in-app notification ───────────────────────
 export async function createNotification(params: {
@@ -12,7 +13,9 @@ export async function createNotification(params: {
   link?: string
 }) {
   try {
-    return await prisma.notification.create({ data: params })
+    const row = await prisma.notification.create({ data: params })
+    await broadcastNotificationUpdate(params.userId, toNotificationItem(row))
+    return row
   } catch (err) {
     console.error('[createNotification]', err)
   }
@@ -35,6 +38,7 @@ export async function notifyRole(
     await prisma.notification.createMany({
       data: users.map((u) => ({ userId: u.id, type, title, message, link: link ?? null })),
     })
+    await broadcastNotificationUpdates(users.map((u) => u.id))
   } catch (err) {
     console.error('[notifyRole]', err)
   }

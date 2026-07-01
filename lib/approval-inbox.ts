@@ -187,13 +187,45 @@ export async function getPendingWeeklyForApprover(
   return out
 }
 
+export type DocumentInboxItem = {
+  id: string
+  docType: string
+  title: string
+  docRef: string | null
+  amount: number | null
+  status: string
+  priority: string
+  currentStep: number
+  totalSteps: number
+  stepName: string | null
+  requestedBy: { name: string; role: string }
+  createdAt: Date
+}
+
+export type ExpenseInboxItem = {
+  id: string
+  title: string
+  amount: number
+  expenseType: string
+  status: string
+  stepLabel: string
+  approveAction: 'supervisor_approve' | 'ceo_approve'
+  date: Date
+  submittedBy: { id: string; name: string; email: string; department: string | null; position: string | null }
+}
+
 export type ApproverInboxCounts = {
   leave: number
   outside: number
   weekly: number
   forgotScan: number
+  documents: number
+  expenses: number
   total: number
 }
+
+const EXPENSE_SUPERVISOR: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
+const EXPENSE_CEO: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
 
 function canSeeWeeklyInbox(role: Role): boolean {
   return role === 'CEO' || role === 'ADMIN' || hasPermission(role, 'approve_weekly_plan')
@@ -282,32 +314,148 @@ export function formatInboxSummary(counts: ApproverInboxCounts, role: Role): str
   }
   if (counts.weekly > 0 && canSeeWeeklyInbox(role)) parts.push(`แผน ${counts.weekly}`)
   if (counts.forgotScan > 0 && canSeeForgotScanInbox(role)) parts.push(`แก้เวลา ${counts.forgotScan}`)
+  if (counts.documents > 0) parts.push(`เอกสาร ${counts.documents}`)
+  if (counts.expenses > 0) parts.push(`เบิก ${counts.expenses}`)
   return parts.length > 0 ? parts.join(' · ') : 'ไม่มีรายการค้าง'
 }
 
-/** Count items this user can act on in /approvals (org-scoped for TL/MANAGER). */
+export async function getPendingDocumentsForApprover(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<DocumentInboxItem[]> {
+  const rows = await prisma.approvalRequest.findMany({
+    where: {
+      status: { notIn: ['APPROVED', 'REJECTED', 'CANCELLED'] },
+      steps: {
+        some: {
+          status: 'PENDING',
+          OR: [{ approverId: userId }, { approverRole: role }],
+        },
+      },
+    },
+    include: {
+      requestedBy: { select: { name: true, role: true } },
+      steps: { orderBy: { stepOrder: 'asc' } },
+    },
+    orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+    take: 50,
+  })
+
+  return rows.map((row) => {
+    const active = row.steps.find((s) => s.stepOrder === row.currentStep && s.status === 'PENDING')
+    return {
+      id: row.id,
+      docType: row.docType,
+      title: row.title,
+      docRef: row.docRef,
+      amount: row.amount,
+      status: row.status,
+      priority: row.priority,
+      currentStep: row.currentStep,
+      totalSteps: row.totalSteps,
+      stepName: active?.stepName ?? null,
+      requestedBy: row.requestedBy,
+      createdAt: row.createdAt,
+    }
+  })
+}
+
+export async function getPendingExpensesForApprover(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<ExpenseInboxItem[]> {
+  const out: ExpenseInboxItem[] = []
+
+  if (EXPENSE_SUPERVISOR.includes(role)) {
+    const pending = await prisma.expenseClaim.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        submittedBy: {
+          select: { id: true, name: true, email: true, department: true, position: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+    for (const row of pending) {
+      if (['MANAGER', 'TEAM_LEADER'].includes(role)) {
+        const ok = await canApproverActOnRequester(prisma, userId, role, row.submittedById)
+        if (!ok) continue
+      }
+      out.push({
+        id: row.id,
+        title: row.title,
+        amount: row.amount,
+        expenseType: row.expenseType,
+        status: row.status,
+        stepLabel: 'หัวหน้างาน',
+        approveAction: 'supervisor_approve',
+        date: row.date,
+        submittedBy: row.submittedBy,
+      })
+    }
+  }
+
+  if (EXPENSE_CEO.includes(role)) {
+    const ceoPending = await prisma.expenseClaim.findMany({
+      where: { status: 'SUPERVISOR_APPROVED' },
+      include: {
+        submittedBy: {
+          select: { id: true, name: true, email: true, department: true, position: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+    for (const row of ceoPending) {
+      out.push({
+        id: row.id,
+        title: row.title,
+        amount: row.amount,
+        expenseType: row.expenseType,
+        status: row.status,
+        stepLabel: 'CEO / ผู้บริหาร',
+        approveAction: 'ceo_approve',
+        date: row.date,
+        submittedBy: row.submittedBy,
+      })
+    }
+  }
+
+  return out
+}
+
+/** Count items this user can act on in /approval-center (org-scoped for TL/MANAGER). */
 export async function getApproverInboxCounts(
   prisma: PrismaClient,
   userId: string,
   role: Role,
 ): Promise<ApproverInboxCounts> {
-  const [leaveRows, outsideRows, weeklyRows, forgotRows] = await Promise.all([
+  const [leaveRows, outsideRows, weeklyRows, forgotRows, documentRows, expenseRows] = await Promise.all([
     getPendingLeaveForApprover(prisma, userId, role),
     getPendingOutsideForApprover(prisma, userId, role),
     canSeeWeeklyInbox(role)
       ? getPendingWeeklyForApprover(prisma, userId, role)
       : Promise.resolve([]),
     getPendingForgotScanForApprover(prisma, userId, role),
+    getPendingDocumentsForApprover(prisma, userId, role),
+    getPendingExpensesForApprover(prisma, userId, role),
   ])
   const leave = leaveRows.length
   const outside = outsideRows.length
   const weekly = weeklyRows.length
   const forgotScan = forgotRows.length
+  const documents = documentRows.length
+  const expenses = expenseRows.length
   return {
     leave,
     outside,
     weekly,
     forgotScan,
-    total: leave + outside + weekly + forgotScan,
+    documents,
+    expenses,
+    total: leave + outside + weekly + forgotScan + documents + expenses,
   }
 }

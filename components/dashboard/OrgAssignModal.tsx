@@ -5,6 +5,7 @@ import { X, Loader2, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { MotionModal, MotionButton } from '@/components/motion'
 
 type Opt = { id: string; name: string; divisionId?: string; departmentId?: string }
 
@@ -73,59 +74,58 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-blue-400" />
-            <h3 className="font-bold text-white">กำหนดโครงสร้างองค์กร</h3>
-          </div>
-          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+    <MotionModal open={true} onClose={onClose} panelClassName="max-w-md p-5 border-white/10">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Layers className="w-5 h-5 text-blue-400" />
+          <h3 className="font-bold text-white">กำหนดโครงสร้างองค์กร</h3>
         </div>
-        <p className="text-sm text-slate-400 mb-4">{userName}</p>
-        {loading ? (
-          <p className="text-sm text-slate-500 py-4 text-center">กำลังโหลด...</p>
-        ) : !branchId ? (
-          <p className="text-sm text-amber-400">พนักงานยังไม่มีสาขา — กำหนดสาขาก่อน</p>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-slate-500">ฝ่าย *</label>
-              <select value={divisionId} onChange={(e) => { setDivisionId(e.target.value); setDepartmentId(''); setSectionId('') }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white">
-                <option value="">— เลือกฝ่าย —</option>
-                {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500">แผนก *</label>
-              <select value={departmentId} onChange={(e) => { setDepartmentId(e.target.value); setSectionId('') }} disabled={!divisionId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
-                <option value="">— เลือกแผนก —</option>
-                {filteredDepts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500">
-                ส่วนงาน <span className="text-slate-600">(ไม่บังคับ)</span>
-              </label>
-              <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!departmentId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
-                <option value="">— ไม่ระบุส่วนงาน —</option>
-                {filteredSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-              {departmentId && filteredSections.length === 0 && (
-                <p className="mt-1 text-[10px] text-slate-500">แผนกนี้ไม่มีส่วนงาน — บันทึกได้โดยไม่เลือก</p>
-              )}
-            </div>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving || loading || !branchId}
-          className="mt-4 w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'บันทึกการกำหนด'}
-        </button>
+        <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-white btn-press"><X className="w-5 h-5" /></button>
       </div>
-    </div>
+      <p className="text-sm text-slate-400 mb-4">{userName}</p>
+      {loading ? (
+        <p className="text-sm text-slate-500 py-4 text-center">กำลังโหลด...</p>
+      ) : !branchId ? (
+        <p className="text-sm text-amber-400">พนักงานยังไม่มีสาขา — กำหนดสาขาก่อน</p>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-slate-500">ฝ่าย *</label>
+            <select value={divisionId} onChange={(e) => { setDivisionId(e.target.value); setDepartmentId(''); setSectionId('') }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white">
+              <option value="">— เลือกฝ่าย —</option>
+              {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500">แผนก *</label>
+            <select value={departmentId} onChange={(e) => { setDepartmentId(e.target.value); setSectionId('') }} disabled={!divisionId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
+              <option value="">— เลือกแผนก —</option>
+              {filteredDepts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500">
+              ส่วนงาน <span className="text-slate-600">(ไม่บังคับ)</span>
+            </label>
+            <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!departmentId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
+              <option value="">— ไม่ระบุส่วนงาน —</option>
+              {filteredSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            {departmentId && filteredSections.length === 0 && (
+              <p className="mt-1 text-[10px] text-slate-500">แผนกนี้ไม่มีส่วนงาน — บันทึกได้โดยไม่เลือก</p>
+            )}
+          </div>
+        </div>
+      )}
+      <MotionButton
+        type="button"
+        onClick={save}
+        disabled={saving || loading || !branchId}
+        variant="primary"
+        className="mt-4 w-full"
+      >
+        {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'บันทึกการกำหนด'}
+      </MotionButton>
+    </MotionModal>
   )
 }

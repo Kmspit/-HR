@@ -157,7 +157,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'บุคคล & HR',
     items: [
-      { href: '/approvals',       icon: 'approvals',   label: 'ศูนย์อนุมัติ',       roles: APPR_ROLES },
+      { href: '/approval-center', icon: 'approvals',   label: 'ศูนย์อนุมัติ',       roles: APPR_ROLES },
       { href: '/employees',       icon: 'employees',   label: 'พนักงาน',             roles: EMPLOYEE_MGMT },
       { href: '/payroll',         icon: 'payroll',     label: 'เงินเดือน',           roles: HR_CORE },
       { href: '/payslip',         icon: 'payslip',     label: 'สลิปเงินเดือน' },
@@ -178,7 +178,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/security',      icon: 'security', label: 'ความปลอดภัย',   roles: [...EXEC_ONLY, 'MANAGER_HR', 'HR'] as Role[] },
       { href: '/announcements', icon: 'announce', label: 'ประกาศ' },
       { href: '/line-oa',       icon: 'lineoa',   label: 'LINE OA',        roles: HR_ADMIN },
-      { href: '/notifications', icon: 'notif',    label: 'แจ้งเตือน' },
+      { href: '/notifications', icon: 'notif',    label: 'ศูนย์แจ้งเตือน' },
     ],
   },
 ]

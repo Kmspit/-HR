@@ -60,7 +60,7 @@ async function remindApprovers(
       type: 'SYSTEM',
       title,
       message,
-      link: '/approvals',
+      link: '/approval-center',
     })
     count += 1
   }
@@ -110,14 +110,14 @@ export async function runApprovalEscalation(prisma: PrismaClient): Promise<Escal
         'SYSTEM',
         '🔺 Escalation: คำขอลาค้างเกิน 72 ชม.',
         `${leave.user.name} — ${step.stepName}`,
-        '/approvals',
+        '/approval-center',
       )
       await notifyRole(
         'MANAGER_HR',
         'SYSTEM',
         '🔺 Escalation: คำขอลาค้างเกิน 72 ชม.',
         `${leave.user.name} — ${step.stepName}`,
-        '/approvals',
+        '/approval-center',
       )
       hardEscalated += 1
     }
@@ -158,14 +158,14 @@ export async function runApprovalEscalation(prisma: PrismaClient): Promise<Escal
         'SYSTEM',
         '🔺 Escalation: ออกนอกสถานที่ค้างเกิน 72 ชม.',
         `${row.user.name} — ${step.stepName}`,
-        '/approvals',
+        '/approval-center',
       )
       await notifyRole(
         'MANAGER_HR',
         'SYSTEM',
         '🔺 Escalation: ออกนอกสถานที่ค้างเกิน 72 ชม.',
         `${row.user.name} — ${step.stepName}`,
-        '/approvals',
+        '/approval-center',
       )
       hardEscalated += 1
     }

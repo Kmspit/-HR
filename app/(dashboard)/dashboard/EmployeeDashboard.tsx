@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import { ROLE_LABELS } from '@/lib/permissions'
@@ -7,6 +6,7 @@ import { findTodayAttendanceForDisplay } from '@/lib/attendance-session'
 import { getAttendanceProgress, ACTION_LABELS } from '@/lib/attendance-progress'
 import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import type { Role } from '@prisma/client'
+import MotionCard, { MotionQuickLink } from '@/components/motion/MotionCard'
 
 type Props = {
   userId: string
@@ -59,7 +59,7 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
       <div className="p-5 md:p-6 space-y-6">
         {/* Stat cards — Android compositor diagnostic: solid bg, no shadow, no alpha borders */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-4 transition-none transform-none">
+          <MotionCard className="shadow-none hover:shadow-md">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">สถานะวันนี้</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">
               {progress.dayComplete ? 'ลงเวลาครบแล้ว' : displaySession?.checkIn ? 'กำลังทำงาน' : 'ยังไม่เช็คอิน'}
@@ -74,31 +74,26 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
                 })}
               </p>
             )}
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-4 transition-none transform-none">
+          </MotionCard>
+          <MotionCard className="shadow-none hover:shadow-md" interactive={false}>
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">ลาป่วยคงเหลือ</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">{leaveBalance?.sick ?? 30} วัน</p>
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-4 transition-none transform-none">
+          </MotionCard>
+          <MotionCard className="shadow-none hover:shadow-md" interactive={false}>
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">ลาพักร้อน</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">{leaveBalance?.vacation ?? 6} วัน</p>
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-4 transition-none transform-none">
+          </MotionCard>
+          <MotionCard href="/notifications" className="shadow-none hover:shadow-md h-full">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">แจ้งเตือน</p>
             <p className="mt-1.5 text-[15px] font-bold text-slate-900 dark:text-white">{unreadCount} รายการ</p>
-          </div>
+          </MotionCard>
         </div>
 
-        {/* Quick menu — Android-safe: solid category colors, no gradient/blur/shadow/transition */}
-        <div className="rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-none p-5 md:p-6 transition-none transform-none">
+        <MotionCard className="p-5 md:p-6 shadow-none hover:shadow-md" interactive={false}>
           <h2 className="font-semibold text-slate-900 dark:text-white text-[16px] mb-4">เมนูด่วน</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {quickActions.map((a) => (
-              <Link
-                key={a.href}
-                href={a.href}
-                className="flex flex-col items-center gap-2.5 rounded-xl p-4 text-center border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f172a] transition-none transform-none shadow-none"
-              >
+              <MotionQuickLink key={a.href} href={a.href}>
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl border shadow-none transition-none transform-none ${a.iconClass}`}>
                   <svg width={20} height={20} className="hr-icon-sm h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d={a.icon} />
@@ -106,10 +101,10 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
                 </div>
                 <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">{a.label}</span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">{a.sub}</span>
-              </Link>
+              </MotionQuickLink>
             ))}
           </div>
-        </div>
+        </MotionCard>
       </div>
     </div>
   )

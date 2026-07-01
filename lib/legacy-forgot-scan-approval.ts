@@ -63,7 +63,7 @@ export async function executeLegacyForgotScanApproval(
         type: 'FORGOT_SCAN_APPROVED',
         title: 'หัวหน้าอนุมัติแล้ว — รอ HR ยืนยัน',
         message: `คำขอแก้ไขเวลา${label}ผ่านการอนุมัติจากหัวหน้าแล้ว กำลังรอ HR อนุมัติขั้นสุดท้าย`,
-        link: '/approvals',
+        link: '/approval-center',
       })
     } else {
       await prisma.forgotScanRequest.update({

@@ -1,7 +1,9 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { X, Building2, Navigation, AlertCircle, MapPin } from 'lucide-react'
+import { fadeIn, modalPanel } from '@/lib/motion-presets'
 import { formatTimeBangkok, formatDateBangkok } from '@/lib/datetime-bangkok'
 import { formatLateMinutes } from '@/lib/utils'
 import AttendancePhotos, { type AttendancePhotoItem } from '@/components/dashboard/AttendancePhotos'
@@ -87,6 +89,9 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
   const [detail, setDetail] = useState<AttendanceDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const reduced = useReducedMotion()
+  const backdropAnim = reduced ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } } : fadeIn
+  const panelAnim = reduced ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } } : modalPanel
 
   useEffect(() => {
     setLoading(true)
@@ -126,25 +131,26 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
   const hasPhotos = photos.some((p) => p.url)
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]"
-        onClick={onClose}
-        aria-hidden
-      />
+    <AnimatePresence>
+      <>
+        <motion.div
+          className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]"
+          onClick={onClose}
+          aria-hidden
+          {...backdropAnim}
+        />
 
-      {/* Panel: bottom-sheet on mobile, centered modal on desktop */}
-      <div
-        role="dialog"
-        aria-modal
-        aria-label="รายละเอียดการลงเวลา"
-        className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4"
-      >
         <div
-          className="relative w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[88vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
-          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal
+          aria-label="รายละเอียดการลงเวลา"
+          className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4 pointer-events-none"
         >
+          <motion.div
+            {...panelAnim}
+            className="relative w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[88vh] md:border md:border-slate-200 md:dark:border-white/[0.07] pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
           {/* Mobile drag handle */}
           <div className="flex-shrink-0 flex justify-center pt-3 pb-1 md:hidden">
             <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
@@ -360,13 +366,14 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl py-3 text-[14px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.10] transition-colors"
+              className="w-full rounded-xl py-3 text-[14px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.10] transition-colors btn-press"
             >
               ปิด
             </button>
           </div>
+          </motion.div>
         </div>
-      </div>
-    </>
+      </>
+    </AnimatePresence>
   )
 }
