@@ -5,6 +5,7 @@ import { apiError } from '@/lib/api-handler'
 import { buildBranchScope, branchUserWhere, isUserInBranchScope } from '@/lib/branch-scope'
 import { HR_ROLES } from '@/lib/access-control'
 import { canApproverActOnRequester } from '@/lib/org-scope'
+import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 function isProbationComplete(startDate: Date | null, probationMonths: number): boolean {
@@ -130,6 +131,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

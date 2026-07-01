@@ -4,12 +4,16 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { executeLeaveStepAction } from '@/lib/approval-chain'
 import { createAuditLog } from '@/lib/notifications'
+import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

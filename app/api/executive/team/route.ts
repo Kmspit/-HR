@@ -1,22 +1,17 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-
-const ALLOWED_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
+import { canAccessExecutiveApi } from '@/lib/executive-api'
 
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!ALLOWED_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!canAccessExecutiveApi(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const now        = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const todayEnd   = new Date(todayStart.getTime() + 86_400_000 - 1)
-
-  const deptScope = session.user.role === 'MANAGER' && session.user.department
-    ? session.user.department
-    : null
 
   const [
     taskStats,
@@ -27,26 +22,19 @@ export async function GET() {
     presentToday,
     activeEmployees,
   ] = await Promise.all([
-    // Task completion by user (this month)
     prisma.taskAssignment.groupBy({
       by: ['assigneeId'],
-      where: {
-        createdAt: { gte: monthStart },
-        ...(deptScope ? { assignee: { department: deptScope } } : {}),
-      },
+      where: { createdAt: { gte: monthStart } },
       _count: { id: true },
     }),
-    // Completed tasks by user (this month)
     prisma.taskAssignment.groupBy({
       by: ['assigneeId'],
       where: {
         status: 'COMPLETED',
         updatedAt: { gte: monthStart },
-        ...(deptScope ? { assignee: { department: deptScope } } : {}),
       },
       _count: { id: true },
     }),
-    // Recovery by user (this month)
     prisma.recoveryPayment.groupBy({
       by: ['collectorId'],
       where: { paymentDate: { gte: monthStart }, status: 'CONFIRMED' },
@@ -54,52 +42,28 @@ export async function GET() {
       _count: { id: true },
       orderBy: { _sum: { amount: 'desc' } },
     }),
-    // Late attendance by user (this month)
     prisma.attendance.groupBy({
       by: ['userId'],
       where: {
         date: { gte: monthStart },
         lateMinutes: { gt: 0 },
-        ...(deptScope ? { user: { department: deptScope } } : {}),
       },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
     }),
-    // Total attendance by user (this month)
     prisma.attendance.groupBy({
       by: ['userId'],
-      where: {
-        date: { gte: monthStart },
-        ...(deptScope ? { user: { department: deptScope } } : {}),
-      },
+      where: { date: { gte: monthStart } },
       _count: { id: true },
     }),
-    // Today's attendance
     prisma.attendance.count({
       where: { date: { gte: todayStart, lte: todayEnd }, checkIn: { not: null } },
     }),
-    // Active employee count
-    prisma.user.count({
-      where: {
-        status: 'ACTIVE',
-        ...(deptScope ? { department: deptScope } : {}),
-      },
-    }),
-  ])
-
-  // Collect all user IDs we need
-  const allUserIds = new Set<string>([
-    ...taskStats.map(r => r.assigneeId),
-    ...taskCompletedStats.map(r => r.assigneeId),
-    ...recoveryByUser.map(r => r.collectorId),
-    ...lateByUser.map(r => r.userId),
+    prisma.user.count({ where: { status: 'ACTIVE' } }),
   ])
 
   const users = await prisma.user.findMany({
-    where: {
-      status: 'ACTIVE',
-      ...(deptScope ? { department: deptScope } : {}),
-    },
+    where: { status: 'ACTIVE' },
     select: { id: true, name: true, department: true, role: true, employeeId: true },
   })
   const userMap = Object.fromEntries(users.map(u => [u.id, u]))

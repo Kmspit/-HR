@@ -62,8 +62,15 @@ export default async function DashboardPage({
   type CaseWhereClause = Record<string, unknown>
   let caseWhere: CaseWhereClause = {}
   if (!canAccessModule(role, HR_ADMIN)) {
-    if (role === 'MANAGER' && session.user.department) {
-      caseWhere = { department: session.user.department }
+    if (role === 'MANAGER') {
+      const reportIds = taskManagedIds ?? []
+      const teamIds = [userId, ...reportIds]
+      caseWhere = {
+        OR: [
+          { assignedEmployeeId: { in: teamIds } },
+          { createdById: { in: teamIds } },
+        ],
+      }
     } else if (['LAWYER', 'ENFORCEMENT'].includes(role)) {
       caseWhere = { OR: [{ assignedEmployeeId: userId }, { createdById: userId }] }
     }

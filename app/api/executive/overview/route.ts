@@ -2,8 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { CaseStatus, CasePriority } from '@prisma/client'
-
-const ALLOWED_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
+import { canAccessExecutiveApi } from '@/lib/executive-api'
 
 const ACTIVE_CASE_STATUSES: CaseStatus[] = [
   'NEW', 'ASSIGNED', 'INVESTIGATING', 'NEGOTIATING',
@@ -13,7 +12,7 @@ const ACTIVE_CASE_STATUSES: CaseStatus[] = [
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!ALLOWED_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!canAccessExecutiveApi(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const now           = new Date()
   const todayStart    = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -23,12 +22,7 @@ export async function GET() {
   const last30        = new Date(now.getTime() - 30 * 86_400_000)
   const last7         = new Date(now.getTime() - 7 * 86_400_000)
 
-  // MANAGER scope: limit to their department
-  const deptFilter = session.user.role === 'MANAGER' && session.user.department
-    ? { department: session.user.department }
-    : {}
-
-  const caseBase = { status: { in: ACTIVE_CASE_STATUSES }, ...deptFilter }
+  const caseBase = { status: { in: ACTIVE_CASE_STATUSES } }
 
   const [
     activeCases,
@@ -53,7 +47,7 @@ export async function GET() {
     brokenPromises30d,
   ] = await Promise.all([
     prisma.case.count({ where: caseBase }),
-    prisma.case.count({ where: { ...deptFilter, createdAt: { gte: monthStart } } }),
+    prisma.case.count({ where: { createdAt: { gte: monthStart } } }),
     prisma.case.count({ where: { ...caseBase, riskLevel: { in: ['HIGH', 'CRITICAL'] } } }),
     prisma.case.count({ where: { ...caseBase, priority: 'CRITICAL' as CasePriority } }),
 
@@ -68,7 +62,6 @@ export async function GET() {
       where: {
         status: { notIn: ['COMPLETED', 'CANCELLED'] },
         dueDate: { lt: now },
-        ...(session.user.role === 'MANAGER' ? { assignee: { department: session.user.department ?? undefined } } : {}),
       },
     }),
 
@@ -103,7 +96,6 @@ export async function GET() {
 
     prisma.case.count({
       where: {
-        ...deptFilter,
         status: { in: ACTIVE_CASE_STATUSES },
         slaDeadline: { lt: now },
       },
@@ -128,7 +120,7 @@ export async function GET() {
 
   // Risk items for critical cases
   const criticalCaseList = await prisma.case.findMany({
-    where: { priority: 'CRITICAL' as CasePriority, status: { in: ACTIVE_CASE_STATUSES }, ...deptFilter },
+    where: { priority: 'CRITICAL' as CasePriority, status: { in: ACTIVE_CASE_STATUSES } },
     select: { id: true, caseNumber: true, caseTitle: true, riskLevel: true, priority: true, slaDeadline: true, assignedEmployee: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
     take: 5,

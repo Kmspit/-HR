@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageBranches } from '@/lib/branch-scope'
+import { requireCsrf } from '@/lib/api-guard'
 import { z } from 'zod'
 
 const branchSchema = z.object({
@@ -59,6 +60,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id || !canManageBranches(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
