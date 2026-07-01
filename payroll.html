@@ -228,9 +228,20 @@ function initMonthYear() {
   for (let y = now.getFullYear(); y >= now.getFullYear()-3; y--) { const o = document.createElement('option'); o.value=y; o.textContent=y+543; yearSel.appendChild(o); }
 }
 
+function loadPayrollRatesFromSettings() {
+  const s = getCompanySettings();
+  const lateEl = document.getElementById('rate-late');
+  const absentEl = document.getElementById('rate-absent');
+  const unpaidEl = document.getElementById('rate-unpaid');
+  if (lateEl) lateEl.value = s.rateLate ?? 200;
+  if (absentEl) absentEl.value = s.rateAbsent ?? 1000;
+  if (unpaidEl) unpaidEl.value = s.rateUnpaid ?? 800;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initRole();
   initMonthYear();
+  loadPayrollRatesFromSettings();
   calcPayroll();
 });
 </script>

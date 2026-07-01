@@ -313,9 +313,8 @@
     <div class="settings-section">
       <h3>👤 บัญชีผู้ใช้</h3>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn-outline" onclick="changePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
         <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="logout()">🚪 ออกจากระบบ</button>
-        <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="clearAllData()">⚠️ ล้างข้อมูล Demo ทั้งหมด</button>
+        <button class="btn-outline role-hr-admin-only" style="color:var(--red);border-color:var(--red);" onclick="clearAllData()">⚠️ ล้างข้อมูล Demo ทั้งหมด</button>
       </div>
     </div>
 
@@ -417,6 +416,13 @@ function updateLateGraceHint() {
 }
 
 function saveSettings() {
+  const user = getCurrentUser();
+  const isAdmin = user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN');
+  if (!isAdmin) {
+    alert('เฉพาะ HR/Admin เท่านั้นที่บันทึกการตั้งค่าระบบได้');
+    return;
+  }
+
   const s = {
     companyName:  document.getElementById('s-company').value.trim(),
     address:      document.getElementById('s-address').value.trim(),
@@ -493,11 +499,7 @@ async function testLine() {
   }
 }
 
-function changePassword() {
-  const np = prompt('รหัสผ่านใหม่:');
-  if (np && np.length >= 6) alert('เปลี่ยนรหัสผ่านเรียบร้อย (demo — ไม่มีผลจริง)');
-  else if (np) alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-}
+function changePassword() { changeDemoPassword(); }
 
 function logout() {
   if (confirm('ต้องการออกจากระบบ?')) {
@@ -508,7 +510,15 @@ function logout() {
 
 function clearAllData() {
   if (!confirm('⚠️ ล้างข้อมูล Demo ทั้งหมด? (ไม่สามารถกู้คืนได้)')) return;
-  ['employees','leaves','warnings','announcements','weeklyPlans','attendances','settings'].forEach(k => localStorage.removeItem('hrflow_' + k));
+  ['employees','leaves','warnings','announcements','weeklyPlans','attendances','settings','notifications','faceProfiles','faceScanLogs'].forEach(k => localStorage.removeItem('hrflow_' + k));
+  localStorage.removeItem('hrflow_user');
+  localStorage.removeItem('hrflow_liveLocations');
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('hrflow_today_') || key.startsWith('hrflow_demo_pass_'))) {
+      localStorage.removeItem(key);
+    }
+  }
   alert('ล้างข้อมูลเรียบร้อยแล้ว');
   loadSettings();
 }

@@ -470,6 +470,34 @@ function getAnnouncements() { return lsGet('announcements', []); }
 function getWeeklyPlans()   { return lsGet('weeklyPlans', []); }
 function getAttendances()   { return lsGet('attendances', []); }
 
+/** Sync hrflow_today_* sessions into hrflow_attendances for payroll/reports */
+function syncTodaySessionsToAttendances(email, day, sessions) {
+  if (!email || !Array.isArray(sessions)) return;
+  const emp = getEmployees().find(function(e) { return e.email === email; });
+  const user = getCurrentUser();
+  const empName = (emp && emp.name) || (user && user.name) || email;
+  const list = getAttendances();
+  sessions.forEach(function(s) {
+    if (!s.checkIn) return;
+    const id = email + '_' + day + '_' + (s.sessionIndex || 1);
+    const rec = {
+      id: id,
+      empName: empName,
+      userEmail: email,
+      day: day,
+      checkIn: s.checkIn,
+      checkOut: s.checkOut || null,
+      isLate: !!s.isLate,
+      lateMinutes: s.lateMinutes || 0,
+      sessionIndex: s.sessionIndex || 1,
+    };
+    const idx = list.findIndex(function(a) { return a.id === id; });
+    if (idx >= 0) list[idx] = Object.assign({}, list[idx], rec);
+    else list.push(rec);
+  });
+  lsSet('attendances', list);
+}
+
 // ── DATE / FORMAT HELPERS ──────────────────────────────────────────────────────
 
 function thDate(dateStr) {

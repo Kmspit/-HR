@@ -153,13 +153,26 @@ const STATUS_TAGS   = { PENDING:'yellow', ADMIN_APPROVED:'blue', FINAL_APPROVED:
 
 function renderLeaveBalances() {
   const s = getCompanySettings();
-  document.getElementById('bal-sick').textContent     = s.sickDays    ?? 30;
-  document.getElementById('bal-vac').textContent      = s.vacDays     ?? 10;
-  document.getElementById('bal-personal').textContent = s.personalDays ?? 3;
+  const user = getCurrentUser();
+  const year = new Date().getFullYear();
+  const approved = getLeaveRequests().filter(function(r) {
+    return r.userId === user.email && r.status === 'FINAL_APPROVED'
+      && new Date(r.startDate).getFullYear() === year;
+  });
+  function used(type) {
+    return approved.filter(function(r) { return r.type === type; })
+      .reduce(function(sum, r) { return sum + (r.days || 1); }, 0);
+  }
+  const sickLeft = Math.max(0, (s.sickDays ?? 30) - used('SICK'));
+  const vacLeft = Math.max(0, (s.vacDays ?? 10) - used('VACATION'));
+  const personalLeft = Math.max(0, (s.personalDays ?? 3) - used('PERSONAL'));
+  document.getElementById('bal-sick').textContent     = sickLeft;
+  document.getElementById('bal-vac').textContent      = vacLeft;
+  document.getElementById('bal-personal').textContent = personalLeft;
   document.getElementById('leave-policy-info').innerHTML = `
-    <div>• ลาป่วย: <strong>${s.sickDays ?? 30} วัน/ปี</strong></div>
-    <div>• ลาพักร้อน: <strong>${s.vacDays ?? 10} วัน/ปี</strong></div>
-    <div>• ลากิจ: <strong>${s.personalDays ?? 3} วัน/ปี</strong></div>
+    <div>• ลาป่วย: <strong>${s.sickDays ?? 30} วัน/ปี</strong> (คงเหลือ ${sickLeft})</div>
+    <div>• ลาพักร้อน: <strong>${s.vacDays ?? 10} วัน/ปี</strong> (คงเหลือ ${vacLeft})</div>
+    <div>• ลากิจ: <strong>${s.personalDays ?? 3} วัน/ปี</strong> (คงเหลือ ${personalLeft})</div>
     <div>• ลาไม่รับค่าจ้าง: ไม่จำกัด (หักเงินเดือนเต็ม)</div>
     <div style="margin-top:10px;color:var(--text3);">ขั้นตอนอนุมัติ: Admin → ผู้จัดการ/HR</div>
   `;
@@ -215,6 +228,19 @@ function approveLeave(id, action) {
   const list = getLeaveRequests();
   const req  = list.find(r => r.id === id);
   if (!req) return;
+
+  if (action === 'admin_approve' || action === 'admin_reject') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'MANAGER_HR')) {
+      alert('ไม่มีสิทธิ์อนุมัติขั้น Admin');
+      return;
+    }
+  }
+  if (action === 'final_approve' || action === 'final_reject') {
+    if (!user || user.role !== 'MANAGER_HR') {
+      alert('ไม่มีสิทธิ์อนุมัติขั้นสุดท้าย');
+      return;
+    }
+  }
 
   if (action === 'admin_approve') {
     req.status = 'ADMIN_APPROVED';

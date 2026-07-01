@@ -81,6 +81,15 @@
 const ICONS = ['📢','💰','🎉','⚠️','📋','🏖️','🔔','📅','💬','🚀'];
 const ICON_COLORS = { '📢':'rgba(59,130,246,0.15)', '💰':'rgba(34,197,94,0.15)', '🎉':'rgba(234,179,8,0.15)', '⚠️':'rgba(239,68,68,0.15)', '📋':'rgba(107,114,128,0.15)' };
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderAnn() {
   const filter = document.getElementById('ann-filter').value;
   const search = document.getElementById('ann-search').value.toLowerCase();
@@ -112,20 +121,20 @@ function renderAnn() {
 
   listEl.innerHTML = visible.slice().reverse().map(a => `
     <div class="ann-card">
-      <div class="ann-icon" style="background:${ICON_COLORS[a.icon]||'rgba(59,130,246,0.1)'}">${a.icon||'📢'}</div>
+      <div class="ann-icon" style="background:${ICON_COLORS[a.icon]||'rgba(59,130,246,0.1)'}">${escapeHtml(a.icon)||'📢'}</div>
       <div style="flex:1;">
-        <div class="ann-title">${a.title}</div>
-        <div class="ann-body-text">${a.body}</div>
+        <div class="ann-title">${escapeHtml(a.title)}</div>
+        <div class="ann-body-text">${escapeHtml(a.body)}</div>
         <div class="ann-meta">
-          <span>เผยแพร่โดย: ${a.author}</span>
+          <span>เผยแพร่โดย: ${escapeHtml(a.author)}</span>
           <span>${thDate(a.createdAt)}</span>
-          <span>ถึง: ${a.target || 'ทุกคน'}</span>
+          <span>ถึง: ${escapeHtml(a.target || 'ทุกคน')}</span>
           ${a.sentToLine ? '<span style="color:#06C755;">💬 ส่ง LINE แล้ว</span>' : ''}
         </div>
       </div>
       ${isHR ? `<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-        ${!a.sentToLine ? `<button class="btn-sm" style="color:#06C755;" onclick="broadcastLine('${a.id}')">💬 ส่ง LINE</button>` : ''}
-        <button class="btn-sm" style="color:var(--red);" onclick="deleteAnn('${a.id}')">ลบ</button>
+        ${!a.sentToLine ? `<button class="btn-sm" style="color:#06C755;" onclick="broadcastLine('${escapeHtml(a.id)}')">💬 ส่ง LINE</button>` : ''}
+        <button class="btn-sm" style="color:var(--red);" onclick="deleteAnn('${escapeHtml(a.id)}')">ลบ</button>
       </div>` : ''}
     </div>`).join('');
 }

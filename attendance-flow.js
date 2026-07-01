@@ -109,6 +109,11 @@ function saveTodayData(data) {
   try {
     localStorage.setItem(todayStorageKey(), json);
     _pendingAttendanceData = null; // clear memory fallback on successful save
+    const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+    const dayMatch = todayStorageKey().match(/_(\d{4}-\d{2}-\d{2})$/);
+    if (user && user.email && dayMatch && typeof syncTodaySessionsToAttendances === 'function') {
+      syncTodaySessionsToAttendances(user.email, dayMatch[1], data.sessions || []);
+    }
     // console.log('[ATT] saveTodayData OK');
   } catch (e) {
     if (e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
