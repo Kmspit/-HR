@@ -4,6 +4,7 @@ import {
   AUTH_ROUTES,
   isPublicPageRoute,
   isAuthPageRoute,
+  isStaffOpenRoute,
 } from '@/lib/middleware-config'
 import { isPublicApiRoute } from '@/lib/api-public-routes'
 import { canAccess } from '@/lib/access-control'
@@ -51,6 +52,23 @@ describe('middleware gates', () => {
     expect(canAccess('EMPLOYEE', '/approval-center')).toBe(false)
     expect(canAccess('EMPLOYEE', '/payroll')).toBe(false)
     expect(canAccess('EMPLOYEE', '/attendance')).toBe(true)
+  })
+
+  it('EMPLOYEE can access /manual (staff open + ROUTE_PERMISSIONS)', () => {
+    expect(isStaffOpenRoute('/manual')).toBe(true)
+    expect(canAccess('EMPLOYEE', '/manual')).toBe(true)
+    expect(canAccess('LAWYER', '/manual')).toBe(true)
+  })
+
+  it('/manual is not hidden by hr or legal deploy profiles', () => {
+    process.env.NEXT_PUBLIC_DEPLOY_PROFILE = 'hr'
+    resetDeployProfileCache()
+    expect(isPathHiddenByDeployProfile('/manual')).toBe(false)
+    process.env.NEXT_PUBLIC_DEPLOY_PROFILE = 'legal'
+    resetDeployProfileCache()
+    expect(isPathHiddenByDeployProfile('/manual')).toBe(false)
+    delete process.env.NEXT_PUBLIC_DEPLOY_PROFILE
+    resetDeployProfileCache()
   })
 
   it('hr deploy profile hides legal/finance paths but not payroll', () => {

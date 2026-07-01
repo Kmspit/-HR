@@ -33,6 +33,11 @@ export const LEGAL_EXTRA_PATHS = [
   '/settings', '/executive', '/security', '/documents',
 ] as const
 
+/** Always reachable when logged in — never hidden by profile or FROZEN_MODULES */
+export const DEPLOY_PROFILE_ALWAYS_VISIBLE = [
+  '/manual', '/dashboard', '/notifications', '/profile', '/unauthorized', '/org-pending',
+] as const
+
 function readProfile(): DeployProfile {
   const raw = (
     process.env.NEXT_PUBLIC_DEPLOY_PROFILE ??
@@ -93,6 +98,9 @@ export function toDeployProfilePath(pathname: string): string {
 export function isPathHiddenByDeployProfile(path: string): boolean {
   const profile = getDeployProfile()
   const normalized = toDeployProfilePath(path)
+  for (const always of DEPLOY_PROFILE_ALWAYS_VISIBLE) {
+    if (normalized === always || normalized.startsWith(`${always}/`)) return false
+  }
   for (const prefix of pathsHiddenByProfile(profile)) {
     if (normalized === prefix || normalized.startsWith(`${prefix}/`)) return true
   }

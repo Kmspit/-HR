@@ -4,6 +4,15 @@ export const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password', '/
 
 export const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/client-portal/login'] as const
 
+/** Logged-in staff routes — no RBAC / deploy-profile gate (help, profile, etc.) */
+export const STAFF_OPEN_ROUTES = [
+  '/manual',
+  '/notifications',
+  '/profile',
+  '/org-pending',
+  '/unauthorized',
+] as const
+
 /** API routes always allowed (auth, webhooks, cron) — not module-scoped */
 export const API_DEPLOY_PROFILE_EXEMPT = [
   '/api/auth',
@@ -19,6 +28,13 @@ export function isPublicPageRoute(pathname: string): boolean {
 
 export function isAuthPageRoute(pathname: string): boolean {
   return AUTH_ROUTES.some((r) => pathname.startsWith(r))
+}
+
+/** Any active internal staff may access (after session check). */
+export function isStaffOpenRoute(pathname: string): boolean {
+  return STAFF_OPEN_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(`${r}/`),
+  )
 }
 
 export function isApiDeployProfileExempt(pathname: string): boolean {

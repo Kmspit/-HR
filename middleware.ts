@@ -7,6 +7,7 @@ import {
   isApiDeployProfileExempt,
   isAuthPageRoute,
   isPublicPageRoute,
+  isStaffOpenRoute,
 } from '@/lib/middleware-config'
 import { matchRoutePermission, rolesForPath } from '@/lib/route-match'
 import { logAccessDenied } from '@/lib/access-log'
@@ -98,6 +99,13 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     const url = req.nextUrl.clone()
     url.pathname = ROLE_DEFAULT_ROUTE[role]
     return NextResponse.redirect(url)
+  }
+
+  // Help / profile — all logged-in staff (skip RBAC + deploy profile)
+  if (isStaffOpenRoute(pathname)) {
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-pathname', pathname)
+    return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   // Check route permission (longest prefix — /attendance/scans before /attendance)
