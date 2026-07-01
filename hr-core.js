@@ -14,6 +14,27 @@ function requireLogin() {
   if (!getCurrentUser()) window.location.href = 'login.html';
 }
 
+/** Escape HTML for safe innerHTML interpolation */
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Redirect non-HR users away from HR-only pages (payroll, reports, etc.) */
+function requireHrAdmin() {
+  requireLogin();
+  const user = getCurrentUser();
+  if (!user) return;
+  if (user.role !== 'MANAGER_HR' && user.role !== 'ADMIN') {
+    alert('ไม่มีสิทธิ์เข้าถึงหน้านี้');
+    window.location.href = 'index.html';
+  }
+}
+
 /**
  * Call once per page. Reads localStorage role and:
  * - Shows/hides elements with class role-manager, role-admin, role-employee, role-lawyer
@@ -410,8 +431,8 @@ function mockLineNotify(message, recipient = 'ทุกคน') {
       <span style="font-size:18px;">💬</span>
       <strong>LINE OA — แจ้งเตือน</strong>
     </div>
-    <div style="margin-bottom:4px; opacity:0.85;">ถึง: ${recipient}</div>
-    <div style="border-top:1px solid rgba(255,255,255,0.3); padding-top:8px; line-height:1.6;">${message}</div>
+    <div style="margin-bottom:4px; opacity:0.85;">ถึง: ${escapeHtml(recipient)}</div>
+    <div style="border-top:1px solid rgba(255,255,255,0.3); padding-top:8px; line-height:1.6;">${escapeHtml(message).replace(/\n/g, '<br>')}</div>
   `;
   document.body.appendChild(box);
   setTimeout(() => { box.style.opacity = '0'; box.style.transition = 'opacity 0.4s'; setTimeout(() => box.remove(), 400); }, 4000);

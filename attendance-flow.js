@@ -398,14 +398,13 @@ async function runMatch(video) {
       document.getElementById('face-confirm-row').style.display = 'flex';
       setScanStatus('⚠ ' + result.message, 'var(--orange)');
     } else if (result.reason === 'not_registered') {
-      // Don't break attendance for users who haven't registered a face yet.
-      showFacePreview('confirm', 0, previewShot);
+      showFacePreview('reject', 0, previewShot);
       document.getElementById('face-decision').textContent = 'ยังไม่ได้ลงทะเบียนใบหน้า';
       document.getElementById('face-confidence-text').innerHTML =
-        'บันทึกภาพไว้แต่ยังไม่ยืนยันตัวตน · <a href="settings.html#face" style="color:var(--accent)">ลงทะเบียนใบหน้า</a>';
-      faceCaptured = true;
-      setScanStatus('⚠ ยังไม่ได้ลงทะเบียนใบหน้า — บันทึกภาพให้อัตโนมัติ', 'var(--orange)');
-      autoSubmit();
+        'กรุณาลงทะเบียนใบหน้าก่อนลงเวลา · <a href="settings.html#face" style="color:var(--accent)">ลงทะเบียนที่นี่</a>';
+      setScanStatus('⚠ ยังไม่ได้ลงทะเบียนใบหน้า — ไม่สามารถลงเวลาได้', 'var(--red)');
+      document.getElementById('btn-rescan').style.display = 'block';
+      autoScanActive = false;
     } else {
       // reject: keep scanning automatically (no manual challenge needed)
       showFacePreview('reject', result.confidence, previewShot);
