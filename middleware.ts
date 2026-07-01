@@ -10,8 +10,8 @@ import type { Role } from '@prisma/client'
 const { auth } = NextAuth(authConfig)
 
 // Public routes — no auth needed
-const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password']
-const AUTH_ROUTES   = ['/login', '/register', '/forgot-password']
+const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password', '/client-portal/login']
+const AUTH_ROUTES   = ['/login', '/register', '/forgot-password', '/client-portal/login']
 
 /** API routes always allowed (auth, webhooks, cron) — not module-scoped */
 const API_DEPLOY_PROFILE_EXEMPT = [

@@ -1,0 +1,59 @@
+/**
+ * POST /api/auth/forgot-password/request
+ * Body: { email }
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { createOtp } from '@/lib/otp'
+import { pushLineMessages } from '@/lib/line-api'
+import { rateLimit } from '@/lib/rate-limit'
+import { assertEnglishCredential } from '@/lib/english-input'
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const { allowed } = rateLimit(`forgot-pw:${ip}`, 5, 60 * 60 * 1000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'คำขอมากเกินไป กรุณารอ 1 ชั่วโมงแล้วลองใหม่' }, { status: 429 })
+  }
+
+  const body = await req.json().catch(() => ({})) as { email?: string }
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+
+  const englishErr = assertEnglishCredential(email, 'email')
+  if (!email || englishErr) {
+    return NextResponse.json({ error: englishErr ?? 'กรุณากรอกอีเมล' }, { status: 400 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, lineUserId: true, status: true },
+  })
+
+  // Uniform response to prevent email enumeration
+  if (!user || user.status !== 'ACTIVE') {
+    return NextResponse.json({
+      ok: true,
+      message: 'หากอีเมลนี้อยู่ในระบบ เราได้ส่งรหัส OTP แล้ว',
+      challenge: null,
+      sent: false,
+    })
+  }
+
+  const { challenge, code } = await createOtp(user.id, 'LINE')
+
+  if (user.lineUserId) {
+    await pushLineMessages(user.lineUserId, [
+      {
+        type: 'text',
+        text: `🔐 รหัส OTP สำหรับรีเซ็ตรหัสผ่าน: ${code}\n\nใช้ได้ภายใน 15 นาที\nอย่าแชร์รหัสนี้กับใคร`,
+      },
+    ]).catch(() => {})
+  }
+
+  return NextResponse.json({
+    ok: true,
+    message: 'ส่งรหัส OTP แล้ว กรุณาตรวจสอบ LINE',
+    challenge,
+    sent: !!user.lineUserId,
+  })
+}

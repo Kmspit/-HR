@@ -5,14 +5,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { broadcastLineDailySummary } from '@/lib/line-notifications'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get('authorization')?.replace('Bearer ', '')
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
 
   const { sent, errors } = await broadcastLineDailySummary()
   return NextResponse.json({ ok: true, sent, errors })

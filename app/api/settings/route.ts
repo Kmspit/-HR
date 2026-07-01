@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { clearLineCredentialsCache } from '@/lib/line-credentials'
+import { maskSettingsSecrets } from '@/lib/settings-api'
 
 const ALLOWED_FIELDS = [
   'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
@@ -16,12 +17,19 @@ const RETENTION_OPTIONS = [30, 90, 180] as const
 
 export async function GET() {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const canSeeSecrets = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
+
     const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
     if (!settings) {
       const created = await prisma.companySettings.create({ data: { id: 'singleton' } })
-      return NextResponse.json({ settings: created })
+      return NextResponse.json({ settings: maskSettingsSecrets(created, canSeeSecrets) })
     }
-    return NextResponse.json({ settings })
+    return NextResponse.json({ settings: maskSettingsSecrets(settings, canSeeSecrets) })
   } catch (err) {
     return apiError(err)
   }
@@ -60,7 +68,7 @@ export async function PATCH(req: NextRequest) {
       clearLineCredentialsCache()
     }
 
-    return NextResponse.json({ settings })
+    return NextResponse.json({ settings: maskSettingsSecrets(settings, true) })
   } catch (err) {
     return apiError(err)
   }

@@ -1,27 +1,39 @@
 /**
  * POST /api/security/2fa/request-otp
  * Called during login when 2FA is required.
- * Body: { email }
+ * Body: { pendingToken }
  * Returns: { challenge } (the challenge UUID to pass to verify)
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createOtp } from '@/lib/otp'
 import { pushLineMessages } from '@/lib/line-api'
+import { verify2FAPendingToken } from '@/lib/two-fa-pending'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { email?: string }
-  const { email } = body
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const { allowed } = rateLimit(`2fa-otp:${ip}`, 10, 15 * 60 * 1000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'คำขอมากเกินไป กรุณารอแล้วลองใหม่' }, { status: 429 })
+  }
 
-  if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 })
+  const body = await req.json() as { pendingToken?: string }
+  const { pendingToken } = body
+
+  if (!pendingToken) return NextResponse.json({ error: 'pendingToken required' }, { status: 400 })
+
+  const userId = await verify2FAPendingToken(pendingToken)
+  if (!userId) {
+    return NextResponse.json({ error: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' }, { status: 401 })
+  }
 
   const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, name: true, lineUserId: true },
+    where: { id: userId },
+    select: { id: true, name: true, lineUserId: true, status: true },
   })
 
-  if (!user) {
-    // Return a fake challenge so enumeration is not possible
+  if (!user || user.status !== 'ACTIVE') {
     return NextResponse.json({ challenge: 'invalid', sent: false })
   }
 

@@ -8,6 +8,7 @@ import { apiError, runNotify } from '@/lib/api-handler'
 import { executeLeaveStepAction, executeOutsideWorkStepAction } from '@/lib/approval-chain'
 import { executeWeeklyPlanStepAction } from '@/lib/weekly-plan-chain'
 import { executeForgotScanStepAction } from '@/lib/forgot-scan-chain'
+import { executeLegacyForgotScanApproval } from '@/lib/legacy-forgot-scan-approval'
 import type { Role } from '@prisma/client'
 
 type ApprovalBody = {
@@ -126,10 +127,19 @@ export async function POST(req: NextRequest) {
       const fs = await prisma.forgotScanRequest.findUnique({ where: { id: body.requestId } })
       if (!fs) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (!fs.chainConfigId) {
-        return NextResponse.json(
-          { error: 'คำขอยังไม่ได้เชื่อมสายอนุมัติ — ใช้หน้าแก้ไขเวลา (legacy)', code: 'NO_CHAIN' },
-          { status: 409 },
+        const legacy = await executeLegacyForgotScanApproval(
+          prisma,
+          body.requestId,
+          actorId,
+          role as Role,
+          body.action,
+          body.reason?.trim() || null,
+          ip,
         )
+        if ('error' in legacy) {
+          return NextResponse.json({ error: legacy.error }, { status: legacy.status })
+        }
+        return NextResponse.json({ success: true, legacy: true })
       }
       const chainResult = await executeForgotScanStepAction(
         prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,

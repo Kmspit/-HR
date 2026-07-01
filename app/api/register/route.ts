@@ -8,6 +8,7 @@ import { apiError, runNotify } from '@/lib/api-handler'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { rateLimit } from '@/lib/rate-limit'
+import { assertEnglishCredential } from '@/lib/english-input'
 
 const registerSchema = z.object({
   name:          z.string().min(2, 'กรุณากรอกชื่อ-นามสกุล'),
@@ -20,7 +21,7 @@ const registerSchema = z.object({
   birthDate:     z.string().optional(),
   address:       z.string().optional(),
   nationalId:    z.string().optional(),
-  role:          z.enum(['EMPLOYEE', 'ADMIN', 'LAWYER'], { message: 'กรุณาเลือกตำแหน่ง' }),
+  role:          z.enum(['EMPLOYEE', 'LAWYER'], { message: 'กรุณาเลือกตำแหน่ง' }),
   department:    z.string().optional(),
   baseSalary:    z.number().optional().nullable(),
   startDate:     z.string().min(1, 'กรุณาเลือกวันที่เริ่มงาน'),
@@ -62,6 +63,13 @@ export async function POST(req: NextRequest) {
     const data = parsed.data
     const email = data.email.trim().toLowerCase()
     const phone = data.phone.replace(/\D/g, '')
+
+    const emailErr = assertEnglishCredential(email, 'email')
+    const pwErr = assertEnglishCredential(data.password, 'password')
+    if (emailErr || pwErr) {
+      return NextResponse.json({ error: emailErr ?? pwErr }, { status: 400 })
+    }
+
     const nationalId = emptyToNull(data.nationalId)
 
     const existingEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } })

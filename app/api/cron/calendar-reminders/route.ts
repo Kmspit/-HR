@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
+
   const now = new Date()
 
   // Find events whose startAt falls exactly 7, 3, 1 days from now, or today

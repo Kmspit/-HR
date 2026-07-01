@@ -6,12 +6,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createBackupData, registerBackupRecord, buildBackupFilename } from '@/lib/backup'
 import { logSecurityEvent } from '@/lib/security-events'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get('authorization')
-  if (secret !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
 
   try {
     const tables = [

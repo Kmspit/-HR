@@ -106,11 +106,11 @@ async function notifyWeeklyStepApprovers(
   const link = '/approvals'
 
   if (approverId) {
-    await createNotification({ userId: approverId, type: 'OUTSIDE_REQUEST', title, message, link })
+    await createNotification({ userId: approverId, type: 'WEEKLY_PLAN_DUE', title, message, link })
     return
   }
   if (approverRole) {
-    await notifyRole(approverRole, 'OUTSIDE_REQUEST', title, message, link)
+    await notifyRole(approverRole, 'WEEKLY_PLAN_DUE', title, message, link)
   }
 }
 

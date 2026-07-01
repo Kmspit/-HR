@@ -40,7 +40,9 @@ const TYPE_ICONS: Record<string, string> = {
   LEAVE_REQUEST: '📅', LEAVE_APPROVED: '✅', LEAVE_REJECTED: '❌',
   OUTSIDE_REQUEST: '🚗', OUTSIDE_APPROVED: '✅', OUTSIDE_REJECTED: '❌',
   REGISTER_REQUEST: '👤', ACCOUNT_APPROVED: '✅', ACCOUNT_REJECTED: '❌',
+  FORGOT_SCAN_REQUEST: '🔍', FORGOT_SCAN_APPROVED: '✅', FORGOT_SCAN_REJECTED: '❌',
   WARNING_ISSUED: '⚠️', WEEKLY_PLAN_DUE: '⏰', WEEKLY_PLAN_APPROVED: '✅',
+  WEEKLY_PLAN_REJECTED: '❌',
   ANNOUNCEMENT: '📢', DEVICE_RESET_REQUEST: '📱', SYSTEM: '🔔',
   // Task workflow
   TASK_ASSIGNED: '📋', TASK_SUBMITTED: '📤', TASK_APPROVED: '✅', TASK_REVISION: '🔄',
@@ -54,7 +56,9 @@ const TYPE_LINKS: Record<string, string> = {
   LEAVE_REQUEST: '/approvals', LEAVE_APPROVED: '/leave', LEAVE_REJECTED: '/leave',
   OUTSIDE_REQUEST: '/approvals', OUTSIDE_APPROVED: '/outside-work', OUTSIDE_REJECTED: '/outside-work',
   REGISTER_REQUEST: '/employees', ACCOUNT_APPROVED: '/profile', ACCOUNT_REJECTED: '/profile',
-  WARNING_ISSUED: '/warnings', WEEKLY_PLAN_DUE: '/leave', WEEKLY_PLAN_APPROVED: '/leave',
+  WARNING_ISSUED: '/warnings', WEEKLY_PLAN_DUE: '/weekly-plan', WEEKLY_PLAN_APPROVED: '/weekly-plan',
+  WEEKLY_PLAN_REJECTED: '/weekly-plan',
+  FORGOT_SCAN_REQUEST: '/approvals', FORGOT_SCAN_APPROVED: '/attendance', FORGOT_SCAN_REJECTED: '/forgot-scan',
   ANNOUNCEMENT: '/announcements', DEVICE_RESET_REQUEST: '/profile', SYSTEM: '/notifications',
   // Task types all link to /tasks
   TASK_ASSIGNED: '/tasks', TASK_SUBMITTED: '/tasks', TASK_APPROVED: '/tasks', TASK_REVISION: '/tasks',

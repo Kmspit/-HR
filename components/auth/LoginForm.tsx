@@ -27,6 +27,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
   const [errors, setErrors]       = useState<Record<string, string>>({})
   const [step, setStep]           = useState<Step>('credentials')
   const [challenge, setChallenge] = useState('')
+  const [pendingToken, setPendingToken] = useState('')
   const [otpCode, setOtpCode]     = useState('')
 
   useEffect(() => {
@@ -83,14 +84,20 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         message?: string | null
         url?: string
         requires2FA?: boolean
+        pendingToken?: string
       }
 
       if (data.requires2FA) {
-        // Request OTP send
+        if (!data.pendingToken) {
+          toast.error('ระบบขัดข้อง กรุณาลองใหม่')
+          setLoading(false)
+          return
+        }
+        setPendingToken(data.pendingToken)
         const otpRes = await fetch('/api/security/2fa/request-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email.trim() }),
+          body: JSON.stringify({ pendingToken: data.pendingToken }),
         })
         const otpData = await otpRes.json() as { challenge?: string }
         setChallenge(otpData.challenge ?? '')
@@ -131,7 +138,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         credentials: 'include',
         body: JSON.stringify({ challenge, code: otpCode.trim() }),
       })
-      const data = await res.json() as { ok?: boolean; error?: string }
+      const data = await res.json() as { ok?: boolean; error?: string; url?: string; message?: string | null }
 
       if (!res.ok || !data.ok) {
         toast.error(data.error ?? 'รหัส OTP ไม่ถูกต้อง')
@@ -139,8 +146,11 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         return
       }
 
-      toast.success('เข้าสู่ระบบสำเร็จ')
-      window.location.href = '/dashboard'
+      if (data.message) toast.success(data.message)
+      else toast.success('เข้าสู่ระบบสำเร็จ')
+
+      const dest = data.url && data.url.startsWith('/') ? data.url : '/dashboard'
+      window.location.href = dest
     } catch {
       toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่')
     } finally {
@@ -193,7 +203,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
 
         <button
           type="button"
-          onClick={() => { setStep('credentials'); setOtpCode('') }}
+          onClick={() => { setStep('credentials'); setOtpCode(''); setPendingToken('') }}
           className="w-full text-xs text-slate-500 hover:text-slate-300 text-center"
         >
           ย้อนกลับ

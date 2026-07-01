@@ -421,7 +421,8 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
     setRunningCron(true)
     try {
       const { ok, data, status } = await apiJson<{ warned?: number }>(
-        '/api/cron/check-warnings?secret=hrflow-cron-secret',
+        '/api/warnings/run-check',
+        { method: 'POST' },
       )
       if (!ok) {
         toast.error(apiErrorMessage(data as Record<string, unknown>, 'เกิดข้อผิดพลาด', status))

@@ -2,16 +2,31 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { signPortalToken, portalCookieOptions } from '@/lib/portal-auth'
+import { rateLimit } from '@/lib/rate-limit'
+import { assertEnglishCredential } from '@/lib/english-input'
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const { allowed } = rateLimit(`cp-login:${ip}`, 10, 15 * 60 * 1000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'ลองใหม่ภายหลัง' }, { status: 429 })
+  }
+
   const { email, password } = await req.json()
 
   if (!email || !password) {
     return NextResponse.json({ error: 'กรุณากรอกอีเมลและรหัสผ่าน' }, { status: 400 })
   }
 
+  const emailNorm = String(email).trim().toLowerCase()
+  const emailErr = assertEnglishCredential(emailNorm, 'email')
+  const pwErr = assertEnglishCredential(String(password), 'password')
+  if (emailErr || pwErr) {
+    return NextResponse.json({ error: emailErr ?? pwErr }, { status: 400 })
+  }
+
   const user = await prisma.clientPortalUser.findUnique({
-    where: { email: email.trim().toLowerCase() },
+    where: { email: emailNorm },
     include: { clientCompany: { select: { id: true, companyName: true, status: true } } },
   })
 

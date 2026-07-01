@@ -7,6 +7,8 @@ import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { checkLoginAllowed, recordLoginAttempt } from '@/lib/login-protection'
 import { logSecurityEvent } from '@/lib/security-events'
 import { rateLimit } from '@/lib/rate-limit'
+import { assertEnglishCredential } from '@/lib/english-input'
+import { create2FAPendingToken } from '@/lib/two-fa-pending'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -75,6 +77,15 @@ export async function POST(req: NextRequest) {
     const email = typeof body.email === 'string' ? body.email : ''
     const password = typeof body.password === 'string' ? body.password : ''
 
+    const emailErr = assertEnglishCredential(email.trim(), 'email')
+    const pwErr = assertEnglishCredential(password, 'password')
+    if (emailErr || pwErr) {
+      return NextResponse.json(
+        { ok: false, error: 'INVALID_CREDENTIALS', message: emailErr ?? pwErr },
+        { status: 400 },
+      )
+    }
+
     // Phase 15: brute-force check
     const lockCheck = await checkLoginAllowed(email).catch(() => ({ allowed: true }))
     if (!lockCheck.allowed) {
@@ -100,9 +111,9 @@ export async function POST(req: NextRequest) {
     }).catch(() => null)
 
     if (setup2fa?.enabled) {
-      // Record as partial success (credentials OK, but 2FA pending)
       await recordLoginAttempt(email, true, { ip, userAgent, userId: verified.user.id, reason: '2FA_PENDING' }).catch(() => {})
-      return NextResponse.json({ ok: false, requires2FA: true, userId: verified.user.id })
+      const pendingToken = await create2FAPendingToken(verified.user.id)
+      return NextResponse.json({ ok: false, requires2FA: true, pendingToken })
     }
 
     await recordLoginAttempt(email, true, { ip, userAgent, userId: verified.user.id }).catch(() => {})

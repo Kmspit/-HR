@@ -6,7 +6,12 @@ const COOKIE_NAME = 'cp_token'
 const MAX_AGE    = 60 * 60 * 24 * 7 // 7 days
 
 function secret() {
-  return new TextEncoder().encode(process.env.NEXTAUTH_SECRET ?? 'cp-fallback-secret-change-in-prod')
+  const raw = process.env.NEXTAUTH_SECRET?.trim()
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') throw new Error('AUTH_SECRET_MISSING')
+    return new TextEncoder().encode('cp-fallback-secret-dev-only')
+  }
+  return new TextEncoder().encode(raw)
 }
 
 export interface PortalSession {

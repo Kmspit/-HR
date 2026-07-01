@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyOtp } from '@/lib/otp'
 import { attachSessionCookie } from '@/lib/session-token'
 import { logSecurityEvent } from '@/lib/security-events'
+import { resolvePostLoginPath } from '@/lib/post-login-path'
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as { challenge?: string; code?: string }
@@ -25,7 +26,11 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: result.userId },
-    select: { id: true, email: true, name: true, role: true, status: true, department: true, branchId: true },
+    select: {
+      id: true, email: true, name: true, role: true, status: true,
+      department: true, branchId: true,
+      divisionId: true, departmentId: true, sectionId: true,
+    },
   })
 
   if (!user || user.status !== 'ACTIVE') {
@@ -44,7 +49,9 @@ export async function POST(req: NextRequest) {
     userAgent,
   })
 
-  const response = NextResponse.json({ ok: true })
+  const { path, message } = resolvePostLoginPath(user)
+
+  const response = NextResponse.json({ ok: true, url: path, message })
   await attachSessionCookie(response, {
     id:         user.id,
     email:      user.email,

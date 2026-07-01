@@ -10,21 +10,13 @@ import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import { computeWorkMinutes } from '@/lib/attendance-work-log'
 import { createNotification } from '@/lib/notifications'
 import { createAuditLog } from '@/lib/notifications'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
 const AUTO_CHECKOUT_NOTE = 'ระบบปิดเวลาออกงานอัตโนมัติ'
 
 export async function GET(req: NextRequest) {
-  // ── Auth guard ───────────────────────────────────────────────────────────
-  // Vercel sends Authorization: Bearer {CRON_SECRET} automatically.
-  // In development, allow unauthenticated calls for manual testing.
-  const isProd = process.env.NODE_ENV === 'production'
-  if (isProd) {
-    const secret = process.env.CRON_SECRET
-    const auth = req.headers.get('authorization')
-    if (!secret || auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
 
   const now = new Date()
 

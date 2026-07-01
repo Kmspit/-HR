@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createNotification, notifyRole, sendLineMessage } from '@/lib/notifications'
 import { triggerAutomation } from '@/lib/automation-engine'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
 // Court calendar event types handled by THIS cron only.
 // The existing /api/cron/calendar-reminders handles: COURT / CLIENT / DEBTOR / INTERNAL
@@ -28,7 +29,10 @@ const REMINDER_OFFSETS_DAYS = [7, 3, 1, 0]
 // Events past this threshold but still SCHEDULED are considered MISSED
 const MISS_GRACE_MINUTES = 60
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
+
   const now = new Date()
   let sent   = 0
   let missed = 0

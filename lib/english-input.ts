@@ -9,6 +9,8 @@ export function englishOnlyFieldError(value: string): string | undefined {
   return isEnglishOnly(value) ? undefined : ENGLISH_ONLY_ERROR
 }
 
-export function hasEnglishOnlyFields(values: string[]): boolean {
-  return values.every((v) => !v || isEnglishOnly(v))
+export function assertEnglishCredential(value: string, _fieldLabel = 'field'): string | null {
+  if (!value) return null
+  if (!isEnglishOnly(value)) return ENGLISH_ONLY_ERROR
+  return null
 }

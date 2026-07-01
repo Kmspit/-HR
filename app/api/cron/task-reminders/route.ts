@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 import { getOverdueInfo, getEscalationLevel } from '@/lib/task-sla'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 import type { TaskStatus } from '@prisma/client'
 
 // Tasks in these statuses are considered "active" (not finished)
@@ -72,15 +73,8 @@ async function notifyUser(opts: {
 }
 
 export async function GET(req: NextRequest) {
-  // ── Auth guard ──────────────────────────────────────────────────────────
-  const isProd = process.env.NODE_ENV === 'production'
-  if (isProd) {
-    const secret = process.env.CRON_SECRET
-    const auth   = req.headers.get('authorization')
-    if (!secret || auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-  }
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
 
   const stats = {
     deadline: 0, overdue: 0, court: 0, appointment: 0,

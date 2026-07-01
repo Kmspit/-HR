@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Loader2, ArrowLeft } from 'lucide-react'
-import { englishOnlyFieldError, ENGLISH_ONLY_ERROR, isEnglishOnly } from '@/lib/english-input'
+import { englishOnlyFieldError, isEnglishOnly } from '@/lib/english-input'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 type Step = 'email' | 'otp' | 'reset' | 'done'
 
@@ -12,6 +13,7 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>('email')
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
+  const [challenge, setChallenge] = useState('')
   const [otp, setOtp] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -40,16 +42,33 @@ export default function ForgotPasswordPage() {
     setEmailError(err)
     if (err || !isEnglishOnly(email)) return
     setLoading(true)
-    // Mock: simulate sending OTP
-    await new Promise((r) => setTimeout(r, 1200))
-    toast.success(`ส่งรหัส OTP ไปยัง ${email} แล้ว (Mock: ใช้รหัส 123456)`)
-    setLoading(false)
-    setStep('otp')
+    try {
+      const { ok, data, status } = await apiJson<{ challenge?: string; message?: string; sent?: boolean }>(
+        '/api/auth/forgot-password/request',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        },
+      )
+      if (!ok) {
+        toast.error(apiErrorMessage(data as Record<string, unknown>, 'ส่ง OTP ไม่สำเร็จ', status))
+        return
+      }
+      if (data.challenge) setChallenge(data.challenge)
+      toast.success(data.message ?? 'ส่งรหัส OTP แล้ว')
+      setStep('otp')
+    } catch {
+      toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (otp !== '123456') { toast.error('รหัส OTP ไม่ถูกต้อง'); return }
+    if (!otp.trim() || otp.length !== 6) { toast.error('กรุณากรอกรหัส OTP 6 หลัก'); return }
+    if (!challenge) { toast.error('เซสชันหมดอายุ กรุณาเริ่มใหม่'); setStep('email'); return }
     setStep('reset')
   }
 
@@ -63,10 +82,32 @@ export default function ForgotPasswordPage() {
     if (password.length < 8) { toast.error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return }
     if (password !== confirm) { toast.error('รหัสผ่านไม่ตรงกัน'); return }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setLoading(false)
-    toast.success('เปลี่ยนรหัสผ่านสำเร็จ')
-    setStep('done')
+    try {
+      const { ok, data, status } = await apiJson(
+        '/api/auth/forgot-password/reset',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            challenge,
+            code: otp.trim(),
+            newPassword: password,
+            confirmPassword: confirm,
+          }),
+        },
+      )
+      if (!ok) {
+        toast.error(apiErrorMessage(data as Record<string, unknown>, 'เปลี่ยนรหัสผ่านไม่สำเร็จ', status))
+        return
+      }
+      toast.success('เปลี่ยนรหัสผ่านสำเร็จ')
+      setStep('done')
+    } catch {
+      toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
@@ -85,7 +126,7 @@ export default function ForgotPasswordPage() {
               <div className="mb-6 text-center">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl">🔐</div>
                 <h1 className="text-xl font-bold text-white">ลืมรหัสผ่าน?</h1>
-                <p className="mt-1 text-sm text-slate-400">กรอกอีเมลเพื่อรับรหัส OTP</p>
+                <p className="mt-1 text-sm text-slate-400">กรอกอีเมลเพื่อรับรหัส OTP ทาง LINE</p>
               </div>
               <form onSubmit={handleSendOTP} className="space-y-4">
                 <div>
@@ -108,7 +149,6 @@ export default function ForgotPasswordPage() {
               </div>
               <form onSubmit={handleVerifyOTP} className="space-y-4">
                 <input type="text" placeholder="000000" maxLength={6} className={`${inputCls} text-center text-2xl tracking-[0.5em] font-bold`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required />
-                <p className="text-center text-xs text-slate-500">Demo: ใช้รหัส <strong className="text-blue-400">123456</strong></p>
                 <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all">
                   ยืนยัน OTP
                 </button>

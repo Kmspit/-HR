@@ -74,6 +74,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           )
         }
       }
+      if ('baseSalary' in body && body.baseSalary !== undefined) {
+        return NextResponse.json(
+          { error: 'ไม่สามารถแก้เงินเดือนของตัวเองได้' },
+          { status: 403 },
+        )
+      }
     }
 
     for (const key of Object.keys(body)) {

@@ -1,11 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
 // Vercel Cron: daily at 8am
-// Add to vercel.json: { "crons": [{ "path": "/api/cron/invoice-reminders", "schedule": "0 8 * * *" }] }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
+
   const now         = new Date()
   const reminders   = [30, 7, 1]
   let   notified    = 0
@@ -66,4 +69,4 @@ export async function POST() {
   return NextResponse.json({ ok: true, notified, overdueUpdated: overdue.length })
 }
 
-export async function GET() { return POST() }
+export async function GET(req: NextRequest) { return POST(req) }
