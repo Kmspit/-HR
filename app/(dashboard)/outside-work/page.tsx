@@ -8,8 +8,6 @@ import { buildBranchScope, branchNestedUserWhere, parseBranchQueryParam } from '
 import { Suspense } from 'react'
 import { hasPermission } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 export default async function OutsideWorkPage({
   searchParams,
 }: {
@@ -24,9 +22,6 @@ export default async function OutsideWorkPage({
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
-
-  const schemaOk = await ensureDbSchema().catch(() => false)
-
   const pageShell = (requests: Parameters<typeof OutsideWorkClient>[0]['requests']) => (
     <div className="flex flex-col">
       <Topbar
@@ -52,10 +47,6 @@ export default async function OutsideWorkPage({
       />
     </div>
   )
-
-  if (!schemaOk) {
-    return pageShell([])
-  }
 
   try {
     const rows = await prisma.outsideWorkRequest.findMany({
@@ -126,7 +117,7 @@ export default async function OutsideWorkPage({
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string; meta?: unknown }
     console.error('[outside-work PAGE ERROR]', err?.message, err?.code, JSON.stringify(err?.meta))
-    // findMany failed even though ensureDbSchema said ok — show empty state, do not crash
+    // findMany failed — show empty state, do not crash
     return pageShell([])
   }
 }

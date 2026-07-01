@@ -4,14 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { dateForPlanDay } from '@/lib/weekly-plan-days'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { getDefaultChain } from '@/lib/approval-chain'
 import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
 
 export async function POST(req: NextRequest) {
-  try {
-    await ensureDbSchema().catch(() => {})
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user || session.user.role !== 'LAWYER') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }

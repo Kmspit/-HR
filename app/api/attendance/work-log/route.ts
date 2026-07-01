@@ -6,8 +6,6 @@ import { prisma } from '@/lib/prisma'
 
 import { apiError } from '@/lib/api-handler'
 
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 import { buildMonthlyWorkLog, buildMonthlyWorkLogForTeam } from '@/lib/attendance-work-log'
 
 import { branchUserWhere, buildBranchScope, parseBranchQueryParam } from '@/lib/branch-scope'
@@ -24,11 +22,7 @@ import {
 
 export async function GET(req: NextRequest) {
 
-  try {
-
-    await ensureDbSchema()
-
-    const session = await auth()
+  try {    const session = await auth()
 
     if (!session?.user?.id) {
 

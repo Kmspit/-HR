@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { generateEmployeeId } from '@/lib/utils'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
@@ -49,10 +48,7 @@ export async function POST(req: NextRequest) {
         { error: 'คำขอมากเกินไป กรุณารอ 1 ชั่วโมงแล้วลองใหม่' },
         { status: 429 },
       )
-    }
-
-    await ensureDbSchema()
-    const body = await req.json()
+    }    const body = await req.json()
     const parsed = registerSchema.safeParse(body)
 
     if (!parsed.success) {

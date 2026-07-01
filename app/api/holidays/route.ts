@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { validateHolidayInput } from '@/lib/company-holidays'
 import type { HolidayType } from '@prisma/client'
 import { z } from 'zod'
@@ -44,9 +43,7 @@ function serialize(h: {
 }
 
 export async function GET(req: NextRequest) {
-  try {
-    await ensureDbSchema()
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -90,9 +87,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    await ensureDbSchema()
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id || !canManageHolidays(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }

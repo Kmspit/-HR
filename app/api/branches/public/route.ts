@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { DEFAULT_COMPANY_BRANCHES, registerBranchLabel } from '@/lib/company-branches'
 
 const TAG_BY_CODE = Object.fromEntries(
@@ -10,9 +9,7 @@ const TAG_BY_CODE = Object.fromEntries(
 
 /** รายการสาขาสำหรับหน้าสมัคร (ไม่ต้องล็อกอิน) */
 export async function GET() {
-  try {
-    await ensureDbSchema()
-    const branches = await prisma.companyBranch.findMany({
+  try {    const branches = await prisma.companyBranch.findMany({
       where: { isActive: true },
       select: { id: true, code: true, name: true, nameEn: true, isDefault: true },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],

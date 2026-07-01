@@ -3,17 +3,11 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import CalendarClient from './CalendarClient'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 export const metadata = { title: 'ปฏิทิน' }
 
 export default async function CalendarPage() {
   const session = await auth()
-  if (!session?.user) redirect('/')
-
-  await ensureDbSchema()
-
-  const { id: userId, role, name, branchId } = session.user
+  if (!session?.user) redirect('/')  const { id: userId, role, name, branchId } = session.user
   const canManageHolidays = ['MANAGER_HR', 'ADMIN'].includes(role)
 
   const now = new Date()

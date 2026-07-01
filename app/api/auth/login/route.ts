@@ -4,7 +4,6 @@ import { verifyLoginCredentials } from '@/lib/login-credentials'
 import { attachSessionCookie } from '@/lib/session-token'
 import { getSessionEpoch } from '@/lib/session-epoch'
 import { resolvePostLoginPath } from '@/lib/post-login-path'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { checkLoginAllowedForIdentifier, recordLoginAttempt } from '@/lib/login-protection'
 import { logSecurityEvent } from '@/lib/security-events'
 import { rateLimit } from '@/lib/rate-limit'
@@ -56,12 +55,6 @@ async function loadUserForRedirect(userId: string, fallback: {
  */
 export async function POST(req: NextRequest) {
   try {
-    try {
-      await ensureDbSchema()
-    } catch (schemaErr) {
-      console.error('[api/auth/login] ensureDbSchema', schemaErr)
-    }
-
     const ip        = req.headers.get('x-forwarded-for') ?? undefined
     const userAgent = req.headers.get('user-agent') ?? undefined
 

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { clearLineCredentialsCache } from '@/lib/line-credentials'
 import { maskSettingsSecrets } from '@/lib/settings-api'
+import { requireRoles, isGuardResponse } from '@/lib/api-guard'
 
 const ALLOWED_FIELDS = [
   'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
@@ -15,12 +15,12 @@ const ALLOWED_FIELDS = [
 
 const RETENTION_OPTIONS = [30, 90, 180] as const
 
+const SETTINGS_VIEW_ROLES = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'] as const
+
 export async function GET() {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireRoles([...SETTINGS_VIEW_ROLES])
+    if (isGuardResponse(session)) return session
 
     const canSeeSecrets = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
 
@@ -35,12 +35,10 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(req: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const session = await requireRoles(['MANAGER_HR', 'ADMIN'])
+    if (isGuardResponse(session)) return session
 
     const body = await req.json()
     const data: Record<string, unknown> = {}

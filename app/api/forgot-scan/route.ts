@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { createNotification } from '@/lib/notifications'
 import { saveUpload } from '@/lib/save-upload'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { getDefaultChain } from '@/lib/approval-chain'
 import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
 import type { Prisma, Role } from '@prisma/client'
@@ -31,7 +30,6 @@ const NOTIFY_ROLES: Role[] = ['MANAGER', 'TEAM_LEADER', 'HR', 'MANAGER_HR']
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

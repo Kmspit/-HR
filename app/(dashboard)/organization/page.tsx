@@ -4,17 +4,12 @@ import { redirect } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import OrganizationClient from './OrganizationClient'
 import { canManageOrg } from '@/lib/org-permissions'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { getOrgHierarchyGaps } from '@/lib/org-hierarchy-audit'
 
 export default async function OrganizationPage() {
   const session = await auth()
   if (!session?.user) redirect('/')
-  if (!canManageOrg(session.user.role)) redirect('/unauthorized')
-
-  await ensureDbSchema()
-
-  const branches = await prisma.companyBranch.findMany({
+  if (!canManageOrg(session.user.role)) redirect('/unauthorized')  const branches = await prisma.companyBranch.findMany({
     where: { isActive: true },
     select: { id: true, code: true, name: true, isDefault: true },
     orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],

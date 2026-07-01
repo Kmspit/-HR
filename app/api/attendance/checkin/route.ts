@@ -24,16 +24,13 @@ import {
   getNextSessionIndex,
   hasCheckInToday,
 } from '@/lib/attendance-session'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
 import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
 import { findApprovedWeeklyPlanDayForDate, WEEKLY_PLAN_LOCATION_TOLERANCE_METERS } from '@/lib/weekly-plan-attendance'
 import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 
 export async function POST(req: NextRequest) {
-  try {
-    await ensureDbSchema().catch(() => {})
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))

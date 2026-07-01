@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-handler'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { retryFailedAttendanceLineNotify } from '@/lib/attendance-line-notify'
 
 export async function POST(req: NextRequest) {
-  try {
-    await ensureDbSchema()
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -7,7 +7,6 @@ import { apiError, runNotify } from '@/lib/api-handler'
 import { saveUpload } from '@/lib/save-upload'
 import { LEAVE_TYPE_OPTIONS } from '@/lib/leave-types'
 import type { LeaveType } from '@prisma/client'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { sendLineApprovalRequest } from '@/lib/line-notifications'
 import {
   findLeaveHolidayConflicts,
@@ -52,9 +51,7 @@ const leaveSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  try {
-    await ensureDbSchema()
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const contentType = req.headers.get('content-type') ?? ''

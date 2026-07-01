@@ -20,12 +20,8 @@ import {
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
 import { findActiveAttendanceSession } from '@/lib/attendance-session'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 export async function POST(req: NextRequest) {
-  try {
-    await ensureDbSchema().catch(() => {})
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))

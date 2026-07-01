@@ -5,16 +5,13 @@ import { apiError } from '@/lib/api-handler'
 import { isPdfFile, storeWarningPdf } from '@/lib/warning-pdf'
 import { deliverWarningToEmployee, ensureWarningPdfStored } from '@/lib/warning-delivery'
 import { canApproveWarning, canManageUsers } from '@/lib/rbac'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import type { Role } from '@prisma/client'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
 export async function GET(req: NextRequest) {
-  try {
-    await ensureDbSchema().catch(() => {})
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const role = session.user.role as Role

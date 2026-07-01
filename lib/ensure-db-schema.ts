@@ -5,17 +5,23 @@ import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
 import { seedDefaultWeeklyPlanChain } from '@/lib/seed-default-weekly-plan-chain'
 import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain'
-import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
 import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
+/** Bump when runEnsure() logic changes — cron skips full run when DB version matches. */
+export const CURRENT_SCHEMA_VERSION = 900001
+const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
+
 let ensurePromise: Promise<boolean> | null = null
 
-/** Idempotent Turso/SQLite patches — safe to call on every cold start */
-export async function ensureDbSchema(): Promise<boolean> {
+type EnsureOptions = { force?: boolean }
+
+/** Idempotent Turso/SQLite patches — run via cron or `force: true`, not on every page load. */
+export async function ensureDbSchema(options?: EnsureOptions): Promise<boolean> {
   if (!process.env.TURSO_DATABASE_URL) return true
+  if (options?.force) ensurePromise = null
   if (!ensurePromise) {
-    ensurePromise = runEnsure().catch((err) => {
+    ensurePromise = runEnsure(options?.force ?? false).catch((err) => {
       ensurePromise = null
       console.error('[ensureDbSchema]', err)
       return false
@@ -24,11 +30,30 @@ export async function ensureDbSchema(): Promise<boolean> {
   return ensurePromise
 }
 
+async function getAppliedSchemaVersion(): Promise<number> {
+  try {
+    const rows = await prisma.$queryRawUnsafe<{ version: number }[]>(
+      `SELECT version FROM schema_migrations WHERE name = '${SCHEMA_MIGRATION_NAME}' ORDER BY version DESC LIMIT 1`,
+    )
+    return rows[0]?.version ?? 0
+  } catch {
+    return 0
+  }
+}
+
+async function markSchemaVersionApplied(): Promise<void> {
+  const id = `${SCHEMA_MIGRATION_NAME}_v${CURRENT_SCHEMA_VERSION}`
+  await prisma.$executeRawUnsafe(`
+    INSERT OR REPLACE INTO schema_migrations (id, version, name, applied_at)
+    VALUES ('${id}', ${CURRENT_SCHEMA_VERSION}, '${SCHEMA_MIGRATION_NAME}', datetime('now'))
+  `)
+}
+
 async function addUserColumnIfMissing(column: string, ddl: string) {
   await addColumnIfMissing('users', column, ddl)
 }
 
-async function runEnsure(): Promise<boolean> {
+async function runEnsure(force = false): Promise<boolean> {
   console.log('[ENSURE START]')
 
   // ── Schema version tracking table (must be first) ───────────────────────────
@@ -40,6 +65,14 @@ async function runEnsure(): Promise<boolean> {
       applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  if (!force) {
+    const applied = await getAppliedSchemaVersion()
+    if (applied >= CURRENT_SCHEMA_VERSION) {
+      console.log(`[ENSURE SKIP] schema v${applied} >= v${CURRENT_SCHEMA_VERSION}`)
+      return true
+    }
+  }
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS company_branches (
@@ -691,7 +724,6 @@ async function runEnsure(): Promise<boolean> {
   await seedDefaultLeaveChain(prisma)
   await seedDefaultWeeklyPlanChain(prisma)
   await seedDefaultForgotScanChain(prisma)
-  await migrateLegacyPendingApprovals(prisma)
 
   // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`
@@ -1018,7 +1050,8 @@ async function runEnsure(): Promise<boolean> {
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
 
-  console.log('[ENSURE COMPLETE]')
+  await markSchemaVersionApplied()
+  console.log(`[ENSURE COMPLETE] v${CURRENT_SCHEMA_VERSION}`)
   return true
 }
 

@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfiguredAsync } from '@/lib/line-config'
 import { getHrLineRecipients } from '@/lib/attendance-line-recipients'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { isPrototypeBridgeEnabled, prototypeBridgeDisabledResponse } from '@/lib/prototype-bridge'
 
 export const runtime = 'nodejs'
@@ -46,11 +45,7 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) {
       return json({ error: 'Unauthorized' }, 401, origin)
-    }
-
-    await ensureDbSchema().catch(() => {})
-
-    if (!(await isLineOaConfiguredAsync())) {
+    }    if (!(await isLineOaConfiguredAsync())) {
       return json({ ok: false, reason: 'line_not_configured' }, 503, origin)
     }
 

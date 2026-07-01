@@ -11,7 +11,6 @@ import {
   resolveFilterBranchId,
   parseBranchQueryParam,
 } from '@/lib/branch-scope'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { canApproveWarning } from '@/lib/rbac'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import { Suspense } from 'react'
@@ -23,10 +22,7 @@ export default async function WarningsPage({
   searchParams: Promise<{ branchId?: string }>
 }) {
   const session = await auth()
-  if (!session?.user?.id) redirect('/')
-
-  await ensureDbSchema().catch(() => {})
-  archiveExpiredWarnings().catch(() => {})
+  if (!session?.user?.id) redirect('/')  archiveExpiredWarnings().catch(() => {})
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)

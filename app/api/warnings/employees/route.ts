@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { WARNING_TARGET_USER_SELECT, WARNING_TARGET_USER_WHERE } from '@/lib/warning-employees'
 import { ROLE_LABELS } from '@/lib/permissions'
 import { buildBranchScope, branchUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import { requirePermission, isGuardResponse } from '@/lib/api-guard'
 
 export async function GET(req: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const session = await requirePermission('view_all_dashboard')
+    if (isGuardResponse(session)) return session
 
     const url = new URL(req.url)
     const branchParam = parseBranchQueryParam(url.searchParams.get('branchId') ?? undefined)

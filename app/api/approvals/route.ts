@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/notifications'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { headers } from 'next/headers'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { executeLeaveStepAction, executeOutsideWorkStepAction } from '@/lib/approval-chain'
 import { executeWeeklyPlanStepAction } from '@/lib/weekly-plan-chain'
 import { executeForgotScanStepAction } from '@/lib/forgot-scan-chain'
-import { executeLegacyForgotScanApproval } from '@/lib/legacy-forgot-scan-approval'
-import { executeLegacyLeaveApproval, executeLegacyOutsideApproval } from '@/lib/legacy-leave-approval'
-import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
+import {
+  attachDefaultChainForForgotScan,
+  attachDefaultChainForLeave,
+  attachDefaultChainForOutside,
+  attachDefaultChainForWeekly,
+} from '@/lib/attach-default-chain'
 import { canPerformApproval } from '@/lib/approval-permissions'
 import type { Role } from '@prisma/client'
 
@@ -23,7 +25,6 @@ type ApprovalBody = {
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -38,25 +39,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    await migrateLegacyPendingApprovals(prisma).catch(() => {})
-
     if (body.type === 'LEAVE') {
       const leave = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })
       if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (!leave.chainConfigId) {
-        const legacy = await executeLegacyLeaveApproval(
-          prisma,
-          body.requestId,
-          actorId,
-          role as Role,
-          body.action,
-          body.reason?.trim() || null,
-          ip,
+        await attachDefaultChainForLeave(prisma, body.requestId, leave.userId)
+      }
+      const refreshed = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })
+      if (!refreshed?.chainConfigId) {
+        return NextResponse.json(
+          { error: 'คำขอนี้ยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },
+          { status: 409 },
         )
-        if ('error' in legacy) {
-          return NextResponse.json({ error: legacy.error }, { status: legacy.status })
-        }
-        return NextResponse.json({ success: true, legacy: true, finalized: legacy.finalized })
       }
       const chainResult = await executeLeaveStepAction(
         prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,
@@ -80,19 +74,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
       }
       if (!req_.chainConfigId || req_.approvalStatus !== 'pending_chain') {
-        const legacy = await executeLegacyOutsideApproval(
-          prisma,
-          body.requestId,
-          actorId,
-          role as Role,
-          body.action,
-          body.reason?.trim() || null,
-          ip,
+        await attachDefaultChainForOutside(prisma, body.requestId, req_.userId)
+      }
+      const refreshed = await prisma.outsideWorkRequest.findUnique({ where: { id: body.requestId } })
+      if (!refreshed?.chainConfigId || refreshed.approvalStatus !== 'pending_chain') {
+        return NextResponse.json(
+          { error: 'คำขอนี้ยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },
+          { status: 409 },
         )
-        if ('error' in legacy) {
-          return NextResponse.json({ error: legacy.error }, { status: legacy.status })
-        }
-        return NextResponse.json({ success: true, legacy: true, finalized: legacy.finalized })
       }
       const chainResult = await executeOutsideWorkStepAction(
         prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,
@@ -105,7 +94,7 @@ export async function POST(req: NextRequest) {
           approvedById: actorId,
           action: body.action,
           reason: body.reason,
-          step: req_.currentStepOrder,
+          step: refreshed.currentStepOrder,
           ip,
           outsideRequestId: body.requestId,
         },
@@ -123,6 +112,10 @@ export async function POST(req: NextRequest) {
       const plan = await prisma.weeklyLawyerPlan.findUnique({ where: { id: body.requestId } })
       if (!plan) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (!plan.chainConfigId) {
+        await attachDefaultChainForWeekly(prisma, body.requestId, plan.lawyerId)
+      }
+      const refreshed = await prisma.weeklyLawyerPlan.findUnique({ where: { id: body.requestId } })
+      if (!refreshed?.chainConfigId) {
         return NextResponse.json(
           { error: 'แผนงานยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },
           { status: 409 },
@@ -139,7 +132,7 @@ export async function POST(req: NextRequest) {
           approvedById: actorId,
           action: body.action,
           reason: body.reason,
-          step: plan.currentStepOrder,
+          step: refreshed.currentStepOrder,
           ip,
           weeklyPlanId: body.requestId,
         },
@@ -157,19 +150,14 @@ export async function POST(req: NextRequest) {
       const fs = await prisma.forgotScanRequest.findUnique({ where: { id: body.requestId } })
       if (!fs) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (!fs.chainConfigId) {
-        const legacy = await executeLegacyForgotScanApproval(
-          prisma,
-          body.requestId,
-          actorId,
-          role as Role,
-          body.action,
-          body.reason?.trim() || null,
-          ip,
+        await attachDefaultChainForForgotScan(prisma, body.requestId, fs.userId)
+      }
+      const refreshed = await prisma.forgotScanRequest.findUnique({ where: { id: body.requestId } })
+      if (!refreshed?.chainConfigId) {
+        return NextResponse.json(
+          { error: 'คำขอนี้ยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },
+          { status: 409 },
         )
-        if ('error' in legacy) {
-          return NextResponse.json({ error: legacy.error }, { status: legacy.status })
-        }
-        return NextResponse.json({ success: true, legacy: true })
       }
       const chainResult = await executeForgotScanStepAction(
         prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,

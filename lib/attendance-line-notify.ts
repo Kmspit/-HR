@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfiguredAsync } from '@/lib/line-config'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import {
   formatDateDdMmYyyyBangkok,
   formatTimeBangkok,
@@ -353,12 +352,6 @@ export async function notifyHrAttendanceOnLine(params: {
   lat?: number | null
   lng?: number | null
 }): Promise<{ sent: number; failed: number }> {
-  try {
-    await ensureDbSchema()
-  } catch (err) {
-    console.error('[attendance-line-notify] ensureDbSchema', err)
-  }
-
   if (!(await isLineOaConfiguredAsync())) {
     console.warn('[attendance-line-notify] LINE OA not configured — skip push')
     return { sent: 0, failed: 1 }

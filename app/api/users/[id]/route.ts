@@ -1,33 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { normalizeEmail, normalizeNationalId, parseBirthDate, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
 import { normalizeThaiPhone } from '@/lib/profile-name'
 import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
-import { canAccessUserProfile, canEditUserProfile } from '@/lib/user-access'
+import { requireAuth, requireOrgScope, isGuardResponse } from '@/lib/api-guard'
 import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
 import type { Role, UserStatus } from '@prisma/client'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await requireAuth()
+    if (isGuardResponse(session)) return session
 
     const { id } = await params
-    const isSelf = id === session.user.id
-    if (!isSelf) {
-      const allowed = await canAccessUserProfile(
-        prisma,
-        session.user.id,
-        session.user.role as Role,
-        session.user.branchId,
-        id,
-      )
-      if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (id !== session.user.id) {
+      const scopeCheck = await requireOrgScope(id)
+      if (isGuardResponse(scopeCheck)) return scopeCheck
     }
+
+    const isSelf = id === session.user.id
 
     const select =
       session.user.role === 'MANAGER' && !isSelf
@@ -48,20 +42,14 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireAuth()
+    if (isGuardResponse(session)) return session
 
     const { id } = await params
-    const canEdit = await canEditUserProfile(
-      prisma,
-      session.user.id,
-      session.user.role as Role,
-      session.user.branchId,
-      id,
-    )
-    if (!canEdit) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (id !== session.user.id) {
+      const scopeCheck = await requireOrgScope(id)
+      if (isGuardResponse(scopeCheck)) return scopeCheck
+    }
 
     const body = await req.json()
 

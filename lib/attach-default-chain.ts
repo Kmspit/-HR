@@ -1,17 +1,17 @@
 /**
- * Phase 3 — attach default approval chains to pending requests still on legacy flow.
- * Idempotent; safe to run on every deploy via ensureDbSchema.
+ * Attach default approval chains to requests still missing chainConfigId.
+ * Replaces legacy 2-step executors — idempotent.
  */
 import type { PrismaClient } from '@prisma/client'
 import { getDefaultChain, applyChainToLeave, applyChainToOutsideWork } from '@/lib/approval-chain'
 import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
 import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
 
-export type LegacyMigrationResult = { leave: number; outside: number; weekly: number; forgotScan: number }
+export type ChainAttachResult = { leave: number; outside: number; weekly: number; forgotScan: number }
 
-export async function migrateLegacyPendingApprovals(
+export async function attachAllPendingDefaultChains(
   prisma: PrismaClient,
-): Promise<LegacyMigrationResult> {
+): Promise<ChainAttachResult> {
   let leave = 0
   let outside = 0
   let weekly = 0
@@ -57,10 +57,7 @@ export async function migrateLegacyPendingApprovals(
   const outsideChain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
   if (outsideChain) {
     const rows = await prisma.outsideWorkRequest.findMany({
-      where: {
-        chainConfigId: null,
-        status: { notIn: ['APPROVED', 'REJECTED'] },
-      },
+      where: { chainConfigId: null, status: { notIn: ['APPROVED', 'REJECTED'] } },
       select: { id: true, userId: true },
     })
     for (const row of rows) {
@@ -72,18 +69,12 @@ export async function migrateLegacyPendingApprovals(
   const weeklyChain = await getDefaultChain(prisma, 'WEEKLY_PLAN')
   if (weeklyChain) {
     const rows = await prisma.weeklyLawyerPlan.findMany({
-      where: {
-        chainConfigId: null,
-        status: { notIn: ['APPROVED', 'REJECTED'] },
-      },
+      where: { chainConfigId: null, status: { notIn: ['APPROVED', 'REJECTED'] } },
       select: { id: true, lawyerId: true, approvalStatus: true, status: true },
     })
     for (const row of rows) {
       await applyChainToWeeklyPlan(prisma, row.id, weeklyChain.id, row.lawyerId)
-      if (
-        row.approvalStatus === 'pending_executive' ||
-        row.status === 'ADMIN_APPROVED'
-      ) {
+      if (row.approvalStatus === 'pending_executive' || row.status === 'ADMIN_APPROVED') {
         const steps = await prisma.weeklyPlanApprovalStep.findMany({
           where: { weeklyPlanId: row.id },
           orderBy: { stepOrder: 'asc' },
@@ -149,8 +140,77 @@ export async function migrateLegacyPendingApprovals(
   }
 
   if (leave > 0 || outside > 0 || weekly > 0 || forgotScan > 0) {
-    console.log(`[MIGRATION] legacy approvals → chain: ${leave} leave, ${outside} outside, ${weekly} weekly, ${forgotScan} forgot-scan`)
+    console.log(`[attach-default-chain] ${leave} leave, ${outside} outside, ${weekly} weekly, ${forgotScan} forgot-scan`)
   }
 
   return { leave, outside, weekly, forgotScan }
+}
+
+/** Attach default chain to a single leave request if missing. Returns true if attached. */
+export async function attachDefaultChainForLeave(
+  prisma: PrismaClient,
+  leaveId: string,
+  userId: string,
+): Promise<boolean> {
+  const row = await prisma.leaveRequest.findUnique({
+    where: { id: leaveId },
+    select: { chainConfigId: true },
+  })
+  if (!row || row.chainConfigId) return false
+  const chain = await getDefaultChain(prisma, 'LEAVE')
+  if (!chain) return false
+  await applyChainToLeave(prisma, leaveId, chain.id, userId)
+  return true
+}
+
+export async function attachDefaultChainForOutside(
+  prisma: PrismaClient,
+  requestId: string,
+  userId: string,
+): Promise<boolean> {
+  const row = await prisma.outsideWorkRequest.findUnique({
+    where: { id: requestId },
+    select: { chainConfigId: true },
+  })
+  if (!row || row.chainConfigId) return false
+  const chain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
+  if (!chain) return false
+  await applyChainToOutsideWork(prisma, requestId, chain.id, userId)
+  await prisma.outsideWorkRequest.update({
+    where: { id: requestId },
+    data: { approvalStatus: 'pending_chain' },
+  })
+  return true
+}
+
+export async function attachDefaultChainForWeekly(
+  prisma: PrismaClient,
+  planId: string,
+  lawyerId: string,
+): Promise<boolean> {
+  const row = await prisma.weeklyLawyerPlan.findUnique({
+    where: { id: planId },
+    select: { chainConfigId: true },
+  })
+  if (!row || row.chainConfigId) return false
+  const chain = await getDefaultChain(prisma, 'WEEKLY_PLAN')
+  if (!chain) return false
+  await applyChainToWeeklyPlan(prisma, planId, chain.id, lawyerId)
+  return true
+}
+
+export async function attachDefaultChainForForgotScan(
+  prisma: PrismaClient,
+  requestId: string,
+  userId: string,
+): Promise<boolean> {
+  const row = await prisma.forgotScanRequest.findUnique({
+    where: { id: requestId },
+    select: { chainConfigId: true },
+  })
+  if (!row || row.chainConfigId) return false
+  const chain = await getDefaultChain(prisma, 'FORGOT_SCAN')
+  if (!chain) return false
+  await applyChainToForgotScan(prisma, requestId, chain.id, userId)
+  return true
 }

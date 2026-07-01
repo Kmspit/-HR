@@ -2,22 +2,18 @@ import type { PrismaClient, Role } from '@prisma/client'
 import { canUserActOnStep } from '@/lib/approval-chain-shared'
 import { canApproverActOnRequester } from '@/lib/org-scope'
 import { hasPermission } from '@/lib/access-control'
-import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
+import { attachAllPendingDefaultChains } from '@/lib/attach-default-chain'
 
 const FORGOT_SCAN_SUPERVISOR: Role[] = ['MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
 const FORGOT_SCAN_HR: Role[] = ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
-const LEAVE_SUPERVISOR: Role[] = FORGOT_SCAN_SUPERVISOR
-const LEAVE_HR: Role[] = FORGOT_SCAN_HR
-const OUTSIDE_EXEC: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
 
-let legacyMigratePromise: Promise<unknown> | null = null
+let chainAttachPromise: Promise<unknown> | null = null
 
-/** Idempotent — attach chains to legacy pending rows (works on any DB). */
-async function ensureLegacyMigrated(prisma: PrismaClient): Promise<void> {
-  if (!legacyMigratePromise) {
-    legacyMigratePromise = migrateLegacyPendingApprovals(prisma).catch(() => {})
+async function ensureChainsAttached(prisma: PrismaClient): Promise<void> {
+  if (!chainAttachPromise) {
+    chainAttachPromise = attachAllPendingDefaultChains(prisma).catch(() => {})
   }
-  await legacyMigratePromise
+  await chainAttachPromise
 }
 
 export type InboxForgotScanItem = {
@@ -64,7 +60,7 @@ export async function getPendingLeaveForApprover(
   userId: string,
   role: Role,
 ): Promise<InboxLeaveItem[]> {
-  await ensureLegacyMigrated(prisma)
+  await ensureChainsAttached(prisma)
 
   const rows = await prisma.leaveRequest.findMany({
     where: {
@@ -100,40 +96,6 @@ export async function getPendingLeaveForApprover(
         stepName: step.stepName,
         user: row.user,
       })
-    } else {
-      const isSupervisor = LEAVE_SUPERVISOR.includes(role)
-      const isHR = LEAVE_HR.includes(role)
-      if (row.status === 'PENDING' && isSupervisor && hasPermission(role, 'approve_leave')) {
-        if (await canApproverActOnRequester(prisma, userId, role, row.userId)) {
-          out.push({
-            id: row.id,
-            type: row.type,
-            startDate: row.startDate,
-            endDate: row.endDate,
-            days: row.days,
-            reason: row.reason,
-            status: row.status,
-            chainConfigId: null,
-            currentStepOrder: row.currentStepOrder,
-            stepName: 'หัวหน้า (legacy)',
-            user: row.user,
-          })
-        }
-      } else if (row.status === 'ADMIN_APPROVED' && isHR && hasPermission(role, 'approve_leave')) {
-        out.push({
-          id: row.id,
-          type: row.type,
-          startDate: row.startDate,
-          endDate: row.endDate,
-          days: row.days,
-          reason: row.reason,
-          status: row.status,
-          chainConfigId: null,
-          currentStepOrder: row.currentStepOrder,
-          stepName: 'HR (legacy)',
-          user: row.user,
-        })
-      }
     }
   }
   return out
@@ -144,7 +106,7 @@ export async function getPendingOutsideForApprover(
   userId: string,
   role: Role,
 ): Promise<InboxOutsideItem[]> {
-  await ensureLegacyMigrated(prisma)
+  await ensureChainsAttached(prisma)
 
   const rows = await prisma.outsideWorkRequest.findMany({
     where: {
@@ -181,45 +143,6 @@ export async function getPendingOutsideForApprover(
         stepName: step.stepName,
         user: row.user,
       })
-    } else if (hasPermission(role, 'approve_outside_work')) {
-      const isExec = OUTSIDE_EXEC.includes(role)
-      const legacySupervisor =
-        row.status === 'PENDING' &&
-        (row.approvalStatus == null || row.approvalStatus === 'pending_supervisor')
-      const legacyCeo = row.approvalStatus === 'pending_ceo'
-      if (legacySupervisor) {
-        if (isExec || (await canApproverActOnRequester(prisma, userId, role, row.userId))) {
-          out.push({
-            id: row.id,
-            date: row.date,
-            startTime: row.startTime,
-            endTime: row.endTime,
-            place: row.place,
-            purpose: row.purpose,
-            status: row.status,
-            approvalStatus: row.approvalStatus,
-            chainConfigId: null,
-            currentStepOrder: row.currentStepOrder,
-            stepName: 'หัวหน้า (legacy)',
-            user: row.user,
-          })
-        }
-      } else if (legacyCeo && isExec) {
-        out.push({
-          id: row.id,
-          date: row.date,
-          startTime: row.startTime,
-          endTime: row.endTime,
-          place: row.place,
-          purpose: row.purpose,
-          status: row.status,
-          approvalStatus: row.approvalStatus,
-          chainConfigId: null,
-          currentStepOrder: row.currentStepOrder,
-          stepName: 'CEO (legacy)',
-          user: row.user,
-        })
-      }
     }
   }
   return out
@@ -333,6 +256,8 @@ export async function getPendingForgotScanForApprover(
 ): Promise<InboxForgotScanItem[]> {
   if (!canSeeForgotScanInbox(role)) return []
 
+  await ensureChainsAttached(prisma)
+
   const rows = await prisma.forgotScanRequest.findMany({
     where: { status: { notIn: ['APPROVED', 'REJECTED', 'ADMIN_REJECTED'] } },
     include: {
@@ -363,34 +288,6 @@ export async function getPendingForgotScanForApprover(
         stepName: step.stepName,
         user: row.user,
       })
-    } else {
-      const isSupervisor = FORGOT_SCAN_SUPERVISOR.includes(role)
-      const isHR = FORGOT_SCAN_HR.includes(role)
-      if (row.status === 'PENDING' && isSupervisor) {
-        if (await canApproverActOnRequester(prisma, userId, role, row.userId)) {
-          out.push({
-            id: row.id,
-            date: row.date,
-            scanType: row.scanType,
-            correctTime: row.correctTime,
-            reason: row.reason,
-            status: row.status,
-            stepName: 'หัวหน้า (legacy)',
-            user: row.user,
-          })
-        }
-      } else if (row.status === 'ADMIN_APPROVED' && isHR) {
-        out.push({
-          id: row.id,
-          date: row.date,
-          scanType: row.scanType,
-          correctTime: row.correctTime,
-          reason: row.reason,
-          status: row.status,
-          stepName: 'HR (legacy)',
-          user: row.user,
-        })
-      }
     }
   }
   return out

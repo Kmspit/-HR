@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import {
   FACE_SCAN_TYPE_LABEL,
   resolveScanListImageUrl,
@@ -11,9 +10,7 @@ import {
 import { branchUserWhere, buildBranchScope, parseBranchQueryParam } from '@/lib/branch-scope'
 
 export async function GET(req: NextRequest) {
-  try {
-    await ensureDbSchema()
-    const session = await auth()
+  try {    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canApproveWarning, canManageUsers } from '@/lib/rbac'
 import { createAuditLog, createNotification } from '@/lib/notifications'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -12,7 +11,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -59,7 +57,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await ensureDbSchema().catch(() => {})
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

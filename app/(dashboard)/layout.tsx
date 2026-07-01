@@ -5,7 +5,6 @@ import MobileNav from '@/components/dashboard/MobileNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
 import { prisma } from '@/lib/prisma'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
 import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
 import DashboardMotionShell from '@/components/motion/DashboardMotionShell'
@@ -13,11 +12,6 @@ import FloatingQuickActions from '@/components/dashboard/FloatingQuickActions'
 import { NotificationStreamProvider } from '@/components/notification-center/NotificationStreamProvider'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  try {
-    await ensureDbSchema()
-  } catch (err) {
-    console.error('[DashboardLayout] ensureDbSchema', err)
-  }
   const session = await auth()
 
   if (!session?.user) redirect('/login')

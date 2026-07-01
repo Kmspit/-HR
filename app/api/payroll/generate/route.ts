@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { monthDateRange } from '@/lib/utils'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import {
   buildApprovedLeaveDateSet,
   computeLateDeduction,
@@ -25,11 +24,7 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id || !(GENERATE_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    await ensureDbSchema()
-
-    const { month, year, branchId: filterBranchId } = await req.json()
+    }    const { month, year, branchId: filterBranchId } = await req.json()
     if (!month || !year) {
       return NextResponse.json({ error: 'month and year required' }, { status: 400 })
     }

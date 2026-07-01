@@ -5,15 +5,10 @@ import { canManageUsers } from '@/lib/rbac'
 import type { Role } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import LeavePolicyManager from '@/components/leave/LeavePolicyManager'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 export default async function LeavePoliciesPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
   if (!canManageUsers(session.user.role as Role)) redirect('/dashboard')
-
-  await ensureDbSchema().catch(() => {})
-
   const [policies, settings] = await Promise.all([
     prisma.leavePolicy.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }),
     prisma.companySettings.findUnique({

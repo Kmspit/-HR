@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { resolvePostLoginPath } from '@/lib/post-login-path'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 /** สำรอง — redirect หลังล็อกอิน (หลักใช้ url จาก POST /api/auth/login) */
 export async function GET(request: NextRequest) {
   const base = request.nextUrl.origin
-  try {
-    await ensureDbSchema().catch(() => {})
-    const session = await auth()
+  try {    const session = await auth()
 
     if (!session?.user?.id) {
       const url = new URL('/login', base)

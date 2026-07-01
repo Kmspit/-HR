@@ -4,7 +4,6 @@ import { redirect, notFound } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import WarningDetailClient from './WarningDetailClient'
 import { canApproveWarning, canManageUsers } from '@/lib/rbac'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import type { Role } from '@prisma/client'
 
 export default async function WarningDetailPage({
@@ -14,9 +13,6 @@ export default async function WarningDetailPage({
 }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/')
-
-  await ensureDbSchema().catch(() => {})
-
   const { id } = await params
 
   const warning = await prisma.warning.findUnique({

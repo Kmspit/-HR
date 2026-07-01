@@ -4,14 +4,9 @@ import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import LeavePanel from '@/components/dashboard/LeavePanel'
 import { getLeaveBalanceStats } from '@/lib/leave-balance'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
-
 export default async function LeavePage() {
   const session = await auth()
   if (!session?.user) redirect('/')
-
-  await ensureDbSchema().catch(() => {})
-
   const currentYear = new Date().getFullYear()
 
   const [myLeaves, stats] = await Promise.all([

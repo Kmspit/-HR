@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { ensureDbSchema } from '@/lib/ensure-db-schema'
 import { isPrototypeBridgeEnabled, prototypeBridgeDisabledResponse } from '@/lib/prototype-bridge'
 import type { LeaveType } from '@prisma/client'
 
@@ -48,8 +47,6 @@ export async function POST(req: NextRequest) {
     return prototypeBridgeDisabledResponse()
   }
   try {
-    await ensureDbSchema().catch(() => {})
-
     const body = await req.json() as {
       employeeEmail?: string
       type?: string
