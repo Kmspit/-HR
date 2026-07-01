@@ -70,6 +70,31 @@
       </div>
     </div>
 
+    <!-- Change password -->
+    <div class="settings-section" id="change-password">
+      <h3>🔑 เปลี่ยนรหัสผ่าน</h3>
+      <p style="font-size:12px;color:var(--text3);margin:-8px 0 14px;">ใช้ตัวอักษรภาษาอังกฤษ ตัวเลข และสัญลักษณ์ที่จำเป็นเท่านั้น (Demo — บันทึกใน localStorage)</p>
+      <div class="settings-grid" style="grid-template-columns:1fr;max-width:420px;">
+        <div class="form-group">
+          <label>รหัสผ่านปัจจุบัน</label>
+          <input id="pw-current" type="password" class="form-input" placeholder="••••••••" data-english-only autocomplete="current-password">
+          <p id="pw-current-error" style="display:none;margin-top:6px;font-size:12px;color:var(--red);"></p>
+        </div>
+        <div class="form-group">
+          <label>รหัสผ่านใหม่</label>
+          <input id="pw-new" type="password" class="form-input" placeholder="อย่างน้อย 8 ตัว" data-english-only autocomplete="new-password">
+          <p id="pw-new-error" style="display:none;margin-top:6px;font-size:12px;color:var(--red);"></p>
+        </div>
+        <div class="form-group">
+          <label>ยืนยันรหัสผ่านใหม่</label>
+          <input id="pw-confirm" type="password" class="form-input" placeholder="••••••••" data-english-only autocomplete="new-password">
+          <p id="pw-confirm-error" style="display:none;margin-top:6px;font-size:12px;color:var(--red);"></p>
+        </div>
+      </div>
+      <p id="pw-success" style="display:none;margin-top:12px;font-size:13px;color:var(--green);"></p>
+      <button type="button" class="btn-primary" style="margin-top:14px;" onclick="changeDemoPassword()">เปลี่ยนรหัสผ่าน</button>
+    </div>
+
     <!-- 1. Company info -->
     <div class="settings-section">
       <h3>🏢 ข้อมูลบริษัท</h3>
@@ -288,9 +313,8 @@
     <div class="settings-section">
       <h3>👤 บัญชีผู้ใช้</h3>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn-outline" onclick="changePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
         <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="logout()">🚪 ออกจากระบบ</button>
-        <button class="btn-outline" style="color:var(--red);border-color:var(--red);" onclick="clearAllData()">⚠️ ล้างข้อมูล Demo ทั้งหมด</button>
+        <button class="btn-outline role-hr-admin-only" style="color:var(--red);border-color:var(--red);" onclick="clearAllData()">⚠️ ล้างข้อมูล Demo ทั้งหมด</button>
       </div>
     </div>
 
@@ -307,10 +331,12 @@
     <a href="attendance.html" class="mnav-item"><span class="icon">⏱️</span>เช็คอิน</a>
     <a href="leave.html" class="mnav-item"><span class="icon">📅</span>ลา</a>
     <a href="payroll.html" class="mnav-item"><span class="icon">💰</span>เงินเดือน</a>
+    <a href="manual.html" class="mnav-item"><span class="icon">📖</span>คู่มือ</a>
     <a href="settings.html" class="mnav-item active"><span class="icon">⚙️</span>ตั้งค่า</a>
   </div>
 </nav>
 
+<script src="english-input.js"></script>
 <script src="hr-core.js"></script>
 <script src="face-core.js"></script>
 <script>
@@ -390,6 +416,13 @@ function updateLateGraceHint() {
 }
 
 function saveSettings() {
+  const user = getCurrentUser();
+  const isAdmin = user && (user.role === 'MANAGER_HR' || user.role === 'ADMIN');
+  if (!isAdmin) {
+    alert('เฉพาะ HR/Admin เท่านั้นที่บันทึกการตั้งค่าระบบได้');
+    return;
+  }
+
   const s = {
     companyName:  document.getElementById('s-company').value.trim(),
     address:      document.getElementById('s-address').value.trim(),
@@ -466,11 +499,7 @@ async function testLine() {
   }
 }
 
-function changePassword() {
-  const np = prompt('รหัสผ่านใหม่:');
-  if (np && np.length >= 6) alert('เปลี่ยนรหัสผ่านเรียบร้อย (demo — ไม่มีผลจริง)');
-  else if (np) alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-}
+function changePassword() { changeDemoPassword(); }
 
 function logout() {
   if (confirm('ต้องการออกจากระบบ?')) {
@@ -481,7 +510,15 @@ function logout() {
 
 function clearAllData() {
   if (!confirm('⚠️ ล้างข้อมูล Demo ทั้งหมด? (ไม่สามารถกู้คืนได้)')) return;
-  ['employees','leaves','warnings','announcements','weeklyPlans','attendances','settings'].forEach(k => localStorage.removeItem('hrflow_' + k));
+  ['employees','leaves','warnings','announcements','weeklyPlans','attendances','settings','notifications','faceProfiles','faceScanLogs'].forEach(k => localStorage.removeItem('hrflow_' + k));
+  localStorage.removeItem('hrflow_user');
+  localStorage.removeItem('hrflow_liveLocations');
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('hrflow_today_') || key.startsWith('hrflow_demo_pass_'))) {
+      localStorage.removeItem(key);
+    }
+  }
   alert('ล้างข้อมูลเรียบร้อยแล้ว');
   loadSettings();
 }
@@ -613,7 +650,54 @@ function clearFaceLogs() {
 // stop the registration camera when leaving the page
 window.addEventListener('beforeunload', () => { if (regStream) regStream.getTracks().forEach(t => t.stop()); });
 
+function changeDemoPassword() {
+  const validateCurrent = bindEnglishInput('pw-current', 'pw-current-error');
+  const validateNew = bindEnglishInput('pw-new', 'pw-new-error');
+  const validateConfirm = bindEnglishInput('pw-confirm', 'pw-confirm-error');
+  if (!validateCurrent() || !validateNew() || !validateConfirm()) return;
+
+  const current = document.getElementById('pw-current').value;
+  const next = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const successEl = document.getElementById('pw-success');
+  const errConfirm = document.getElementById('pw-confirm-error');
+
+  if (next !== confirm) {
+    errConfirm.textContent = 'รหัสผ่านใหม่ไม่ตรงกัน';
+    errConfirm.style.display = 'block';
+    return;
+  }
+  if (next.length < 8 || !/[a-zA-Z]/.test(next) || !/[0-9]/.test(next)) {
+    document.getElementById('pw-new-error').textContent = 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข';
+    document.getElementById('pw-new-error').style.display = 'block';
+    return;
+  }
+
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem('hrflow_user') || '{}'); } catch (_) {}
+  const email = user.email || 'demo@local';
+  const storedKey = 'hrflow_demo_pass_' + email;
+  const expected = localStorage.getItem(storedKey) || 'demo1234';
+
+  if (current !== expected) {
+    document.getElementById('pw-current-error').textContent = 'รหัสผ่านปัจจุบันไม่ถูกต้อง';
+    document.getElementById('pw-current-error').style.display = 'block';
+    return;
+  }
+
+  localStorage.setItem(storedKey, next);
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  successEl.textContent = 'เปลี่ยนรหัสผ่านสำเร็จ (Demo)';
+  successEl.style.display = 'block';
+  setTimeout(() => { successEl.style.display = 'none'; }, 4000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  bindEnglishInput('pw-current', 'pw-current-error');
+  bindEnglishInput('pw-new', 'pw-new-error');
+  bindEnglishInput('pw-confirm', 'pw-confirm-error');
   initRole();
   loadSettings();
   renderFaceRegGrid();

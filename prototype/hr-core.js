@@ -40,7 +40,7 @@ function initRole() {
   if (nameEl) nameEl.textContent = user.name;
   if (roleEl) roleEl.textContent = (roleLabelMap[user.role] || user.role) + (user.dept ? ' · ' + user.dept : '');
 
-  // Show/hide role-gated elements
+  // Show/hide role-gated elements — toggle .role-visible so CSS fallback works
   const allRoleEls = document.querySelectorAll('[class*="role-only"]');
   allRoleEls.forEach(el => {
     const show =
@@ -49,7 +49,7 @@ function initRole() {
       (el.classList.contains('role-employee-only') && user.role === 'EMPLOYEE') ||
       (el.classList.contains('role-lawyer-only')  && user.role === 'LAWYER') ||
       (el.classList.contains('role-hr-admin-only') && (user.role === 'MANAGER_HR' || user.role === 'ADMIN'));
-    el.style.display = show ? '' : 'none';
+    el.classList.toggle('role-visible', show);
   });
 
   initSidebar();
@@ -135,6 +135,7 @@ const SIDEBAR_NAV = [
       { href: 'settings.html#permissions', icon: '🔐', label: 'สิทธิ์การใช้งาน', roles: ['admin'] },
       { href: 'line-oa.html', icon: '💬', label: 'LINE OA', roles: ['admin'] },
       { href: 'settings.html#profile', icon: '👤', label: 'โปรไฟล์' },
+      { href: 'manual.html', icon: '📖', label: 'คู่มือการใช้งาน' },
     ],
   },
 ];
@@ -424,8 +425,14 @@ function lsGet(key, fallback = []) {
 }
 
 function lsSet(key, value) {
-  localStorage.setItem('hrflow_' + key, JSON.stringify(value));
-  if (key === 'settings') _settingsCache = null; // invalidate on save
+  try {
+    localStorage.setItem('hrflow_' + key, JSON.stringify(value));
+    if (key === 'settings') _settingsCache = null;
+    return true;
+  } catch (e) {
+    console.warn('[lsSet] localStorage write failed:', key, e);
+    return false;
+  }
 }
 
 // Cache parsed settings for 5 s — avoids repeated JSON.parse on every GPS tick
@@ -449,11 +456,11 @@ function getCompanySettings() {
 function getEmployees() {
   // baseSalary ถูกลบออกจาก default — เก็บเฉพาะใน HR settings ที่ปลอดภัย
   return lsGet('employees', [
-    { id: 'e1', name: 'สมหญิง ประสาน', email: 'manager@kmserviceplus.com', role: 'MANAGER_HR', dept: 'HR',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
-    { id: 'e2', name: 'สมชาย อนุมัติ',  email: 'admin@kmserviceplus.com',   role: 'ADMIN',      dept: 'IT',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
-    { id: 'e3', name: 'มานี รักงาน',    email: 'employee@kmserviceplus.com', role: 'EMPLOYEE',   dept: 'Marketing', sso: 'IN_SSO',  lineId: '',  isCoworker: false },
-    { id: 'e4', name: 'วิชัย กฎหมาย',  email: 'lawyer@kmserviceplus.com',   role: 'LAWYER',     dept: 'Legal',     sso: 'OUT_SSO', lineId: '',  isCoworker: false },
-    { id: 'e5', name: 'ปิยะ ฟรีแลนซ์', email: 'cowork@kmserviceplus.com',   role: 'EMPLOYEE',   dept: 'Design',    sso: 'OUT_SSO', lineId: '',  isCoworker: true  },
+    { id: 'e1', name: 'สมหญิง ประสาน', email: 'manager@demo.com', role: 'MANAGER_HR', dept: 'HR',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
+    { id: 'e2', name: 'สมชาย อนุมัติ',  email: 'admin@demo.com',   role: 'ADMIN',      dept: 'IT',        sso: 'IN_SSO',  lineId: '',  isCoworker: false },
+    { id: 'e3', name: 'มานี รักงาน',    email: 'employee@demo.com', role: 'EMPLOYEE',   dept: 'Marketing', sso: 'IN_SSO',  lineId: '',  isCoworker: false },
+    { id: 'e4', name: 'วิชัย กฎหมาย',  email: 'lawyer@demo.com',   role: 'LAWYER',     dept: 'Legal',     sso: 'OUT_SSO', lineId: '',  isCoworker: false },
+    { id: 'e5', name: 'ปิยะ ฟรีแลนซ์', email: 'cowork@demo.com',   role: 'EMPLOYEE',   dept: 'Design',    sso: 'OUT_SSO', lineId: '',  isCoworker: true  },
   ]);
 }
 
@@ -462,6 +469,34 @@ function getWarnings()      { return lsGet('warnings', []); }
 function getAnnouncements() { return lsGet('announcements', []); }
 function getWeeklyPlans()   { return lsGet('weeklyPlans', []); }
 function getAttendances()   { return lsGet('attendances', []); }
+
+/** Sync hrflow_today_* sessions into hrflow_attendances for payroll/reports */
+function syncTodaySessionsToAttendances(email, day, sessions) {
+  if (!email || !Array.isArray(sessions)) return;
+  const emp = getEmployees().find(function(e) { return e.email === email; });
+  const user = getCurrentUser();
+  const empName = (emp && emp.name) || (user && user.name) || email;
+  const list = getAttendances();
+  sessions.forEach(function(s) {
+    if (!s.checkIn) return;
+    const id = email + '_' + day + '_' + (s.sessionIndex || 1);
+    const rec = {
+      id: id,
+      empName: empName,
+      userEmail: email,
+      day: day,
+      checkIn: s.checkIn,
+      checkOut: s.checkOut || null,
+      isLate: !!s.isLate,
+      lateMinutes: s.lateMinutes || 0,
+      sessionIndex: s.sessionIndex || 1,
+    };
+    const idx = list.findIndex(function(a) { return a.id === id; });
+    if (idx >= 0) list[idx] = Object.assign({}, list[idx], rec);
+    else list.push(rec);
+  });
+  lsSet('attendances', list);
+}
 
 // ── DATE / FORMAT HELPERS ──────────────────────────────────────────────────────
 
@@ -879,6 +914,7 @@ async function sendLineOAMsg(message, imageUrl) {
     const apiBase = getLineNotifyApiBase();
     const res = await fetch(apiBase + '/api/line/prototype-notify', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, imageUrl: imageUrl || null }),
     });
@@ -904,7 +940,9 @@ async function sendLineOAMsg(message, imageUrl) {
         }),
       });
       if (res.ok) return { ok: true, via: 'relay' };
-    } catch {}
+    } catch (e) {
+      console.error('[hr-core] Make.com relay failed:', e);
+    }
   }
 
   // 3. LINE Messaging API direct (มักถูก CORS บล็อกใน browser)
@@ -1030,9 +1068,13 @@ async function apiFetch(path, options) {
   if (!useHrApi()) return null;
   try {
     const res = await fetch(HR_API_BASE + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options || {}));
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('[apiFetch] HTTP error:', res.status, path);
+      return null;
+    }
     return await res.json();
-  } catch {
+  } catch (e) {
+    console.error('[apiFetch] network/parse error:', path, e);
     return null;
   }
 }
