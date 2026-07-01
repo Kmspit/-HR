@@ -5,7 +5,6 @@ import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
 import { seedDefaultWeeklyPlanChain } from '@/lib/seed-default-weekly-plan-chain'
 import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain'
-import { getDefaultRolePermissionSeed } from '@/lib/rbac'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches. */
@@ -725,26 +724,7 @@ async function runEnsure(force = false): Promise<boolean> {
   await seedDefaultWeeklyPlanChain(prisma)
   await seedDefaultForgotScanChain(prisma)
 
-  // ── Role Permissions (RBAC) ──────────────────────────────────────────────────
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS role_permissions (
-      id TEXT NOT NULL PRIMARY KEY,
-      role TEXT NOT NULL,
-      permission TEXT NOT NULL,
-      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(role, permission)
-    )
-  `)
-  // Seed default role permissions (INSERT OR IGNORE = idempotent, won't overwrite custom ones)
-  const seeds = getDefaultRolePermissionSeed()
-  for (const { role, permission } of seeds) {
-    const id = `${role}_${permission}`
-    await prisma.$executeRaw`
-      INSERT OR IGNORE INTO role_permissions (id, role, permission, createdAt, updatedAt)
-      VALUES (${id}, ${role}, ${permission}, datetime('now'), datetime('now'))
-    `
-  }
+  // ── Role permissions table removed — RBAC is static (ROLE_PERMISSIONS in access-control)
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS announcements (

@@ -1,10 +1,5 @@
 /**
- * lib/access-control/index.ts
- *
- * Single source of truth for all role/permission logic.
- * Merges lib/rbac.ts (RBAC core) and lib/permissions.ts (route + UI helpers).
- *
- * Both original files now re-export from here so existing imports keep working.
+ * lib/access-control/index.ts — single source of truth for RBAC + route permissions.
  */
 
 import type { Role } from '@prisma/client'
@@ -23,6 +18,54 @@ import {
   FINANCE_MODULE,
   WORK_MODULE,
 } from '@/lib/module-gates'
+
+// Re-export module gate role arrays (nav + middleware SSOT)
+export {
+  CORE_STAFF,
+  EXEC_ONLY,
+  HR_ADMIN,
+  HR_CORE,
+  APPR_ROLES,
+  MGR_UP,
+  EMPLOYEE_MGMT,
+  WEEKLY_PLAN,
+  SCAN_HISTORY,
+  LEGAL_MODULE,
+  CLIENT_MGMT,
+  FINANCE_MODULE,
+  WORK_MODULE,
+} from '@/lib/module-gates'
+
+/** Line managers / approvers with org scope */
+export const SUPERVISOR_ROLES: Role[] = [
+  'MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO',
+]
+
+/** Full HR admin (employees, payroll admin, documents) */
+export const HR_ROLES: Role[] = HR_ADMIN
+
+/** HR core staff — payroll + HR ops (no standalone ADMIN) */
+export const HR_STAFF_ROLES: Role[] = HR_CORE
+
+/** Announcement publish / edit gates */
+export const ANNOUNCEMENT_EDITOR_ROLES: Role[] = ['MANAGER_HR', 'ADMIN', 'CEO']
+export const ANNOUNCEMENT_UPLOADER_ROLES: Role[] = ['MANAGER_HR', 'ADMIN']
+
+/** Forgot scan — inbox visibility + approval actors */
+export const FORGOT_SCAN_SUPERVISOR_ROLES: Role[] = [
+  'MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO',
+]
+export const FORGOT_SCAN_HR_ROLES: Role[] = ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
+export const FORGOT_SCAN_ACTOR_ROLES: Role[] = [
+  'SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER',
+]
+
+/** Expense claim approvers */
+export const EXPENSE_SUPERVISOR_ROLES: Role[] = [
+  'SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN',
+]
+export const EXPENSE_CEO_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
+export const EXPENSE_APPROVER_ROLES: Role[] = ['CEO', 'SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN']
 
 // ── Permission types ──────────────────────────────────────────────────────────
 
@@ -107,6 +150,22 @@ export function getRolePermissions(role: Role): AppPermission[] {
   return ROLE_PERMISSIONS[role] ?? []
 }
 
+export function isHrRole(role: Role): boolean {
+  return HR_ROLES.includes(role)
+}
+
+export function isSupervisorRole(role: Role): boolean {
+  return SUPERVISOR_ROLES.includes(role)
+}
+
+export function isForgotScanActor(role: Role): boolean {
+  return FORGOT_SCAN_ACTOR_ROLES.includes(role) || hasPermission(role, 'manage_attendance')
+}
+
+export function canSeeForgotScanInbox(role: Role): boolean {
+  return FORGOT_SCAN_SUPERVISOR_ROLES.includes(role) || FORGOT_SCAN_HR_ROLES.includes(role)
+}
+
 // ── Convenience wrappers ──────────────────────────────────────────────────────
 
 export const canApproveLeave       = (role: Role) => hasPermission(role, 'approve_leave')
@@ -146,18 +205,11 @@ export const EMPLOYEE_TYPES = [
   { value: 'intern',             label: 'นักศึกษาฝึกงาน' },
 ]
 
-export function getDefaultRolePermissionSeed(): Array<{ role: Role; permission: AppPermission }> {
-  const rows: Array<{ role: Role; permission: AppPermission }> = []
-  for (const [role, perms] of Object.entries(ROLE_PERMISSIONS) as [Role, AppPermission[]][]) {
-    for (const permission of perms) rows.push({ role, permission })
-  }
-  return rows
-}
+// Permissions are static (ROLE_PERMISSIONS). No DB table — see docs/deploy-profiles.md RBAC note.
 
 // ── Route permissions (Phase 1 — tightened module gates) ───────────────────────
 
 const ALL_ROLES = CORE_STAFF
-const HR_ROLES = HR_CORE
 const CLIENT_ROLE: Role[] = ['CLIENT']
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
@@ -177,7 +229,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/payslip':            ALL_ROLES,
   '/employees':          EMPLOYEE_MGMT,
   '/approval-center':    APPR_ROLES,
-  '/approvals':          APPR_ROLES,
   '/announcements':      ALL_ROLES,
   '/line-oa':            HR_ADMIN,
   '/warnings':           ALL_ROLES,

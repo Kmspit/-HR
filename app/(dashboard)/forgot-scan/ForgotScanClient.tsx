@@ -314,7 +314,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
   const handleAction = async (id: string, action: 'APPROVE' | 'REJECT', note: string) => {
     const req = requests.find((r) => r.id === id)
     if (req?.chainConfigId) {
-      toast.info('กรุณาอนุมัติที่ศูนย์อนุมัติ (/approvals)')
+      toast.info('กรุณาอนุมัติที่ศูนย์อนุมัติ (/approval-center)')
       return
     }
     const { ok, data, status } = await apiJson<{ success?: boolean; error?: string; code?: string }>(

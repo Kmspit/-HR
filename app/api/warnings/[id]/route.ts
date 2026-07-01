@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { canApproveWarning, canManageUsers } from '@/lib/rbac'
+import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import { createAuditLog, createNotification } from '@/lib/notifications'
 import type { Role } from '@prisma/client'
 

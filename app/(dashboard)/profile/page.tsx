@@ -10,7 +10,7 @@ import ProfileClient from './ProfileClient'
 
 import { splitDisplayName } from '@/lib/profile-name'
 
-import { ROLE_LABELS } from '@/lib/permissions'
+import { ROLE_LABELS } from '@/lib/access-control'
 
 import { mapProfileAuditLogs } from '@/lib/profile-history'
 

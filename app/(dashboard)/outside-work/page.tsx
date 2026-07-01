@@ -6,7 +6,7 @@ import OutsideWorkClient from './OutsideWorkClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { Suspense } from 'react'
-import { hasPermission } from '@/lib/rbac'
+import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 export default async function OutsideWorkPage({
   searchParams,

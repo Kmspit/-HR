@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Save, Info, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { ROLE_LABELS } from '@/lib/permissions'
+import { ROLE_LABELS } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 type Policy = {

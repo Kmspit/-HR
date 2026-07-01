@@ -7,7 +7,7 @@ import {
   hasAnyPermission,
   getRolePermissions,
   type AppPermission,
-} from '@/lib/rbac'
+} from '@/lib/access-control'
 
 /** Returns true if the current user's role has the given permission. */
 export function usePermission(permission: AppPermission): boolean {

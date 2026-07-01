@@ -6,7 +6,7 @@ import { signOut } from 'next-auth/react'
 import { LogOut, User, ChevronDown } from 'lucide-react'
 import type { Role } from '@prisma/client'
 import { getInitials } from '@/lib/utils'
-import { ROLE_LABELS, ROLE_ICONS } from '@/lib/permissions'
+import { ROLE_LABELS, ROLE_ICONS } from '@/lib/access-control'
 import { useLoading } from '@/components/LoadingProvider'
 import Spinner from '@/components/ui/Spinner'
 

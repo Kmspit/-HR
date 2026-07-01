@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
 import { apiError } from '@/lib/api-handler'
+import { ANNOUNCEMENT_UPLOADER_ROLES } from '@/lib/access-control'
 
-const HR_ROLES = ['MANAGER_HR', 'ADMIN']
 const MAX_BYTES = 20 * 1024 * 1024 // 20 MB
 
 const ALLOWED_TYPES: Record<string, string> = {
@@ -30,7 +30,7 @@ function configureCloudinary() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !HR_ROLES.includes(session.user.role)) {
+    if (!session?.user?.id || !ANNOUNCEMENT_UPLOADER_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !HR_ROLES.includes(session.user.role)) {
+    if (!session?.user?.id || !ANNOUNCEMENT_UPLOADER_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

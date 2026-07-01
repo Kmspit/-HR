@@ -1,7 +1,7 @@
 ﻿import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { canManageUsers } from '@/lib/rbac'
+import { canManageUsers } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import ApprovalChainManager from '@/components/leave/ApprovalChainManager'

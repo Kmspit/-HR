@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineNotify, createAuditLog } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { canApproveAccounts } from '@/lib/permissions'
+import { canApproveAccounts } from '@/lib/access-control'
 import { headers } from 'next/headers'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

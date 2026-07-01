@@ -11,7 +11,7 @@ import {
   resolveFilterBranchId,
   parseBranchQueryParam,
 } from '@/lib/branch-scope'
-import { canApproveWarning } from '@/lib/rbac'
+import { canApproveWarning } from '@/lib/access-control'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import { Suspense } from 'react'
 import type { Role } from '@prisma/client'

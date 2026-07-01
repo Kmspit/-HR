@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
-import { ROLE_LABELS, canApproveOutsideWork } from '@/lib/permissions'
+import { ROLE_LABELS, canApproveOutsideWork } from '@/lib/access-control'
 import { formatThaiDate } from '@/lib/utils'
 import { findTodayAttendanceForDisplay } from '@/lib/attendance-session'
 import { getAttendanceProgress, ACTION_LABELS } from '@/lib/attendance-progress'

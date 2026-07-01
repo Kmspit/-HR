@@ -1,5 +1,5 @@
 import type { PrismaClient, RequestStatus, Role } from '@prisma/client'
-import { hasPermission } from '@/lib/access-control'
+import { hasPermission, HR_ROLES } from '@/lib/access-control'
 import { getDirectReportUserIds, isCompanyWideApprover } from '@/lib/org-scope'
 import {
   getPendingForgotScanForApprover,
@@ -30,8 +30,6 @@ const SCAN_LABELS: Record<string, string> = {
   'lunch-in': 'กลับจากพัก',
   checkout: 'ออกงาน',
 }
-
-const HR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 type ScopeSet = Set<string> | 'ALL'
 

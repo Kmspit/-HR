@@ -8,7 +8,7 @@ import { Loader2, CheckCircle, XCircle, Search, Layers, Pencil, SlidersHorizonta
 import OrgAssignModal from '@/components/dashboard/OrgAssignModal'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS } from '@/lib/permissions'
+import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 type User = {

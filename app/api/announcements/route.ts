@@ -3,8 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { announcementEmitter } from '@/lib/announcement-events'
-
-const HR_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO']
+import { ANNOUNCEMENT_EDITOR_ROLES } from '@/lib/access-control'
 
 function toAnnDto(a: {
   id: string; title: string; body: string; type: string; targetType: string
@@ -48,7 +47,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '20')))
 
     const now = new Date()
-    const isHR = HR_ROLES.includes(session.user.role)
+    const isHR = ANNOUNCEMENT_EDITOR_ROLES.includes(session.user.role)
     const userId = session.user.id
 
     // Archive path — keep existing simple behavior, just add total
@@ -135,7 +134,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !HR_ROLES.includes(session.user.role)) {
+    if (!session?.user?.id || !ANNOUNCEMENT_EDITOR_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

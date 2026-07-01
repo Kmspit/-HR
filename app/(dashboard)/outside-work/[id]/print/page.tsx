@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
-import { hasPermission } from '@/lib/rbac'
+import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 export const metadata = { title: 'พิมพ์ใบขออนุมัติออกนอกสถานที่' }

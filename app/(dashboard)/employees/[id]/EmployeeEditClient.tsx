@@ -32,7 +32,7 @@ import {
   profileInputClass,
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
-import { EMPLOYEE_TYPES } from '@/lib/rbac'
+import { EMPLOYEE_TYPES } from '@/lib/access-control'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 type Employee = {

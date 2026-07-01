@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import WarningDetailClient from './WarningDetailClient'
-import { canApproveWarning, canManageUsers } from '@/lib/rbac'
+import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 export default async function WarningDetailPage({

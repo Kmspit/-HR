@@ -10,6 +10,7 @@ import { getLineWebhookUrl } from '@/lib/line-config'
 import { prisma } from '@/lib/prisma'
 import type { TaskStatus, Role } from '@prisma/client'
 import { runLineChainApproval } from '@/lib/line-chain-approval'
+import { EXPENSE_APPROVER_ROLES } from '@/lib/access-control'
 import Anthropic from '@anthropic-ai/sdk'
 
 const APP = process.env.NEXT_PUBLIC_APP_NAME ?? 'HRFlow'
@@ -189,8 +190,6 @@ async function cmdSummary(userId: string, role: string): Promise<string> {
 // ─── Postback: approval actions ───────────────────────────────────────────────
 
 type DocType = 'LEAVE' | 'EXPENSE' | 'OUTSIDE' | 'FORGOT_SCAN'
-
-const EXPENSE_APPROVER_ROLES: Role[] = ['CEO', 'SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN']
 
 async function handleApprovalPostback(
   lineUserId: string,

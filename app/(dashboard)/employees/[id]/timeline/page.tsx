@@ -5,7 +5,7 @@ import Topbar from '@/components/dashboard/Topbar'
 import EmployeeTimelineClient from '@/components/employee-timeline/EmployeeTimelineClient'
 import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { loadEmployeeTimeline } from '@/lib/employee-timeline/load-data'
-import { canManageUsers } from '@/lib/permissions'
+import { canManageUsers } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 export default async function EmployeeTimelinePage({

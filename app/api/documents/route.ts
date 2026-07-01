@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-
-const HR_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as const
+import { HR_ROLES } from '@/lib/access-control'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   EMPLOYMENT_CERT: 'หนังสือรับรองการทำงาน',

@@ -4,8 +4,8 @@ import { apiError } from '@/lib/api-handler'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'crypto'
+import { ANNOUNCEMENT_EDITOR_ROLES } from '@/lib/access-control'
 
-const HR_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO']
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -19,7 +19,7 @@ const ALLOWED_TYPES = [
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !HR_ROLES.includes(session.user.role)) {
+    if (!session?.user?.id || !ANNOUNCEMENT_EDITOR_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

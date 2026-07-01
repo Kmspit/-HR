@@ -2,32 +2,19 @@ import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
+import { ROLE_DEFAULT_ROUTE } from '@/lib/access-control'
+import {
+  isApiDeployProfileExempt,
+  isAuthPageRoute,
+  isPublicPageRoute,
+} from '@/lib/middleware-config'
 import { matchRoutePermission, rolesForPath } from '@/lib/route-match'
 import { logAccessDenied } from '@/lib/access-log'
 import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
 import { isPublicApiRoute } from '@/lib/api-public-routes'
 import type { Role } from '@prisma/client'
+
 const { auth } = NextAuth(authConfig)
-
-// Public routes — no auth needed
-const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password', '/client-portal/login']
-const AUTH_ROUTES   = ['/login', '/register', '/forgot-password', '/client-portal/login']
-
-/** API routes always allowed (auth, webhooks, cron) — not module-scoped */
-const API_DEPLOY_PROFILE_EXEMPT = [
-  '/api/auth',
-  '/api/line/webhook',
-  '/api/webhook',
-  '/api/cron',
-  '/api/register',
-]
-
-function isApiDeployProfileExempt(pathname: string): boolean {
-  return API_DEPLOY_PROFILE_EXEMPT.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  )
-}
 
 export default auth(async function middleware(req: NextRequest & { auth: { user?: { role: Role; status: string } } | null }) {
   const { pathname } = req.nextUrl
@@ -61,8 +48,9 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     }
     return NextResponse.next()
   }
-  const isPublic = PUBLIC_ROUTES.some((r) => pathname === r)
-  const isAuth   = AUTH_ROUTES.some((r) => pathname.startsWith(r))
+
+  const isPublic = isPublicPageRoute(pathname)
+  const isAuth = isAuthPageRoute(pathname)
 
   // Not logged in → ไปหน้า login (PC ที่เคยล็อกอินแล้วหลุด session)
   if (!session?.user) {

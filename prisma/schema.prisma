@@ -26,21 +26,6 @@ enum Role {
   CLIENT       // Phase 5 — external client portal access
 }
 
-enum AppPermission {
-  approve_leave
-  approve_warning
-  approve_outside_work
-  approve_weekly_plan
-  manage_attendance
-  manage_leave_balance
-  manage_payroll
-  manage_employees
-  view_team_only
-  view_all_dashboard
-  override_attendance
-  payroll_access
-}
-
 enum ApprovalStepStatus {
   PENDING
   APPROVED
@@ -1374,19 +1359,6 @@ model ForgotScanApprovalStep {
 
   @@index([forgotScanId])
   @@map("forgot_scan_approval_steps")
-}
-
-// ── ROLE PERMISSIONS (RBAC) ─────────────────────
-
-model RolePermission {
-  id         String        @id @default(cuid())
-  role       Role
-  permission AppPermission
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@unique([role, permission])
-  @@map("role_permissions")
 }
 
 // ── COMPANY SETTINGS ────────────────────────────

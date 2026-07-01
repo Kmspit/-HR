@@ -1,5 +1,5 @@
 import type { Role, UserStatus } from '@prisma/client'
-import { ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
+import { ROLE_DEFAULT_ROUTE } from '@/lib/access-control'
 import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
 
 export type PostLoginUser = {

@@ -2,7 +2,7 @@
 
 import { CheckCircle2, XCircle, Clock, SkipForward, User } from 'lucide-react'
 import type { ApprovalStepRow } from '@/lib/approval-chain-shared'
-import { ROLE_LABELS } from '@/lib/permissions'
+import { ROLE_LABELS } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 type Props = {

@@ -1,5 +1,5 @@
 import type { PrismaClient, Role } from '@prisma/client'
-import { canManageUsers } from '@/lib/permissions'
+import { canManageUsers } from '@/lib/access-control'
 import { canApproverActOnRequester } from '@/lib/org-scope'
 
 const COMPANY_WIDE_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']

@@ -6,7 +6,7 @@ import { createAuditLog } from '@/lib/notifications'
 import { snapshotProfileForAudit } from '@/lib/profile-history'
 import { splitDisplayName } from '@/lib/profile-name'
 import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
-import { ROLE_LABELS } from '@/lib/permissions'
+import { ROLE_LABELS } from '@/lib/access-control'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { parseSelfProfileInput, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
 

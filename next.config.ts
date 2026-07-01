@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/prototype', destination: '/prototype/login.html', permanent: false },
+      { source: '/approvals', destination: '/approval-center', permanent: true },
     ]
   },
   eslint: {

@@ -3,8 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
-
-const HR_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'] as const
+import { HR_ROLES } from '@/lib/access-control'
 
 function isProbationComplete(startDate: Date | null, probationMonths: number): boolean {
   if (!startDate) return false

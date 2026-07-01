@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Trash2, GripVertical, CheckCircle2, Star, StarOff, Power, PowerOff, Edit3, X, Save, ChevronDown, ChevronUp } from 'lucide-react'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { ROLE_LABELS, ROLE_ICONS } from '@/lib/permissions'
+import { ROLE_LABELS, ROLE_ICONS } from '@/lib/access-control'
 import {
   CHAIN_ENTITY_LABELS,
   CHAIN_ENTITY_TYPES,

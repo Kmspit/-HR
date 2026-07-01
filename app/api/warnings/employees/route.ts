@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { WARNING_TARGET_USER_SELECT, WARNING_TARGET_USER_WHERE } from '@/lib/warning-employees'
-import { ROLE_LABELS } from '@/lib/permissions'
+import { ROLE_LABELS } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { requirePermission, isGuardResponse } from '@/lib/api-guard'
 

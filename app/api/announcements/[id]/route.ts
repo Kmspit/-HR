@@ -3,8 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { announcementEmitter } from '@/lib/announcement-events'
-
-const HR_ROLES = ['MANAGER_HR', 'ADMIN']
+import { ANNOUNCEMENT_UPLOADER_ROLES } from '@/lib/access-control'
 
 type Context = { params: Promise<{ id: string }> }
 
@@ -33,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     }
 
     // HR update announcement
-    if (!HR_ROLES.includes(session.user.role)) {
+    if (!ANNOUNCEMENT_UPLOADER_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -80,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 export async function DELETE(req: NextRequest, { params }: Context) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !HR_ROLES.includes(session.user.role)) {
+    if (!session?.user?.id || !ANNOUNCEMENT_UPLOADER_ROLES.includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

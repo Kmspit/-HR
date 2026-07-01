@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { createAuditLog } from '@/lib/notifications'
-import { hasPermission } from '@/lib/rbac'
+import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }

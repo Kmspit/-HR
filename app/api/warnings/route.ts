@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { isPdfFile, storeWarningPdf } from '@/lib/warning-pdf'
 import { deliverWarningToEmployee, ensureWarningPdfStored } from '@/lib/warning-delivery'
-import { canApproveWarning, canManageUsers } from '@/lib/rbac'
+import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import type { Role } from '@prisma/client'
 

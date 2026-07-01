@@ -8,6 +8,10 @@ import { saveUpload } from '@/lib/save-upload'
 import { getDefaultChain } from '@/lib/approval-chain'
 import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
 import type { Prisma, Role } from '@prisma/client'
+import {
+  FORGOT_SCAN_HR_ROLES,
+  FORGOT_SCAN_SUPERVISOR_ROLES,
+} from '@/lib/access-control'
 
 const SCAN_TYPES = ['checkin', 'lunch-out', 'lunch-in', 'checkout'] as const
 type ScanType = (typeof SCAN_TYPES)[number]
@@ -110,10 +114,8 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url)
     const tab = url.searchParams.get('tab') ?? 'mine'
 
-    const HR_ROLES: Role[] = ['HR', 'MANAGER_HR', 'SUPER_ADMIN', 'ADMIN']
-    const SUPERVISOR_ROLES: Role[] = ['MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN']
-    const isHR = HR_ROLES.includes(role as Role)
-    const isSupervisor = SUPERVISOR_ROLES.includes(role as Role)
+    const isHR = FORGOT_SCAN_HR_ROLES.includes(role as Role)
+    const isSupervisor = FORGOT_SCAN_SUPERVISOR_ROLES.includes(role as Role)
 
     let where: Prisma.ForgotScanRequestWhereInput = {}
 
