@@ -35,6 +35,9 @@
 .tip-icon { flex-shrink:0; font-size:14px; }
 .manual-desc { font-size:13px; color:var(--text2); line-height:1.6; margin:0 0 10px; }
 .manual-section.open .manual-section-body { animation: fade-in-sm 0.2s ease forwards; }
+.manual-section.manual-highlight { border-color: rgba(59,130,246,0.55); box-shadow: 0 0 0 2px rgba(59,130,246,0.25); }
+.manual-topbar-link { font-size: 12px; white-space: nowrap; }
+.manual-topbar-link .manual-link-label { font-weight: 600; }
 </style>
 </head>
 <body>
@@ -77,7 +80,7 @@
     <!-- Employee tab -->
     <div id="tab-employee">
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="attendance">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">⏱️</span>
           <span class="manual-section-title">การเช็คอิน / เช็คเอาท์</span>
@@ -109,7 +112,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="leave">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">📅</span>
           <span class="manual-section-title">การขอลาหยุด</span>
@@ -125,7 +128,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="outside-work">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">📍</span>
           <span class="manual-section-title">การออกนอกสถานที่</span>
@@ -142,7 +145,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="payslip">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">🧾</span>
           <span class="manual-section-title">การดูสลิปเงินเดือน</span>
@@ -157,7 +160,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="weekly-plan">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">🗓️</span>
           <span class="manual-section-title">การดูปฏิทินและแผนงาน</span>
@@ -172,7 +175,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="forgot-scan">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">📊</span>
           <span class="manual-section-title">การดูรายงานการเข้างาน</span>
@@ -213,7 +216,22 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="announcements">
+        <div class="manual-section-hd" onclick="toggleSection(this)">
+          <span class="manual-section-icon">📢</span>
+          <span class="manual-section-title">ประกาศบริษัท</span>
+          <span class="manual-section-arrow">▼</span>
+        </div>
+        <div class="manual-section-body">
+          <ol class="manual-steps">
+            <li><span class="step-num">1</span><span>ไปที่เมนู <strong>ประกาศ</strong></span></li>
+            <li><span class="step-num">2</span><span>อ่านประกาศล่าสุด — กรองตามประเภทหรือเดือนได้</span></li>
+            <li><span class="step-num">3</span><span>HR/Admin สามารถสร้างและแก้ไขประกาศได้</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="manual-section" data-section="profile">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">📞</span>
           <span class="manual-section-title">การติดต่อ HR</span>
@@ -286,7 +304,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="employees">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">👥</span>
           <span class="manual-section-title">การจัดการพนักงาน</span>
@@ -302,7 +320,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="payroll">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">💰</span>
           <span class="manual-section-title">การจัดการเงินเดือน</span>
@@ -318,7 +336,7 @@
         </div>
       </div>
 
-      <div class="manual-section">
+      <div class="manual-section" data-section="reports">
         <div class="manual-section-hd" onclick="toggleSection(this)">
           <span class="manual-section-icon">📈</span>
           <span class="manual-section-title">การดูรายงานรายเดือน</span>
@@ -370,7 +388,27 @@ function switchTab(btn, tabId) {
   document.getElementById('tab-hr').style.display = tabId === 'hr' ? '' : 'none';
 }
 
-document.addEventListener('DOMContentLoaded', function() { initRole(); });
+function openManualSection(sectionId) {
+  var tabMap = {
+    attendance: 'employee', leave: 'employee', 'outside-work': 'employee',
+    'weekly-plan': 'employee', payslip: 'employee', announcements: 'employee',
+    payroll: 'hr', employees: 'hr', warnings: 'hr', reports: 'hr'
+  };
+  var tabId = tabMap[sectionId] || 'employee';
+  var tabBtn = document.querySelector('.manual-tab' + (tabId === 'hr' ? ':last-child' : ':first-child'));
+  if (tabBtn) switchTab(tabBtn, tabId);
+  var el = document.querySelector('.manual-section[data-section="' + sectionId + '"]');
+  if (!el) return;
+  el.classList.add('open', 'manual-highlight');
+  setTimeout(function() { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120);
+  setTimeout(function() { el.classList.remove('manual-highlight'); }, 4000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  initRole();
+  var section = new URLSearchParams(location.search).get('section');
+  if (section) openManualSection(section);
+});
 </script>
 </body>
 </html>
