@@ -124,10 +124,13 @@ export default async function DashboardPage({
       : Promise.resolve(0),
   ])
 
+  const smartStarted = Date.now()
   const smartData = await loadSmartDashboardData(prisma, scope, totalUsers, {
     pendingUsers,
     overdueTasks: overdueTaskCount,
   })
+  const smartMs = Date.now() - smartStarted
+  console.log(`[dashboard] loadSmartDashboardData ${smartMs}ms branch=${branchParam ?? 'default'}`)
 
   const taskCompletionRate = taskTotal > 0 ? Math.round((taskCompleted / taskTotal) * 100) : 0
   const taskOverdueRate = taskTotal > 0 ? Math.round((overdueTaskCount / taskTotal) * 100) : 0

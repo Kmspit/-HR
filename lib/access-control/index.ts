@@ -280,11 +280,22 @@ export const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
 
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',    CEO: 'ผู้บริหาร (CEO)',
-  MANAGER_HR: 'ผู้จัดการ / HR', HR: 'ฝ่ายบุคคล (HR)',
+  MANAGER_HR: 'ผู้จัดการ HR', HR: 'ฝ่ายบุคคล (HR)',
   MANAGER: 'ผู้จัดการ',         TEAM_LEADER: 'หัวหน้าทีม',
-  ADMIN: 'Admin',                EMPLOYEE: 'พนักงาน',
+  ADMIN: 'Admin ระบบ',           EMPLOYEE: 'พนักงาน',
   LAWYER: 'ทนายความ',           ENFORCEMENT: 'เจ้าหน้าที่บังคับคดี',
   CLIENT: 'ลูกค้า',
+}
+
+/** Short tooltip for settings/employees — clarifies HR vs ADMIN vs MANAGER_HR */
+export const ROLE_DESCRIPTIONS: Partial<Record<Role, string>> = {
+  SUPER_ADMIN: 'สิทธิ์สูงสุด — ตั้งค่าระบบและอนุมัติได้ทุกโมดูล',
+  CEO: 'ผู้บริหาร — ดูภาพรวมและอนุมัติระดับสูง',
+  MANAGER_HR: 'หัวหน้า HR — จัดการพนักงาน เงินเดือน ลา และตั้งค่า HR ครบ',
+  HR: 'ฝ่ายบุคคล — ดูแลพนักงาน เงินเดือน ลา (ไม่ใช่ Admin ระบบ)',
+  ADMIN: 'Admin ระบบ — ตั้งค่าเทคนิค/สาขา ไม่ใช่หน้าที่ HR โดยตรง',
+  MANAGER: 'หัวหน้างาน — อนุมัติลา/งานนอกสถานที่ของทีม',
+  TEAM_LEADER: 'หัวหน้าทีม — อนุมัติคำขอของสมาชิกในทีม',
 }
 
 export const ROLE_COLORS: Record<Role, string> = {

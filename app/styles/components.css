@@ -96,6 +96,16 @@
     @apply transition-shadow duration-200 ease-out hover:shadow-md dark:hover:shadow-black/20;
   }
 
+  .motion-card-interactive {
+    @apply transition-transform duration-150 ease-out hover:-translate-y-0.5 active:scale-[0.98];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-card-interactive {
+      transform: none !important;
+    }
+  }
+
   /* Gradient borders */
   .border-gradient {
     position: relative;

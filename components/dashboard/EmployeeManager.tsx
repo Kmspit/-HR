@@ -8,7 +8,7 @@ import { Loader2, CheckCircle, XCircle, Search, Layers, Pencil, SlidersHorizonta
 import OrgAssignModal from '@/components/dashboard/OrgAssignModal'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS } from '@/lib/access-control'
+import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS, ROLE_DESCRIPTIONS } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 
 type User = {
@@ -44,6 +44,18 @@ function orgLabel(u: User) {
   }
   if (u.department) return u.department
   return '— ยังไม่กำหนด'
+}
+
+function roleBadge(role: Role) {
+  const tip = ROLE_DESCRIPTIONS[role]
+  return (
+    <span
+      title={tip}
+      className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold cursor-help ${ROLE_COLORS[role]}`}
+    >
+      {ROLE_ICONS[role]} {ROLE_LABELS[role]}
+    </span>
+  )
 }
 
 export default function EmployeeManager({ users, stats, initialTab, orgFilterOptions, currentOrgFilters }: Props) {
@@ -122,6 +134,16 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           </div>
         ))}
       </div>
+
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        <span className="font-semibold text-slate-600 dark:text-slate-300">บทบาท:</span>{' '}
+        {(['MANAGER_HR', 'HR', 'ADMIN'] as Role[]).map((r) => (
+          <span key={r} title={ROLE_DESCRIPTIONS[r]} className="mr-3 cursor-help underline decoration-dotted">
+            {ROLE_LABELS[r]}
+          </span>
+        ))}
+        — วางเมาส์ที่ badge บัญชีเพื่อดูสิทธิ์
+      </p>
 
       {orgFilterOptions && (
         <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 overflow-hidden">
@@ -219,9 +241,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                     <p className="text-[11px] text-cyan-600 dark:text-cyan-400/80 truncate">{u.branch.name} ({u.branch.code})</p>
                   )}
                   <div className="mt-1">
-                    <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${ROLE_COLORS[u.role]}`}>
-                      {ROLE_ICONS[u.role]} {ROLE_LABELS[u.role]}
-                    </span>
+                    {roleBadge(u.role)}
                   </div>
                 </div>
               </div>
@@ -312,7 +332,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                   </td>
                   <td className="px-4 py-3.5 text-[13px] text-slate-600 dark:text-slate-400">{u.branch ? `${u.branch.name} (${u.branch.code})` : '—'}</td>
                   <td className="px-4 py-3.5">
-                    <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${ROLE_COLORS[u.role]}`}>{ROLE_ICONS[u.role]} {ROLE_LABELS[u.role]}</span>
+                    {roleBadge(u.role)}
                   </td>
                   <td className="px-4 py-3.5">{statusBadge(u.status)}</td>
                   <td className="px-4 py-3.5 text-[13px] text-slate-600 dark:text-slate-400">{u.startDate ? formatThaiDate(u.startDate) : '-'}</td>

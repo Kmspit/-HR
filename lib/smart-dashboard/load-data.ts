@@ -10,6 +10,28 @@ import { bangkokDateKey, startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import { buildAlerts, buildAIInsights } from './insights'
 import type { SmartDashboardPayload, TrendPoint } from './types'
 
+const SLOW_DASHBOARD_MS = 2_000
+const CACHE_TTL_MS = 60_000
+
+type CacheEntry = { at: number; data: SmartDashboardPayload }
+
+const dashboardCache = new Map<string, CacheEntry>()
+
+function cacheKey(
+  scope: BranchScopeInput,
+  totalEmployees: number,
+  extras?: { pendingUsers?: number; overdueTasks?: number },
+): string {
+  return JSON.stringify({
+    role: scope.role,
+    branch: scope.userBranchId ?? null,
+    filter: scope.filterBranchId ?? null,
+    t: totalEmployees,
+    p: extras?.pendingUsers ?? 0,
+    o: extras?.overdueTasks ?? 0,
+  })
+}
+
 const DAY_MS = 86_400_000
 
 function dayStartOffset(daysAgo: number): Date {
@@ -52,6 +74,13 @@ export async function loadSmartDashboardData(
   totalEmployees: number,
   extras?: { pendingUsers?: number; overdueTasks?: number },
 ): Promise<SmartDashboardPayload> {
+  const key = cacheKey(scope, totalEmployees, extras)
+  const hit = dashboardCache.get(key)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    return hit.data
+  }
+
+  const started = Date.now()
   const nestedUser = branchNestedUserWhere(scope)
   const userScope = nestedUser ? { user: nestedUser } : {}
   const todayStart = startOfTodayBangkok()
@@ -293,7 +322,7 @@ export async function loadSmartDashboardData(
     overdueTasks: extras?.overdueTasks ?? 0,
   })
 
-  return {
+  const payload = {
     overview,
     alerts,
     attendanceTrend,
@@ -301,4 +330,12 @@ export async function loadSmartDashboardData(
     lateTrend,
     insights,
   }
+
+  const elapsed = Date.now() - started
+  if (elapsed > SLOW_DASHBOARD_MS) {
+    dashboardCache.set(key, { at: Date.now(), data: payload })
+    console.log(`[dashboard] loadSmartDashboardData slow ${elapsed}ms — cached ${CACHE_TTL_MS / 1000}s`)
+  }
+
+  return payload
 }

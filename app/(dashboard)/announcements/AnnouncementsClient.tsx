@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { useAnnouncementStream } from '@/hooks/useAnnouncementStream'
 import {
   Plus, Trash2, Archive, ArchiveRestore, Loader2, ChevronDown, X,
   Calendar, Users, Paperclip, Download, FileText, Image as ImageIcon,
@@ -116,50 +117,24 @@ export default function AnnouncementsClient({
   const [archiveLoading, setArchiveLoading] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState('')
 
-  // ── SSE: real-time updates ─────────────────────────────────────────────
-  useEffect(() => {
-    let es: EventSource | null = null
-    let retryTimer: ReturnType<typeof setTimeout> | null = null
-
-    const connect = () => {
-      es = new EventSource('/api/announcements/sse')
-
-      es.addEventListener('announcement', async (e) => {
-        const data = JSON.parse(e.data) as Announcement & { _deleted?: boolean; _updated?: boolean }
-        if (data._deleted) {
-          setItems((prev) => prev.filter((a) => a.id !== data.id))
-          return
+  // ── Real-time updates via shared NotificationStreamProvider SSE ─────────
+  useAnnouncementStream(useCallback(async (data) => {
+    if (data._deleted) {
+      setItems((prev) => prev.filter((a) => a.id !== data.id))
+      return
+    }
+    try {
+      const { data: d } = await apiJson<{ announcements: Announcement[]; total?: number }>('/api/announcements')
+      if (d?.announcements) {
+        setItems(d.announcements)
+        setApiPage(1)
+        setHasMore((d.total ?? d.announcements.length) > d.announcements.length)
+        if (!data._updated) {
+          toast.info(`📢 ประกาศใหม่: ${String(data.title ?? '')}`, { duration: 5000 })
         }
-        if (data._updated) {
-          setItems((prev) => prev.map((a) =>
-            a.id === data.id ? { ...data, isRead: a.isRead, readCount: a.readCount } : a,
-          ))
-          return
-        }
-        // New announcement — refetch to apply server-side targeting filter
-        try {
-          const { data: d } = await apiJson<{ announcements: Announcement[]; total?: number; page?: number; pages?: number }>('/api/announcements')
-          if (d?.announcements) {
-            setItems(d.announcements)
-            setApiPage(1)
-            setHasMore((d.total ?? d.announcements.length) > d.announcements.length)
-            toast.info(`📢 ประกาศใหม่: ${data.title}`, { duration: 5000 })
-          }
-        } catch {}
-      })
-
-      es.onerror = () => {
-        es?.close()
-        retryTimer = setTimeout(connect, 5000)
       }
-    }
-
-    connect()
-    return () => {
-      es?.close()
-      if (retryTimer) clearTimeout(retryTimer)
-    }
-  }, [])
+    } catch { /* ignore */ }
+  }, []))
 
   // ── Load employees when INDIVIDUAL targeting selected ──────────────────
   useEffect(() => {

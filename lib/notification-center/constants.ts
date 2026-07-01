@@ -160,5 +160,9 @@ export const DEFAULT_LINKS: Partial<Record<NotificationType, string>> = {
 }
 
 export function resolveLink(type: NotificationType, link: string | null): string {
-  return link ?? DEFAULT_LINKS[type] ?? '/notifications'
+  const defaultLink = DEFAULT_LINKS[type] ?? '/notifications'
+  if (!link) return defaultLink
+  if (type.startsWith('WEEKLY_PLAN_') && link === '/leave') return defaultLink
+  if (type.startsWith('FORGOT_SCAN_') && (link === '/approvals' || link === '/leave')) return defaultLink
+  return link
 }

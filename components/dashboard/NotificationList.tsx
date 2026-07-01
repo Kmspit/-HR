@@ -7,6 +7,11 @@ import { formatThaiDateTime } from '@/lib/utils'
 import { apiJson } from '@/lib/client-api'
 import Link from 'next/link'
 import { CheckCheck } from 'lucide-react'
+import {
+  resolveLink,
+  TYPE_ICONS,
+} from '@/lib/notification-center/constants'
+import type { NotificationType } from '@prisma/client'
 
 type Notification = {
   id: string; type: string; title: string; message: string; link: string | null
@@ -15,16 +20,13 @@ type Notification = {
 
 // ── Icon + color maps ─────────────────────────────────────────────────────────
 
-const TYPE_ICONS: Record<string, string> = {
-  LEAVE_REQUEST: '📅', LEAVE_APPROVED: '✅', LEAVE_REJECTED: '❌',
-  OUTSIDE_REQUEST: '🚗', OUTSIDE_APPROVED: '✅', OUTSIDE_REJECTED: '❌',
-  REGISTER_REQUEST: '👤', ACCOUNT_APPROVED: '✅', ACCOUNT_REJECTED: '❌',
-  WARNING_ISSUED: '⚠️', WEEKLY_PLAN_DUE: '⏰', WEEKLY_PLAN_APPROVED: '✅',
-  ANNOUNCEMENT: '📢', DEVICE_RESET_REQUEST: '📱', SYSTEM: '🔔',
-  TASK_ASSIGNED: '📋', TASK_SUBMITTED: '📤', TASK_APPROVED: '✅', TASK_REVISION: '🔄',
-  TASK_DEADLINE_REMINDER: '⏰', TASK_OVERDUE: '🔴',
-  TASK_COURT_REMINDER: '⚖️', TASK_APPOINTMENT_REMINDER: '📅',
-  TASK_WAITING_DOC: '📄',
+const TYPE_ICONS_LOCAL: Record<string, string> = {
+  ...TYPE_ICONS,
+  FORGOT_SCAN_REQUEST: '🔍',
+  FORGOT_SCAN_APPROVED: '✅',
+  FORGOT_SCAN_REJECTED: '❌',
+  WEEKLY_PLAN_REJECTED: '❌',
+  EXPENSE_CLAIM_SUBMITTED: '💳',
 }
 
 const TYPE_BG_READ: Record<string, string> = {
@@ -170,7 +172,7 @@ export default function NotificationList({ notifications: initial }: { notificat
                 className={`rounded-2xl border p-4 transition-all cursor-pointer ${bgCls}`}>
                 <div className="flex items-start gap-3">
                   <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl ${n.isRead ? 'bg-slate-800' : 'bg-blue-500/10'}`}>
-                    {TYPE_ICONS[n.type] ?? '🔔'}
+                    {TYPE_ICONS_LOCAL[n.type] ?? TYPE_ICONS[n.type as NotificationType] ?? '🔔'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 justify-between">
@@ -183,7 +185,7 @@ export default function NotificationList({ notifications: initial }: { notificat
                     <div className="mt-1.5 flex items-center gap-3">
                       <span className="text-[10px] text-slate-500">{formatThaiDateTime(n.createdAt)}</span>
                       {n.link && (
-                        <Link href={n.link} className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <Link href={resolveLink(n.type as NotificationType, n.link)} className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors" onClick={(e) => e.stopPropagation()}>
                           ดูรายละเอียด →
                         </Link>
                       )}
