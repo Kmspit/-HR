@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
+import { buildBranchScope, branchUserWhere, isUserInBranchScope } from '@/lib/branch-scope'
 import { HR_ROLES } from '@/lib/access-control'
+import { canApproverActOnRequester } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 function isProbationComplete(startDate: Date | null, probationMonths: number): boolean {
   if (!startDate) return false
@@ -61,6 +63,21 @@ export async function GET(req: NextRequest) {
         select: { id: true, name: true, employeeId: true, department: true, position: true, startDate: true },
       })
       if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+      if (session.user.role === 'MANAGER') {
+        const inTeam = await canApproverActOnRequester(
+          prisma,
+          session.user.id,
+          session.user.role as Role,
+          userId,
+        )
+        if (!inTeam) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      } else {
+        const scope = buildBranchScope(session.user, {})
+        const inBranch = await isUserInBranchScope(prisma, scope, userId)
+        if (!inBranch) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+
       const eval_ = await prisma.probationEvaluation.findUnique({ where: { userId } })
       return NextResponse.json({
         probationMonths,
@@ -114,13 +131,24 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !(HR_ROLES as readonly string[]).includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!session?.user?.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { userId, result, notes } = await req.json()
     if (!userId || !['PASSED', 'FAILED'].includes(result)) {
       return NextResponse.json({ error: 'userId และ result (PASSED/FAILED) จำเป็น' }, { status: 400 })
+    }
+
+    const role = session.user.role as Role
+    const isHr = (HR_ROLES as readonly string[]).includes(role)
+    if (role === 'MANAGER') {
+      const inTeam = await canApproverActOnRequester(prisma, session.user.id, role, userId)
+      if (!inTeam) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    } else if (!isHr) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    } else {
+      const scope = buildBranchScope(session.user, {})
+      const inBranch = await isUserInBranchScope(prisma, scope, userId)
+      if (!inBranch) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const evaluation = await prisma.probationEvaluation.upsert({

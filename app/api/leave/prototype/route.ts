@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { notifyRole, sendLineNotify } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { isPrototypeBridgeEnabled, prototypeBridgeDisabledResponse } from '@/lib/prototype-bridge'
+import { requirePrototypeBridgeSecret } from '@/lib/prototype-bridge'
 import type { LeaveType } from '@prisma/client'
 
 const VALID_TYPES: LeaveType[] = [
@@ -43,8 +43,13 @@ export async function OPTIONS(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
-  if (!isPrototypeBridgeEnabled()) {
-    return prototypeBridgeDisabledResponse()
+  const bridgeErr = requirePrototypeBridgeSecret(req)
+  if (bridgeErr) {
+    return json(
+      await bridgeErr.json().catch(() => ({ ok: false, error: 'Forbidden' })),
+      bridgeErr.status,
+      origin,
+    )
   }
   try {
     const body = await req.json() as {

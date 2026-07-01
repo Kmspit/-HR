@@ -5,6 +5,7 @@ import { apiError } from '@/lib/api-handler'
 import { createAuditLog } from '@/lib/notifications'
 import { executeForgotScanStepAction } from '@/lib/forgot-scan-chain'
 import { attachDefaultChainForForgotScan } from '@/lib/attach-default-chain'
+import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   try {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
 
     const { id: actorId, role } = session.user
     const { id } = await params

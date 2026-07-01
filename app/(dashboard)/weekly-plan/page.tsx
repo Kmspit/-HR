@@ -3,11 +3,12 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import WeeklyPlanPanel from '@/components/dashboard/WeeklyPlanPanel'
+import { canAccessPage } from '@/lib/page-access'
 
 export default async function WeeklyPlanPage() {
   const session = await auth()
   if (!session?.user) redirect('/')
-  if (session.user.role !== 'LAWYER' && session.user.role !== 'MANAGER_HR') redirect('/dashboard')
+  if (!canAccessPage(session.user.role, '/weekly-plan')) redirect('/dashboard')
 
   const plans = await prisma.weeklyLawyerPlan.findMany({
     where: session.user.role === 'LAWYER' ? { lawyerId: session.user.id } : {},

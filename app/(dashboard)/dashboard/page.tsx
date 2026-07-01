@@ -5,6 +5,7 @@ import type { CaseStatus, CasePriority } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import { ROLE_LABELS, canViewTeamOnly } from '@/lib/access-control'
 import { canAccessModule, WORK_MODULE, LEGAL_MODULE, HR_ADMIN, EMPLOYEE_MGMT } from '@/lib/module-gates'
+import { canAccessPage } from '@/lib/page-access'
 import { getDirectReportUserIds } from '@/lib/org-scope'
 import { formatThaiDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -48,6 +49,8 @@ export default async function DashboardPage({
   const now = new Date()
   const showTaskKpi = canAccessModule(role, WORK_MODULE) || canViewTeamOnly(role)
   const showCaseKpi = canAccessModule(role, LEGAL_MODULE)
+  const canLinkTasks = canAccessPage(role, '/tasks')
+  const canLinkCases = canAccessPage(role, '/cases')
 
   let taskManagedIds: string[] | null = null
   if (role === 'MANAGER') {
@@ -167,9 +170,13 @@ export default async function DashboardPage({
           <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมงาน</h2>
-              <Link href="/tasks" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
-                ดูทั้งหมด →
-              </Link>
+              {canLinkTasks ? (
+                <Link href="/tasks" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                  ดูทั้งหมด →
+                </Link>
+              ) : (
+                <span className="text-[12px] text-slate-400">ภาพรวมงาน</span>
+              )}
             </div>
             <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {(
@@ -221,9 +228,13 @@ export default async function DashboardPage({
           <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมคดี</h2>
-              <Link href="/cases" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
-                ดูทั้งหมด →
-              </Link>
+              {canLinkCases ? (
+                <Link href="/cases" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                  ดูทั้งหมด →
+                </Link>
+              ) : (
+                <span className="text-[12px] text-slate-400">ภาพรวมคดี</span>
+              )}
             </div>
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(

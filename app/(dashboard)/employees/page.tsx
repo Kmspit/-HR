@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import EmployeeManager from '@/components/dashboard/EmployeeManager'
-import { canApproveAccounts } from '@/lib/access-control'
+import { canAccessPage } from '@/lib/page-access'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, resolveFilterBranchId, parseBranchQueryParam } from '@/lib/branch-scope'
 import { employeeListWhere, parseOrgFilterParam } from '@/lib/employee-filters'
@@ -22,7 +22,7 @@ export default async function EmployeesPage({
 }) {
   const session = await auth()
   if (!session?.user) redirect('/')
-  if (!canApproveAccounts(session.user.role)) redirect('/dashboard')
+  if (!canAccessPage(session.user.role, '/employees')) redirect('/dashboard')
 
   const sp = await searchParams
   const { tab } = sp

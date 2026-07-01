@@ -11,6 +11,15 @@ export async function canAccessUserProfile(
   targetUserId: string,
 ): Promise<boolean> {
   if (viewerId === targetUserId) return true
+  if (viewerRole === 'MANAGER' || viewerRole === 'TEAM_LEADER') {
+    return canViewEmployeeTimeline(
+      prisma,
+      viewerId,
+      viewerRole,
+      viewerBranchId,
+      targetUserId,
+    )
+  }
   if (!canManageUserProfile(viewerRole)) return false
   return canViewEmployeeTimeline(
     prisma,

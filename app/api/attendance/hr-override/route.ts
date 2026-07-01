@@ -9,17 +9,24 @@ import {
   findActiveAttendanceSession,
   getNextSessionIndex,
 } from '@/lib/attendance-session'
+import { buildBranchScope, isUserInBranchScope } from '@/lib/branch-scope'
+import { requireCsrf } from '@/lib/api-guard'
+import { HR_ADMIN } from '@/lib/module-gates'
+import type { Role } from '@prisma/client'
 
-const ALLOWED_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO'] as const
+const ALLOWED_ROLES: Role[] = HR_ADMIN
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!(ALLOWED_ROLES as readonly string[]).includes(session.user.role ?? '')) {
+    if (!ALLOWED_ROLES.includes(session.user.role as Role)) {
       return NextResponse.json(
         { error: 'เฉพาะ HR หรือ Admin เท่านั้นที่ใช้ override ได้', code: 'FORBIDDEN' },
         { status: 403 },
@@ -48,10 +55,16 @@ export async function POST(req: NextRequest) {
 
     const targetUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, employeeId: true },
+      select: { id: true, name: true, employeeId: true, branchId: true },
     })
     if (!targetUser) {
       return NextResponse.json({ error: 'ไม่พบผู้ใช้งาน' }, { status: 404 })
+    }
+
+    const scope = buildBranchScope(session.user, {})
+    const inScope = await isUserInBranchScope(prisma, scope, userId)
+    if (!inScope) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const now = new Date()

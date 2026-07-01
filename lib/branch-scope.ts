@@ -1,4 +1,5 @@
-import type { Prisma, Role } from '@prisma/client'
+import type { Prisma, PrismaClient, Role } from '@prisma/client'
+import { HR_ADMIN } from '@/lib/module-gates'
 
 export type BranchScopeInput = {
   role: Role
@@ -22,7 +23,7 @@ export function canPickBranchFilter(role: Role): boolean {
 }
 
 export function canManageBranches(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
+  return HR_ADMIN.includes(role)
 }
 
 /** เงื่อนไข user ตามสาขา */
@@ -71,6 +72,19 @@ export function attendanceWhere(
   const nested = branchNestedUserWhere(scope)
   if (!nested) return { ...extra }
   return { ...extra, user: { ...nested, ...(extra?.user as object) } }
+}
+
+/** Whether target user falls within branch filter (HR list scope). */
+export async function isUserInBranchScope(
+  prisma: PrismaClient,
+  scope: BranchScopeInput,
+  targetUserId: string,
+): Promise<boolean> {
+  const found = await prisma.user.findFirst({
+    where: branchUserWhere(scope, { id: targetUserId }),
+    select: { id: true },
+  })
+  return !!found
 }
 
 /** กรอง leave / outside ตามสาขา */

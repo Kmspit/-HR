@@ -1,5 +1,6 @@
 import type { Role } from '@prisma/client'
+import { HR_ADMIN } from '@/lib/module-gates'
 
 export function canManageOrg(role: Role): boolean {
-  return role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
+  return HR_ADMIN.includes(role)
 }

@@ -12,6 +12,10 @@ export async function canViewEmployeeTimeline(
   viewerBranchId: string | null | undefined,
   targetUserId: string,
 ): Promise<boolean> {
+  if (viewerRole === 'MANAGER' || viewerRole === 'TEAM_LEADER') {
+    return canApproverActOnRequester(prisma, viewerId, viewerRole, targetUserId)
+  }
+
   if (!canManageUsers(viewerRole)) return false
 
   const target = await prisma.user.findUnique({
@@ -25,10 +29,6 @@ export async function canViewEmployeeTimeline(
   if (viewerRole === 'HR' || viewerRole === 'ADMIN') {
     if (!viewerBranchId) return true
     return target.branchId === viewerBranchId
-  }
-
-  if (viewerRole === 'MANAGER' || viewerRole === 'TEAM_LEADER') {
-    return canApproverActOnRequester(prisma, viewerId, viewerRole, targetUserId)
   }
 
   return false

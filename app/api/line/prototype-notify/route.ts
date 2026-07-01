@@ -3,7 +3,9 @@ import { auth } from '@/lib/auth'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfiguredAsync } from '@/lib/line-config'
 import { getHrLineRecipients } from '@/lib/attendance-line-recipients'
-import { isPrototypeBridgeEnabled, prototypeBridgeDisabledResponse } from '@/lib/prototype-bridge'
+import { requirePrototypeBridgeSecret } from '@/lib/prototype-bridge'
+import { HR_ADMIN } from '@/lib/module-gates'
+import type { Role } from '@prisma/client'
 
 export const runtime = 'nodejs'
 
@@ -38,14 +40,20 @@ export async function OPTIONS(req: NextRequest) {
 /** ส่งแจ้งเตือนลงเวลาไป LINE HR — ใช้จาก HTML prototype (หลีกเลี่ยง CORS ของ LINE API) */
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
-  if (!isPrototypeBridgeEnabled()) {
-    return prototypeBridgeDisabledResponse()
+  const bridgeErr = requirePrototypeBridgeSecret(req)
+  if (bridgeErr) {
+    const body = await bridgeErr.json().catch(() => ({ ok: false, error: 'Forbidden' }))
+    return json(body, bridgeErr.status, origin)
   }
   try {
     const session = await auth()
     if (!session?.user) {
       return json({ error: 'Unauthorized' }, 401, origin)
-    }    if (!(await isLineOaConfiguredAsync())) {
+    }
+    if (!HR_ADMIN.includes(session.user.role as Role)) {
+      return json({ error: 'Forbidden' }, 403, origin)
+    }
+    if (!(await isLineOaConfiguredAsync())) {
       return json({ ok: false, reason: 'line_not_configured' }, 503, origin)
     }
 
