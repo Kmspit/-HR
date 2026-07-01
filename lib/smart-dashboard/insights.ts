@@ -93,8 +93,6 @@ export function buildAlerts(overview: TodayOverview, breakdown: {
   pendingOutside: number
   pendingWeekly: number
   pendingForgot: number
-  pendingExpense: number
-  pendingDocs: number
   pendingUsers: number
   overdueTasks: number
 }): import('./types').SmartAlert[] {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ import type {
   ApprovalType,
   UnifiedApprovalItem,
 } from '@/lib/approval-center/types'
+import { parseApprovalTab } from '@/lib/approval-center/types'
 import {
   STATUS_COLORS, STATUS_LABELS, TAB_LABELS, TYPE_COLORS, TYPE_ICONS, TYPE_LABELS,
 } from '@/lib/approval-center/constants'
@@ -57,6 +58,25 @@ function applyFilters(items: UnifiedApprovalItem[], filters: ApprovalFilters): U
     }
     return true
   })
+}
+
+function filterItems(
+  items: UnifiedApprovalItem[] | undefined,
+  filters: ApprovalFilters,
+  search: string,
+): UnifiedApprovalItem[] {
+  let list = applyFilters(items ?? [], filters)
+  if (search.trim()) {
+    const q = search.trim().toLowerCase()
+    list = list.filter(
+      (i) =>
+        i.employeeName.toLowerCase().includes(q) ||
+        i.requestTypeLabel.toLowerCase().includes(q) ||
+        (i.department ?? '').toLowerCase().includes(q) ||
+        i.summary.toLowerCase().includes(q),
+    )
+  }
+  return list
 }
 
 function RejectForm({
@@ -194,7 +214,7 @@ function ApprovalCard({
 export default function ApprovalCenterClient(props: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = (searchParams.get('tab') as ApprovalTab) || 'pending'
+  const initialTab = parseApprovalTab(searchParams.get('tab'))
 
   const [tab, setTab] = useState<ApprovalTab>(initialTab)
   const [filters, setFilters] = useState<ApprovalFilters>({
@@ -213,34 +233,34 @@ export default function ApprovalCenterClient(props: Props) {
 
   const { pending, approved, rejected, myRequests, departments, counts, canManageChains } = props
 
-  const tabItems = useMemo(() => {
-    const map: Record<ApprovalTab, UnifiedApprovalItem[]> = {
-      pending,
-      approved,
-      rejected,
-      mine: myRequests,
-    }
-    let items = map[tab]
-    items = applyFilters(items, filters)
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      items = items.filter(
-        (i) =>
-          i.employeeName.toLowerCase().includes(q) ||
-          i.requestTypeLabel.toLowerCase().includes(q) ||
-          (i.department ?? '').toLowerCase().includes(q) ||
-          i.summary.toLowerCase().includes(q),
-      )
-    }
-    return items
-  }, [tab, pending, approved, rejected, myRequests, filters, search])
+  const changeTab = useCallback((next: ApprovalTab) => {
+    setTab(next)
+    setRejectingId(null)
+    setReason('')
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', next)
+    router.replace(`/approval-center?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
 
-  const tabCounts: Record<ApprovalTab, number> = {
-    pending: counts.pending,
-    approved: counts.approved,
-    rejected: counts.rejected,
-    mine: counts.mine,
-  }
+  useEffect(() => {
+    setTab(parseApprovalTab(searchParams.get('tab')))
+  }, [searchParams])
+
+  const tabItems = useMemo(
+    () => filterItems(
+      { pending, approved, rejected, mine: myRequests }[tab],
+      filters,
+      search,
+    ),
+    [tab, pending, approved, rejected, myRequests, filters, search],
+  )
+
+  const tabCounts = useMemo((): Record<ApprovalTab, number> => ({
+    pending: filterItems(pending, filters, search).length,
+    approved: filterItems(approved, filters, search).length,
+    rejected: filterItems(rejected, filters, search).length,
+    mine: filterItems(myRequests, filters, search).length,
+  }), [pending, approved, rejected, myRequests, filters, search])
 
   const statusOptions = useMemo(() => {
     const set = new Set<string>()
@@ -309,7 +329,7 @@ export default function ApprovalCenterClient(props: Props) {
       <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-white/5 overflow-x-auto">
         {TABS.map(({ id, icon: Icon }) => (
           <button key={id} type="button"
-            onClick={() => { setTab(id); setRejectingId(null); setReason('') }}
+            onClick={() => changeTab(id)}
             className={`flex flex-1 min-w-[120px] items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${tab === id ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
             <Icon size={16} /> {TAB_LABELS[id]}
             {tabCounts[id] > 0 && (

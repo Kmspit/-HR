@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
-import { formatThaiDate } from '@/lib/utils'
+import { formatThaiDate, formatThaiDateTime } from '@/lib/utils'
 import {
   APPROVAL_STEP_STATUS,
   ATTENDANCE_STATUS_LABELS,
@@ -63,7 +63,6 @@ export async function loadEmployeeTimeline(
     outsideSteps,
     forgotSteps,
     weeklySteps,
-    legacyApprovals,
     forgotScans,
   ] = await Promise.all([
     prisma.attendance.findMany({
@@ -175,23 +174,6 @@ export async function loadEmployeeTimeline(
         plan: { select: { weekStart: true } },
       },
     }),
-    prisma.approvalHistory.findMany({
-      where: {
-        OR: [
-          { leaveRequest: { userId } },
-          { outsideRequest: { userId } },
-          { weeklyPlan: { lawyerId: userId } },
-        ],
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 60,
-      include: {
-        approvedBy: { select: { name: true } },
-        leaveRequest: { select: { type: true } },
-        outsideRequest: { select: { place: true } },
-        weeklyPlan: { select: { weekStart: true } },
-      },
-    }),
     prisma.forgotScanRequest.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -269,7 +251,7 @@ export async function loadEmployeeTimeline(
       date: row.createdAt.toISOString(),
       category: 'attendance',
       title: `ขอแก้เวลา · ${SCAN_TYPE_LABELS[row.scanType] ?? row.scanType}`,
-      details: `${formatThaiDate(row.date)} · เวลาที่ถูกต้อง ${formatTimelineTime(row.correctTime)} · ${row.reason}`,
+      details: `${formatThaiDate(row.date)} · เวลาที่ถูกต้อง ${formatThaiDateTime(row.correctTime)} · ${row.reason}`,
       status: REQUEST_STATUS_LABELS[row.status] ?? row.status,
       statusTone: statusToneFromRequest(row.status),
       link: '/forgot-scan',
@@ -383,28 +365,6 @@ export async function loadEmployeeTimeline(
       details: `สัปดาห์ ${formatThaiDate(step.plan.weekStart)}${step.actor?.name ? ` · โดย ${step.actor.name}` : ''}`,
       status: APPROVAL_STEP_STATUS[step.status] ?? step.status,
       statusTone: toneFromStepStatus(step.status),
-      link: '/approval-center',
-    })
-  }
-
-  for (const row of legacyApprovals) {
-    let domain = 'คำขอ'
-    if (row.leaveRequest) domain = `ลา · ${LEAVE_TYPE_LABELS[row.leaveRequest.type] ?? row.leaveRequest.type}`
-    else if (row.outsideRequest) domain = `ออกนอก · ${row.outsideRequest.place}`
-    else if (row.weeklyPlan) domain = `แผนงาน · ${formatThaiDate(row.weeklyPlan.weekStart)}`
-
-    events.push({
-      id: `appr-${row.id}`,
-      date: row.createdAt.toISOString(),
-      category: 'approval',
-      title: `${row.action === 'REJECT' ? 'ปฏิเสธ' : 'อนุมัติ'} · ${domain}`,
-      details: [
-        `ขั้นที่ ${row.step}`,
-        row.approvedBy?.name ? `โดย ${row.approvedBy.name}` : null,
-        row.reason,
-      ].filter(Boolean).join(' · '),
-      status: row.action,
-      statusTone: row.action === 'REJECT' ? 'danger' : 'success',
       link: '/approval-center',
     })
   }

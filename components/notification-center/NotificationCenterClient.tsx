@@ -87,12 +87,22 @@ export default function NotificationCenterClient({
   }, [])
 
   useNotificationStream({
-    onCount: setUnreadCount,
+    onCount: (count) => {
+      setUnreadCount(count)
+      if (count === 0) {
+        setItems((prev) => {
+          const next = prev.map((n) => ({ ...n, isRead: true }))
+          setTabCounts(computeTabCounts(next))
+          return next
+        })
+      }
+    },
     onNew: (notif) => {
       setItems((prev) => {
         if (prev.some((n) => n.id === notif.id)) return prev
         const next = [notif, ...prev].slice(0, 200)
         setTabCounts(computeTabCounts(next))
+        setUnreadCount(next.filter((n) => !n.isRead).length)
         return next
       })
     },
@@ -104,11 +114,15 @@ export default function NotificationCenterClient({
   )
 
   const markRead = useCallback(async (id: string) => {
-    await apiJson('/api/notifications', {
+    const { ok } = await apiJson('/api/notifications', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     })
+    if (!ok) {
+      toast.error('ไม่สามารถทำเครื่องหมายว่าอ่านแล้ว')
+      return
+    }
     setItems((prev) => {
       const next = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       recomputeCounts(next)

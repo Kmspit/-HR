@@ -28,6 +28,24 @@ function pctChange(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 100)
 }
 
+function isWeekendBangkok(d: Date): boolean {
+  const dow = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'Asia/Bangkok' }).format(d)
+  return dow === 'Sat' || dow === 'Sun'
+}
+
+function countOnLeaveForDay(
+  dayStart: Date,
+  dayEnd: Date,
+  leaves: { startDate: Date; endDate: Date; status: string }[],
+): number {
+  let count = 0
+  for (const leave of leaves) {
+    if (!['APPROVED', 'ADMIN_APPROVED'].includes(leave.status)) continue
+    if (leave.startDate <= dayEnd && leave.endDate >= dayStart) count += 1
+  }
+  return count
+}
+
 export async function loadSmartDashboardData(
   prisma: PrismaClient,
   scope: BranchScopeInput,
@@ -53,8 +71,6 @@ export async function loadSmartDashboardData(
     pendingOutside,
     pendingWeekly,
     pendingForgot,
-    pendingExpense,
-    pendingDocs,
     weekAttendances,
     prevWeekAttendances,
     prevWeekLate,
@@ -87,10 +103,6 @@ export async function loadSmartDashboardData(
     prisma.forgotScanRequest.count({
       where: { status: { notIn: ['APPROVED', 'REJECTED', 'ADMIN_REJECTED'] }, ...userScope },
     }),
-    prisma.expenseClaim.count({ where: { status: { in: ['PENDING', 'SUPERVISOR_APPROVED'] } } }),
-    prisma.approvalRequest.count({
-      where: { status: { notIn: ['APPROVED', 'REJECTED', 'CANCELLED'] } },
-    }),
     prisma.attendance.findMany({
       where: attWeekWhere,
       select: { date: true, userId: true, status: true, lateMinutes: true, checkIn: true },
@@ -117,7 +129,7 @@ export async function loadSmartDashboardData(
         startDate: { lte: todayStart },
         endDate: { gte: weekStart },
       }),
-      select: { startDate: true, endDate: true },
+      select: { startDate: true, endDate: true, status: true },
     }),
     prisma.leaveRequest.findMany({
       where: requestUserWhere(scope, {
@@ -134,10 +146,11 @@ export async function loadSmartDashboardData(
   ])
 
   const presentToday = presentRows.length
-  const absentToday = Math.max(0, totalEmployees - presentToday - onLeaveToday)
+  const absentToday = isWeekendBangkok(todayStart)
+    ? 0
+    : Math.max(0, totalEmployees - presentToday - onLeaveToday)
 
-  const pendingApprovals =
-    pendingLeave + pendingOutside + pendingWeekly + pendingForgot + pendingExpense + pendingDocs
+  const pendingApprovals = pendingLeave + pendingOutside + pendingWeekly + pendingForgot
 
   const overview = {
     totalEmployees,
@@ -169,10 +182,14 @@ export async function loadSmartDashboardData(
 
   const attendanceTrend: TrendPoint[] = dayKeys.map((key) => {
     const d = new Date(`${key}T00:00:00+07:00`)
+    const dayEnd = new Date(d.getTime() + DAY_MS)
     const bucket = byDay.get(key)!
     const present = bucket.present.size
     const late = bucket.late
-    const absent = Math.max(0, totalEmployees - present)
+    const onLeave = isWeekendBangkok(d) ? 0 : countOnLeaveForDay(d, dayEnd, leavesInRange)
+    const absent = isWeekendBangkok(d)
+      ? 0
+      : Math.max(0, totalEmployees - present - onLeave)
     return {
       day: key,
       label: dayLabel(d),
@@ -251,8 +268,6 @@ export async function loadSmartDashboardData(
     pendingOutside,
     pendingWeekly,
     pendingForgot,
-    pendingExpense,
-    pendingDocs,
     pendingUsers: extras?.pendingUsers ?? 0,
     overdueTasks: extras?.overdueTasks ?? 0,
   })

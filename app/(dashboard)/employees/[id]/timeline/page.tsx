@@ -3,8 +3,10 @@ import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/dashboard/Topbar'
 import EmployeeTimelineClient from '@/components/employee-timeline/EmployeeTimelineClient'
+import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { loadEmployeeTimeline } from '@/lib/employee-timeline/load-data'
 import { canManageUsers } from '@/lib/permissions'
+import type { Role } from '@prisma/client'
 
 export default async function EmployeeTimelinePage({
   params,
@@ -15,6 +17,15 @@ export default async function EmployeeTimelinePage({
   const session = await auth()
   if (!session?.user) redirect('/login')
   if (!canManageUsers(session.user.role)) redirect('/unauthorized')
+
+  const allowed = await canViewEmployeeTimeline(
+    prisma,
+    session.user.id,
+    session.user.role as Role,
+    session.user.branchId,
+    id,
+  )
+  if (!allowed) redirect('/unauthorized')
 
   const data = await loadEmployeeTimeline(prisma, id)
   if (!data) notFound()

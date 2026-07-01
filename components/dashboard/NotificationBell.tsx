@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { apiJson } from '@/lib/client-api'
 import { formatThaiDateTime } from '@/lib/utils'
-import { useUnreadCount, useNotificationStream } from '@/hooks/useNotificationStream'
+import { useUnreadCount } from '@/hooks/useNotificationStream'
 import {
   getPriority, PRIORITY_STYLES, resolveLink, TYPE_ICONS,
 } from '@/lib/notification-center/constants'
@@ -21,21 +21,24 @@ type Props = {
 export default function NotificationBell({ initialCount }: Props) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<Notif[]>([])
-  const [count, setCount] = useUnreadCount(initialCount)
-  const [loaded, setLoaded] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const router = useRouter()
-
-  useNotificationStream({
-    onCount: setCount,
+  const [count, setCount] = useUnreadCount(initialCount, {
     onNew: (notif) => {
       setItems((prev) => {
         if (prev.some((n) => n.id === notif.id)) return prev
         return [notif, ...prev].slice(0, 10)
       })
     },
+    onCount: (n) => {
+      if (n === 0) {
+        setItems((prev) => prev.map((item) => ({ ...item, isRead: true })))
+      }
+    },
   })
+
+  const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

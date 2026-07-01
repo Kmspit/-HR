@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('@/lib/notifications', () => ({
+  createNotification: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { createNotification } from '@/lib/notifications'
 import {
   canUserActOnStep,
   applyChainToLeave,
@@ -80,7 +86,6 @@ describe('applyChainToLeave', () => {
     approvalChainConfig: { findUnique: vi.fn() },
     leaveApprovalStep: { createMany: vi.fn() },
     leaveRequest: { update: vi.fn() },
-    notification: { create: vi.fn() },
   }
 
   beforeEach(() => vi.clearAllMocks())
@@ -103,15 +108,14 @@ describe('applyChainToLeave', () => {
     } as never)
     vi.mocked(mockPrisma.leaveApprovalStep.createMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(mockPrisma.leaveRequest.update).mockResolvedValue({} as never)
-    vi.mocked(mockPrisma.notification.create).mockResolvedValue({} as never)
 
     await applyChainToLeave(mockPrisma as never, 'leave-1', 'chain-1', 'emp-1')
 
     expect(mockPrisma.leaveApprovalStep.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({ approverId: 'tl-1', status: 'PENDING' })],
     })
-    expect(mockPrisma.notification.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ userId: 'tl-1' }) }),
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'tl-1' }),
     )
   })
 })

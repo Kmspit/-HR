@@ -1,6 +1,7 @@
 import type { PrismaClient, RequestStatus, Role } from '@prisma/client'
 import { hasPermission } from '@/lib/access-control'
-import { canApproverActOnRequester } from '@/lib/org-scope'
+import { canPerformApproval } from '@/lib/approval-permissions'
+import { getDirectReportUserIds, isCompanyWideApprover } from '@/lib/org-scope'
 import {
   getPendingForgotScanForApprover,
   getPendingLeaveForApprover,
@@ -14,7 +15,7 @@ import type {
   InboxWeeklyItem,
 } from '@/lib/approval-inbox'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
-import { formatThaiDate } from '@/lib/utils'
+import { formatThaiDate, formatThaiDateTime } from '@/lib/utils'
 import { canManageApprovalChains } from './access'
 import { STATUS_LABELS } from './constants'
 import type {
@@ -32,6 +33,23 @@ const SCAN_LABELS: Record<string, string> = {
 }
 
 const HR_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
+
+type ScopeSet = Set<string> | 'ALL'
+
+async function resolveScopeUserIds(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<ScopeSet> {
+  if (isCompanyWideApprover(role) || HR_ROLES.includes(role)) return 'ALL'
+  const reports = await getDirectReportUserIds(prisma, userId, role)
+  return new Set(reports)
+}
+
+function inEmployeeScope(employeeId: string, scope: ScopeSet): boolean {
+  if (scope === 'ALL') return true
+  return scope.has(employeeId)
+}
 
 function statusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status
@@ -134,21 +152,11 @@ function mapForgot(row: InboxForgotScanItem, canAct: boolean, createdAt: Date): 
     detailFields: [
       { label: 'วันที่', value: formatThaiDate(row.date) },
       { label: 'ประเภท', value: SCAN_LABELS[row.scanType] ?? row.scanType },
-      { label: 'เวลาที่ถูกต้อง', value: formatThaiDate(row.correctTime) },
+      { label: 'เวลาที่ถูกต้อง', value: formatThaiDateTime(row.correctTime) },
       { label: 'เหตุผล', value: row.reason || '—' },
       { label: 'อีเมล', value: row.user.email },
     ],
   }
-}
-
-async function filterByOrgScope(
-  prisma: PrismaClient,
-  userId: string,
-  role: Role,
-  employeeId: string,
-): Promise<boolean> {
-  if (HR_ROLES.includes(role)) return true
-  return canApproverActOnRequester(prisma, userId, role, employeeId)
 }
 
 async function loadApprovedRejected(
@@ -157,6 +165,7 @@ async function loadApprovedRejected(
   role: Role,
   bucket: 'approved' | 'rejected',
 ): Promise<UnifiedApprovalItem[]> {
+  const scope = await resolveScopeUserIds(prisma, userId, role)
   const leaveStatus: RequestStatus[] = bucket === 'approved' ? ['APPROVED'] : ['REJECTED']
   const outsideStatus: RequestStatus[] = bucket === 'approved' ? ['APPROVED'] : ['REJECTED']
   const weeklyStatus: RequestStatus[] = bucket === 'approved' ? ['APPROVED'] : ['REJECTED']
@@ -195,7 +204,7 @@ async function loadApprovedRejected(
   const out: UnifiedApprovalItem[] = []
 
   for (const row of leaves) {
-    if (!(await filterByOrgScope(prisma, userId, role, row.userId))) continue
+    if (!inEmployeeScope(row.userId, scope)) continue
     out.push(
       mapLeave(
         {
@@ -218,7 +227,7 @@ async function loadApprovedRejected(
   }
 
   for (const row of outside) {
-    if (!(await filterByOrgScope(prisma, userId, role, row.userId))) continue
+    if (!inEmployeeScope(row.userId, scope)) continue
     out.push(
       mapOutside(
         {
@@ -242,7 +251,7 @@ async function loadApprovedRejected(
   }
 
   for (const row of weekly) {
-    if (!(await filterByOrgScope(prisma, userId, role, row.lawyerId))) continue
+    if (!inEmployeeScope(row.lawyerId, scope)) continue
     out.push(
       mapWeekly(
         {
@@ -265,7 +274,7 @@ async function loadApprovedRejected(
   }
 
   for (const row of forgot) {
-    if (!(await filterByOrgScope(prisma, userId, role, row.userId))) continue
+    if (!inEmployeeScope(row.userId, scope)) continue
     out.push(
       mapForgot(
         {
@@ -413,8 +422,7 @@ async function loadPendingWithMeta(
   userId: string,
   role: Role,
 ): Promise<UnifiedApprovalItem[]> {
-  const canWeekly =
-    hasPermission(role, 'approve_weekly_plan') || role === 'CEO' || role === 'ADMIN'
+  const canWeekly = hasPermission(role, 'approve_weekly_plan') || role === 'CEO'
 
   const [leave, outside, weekly, forgot] = await Promise.all([
     getPendingLeaveForApprover(prisma, userId, role),
@@ -453,23 +461,23 @@ async function loadPendingWithMeta(
   const out: UnifiedApprovalItem[] = []
 
   for (const row of leave) {
-    out.push(mapLeave(row, true, leaveCreated.get(row.id) ?? new Date()))
+    out.push(mapLeave(row, canPerformApproval(role, 'LEAVE'), leaveCreated.get(row.id) ?? new Date()))
   }
   for (const row of outside) {
-    out.push(mapOutside(row, true, outsideCreated.get(row.id) ?? new Date()))
+    out.push(mapOutside(row, canPerformApproval(role, 'OUTSIDE'), outsideCreated.get(row.id) ?? new Date()))
   }
   for (const row of weekly) {
     const meta = weeklyMeta.get(row.id)
     out.push(
       mapWeekly(
         { ...row, lawyerId: meta?.lawyerId, department: meta?.lawyer.department ?? null },
-        true,
+        canPerformApproval(role, 'WEEKLY_PLAN'),
         meta?.createdAt ?? new Date(),
       ),
     )
   }
   for (const row of forgot) {
-    out.push(mapForgot(row, true, forgotCreated.get(row.id) ?? new Date()))
+    out.push(mapForgot(row, canPerformApproval(role, 'FORGOT_SCAN'), forgotCreated.get(row.id) ?? new Date()))
   }
 
   out.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
