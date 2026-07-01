@@ -6,6 +6,7 @@ import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
+import { ManualButton } from '@/components/ui/ManualButton'
 
 type PayrollRow = {
   id: string
@@ -172,6 +173,7 @@ export default function PayrollClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-white">เงินเดือน</h1>
         <div className="flex items-center gap-2 flex-wrap">
+          <ManualButton section="payroll" />
           <select
             value={month}
             onChange={(e) => {

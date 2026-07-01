@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Clock, ChevronDown, ChevronUp, CheckCircle, XCircle, Loader2, FileText, AlertCircle } from 'lucide-react'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { bangkokDateKey, formatTimeBangkok, formatDateBangkok } from '@/lib/datetime-bangkok'
+import { ManualButton } from '@/components/ui/ManualButton'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -350,14 +351,17 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
           <h1 className="text-lg font-bold text-white">แก้ไขเวลาลงงาน</h1>
           <p className="text-xs text-slate-500 mt-0.5">ยื่นคำขอกรณีลืมสแกนเวลา</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((p) => !p)}
-          className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all active:scale-[0.97]"
-          style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
-        >
-          {showForm ? 'ยกเลิก' : '+ ยื่นคำขอ'}
-        </button>
+        <div className="flex items-center gap-3">
+          <ManualButton section="forgot-scan" />
+          <button
+            type="button"
+            onClick={() => setShowForm((p) => !p)}
+            className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all active:scale-[0.97]"
+            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+          >
+            {showForm ? 'ยกเลิก' : '+ ยื่นคำขอ'}
+          </button>
+        </div>
       </div>
 
       {/* Submit form */}

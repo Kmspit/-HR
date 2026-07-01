@@ -1,6 +1,9 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { usePathname } from 'next/navigation'
+import { ManualButton } from '@/components/ui/ManualButton'
+import { manualSectionFromPath } from '@/lib/manual-sections'
 
 type StatChip = {
   label: string
@@ -14,6 +17,10 @@ type Props = {
   actions?: React.ReactNode
   stats?: StatChip[]
   breadcrumb?: Array<{ label: string; href?: string }>
+  /** Override auto-detected manual section slug */
+  manualSection?: string
+  /** Hide manual link (e.g. on /manual itself) */
+  hideManual?: boolean
 }
 
 const CHIP_COLORS: Record<NonNullable<StatChip['color']>, string> = {
@@ -25,7 +32,10 @@ const CHIP_COLORS: Record<NonNullable<StatChip['color']>, string> = {
   slate:  'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20',
 }
 
-export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: Props) {
+export default function Topbar({ title, subtitle, actions, stats, breadcrumb, manualSection, hideManual }: Props) {
+  const pathname = usePathname()
+  const resolvedSection = manualSection ?? manualSectionFromPath(pathname ?? '')
+  const showManual = !hideManual && pathname !== '/manual'
   return (
     <div
       className={cn(
@@ -64,11 +74,10 @@ export default function Topbar({ title, subtitle, actions, stats, breadcrumb }: 
             </p>
           )}
         </div>
-        {actions && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {actions}
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+          {actions}
+          {showManual && <ManualButton section={resolvedSection} />}
+        </div>
       </div>
 
       {/* Stats chips row */}

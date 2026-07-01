@@ -12,6 +12,7 @@ import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
 import AttendanceLocalHistory from '@/components/attendance/AttendanceLocalHistory'
 import AttendanceDetailModal from '@/components/attendance/AttendanceDetailModal'
+import { ManualButton } from '@/components/ui/ManualButton'
 import { formatLateMinutes, formatLateMinutesShort } from '@/lib/utils'
 import {
   getAttendanceProgress,
@@ -252,10 +253,11 @@ export default function AttendanceClient({
   return (
     <div className="p-4 md:p-5 space-y-4">
       {/* Header + Tabs row */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-slate-900 dark:text-white">ลงเวลางาน</h1>
-        {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+        <div className="flex items-center gap-2 ml-auto">
+          <ManualButton section="attendance" />
+          <div className="flex gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
           {[
             { id: 'today',   label: 'วันนี้',  icon: <Clock className="w-3.5 h-3.5" /> },
             { id: 'history', label: 'ประวัติ', icon: <Calendar className="w-3.5 h-3.5" /> },
@@ -269,6 +271,7 @@ export default function AttendanceClient({
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
+          </div>
         </div>
       </div>
 
