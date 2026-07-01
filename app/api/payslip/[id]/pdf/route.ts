@@ -5,6 +5,7 @@ import { apiError } from '@/lib/api-handler'
 import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
 import { parseTaxDetail } from '@/lib/payroll-tax'
 import { HR_ROLES } from '@/lib/access-control'
+import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 
 export async function GET(
   req: NextRequest,
@@ -36,6 +37,14 @@ export async function GET(
     const isHr = (HR_ROLES as readonly string[]).includes(session.user.role)
     if (payroll.userId !== session.user.id && !isHr) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (isHr && payroll.userId !== session.user.id) {
+      const scope = buildBranchScope(session.user, {})
+      const inScope = await prisma.user.findFirst({
+        where: branchUserWhere(scope, { id: payroll.userId }),
+        select: { id: true },
+      })
+      if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })

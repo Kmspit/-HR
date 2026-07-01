@@ -171,7 +171,7 @@ export default function PayrollClient({
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-white">เงินเดือน</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">เงินเดือน</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <ManualButton section="payroll" />
           <select
@@ -181,7 +181,7 @@ export default function PayrollClient({
               setMonth(m)
               loadPayrolls(m, year)
             }}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+            className="bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-sm"
           >
             {MONTH_NAMES.slice(1).map((n, i) => (
               <option key={i + 1} value={i + 1}>
@@ -196,7 +196,7 @@ export default function PayrollClient({
               setYear(y)
               loadPayrolls(month, y)
             }}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm"
+            className="bg-white dark:bg-white/5 border border-slate-200 dark:border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-sm"
           >
             {[2024, 2025, 2026, 2027].map((y) => (
               <option key={y} value={y}>
@@ -214,7 +214,7 @@ export default function PayrollClient({
           </button>
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 border border-white/10 text-white/60 hover:bg-white/5 rounded-xl text-sm transition"
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl text-sm transition"
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
@@ -224,23 +224,23 @@ export default function PayrollClient({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card-hover smooth-transition bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-blue-400">{totalEmployees ?? payrolls.length}</p>
-          <p className="text-sm text-white/50">พนักงานทั้งหมด</p>
+          <p className="text-sm text-slate-500 dark:text-white/50">พนักงานทั้งหมด</p>
         </div>
         <div className="card-hover smooth-transition bg-green-500/10 border border-green-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-green-400">
             ฿{totalNet.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-sm text-white/50">รวมจ่ายสุทธิ</p>
+          <p className="text-sm text-slate-500 dark:text-white/50">รวมจ่ายสุทธิ</p>
         </div>
         <div className="card-hover smooth-transition bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-yellow-400">
             ฿{summary.totalLateDeduction.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-sm text-white/50">หักมาสายรวม ({summary.employeesWithLate} คน)</p>
+          <p className="text-sm text-slate-500 dark:text-white/50">หักมาสายรวม ({summary.employeesWithLate} คน)</p>
         </div>
         <div className="card-hover smooth-transition bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4 text-center">
           <p className="text-2xl font-bold text-orange-400">{summary.totalBillableLateMinutes}</p>
-          <p className="text-sm text-white/50">นาทีหักมาสายรวม</p>
+          <p className="text-sm text-slate-500 dark:text-white/50">นาทีหักมาสายรวม</p>
         </div>
       </div>
 
@@ -248,16 +248,16 @@ export default function PayrollClient({
         <div className="table-scroll">
           <table className="w-full text-sm min-w-[900px]">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left p-3 text-white/40 font-medium">พนักงาน</th>
-                <th className="text-right p-3 text-white/40 font-medium">ฐาน</th>
-                <th className="text-right p-3 text-white/40 font-medium">หักสาย</th>
-                <th className="text-right p-3 text-white/40 font-medium">นาทีหัก</th>
-                <th className="text-right p-3 text-white/40 font-medium">หักขาด</th>
-                <th className="text-right p-3 text-white/40 font-medium">SS</th>
-                <th className="text-right p-3 text-white/40 font-medium">สุทธิ</th>
-                <th className="text-center p-3 text-white/40 font-medium">สถิติ</th>
-                <th className="text-center p-3 text-white/40 font-medium">สถานะ</th>
+              <tr className="border-b border-slate-200 dark:border-white/10">
+                <th className="text-left p-3 text-slate-400 dark:text-white/40 font-medium">พนักงาน</th>
+                <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">ฐาน</th>
+                <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">หักสาย</th>
+                <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">นาทีหัก</th>
+                <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">หักขาด</th>
+                <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">SS</th>
+                <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">สุทธิ</th>
+                <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">สถิติ</th>
+                <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">สถานะ</th>
               </tr>
             </thead>
             <tbody>
@@ -266,8 +266,8 @@ export default function PayrollClient({
                 payrolls.map((p) => (
                   <tr key={p.id} className={`table-row-hover ${!p.hasPayroll ? 'opacity-70' : ''}`}>
                     <td className="p-3">
-                      <p className="text-white font-medium">{p.name}</p>
-                      <p className="text-white/40 text-xs">
+                      <p className="text-slate-900 dark:text-white font-medium">{p.name}</p>
+                      <p className="text-slate-400 dark:text-white/40 text-xs">
                         {p.department} · {p.position}
                       </p>
                       {!p.hasPayroll && (
@@ -306,7 +306,7 @@ export default function PayrollClient({
                         ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}`
                         : '—'}
                     </td>
-                    <td className="p-3 text-center text-xs text-white/40">
+                    <td className="p-3 text-center text-xs text-slate-400 dark:text-white/40">
                       สาย {p.lateDays} วัน · ขาด {p.absentDays} วัน
                     </td>
                     <td className="p-3 text-center">
@@ -318,7 +318,7 @@ export default function PayrollClient({
                               ? 'bg-blue-500/20 text-blue-400'
                               : p.status === 'PENDING'
                                 ? 'bg-amber-500/20 text-amber-400'
-                                : 'bg-white/10 text-white/40'
+                                : 'bg-white/10 text-slate-400 dark:text-white/40'
                         }`}
                       >
                         {p.status === 'APPROVED'
@@ -346,19 +346,19 @@ export default function PayrollClient({
 
       {detailRow && detailRow.hasPayroll && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-white/10 p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-white font-semibold flex items-center gap-2">
                   <Clock className="w-4 h-4 text-yellow-400" />
                   รายละเอียดหักมาสาย
                 </p>
-                <p className="text-sm text-white/50 mt-0.5">{detailRow.name}</p>
+                <p className="text-sm text-slate-500 dark:text-white/50 mt-0.5">{detailRow.name}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setDetailRow(null)}
-                className="p-2 rounded-lg hover:bg-white/10 text-white/50"
+                className="p-2 rounded-lg hover:bg-white/10 text-slate-500 dark:text-white/50"
               >
                 <X className="w-4 h-4" />
               </button>

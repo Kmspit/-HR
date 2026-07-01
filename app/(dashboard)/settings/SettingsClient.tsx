@@ -83,13 +83,13 @@ export default function SettingsClient({ settings }: { settings: Settings | null
 
   const Input = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
     <div className="min-w-0">
-      <label className="block text-sm text-white/50 mb-1">{label}</label>
+      <label className="block text-sm text-slate-500 dark:text-white/50 mb-1">{label}</label>
       <input
         type={type}
         value={value ?? ''}
         onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) : e.target.value)}
         placeholder={placeholder}
-        className="w-full min-w-0 max-w-full box-border bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-blue-500"
+        className="w-full min-w-0 max-w-full box-border bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-white/20 focus:outline-none focus:border-blue-500"
       />
     </div>
   )
@@ -97,7 +97,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">ตั้งค่าบริษัท</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">ตั้งค่าบริษัท</h1>
         <button
           onClick={save}
           disabled={saving}
@@ -109,8 +109,8 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       </div>
 
       {/* Company Info */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold text-white flex items-center gap-2">
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
           <Building2 className="w-4 h-4 text-blue-400" /> ข้อมูลบริษัท
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -120,8 +120,8 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       </section>
 
       {/* Work Hours */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold text-white flex items-center gap-2">
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
           <Clock className="w-4 h-4 text-blue-400" /> เวลาทำงาน
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -143,21 +143,21 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       </section>
 
       {/* Payroll Deduction */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold text-white">การหักเงิน</h2>
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-slate-900 dark:text-white">การหักเงิน</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="หักสาย (บาท/นาที)" value={form.lateDeductRate} onChange={(v: number) => set('lateDeductRate', v)} type="number" placeholder="0 = ไม่หัก" />
           <Input label="หักขาดงาน (บาท/วัน เพิ่มเติม)" value={form.absentDeductRate} onChange={(v: number) => set('absentDeductRate', v)} type="number" placeholder="0 = คิดตามฐาน" />
         </div>
-        <p className="text-xs text-white/30">* ขาดงานจะหักตามอัตราเงินเดือนรายวันเสมอ ค่านี้เป็นเพิ่มเติม</p>
+        <p className="text-xs text-slate-400 dark:text-white/30">* ขาดงานจะหักตามอัตราเงินเดือนรายวันเสมอ ค่านี้เป็นเพิ่มเติม</p>
       </section>
 
       {/* Cloudinary retention */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold text-white flex items-center gap-2">
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
           <ImageIcon className="w-4 h-4 text-cyan-400" /> เก็บรูป Cloudinary
         </h2>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-slate-400 dark:text-white/40">
           ลบรูปสแกนใบหน้า / โปรไฟล์ที่เก่ากว่ากำหนดอัตโนมัติ (cron) — ใช้ signed URL เท่านั้น
         </p>
         <div className="flex flex-wrap gap-2">
@@ -169,7 +169,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
               className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
                 form.imageRetentionDays === days
                   ? 'bg-cyan-600 border-cyan-500 text-white'
-                  : 'border-white/10 text-white/60 hover:bg-white/5'
+                  : 'border-white/10 text-slate-500 dark:text-white/60 hover:bg-white/5'
               }`}
             >
               {days} วัน
@@ -179,8 +179,8 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       </section>
 
       {/* Geofence */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold text-white flex items-center gap-2">
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
           <MapPin className="w-4 h-4 text-blue-400" /> Geofence เช็คอิน
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -190,16 +190,16 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         </div>
         <button
           onClick={getLocation}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 text-sm transition"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-500 dark:text-white/60 hover:bg-white/5 text-sm transition"
         >
           <MapPin className="w-4 h-4" /> ใช้ตำแหน่งปัจจุบันเป็นที่ตั้งบริษัท
         </button>
       </section>
 
       {/* LINE */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-white flex items-center gap-2">
+          <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-green-400" /> LINE Integration
           </h2>
           <Link
@@ -215,7 +215,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
             type="button"
             onClick={() => setLineTab('send')}
             className={`flex flex-1 items-center justify-center gap-2 py-2 text-xs font-semibold transition ${
-              lineTab === 'send' ? 'bg-[#06C755] text-white' : 'text-white/50 hover:text-white'
+              lineTab === 'send' ? 'bg-[#06C755] text-white' : 'text-slate-500 dark:text-white/50 hover:text-white'
             }`}
           >
             <Send className="w-3.5 h-3.5" />
@@ -225,7 +225,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
             type="button"
             onClick={() => setLineTab('config')}
             className={`flex flex-1 items-center justify-center gap-2 py-2 text-xs font-semibold transition ${
-              lineTab === 'config' ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white'
+              lineTab === 'config' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-white'
             }`}
           >
             <MessageCircle className="w-3.5 h-3.5" />
@@ -243,7 +243,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
               <Input label="LINE Channel ID" value={form.lineChannelId} onChange={(v: string) => set('lineChannelId', v)} />
               <Input label="LINE Channel Secret" value={form.lineChannelSecret} onChange={(v: string) => set('lineChannelSecret', v)} type="password" />
             </div>
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-slate-400 dark:text-white/30">
               * Production ใช้ env บน Vercel (LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN) —
               พนักงานต้องผูก LINE ที่โปรไฟล์ก่อนจึงส่งถึงได้
             </p>

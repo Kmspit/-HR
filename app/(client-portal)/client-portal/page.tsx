@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { getPortalSession } from '@/lib/portal-auth'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import ClientDashboard from './ClientDashboard'
 import PortalDashboard from './PortalDashboard'
 
@@ -28,10 +29,12 @@ export default async function ClientPortalPage() {
   const session = await auth()
   if (session?.user?.id && session.user.role === 'CLIENT') {
     return (
-      <ClientDashboard
-        userId={session.user.id}
-        userName={session.user.name ?? ''}
-      />
+      <Suspense fallback={null}>
+        <ClientDashboard
+          userId={session.user.id}
+          userName={session.user.name ?? ''}
+        />
+      </Suspense>
     )
   }
 

@@ -8,6 +8,7 @@ import {
 } from '@/lib/branch-scope'
 import { bangkokDateKey, startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import { buildAlerts, buildAIInsights } from './insights'
+import { gateSmartAlerts } from './alert-gates'
 import type { SmartDashboardPayload, TrendPoint } from './types'
 
 const SLOW_DASHBOARD_MS = 2_000
@@ -313,14 +314,17 @@ export async function loadSmartDashboardData(
       : null,
   })
 
-  const alerts = buildAlerts(overview, {
-    pendingLeave,
-    pendingOutside,
-    pendingWeekly,
-    pendingForgot,
-    pendingUsers: extras?.pendingUsers ?? 0,
-    overdueTasks: extras?.overdueTasks ?? 0,
-  })
+  const alerts = gateSmartAlerts(
+    buildAlerts(overview, {
+      pendingLeave,
+      pendingOutside,
+      pendingWeekly,
+      pendingForgot,
+      pendingUsers: extras?.pendingUsers ?? 0,
+      overdueTasks: extras?.overdueTasks ?? 0,
+    }),
+    scope.role,
+  )
 
   const payload = {
     overview,

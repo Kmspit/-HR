@@ -4,6 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import { createAuditLog, createNotification } from '@/lib/notifications'
+import {
+  canViewUserRecord,
+  isCompanyWideApprover,
+} from '@/lib/org-scope'
+import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -31,8 +36,16 @@ export async function GET(
 
     const canSee =
       warning.userId === session.user.id ||
-      canApproveWarning(role) ||
-      canManageUsers(role)
+      canManageUsers(role) ||
+      (canApproveWarning(role) &&
+        (isCompanyWideApprover(role) ||
+          await canViewUserRecord(
+            prisma,
+            session.user.id,
+            role,
+            session.user.branchId,
+            warning.userId,
+          )))
 
     if (!canSee) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -60,6 +73,9 @@ export async function PATCH(
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const role = session.user.role as Role
     if (!canApproveWarning(role) && !canManageUsers(role)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
@@ -78,6 +94,18 @@ export async function PATCH(
 
     const warning = await prisma.warning.findUnique({ where: { id } })
     if (!warning) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const inScope =
+      isCompanyWideApprover(role) ||
+      canManageUsers(role) ||
+      await canViewUserRecord(
+        prisma,
+        session.user.id,
+        role,
+        session.user.branchId,
+        warning.userId,
+      )
+    if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const now = new Date()
     const ip = req.headers.get('x-forwarded-for') ?? 'unknown'

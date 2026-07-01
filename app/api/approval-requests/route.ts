@@ -4,7 +4,12 @@ import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { headers } from 'next/headers'
 import { APPR_ROLES, HR_ADMIN } from '@/lib/module-gates'
-import type { Role } from '@prisma/client'
+import {
+  isCompanyWideApprover,
+  resolveOrgListScope,
+} from '@/lib/org-scope'
+import { requireCsrf } from '@/lib/api-guard'
+import type { Prisma, Role } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -19,23 +24,36 @@ export async function GET(req: NextRequest) {
   const page     = Math.max(1, Number(sp.get('page') ?? '1'))
   const take     = 50
 
-  // Role-based filter
-  const where: Record<string, unknown> = {}
-  if (status)  where.status  = status
+  const where: Prisma.ApprovalRequestWhereInput = {}
+  if (status)  where.status  = status as Prisma.ApprovalRequestWhereInput['status']
   if (docType) where.docType = docType
 
-  if (mine || (!HR_ADMIN.includes(role as Role) && !APPR_ROLES.includes(role as Role))) {
+  const viewerRole = role as Role
+  const isWide = HR_ADMIN.includes(viewerRole) || isCompanyWideApprover(viewerRole)
+
+  if (mine || (!isWide && !APPR_ROLES.includes(viewerRole))) {
     where.requestedById = userId
   } else if (pending) {
-    // Show requests where the current user is an approver on the active step
-    where.steps = {
-      some: {
-        status: 'PENDING',
-        OR: [
-          { approverId: userId },
-          { approverRole: role },
-        ],
-      },
+    if (isWide) {
+      where.steps = {
+        some: {
+          status: 'PENDING',
+          OR: [{ approverId: userId }, { approverRole: role }],
+        },
+      }
+    } else {
+      const scope = await resolveOrgListScope(prisma, userId, viewerRole)
+      where.OR = [
+        { steps: { some: { status: 'PENDING', approverId: userId } } },
+        ...(scope !== 'ALL'
+          ? [{
+              requestedById: { in: scope },
+              steps: { some: { status: 'PENDING', approverRole: role } },
+            }]
+          : [{
+              steps: { some: { status: 'PENDING', approverRole: role } },
+            }]),
+      ]
     }
   }
 
@@ -70,6 +88,9 @@ type StepInput = {
 }
 
 export async function POST(req: NextRequest) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -111,7 +132,6 @@ export async function POST(req: NextRequest) {
     include: { steps: true },
   })
 
-  // Write activity log
   await prisma.activityLog.create({
     data: {
       actorId:   session.user.id,
@@ -125,7 +145,6 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Notify first-step approvers
   const step1 = stepsArr.find((s) => s.stepOrder === 1)
   if (step1) {
     if (step1.approverId) {

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
+import { requireCsrf } from '@/lib/api-guard'
 import { getLeaveBalanceStats, ensureLeaveBalance, getLeaveUsedByYear } from '@/lib/leave-balance'
 import { createAuditLog } from '@/lib/notifications'
 import type { Role } from '@prisma/client'
@@ -20,6 +21,15 @@ export async function GET(req: NextRequest) {
     // Only HR/Admin can view other users' balance
     if (targetUserId !== session.user.id && !canManageUsers(session.user.role as Role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (targetUserId !== session.user.id && canManageUsers(session.user.role as Role)) {
+      const scope = buildBranchScope(session.user, {})
+      const inScope = await prisma.user.findFirst({
+        where: branchUserWhere(scope, { id: targetUserId }),
+        select: { id: true },
+      })
+      if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // HR requesting all users
@@ -66,6 +76,9 @@ export async function GET(req: NextRequest) {
 /** HR: update leave balance for a specific user */
 export async function PUT(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!canManageUsers(session.user.role as Role)) {
@@ -82,6 +95,13 @@ export async function PUT(req: NextRequest) {
     }
 
     if (!body.userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+
+    const scope = buildBranchScope(session.user, {})
+    const inScope = await prisma.user.findFirst({
+      where: branchUserWhere(scope, { id: body.userId }),
+      select: { id: true },
+    })
+    if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const year = body.year ?? new Date().getFullYear()
     const ip = req.headers.get('x-forwarded-for') ?? 'unknown'

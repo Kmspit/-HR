@@ -3,6 +3,12 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { headers } from 'next/headers'
+import {
+  canActOnApprovalStep,
+  canViewApprovalRequest,
+} from '@/lib/approval-request-access'
+import { requireCsrf } from '@/lib/api-guard'
+import type { Role } from '@prisma/client'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -24,13 +30,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!request) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Fetch activity log for this doc
+  const allowed = await canViewApprovalRequest(
+    prisma,
+    session.user.id,
+    session.user.role as Role,
+    request,
+  )
+  if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const activity = await prisma.activityLog.findMany({
     where: { docType: request.docType, docId: request.docId },
     orderBy: { createdAt: 'asc' },
   })
 
-  // Fetch signatures for this doc
   const signatures = await prisma.digitalSignature.findMany({
     where: { docType: request.docType, docId: request.docId },
     include: { signedBy: { select: { id: true, name: true } } },
@@ -41,6 +53,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -63,7 +78,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
   }
 
-  // Find the current active step
   const activeStep = stepId
     ? request.steps.find((s) => s.id === stepId)
     : request.steps.find((s) => s.stepOrder === request.currentStep)
@@ -72,12 +86,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id: userId, role } = session.user
 
-  // Check permission: approver must match
-  const isAssignedApprover = activeStep.approverId === userId ||
-    (activeStep.approverRole && activeStep.approverRole === role) ||
-    ['SUPER_ADMIN', 'CEO'].includes(role)
-
-  if (!isAssignedApprover) {
+  const canAct = await canActOnApprovalStep(
+    prisma,
+    userId,
+    role as Role,
+    request,
+    activeStep,
+  )
+  if (!canAct) {
     return NextResponse.json({ error: 'คุณไม่มีสิทธิ์อนุมัติขั้นตอนนี้' }, { status: 403 })
   }
 
@@ -98,27 +114,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     notifTitle       = `⚠️ ต้องแก้ไข: ${request.title}`
   } else {
     newStepStatus = 'APPROVED'
-    // Check if this is the last step
     const isLastStep = activeStep.stepOrder >= request.totalSteps
     if (isLastStep) {
       newRequestStatus = 'CEO_APPROVED'
       notifType        = 'APPROVAL_APPROVED'
       notifTitle       = `✅ อนุมัติเสร็จสิ้น: ${request.title}`
     } else {
-      // Advance to next step
       newRequestStatus = `STEP_${activeStep.stepOrder}_APPROVED`
       notifType        = 'APPROVAL_APPROVED'
       notifTitle       = `✅ ผ่านขั้นตอน ${activeStep.stepOrder}: ${request.title}`
     }
   }
 
-  // Update step
   await prisma.approvalRequestStep.update({
     where: { id: activeStep.id },
     data:  { status: newStepStatus, actorId: userId, comment: comment ?? null, ip, actedAt: new Date() },
   })
 
-  // Activate next step if approved and not last
   const isLastStep = activeStep.stepOrder >= request.totalSteps
   if (action === 'APPROVE' && !isLastStep) {
     const nextStep = request.steps.find((s) => s.stepOrder === activeStep.stepOrder + 1)
@@ -127,7 +139,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         where: { id: nextStep.id },
         data:  { status: 'PENDING' },
       })
-      // Notify next step approver
       if (nextStep.approverId) {
         await createNotification({
           userId: nextStep.approverId,
@@ -156,7 +167,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // Determine final status for approval_requests
   const finalStatus = action === 'APPROVE' && !isLastStep
     ? 'IN_REVIEW'
     : newRequestStatus
@@ -171,7 +181,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   })
 
-  // Write activity log
   await prisma.activityLog.create({
     data: {
       actorId:     userId,
@@ -187,7 +196,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   })
 
-  // Notify requester
   await createNotification({
     userId:  request.requestedBy.id,
     type:    notifType,

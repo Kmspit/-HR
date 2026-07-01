@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 
@@ -105,6 +106,7 @@ function CaseTimeline({ histories }: { histories: StatusHistory[] }) {
 interface Props { userId: string; userName: string }
 
 export default function ClientDashboard({ userName }: Props) {
+  const searchParams = useSearchParams()
   const [tasks,   setTasks]   = useState<Task[]>([])
   const [summary, setSummary] = useState<Summary>({ total: 0, active: 0, completed: 0, upcoming: 0 })
   const [loading, setLoading] = useState(true)
@@ -112,6 +114,13 @@ export default function ClientDashboard({ userName }: Props) {
   const [q,  setQ]  = useState('')
   const [tab, setTab] = useState<'all' | 'active' | 'completed'>('all')
   const [activeNav, setActiveNav] = useState<'cases' | 'docs' | 'messages'>('cases')
+
+  useEffect(() => {
+    const nav = searchParams.get('nav')
+    if (nav === 'messages' || nav === 'docs' || nav === 'cases') {
+      setActiveNav(nav === 'cases' ? 'cases' : nav)
+    }
+  }, [searchParams])
 
   // Notifications
   const [notifCount, setNotifCount] = useState(0)

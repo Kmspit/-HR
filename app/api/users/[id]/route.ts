@@ -5,7 +5,7 @@ import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { normalizeEmail, normalizeNationalId, parseBirthDate, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
 import { normalizeThaiPhone } from '@/lib/profile-name'
 import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
-import { requireAuth, requireOrgScope, isGuardResponse } from '@/lib/api-guard'
+import { requireAuth, requireOrgScope, isGuardResponse, requireCsrf } from '@/lib/api-guard'
 import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
 import type { Role, UserStatus } from '@prisma/client'
@@ -42,6 +42,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await requireAuth()
     if (isGuardResponse(session)) return session
 

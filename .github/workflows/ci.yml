@@ -25,6 +25,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Audit module gates
+        run: npm run audit:module-gates
+
+      - name: Validate schema (static)
+        run: node scripts/validate-schema-ci.mjs
+
       - name: Test
         run: npm test
 

@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { createAuditLog } from '@/lib/notifications'
 import { hasPermission } from '@/lib/access-control'
+import {
+  canViewUserRecord,
+  isCompanyWideApprover,
+} from '@/lib/org-scope'
 import type { Role } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
@@ -27,9 +31,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     if (!request) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    const role = session.user.role as Role
     const canView =
       request.userId === session.user.id ||
-      hasPermission(session.user.role as Role, 'approve_outside_work')
+      (hasPermission(role, 'approve_outside_work') &&
+        (isCompanyWideApprover(role) ||
+          await canViewUserRecord(
+            prisma,
+            session.user.id,
+            role,
+            session.user.branchId,
+            request.userId,
+          )))
 
     if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -49,13 +62,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const existing = await prisma.outsideWorkRequest.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const isHR    = hasPermission(session.user.role as Role, 'approve_outside_work')
+    const role = session.user.role as Role
+    const isHR    = hasPermission(role, 'approve_outside_work')
     const isOwner = existing.userId === session.user.id
     const isPending = existing.status === 'PENDING'
       || existing.approvalStatus === 'pending_ceo'
       || existing.approvalStatus === 'pending_chain'
 
-    if (!isHR && !(isOwner && isPending)) {
+    if (isHR) {
+      const inScope =
+        isCompanyWideApprover(role) ||
+        await canViewUserRecord(
+          prisma,
+          session.user.id,
+          role,
+          session.user.branchId,
+          existing.userId,
+        )
+      if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    } else if (!(isOwner && isPending)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 

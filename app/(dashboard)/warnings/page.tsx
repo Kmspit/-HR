@@ -11,7 +11,7 @@ import {
   resolveFilterBranchId,
   parseBranchQueryParam,
 } from '@/lib/branch-scope'
-import { canApproveWarning } from '@/lib/access-control'
+import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import { Suspense } from 'react'
 import type { Role } from '@prisma/client'
@@ -22,12 +22,13 @@ export default async function WarningsPage({
   searchParams: Promise<{ branchId?: string }>
 }) {
   const session = await auth()
-  if (!session?.user?.id) redirect('/')  archiveExpiredWarnings().catch(() => {})
+  if (!session?.user?.id) redirect('/')
+  archiveExpiredWarnings().catch(() => {})
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
-  const isManager = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN'].includes(session.user.role)
+  const canManageWarnings = canApproveWarning(session.user.role as Role) || canManageUsers(session.user.role as Role)
   const canApprove = canApproveWarning(session.user.role as Role)
   const filterBranch = resolveFilterBranchId(scope)
 
@@ -51,7 +52,7 @@ export default async function WarningsPage({
   try {
     ;[warnings, employees] = await Promise.all([
       prisma.warning.findMany({
-        where: isManager
+        where: canManageWarnings
           ? (filterBranch ? { user: { branchId: filterBranch } } : {})
           : { userId: session.user.id, status: 'APPROVED' },
         include: {
@@ -62,7 +63,7 @@ export default async function WarningsPage({
         orderBy: { createdAt: 'desc' },
         take: 100,
       }),
-      isManager
+      canManageWarnings
         ? prisma.user.findMany({
             where: branchUserWhere(scope, WARNING_TARGET_USER_WHERE),
             select: WARNING_TARGET_USER_SELECT,
@@ -93,18 +94,18 @@ export default async function WarningsPage({
       <Topbar
         title="ใบเตือน"
         subtitle={
-          isManager
+          canManageWarnings
             ? 'ออกใบเตือน · อนุมัติใบเตือนอัตโนมัติ · แนบ PDF'
             : 'ประวัติใบเตือนของตัวเอง'
         }
       />
-      {isManager && (
+      {canManageWarnings && (
         <Suspense fallback={null}>
           <BranchFilterBar role={session.user.role} filterBranchId={branchParam} />
         </Suspense>
       )}
       <WarningsClient
-        isManager={isManager}
+        isManager={canManageWarnings}
         canApprove={canApprove}
         warnings={warnings.map((w) => ({
           id: w.id,

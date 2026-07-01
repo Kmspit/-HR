@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import type { Role } from '@prisma/client'
+import { HR_ADMIN } from '@/lib/module-gates'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ export default function AnnouncementsClient({
 }: {
   announcements: Announcement[]; role: Role; userId: string; orgData: OrgData
 }) {
-  const isHR = role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
+  const isHR = (HR_ADMIN as readonly Role[]).includes(role)
 
   // ── Main list state
   const [items, setItems] = useState(init)

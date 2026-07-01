@@ -3,6 +3,9 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { HR_ROLES } from '@/lib/access-control'
+import { buildBranchScope, branchNestedUserWhere, branchUserWhere } from '@/lib/branch-scope'
+import { requireCsrf } from '@/lib/api-guard'
+import type { Prisma } from '@prisma/client'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   EMPLOYMENT_CERT: 'หนังสือรับรองการทำงาน',
@@ -22,8 +25,11 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status')
 
     if (isHr) {
-      const where: Record<string, unknown> = {}
-      if (status) where.status = status
+      const scope = buildBranchScope(session.user, {})
+      const nested = branchNestedUserWhere(scope)
+      const where: Prisma.DocumentRequestWhereInput = {}
+      if (status) where.status = status as Prisma.DocumentRequestWhereInput['status']
+      if (nested) where.user = nested
 
       const requests = await prisma.documentRequest.findMany({
         where,
@@ -75,6 +81,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id || !(HR_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -84,6 +93,19 @@ export async function PATCH(req: NextRequest) {
     if (!id || !['PROCESSING', 'READY', 'REJECTED'].includes(status)) {
       return NextResponse.json({ error: 'id และ status จำเป็น' }, { status: 400 })
     }
+
+    const existing = await prisma.documentRequest.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const scope = buildBranchScope(session.user, {})
+    const inScope = await prisma.user.findFirst({
+      where: branchUserWhere(scope, { id: existing.userId }),
+      select: { id: true },
+    })
+    if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const request = await prisma.documentRequest.update({
       where: { id },

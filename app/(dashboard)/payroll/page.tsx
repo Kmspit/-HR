@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import PayrollClient from './PayrollClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import { canAccessPage } from '@/lib/page-access'
 import { Suspense } from 'react'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -15,7 +16,7 @@ export default async function PayrollPage({
 }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/')
-  if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) redirect('/unauthorized')
+  if (!canAccessPage(session.user.role, '/payroll')) redirect('/unauthorized')
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)

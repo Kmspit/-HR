@@ -140,7 +140,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
     <div className="p-4 md:p-6 space-y-5">
 
-      <h1 className="text-lg font-bold text-white flex items-center gap-2">
+      <h1 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
 
         <FileBarChart className="w-5 h-5 text-blue-400" /> รายงานสรุปรายเดือน
 
@@ -160,7 +160,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
             onChange={(e) => setMonth(Number(e.target.value))}
 
-            className="block mt-1 rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-white text-sm"
+            className="block mt-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white text-sm"
 
           >
 
@@ -186,7 +186,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
             onChange={(e) => setYear(Number(e.target.value))}
 
-            className="block mt-1 w-28 rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-white text-sm"
+            className="block mt-1 w-28 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white text-sm"
 
           />
 
@@ -224,7 +224,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
           <span>
 
-            {MONTH_NAMES[month]} {year + 543} — พนักงาน <strong className="text-white">{report.employeeCount}</strong> คน
+            {MONTH_NAMES[month]} {year + 543} — พนักงาน <strong className="text-slate-900 dark:text-white">{report.employeeCount}</strong> คน
 
             (แสดงทุกคนที่สถานะใช้งาน)
 
@@ -248,7 +248,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
               </p>
               <p className="text-[10px] text-slate-400">ประมาณหักมาสายรวม</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white/5 p-3 text-center">
               <p className="text-lg font-bold text-slate-300">{report.lateSummary.totalRecordedLateMinutes}</p>
               <p className="text-[10px] text-slate-400">นาทีสายที่บันทึก (หลัง grace)</p>
             </div>
@@ -269,7 +269,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
             <thead>
 
-              <tr className="border-b border-white/10 bg-white/5">
+              <tr className="border-b border-slate-200 dark:border-white/10 bg-white/5">
 
                 <th className="text-left p-3 text-slate-400 font-medium">พนักงาน</th>
 
@@ -321,7 +321,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                     <td className="p-3">
 
-                      <p className="font-medium text-white">{emp.name}</p>
+                      <p className="font-medium text-slate-900 dark:text-white">{emp.name}</p>
 
                       {emp.employeeId && (
 
@@ -333,7 +333,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                     <td className="p-3 text-slate-400 text-xs">{emp.department ?? '—'}</td>
 
-                    <td className="p-3 text-center font-semibold text-white tabular-nums">
+                    <td className="p-3 text-center font-semibold text-slate-900 dark:text-white tabular-nums">
 
                       {emp.workDays}
 
@@ -419,7 +419,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
             >
 
-              <p className="font-semibold text-white">
+              <p className="font-semibold text-slate-900 dark:text-white">
 
                 {emp.name}{' '}
 
@@ -437,7 +437,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                 <span className="text-slate-400">
 
-                  วันทำงาน: <b className="text-white">{emp.workDays}</b>
+                  วันทำงาน: <b className="text-slate-900 dark:text-white">{emp.workDays}</b>
 
                 </span>
 

@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import { MotionSummaryCard } from '@/components/motion/MotionCard'
 import type { SmartDashboardPayload, SmartAlert, AIInsight } from '@/lib/smart-dashboard/types'
+import { canAccessPage } from '@/lib/page-access'
+import type { Role } from '@prisma/client'
 
 const AttendanceTrendChart = dynamic(
   () => import('./SmartDashboardCharts').then((m) => m.AttendanceTrendChart),
@@ -137,7 +139,7 @@ function PanelShell({
   )
 }
 
-export default function SmartDashboard({ data }: { data: SmartDashboardPayload }) {
+export default function SmartDashboard({ data, role }: { data: SmartDashboardPayload; role: Role }) {
   const alertCount = data.alerts.filter((a) => a.count > 0).length
 
   return (
@@ -153,8 +155,9 @@ export default function SmartDashboard({ data }: { data: SmartDashboardPayload }
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {OVERVIEW_CARDS.map((card) => {
             const Icon = card.icon
+            const href = card.href && canAccessPage(role, card.href) ? card.href : undefined
             return (
-              <MotionSummaryCard key={card.key} href={card.href}>
+              <MotionSummaryCard key={card.key} href={href}>
                 <div
                   className="pointer-events-none absolute -right-2 -top-2 h-14 w-14 rounded-full opacity-20 blur-2xl"
                   style={{ background: card.gradient }}
@@ -167,7 +170,7 @@ export default function SmartDashboard({ data }: { data: SmartDashboardPayload }
                     >
                       <Icon size={18} />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+                    {href && <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-600" />}
                   </div>
                   <div>
                     <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">{card.label}</p>

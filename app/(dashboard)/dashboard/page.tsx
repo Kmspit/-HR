@@ -161,7 +161,7 @@ export default async function DashboardPage({
         {APPR_ROLES.includes(role) && (
           <ApprovalInboxBanner userId={userId} role={role} />
         )}
-        <SmartDashboard data={JSON.parse(JSON.stringify(smartData))} />
+        <SmartDashboard data={JSON.parse(JSON.stringify(smartData))} role={role} />
 
         {showTaskKpi && taskTotal > 0 && (
           <div className="rounded-2xl bg-white dark:bg-slate-900 md:dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">

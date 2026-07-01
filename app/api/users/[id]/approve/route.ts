@@ -4,10 +4,15 @@ import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineNotify, createAuditLog } from '@/lib/notifications'
 import { apiError, runNotify } from '@/lib/api-handler'
 import { canApproveAccounts } from '@/lib/access-control'
+import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
+import { requireCsrf } from '@/lib/api-guard'
 import { headers } from 'next/headers'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user || !canApproveAccounts(session.user.role)) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์อนุมัติบัญชี' }, { status: 403 })
@@ -20,6 +25,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const user = await prisma.user.findUnique({ where: { id } })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     if (user.status !== 'PENDING') return NextResponse.json({ error: 'User is not pending' }, { status: 400 })
+
+    const scope = buildBranchScope(session.user, {})
+    const inScope = await prisma.user.findFirst({
+      where: branchUserWhere(scope, { id }),
+      select: { id: true },
+    })
+    if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const newStatus = body.action === 'APPROVE' ? 'ACTIVE' : 'REJECTED'
 

@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { clearLineCredentialsCache } from '@/lib/line-credentials'
 import { maskSettingsSecrets } from '@/lib/settings-api'
-import { requireRoles, isGuardResponse } from '@/lib/api-guard'
+import { requireRoles, isGuardResponse, requireCsrf } from '@/lib/api-guard'
 
 const ALLOWED_FIELDS = [
   'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
@@ -35,8 +35,11 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await requireRoles(['MANAGER_HR', 'ADMIN'])
     if (isGuardResponse(session)) return session
 
