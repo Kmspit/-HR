@@ -11,16 +11,20 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
   const { id } = await params
   const session = await auth()
   if (!session?.user?.id) redirect('/')
-  if (!canManageUserProfile(session.user.role as Role)) redirect('/unauthorized')
 
+  const role = session.user.role as Role
   const allowed = await canViewEmployeeTimeline(
     prisma,
     session.user.id,
-    session.user.role as Role,
+    role,
     session.user.branchId,
     id,
   )
   if (!allowed) redirect('/unauthorized')
+
+  if (!canManageUserProfile(role)) {
+    redirect(`/employees/${id}/timeline`)
+  }
 
   const user = await prisma.user.findUnique({
     where: { id },

@@ -3,25 +3,42 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { getDefaultChain, applyChainToOutsideWork } from '@/lib/approval-chain'
+import { requireCsrf } from '@/lib/api-guard'
+import {
+  canViewUserRecord,
+  isCompanyWideApprover,
+  resolveOrgListScope,
+  userIdFilterFromScope,
+} from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })    const canViewAll = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { searchParams } = new URL(req.url)
     const filterUserId = searchParams.get('userId')
+    const scope = await resolveOrgListScope(prisma, session.user.id, session.user.role as Role)
 
-    const where = canViewAll
-      ? filterUserId
-        ? { userId: filterUserId }
-        : {}
-      : { userId: session.user.id }
+    let where = userIdFilterFromScope(scope)
+    if (filterUserId) {
+      const allowed = await canViewUserRecord(
+        prisma,
+        session.user.id,
+        session.user.role as Role,
+        session.user.branchId,
+        filterUserId,
+      )
+      if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      where = { userId: filterUserId }
+    }
 
     const requests = await prisma.outsideWorkRequest.findMany({
       where,
       include: { user: { select: { name: true, department: true, position: true } } },
       orderBy: { createdAt: 'desc' },
-      take: canViewAll ? 200 : 100,
+      take: isCompanyWideApprover(session.user.role as Role) ? 200 : 100,
     })
 
     return NextResponse.json({ requests })
@@ -32,8 +49,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })    const body = await req.json()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const body = await req.json()
     const {
       date, startTime, endTime, place, purpose, client, note, googleMapsUrl,
       attachmentUrl, attachmentName,

@@ -4,9 +4,9 @@ import { prisma } from '@/lib/prisma'
 import AttendanceScansClient from './AttendanceScansClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
+import { canAccessPage } from '@/lib/page-access'
+import { ATTENDANCE_TEAM_ROLES } from '@/lib/attendance-team-users'
 import { Suspense } from 'react'
-
-const TEAM_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
 export default async function AttendanceScansPage({
   searchParams,
@@ -16,7 +16,7 @@ export default async function AttendanceScansPage({
   const session = await auth()
   if (!session?.user?.id) redirect('/')
 
-  if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
+  if (!canAccessPage(session.user.role, '/attendance/scans')) {
     redirect('/attendance')
   }
 
@@ -25,7 +25,7 @@ export default async function AttendanceScansPage({
   const scope = buildBranchScope(session.user, { branchId: branchParam })
 
   const employees = await prisma.user.findMany({
-    where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...TEAM_ROLES] } }),
+    where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: ATTENDANCE_TEAM_ROLES } }),
     select: { id: true, name: true, employeeId: true },
     orderBy: { name: 'asc' },
   })

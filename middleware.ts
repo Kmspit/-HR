@@ -13,6 +13,11 @@ import { matchRoutePermission, rolesForPath } from '@/lib/route-match'
 import { logAccessDenied } from '@/lib/access-log'
 import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
 import { isPublicApiRoute } from '@/lib/api-public-routes'
+import {
+  isPublicPrototypePath,
+  isPrototypeHtmlPath,
+  prototypeDeployCheckPath,
+} from '@/lib/prototype-middleware'
 import type { Role } from '@prisma/client'
 
 const { auth } = NextAuth(authConfig)
@@ -21,12 +26,16 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   const { pathname } = req.nextUrl
   const session = req.auth
 
-  // Static assets
+  // Static assets (prototype HTML runs through auth below)
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
-    pathname.includes('.')
+    (pathname.includes('.') && !isPrototypeHtmlPath(pathname))
   ) {
+    return NextResponse.next()
+  }
+
+  if (isPrototypeHtmlPath(pathname) && isPublicPrototypePath(pathname)) {
     return NextResponse.next()
   }
 
@@ -55,7 +64,7 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
 
   // Not logged in → ไปหน้า login (PC ที่เคยล็อกอินแล้วหลุด session)
   if (!session?.user) {
-    if (isPublic) return NextResponse.next()
+    if (isPublic || isPublicPrototypePath(pathname)) return NextResponse.next()
     logAccessDenied('missing_session', { path: pathname })
     const url = req.nextUrl.clone()
     url.pathname = '/login'
@@ -126,6 +135,17 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     const url = req.nextUrl.clone()
     url.pathname = '/unauthorized'
     return NextResponse.redirect(url)
+  }
+
+  if (isPrototypeHtmlPath(pathname)) {
+    const mapped = prototypeDeployCheckPath(pathname)
+    if (mapped && isPathHiddenByDeployProfile(mapped)) {
+      logAccessDenied('deploy_profile_denied', { path: pathname, role, mappedRoute: mapped })
+      const url = req.nextUrl.clone()
+      url.pathname = '/unauthorized'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
   }
 
   const requestHeaders = new Headers(req.headers)

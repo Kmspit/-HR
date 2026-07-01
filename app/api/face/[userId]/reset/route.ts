@@ -2,21 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { requireCsrf } from '@/lib/api-guard'
+import { buildBranchScope, isUserInBranchScope } from '@/lib/branch-scope'
+import { HR_ADMIN } from '@/lib/module-gates'
+import type { Role } from '@prisma/client'
 
-/** POST /api/face/[userId]/reset — HR/Admin resets a user's face profile (soft-delete) */
+/** POST /api/face/[userId]/reset — HR resets a user's face profile (soft-delete) */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
+    if (!HR_ADMIN.includes(session.user.role as Role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { userId } = await params
     if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+
+    const scope = buildBranchScope(session.user, {})
+    const inScope = await isUserInBranchScope(prisma, scope, userId)
+    if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const profile = await prisma.userFaceProfile.findUnique({
       where: { userId },
@@ -26,7 +37,6 @@ export async function POST(
       return NextResponse.json({ error: 'ไม่พบข้อมูลใบหน้าของพนักงานคนนี้' }, { status: 404 })
     }
 
-    // Soft-delete: clear descriptor + set inactive (ไม่ลบ record เพื่อเก็บประวัติ)
     await prisma.userFaceProfile.update({
       where: { userId },
       data: {
@@ -36,7 +46,6 @@ export async function POST(
       },
     })
 
-    // Audit log
     await prisma.attendanceFaceLog.create({
       data: {
         userId,

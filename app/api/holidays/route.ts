@@ -5,6 +5,7 @@ import { apiError } from '@/lib/api-handler'
 import { validateHolidayInput } from '@/lib/company-holidays'
 import type { HolidayType } from '@prisma/client'
 import { z } from 'zod'
+import { requireCsrf } from '@/lib/api-guard'
 
 const holidayTypes = ['SATURDAY', 'SUNDAY', 'PUBLIC_HOLIDAY', 'COMPANY_HOLIDAY'] as const
 
@@ -43,7 +44,8 @@ function serialize(h: {
 }
 
 export async function GET(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -87,7 +89,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
+    const session = await auth()
     if (!session?.user?.id || !canManageHolidays(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }

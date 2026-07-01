@@ -21,6 +21,7 @@ import {
   resolveOrgListScope,
   userIdFilterFromScope,
 } from '@/lib/org-scope'
+import { requireCsrf } from '@/lib/api-guard'
 
 export async function GET(req: NextRequest) {
   try {
@@ -68,6 +69,9 @@ const leaveSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
