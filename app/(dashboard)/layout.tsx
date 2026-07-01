@@ -10,6 +10,7 @@ import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
 import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
 import DashboardMotionShell from '@/components/motion/DashboardMotionShell'
 import FloatingQuickActions from '@/components/dashboard/FloatingQuickActions'
+import { NotificationStreamProvider } from '@/components/notification-center/NotificationStreamProvider'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   try {
@@ -43,6 +44,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   })
 
   return (
+    <NotificationStreamProvider>
     <div className="dashboard-shell flex h-[100dvh] bg-[#F7F9FC] dark:bg-[#070b14]">
       <DeviceBinder />
       {/* Sidebar — always in DOM so fixed mobile drawer can render; aside hides itself on mobile */}
@@ -63,5 +65,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <MobileNav role={user.role} />
       <FloatingQuickActions role={user.role} />
     </div>
+    </NotificationStreamProvider>
   )
 }

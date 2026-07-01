@@ -17,6 +17,8 @@ import {
 import { Suspense } from 'react'
 import SmartDashboard from '@/components/smart-dashboard/SmartDashboard'
 import { loadSmartDashboardData } from '@/lib/smart-dashboard/load-data'
+import ApprovalInboxBanner from '@/components/dashboard/ApprovalInboxBanner'
+import { APPR_ROLES } from '@/lib/module-gates'
 
 export default async function DashboardPage({
   searchParams,
@@ -155,6 +157,9 @@ export default async function DashboardPage({
       </Suspense>
 
       <div className="p-5 md:p-6 space-y-6">
+        {APPR_ROLES.includes(role) && (
+          <ApprovalInboxBanner userId={userId} role={role} />
+        )}
         <SmartDashboard data={JSON.parse(JSON.stringify(smartData))} />
 
         {showTaskKpi && taskTotal > 0 && (

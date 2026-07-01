@@ -2,9 +2,23 @@ import type { PrismaClient, Role } from '@prisma/client'
 import { canUserActOnStep } from '@/lib/approval-chain-shared'
 import { canApproverActOnRequester } from '@/lib/org-scope'
 import { hasPermission } from '@/lib/access-control'
+import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
 
 const FORGOT_SCAN_SUPERVISOR: Role[] = ['MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
 const FORGOT_SCAN_HR: Role[] = ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
+const LEAVE_SUPERVISOR: Role[] = FORGOT_SCAN_SUPERVISOR
+const LEAVE_HR: Role[] = FORGOT_SCAN_HR
+const OUTSIDE_EXEC: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
+
+let legacyMigratePromise: Promise<unknown> | null = null
+
+/** Idempotent — attach chains to legacy pending rows (works on any DB). */
+async function ensureLegacyMigrated(prisma: PrismaClient): Promise<void> {
+  if (!legacyMigratePromise) {
+    legacyMigratePromise = migrateLegacyPendingApprovals(prisma).catch(() => {})
+  }
+  await legacyMigratePromise
+}
 
 export type InboxForgotScanItem = {
   id: string
@@ -50,6 +64,8 @@ export async function getPendingLeaveForApprover(
   userId: string,
   role: Role,
 ): Promise<InboxLeaveItem[]> {
+  await ensureLegacyMigrated(prisma)
+
   const rows = await prisma.leaveRequest.findMany({
     where: {
       status: { notIn: ['APPROVED', 'REJECTED'] },
@@ -84,6 +100,40 @@ export async function getPendingLeaveForApprover(
         stepName: step.stepName,
         user: row.user,
       })
+    } else {
+      const isSupervisor = LEAVE_SUPERVISOR.includes(role)
+      const isHR = LEAVE_HR.includes(role)
+      if (row.status === 'PENDING' && isSupervisor && hasPermission(role, 'approve_leave')) {
+        if (await canApproverActOnRequester(prisma, userId, role, row.userId)) {
+          out.push({
+            id: row.id,
+            type: row.type,
+            startDate: row.startDate,
+            endDate: row.endDate,
+            days: row.days,
+            reason: row.reason,
+            status: row.status,
+            chainConfigId: null,
+            currentStepOrder: row.currentStepOrder,
+            stepName: 'หัวหน้า (legacy)',
+            user: row.user,
+          })
+        }
+      } else if (row.status === 'ADMIN_APPROVED' && isHR && hasPermission(role, 'approve_leave')) {
+        out.push({
+          id: row.id,
+          type: row.type,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          days: row.days,
+          reason: row.reason,
+          status: row.status,
+          chainConfigId: null,
+          currentStepOrder: row.currentStepOrder,
+          stepName: 'HR (legacy)',
+          user: row.user,
+        })
+      }
     }
   }
   return out
@@ -94,6 +144,8 @@ export async function getPendingOutsideForApprover(
   userId: string,
   role: Role,
 ): Promise<InboxOutsideItem[]> {
+  await ensureLegacyMigrated(prisma)
+
   const rows = await prisma.outsideWorkRequest.findMany({
     where: {
       status: { notIn: ['APPROVED', 'REJECTED'] },
@@ -129,6 +181,45 @@ export async function getPendingOutsideForApprover(
         stepName: step.stepName,
         user: row.user,
       })
+    } else if (hasPermission(role, 'approve_outside_work')) {
+      const isExec = OUTSIDE_EXEC.includes(role)
+      const legacySupervisor =
+        row.status === 'PENDING' &&
+        (row.approvalStatus == null || row.approvalStatus === 'pending_supervisor')
+      const legacyCeo = row.approvalStatus === 'pending_ceo'
+      if (legacySupervisor) {
+        if (isExec || (await canApproverActOnRequester(prisma, userId, role, row.userId))) {
+          out.push({
+            id: row.id,
+            date: row.date,
+            startTime: row.startTime,
+            endTime: row.endTime,
+            place: row.place,
+            purpose: row.purpose,
+            status: row.status,
+            approvalStatus: row.approvalStatus,
+            chainConfigId: null,
+            currentStepOrder: row.currentStepOrder,
+            stepName: 'หัวหน้า (legacy)',
+            user: row.user,
+          })
+        }
+      } else if (legacyCeo && isExec) {
+        out.push({
+          id: row.id,
+          date: row.date,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          place: row.place,
+          purpose: row.purpose,
+          status: row.status,
+          approvalStatus: row.approvalStatus,
+          chainConfigId: null,
+          currentStepOrder: row.currentStepOrder,
+          stepName: 'CEO (legacy)',
+          user: row.user,
+        })
+      }
     }
   }
   return out
@@ -305,6 +396,18 @@ export async function getPendingForgotScanForApprover(
   return out
 }
 
+/** Short label for Approval Center dashboard card (4 core types only). */
+export function formatApprovalCenterSummary(counts: ApprovalCenterInboxCounts, role: Role): string {
+  const parts: string[] = []
+  if (counts.leave > 0) parts.push(`ลา ${counts.leave}`)
+  if (counts.outside > 0 && hasPermission(role, 'approve_outside_work')) {
+    parts.push(`นอก ${counts.outside}`)
+  }
+  if (counts.weekly > 0 && canSeeWeeklyInbox(role)) parts.push(`แผน ${counts.weekly}`)
+  if (counts.forgotScan > 0 && canSeeForgotScanInbox(role)) parts.push(`แก้เวลา ${counts.forgotScan}`)
+  return parts.length > 0 ? parts.join(' · ') : 'ไม่มีรายการค้าง'
+}
+
 /** Short label for dashboard cards — e.g. "ลา 2 · นอก 1 · แผน 1" */
 export function formatInboxSummary(counts: ApproverInboxCounts, role: Role): string {
   const parts: string[] = []
@@ -425,6 +528,41 @@ export async function getPendingExpensesForApprover(
   }
 
   return out
+}
+
+export type ApprovalCenterInboxCounts = {
+  leave: number
+  outside: number
+  weekly: number
+  forgotScan: number
+  total: number
+}
+
+/** Count items visible in /approval-center (4 types, org-scoped). */
+export async function getApprovalCenterInboxCounts(
+  prisma: PrismaClient,
+  userId: string,
+  role: Role,
+): Promise<ApprovalCenterInboxCounts> {
+  const [leaveRows, outsideRows, weeklyRows, forgotRows] = await Promise.all([
+    getPendingLeaveForApprover(prisma, userId, role),
+    getPendingOutsideForApprover(prisma, userId, role),
+    canSeeWeeklyInbox(role)
+      ? getPendingWeeklyForApprover(prisma, userId, role)
+      : Promise.resolve([]),
+    getPendingForgotScanForApprover(prisma, userId, role),
+  ])
+  const leave = leaveRows.length
+  const outside = outsideRows.length
+  const weekly = weeklyRows.length
+  const forgotScan = forgotRows.length
+  return {
+    leave,
+    outside,
+    weekly,
+    forgotScan,
+    total: leave + outside + weekly + forgotScan,
+  }
 }
 
 /** Count items this user can act on in /approval-center (org-scoped for TL/MANAGER). */

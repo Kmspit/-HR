@@ -1,14 +1,26 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
+import type { Role } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import EmployeeEditClient from './EmployeeEditClient'
+import { canManageUserProfile } from '@/lib/role-assignment'
+import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 
 export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await auth()
   if (!session?.user?.id) redirect('/')
-  if (!['MANAGER_HR', 'ADMIN'].includes(session.user.role)) redirect('/unauthorized')
+  if (!canManageUserProfile(session.user.role as Role)) redirect('/unauthorized')
+
+  const allowed = await canViewEmployeeTimeline(
+    prisma,
+    session.user.id,
+    session.user.role as Role,
+    session.user.branchId,
+    id,
+  )
+  if (!allowed) redirect('/unauthorized')
 
   const user = await prisma.user.findUnique({
     where: { id },

@@ -126,9 +126,8 @@ export default function FloatingQuickActions({ role }: Props) {
 
       <div
         className={cn(
-          'fixed z-[60] flex flex-col items-end gap-3',
-          'bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4',
-          'md:bottom-6 md:right-6',
+          'fixed z-[60] hidden md:flex flex-col items-end gap-3',
+          'bottom-6 right-6',
         )}
       >
         <AnimatePresence mode="popLayout">

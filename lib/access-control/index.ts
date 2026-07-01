@@ -259,9 +259,11 @@ export const ROLE_ICONS: Record<Role, string> = {
 // ── High-level helpers (formerly permissions.ts) ──────────────────────────────
 
 export function canAccess(role: Role, path: string): boolean {
-  const allowed = ROUTE_PERMISSIONS[path]
-  if (!allowed) return false
-  return allowed.includes(role)
+  // Longest-prefix match — same logic as middleware (lib/route-match.ts)
+  const sorted = Object.keys(ROUTE_PERMISSIONS).sort((a, b) => b.length - a.length)
+  const matched = sorted.find((p) => path === p || path.startsWith(`${p}/`))
+  if (!matched) return false
+  return ROUTE_PERMISSIONS[matched].includes(role)
 }
 
 export function isManagerOrHR(role: Role): boolean {

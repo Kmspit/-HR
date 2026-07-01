@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import type { NotificationItem } from '@/lib/notification-center/types'
+import { useNotificationStreamContext } from '@/components/notification-center/NotificationStreamProvider'
 
 type StreamHandlers = {
   onCount?: (count: number) => void
@@ -19,19 +20,20 @@ function safeParse<T>(raw: string): T | null {
   }
 }
 
+/** Uses shared SSE when NotificationStreamProvider is mounted; otherwise opens its own connection. */
 export function useNotificationStream(handlers: StreamHandlers) {
+  const ctx = useNotificationStreamContext()
   const handlersRef = useRef(handlers)
   handlersRef.current = handlers
 
-  const stableOnCount = useCallback((count: number) => {
-    handlersRef.current.onCount?.(count)
-  }, [])
-
-  const stableOnNew = useCallback((notification: NotificationItem) => {
-    handlersRef.current.onNew?.(notification)
-  }, [])
-
   useEffect(() => {
+    if (ctx) {
+      return ctx.subscribe({
+        onCount: (n) => handlersRef.current.onCount?.(n),
+        onNew: (n) => handlersRef.current.onNew?.(n),
+      })
+    }
+
     let es: EventSource | null = null
     let retryTimer: ReturnType<typeof setTimeout> | null = null
     let retryMs = BASE_RETRY_MS
@@ -45,11 +47,11 @@ export function useNotificationStream(handlers: StreamHandlers) {
       })
       es.addEventListener('notification', (e) => {
         const data = safeParse<{ count: number }>(e.data)
-        if (data && typeof data.count === 'number') stableOnCount(data.count)
+        if (data && typeof data.count === 'number') handlersRef.current.onCount?.(data.count)
       })
       es.addEventListener('new-notification', (e) => {
         const data = safeParse<{ notification: NotificationItem }>(e.data)
-        if (data?.notification) stableOnNew(data.notification)
+        if (data?.notification) handlersRef.current.onNew?.(data.notification)
       })
       es.onerror = () => {
         es?.close()
@@ -65,7 +67,7 @@ export function useNotificationStream(handlers: StreamHandlers) {
       es?.close()
       if (retryTimer) clearTimeout(retryTimer)
     }
-  }, [stableOnCount, stableOnNew])
+  }, [ctx])
 }
 
 type UnreadHandlers = {
@@ -73,7 +75,7 @@ type UnreadHandlers = {
   onCount?: (count: number) => void
 }
 
-/** Unread count synced via SSE (single connection). */
+/** Unread count synced via SSE (single connection when provider present). */
 export function useUnreadCount(initial: number, handlers?: UnreadHandlers) {
   const [count, setCount] = useState(initial)
 

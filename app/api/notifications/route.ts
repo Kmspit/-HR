@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { matchesTab } from '@/lib/notification-center/constants'
+import { matchesTab, typesForTab } from '@/lib/notification-center/constants'
 import { computeTabCounts } from '@/lib/notification-center/tab-counts'
 import { broadcastNotificationUpdate } from '@/lib/notification-center/broadcast'
 import type { NotificationTab } from '@/lib/notification-center/types'
+import type { Prisma } from '@prisma/client'
 
 const VALID_TABS: NotificationTab[] = ['all', 'approvals', 'attendance', 'warnings', 'system']
 
@@ -19,35 +20,59 @@ export async function GET(req: NextRequest) {
     const unreadOnly = searchParams.get('unread') === 'true'
     const tabParam = (searchParams.get('tab') ?? 'all') as NotificationTab
     const tab: NotificationTab = VALID_TABS.includes(tabParam) ? tabParam : 'all'
+    const cursor = searchParams.get('cursor')
 
-    const allRows = await prisma.notification.findMany({
-      where: { userId: session.user.id },
+    const baseWhere: Prisma.NotificationWhereInput = { userId: session.user.id }
+    if (unreadOnly) baseWhere.isRead = false
+
+    const tabTypes = typesForTab(tab)
+    if (tabTypes) {
+      baseWhere.type = { in: tabTypes }
+    }
+
+    const rows = await prisma.notification.findMany({
+      where: baseWhere,
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true, type: true, title: true, message: true, link: true,
         isRead: true, createdAt: true, taskId: true,
       },
     })
 
-    const tabCounts = computeTabCounts(allRows)
+    const hasMore = rows.length > limit
+    const pageRows = hasMore ? rows.slice(0, limit) : rows
 
-    let filtered = allRows
-    if (tab !== 'all') {
-      filtered = filtered.filter((n) => matchesTab(n.type, n.title, n.message, tab))
-    }
-    if (unreadOnly) {
-      filtered = filtered.filter((n) => !n.isRead)
+    let filtered = pageRows
+    if (tab !== 'all' && tab !== 'attendance') {
+      filtered = pageRows
+    } else if (tab === 'attendance') {
+      filtered = pageRows.filter((n) => matchesTab(n.type, n.title, n.message, tab))
     }
 
-    const notifications = filtered.slice(0, limit).map((n) => ({
+    const countRows = await prisma.notification.findMany({
+      where: { userId: session.user.id },
+      select: { type: true, title: true, message: true, isRead: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    })
+    const tabCounts = computeTabCounts(countRows)
+    const unreadCount = await prisma.notification.count({
+      where: { userId: session.user.id, isRead: false },
+    })
+
+    const notifications = filtered.map((n) => ({
       ...n,
       createdAt: n.createdAt.toISOString(),
     }))
 
-    const unreadCount = tabCounts.all.unread
-
-    return NextResponse.json({ notifications, unreadCount, tabCounts })
+    return NextResponse.json({
+      notifications,
+      unreadCount,
+      tabCounts,
+      nextCursor: hasMore ? pageRows[pageRows.length - 1]?.id ?? null : null,
+    })
   } catch (err) {
     return apiError(err)
   }

@@ -9,6 +9,8 @@ import { executeLeaveStepAction, executeOutsideWorkStepAction } from '@/lib/appr
 import { executeWeeklyPlanStepAction } from '@/lib/weekly-plan-chain'
 import { executeForgotScanStepAction } from '@/lib/forgot-scan-chain'
 import { executeLegacyForgotScanApproval } from '@/lib/legacy-forgot-scan-approval'
+import { executeLegacyLeaveApproval, executeLegacyOutsideApproval } from '@/lib/legacy-leave-approval'
+import { migrateLegacyPendingApprovals } from '@/lib/migrate-legacy-approvals'
 import { canPerformApproval } from '@/lib/approval-permissions'
 import type { Role } from '@prisma/client'
 
@@ -36,14 +38,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    await migrateLegacyPendingApprovals(prisma).catch(() => {})
+
     if (body.type === 'LEAVE') {
       const leave = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })
       if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (!leave.chainConfigId) {
-        return NextResponse.json(
-          { error: 'คำขอนี้ยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },
-          { status: 409 },
+        const legacy = await executeLegacyLeaveApproval(
+          prisma,
+          body.requestId,
+          actorId,
+          role as Role,
+          body.action,
+          body.reason?.trim() || null,
+          ip,
         )
+        if ('error' in legacy) {
+          return NextResponse.json({ error: legacy.error }, { status: legacy.status })
+        }
+        return NextResponse.json({ success: true, legacy: true, finalized: legacy.finalized })
       }
       const chainResult = await executeLeaveStepAction(
         prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,
@@ -67,10 +80,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
       }
       if (!req_.chainConfigId || req_.approvalStatus !== 'pending_chain') {
-        return NextResponse.json(
-          { error: 'คำขอนี้ยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },
-          { status: 409 },
+        const legacy = await executeLegacyOutsideApproval(
+          prisma,
+          body.requestId,
+          actorId,
+          role as Role,
+          body.action,
+          body.reason?.trim() || null,
+          ip,
         )
+        if ('error' in legacy) {
+          return NextResponse.json({ error: legacy.error }, { status: legacy.status })
+        }
+        return NextResponse.json({ success: true, legacy: true, finalized: legacy.finalized })
       }
       const chainResult = await executeOutsideWorkStepAction(
         prisma, body.requestId, actorId, role as Role, body.action, body.reason, ip,

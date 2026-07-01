@@ -71,6 +71,7 @@ export async function loadSmartDashboardData(
     pendingOutside,
     pendingWeekly,
     pendingForgot,
+    outsideToday,
     weekAttendances,
     prevWeekAttendances,
     prevWeekLate,
@@ -97,11 +98,31 @@ export async function loadSmartDashboardData(
         endDate: { gte: todayStart },
       }),
     }),
-    prisma.leaveRequest.count({ where: requestUserWhere(scope, { status: 'PENDING' }) }),
-    prisma.outsideWorkRequest.count({ where: { status: 'PENDING', ...userScope } }),
-    prisma.weeklyLawyerPlan.count({ where: { status: 'PENDING', ...(nestedUser ? { lawyer: nestedUser } : {}) } }),
+    prisma.leaveRequest.count({
+      where: requestUserWhere(scope, {
+        status: 'PENDING',
+        chainConfigId: { not: null },
+      }),
+    }),
+    prisma.outsideWorkRequest.count({
+      where: {
+        status: 'PENDING',
+        approvalStatus: 'pending_chain',
+        ...userScope,
+      },
+    }),
+    prisma.weeklyLawyerPlan.count({
+      where: { status: 'PENDING', chainConfigId: { not: null }, ...(nestedUser ? { lawyer: nestedUser } : {}) },
+    }),
     prisma.forgotScanRequest.count({
-      where: { status: { notIn: ['APPROVED', 'REJECTED', 'ADMIN_REJECTED'] }, ...userScope },
+      where: { status: { in: ['PENDING', 'ADMIN_APPROVED'] }, ...userScope },
+    }),
+    prisma.outsideWorkRequest.count({
+      where: {
+        status: 'APPROVED',
+        date: { gte: todayStart, lt: new Date(todayStart.getTime() + DAY_MS) },
+        ...userScope,
+      },
     }),
     prisma.attendance.findMany({
       where: attWeekWhere,
@@ -148,7 +169,7 @@ export async function loadSmartDashboardData(
   const presentToday = presentRows.length
   const absentToday = isWeekendBangkok(todayStart)
     ? 0
-    : Math.max(0, totalEmployees - presentToday - onLeaveToday)
+    : Math.max(0, totalEmployees - presentToday - onLeaveToday - outsideToday)
 
   const pendingApprovals = pendingLeave + pendingOutside + pendingWeekly + pendingForgot
 

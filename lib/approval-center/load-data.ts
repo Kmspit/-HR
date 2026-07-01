@@ -1,6 +1,5 @@
 import type { PrismaClient, RequestStatus, Role } from '@prisma/client'
 import { hasPermission } from '@/lib/access-control'
-import { canPerformApproval } from '@/lib/approval-permissions'
 import { getDirectReportUserIds, isCompanyWideApprover } from '@/lib/org-scope'
 import {
   getPendingForgotScanForApprover,
@@ -159,13 +158,31 @@ function mapForgot(row: InboxForgotScanItem, canAct: boolean, createdAt: Date): 
   }
 }
 
+function scopeUserFilter(scope: ScopeSet): { userId?: { in: string[] } } | Record<string, never> {
+  if (scope === 'ALL') return {}
+  if (scope.size === 0) return { userId: { in: ['__none__'] } }
+  return { userId: { in: [...scope] } }
+}
+
+function scopeLawyerFilter(scope: ScopeSet): { lawyerId?: { in: string[] } } | Record<string, never> {
+  if (scope === 'ALL') return {}
+  if (scope.size === 0) return { lawyerId: { in: ['__none__'] } }
+  return { lawyerId: { in: [...scope] } }
+}
+
 async function loadApprovedRejected(
   prisma: PrismaClient,
   userId: string,
   role: Role,
   bucket: 'approved' | 'rejected',
-): Promise<UnifiedApprovalItem[]> {
+  options?: { cursor?: string; limit?: number },
+): Promise<{ items: UnifiedApprovalItem[]; nextCursor: string | null }> {
   const scope = await resolveScopeUserIds(prisma, userId, role)
+  const userFilter = scopeUserFilter(scope)
+  const lawyerFilter = scopeLawyerFilter(scope)
+  const limit = Math.min(options?.limit ?? 40, 80)
+  const cursor = options?.cursor
+
   const leaveStatus: RequestStatus[] = bucket === 'approved' ? ['APPROVED'] : ['REJECTED']
   const outsideStatus: RequestStatus[] = bucket === 'approved' ? ['APPROVED'] : ['REJECTED']
   const weeklyStatus: RequestStatus[] = bucket === 'approved' ? ['APPROVED'] : ['REJECTED']
@@ -173,38 +190,37 @@ async function loadApprovedRejected(
 
   const [leaves, outside, weekly, forgot] = await Promise.all([
     prisma.leaveRequest.findMany({
-      where: { status: { in: leaveStatus } },
+      where: { status: { in: leaveStatus }, ...userFilter },
       include: { user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { updatedAt: 'desc' },
-      take: 60,
+      take: limit,
     }),
     prisma.outsideWorkRequest.findMany({
-      where: { status: { in: outsideStatus } },
+      where: { status: { in: outsideStatus }, ...userFilter },
       include: { user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { updatedAt: 'desc' },
-      take: 60,
+      take: limit,
     }),
     prisma.weeklyLawyerPlan.findMany({
-      where: { status: { in: weeklyStatus } },
+      where: { status: { in: weeklyStatus }, ...lawyerFilter },
       include: {
         lawyer: { select: { id: true, name: true, email: true, department: true } },
         days: { select: { dayOfWeek: true, place: true, purpose: true } },
       },
       orderBy: { updatedAt: 'desc' },
-      take: 40,
+      take: limit,
     }),
     prisma.forgotScanRequest.findMany({
-      where: { status: { in: forgotStatus } },
+      where: { status: { in: forgotStatus }, ...userFilter },
       include: { user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } } },
       orderBy: { updatedAt: 'desc' },
-      take: 60,
+      take: limit,
     }),
   ])
 
   const out: UnifiedApprovalItem[] = []
 
   for (const row of leaves) {
-    if (!inEmployeeScope(row.userId, scope)) continue
     out.push(
       mapLeave(
         {
@@ -227,7 +243,6 @@ async function loadApprovedRejected(
   }
 
   for (const row of outside) {
-    if (!inEmployeeScope(row.userId, scope)) continue
     out.push(
       mapOutside(
         {
@@ -251,7 +266,6 @@ async function loadApprovedRejected(
   }
 
   for (const row of weekly) {
-    if (!inEmployeeScope(row.lawyerId, scope)) continue
     out.push(
       mapWeekly(
         {
@@ -274,7 +288,6 @@ async function loadApprovedRejected(
   }
 
   for (const row of forgot) {
-    if (!inEmployeeScope(row.userId, scope)) continue
     out.push(
       mapForgot(
         {
@@ -294,7 +307,9 @@ async function loadApprovedRejected(
   }
 
   out.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-  return out.slice(0, 80)
+  const items = out.slice(0, limit)
+  const nextCursor = items.length === limit ? items[items.length - 1]?.id ?? null : null
+  return { items, nextCursor }
 }
 
 async function loadMyRequests(prisma: PrismaClient, userId: string): Promise<UnifiedApprovalItem[]> {
@@ -461,23 +476,23 @@ async function loadPendingWithMeta(
   const out: UnifiedApprovalItem[] = []
 
   for (const row of leave) {
-    out.push(mapLeave(row, canPerformApproval(role, 'LEAVE'), leaveCreated.get(row.id) ?? new Date()))
+    out.push(mapLeave(row, true, leaveCreated.get(row.id) ?? new Date()))
   }
   for (const row of outside) {
-    out.push(mapOutside(row, canPerformApproval(role, 'OUTSIDE'), outsideCreated.get(row.id) ?? new Date()))
+    out.push(mapOutside(row, true, outsideCreated.get(row.id) ?? new Date()))
   }
   for (const row of weekly) {
     const meta = weeklyMeta.get(row.id)
     out.push(
       mapWeekly(
         { ...row, lawyerId: meta?.lawyerId, department: meta?.lawyer.department ?? null },
-        canPerformApproval(role, 'WEEKLY_PLAN'),
+        true,
         meta?.createdAt ?? new Date(),
       ),
     )
   }
   for (const row of forgot) {
-    out.push(mapForgot(row, canPerformApproval(role, 'FORGOT_SCAN'), forgotCreated.get(row.id) ?? new Date()))
+    out.push(mapForgot(row, true, forgotCreated.get(row.id) ?? new Date()))
   }
 
   out.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
@@ -520,12 +535,14 @@ export async function loadApprovalCenterData(
   userId: string,
   role: Role,
 ): Promise<ApprovalCenterPayload> {
-  const [pending, approved, rejected, myRequests] = await Promise.all([
+  const [pending, approvedResult, rejectedResult, myRequests] = await Promise.all([
     loadPendingWithMeta(prisma, userId, role),
     loadApprovedRejected(prisma, userId, role, 'approved'),
     loadApprovedRejected(prisma, userId, role, 'rejected'),
     loadMyRequests(prisma, userId),
   ])
+  const approved = approvedResult.items
+  const rejected = rejectedResult.items
 
   const all = [...pending, ...approved, ...rejected, ...myRequests]
 

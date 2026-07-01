@@ -2,7 +2,8 @@ import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { ROUTE_PERMISSIONS, ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
+import { ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
+import { matchRoutePermission, rolesForPath } from '@/lib/route-match'
 import { logAccessDenied } from '@/lib/access-log'
 import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
 import { isPublicApiRoute } from '@/lib/api-public-routes'
@@ -111,10 +112,10 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.redirect(url)
   }
 
-  // Check route permission
-  const matchedRoute = Object.keys(ROUTE_PERMISSIONS).find((r) => pathname.startsWith(r))
+  // Check route permission (longest prefix — /attendance/scans before /attendance)
+  const matchedRoute = matchRoutePermission(pathname)
   if (matchedRoute) {
-    const allowed = ROUTE_PERMISSIONS[matchedRoute]
+    const allowed = rolesForPath(pathname)!
     if (!allowed.includes(role)) {
       logAccessDenied('role_denied', { path: pathname, role, matchedRoute, allowed })
       const url = req.nextUrl.clone()

@@ -4,6 +4,7 @@
  */
 import type { Role } from '@prisma/client'
 import { canAccess, ROUTE_PERMISSIONS } from '../lib/access-control/index'
+import { matchRoutePermission } from '../lib/route-match'
 import { isNavPathHidden, PHASE1_NAV_HIDDEN } from '../lib/module-gates'
 
 /** Sidebar hrefs (keep in sync with Sidebar.tsx NAV_SECTIONS) */
@@ -37,6 +38,8 @@ const ROLE_EXPECTATIONS: Expect[] = [
   // TEAM_LEADER — approver + HR ops, no legal/work modules
   { role: 'TEAM_LEADER', path: '/approval-center', allow: true },
   { role: 'TEAM_LEADER', path: '/attendance/scans', allow: true },
+  { role: 'TEAM_LEADER', path: '/attendance', allow: true },
+  { role: 'EMPLOYEE', path: '/attendance/scans', allow: false },
   { role: 'TEAM_LEADER', path: '/cases', allow: false },
   { role: 'TEAM_LEADER', path: '/tasks', allow: false },
   { role: 'TEAM_LEADER', path: '/executive', allow: false },
@@ -91,6 +94,16 @@ for (const { role, path, allow } of ROLE_EXPECTATIONS) {
     ok(`${role} ${allow ? 'can' : 'cannot'} ${path}`)
   } else {
     fail(`${role} ${path}`, `expected ${allow ? 'allow' : 'deny'}, got ${got ? 'allow' : 'deny'}`)
+  }
+}
+
+// Longest-prefix: /attendance/scans must not inherit /attendance only
+{
+  const scanRoute = matchRoutePermission('/attendance/scans')
+  if (scanRoute === '/attendance/scans') {
+    ok('longest-prefix: /attendance/scans → SCAN_HISTORY route')
+  } else {
+    fail('longest-prefix: /attendance/scans', `matched ${scanRoute ?? 'none'}`)
   }
 }
 

@@ -6,7 +6,7 @@ import { formatThaiDate } from '@/lib/utils'
 import { findTodayAttendanceForDisplay } from '@/lib/attendance-session'
 import { getAttendanceProgress, ACTION_LABELS } from '@/lib/attendance-progress'
 import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
-import { getApproverInboxCounts, formatInboxSummary } from '@/lib/approval-inbox'
+import { getApprovalCenterInboxCounts, formatApprovalCenterSummary } from '@/lib/approval-inbox'
 import type { Role } from '@prisma/client'
 import MotionCard, { MotionQuickLink } from '@/components/motion/MotionCard'
 
@@ -22,7 +22,7 @@ export default async function ApproverDashboard({ userId, name, role }: Props) {
   const [displaySession, unreadCount, inbox, teamSize] = await Promise.all([
     findTodayAttendanceForDisplay(userId, today),
     prisma.notification.count({ where: { userId, isRead: false } }),
-    getApproverInboxCounts(prisma, userId, role),
+    getApprovalCenterInboxCounts(prisma, userId, role),
     prisma.user.count({
       where: role === 'MANAGER'
         ? { managerId: userId, status: 'ACTIVE' }
@@ -65,7 +65,7 @@ export default async function ApproverDashboard({ userId, name, role }: Props) {
           <MotionCard href="/approval-center" className="border-orange-200 dark:border-orange-900/50 shadow-none hover:shadow-md hover:border-orange-300 dark:hover:border-orange-800">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">รออนุมัติ</p>
             <p className="mt-1.5 text-2xl font-extrabold text-orange-600 dark:text-orange-400">{inbox.total}</p>
-            <p className="text-[11px] text-slate-500 mt-1">{formatInboxSummary(inbox, role)}</p>
+            <p className="text-[11px] text-slate-500 mt-1">{formatApprovalCenterSummary(inbox, role)}</p>
           </MotionCard>
           <MotionCard interactive={false} className="shadow-none hover:shadow-md">
             <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400">ทีมโดยตรง</p>
