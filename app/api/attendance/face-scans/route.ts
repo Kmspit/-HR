@@ -8,9 +8,15 @@ import {
   type FaceScanType,
 } from '@/lib/attendance-face-scan'
 import { branchUserWhere, buildBranchScope, parseBranchQueryParam } from '@/lib/branch-scope'
+import {
+  canListCompanyWideRecords,
+  canViewUserRecord,
+  resolveOrgListScope,
+} from '@/lib/org-scope'
 
 export async function GET(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -22,9 +28,15 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, parseInt(searchParams.get('limit') ?? '50', 10))
     const branchParam = parseBranchQueryParam(searchParams.get('branchId') ?? undefined)
 
-    const isHr = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
-    if (!isHr && userId && userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (userId && userId !== session.user.id) {
+      const allowed = await canViewUserRecord(
+        prisma,
+        session.user.id,
+        session.user.role,
+        session.user.branchId,
+        userId,
+      )
+      if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const startDate = new Date(year, month - 1, 1)
@@ -32,7 +44,9 @@ export async function GET(req: NextRequest) {
 
     let targetUserId = session.user.id
     let filterUserIds: string[] | undefined
-    if (isHr) {
+    const listScope = await resolveOrgListScope(prisma, session.user.id, session.user.role)
+
+    if (canListCompanyWideRecords(session.user.role)) {
       if (userId) targetUserId = userId
       else {
         const scope = buildBranchScope(session.user, { branchId: branchParam })
@@ -42,6 +56,9 @@ export async function GET(req: NextRequest) {
         })
         filterUserIds = team.map((u) => u.id)
       }
+    } else if (listScope !== 'ALL') {
+      filterUserIds = userId ? (listScope.includes(userId) ? [userId] : []) : listScope
+      if (userId) targetUserId = userId
     }
 
     const rows = await prisma.attendanceFaceScan.findMany({

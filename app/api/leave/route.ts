@@ -16,6 +16,11 @@ import {
 } from '@/lib/company-holidays'
 import { getDefaultChain, applyChainToLeave } from '@/lib/approval-chain'
 import { createAuditLog } from '@/lib/notifications'
+import {
+  canViewUserRecord,
+  resolveOrgListScope,
+  userIdFilterFromScope,
+} from '@/lib/org-scope'
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,13 +28,24 @@ export async function GET(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const url = new URL(req.url)
-    const isHr = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
-    const filterUserId = isHr
-      ? (url.searchParams.get('userId') ?? undefined)
-      : session.user.id
+    const requestedUserId = url.searchParams.get('userId') ?? undefined
+    const scope = await resolveOrgListScope(prisma, session.user.id, session.user.role)
+
+    let where = userIdFilterFromScope(scope)
+    if (requestedUserId) {
+      const allowed = await canViewUserRecord(
+        prisma,
+        session.user.id,
+        session.user.role,
+        session.user.branchId,
+        requestedUserId,
+      )
+      if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      where = { userId: requestedUserId }
+    }
 
     const leaves = await prisma.leaveRequest.findMany({
-      where: filterUserId ? { userId: filterUserId } : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
       include: { user: { select: { name: true, employeeId: true } } },
     })
@@ -51,7 +67,8 @@ const leaveSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const contentType = req.headers.get('content-type') ?? ''

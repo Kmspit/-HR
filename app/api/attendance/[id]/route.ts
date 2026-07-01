@@ -1,8 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-
-const MANAGER_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+import { canViewUserRecord } from '@/lib/org-scope'
 
 export async function GET(
   _req: Request,
@@ -23,9 +22,15 @@ export async function GET(
 
   if (!record) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const canViewOthers = MANAGER_ROLES.includes(session.user.role)
-  if (record.userId !== session.user.id && !canViewOthers) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (record.userId !== session.user.id) {
+    const allowed = await canViewUserRecord(
+      prisma,
+      session.user.id,
+      session.user.role,
+      session.user.branchId,
+      record.userId,
+    )
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   // Resolve face-scan proxy URLs (avoids Cloudinary auth issues)

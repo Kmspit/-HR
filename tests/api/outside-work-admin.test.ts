@@ -23,7 +23,7 @@ vi.mock('@/lib/api-handler', () => ({
   apiError: (err: unknown) => new Response(JSON.stringify({ error: String(err) }), { status: 500 }),
 }))
 
-vi.mock('@/lib/rbac', () => ({
+vi.mock('@/lib/access-control', () => ({
   hasPermission: vi.fn((role: string, perm: string) => {
     if (perm === 'approve_outside_work') return ['CEO', 'HR', 'MANAGER_HR'].includes(role)
     return false

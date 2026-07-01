@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import type { CaseStatus, CasePriority } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
-import { ROLE_LABELS } from '@/lib/access-control'
+import { ROLE_LABELS, canViewTeamOnly } from '@/lib/access-control'
+import { canAccessModule, WORK_MODULE, LEGAL_MODULE, HR_ADMIN } from '@/lib/module-gates'
+import { getDirectReportUserIds } from '@/lib/org-scope'
 import { formatThaiDate } from '@/lib/utils'
 import Link from 'next/link'
 import EmployeeDashboard from './EmployeeDashboard'
@@ -44,23 +46,19 @@ export default async function DashboardPage({
   const pendingUserWhere = branchUserWhere(scope, { status: 'PENDING' })
 
   const now = new Date()
-  const CAN_SEE_TASK_KPI = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
-  const showTaskKpi = CAN_SEE_TASK_KPI.includes(role)
-  const CAN_SEE_CASE_KPI = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT']
-  const showCaseKpi = CAN_SEE_CASE_KPI.includes(role)
+  const showTaskKpi = canAccessModule(role, WORK_MODULE) || canViewTeamOnly(role)
+  const showCaseKpi = canAccessModule(role, LEGAL_MODULE)
 
   let taskManagedIds: string[] | null = null
   if (role === 'MANAGER') {
-    const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
-    taskManagedIds = managed.map((u) => u.id)
+    taskManagedIds = await getDirectReportUserIds(prisma, userId, role)
   }
 
   const taskWhere = taskManagedIds !== null ? { assigneeId: { in: taskManagedIds } } : {}
 
-  const CASE_EXEC = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
   type CaseWhereClause = Record<string, unknown>
   let caseWhere: CaseWhereClause = {}
-  if (!CASE_EXEC.includes(role)) {
+  if (!canAccessModule(role, HR_ADMIN)) {
     if (role === 'MANAGER' && session.user.department) {
       caseWhere = { department: session.user.department }
     } else if (['LAWYER', 'ENFORCEMENT'].includes(role)) {

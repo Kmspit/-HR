@@ -18,6 +18,7 @@ import {
   ALL_EMPLOYEES_USER_ID,
   listAttendanceTeamUsers,
 } from '@/lib/attendance-team-users'
+import { canListCompanyWideRecords, canViewUserRecord } from '@/lib/org-scope'
 
 const MONTH_NAMES = [
   '',
@@ -38,7 +39,8 @@ const MONTH_NAMES = [
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -49,10 +51,18 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId') ?? session.user.id
     const format = (searchParams.get('format') ?? 'csv').toLowerCase()
     const branchParam = parseBranchQueryParam(searchParams.get('branchId') ?? undefined)
-    const isHr = ['MANAGER_HR', 'ADMIN'].includes(session.user.role)
 
-    if (userId !== session.user.id && !isHr) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (userId !== session.user.id && userId !== ALL_EMPLOYEES_USER_ID) {
+      const allowed = await canViewUserRecord(
+        prisma,
+        session.user.id,
+        session.user.role,
+        session.user.branchId,
+        userId,
+      )
+      if (!allowed) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
     }
 
     if (format !== 'csv' && format !== 'pdf' && format !== 'xlsx') {
@@ -70,7 +80,7 @@ export async function GET(req: NextRequest) {
     let includeEmployeeColumn = false
 
     if (userId === ALL_EMPLOYEES_USER_ID) {
-      if (!isHr) {
+      if (!canListCompanyWideRecords(session.user.role)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       const team = await listAttendanceTeamUsers(scope)

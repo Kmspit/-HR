@@ -8,3 +8,8 @@
 • HR/งาน: Tasks, KPI, Training, SOP, Automation
 
 ตอบ bullet ก็ได้ ขอบคุณครับ/ค่ะ 🙏
+
+---
+สถานะ (อัปเดต P3): ส่งแบบสำรวจแล้ว — ถ้ายังไม่ได้ freeze โมดูล ให้ตั้ง
+NEXT_PUBLIC_FROZEN_MODULES=/path1,/path2 บน production ตามคำตอบทีม
+(ดู docs/deploy-profiles.md § Phase 2 freeze)

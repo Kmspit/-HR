@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { createAuditLog } from '@/lib/notifications'
+import { canManagePayroll } from '@/lib/access-control'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -18,14 +19,15 @@ export async function GET(req: NextRequest) {
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = branchNestedUserWhere(scope)
 
-  const isManager = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'].includes(session.user.role)
+  const role = session.user.role
+  const isPayrollAdmin = canManagePayroll(role)
 
-  if (userId && userId !== session.user.id && !isManager) {
+  if (userId && userId !== session.user.id && !isPayrollAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   if (userId) {
-    if (isManager && userId !== session.user.id) {
+    if (isPayrollAdmin && userId !== session.user.id) {
       const targetUser = await prisma.user.findFirst({
         where: branchUserWhere(scope, { id: userId }),
         select: { id: true },
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ payrolls, month, year, employeeCount: payrolls.length })
   }
 
-  if (!isManager) {
+  if (!isPayrollAdmin) {
     const payrolls = await prisma.payroll.findMany({
       where: { month, year, userId: session.user.id },
       include: {

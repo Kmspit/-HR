@@ -27,7 +27,7 @@ vi.mock('@/lib/api-handler', () => ({
   runNotify:  (fn: () => Promise<unknown>) => fn().catch(() => {}),
 }))
 
-vi.mock('@/lib/rbac', () => ({
+vi.mock('@/lib/access-control', () => ({
   hasPermission: vi.fn((role: string, _perm: string) => role === 'CEO' || role === 'ADMIN'),
 }))
 
