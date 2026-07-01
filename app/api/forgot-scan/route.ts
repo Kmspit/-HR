@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { createNotification } from '@/lib/notifications'
 import { saveUpload } from '@/lib/save-upload'
 import { getDefaultChain } from '@/lib/approval-chain'
 import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
@@ -12,6 +11,8 @@ import {
   FORGOT_SCAN_HR_ROLES,
   FORGOT_SCAN_SUPERVISOR_ROLES,
 } from '@/lib/access-control'
+import { resolveOrgListScope, userIdFilterFromScope } from '@/lib/org-scope'
+import { validateCsrfOrigin } from '@/lib/csrf'
 
 const SCAN_TYPES = ['checkin', 'lunch-out', 'lunch-in', 'checkout'] as const
 type ScanType = (typeof SCAN_TYPES)[number]
@@ -34,6 +35,9 @@ const NOTIFY_ROLES: Role[] = ['MANAGER', 'TEAM_LEADER', 'HR', 'MANAGER_HR']
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = validateCsrfOrigin(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -123,7 +127,11 @@ export async function GET(req: NextRequest) {
       if (isHR) {
         where = { status: { in: ['PENDING', 'ADMIN_APPROVED'] } }
       } else if (isSupervisor) {
-        where = { status: 'PENDING' }
+        const scope = await resolveOrgListScope(prisma, userId, role as Role)
+        where = {
+          status: 'PENDING',
+          ...userIdFilterFromScope(scope),
+        }
       } else {
         where = { userId, status: { in: ['PENDING', 'ADMIN_APPROVED'] } }
       }

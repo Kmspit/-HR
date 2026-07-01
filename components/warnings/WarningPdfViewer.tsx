@@ -182,7 +182,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
           {loadError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm text-slate-300">เปิดตัวอย่างในเบราว์เซอร์นี้ไม่ได้</p>
-              <p className="text-xs text-slate-500">กรุณาใช้ปุ่ม "เปิดแท็บใหม่" หรือ "ดาวน์โหลด"</p>
+              <p className="text-xs text-slate-500">กรุณาใช้ปุ่ม &quot;เปิดแท็บใหม่&quot; หรือ &quot;ดาวน์โหลด&quot;</p>
               <div className="flex flex-wrap gap-2 justify-center mt-1">
                 <button type="button" onClick={openNewTab}
                   className="px-4 py-2 rounded-xl bg-blue-600 text-sm font-semibold text-white">

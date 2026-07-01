@@ -456,7 +456,7 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
         <div className="rounded-2xl border border-dashed border-white/10 bg-slate-800/20 py-12 text-center">
           <CheckCircle2 className="mx-auto h-8 w-8 text-slate-600 mb-3" />
           <p className="text-sm text-slate-500">ยังไม่มี Approval Chain สำหรับ {CHAIN_ENTITY_LABELS[entityFilter]}</p>
-          <p className="text-xs text-slate-600 mt-1">กดปุ่ม "สร้าง Chain" เพื่อเริ่มต้น</p>
+          <p className="text-xs text-slate-600 mt-1">กดปุ่ม &quot;สร้าง Chain&quot; เพื่อเริ่มต้น</p>
         </div>
       )}
 

@@ -454,7 +454,7 @@ export async function recordFaceScanAndNotifyHr(params: {
 }> {
   const scores = parseScoresFromForm(params.formData)
   let faceScanId: string | null = null
-  let lineNotify = { sent: 0, failed: 0 }
+  const lineNotify = { sent: 0, failed: 0 }
   try {
     faceScanId = await persistFaceScanFromAttendanceForm({
       formData: params.formData,

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { createAuditLog } from '@/lib/notifications'
 import { canManagePayroll } from '@/lib/access-control'
+import { requireCsrf } from '@/lib/api-guard'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -146,19 +147,36 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id || !['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { id, status, note } = await req.json()
+  const scope = buildBranchScope(session.user, {})
+
+  const existing = await prisma.payroll.findUnique({
+    where: { id },
+    select: { id: true, userId: true, month: true, year: true, status: true },
+  })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const targetInScope = await prisma.user.findFirst({
+    where: branchUserWhere(scope, { id: existing.userId }),
+    select: { id: true },
+  })
+  if (!targetInScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const updateData: Record<string, unknown> = { status }
   if (note !== undefined) updateData.note = note
   if (status === 'APPROVED') {
     updateData.approvedById = session.user.id
     updateData.approvedAt = new Date()
   }
-  const payroll = await prisma.payroll.update({ where: { id }, data: updateData })
+  const payroll = await prisma.payroll.update({ where: { id: existing.id }, data: updateData })
 
   if (status === 'APPROVED') {
     const taxRaw = (payroll as unknown as { taxDetail?: string }).taxDetail

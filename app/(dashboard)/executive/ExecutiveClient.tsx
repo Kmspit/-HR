@@ -157,7 +157,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
               <KpiCard label="งานเกินกำหนด" value={fmt(kpi.overdueTasks)} sub="ต้องติดตาม" color={kpi.overdueTasks > 10 ? 'red' : kpi.overdueTasks > 0 ? 'orange' : 'green'} icon="📌" href="/tasks" />
 
               <KpiCard label="พลาดนัดศาล %" value={`${kpi.missedHearingPct}%`} sub="(30 วันล่าสุด)" color={kpi.missedHearingPct > 10 ? 'red' : kpi.missedHearingPct > 0 ? 'orange' : 'green'} icon="❌" href="/court-calendar" />
-              <KpiCard label="พนักงานมาสาย" value={fmt(kpi.lateToday)} sub="วันนี้" color={kpi.lateToday > 3 ? 'orange' : 'slate'} icon="⏰" href="/attendance-history" />
+              <KpiCard label="พนักงานมาสาย" value={fmt(kpi.lateToday)} sub="วันนี้" color={kpi.lateToday > 3 ? 'orange' : 'slate'} icon="⏰" href="/attendance/monthly" />
               <KpiCard label="ใบเตือนเดือนนี้" value={fmt(kpi.warningsThisMonth)} sub="" color={kpi.warningsThisMonth > 0 ? 'orange' : 'slate'} icon="📝" href="/warnings" />
               <KpiCard label="ลูกหนี้ไม่ติดต่อ" value={fmt(kpi.noContactDebtors)} sub=">7 วัน" color={kpi.noContactDebtors > 5 ? 'red' : 'orange'} icon="📵" href="/debtors" />
 

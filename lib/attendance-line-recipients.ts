@@ -11,7 +11,7 @@ function parseNotifyTargetsEnv(): string[] {
   return raw.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean)
 }
 
-function useOnlyConfiguredTargets(): boolean {
+function notifyOnlyConfiguredTargets(): boolean {
   return !!process.env.ATTENDANCE_LINE_NOTIFY_ONLY?.trim()
 }
 
@@ -65,7 +65,7 @@ async function recipientsFromEnvTargets(): Promise<HrLineRecipient[]> {
 export async function getHrLineRecipients(): Promise<HrLineRecipient[]> {
   const map = new Map<string, HrLineRecipient>()
 
-  if (!useOnlyConfiguredTargets()) {
+  if (!notifyOnlyConfiguredTargets()) {
     const users = await prisma.user.findMany({
       where: {
         status: 'ACTIVE',

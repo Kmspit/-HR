@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import type { CaseStatus, CasePriority } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import { ROLE_LABELS, canViewTeamOnly } from '@/lib/access-control'
-import { canAccessModule, WORK_MODULE, LEGAL_MODULE, HR_ADMIN } from '@/lib/module-gates'
+import { canAccessModule, WORK_MODULE, LEGAL_MODULE, HR_ADMIN, EMPLOYEE_MGMT } from '@/lib/module-gates'
 import { getDirectReportUserIds } from '@/lib/org-scope'
 import { formatThaiDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -139,7 +139,7 @@ export default async function DashboardPage({
         title={`สวัสดี, ${(name ?? 'ผู้ใช้').split(' ')[0]} 👋`}
         subtitle={`${ROLE_LABELS[role]} · ${formatThaiDate(new Date())} · Smart Dashboard`}
         actions={
-          pendingUsers > 0 ? (
+          pendingUsers > 0 && canAccessModule(role, EMPLOYEE_MGMT) ? (
             <Link
               href="/employees?tab=pending"
               className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"

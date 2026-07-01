@@ -113,7 +113,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  let data: Record<string, unknown> = {}
+  const data: Record<string, unknown> = {}
   const timelineEntries: { action: string; description: string; meta?: string }[] = []
 
   function appendProgressNote(existing: string | null, note: string): string {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { Layers, GitBranch, Grid3X3, Plus, Pencil, Trash2, Loader2, Database } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -157,7 +158,7 @@ export default function OrganizationClient({
           </p>
           <p className="text-xs text-amber-100/80">
             ขั้นอนุมัติ org-based (Outside Work / Leave) จะ skip หรือส่งผิดคนถ้าไม่ assign — แก้ที่{' '}
-            <a href="/employees" className="underline font-medium">พนักงาน</a>
+            <Link href="/employees" className="underline font-medium">พนักงาน</Link>
           </p>
           <ul className="text-xs text-amber-100/90 space-y-1 max-h-32 overflow-y-auto">
             {hierarchyGaps.map((g) => (

@@ -52,7 +52,7 @@ vi.mock('@/lib/utils', () => ({
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { GET as reportGet } from '@/app/api/payroll/report/route'
+import { GET as reportGet, PATCH as reportPatch } from '@/app/api/payroll/report/route'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -123,5 +123,26 @@ describe('GET /api/payroll/report', () => {
     const json = await res.json()
     expect(json.payrolls).toHaveLength(1)
     expect(json.payrolls[0].userId).toBe('emp-1')
+  })
+})
+
+describe('PATCH /api/payroll/report branch scope', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 403 when payroll user is outside branch scope', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1', userId: 'emp-other', month: 1, year: 2025, status: 'PENDING',
+    } as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+
+    const req = new NextRequest('http://localhost/api/payroll/report', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'pay-1', status: 'APPROVED' }),
+    })
+    const res = await reportPatch(req)
+    expect(res.status).toBe(403)
+    expect(prisma.payroll.update).not.toHaveBeenCalled()
   })
 })

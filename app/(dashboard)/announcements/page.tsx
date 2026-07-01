@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import { canAccessModule, HR_ADMIN } from '@/lib/module-gates'
 import Topbar from '@/components/dashboard/Topbar'
 import AnnouncementsClient from './AnnouncementsClient'
 
@@ -11,7 +12,7 @@ export default async function AnnouncementsPage() {
   if (!session?.user) redirect('/')
 
   const { role, id: userId } = session.user
-  const isHR = role === 'MANAGER_HR' || role === 'ADMIN' || role === 'CEO'
+  const isHR = canAccessModule(role, HR_ADMIN)
   const now = new Date()
 
   const [rawAnnouncements, branches, divisions, departments, sections] = await Promise.all([

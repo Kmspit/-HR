@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     const year = parseInt(searchParams.get('year') ?? String(new Date().getFullYear()), 10)
 
-    let userId = searchParams.get('userId') ?? session.user.id
+    const userId = searchParams.get('userId') ?? session.user.id
 
     const branchParam = parseBranchQueryParam(searchParams.get('branchId') ?? undefined)
 

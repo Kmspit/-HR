@@ -4,7 +4,7 @@ import type { Role, UserStatus } from '@prisma/client'
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
-function useSecureCookies() {
+function shouldUseSecureCookies() {
   return (
     process.env.NODE_ENV === 'production' ||
     Boolean(process.env.VERCEL) ||
@@ -14,7 +14,7 @@ function useSecureCookies() {
 }
 
 export function getSessionCookieName() {
-  const prefix = useSecureCookies() ? '__Secure-' : ''
+  const prefix = shouldUseSecureCookies() ? '__Secure-' : ''
   return `${prefix}authjs.session-token`
 }
 
@@ -53,7 +53,7 @@ async function buildSessionToken(user: SessionUserPayload) {
     maxAge: SESSION_MAX_AGE,
   })
 
-  return { cookieName, encoded, secure: useSecureCookies() }
+  return { cookieName, encoded, secure: shouldUseSecureCookies() }
 }
 
 /** แนบ session cookie กับ NextResponse (เสถียรบน Vercel มากกว่า cookies().set) */

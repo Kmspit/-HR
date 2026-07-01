@@ -104,7 +104,7 @@ export default function ApprovalTimeline({ steps, currentStepOrder, leaveStatus,
                   {/* Comment */}
                   {step.comment && (
                     <p className="mt-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] text-slate-300 border border-white/5">
-                      "{step.comment}"
+                      &quot;{step.comment}&quot;
                     </p>
                   )}
                 </div>

@@ -170,7 +170,7 @@ export function TasksFilter({
       {totalFiltered > 0 && (search || hasActiveFilter) && (
         <p className="text-[12px] text-slate-500 dark:text-slate-400">
           แสดง {totalFiltered} งาน
-          {search && <> ที่ตรงกับ "<span className="font-medium text-slate-700 dark:text-slate-300">{search}</span>"</>}
+          {search && <> ที่ตรงกับ &quot;<span className="font-medium text-slate-700 dark:text-slate-300">{search}</span>&quot;</>}
         </p>
       )}
     </div>

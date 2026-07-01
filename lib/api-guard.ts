@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import type { Session } from 'next-auth'
 import { auth } from '@/lib/auth'
 import { hasPermission, type AppPermission } from '@/lib/access-control'
 import { canAccessUserProfile } from '@/lib/user-access'
 import { prisma } from '@/lib/prisma'
+import { validateCsrfOrigin } from '@/lib/csrf'
 import type { Role } from '@prisma/client'
 
 export type AuthSession = Session & {
@@ -12,6 +14,11 @@ export type AuthSession = Session & {
 
 export function isGuardResponse(value: unknown): value is NextResponse {
   return value instanceof NextResponse
+}
+
+/** CSRF origin check for mutation handlers — returns 403 response or null if OK. */
+export function requireCsrf(req: NextRequest): NextResponse | null {
+  return validateCsrfOrigin(req)
 }
 
 export async function requireAuth(): Promise<AuthSession | NextResponse> {

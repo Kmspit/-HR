@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { HR_ROLES } from '@/lib/access-control'
+import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
+import { requireCsrf } from '@/lib/api-guard'
 
 export async function GET(
   _req: NextRequest,
@@ -37,6 +39,14 @@ export async function GET(
     if (!isHR && payroll.userId !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+    if (isHR) {
+      const scope = buildBranchScope(session.user, {})
+      const targetInScope = await prisma.user.findFirst({
+        where: branchUserWhere(scope, { id: payroll.userId }),
+        select: { id: true },
+      })
+      if (!targetInScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     if (!isHR && !['APPROVED', 'SENT'].includes(payroll.status)) {
       return NextResponse.json({ error: 'Not available' }, { status: 404 })
     }
@@ -52,6 +62,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id || !(HR_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -62,6 +75,13 @@ export async function PATCH(
 
     const payroll = await prisma.payroll.findUnique({ where: { id } })
     if (!payroll) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const scope = buildBranchScope(session.user, {})
+    const targetInScope = await prisma.user.findFirst({
+      where: branchUserWhere(scope, { id: payroll.userId }),
+      select: { id: true },
+    })
+    if (!targetInScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const updateData: Record<string, unknown> = {}
     if (body.status) updateData.status = body.status

@@ -6,12 +6,20 @@ import { isPdfFile, storeWarningPdf } from '@/lib/warning-pdf'
 import { deliverWarningToEmployee, ensureWarningPdfStored } from '@/lib/warning-delivery'
 import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
-import type { Role } from '@prisma/client'
+import {
+  canViewUserRecord,
+  isCompanyWideApprover,
+  resolveOrgListScope,
+  userIdFilterFromScope,
+} from '@/lib/org-scope'
+import { validateCsrfOrigin } from '@/lib/csrf'
+import type { Prisma, Role } from '@prisma/client'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
 
 export async function GET(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const role = session.user.role as Role
@@ -26,9 +34,23 @@ export async function GET(req: NextRequest) {
     archiveExpiredWarnings().catch(() => {})
 
     if (isHR || canApprove) {
-      const where: Record<string, unknown> = {}
-      if (statusFilter) where.status = statusFilter
-      if (targetUserId) where.userId = targetUserId
+      const where: Prisma.WarningWhereInput = {}
+      if (statusFilter) where.status = statusFilter as Prisma.WarningWhereInput['status']
+
+      if (targetUserId) {
+        const allowed = await canViewUserRecord(
+          prisma,
+          session.user.id,
+          role,
+          session.user.branchId,
+          targetUserId,
+        )
+        if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        where.userId = targetUserId
+      } else if (canApprove && !isCompanyWideApprover(role)) {
+        const scope = await resolveOrgListScope(prisma, session.user.id, role)
+        Object.assign(where, userIdFilterFromScope(scope))
+      }
 
       const warnings = await prisma.warning.findMany({
         where,
@@ -61,6 +83,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = validateCsrfOrigin(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id || !['MANAGER_HR', 'ADMIN', 'CEO'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
   // Build the base where clause depending on role
   type WhereClause = Record<string, unknown>
-  let baseWhere: WhereClause = {}
+  const baseWhere: WhereClause = {}
 
   if (CAN_SEE_ALL.includes(role)) {
     // Full admins: can filter by dept or userId param

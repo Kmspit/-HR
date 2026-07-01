@@ -10,7 +10,7 @@ type WarningCheckResult = {
   absentCount: number
 }
 
-export async function runWarningCheck(): Promise<WarningCheckResult[]> {
+export async function runWarningCheck(options?: { userIds?: string[] }): Promise<WarningCheckResult[]> {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
@@ -32,8 +32,13 @@ export async function runWarningCheck(): Promise<WarningCheckResult[]> {
     )
   }
 
+  const userIds = options?.userIds?.filter(Boolean)
   const employees = await prisma.user.findMany({
-    where: { status: 'ACTIVE', isCoworker: false },
+    where: {
+      status: 'ACTIVE',
+      isCoworker: false,
+      ...(userIds?.length ? { id: { in: userIds } } : {}),
+    },
     select: { id: true, name: true },
   })
 
