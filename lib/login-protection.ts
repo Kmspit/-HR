@@ -9,8 +9,9 @@ const WINDOW_MS = 15 * 60 * 1000  // 15 min
 const LOCK_MS   = 15 * 60 * 1000  // lock duration
 
 export async function checkLoginAllowed(email: string): Promise<{ allowed: boolean; lockedUntil?: Date }> {
+  const normalized = email.trim().toLowerCase()
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalized },
     select: { id: true, lockedUntil: true },
   })
 
@@ -19,6 +20,42 @@ export async function checkLoginAllowed(email: string): Promise<{ allowed: boole
   }
 
   return { allowed: true }
+}
+
+/** Resolve employee ID or email → lock check on canonical account. */
+export async function checkLoginAllowedForIdentifier(
+  identifier: string,
+): Promise<{ allowed: boolean; lockedUntil?: Date; email?: string; userId?: string }> {
+  const raw = identifier.trim()
+  if (!raw) return { allowed: true }
+
+  if (raw.includes('@')) {
+    const email = raw.toLowerCase()
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, lockedUntil: true },
+    })
+    if (user?.lockedUntil && user.lockedUntil > new Date()) {
+      return { allowed: false, lockedUntil: user.lockedUntil, email: user.email, userId: user.id }
+    }
+    return { allowed: true, email: user?.email ?? email, userId: user?.id }
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { employeeId: raw },
+        { employeeId: raw.toUpperCase() },
+        { employeeId: raw.toLowerCase() },
+      ],
+    },
+    select: { id: true, email: true, lockedUntil: true },
+  })
+  if (!user) return { allowed: true }
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    return { allowed: false, lockedUntil: user.lockedUntil, email: user.email, userId: user.id }
+  }
+  return { allowed: true, email: user.email, userId: user.id }
 }
 
 export async function recordLoginAttempt(

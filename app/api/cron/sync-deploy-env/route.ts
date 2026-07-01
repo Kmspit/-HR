@@ -5,8 +5,12 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { syncDeployEnvFromRuntime } from '@/lib/sync-vercel-deploy-env'
+import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 
 export async function POST(req: NextRequest) {
+  const denied = rejectUnauthorizedCron(req)
+  if (denied) return denied
+
   const vercelToken = req.headers.get('x-vercel-token')?.trim()
   if (!vercelToken) {
     return NextResponse.json({ error: 'Missing X-Vercel-Token' }, { status: 401 })

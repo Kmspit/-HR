@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyLoginCredentials } from '@/lib/login-credentials'
 import { attachSessionCookie } from '@/lib/session-token'
+import { getSessionEpoch } from '@/lib/session-epoch'
 import { resolvePostLoginPath } from '@/lib/post-login-path'
 import { ensureDbSchema } from '@/lib/ensure-db-schema'
-import { checkLoginAllowed, recordLoginAttempt } from '@/lib/login-protection'
+import { checkLoginAllowedForIdentifier, recordLoginAttempt } from '@/lib/login-protection'
 import { logSecurityEvent } from '@/lib/security-events'
 import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Phase 15: brute-force check
-    const lockCheck = await checkLoginAllowed(email).catch(() => ({ allowed: true }))
+    const lockCheck = await checkLoginAllowedForIdentifier(email).catch(() => ({ allowed: true as const }))
     if (!lockCheck.allowed) {
       return NextResponse.json(
         { ok: false, error: 'ACCOUNT_LOCKED', message: 'บัญชีถูกล็อคชั่วคราว กรุณาลองใหม่ใน 15 นาที' },
@@ -142,7 +143,10 @@ export async function POST(req: NextRequest) {
       message,
     })
 
-    return await attachSessionCookie(response, verified.user)
+    return await attachSessionCookie(response, {
+      ...verified.user,
+      sessionEpoch: await getSessionEpoch(verified.user.id),
+    })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const stack = err instanceof Error ? err.stack : undefined

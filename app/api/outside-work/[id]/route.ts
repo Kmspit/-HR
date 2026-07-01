@@ -103,8 +103,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.supervisedBy !== undefined) updateData.supervisedBy = body.supervisedBy?.trim() || null
 
     if (isHR) {
-      if (body.approvalStatus !== undefined) updateData.approvalStatus = body.approvalStatus || null
-      if (body.status         !== undefined) updateData.status         = body.status
+      // Status changes only via approval chain — not direct PATCH
     }
 
     const updated = await prisma.outsideWorkRequest.update({ where: { id }, data: updateData })

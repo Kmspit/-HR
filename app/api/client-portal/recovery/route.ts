@@ -1,12 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { getPortalSession } from '@/lib/portal-auth'
+import { requireActivePortalSession } from '@/lib/portal-session-guard'
 
 export async function GET(req: NextRequest) {
-  const session = await getPortalSession(req)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { clientCompanyId } = session
+  const portal = await requireActivePortalSession(req)
+  if (!portal.ok) {
+    return NextResponse.json({ error: portal.error }, { status: portal.status })
+  }
+  const { clientCompanyId } = portal.session
   const url   = new URL(req.url)
   const page  = Math.max(1, parseInt(url.searchParams.get('page') ?? '1'))
   const limit = 20
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
 
   void prisma.clientPortalLog.create({
     data: {
-      portalUserId: session.portalUserId,
+      portalUserId: portal.session.portalUserId,
       action:       'VIEW_RECOVERY',
       resourceType: 'RecoveryPayment',
       ipAddress:    req.headers.get('x-forwarded-for') ?? undefined,

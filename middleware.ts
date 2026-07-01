@@ -5,8 +5,8 @@ import type { NextRequest } from 'next/server'
 import { ROUTE_PERMISSIONS, ROLE_DEFAULT_ROUTE } from '@/lib/permissions'
 import { logAccessDenied } from '@/lib/access-log'
 import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
+import { isPublicApiRoute } from '@/lib/api-public-routes'
 import type { Role } from '@prisma/client'
-
 const { auth } = NextAuth(authConfig)
 
 // Public routes — no auth needed
@@ -41,7 +41,7 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.next()
   }
 
-  // API — deploy profile gate (404 if module hidden in this profile)
+  // API — deploy profile gate + session required unless public
   if (pathname.startsWith('/api/')) {
     if (!isApiDeployProfileExempt(pathname) && isPathHiddenByDeployProfile(pathname)) {
       logAccessDenied('deploy_profile_denied', {
@@ -51,9 +51,15 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
       })
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    if (!isPublicApiRoute(pathname) && !session?.user) {
+      logAccessDenied('missing_session', { path: pathname, api: true })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (session?.user && session.user.status !== 'ACTIVE') {
+      return NextResponse.json({ error: 'Account inactive' }, { status: 403 })
+    }
     return NextResponse.next()
   }
-
   const isPublic = PUBLIC_ROUTES.some((r) => pathname === r)
   const isAuth   = AUTH_ROUTES.some((r) => pathname.startsWith(r))
 

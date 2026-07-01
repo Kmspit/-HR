@@ -8,6 +8,7 @@ import { createOtp } from '@/lib/otp'
 import { pushLineMessages } from '@/lib/line-api'
 import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
+import { setForgotPasswordChallengeCookie, FP_CHALLENGE_COOKIE, clearForgotPasswordChallengeCookie } from '@/lib/forgot-password-cookie'
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
@@ -29,17 +30,17 @@ export async function POST(req: NextRequest) {
     select: { id: true, lineUserId: true, status: true },
   })
 
-  // Uniform response to prevent email enumeration
+  // Uniform response — no email enumeration
+  const uniform = NextResponse.json({
+    ok: true,
+    message: 'หากอีเมลนี้อยู่ในระบบ เราได้ส่งรหัส OTP แล้ว',
+  })
+
   if (!user || user.status !== 'ACTIVE') {
-    return NextResponse.json({
-      ok: true,
-      message: 'หากอีเมลนี้อยู่ในระบบ เราได้ส่งรหัส OTP แล้ว',
-      challenge: null,
-      sent: false,
-    })
+    return uniform
   }
 
-  const { challenge, code } = await createOtp(user.id, 'LINE')
+  const { challenge, code } = await createOtp(user.id, 'FORGOT_PASSWORD', 'LINE')
 
   if (user.lineUserId) {
     await pushLineMessages(user.lineUserId, [
@@ -50,10 +51,6 @@ export async function POST(req: NextRequest) {
     ]).catch(() => {})
   }
 
-  return NextResponse.json({
-    ok: true,
-    message: 'ส่งรหัส OTP แล้ว กรุณาตรวจสอบ LINE',
-    challenge,
-    sent: !!user.lineUserId,
-  })
+  setForgotPasswordChallengeCookie(uniform, challenge)
+  return uniform
 }

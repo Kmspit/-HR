@@ -189,6 +189,7 @@ async function runEnsure(): Promise<boolean> {
   await addUserColumnIfMissing('approvedAt', `ALTER TABLE users ADD COLUMN approvedAt DATETIME`)
   // Phase 15 security columns — added to schema after initial Turso push
   await addUserColumnIfMissing('locked_until', `ALTER TABLE users ADD COLUMN locked_until DATETIME`)
+  await addUserColumnIfMissing('sessionEpoch', `ALTER TABLE users ADD COLUMN sessionEpoch INTEGER NOT NULL DEFAULT 0`)
   await addUserColumnIfMissing('password_changed_at', `ALTER TABLE users ADD COLUMN password_changed_at DATETIME`)
   await addUserColumnIfMissing('isCoworker', `ALTER TABLE users ADD COLUMN isCoworker INTEGER NOT NULL DEFAULT 0`)
 
@@ -883,6 +884,8 @@ async function runEnsure(): Promise<boolean> {
   `)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS otp_codes_user_idx ON otp_codes (userId)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS otp_codes_challenge_idx ON otp_codes (challenge)`)
+  await addColumnIfMissing('otp_codes', 'purpose', `ALTER TABLE otp_codes ADD COLUMN purpose TEXT NOT NULL DEFAULT 'TWO_FA_LOGIN'`)
+  await addColumnIfMissing('otp_codes', 'attempts', `ALTER TABLE otp_codes ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0`)
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS backup_records (

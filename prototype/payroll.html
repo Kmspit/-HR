@@ -239,6 +239,7 @@ function loadPayrollRatesFromSettings() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  requireHrAdmin();
   initRole();
   initMonthYear();
   loadPayrollRatesFromSettings();

@@ -22,6 +22,7 @@ export const authConfig: NextAuthConfig = {
         token.status     = user.status as UserStatus
         token.department = user.department as string | null
         token.branchId   = user.branchId as string | null
+        token.sessionEpoch = (user as { sessionEpoch?: number }).sessionEpoch ?? 0
       }
       return token
     },
@@ -34,6 +35,7 @@ export const authConfig: NextAuthConfig = {
         session.user.status     = token.status     as UserStatus
         session.user.department = token.department as string | null
         session.user.branchId   = token.branchId   as string | null
+        session.user.sessionEpoch = (token.sessionEpoch as number) ?? 0
       }
       return session
     },

@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { getPortalSession } from '@/lib/portal-auth'
+import { requireActivePortalSession } from '@/lib/portal-session-guard'
 
 const ACTIVE_STATUSES = [
   'NEW', 'ASSIGNED', 'INVESTIGATING', 'NEGOTIATING',
@@ -10,9 +10,11 @@ const ACTIVE_STATUSES = [
 const COMPLETED_STATUSES = ['SETTLED', 'COMPLETED'] as const
 
 export async function GET(req: NextRequest) {
-  const session = await getPortalSession(req)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+  const portal = await requireActivePortalSession(req)
+  if (!portal.ok) {
+    return NextResponse.json({ error: portal.error }, { status: portal.status })
+  }
+  const session = portal.session
   const { clientCompanyId } = session
 
   const caseLinks = await prisma.caseClient.findMany({

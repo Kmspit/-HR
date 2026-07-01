@@ -1,13 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { getPortalSession } from '@/lib/portal-auth'
+import { requireActivePortalSession } from '@/lib/portal-session-guard'
 
 export async function GET(req: NextRequest) {
-  const session = await getPortalSession(req)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const portal = await requireActivePortalSession(req)
+  if (!portal.ok) {
+    return NextResponse.json({ error: portal.error }, { status: portal.status })
+  }
 
   const user = await prisma.clientPortalUser.findUnique({
-    where:  { id: session.portalUserId },
+    where:  { id: portal.session.portalUserId },
     select: {
       id:          true,
       email:       true,

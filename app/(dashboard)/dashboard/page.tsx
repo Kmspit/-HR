@@ -262,7 +262,7 @@ export default async function DashboardPage({
   return (
     <div className="flex flex-col">
       <Topbar
-        title={`สวัสดี, ${name.split(' ')[0]} 👋`}
+        title={`สวัสดี, ${(name ?? 'ผู้ใช้').split(' ')[0]} 👋`}
         subtitle={`${ROLE_LABELS[role]} · ${formatThaiDate(new Date())}`}
         actions={
           pendingUsers > 0 ? (

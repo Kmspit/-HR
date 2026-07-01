@@ -37,6 +37,7 @@ export async function verifyLoginCredentials(
     department: string | null
     branchId: string | null
     passwordHash: string
+    lockedUntil: Date | null
   } | null = null
   try {
     const isEmail = raw.includes('@')
@@ -59,6 +60,7 @@ export async function verifyLoginCredentials(
         department: true,
         branchId: true,
         passwordHash: true,
+        lockedUntil: true,
       },
     })
   } catch (err) {
@@ -66,8 +68,10 @@ export async function verifyLoginCredentials(
     return { ok: false, error: 'SERVER_ERROR' }
   }
 
-  console.log('[verifyLoginCredentials] user found:', !!user)
   if (!user) return { ok: false, error: 'INVALID_CREDENTIALS' }
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    return { ok: false, error: 'ACCOUNT_LOCKED' }
+  }
   if (user.status === 'PENDING') return { ok: false, error: 'PENDING_APPROVAL' }
   if (user.status === 'DISABLED') return { ok: false, error: 'ACCOUNT_DISABLED' }
   if (user.status === 'REJECTED') return { ok: false, error: 'ACCOUNT_REJECTED' }

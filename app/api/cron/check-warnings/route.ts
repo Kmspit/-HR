@@ -3,8 +3,7 @@ import { runWarningCheck } from '@/lib/warningEngine'
 import { cronRequestAuthorized } from '@/lib/cron-secret'
 
 export async function GET(req: NextRequest) {
-  const secret =
-    req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret')
+  const secret = req.headers.get('x-cron-secret')
   if (!cronRequestAuthorized(req.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -144,11 +144,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, id: leave.id, autoApproved: true, chainApplied: false })
     }
 
-    // Apply approval chain if a default one is configured
+    // Apply approval chain — required for non-ordination leave
     const defaultChain = await getDefaultChain(prisma, 'LEAVE')
-    if (defaultChain) {
-      await applyChainToLeave(prisma, leave.id, defaultChain.id, session.user.id)
+    if (!defaultChain) {
+      await prisma.leaveRequest.delete({ where: { id: leave.id } })
+      return NextResponse.json(
+        { error: 'ยังไม่ได้ตั้งค่าสายอนุมัติการลา — ติดต่อ HR', code: 'NO_CHAIN' },
+        { status: 409 },
+      )
     }
+    await applyChainToLeave(prisma, leave.id, defaultChain.id, session.user.id)
 
     await runNotify(() =>
       sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
@@ -169,7 +174,7 @@ export async function POST(req: NextRequest) {
       }),
     )
 
-    return NextResponse.json({ success: true, id: leave.id, chainApplied: !!defaultChain })
+    return NextResponse.json({ success: true, id: leave.id, chainApplied: true })
   } catch (err) {
     return apiError(err)
   }

@@ -13,7 +13,6 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>('email')
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
-  const [challenge, setChallenge] = useState('')
   const [otp, setOtp] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -55,7 +54,6 @@ export default function ForgotPasswordPage() {
         toast.error(apiErrorMessage(data as Record<string, unknown>, 'ส่ง OTP ไม่สำเร็จ', status))
         return
       }
-      if (data.challenge) setChallenge(data.challenge)
       toast.success(data.message ?? 'ส่งรหัส OTP แล้ว')
       setStep('otp')
     } catch {
@@ -68,7 +66,6 @@ export default function ForgotPasswordPage() {
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!otp.trim() || otp.length !== 6) { toast.error('กรุณากรอกรหัส OTP 6 หลัก'); return }
-    if (!challenge) { toast.error('เซสชันหมดอายุ กรุณาเริ่มใหม่'); setStep('email'); return }
     setStep('reset')
   }
 
@@ -90,7 +87,6 @@ export default function ForgotPasswordPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: email.trim().toLowerCase(),
-            challenge,
             code: otp.trim(),
             newPassword: password,
             confirmPassword: confirm,

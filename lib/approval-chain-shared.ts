@@ -36,6 +36,8 @@ export function canUserActOnStep(
   if (step.approverRole === userRole) return true
   // HR step — MANAGER_HR can act (role hierarchy)
   if (step.approverRole === 'HR' && userRole === 'MANAGER_HR') return true
+  // CEO step — SUPER_ADMIN / CEO override
+  if (step.approverRole === 'CEO' && (userRole === 'SUPER_ADMIN' || userRole === 'CEO')) return true
   return false
 }
 

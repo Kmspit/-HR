@@ -26,6 +26,7 @@ export type SessionUserPayload = {
   status: UserStatus
   department: string | null
   branchId: string | null
+  sessionEpoch?: number
 }
 
 async function buildSessionToken(user: SessionUserPayload) {
@@ -42,6 +43,7 @@ async function buildSessionToken(user: SessionUserPayload) {
     status: user.status,
     department: user.department,
     branchId: user.branchId,
+    sessionEpoch: user.sessionEpoch ?? 0,
   }
 
   const encoded = await encode({

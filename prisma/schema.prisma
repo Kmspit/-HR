@@ -2688,6 +2688,8 @@ model OtpCode {
   challenge  String   @unique
   code       String
   channel    String   @default("LINE")
+  purpose    String   @default("TWO_FA_LOGIN")
+  attempts   Int      @default(0)
   used       Boolean  @default(false)
   expiresAt  DateTime @map("expires_at")
   createdAt  DateTime @default(now())
@@ -2695,6 +2697,7 @@ model OtpCode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, purpose])
   @@index([challenge])
   @@map("otp_codes")
 }

@@ -12,6 +12,7 @@ vi.mock('@/lib/prisma', () => ({
       findMany:   vi.fn(),
       findUnique: vi.fn(),
       update:     vi.fn(),
+      delete:     vi.fn(),
     },
     user:            { findUnique: vi.fn() },
     companyHoliday:  { findMany:   vi.fn().mockResolvedValue([]) },
@@ -57,6 +58,7 @@ vi.mock('@/lib/line-notifications', () => ({
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getDefaultChain, applyChainToLeave } from '@/lib/approval-chain'
 import { POST, GET } from '@/app/api/leave/route'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -102,15 +104,29 @@ describe('POST /api/leave', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 409 when no approval chain configured', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    const created = { id: 'leave-1', ...validLeave, userId: 'user-1', status: 'PENDING', user: { name: 'Employee' } }
+    vi.mocked(prisma.leaveRequest.create).mockResolvedValue(created as never)
+    vi.mocked(getDefaultChain).mockResolvedValue(null)
+
+    const res = await POST(makeJsonReq(validLeave))
+    expect(res.status).toBe(409)
+    expect(prisma.leaveRequest.delete).toHaveBeenCalledWith({ where: { id: 'leave-1' } })
+  })
+
   it('creates leave request and returns 200', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
     const created = { id: 'leave-1', ...validLeave, userId: 'user-1', status: 'PENDING', user: { name: 'Employee' } }
     vi.mocked(prisma.leaveRequest.create).mockResolvedValue(created as never)
+    vi.mocked(getDefaultChain).mockResolvedValue({ id: 'chain-1' } as never)
 
     const res = await POST(makeJsonReq(validLeave))
     expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.leaveRequest?.id ?? data.leave?.id ?? data.id).toBeTruthy()
+    expect(data.success).toBe(true)
+    expect(data.id).toBeTruthy()
+    expect(applyChainToLeave).toHaveBeenCalled()
   })
 })
 

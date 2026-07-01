@@ -1,16 +1,17 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { getPortalSession } from '@/lib/portal-auth'
+import { requireActivePortalSession } from '@/lib/portal-session-guard'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getPortalSession(req)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
+  const portal = await requireActivePortalSession(req)
+  if (!portal.ok) {
+    return NextResponse.json({ error: portal.error }, { status: portal.status })
+  }
   const { id: caseId } = await params
-  const { clientCompanyId } = session
+  const { clientCompanyId } = portal.session
 
   const caseLink = await prisma.caseClient.findFirst({
     where: { caseId, clientCompanyId },
@@ -79,7 +80,7 @@ export async function GET(
 
   void prisma.clientPortalLog.create({
     data: {
-      portalUserId: session.portalUserId,
+      portalUserId: portal.session.portalUserId,
       action:       'VIEW_CASE',
       resourceType: 'Case',
       resourceId:   caseId,

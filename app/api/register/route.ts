@@ -23,7 +23,6 @@ const registerSchema = z.object({
   nationalId:    z.string().optional(),
   role:          z.enum(['EMPLOYEE', 'LAWYER'], { message: 'กรุณาเลือกตำแหน่ง' }),
   department:    z.string().optional(),
-  baseSalary:    z.number().optional().nullable(),
   startDate:     z.string().min(1, 'กรุณาเลือกวันที่เริ่มงาน'),
   socialSecurity:z.boolean().default(true),
   password:      z.string().min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'),
@@ -125,7 +124,7 @@ export async function POST(req: NextRequest) {
         status:        'PENDING',
         department:    null,
         branchId:      branch.id,
-        baseSalary:    data.baseSalary ?? null,
+        baseSalary:    null,
         startDate:     new Date(data.startDate),
         socialSecurity:data.socialSecurity,
         lineId:          lineParsed.lineId,
@@ -166,8 +165,8 @@ export async function POST(req: NextRequest) {
       userId: user.id,
     })
   } catch (err) {
-    console.error('[REGISTER ERROR FULL]', err)
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 })
+    console.error('[REGISTER ERROR]', err)
+    return apiError(err)
   }
 }
 

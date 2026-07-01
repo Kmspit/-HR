@@ -5,6 +5,10 @@ import { apiError } from '@/lib/api-handler'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { normalizeEmail, normalizeNationalId, parseBirthDate, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
 import { normalizeThaiPhone } from '@/lib/profile-name'
+import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
+import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
+import { bumpSessionEpoch } from '@/lib/session-epoch'
+import type { Role, UserStatus } from '@prisma/client'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,36 +20,14 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     const isManager = ['SUPER_ADMIN', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER'].includes(session.user.role)
     if (!isSelf && !isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+    const select =
+      session.user.role === 'MANAGER' && !isSelf
+        ? MANAGER_USER_SELECT
+        : SAFE_USER_SELECT
+
     const user = await prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        employeeId: true,
-        role: true,
-        status: true,
-        employeeType: true,
-        managerId: true,
-        teamLeaderId: true,
-        department: true,
-        position: true,
-        baseSalary: true,
-        socialSecurity: true,
-        isCoworker: true,
-        startDate: true,
-        phone: true,
-        lineId: true,
-        lineUserId: true,
-        lineDisplayName: true,
-        prefix: true,
-        nickname: true,
-        birthDate: true,
-        address: true,
-        addressIdCard: true,
-        nationalId: true,
-        profileImage: true,
-      },
+      select,
     })
 
     if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -155,6 +137,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.birthDate = birth
     }
 
+    if ('role' in body && body.role !== undefined) {
+      const nextRole = body.role as Role
+      if (!canAssignRole(session.user.role as Role, nextRole)) {
+        return NextResponse.json({ error: 'ไม่มีสิทธิ์กำหนด Role นี้' }, { status: 403 })
+      }
+      data.role = nextRole
+    }
+
+    if ('status' in body && body.status !== undefined) {
+      if (!canChangeUserStatus(session.user.role as Role)) {
+        return NextResponse.json({ error: 'ไม่มีสิทธิ์เปลี่ยนสถานะบัญชี' }, { status: 403 })
+      }
+      const nextStatus = body.status as UserStatus
+      if (nextStatus === 'ACTIVE') {
+        return NextResponse.json(
+          { error: 'การอนุมัติบัญชีต้องทำผ่าน /api/users/[id]/approve' },
+          { status: 403 },
+        )
+      }
+      data.status = nextStatus
+    }
+
     const allowedFields = [
       'name',
       'nameEn',
@@ -171,8 +175,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       'socialSecurity',
       'isCoworker',
       'startDate',
-      'role',
-      'status',
     ] as const
 
     for (const key of allowedFields) {
@@ -182,11 +184,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (id === session.user.id) {
       delete data.role
       delete data.status
+      delete data.baseSalary
     }
 
     if (data.startDate) data.startDate = new Date(data.startDate as string)
 
-    const user = await prisma.user.update({ where: { id }, data })
+    const shouldRevokeSession =
+      ('role' in body && body.role !== undefined) ||
+      ('status' in body && body.status !== undefined)
+
+    const user = await prisma.user.update({ where: { id }, data, select: SAFE_USER_SELECT })
+    if (shouldRevokeSession) await bumpSessionEpoch(id)
     return NextResponse.json({ user })
   } catch (err) {
     return apiError(err)

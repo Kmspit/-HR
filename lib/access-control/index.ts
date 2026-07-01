@@ -260,7 +260,7 @@ export const ROLE_ICONS: Record<Role, string> = {
 
 export function canAccess(role: Role, path: string): boolean {
   const allowed = ROUTE_PERMISSIONS[path]
-  if (!allowed) return true
+  if (!allowed) return false
   return allowed.includes(role)
 }
 

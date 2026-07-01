@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client'
 import type { Role } from '@prisma/client'
 import { createAuditLog, createNotification } from '@/lib/notifications'
 import { applyToAttendance, APPLY_ATTENDANCE_FAILED_MSG } from '@/lib/forgot-scan-chain'
+import { canApproverActOnRequester, isCompanyWideApprover } from '@/lib/org-scope'
 
 const SUPERVISOR_ROLES: Role[] = ['MANAGER', 'TEAM_LEADER', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
 const HR_ROLES: Role[] = ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO']
@@ -40,6 +41,12 @@ export async function executeLegacyForgotScanApproval(
   if (request.status === 'PENDING') {
     if (!isSupervisor) {
       return { error: 'ต้องเป็นหัวหน้างานหรือผู้จัดการจึงจะอนุมัติขั้นนี้ได้', status: 403 }
+    }
+    if (!isCompanyWideApprover(role)) {
+      const scoped = await canApproverActOnRequester(prisma, actorId, role, request.userId)
+      if (!scoped) {
+        return { error: 'ไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
+      }
     }
     if (action === 'APPROVE') {
       await prisma.forgotScanRequest.update({

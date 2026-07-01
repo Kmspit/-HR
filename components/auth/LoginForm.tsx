@@ -136,7 +136,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ challenge, code: otpCode.trim() }),
+        body: JSON.stringify({ challenge, code: otpCode.trim(), pendingToken }),
       })
       const data = await res.json() as { ok?: boolean; error?: string; url?: string; message?: string | null }
 

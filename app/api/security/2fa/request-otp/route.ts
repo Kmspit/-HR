@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '2FA not enabled' }, { status: 400 })
   }
 
-  const { challenge, code } = await createOtp(user.id, setup.channel)
+  const { challenge, code } = await createOtp(user.id, 'TWO_FA_LOGIN', setup.channel)
 
   if (setup.channel === 'LINE' && user.lineUserId) {
     await pushLineMessages(user.lineUserId, [

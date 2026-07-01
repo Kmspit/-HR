@@ -9,6 +9,7 @@ import { executeLeaveStepAction, executeOutsideWorkStepAction } from '@/lib/appr
 import { executeWeeklyPlanStepAction } from '@/lib/weekly-plan-chain'
 import { executeForgotScanStepAction } from '@/lib/forgot-scan-chain'
 import { executeLegacyForgotScanApproval } from '@/lib/legacy-forgot-scan-approval'
+import { canPerformApproval } from '@/lib/approval-permissions'
 import type { Role } from '@prisma/client'
 
 type ApprovalBody = {
@@ -27,6 +28,13 @@ export async function POST(req: NextRequest) {
     const { role, id: actorId } = session.user
     const body: ApprovalBody = await req.json()
     const ip = (await headers()).get('x-forwarded-for') ?? 'unknown'
+
+    if (!body.type || !body.requestId || !body.action) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    }
+    if (!canPerformApproval(role as Role, body.type)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     if (body.type === 'LEAVE') {
       const leave = await prisma.leaveRequest.findUnique({ where: { id: body.requestId } })

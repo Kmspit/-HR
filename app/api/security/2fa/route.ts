@@ -1,11 +1,13 @@
 /**
  * GET  /api/security/2fa — get current 2FA status for the session user
- * POST /api/security/2fa — enable or disable 2FA
+ * POST /api/security/2fa — enable or disable 2FA (disable requires currentPassword)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logSecurityEvent } from '@/lib/security-events'
+import { assertEnglishCredential } from '@/lib/english-input'
 
 export async function GET() {
   const session = await auth()
@@ -24,8 +26,22 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as { enabled: boolean; channel?: string }
-  const { enabled, channel = 'LINE' } = body
+  const body = await req.json() as { enabled: boolean; channel?: string; currentPassword?: string }
+  const { enabled, channel = 'LINE', currentPassword } = body
+
+  if (enabled === false) {
+    const pwErr = assertEnglishCredential(currentPassword ?? '', 'password')
+    if (!currentPassword || pwErr) {
+      return NextResponse.json({ error: 'กรุณากรอกรหัสผ่านปัจจุบันเพื่อปิด 2FA' }, { status: 400 })
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { passwordHash: true },
+    })
+    if (!user?.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      return NextResponse.json({ error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' }, { status: 400 })
+    }
+  }
 
   const setup = await prisma.twoFactorSetup.upsert({
     where:  { userId: session.user.id },

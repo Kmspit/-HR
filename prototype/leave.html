@@ -188,6 +188,30 @@ async function submitLeave() {
   if (new Date(end) < new Date(start)) { alert('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม'); return; }
 
   const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
+
+  if (type !== 'UNPAID') {
+    renderLeaveBalances();
+    const s = getCompanySettings();
+    const year = new Date().getFullYear();
+    const approved = getLeaveRequests().filter(function(r) {
+      return r.userId === user.email && r.status === 'FINAL_APPROVED'
+        && new Date(r.startDate).getFullYear() === year;
+    });
+    function used(t) {
+      return approved.filter(function(r) { return r.type === t; })
+        .reduce(function(sum, r) { return sum + (r.days || 1); }, 0);
+    }
+    const limits = {
+      SICK: (s.sickDays ?? 30) - used('SICK'),
+      VACATION: (s.vacDays ?? 10) - used('VACATION'),
+      PERSONAL: (s.personalDays ?? 3) - used('PERSONAL'),
+    };
+    if (limits[type] !== undefined && days > limits[type]) {
+      alert('วันลาคงเหลือไม่เพียงพอ (เหลือ ' + limits[type] + ' วัน)');
+      return;
+    }
+  }
+
   const req = { id: uid(), empName: user.name, userId: user.email, type, startDate: start, endDate: end, days, reason, status: 'PENDING', createdAt: new Date().toISOString() };
   const list = getLeaveRequests();
   list.push(req);
@@ -270,7 +294,7 @@ function renderMyHistory() {
       <td>${thDate(r.createdAt)}</td>
       <td><span class="tag ${TYPE_TAGS[r.type]}">${TYPE_LABELS[r.type]}</span></td>
       <td>${thDate(r.startDate)} – ${thDate(r.endDate)}</td>
-      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.reason}</td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.reason)}</td>
       <td><span class="tag ${STATUS_TAGS[r.status]}">${STATUS_LABELS[r.status]}</span></td>
     </tr>`).join('');
 }
@@ -282,14 +306,14 @@ function renderApproveTable() {
   if (!pending.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3)">ไม่มีคำขอรออนุมัติ</td></tr>`; return; }
   tb.innerHTML = pending.map(r => `
     <tr>
-      <td><strong>${r.empName}</strong></td>
+      <td><strong>${escapeHtml(r.empName)}</strong></td>
       <td><span class="tag ${TYPE_TAGS[r.type]}">${TYPE_LABELS[r.type]}</span></td>
       <td>${thDate(r.startDate)} – ${thDate(r.endDate)}</td>
-      <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.reason}</td>
+      <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.reason)}</td>
       <td><span class="tag yellow">รออนุมัติ</span></td>
       <td style="display:flex;gap:6px;">
-        <button class="btn-primary" style="height:30px;font-size:12px;padding:0 10px;" onclick="approveLeave('${r.id}','admin_approve')">✓ อนุมัติ</button>
-        <button class="btn-outline" style="height:30px;font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);" onclick="approveLeave('${r.id}','admin_reject')">✕ ปฏิเสธ</button>
+        <button class="btn-primary" style="height:30px;font-size:12px;padding:0 10px;" onclick="approveLeave('${escapeHtml(r.id)}','admin_approve')">✓ อนุมัติ</button>
+        <button class="btn-outline" style="height:30px;font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);" onclick="approveLeave('${escapeHtml(r.id)}','admin_reject')">✕ ปฏิเสธ</button>
       </td>
     </tr>`).join('');
 }
@@ -301,14 +325,14 @@ function renderFinalTable() {
   if (!pending.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3)">ไม่มีคำขอรออนุมัติขั้นสุดท้าย</td></tr>`; return; }
   tb.innerHTML = pending.map(r => `
     <tr>
-      <td><strong>${r.empName}</strong></td>
+      <td><strong>${escapeHtml(r.empName)}</strong></td>
       <td><span class="tag ${TYPE_TAGS[r.type]}">${TYPE_LABELS[r.type]}</span></td>
       <td>${thDate(r.startDate)} – ${thDate(r.endDate)}</td>
-      <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.reason}</td>
+      <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.reason)}</td>
       <td><span class="tag blue">ผ่าน Admin แล้ว</span></td>
       <td style="display:flex;gap:6px;">
-        <button class="btn-primary" style="height:30px;font-size:12px;padding:0 10px;" onclick="approveLeave('${r.id}','final_approve')">✓ อนุมัติสุดท้าย</button>
-        <button class="btn-outline" style="height:30px;font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);" onclick="approveLeave('${r.id}','final_reject')">✕ ปฏิเสธ</button>
+        <button class="btn-primary" style="height:30px;font-size:12px;padding:0 10px;" onclick="approveLeave('${escapeHtml(r.id)}','final_approve')">✓ อนุมัติสุดท้าย</button>
+        <button class="btn-outline" style="height:30px;font-size:12px;padding:0 10px;color:var(--red);border-color:var(--red);" onclick="approveLeave('${escapeHtml(r.id)}','final_reject')">✕ ปฏิเสธ</button>
       </td>
     </tr>`).join('');
 }

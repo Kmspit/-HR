@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { validateChangePasswordInput } from '@/lib/change-password'
 import { logSecurityEvent } from '@/lib/security-events'
+import { bumpSessionEpoch } from '@/lib/session-epoch'
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
         passwordChangedAt: new Date(),
       },
     })
+    await bumpSessionEpoch(session.user.id)
 
     await logSecurityEvent({
       userId: session.user.id,

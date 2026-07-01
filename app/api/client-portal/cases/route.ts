@@ -1,13 +1,13 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { getPortalSession } from '@/lib/portal-auth'
+import { requireActivePortalSession } from '@/lib/portal-session-guard'
 
 export async function GET(req: NextRequest) {
   // --- Portal JWT auth (new) ---
-  const portalSession = await getPortalSession(req)
-  if (portalSession) {
-    return handlePortalRequest(req, portalSession.clientCompanyId, portalSession.portalUserId)
+  const portalSession = await requireActivePortalSession(req)
+  if (portalSession.ok) {
+    return handlePortalRequest(req, portalSession.session.clientCompanyId, portalSession.session.portalUserId)
   }
 
   // --- Legacy CLIENT role via NextAuth (backward compat) ---

@@ -1,16 +1,22 @@
-import { auth } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { requireActivePortalSession } from '@/lib/portal-session-guard'
+import { resolveClientUserIdForPortal } from '@/lib/client-message-access'
 
-export async function GET() {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+export async function GET(req: NextRequest) {
+  const portal = await requireActivePortalSession(req)
+  if (!portal.ok) {
+    return NextResponse.json({ error: portal.error }, { status: portal.status })
+  }
 
-  const clientId = session.user.id
+  const clientUserId = await resolveClientUserIdForPortal(
+    portal.session.email,
+    portal.session.clientCompanyId,
+  )
+  if (!clientUserId) return NextResponse.json([])
 
   const docs = await prisma.caseDocument.findMany({
-    where: { clientId, status: 'ACTIVE' },
+    where: { clientId: clientUserId, status: 'ACTIVE' },
     include: {
       files:      { orderBy: { version: 'desc' } },
       signatures: { select: { signerName: true, signerRole: true, signedAt: true, signatureType: true, typedName: true, signatureUrl: true } },
