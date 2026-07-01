@@ -218,6 +218,10 @@
           <input id="s-line-relay" type="text" class="form-input" placeholder="https://your-worker.workers.dev/line-relay">
           <div style="font-size:11px;color:var(--text3);margin-top:4px;">Cloudflare Worker รับ POST {token, message, imageUrl} แล้ว forward ไป LINE Notify</div>
         </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Prototype Bridge Secret <span style="font-size:11px;color:var(--text3);">(ตรงกับ PROTOTYPE_BRIDGE_SECRET บน Vercel — ใช้เมื่อเปิด ENABLE_PROTOTYPE_BRIDGE)</span></label>
+          <input id="s-prototype-bridge-secret" type="password" class="form-input" placeholder="dev-only secret" autocomplete="off">
+        </div>
         <div style="grid-column:1/-1;margin-top:4px;">
           <button type="button" class="btn-outline" style="height:40px;background:#06c75522;border-color:#06c75555;color:#06c755;" onclick="openLineOaChat('@593qdkpk')">💬 เปิด LINE OA (@593qdkpk)</button>
         </div>
@@ -364,6 +368,7 @@ function loadSettings() {
   document.getElementById('s-ot-rate').value     = s.otRate      ?? 100;
   document.getElementById('s-line-token').value        = s.lineToken          || '';
   document.getElementById('s-line-relay').value        = s.lineWebhookRelay   || '';
+  document.getElementById('s-prototype-bridge-secret').value = s.prototypeBridgeSecret || '';
   document.getElementById('s-cloudinary-cloud').value = s.cloudinaryCloud   || '';
   document.getElementById('s-cloudinary-preset').value= s.cloudinaryPreset  || '';
   document.getElementById('s-branch').value           = s.branch             || '';
@@ -445,6 +450,7 @@ function saveSettings() {
     otRate:       parseInt(document.getElementById('s-ot-rate').value)      || 100,
     lineToken:         document.getElementById('s-line-token').value.trim(),
     lineWebhookRelay:  document.getElementById('s-line-relay').value.trim(),
+    prototypeBridgeSecret: document.getElementById('s-prototype-bridge-secret').value.trim(),
     cloudinaryCloud:   document.getElementById('s-cloudinary-cloud').value.trim(),
     cloudinaryPreset:  document.getElementById('s-cloudinary-preset').value.trim(),
     branch:            document.getElementById('s-branch').value.trim(),

@@ -11,12 +11,12 @@ import { canManageOrg } from '@/lib/org-permissions'
 import { syncUserLegacyDepartment, validateOrgAssignment } from '@/lib/user-org'
 
 import { createNotification } from '@/lib/notifications'
-
-
+import { requireCsrf } from '@/lib/api-guard'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
 
     const session = await auth()
 

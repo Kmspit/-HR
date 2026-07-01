@@ -222,14 +222,7 @@ async function submitLeave() {
   document.getElementById('f-reason').value = '';
 
   // ส่งเข้า database ผ่าน bridge API → ขึ้นในหน้าอนุมัติของ HR
-  const apiBase = (typeof location !== 'undefined' && location.protocol !== 'file:')
-    ? location.origin.replace(/\/prototype.*$/, '')
-    : 'https://hrflow-app-gamma.vercel.app';
-  fetch(apiBase + '/api/leave/prototype', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ employeeEmail: user.email, type, startDate: start, endDate: end, days, reason }),
-  }).then(function(r) { return r.json(); })
+  syncLeaveToPrototypeApi({ employeeEmail: user.email, type, startDate: start, endDate: end, days, reason })
     .then(function(d) {
       if (d.ok) {
         console.info('[leave] บันทึกลง database แล้ว id:', d.id);

@@ -5,10 +5,13 @@ import { apiError } from '@/lib/api-handler'
 import { canManageOrg } from '@/lib/org-permissions'
 import { DEFAULT_COMPANY_BRANCHES } from '@/lib/company-branches'
 import { seedDefaultOrgStructure } from '@/lib/default-org-structure'
+import { requireCsrf } from '@/lib/api-guard'
 
 /** POST — โหลดโครงสร้างฝ่าย/แผนก/ส่วนงานมาตรฐาน (idempotent) */
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
     const session = await auth()
     if (!session?.user || !canManageOrg(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

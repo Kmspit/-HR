@@ -14,6 +14,7 @@ import {
   attachDefaultChainForWeekly,
 } from '@/lib/attach-default-chain'
 import { canPerformApproval } from '@/lib/approval-permissions'
+import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 type ApprovalBody = {
@@ -25,6 +26,9 @@ type ApprovalBody = {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

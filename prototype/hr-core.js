@@ -409,6 +409,50 @@ function initSidebar() {
   setNavTooltips();
   applySidebarCollapsed();
   window.addEventListener('resize', onSidebarResize);
+  initManualTopbarLink();
+}
+
+var MANUAL_SECTION_BY_PAGE = {
+  'index.html': 'dashboard',
+  'attendance.html': 'attendance',
+  'attendance-history.html': 'attendance',
+  'leave.html': 'leave',
+  'out-of-office.html': 'weekly-plan',
+  'payroll.html': 'payroll',
+  'payslip.html': 'payslip',
+  'announcements.html': 'announcements',
+  'employees.html': 'employees',
+  'settings.html': 'settings',
+  'reports.html': 'reports',
+  'warnings.html': 'warnings',
+  'calendar.html': 'calendar',
+  'line-oa.html': 'line-oa',
+  'rules.html': 'rules',
+};
+
+function manualSectionFromPage() {
+  var path = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  return MANUAL_SECTION_BY_PAGE[path] || '';
+}
+
+function initManualTopbarLink() {
+  if (/manual\.html/i.test(location.pathname)) return;
+  var topbar = document.querySelector('.topbar');
+  if (!topbar || topbar.querySelector('.manual-topbar-link')) return;
+  var section = manualSectionFromPage();
+  var href = 'manual.html' + (section ? '?section=' + encodeURIComponent(section) : '');
+  var link = document.createElement('a');
+  link.href = href;
+  link.className = 'manual-topbar-link btn-outline';
+  link.setAttribute('title', 'คู่มือการใช้งาน');
+  link.innerHTML = '📖 <span class="manual-link-label">คู่มือ</span>';
+  var actions = topbar.querySelector('.topbar-actions');
+  if (!actions) {
+    actions = document.createElement('div');
+    actions.className = 'topbar-actions';
+    topbar.appendChild(actions);
+  }
+  actions.insertBefore(link, actions.firstChild);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -915,6 +959,24 @@ function getLineNotifyApiBase() {
   return DEFAULT_LINE_NOTIFY_API;
 }
 
+/** Headers for prototype bridge APIs (x-prototype-bridge-secret when configured). */
+function getPrototypeBridgeHeaders() {
+  const s = getCompanySettings();
+  const headers = { 'Content-Type': 'application/json' };
+  const secret = (s.prototypeBridgeSecret || '').trim();
+  if (secret) headers['x-prototype-bridge-secret'] = secret;
+  return headers;
+}
+
+/** Sync leave request to Next.js via prototype bridge (optional — skips if bridge disabled). */
+function syncLeaveToPrototypeApi(payload) {
+  return fetch(getLineNotifyApiBase() + '/api/leave/prototype', {
+    method: 'POST',
+    headers: getPrototypeBridgeHeaders(),
+    body: JSON.stringify(payload),
+  }).then(function(r) { return r.json(); });
+}
+
 /**
  * Sends a LINE notification.
  * Order: (1) server API on hrflow-app, (2) Cloudflare relay, (3) direct (CORS มักล้ม)
@@ -936,7 +998,7 @@ async function sendLineOAMsg(message, imageUrl) {
     const res = await fetch(apiBase + '/api/line/prototype-notify', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getPrototypeBridgeHeaders(),
       body: JSON.stringify({ message, imageUrl: imageUrl || null }),
     });
     if (res.ok) {
