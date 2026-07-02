@@ -3,6 +3,10 @@ import { apiError } from '@/lib/api-handler'
 import { prisma } from '@/lib/prisma'
 import { verifyPayslipPdfAccessToken } from '@/lib/payslip-pdf-access'
 import { fetchRawPdfBuffer } from '@/lib/cloudinary-service'
+import {
+  payslipPdfFilename,
+  resolvePayslipCloudinaryPublicId,
+} from '@/lib/payslip-cloudinary-path'
 
 export async function GET(
   req: NextRequest,
@@ -15,8 +19,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const verified = await verifyPayslipPdfAccessToken(access, id)
-    if (!verified.ok || !verified.cloudinaryPublicId) {
+    const tokenOk = await verifyPayslipPdfAccessToken(access, id)
+    if (!tokenOk) {
       return NextResponse.json({ error: 'ลิงก์หมดอายุหรือไม่ถูกต้อง' }, { status: 403 })
     }
 
@@ -34,21 +38,29 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const buffer = await fetchRawPdfBuffer(verified.cloudinaryPublicId)
+    const filename = payslipPdfFilename({
+      year: payroll.year,
+      month: payroll.month,
+      userId: payroll.userId,
+      employeeId: payroll.user.employeeId,
+    })
+    const publicId = await resolvePayslipCloudinaryPublicId(id, payroll.userId, filename)
+
+    const buffer = await fetchRawPdfBuffer(publicId)
     if (!buffer?.length) {
       return NextResponse.json({ error: 'ไม่พบไฟล์ PDF' }, { status: 404 })
     }
 
     const empKey = payroll.user.employeeId ?? payroll.userId.slice(0, 6)
-    const filename = `slip_${payroll.year}_${String(payroll.month).padStart(2, '0')}_${empKey}.pdf`
+    const downloadName = `slip_${payroll.year}_${String(payroll.month).padStart(2, '0')}_${empKey}.pdf`
     const download = req.nextUrl.searchParams.get('download') === '1'
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': download
-          ? `attachment; filename="${filename}"`
-          : `inline; filename="${filename}"`,
+          ? `attachment; filename="${downloadName}"`
+          : `inline; filename="${downloadName}"`,
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
       },
