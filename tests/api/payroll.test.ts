@@ -52,6 +52,10 @@ vi.mock('@/lib/utils', () => ({
   monthDateRange: vi.fn().mockReturnValue({ start: new Date('2025-01-01'), end: new Date('2025-01-31') }),
 }))
 
+vi.mock('@/lib/api-guard', () => ({
+  requireCsrf: vi.fn().mockReturnValue(null),
+}))
+
 // ── Imports (after mocks) ──────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'

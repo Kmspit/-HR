@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { createAuditLog } from '@/lib/notifications'
-import { canManagePayroll } from '@/lib/access-control'
+import { canManagePayroll, canApprovePayroll } from '@/lib/access-control'
 import { requireCsrf } from '@/lib/api-guard'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
@@ -162,7 +162,7 @@ export async function PATCH(req: NextRequest) {
   if (csrfErr) return csrfErr
 
   const session = await auth()
-  if (!session?.user?.id || !['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'HR'].includes(session.user.role)) {
+  if (!session?.user?.id || !canApprovePayroll(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

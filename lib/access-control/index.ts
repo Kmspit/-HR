@@ -77,6 +77,7 @@ export type AppPermission =
   | 'manage_attendance'
   | 'manage_leave_balance'
   | 'manage_payroll'
+  | 'approve_payroll'
   | 'manage_employees'
   | 'view_team_only'
   | 'view_all_dashboard'
@@ -85,7 +86,7 @@ export type AppPermission =
 
 export const ALL_PERMISSIONS: AppPermission[] = [
   'approve_leave', 'approve_warning', 'approve_outside_work', 'approve_weekly_plan',
-  'manage_attendance', 'manage_leave_balance', 'manage_payroll', 'manage_employees',
+  'manage_attendance', 'manage_leave_balance', 'manage_payroll', 'approve_payroll', 'manage_employees',
   'view_team_only', 'view_all_dashboard', 'override_attendance', 'payroll_access',
 ]
 
@@ -97,6 +98,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   manage_attendance:    'จัดการการเข้างาน',
   manage_leave_balance: 'จัดการวันลาคงเหลือ',
   manage_payroll:       'จัดการเงินเดือน',
+  approve_payroll:      'อนุมัติเงินเดือน',
   manage_employees:     'จัดการข้อมูลพนักงาน',
   view_team_only:       'ดูข้อมูลเฉพาะทีมตัวเอง',
   view_all_dashboard:   'ดู Dashboard ทั้งหมด',
@@ -113,7 +115,7 @@ export const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
 
   HR: [
     'approve_leave', 'approve_warning', 'approve_outside_work', 'approve_weekly_plan',
-    'manage_attendance', 'manage_leave_balance', 'manage_payroll', 'manage_employees',
+    'manage_attendance', 'manage_leave_balance', 'manage_payroll', 'approve_payroll', 'manage_employees',
     'view_all_dashboard', 'override_attendance', 'payroll_access',
   ],
 
@@ -124,7 +126,7 @@ export const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
 
   TEAM_LEADER: ['approve_leave', 'approve_outside_work', 'approve_weekly_plan', 'view_team_only'],
 
-  ADMIN: ['approve_outside_work', 'manage_attendance', 'manage_leave_balance', 'manage_employees', 'override_attendance'],
+  ADMIN: ['approve_outside_work', 'manage_attendance', 'manage_leave_balance', 'manage_employees', 'override_attendance', 'approve_payroll'],
 
   EMPLOYEE:    [],
   LAWYER:      [],
@@ -176,6 +178,8 @@ export const canManageAttendance   = (role: Role) => hasPermission(role, 'manage
 export const canManageLeaveBalance = (role: Role) => hasPermission(role, 'manage_leave_balance')
 export const canAccessPayroll      = (role: Role) => hasPermission(role, 'payroll_access')
 export const canManagePayroll      = (role: Role) => hasPermission(role, 'manage_payroll')
+export const canApprovePayroll     = (role: Role) =>
+  hasPermission(role, 'approve_payroll') || hasPermission(role, 'manage_payroll')
 export const canManageEmployees    = (role: Role) => hasPermission(role, 'manage_employees')
 export const canViewAllDashboard   = (role: Role) => hasPermission(role, 'view_all_dashboard')
 export const canViewTeamOnly       = (role: Role) => hasPermission(role, 'view_team_only')

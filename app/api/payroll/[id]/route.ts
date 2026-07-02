@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { HR_ROLES } from '@/lib/access-control'
+import { HR_ROLES, canApprovePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { requireCsrf } from '@/lib/api-guard'
 
@@ -66,7 +66,7 @@ export async function PATCH(
     if (csrfErr) return csrfErr
 
     const session = await auth()
-    if (!session?.user?.id || !(HR_ROLES as readonly string[]).includes(session.user.role)) {
+    if (!session?.user?.id || !canApprovePayroll(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

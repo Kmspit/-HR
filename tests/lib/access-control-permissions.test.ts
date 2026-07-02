@@ -36,4 +36,8 @@ describe('ROLE_PERMISSIONS matrix', () => {
     expect(perms).toContain('approve_leave' satisfies AppPermission)
     expect(perms).not.toContain('manage_payroll')
   })
+
+  it('ADMIN can approve payroll', () => {
+    expect(ROLE_PERMISSIONS.ADMIN).toContain('approve_payroll' satisfies AppPermission)
+  })
 })

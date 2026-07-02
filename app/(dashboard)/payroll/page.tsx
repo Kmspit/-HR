@@ -5,6 +5,7 @@ import PayrollClient from './PayrollClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { canAccessPage } from '@/lib/page-access'
+import { canApprovePayroll } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { Suspense } from 'react'
 
@@ -122,6 +123,7 @@ export default async function PayrollPage({
         payrolls={payrolls}
         totalEmployees={employees.length}
         filterBranchId={branchParam}
+        canApprove={canApprovePayroll(session.user.role)}
       />
     </div>
   )

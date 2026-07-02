@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X } from 'lucide-react'
+import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle } from 'lucide-react'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -47,6 +47,7 @@ type Props = {
   payrolls: PayrollRow[]
   totalEmployees?: number
   filterBranchId?: string
+  canApprove?: boolean
 }
 
 const MONTH_NAMES = [
@@ -71,6 +72,7 @@ export default function PayrollClient({
   payrolls: initPayrolls,
   totalEmployees,
   filterBranchId,
+  canApprove = false,
 }: Props) {
   const [month, setMonth] = useState(initMonth)
   const [year, setYear] = useState(initYear)
@@ -81,6 +83,8 @@ export default function PayrollClient({
   const [detailRow, setDetailRow] = useState<PayrollRow | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [sendingBatch, setSendingBatch] = useState(false)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [approvingBatch, setApprovingBatch] = useState(false)
 
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
@@ -221,6 +225,51 @@ export default function PayrollClient({
     setSendingBatch(false)
   }
 
+  const approvePayroll = async (row: PayrollRow) => {
+    if (!canApprove || !row.hasPayroll || row.status !== 'DRAFT') return
+    setApprovingId(row.id)
+    const { ok, data, status } = await apiJson('/api/payroll/report', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: row.id, status: 'APPROVED' }),
+    })
+    if (ok) {
+      toast.success(`อนุมัติ payroll ${row.name} แล้ว`)
+      await loadPayrolls(month, year)
+    } else {
+      toast.error(apiErrorMessage(data, 'อนุมัติไม่สำเร็จ', status))
+    }
+    setApprovingId(null)
+  }
+
+  const approveAllDrafts = async () => {
+    const drafts = payrolls.filter((p) => p.hasPayroll && p.status === 'DRAFT')
+    if (drafts.length === 0) {
+      toast.error('ไม่มี payroll สถานะร่าง')
+      return
+    }
+    const okConfirm = window.confirm(`อนุมัติ payroll ${drafts.length} รายการ?`)
+    if (!okConfirm) return
+
+    setApprovingBatch(true)
+    let okCount = 0
+    for (const row of drafts) {
+      const { ok } = await apiJson('/api/payroll/report', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row.id, status: 'APPROVED' }),
+      })
+      if (ok) okCount++
+    }
+    if (okCount === drafts.length) {
+      toast.success(`อนุมัติ payroll สำเร็จ ${okCount} รายการ`)
+    } else {
+      toast.error(`อนุมัติสำเร็จ ${okCount}/${drafts.length} รายการ`)
+    }
+    await loadPayrolls(month, year)
+    setApprovingBatch(false)
+  }
+
   const renderPayslipSendStatus = (p: PayrollRow) => {
     if (!p.hasPayroll || p.status !== 'APPROVED') return <span className="text-white/30">—</span>
     if (p.payslipSentStatus === 'SUCCESS' && p.payslipSentAt) {
@@ -299,6 +348,16 @@ export default function PayrollClient({
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             คำนวณ
           </button>
+          {canApprove && (
+            <button
+              onClick={approveAllDrafts}
+              disabled={approvingBatch || loading}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+            >
+              {approvingBatch ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              อนุมัติทั้งหมด
+            </button>
+          )}
           <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl text-sm transition"
@@ -407,25 +466,42 @@ export default function PayrollClient({
                       สาย {p.lateDays} วัน · ขาด {p.absentDays} วัน
                     </td>
                     <td className="p-3 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs ${
-                          p.status === 'APPROVED'
-                            ? 'bg-green-500/20 text-green-400'
+                      {canApprove && p.hasPayroll && p.status === 'DRAFT' ? (
+                        <button
+                          type="button"
+                          onClick={() => approvePayroll(p)}
+                          disabled={approvingId === p.id || approvingBatch}
+                          title="คลิกเพื่ออนุมัติ payroll"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition"
+                        >
+                          {approvingId === p.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-3 h-3" />
+                          )}
+                          อนุมัติ
+                        </button>
+                      ) : (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs ${
+                            p.status === 'APPROVED'
+                              ? 'bg-green-500/20 text-green-400'
+                              : p.status === 'SENT'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : p.status === 'PENDING'
+                                  ? 'bg-amber-500/20 text-amber-400'
+                                  : 'bg-white/10 text-slate-400 dark:text-white/40'
+                          }`}
+                        >
+                          {p.status === 'APPROVED'
+                            ? 'อนุมัติ'
                             : p.status === 'SENT'
-                              ? 'bg-blue-500/20 text-blue-400'
+                              ? 'ส่งแล้ว'
                               : p.status === 'PENDING'
-                                ? 'bg-amber-500/20 text-amber-400'
-                                : 'bg-white/10 text-slate-400 dark:text-white/40'
-                        }`}
-                      >
-                        {p.status === 'APPROVED'
-                          ? 'อนุมัติ'
-                          : p.status === 'SENT'
-                            ? 'ส่งแล้ว'
-                            : p.status === 'PENDING'
-                              ? 'รอคำนวณ'
-                              : 'ร่าง'}
-                      </span>
+                                ? 'รอคำนวณ'
+                                : 'ร่าง'}
+                        </span>
+                      )}
                     </td>
                     <td className="p-3 text-center">{renderPayslipSendStatus(p)}</td>
                     <td className="p-3 text-center">
