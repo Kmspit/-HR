@@ -4,6 +4,7 @@ import {
   assertLineFlexUriLength,
   LINE_FLEX_URI_MAX,
   createPayslipPdfAccessToken,
+  validateAppBaseUrl,
 } from '@/lib/payslip-pdf-access'
 
 describe('payslip-pdf-access', () => {
@@ -30,5 +31,13 @@ describe('payslip-pdf-access', () => {
   it('rejects URL over LINE flex limit', () => {
     const long = 'https://example.com/' + 'x'.repeat(LINE_FLEX_URI_MAX)
     expect(assertLineFlexUriLength(long)).toContain('1000')
+  })
+
+  it('validateAppBaseUrl fails when env missing', () => {
+    const prev = process.env.NEXTAUTH_URL
+    process.env.NEXTAUTH_URL = ''
+    process.env.NEXT_PUBLIC_APP_URL = ''
+    expect(validateAppBaseUrl().ok).toBe(false)
+    process.env.NEXTAUTH_URL = prev
   })
 })

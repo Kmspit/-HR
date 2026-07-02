@@ -178,23 +178,34 @@ export default function PayrollClient({
       toast.error('พนักงานยังไม่ได้เชื่อม LINE OA')
       return
     }
+    const isResend = row.payslipSentStatus === 'SUCCESS'
+    if (isResend) {
+      const okResend = window.confirm(
+        `ส่งสลิป LINE ซ้ำให้ ${row.name}?\n\nพนักงานจะได้รับ Flex Message ใหม่`,
+      )
+      if (!okResend) return
+    }
     setSendingId(row.id)
     const { ok, data, status } = await apiJson<{
       sent?: number
       failed?: number
-      results?: { ok: boolean; error?: string }[]
+      skipped?: number
+      results?: { ok: boolean; error?: string; skipped?: boolean }[]
     }>('/api/payslip/send-line', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         payrollId: row.id,
         userId: row.userId,
+        forceResend: isResend,
         ...(filterBranchId ? { branchId: filterBranchId } : {}),
       }),
     })
     if (ok && (data.results?.[0]?.ok ?? data.sent === 1)) {
-      toast.success(`ส่งสลิป LINE ให้ ${row.name} แล้ว`)
+      toast.success(isResend ? `ส่งสลิป LINE ซ้ำให้ ${row.name} แล้ว` : `ส่งสลิป LINE ให้ ${row.name} แล้ว`)
       await loadPayrolls(month, year)
+    } else if (data.results?.[0]?.skipped || (data.skipped ?? 0) > 0) {
+      toast.info(data.results?.[0]?.error ?? 'ส่งสลิปแล้ว')
     } else {
       const err = data.results?.[0]?.error ?? apiErrorMessage(data, 'ส่งสลิปไม่สำเร็จ', status)
       toast.error(err)
@@ -206,38 +217,63 @@ export default function PayrollClient({
   const sendAllSlipsLine = async () => {
     const approved = payrolls.filter((p) => p.hasPayroll && p.status === 'APPROVED')
     const linked = approved.filter((p) => p.lineLinked)
-    if (linked.length === 0) {
-      toast.error('ไม่มีพนักงานที่อนุมัติแล้วและเชื่อม LINE')
+    const pending = linked.filter((p) => p.payslipSentStatus !== 'SUCCESS')
+    if (pending.length === 0) {
+      toast.error(linked.length > 0 ? 'ส่งสลิปครบแล้วทุกคนที่เชื่อม LINE' : 'ไม่มีพนักงานที่อนุมัติแล้วและเชื่อม LINE')
       return
     }
-    const skipped = approved.length - linked.length
+    const skippedNoLine = approved.length - linked.length
+    const alreadySent = linked.length - pending.length
     const okConfirm = window.confirm(
-      `ส่งสลิปเงินเดือนผ่าน LINE ให้พนักงาน ${linked.length} คน?` +
-        (skipped > 0 ? `\n(ข้าม ${skipped} คนที่ยังไม่เชื่อม LINE)` : '') +
+      `ส่งสลิปเงินเดือนผ่าน LINE ให้พนักงาน ${pending.length} คน?` +
+        (alreadySent > 0 ? `\n(ข้าม ${alreadySent} คนที่ส่งแล้ว)` : '') +
+        (skippedNoLine > 0 ? `\n(ข้าม ${skippedNoLine} คนที่ยังไม่เชื่อม LINE)` : '') +
         `\n\nPDF จะถูกเข้ารหัสด้วยเลขบัตรประชาชน 4 ตัวท้าย`,
     )
     if (!okConfirm) return
 
     setSendingBatch(true)
-    const anchor = linked[0]
-    const { ok, data, status } = await apiJson<{
-      sent?: number
-      failed?: number
-      results?: { ok: boolean; error?: string; name?: string }[]
-    }>('/api/payslip/send-line', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        payrollId: anchor.id,
-        ...(filterBranchId ? { branchId: filterBranchId } : {}),
-      }),
-    })
-    if (ok) {
-      toast.success(`ส่งสลิป LINE สำเร็จ ${data.sent ?? 0} คน${(data.failed ?? 0) > 0 ? ` (ล้มเหลว ${data.failed} คน)` : ''}`)
-      await loadPayrolls(month, year)
-    } else {
-      toast.error(apiErrorMessage(data, 'ส่งสลิป batch ไม่สำเร็จ', status))
+    const anchor = pending[0]
+    let offset = 0
+    let totalSent = 0
+    let totalFailed = 0
+    let hasMore = true
+    let batchError: string | null = null
+
+    while (hasMore) {
+      const { ok, data, status } = await apiJson<{
+        sent?: number
+        failed?: number
+        hasMore?: boolean
+        offset?: number
+        processed?: number
+      }>('/api/payslip/send-line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payrollId: anchor.id,
+          offset,
+          ...(filterBranchId ? { branchId: filterBranchId } : {}),
+        }),
+      })
+      if (!ok) {
+        batchError = apiErrorMessage(data, 'ส่งสลิป batch ไม่สำเร็จ', status)
+        break
+      }
+      totalSent += data.sent ?? 0
+      totalFailed += data.failed ?? 0
+      hasMore = data.hasMore ?? false
+      offset = (data.offset ?? offset) + (data.processed ?? 0)
     }
+
+    if (batchError) {
+      toast.error(`${batchError}${totalSent > 0 ? ` (ส่งสำเร็จ ${totalSent} คนก่อนหยุด)` : ''}`)
+    } else if (totalFailed > 0) {
+      toast.success(`ส่งสลิป LINE สำเร็จ ${totalSent} คน (ล้มเหลว ${totalFailed} คน)`)
+    } else {
+      toast.success(`ส่งสลิป LINE สำเร็จ ${totalSent} คน`)
+    }
+    await loadPayrolls(month, year)
     setSendingBatch(false)
   }
 

@@ -40,6 +40,29 @@ export function appBaseUrl(): string {
   return (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
 }
 
+/** ตรวจว่า base URL ใช้งานได้สำหรับลิงก์ใน LINE */
+export function validateAppBaseUrl(): { ok: true; url: string } | { ok: false; error: string } {
+  const url = appBaseUrl()
+  if (!url) {
+    return {
+      ok: false,
+      error: 'ไม่พบ NEXTAUTH_URL / NEXT_PUBLIC_APP_URL — ตั้งค่าบน Vercel ให้ตรง domain production',
+    }
+  }
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return { ok: false, error: 'NEXTAUTH_URL ไม่ถูกต้อง — ต้องขึ้นต้นด้วย https://' }
+    }
+    if (parsed.hostname === 'localhost' && process.env.NODE_ENV === 'production') {
+      console.warn('[payslip] NEXTAUTH_URL points to localhost in production')
+    }
+    return { ok: true, url }
+  } catch {
+    return { ok: false, error: 'NEXTAUTH_URL รูปแบบไม่ถูกต้อง' }
+  }
+}
+
 /** LINE Flex URI limit */
 export const LINE_FLEX_URI_MAX = 1000
 

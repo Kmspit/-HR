@@ -10,10 +10,10 @@ import {
   deleteRawFile,
 } from '@/lib/cloudinary-service'
 import {
-  appBaseUrl,
   assertLineFlexUriLength,
   createPayslipPdfAccessToken,
   payslipLinePdfUrl,
+  validateAppBaseUrl,
 } from '@/lib/payslip-pdf-access'
 
 const MONTH_TH = [
@@ -158,20 +158,31 @@ async function uploadEncryptedPayslipPdf(
 }
 
 async function buildLineDownloadUrl(payrollId: string): Promise<string | null> {
-  const base = appBaseUrl()
-  if (!base) {
-    console.error('[payslip-line] NEXTAUTH_URL / NEXT_PUBLIC_APP_URL not set')
+  const baseCheck = validateAppBaseUrl()
+  if (!baseCheck.ok) {
+    console.error('[payslip-line]', baseCheck.error)
     return null
   }
   const token = await createPayslipPdfAccessToken(payrollId)
-  const url = payslipLinePdfUrl(payrollId, base, token)
+  const url = payslipLinePdfUrl(payrollId, baseCheck.url, token)
   return assertLineFlexUriLength(url) ? null : url
 }
 
-export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<PayslipLineSendResult> {
+export type SendPayslipLineOptions = { forceResend?: boolean }
+
+export async function sendPayslipViaLineForPayroll(
+  payrollId: string,
+  options?: SendPayslipLineOptions,
+): Promise<PayslipLineSendResult> {
   const payroll = await prisma.payroll.findUnique({
     where: { id: payrollId },
-    include: {
+    select: {
+      id: true,
+      userId: true,
+      month: true,
+      year: true,
+      status: true,
+      payslipSentStatus: true,
       user: {
         select: {
           id: true,
@@ -197,6 +208,16 @@ export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<P
   if (payroll.status !== 'APPROVED') {
     await markPayslipSendStatus(payrollId, 'FAILED', 'ต้องอนุมัติ payroll ก่อนส่งสลิป')
     return { ...base, userId: payroll.userId, name: payroll.user.name, error: 'ต้องอนุมัติ payroll ก่อนส่งสลิป' }
+  }
+
+  if (payroll.payslipSentStatus === 'SUCCESS' && !options?.forceResend) {
+    return {
+      ...base,
+      userId: payroll.userId,
+      name: payroll.user.name,
+      skipped: true,
+      error: 'ส่งสลิปสำเร็จแล้ว — ใช้ส่งซ้ำถ้าต้องการ',
+    }
   }
 
   if (!payroll.user.lineUserId) {
@@ -270,9 +291,10 @@ export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<P
 
     const downloadUrl = await buildLineDownloadUrl(payrollId)
     if (!downloadUrl) {
-      const err = appBaseUrl()
+      const baseCheck = validateAppBaseUrl()
+      const err = baseCheck.ok
         ? 'ลิงก์ดาวน์โหลดยาวเกินขีดจำกัด LINE'
-        : 'ไม่พบ URL แอป (NEXTAUTH_URL) — ตั้งค่าบน Vercel'
+        : baseCheck.error
       await rollbackPayslipUpload(payrollId, upload.publicId)
       await markPayslipSendStatus(payrollId, 'FAILED', err)
       return { ...base, userId: payroll.userId, name: payroll.user.name, error: err }

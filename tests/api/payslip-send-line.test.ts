@@ -104,6 +104,8 @@ vi.mock('@/lib/prisma', () => ({
 
       updateMany: vi.fn(),
 
+      count: vi.fn(),
+
     },
 
     user: {
@@ -152,7 +154,7 @@ vi.mock('@/lib/payslip-pdf-encrypt', () => ({
 
 vi.mock('@/lib/payslip-pdf-access', () => ({
 
-  appBaseUrl: vi.fn().mockReturnValue('https://app.example.com'),
+  validateAppBaseUrl: vi.fn().mockReturnValue({ ok: true, url: 'https://app.example.com' }),
 
   assertLineFlexUriLength: vi.fn().mockReturnValue(null),
 
@@ -325,6 +327,8 @@ describe('POST /api/payslip/send-line', () => {
     vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'u1' } as never)
 
     vi.mocked(prisma.payroll.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    vi.mocked(prisma.payroll.count).mockResolvedValue(1 as never)
 
   })
 
@@ -566,6 +570,8 @@ describe('sendPayslipViaLineForPayroll', () => {
 
       status: 'APPROVED',
 
+      payslipSentStatus: null,
+
       user: {
 
         id: 'u1',
@@ -676,6 +682,8 @@ describe('sendPayslipViaLineForPayroll', () => {
 
         status: 'APPROVED',
 
+        payslipSentStatus: null,
+
         user: {
 
           id: 'u1',
@@ -720,6 +728,29 @@ describe('sendPayslipViaLineForPayroll', () => {
 
     )
 
+  })
+
+  it('skips when already SUCCESS without forceResend', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      userId: 'u1',
+      month: 6,
+      year: 2026,
+      status: 'APPROVED',
+      payslipSentStatus: 'SUCCESS',
+      user: {
+        id: 'u1',
+        name: 'Test User',
+        nationalId: '1234567890123',
+        lineUserId: 'U12345678901234567890123456789012',
+      },
+    } as never)
+
+    const result = await sendPayslipViaLineForPayroll('pay-1')
+
+    expect(result.ok).toBe(false)
+    expect(result.skipped).toBe(true)
+    expect(buildPayrollSlipPdfBuffer).not.toHaveBeenCalled()
   })
 
 })

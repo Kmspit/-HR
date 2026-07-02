@@ -10,15 +10,19 @@ import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { resolveLineChannelAccessToken } from '@/lib/line-credentials'
 import { createAuditLog } from '@/lib/notifications'
+import { validateAppBaseUrl } from '@/lib/payslip-pdf-access'
 
 export const maxDuration = 300
 
-const BATCH_MAX = 50
+const BATCH_CHUNK = 15
 
 const bodySchema = z.object({
   payrollId: z.string().min(1),
   userId: z.string().optional(),
   branchId: z.string().optional(),
+  forceResend: z.boolean().optional(),
+  offset: z.number().int().min(0).optional(),
+  limit: z.number().int().min(1).max(BATCH_CHUNK).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -49,7 +53,6 @@ export async function POST(req: NextRequest) {
       console.error('[payslip/send-line] LINE token invalid', {
         source: tokenResolve.tokenSourceDetail ?? tokenResolve.source,
         validationError: tokenResolve.validationError,
-        hint: 'Issue new token in LINE Developers → Messaging API → match Vercel LINE_CHANNEL_ACCESS_TOKEN',
       })
       return NextResponse.json(
         {
@@ -62,6 +65,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const baseUrlCheck = validateAppBaseUrl()
+    if (!baseUrlCheck.ok) {
+      console.error('[payslip/send-line]', baseUrlCheck.error)
+      return NextResponse.json({ error: baseUrlCheck.error }, { status: 503 })
+    }
+
     const parsed = bodySchema.safeParse(await req.json())
     if (!parsed.success) {
       return NextResponse.json(
@@ -70,7 +79,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { payrollId, userId, branchId } = parsed.data
+    const { payrollId, userId, branchId, forceResend, offset = 0, limit } = parsed.data
 
     await ensurePayrollPayslipColumns()
 
@@ -97,16 +106,24 @@ export async function POST(req: NextRequest) {
       ? nestedUser
       : { ...(nestedUser ?? {}), lineUserId: { not: null } }
 
+    const where = {
+      month: anchor.month,
+      year: anchor.year,
+      status: 'APPROVED' as const,
+      ...(userId ? { userId } : {}),
+      ...(userRelationFilter ? { user: userRelationFilter } : {}),
+      ...(!forceResend && !userId ? { NOT: { payslipSentStatus: 'SUCCESS' as const } } : {}),
+    }
+
+    const total = await prisma.payroll.count({ where })
+    const take = userId ? 1 : Math.min(limit ?? BATCH_CHUNK, BATCH_CHUNK)
+
     const payrolls = await prisma.payroll.findMany({
-      where: {
-        month: anchor.month,
-        year: anchor.year,
-        status: 'APPROVED',
-        ...(userId ? { userId } : {}),
-        ...(userRelationFilter ? { user: userRelationFilter } : {}),
-      },
+      where,
       select: { id: true, userId: true },
       orderBy: { userId: 'asc' },
+      skip: userId ? 0 : offset,
+      take,
     })
 
     if (payrolls.length === 0) {
@@ -114,30 +131,30 @@ export async function POST(req: NextRequest) {
         {
           error: userId
             ? 'ไม่พบ payroll ที่อนุมัติแล้วสำหรับพนักงานนี้'
-            : 'ไม่มี payroll ที่อนุมัติแล้วและเชื่อม LINE ในเดือนนี้',
+            : 'ไม่มี payroll ที่รอส่งสลิป LINE ในเดือนนี้',
+          total,
+          offset,
+          processed: 0,
+          hasMore: false,
         },
         { status: 404 },
       )
     }
 
-    if (!userId && payrolls.length > BATCH_MAX) {
-      return NextResponse.json(
-        {
-          error: `จำนวนพนักงาน ${payrolls.length} คน เกินขีดจำกัด ${BATCH_MAX} คนต่อครั้ง — กรองสาขาแล้วส่งทีละชุด`,
-          count: payrolls.length,
-          max: BATCH_MAX,
-        },
-        { status: 400 },
+    const results = []
+    for (const row of payrolls) {
+      results.push(
+        await sendPayslipViaLineForPayroll(row.id, {
+          forceResend: forceResend ?? false,
+        }),
       )
     }
 
-    const results = []
-    for (const row of payrolls) {
-      results.push(await sendPayslipViaLineForPayroll(row.id))
-    }
-
     const sent = results.filter((r) => r.ok).length
-    const failed = results.filter((r) => !r.ok).length
+    const failed = results.filter((r) => !r.ok && !r.skipped).length
+    const skipped = results.filter((r) => r.skipped).length
+    const processed = payrolls.length
+    const hasMore = !userId && offset + processed < total
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
     await createAuditLog({
@@ -150,8 +167,11 @@ export async function POST(req: NextRequest) {
         year: anchor.year,
         branchId: branchId ?? null,
         userId: userId ?? null,
+        forceResend: forceResend ?? false,
+        offset,
         sent,
         failed,
+        skipped,
         payrollIds: payrolls.map((p) => p.id),
       },
       ip,
@@ -162,7 +182,12 @@ export async function POST(req: NextRequest) {
       success: failed === 0,
       sent,
       failed,
+      skipped,
       results,
+      total,
+      offset,
+      processed,
+      hasMore,
     })
   } catch (err) {
     return apiError(err)
