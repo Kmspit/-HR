@@ -1,6 +1,6 @@
 /** Shared middleware route lists — import in middleware.ts and tests. */
 
-export const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password', '/client-portal/login'] as const
+export const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password', '/client-portal/login', '/install'] as const
 
 export const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/client-portal/login'] as const
 

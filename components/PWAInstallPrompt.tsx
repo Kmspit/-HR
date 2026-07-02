@@ -1,57 +1,32 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Download, Share2, X } from 'lucide-react'
-
-const DISMISS_KEY = 'pwa-install-dismissed-until'
-const DISMISS_DAYS = 14
+import {
+  dismissPwaPrompt,
+  isIosSafari,
+  isPwaDismissed,
+  isStandalone,
+} from '@/lib/pwa-client'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-function isStandalone(): boolean {
-  if (typeof window === 'undefined') return false
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
-}
-
-function isIos(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
-}
-
-function isDismissed(): boolean {
-  try {
-    const until = localStorage.getItem(DISMISS_KEY)
-    if (!until) return false
-    return Date.now() < Number(until)
-  } catch {
-    return false
-  }
-}
-
-function dismissForLater() {
-  try {
-    localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 86400000))
-  } catch {
-    /* ignore */
-  }
-}
-
 export default function PWAInstallPrompt() {
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
   const [iosMode, setIosMode] = useState(false)
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [installing, setInstalling] = useState(false)
 
   useEffect(() => {
-    if (isStandalone() || isDismissed()) return
+    if (pathname === '/install') return
+    if (isStandalone() || isPwaDismissed()) return
 
-    if (isIos()) {
+    if (isIosSafari()) {
       setIosMode(true)
       setVisible(true)
       return
@@ -65,10 +40,10 @@ export default function PWAInstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-  }, [])
+  }, [pathname])
 
   const close = useCallback(() => {
-    dismissForLater()
+    dismissPwaPrompt()
     setVisible(false)
   }, [])
 
@@ -88,6 +63,97 @@ export default function PWAInstallPrompt() {
 
   if (!visible) return null
 
+  if (iosMode) {
+    return (
+      <>
+        <button
+          type="button"
+          aria-label="ปิด"
+          className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-[2px]"
+          onClick={close}
+        />
+        <div
+          role="dialog"
+          aria-label="วิธีติดตั้งแอพบน iOS"
+          className="fixed bottom-0 inset-x-0 z-[60] rounded-t-2xl bg-white p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl dark:bg-slate-900"
+        >
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-50">
+              📱 ติดตั้งแอพลงมือถือ
+            </h3>
+            <button
+              type="button"
+              onClick={close}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="ปิด"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
+              KM
+            </div>
+          </div>
+
+          <ol className="space-y-3 text-gray-700 dark:text-slate-300">
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                1
+              </span>
+              <span className="pt-0.5 text-sm leading-relaxed">
+                กดปุ่ม{' '}
+                <span className="inline-flex items-center gap-1 font-medium text-gray-900 dark:text-white">
+                  Share <Share2 className="h-4 w-4 text-blue-500" aria-hidden />
+                </span>{' '}
+                ด้านล่างหน้าจอ Safari
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                2
+              </span>
+              <span className="pt-0.5 text-sm leading-relaxed">
+                เลื่อนลงแล้วเลือก <strong>&quot;Add to Home Screen&quot;</strong>
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                3
+              </span>
+              <span className="pt-0.5 text-sm leading-relaxed">
+                กด <strong>&quot;Add&quot;</strong> มุมขวาบน
+              </span>
+            </li>
+          </ol>
+
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+            <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm dark:bg-slate-900">
+              <div className="flex gap-4 text-blue-500">
+                <Share2 className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="h-1 flex-1 mx-3 rounded-full bg-slate-200 dark:bg-slate-700" />
+              <div className="text-[10px] text-slate-400">Safari</div>
+            </div>
+            <p className="mt-2 text-center text-[11px] text-slate-500">
+              ปุ่ม Share อยู่กลางแถบด้านล่าง (ไอคอนลูกศรชี้ขึ้น)
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={close}
+            className="mt-4 w-full py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            ปิด — แสดงอีกครั้งใน 7 วัน
+          </button>
+        </div>
+      </>
+    )
+  }
+
   return (
     <div
       role="dialog"
@@ -101,16 +167,9 @@ export default function PWAInstallPrompt() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">เพิ่มแอพลงหน้าจอหลัก</p>
-            {iosMode ? (
-              <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                กด <Share2 className="inline h-3.5 w-3.5 align-text-bottom" aria-hidden /> Share แล้วเลือก{' '}
-                <strong>Add to Home Screen</strong>
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                ติดตั้ง KM HR เพื่อเข้าใช้งานได้เร็วขึ้น แม้ออฟไลน์บางส่วน
-              </p>
-            )}
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              ติดตั้ง KM HR เพื่อเข้าใช้งานได้เร็วขึ้น แม้ออฟไลน์บางส่วน
+            </p>
           </div>
           <button
             type="button"
@@ -122,7 +181,7 @@ export default function PWAInstallPrompt() {
           </button>
         </div>
 
-        {!iosMode && installEvent && (
+        {installEvent && (
           <button
             type="button"
             onClick={install}
