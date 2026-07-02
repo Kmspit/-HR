@@ -84,8 +84,8 @@ describe('applyChainToLeave', () => {
   const mockPrisma = {
     user: { findUnique: vi.fn() },
     approvalChainConfig: { findUnique: vi.fn() },
-    leaveApprovalStep: { createMany: vi.fn() },
-    leaveRequest: { update: vi.fn() },
+    leaveApprovalStep: { createMany: vi.fn(), count: vi.fn().mockResolvedValue(0) },
+    leaveRequest: { update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   }
 
   beforeEach(() => vi.clearAllMocks())

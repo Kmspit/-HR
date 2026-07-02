@@ -66,14 +66,15 @@ export async function applyChainToLeave(
   })
 
   if (requester?.role === 'CEO' || requester?.role === 'SUPER_ADMIN') {
-    await prisma.leaveRequest.update({
-      where: { id: leaveId },
+    const claim = await prisma.leaveRequest.updateMany({
+      where: { id: leaveId, chainConfigId: null },
       data: {
-        chainConfigId:  chainId,
+        chainConfigId: chainId,
         currentStepOrder: 0,
-        status:         'APPROVED',
+        status: 'APPROVED',
       },
     })
+    if (claim.count === 0) return
     await createNotification({
       userId: requesterId,
       type: 'LEAVE_APPROVED',
@@ -89,6 +90,15 @@ export async function applyChainToLeave(
     include: { steps: { orderBy: { stepOrder: 'asc' } } },
   })
   if (!chain || !chain.isActive) return
+
+  const stepCount = await prisma.leaveApprovalStep.count({ where: { leaveRequestId: leaveId } })
+  if (stepCount > 0) return
+
+  const claim = await prisma.leaveRequest.updateMany({
+    where: { id: leaveId, chainConfigId: null },
+    data: { chainConfigId: chainId },
+  })
+  if (claim.count === 0) return
 
   const supervisorId = await resolveOrgSupervisorId(prisma, requesterId)
 
@@ -126,9 +136,8 @@ export async function applyChainToLeave(
     await prisma.leaveRequest.update({
       where: { id: leaveId },
       data: {
-        chainConfigId:  chainId,
         currentStepOrder: 0,
-        status:         'APPROVED',
+        status: 'APPROVED',
       },
     })
     await createNotification({
@@ -144,7 +153,6 @@ export async function applyChainToLeave(
   await prisma.leaveRequest.update({
     where: { id: leaveId },
     data: {
-      chainConfigId:  chainId,
       currentStepOrder: firstPending.stepOrder,
     },
   })
@@ -173,15 +181,16 @@ export async function applyChainToOutsideWork(
 
   // CEO / SUPER_ADMIN self-request → auto-approve
   if (requester?.role === 'CEO' || requester?.role === 'SUPER_ADMIN') {
-    await prisma.outsideWorkRequest.update({
-      where: { id: requestId },
+    const claim = await prisma.outsideWorkRequest.updateMany({
+      where: { id: requestId, chainConfigId: null },
       data: {
-        chainConfigId:  chainId,
+        chainConfigId: chainId,
         currentStepOrder: 0,
-        status:         'APPROVED',
+        status: 'APPROVED',
         approvalStatus: 'approved',
       },
     })
+    if (claim.count === 0) return
     return
   }
 
@@ -190,6 +199,15 @@ export async function applyChainToOutsideWork(
     include: { steps: { orderBy: { stepOrder: 'asc' } } },
   })
   if (!chain || !chain.isActive) return
+
+  const stepCount = await prisma.outsideWorkApprovalStep.count({ where: { requestId } })
+  if (stepCount > 0) return
+
+  const claim = await prisma.outsideWorkRequest.updateMany({
+    where: { id: requestId, chainConfigId: null },
+    data: { chainConfigId: chainId },
+  })
+  if (claim.count === 0) return
 
   const supervisorId = await resolveOrgSupervisorId(prisma, requesterId)
 
@@ -227,9 +245,8 @@ export async function applyChainToOutsideWork(
     await prisma.outsideWorkRequest.update({
       where: { id: requestId },
       data: {
-        chainConfigId:  chainId,
         currentStepOrder: 0,
-        status:         'APPROVED',
+        status: 'APPROVED',
         approvalStatus: 'approved',
       },
     })
@@ -246,9 +263,8 @@ export async function applyChainToOutsideWork(
   await prisma.outsideWorkRequest.update({
     where: { id: requestId },
     data: {
-      chainConfigId:  chainId,
       currentStepOrder: firstPending.stepOrder,
-      status:         'PENDING',
+      status: 'PENDING',
       approvalStatus: 'pending_chain',
     },
   })

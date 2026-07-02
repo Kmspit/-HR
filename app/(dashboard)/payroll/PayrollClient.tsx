@@ -234,25 +234,26 @@ export default function PayrollClient({
 
     setSendingBatch(true)
     const anchor = pending[0]
-    let offset = 0
     let totalSent = 0
     let totalFailed = 0
     let hasMore = true
     let batchError: string | null = null
 
+    // offset 0 ทุกรอบ — SUCCESS ถูก exclude ฝั่ง server; FAILED ยังอยู่ใน queue
     while (hasMore) {
       const { ok, data, status } = await apiJson<{
         sent?: number
         failed?: number
+        skipped?: number
         hasMore?: boolean
-        offset?: number
         processed?: number
+        total?: number
       }>('/api/payslip/send-line', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payrollId: anchor.id,
-          offset,
+          offset: 0,
           ...(filterBranchId ? { branchId: filterBranchId } : {}),
         }),
       })
@@ -262,8 +263,12 @@ export default function PayrollClient({
       }
       totalSent += data.sent ?? 0
       totalFailed += data.failed ?? 0
-      hasMore = data.hasMore ?? false
-      offset = (data.offset ?? offset) + (data.processed ?? 0)
+      const processed = data.processed ?? 0
+      hasMore = (data.hasMore ?? false) && processed > 0
+      // หยุดถ้ารอบนี้ล้มทั้งหมด (กัน loop ไม่รู้จบเมื่อ LINE down)
+      if (processed > 0 && (data.sent ?? 0) === 0 && (data.skipped ?? 0) === 0) {
+        hasMore = false
+      }
     }
 
     if (batchError) {

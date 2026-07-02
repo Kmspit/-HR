@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { requireCsrf } from '@/lib/api-guard'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { bangkokDateKey } from '@/lib/datetime-bangkok'
@@ -20,7 +21,11 @@ import {
 } from '@/lib/attendance-flow'
 import { findActiveAttendanceSession } from '@/lib/attendance-session'
 export async function POST(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
+    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))

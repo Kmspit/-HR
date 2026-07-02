@@ -149,6 +149,15 @@ export async function applyChainToForgotScan(
   })
   if (!chain || !chain.isActive) return
 
+  const stepCount = await prisma.forgotScanApprovalStep.count({ where: { forgotScanId: requestId } })
+  if (stepCount > 0) return
+
+  const claim = await prisma.forgotScanRequest.updateMany({
+    where: { id: requestId, chainConfigId: null },
+    data: { chainConfigId: chainId },
+  })
+  if (claim.count === 0) return
+
   const supervisorId = await resolveOrgSupervisorId(prisma, userId)
 
   const instanceSteps = chain.steps.map((s) => {
@@ -182,7 +191,7 @@ export async function applyChainToForgotScan(
   if (!firstPending) {
     await prisma.forgotScanRequest.update({
       where: { id: requestId },
-      data: { chainConfigId: chainId, currentStepOrder: 0 },
+      data: { currentStepOrder: 0 },
     })
 
     const applied = await applyToAttendance(requestId, prisma)
@@ -208,7 +217,7 @@ export async function applyChainToForgotScan(
 
   await prisma.forgotScanRequest.update({
     where: { id: requestId },
-    data: { chainConfigId: chainId, currentStepOrder: firstPending.stepOrder, status: 'PENDING' },
+    data: { currentStepOrder: firstPending.stepOrder, status: 'PENDING' },
   })
 
   await notifyForgotScanStepApprovers(
@@ -401,6 +410,16 @@ export async function executeForgotScanStepAction(
       const { finalized, nextStepOrder } = await advanceForgotScanChain(prisma, requestId, actorId)
       return { success: true, action, finalized, nextStepOrder, stepName: currentStep.stepName }
     } catch (err) {
+      await prisma.forgotScanApprovalStep.updateMany({
+        where: { id: currentStep.id, status: 'APPROVED' },
+        data: {
+          status: 'PENDING',
+          actorId: null,
+          comment: null,
+          ip: null,
+          actedAt: null,
+        },
+      })
       const message = err instanceof Error ? err.message : APPLY_ATTENDANCE_FAILED_MSG
       return { error: message, status: 422 }
     }

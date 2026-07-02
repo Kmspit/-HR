@@ -23,6 +23,14 @@ export function isPublicApiRoute(pathname: string): boolean {
   if (/^\/api\/payslip\/[^/]+\/line-pdf$/.test(pathname)) {
     return true
   }
+  // Attendance face scan image for LINE — JWT in query
+  if (/^\/api\/attendance\/scan-image\/[^/]+$/.test(pathname)) {
+    return true
+  }
+  // Warning PDF for LINE — JWT in query
+  if (/^\/api\/warnings\/[^/]+\/pdf$/.test(pathname)) {
+    return true
+  }
   // Portal data routes use cp_token — not staff NextAuth (admin sub-routes still require staff session)
   if (
     pathname.startsWith('/api/client-portal/') &&

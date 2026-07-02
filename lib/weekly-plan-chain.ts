@@ -24,6 +24,15 @@ export async function applyChainToWeeklyPlan(
   })
   if (!chain || !chain.isActive) return
 
+  const stepCount = await prisma.weeklyPlanApprovalStep.count({ where: { weeklyPlanId: planId } })
+  if (stepCount > 0) return
+
+  const claim = await prisma.weeklyLawyerPlan.updateMany({
+    where: { id: planId, chainConfigId: null },
+    data: { chainConfigId: chainId },
+  })
+  if (claim.count === 0) return
+
   const supervisorId = await resolveOrgSupervisorId(prisma, lawyerId)
 
   const instanceSteps = chain.steps.map((s) => {
@@ -58,7 +67,6 @@ export async function applyChainToWeeklyPlan(
     await prisma.weeklyLawyerPlan.update({
       where: { id: planId },
       data: {
-        chainConfigId: chainId,
         currentStepOrder: 0,
         status: 'APPROVED',
         approvalStatus: 'approved',
@@ -77,7 +85,6 @@ export async function applyChainToWeeklyPlan(
   await prisma.weeklyLawyerPlan.update({
     where: { id: planId },
     data: {
-      chainConfigId: chainId,
       currentStepOrder: firstPending.stepOrder,
       status: 'PENDING',
       approvalStatus: 'pending_chain',

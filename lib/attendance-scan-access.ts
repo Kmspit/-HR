@@ -7,8 +7,13 @@ const SCAN_IMAGE_LINE_TTL_SEC = 60 * 60 * 2
 function secretKey() {
   const raw =
     process.env.ATTENDANCE_SCAN_IMAGE_SECRET?.trim() ||
-    process.env.NEXTAUTH_SECRET?.trim() ||
-    'hrflow-scan-image-dev-only'
+    process.env.NEXTAUTH_SECRET?.trim()
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ATTENDANCE_SCAN_IMAGE_SECRET or NEXTAUTH_SECRET is required in production')
+    }
+    return new TextEncoder().encode('hrflow-scan-image-dev-only')
+  }
   return new TextEncoder().encode(raw)
 }
 

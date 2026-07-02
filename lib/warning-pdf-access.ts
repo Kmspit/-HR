@@ -5,8 +5,13 @@ const TOKEN_TTL_SEC = 60 * 60 * 24 * 7 // 7 วัน
 function secretKey() {
   const raw =
     process.env.WARNING_PDF_ACCESS_SECRET?.trim() ||
-    process.env.NEXTAUTH_SECRET?.trim() ||
-    'hrflow-warning-pdf-dev-only'
+    process.env.NEXTAUTH_SECRET?.trim()
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('WARNING_PDF_ACCESS_SECRET or NEXTAUTH_SECRET is required in production')
+    }
+    return new TextEncoder().encode('hrflow-warning-pdf-dev-only')
+  }
   return new TextEncoder().encode(raw)
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { requireCsrf } from '@/lib/api-guard'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { bangkokDateKey } from '@/lib/datetime-bangkok'
@@ -30,6 +31,9 @@ import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -166,8 +170,8 @@ export async function POST(req: NextRequest) {
       // Check approved weekly plan day for today (additional permission pathway)
       approvedPlanDay = await findApprovedWeeklyPlanDayForDate(session.user.id, today)
 
-      // ถ้า geofence ตั้งค่าไว้ → ต้องมีใบอนุมัติ (OutsideWorkRequest หรือ WeeklyPlanDay)
-      if (!outsideWorkRequestId && !approvedPlanDay && hasGeofence) {
+      // ต้องมีใบอนุมัติ (OutsideWorkRequest หรือ WeeklyPlanDay) ไม่ว่า geofence จะตั้งหรือไม่
+      if (!outsideWorkRequestId && !approvedPlanDay) {
         return NextResponse.json(
           {
             error: 'ต้องมีใบอนุมัติออกนอกสถานที่สำหรับวันนี้จึงเช็คอินนอกบริษัทได้',
