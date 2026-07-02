@@ -67,6 +67,12 @@ async function purgeUser(db, userId) {
   await run('attendance_face_logs', () =>
     db.attendanceFaceLog.deleteMany({ where: { userId } }),
   )
+  await run('attendance_face_scans', () =>
+    db.attendanceFaceScan.deleteMany({ where: { userId } }),
+  )
+  await run('attendance_line_notify_logs', () =>
+    db.attendanceLineNotifyLog.deleteMany({ where: { employeeUserId: userId } }),
+  )
   await run('user_face_profiles', () => db.userFaceProfile.deleteMany({ where: { userId } }))
   await run('saved_work_places', () => db.savedWorkPlace.deleteMany({ where: { userId } }))
   await run('user_devices', () => db.userDevice.deleteMany({ where: { userId } }))
@@ -109,11 +115,33 @@ async function purgeUser(db, userId) {
   await run('warnings (subject)', () => db.warning.deleteMany({ where: { userId } }))
   await run('warnings (issued)', () => db.warning.deleteMany({ where: { issuedById: userId } }))
   await run('payrolls', () => db.payroll.deleteMany({ where: { userId } }))
+  await run('salary_slips', () => db.salarySlip.deleteMany({ where: { userId } }))
+  await run('tax_histories', () => db.taxHistory.deleteMany({ where: { userId } }))
+  await run('forgot_scan_requests', () => db.forgotScanRequest.deleteMany({ where: { userId } }))
   await run('attendances', () => db.attendance.deleteMany({ where: { userId } }))
   await run('leave_balances', () => db.leaveBalance.deleteMany({ where: { userId } }))
 
+  await run('task_assignments', () =>
+    db.taskAssignment.deleteMany({
+      where: {
+        OR: [
+          { assigneeId: userId },
+          { assignedById: userId },
+          { reviewedById: userId },
+          { clientId: userId },
+        ],
+      },
+    }),
+  )
+
   await run('users.approvedById cleared', () =>
     db.user.updateMany({ where: { approvedById: userId }, data: { approvedById: null } }),
+  )
+  await run('users.managerId cleared', () =>
+    db.user.updateMany({ where: { managerId: userId }, data: { managerId: null } }),
+  )
+  await run('users.teamLeaderId cleared', () =>
+    db.user.updateMany({ where: { teamLeaderId: userId }, data: { teamLeaderId: null } }),
   )
   await run('company_holidays.createdById cleared', () =>
     db.companyHoliday.updateMany({
