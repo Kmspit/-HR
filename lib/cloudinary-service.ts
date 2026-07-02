@@ -249,6 +249,32 @@ export function getSignedPdfUrl(
   }
 }
 
+/** ดึง PDF raw จาก Cloudinary (authenticated) */
+export async function fetchRawPdfBuffer(publicId: string): Promise<Buffer | null> {
+  const url = getSignedPdfUrl(publicId, { expiresInSec: 120 })
+  if (!url) return null
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    return Buffer.from(await res.arrayBuffer())
+  } catch (err) {
+    console.error('[cloudinary] fetchRawPdf', err)
+    return null
+  }
+}
+
+export async function deleteRawFile(publicId: string): Promise<boolean> {
+  if (!publicId || !isCloudinaryConfigured()) return false
+  ensureCloudinaryConfig()
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' })
+    return true
+  } catch (err) {
+    console.error('[cloudinary] deleteRaw', publicId, err)
+    return false
+  }
+}
+
 /** Signed URL สำหรับ LINE / HR (ไม่ใช้ public URL ตรง) */
 export function getSignedUrl(
   publicId: string,

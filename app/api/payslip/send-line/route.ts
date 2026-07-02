@@ -5,14 +5,20 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { requireCsrf } from '@/lib/api-guard'
 import { canManagePayroll } from '@/lib/access-control'
-import { buildBranchScope, branchNestedUserWhere } from '@/lib/branch-scope'
+import { buildBranchScope, branchNestedUserWhere, branchUserWhere } from '@/lib/branch-scope'
 import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { resolveLineChannelAccessToken } from '@/lib/line-credentials'
+import { createAuditLog } from '@/lib/notifications'
+
+export const maxDuration = 300
+
+const BATCH_MAX = 50
 
 const bodySchema = z.object({
   payrollId: z.string().min(1),
   userId: z.string().optional(),
+  branchId: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -64,20 +70,32 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { payrollId, userId } = parsed.data
+    const { payrollId, userId, branchId } = parsed.data
 
     await ensurePayrollPayslipColumns()
 
+    const scope = buildBranchScope(session.user, { branchId })
+    const nestedUser = branchNestedUserWhere(scope)
+
     const anchor = await prisma.payroll.findUnique({
       where: { id: payrollId },
-      select: { id: true, month: true, year: true },
+      select: { id: true, month: true, year: true, userId: true },
     })
     if (!anchor) {
       return NextResponse.json({ error: 'ไม่พบ payroll' }, { status: 404 })
     }
 
-    const scope = buildBranchScope(session.user, {})
-    const nestedUser = branchNestedUserWhere(scope)
+    const anchorInScope = await prisma.user.findFirst({
+      where: branchUserWhere(scope, { id: anchor.userId }),
+      select: { id: true },
+    })
+    if (!anchorInScope) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const userRelationFilter = userId
+      ? nestedUser
+      : { ...(nestedUser ?? {}), lineUserId: { not: null } }
 
     const payrolls = await prisma.payroll.findMany({
       where: {
@@ -85,7 +103,7 @@ export async function POST(req: NextRequest) {
         year: anchor.year,
         status: 'APPROVED',
         ...(userId ? { userId } : {}),
-        ...(nestedUser ? { user: nestedUser } : {}),
+        ...(userRelationFilter ? { user: userRelationFilter } : {}),
       },
       select: { id: true, userId: true },
       orderBy: { userId: 'asc' },
@@ -93,8 +111,23 @@ export async function POST(req: NextRequest) {
 
     if (payrolls.length === 0) {
       return NextResponse.json(
-        { error: userId ? 'ไม่พบ payroll ที่อนุมัติแล้วสำหรับพนักงานนี้' : 'ไม่มี payroll ที่อนุมัติแล้วในเดือนนี้' },
+        {
+          error: userId
+            ? 'ไม่พบ payroll ที่อนุมัติแล้วสำหรับพนักงานนี้'
+            : 'ไม่มี payroll ที่อนุมัติแล้วและเชื่อม LINE ในเดือนนี้',
+        },
         { status: 404 },
+      )
+    }
+
+    if (!userId && payrolls.length > BATCH_MAX) {
+      return NextResponse.json(
+        {
+          error: `จำนวนพนักงาน ${payrolls.length} คน เกินขีดจำกัด ${BATCH_MAX} คนต่อครั้ง — กรองสาขาแล้วส่งทีละชุด`,
+          count: payrolls.length,
+          max: BATCH_MAX,
+        },
+        { status: 400 },
       )
     }
 
@@ -104,7 +137,26 @@ export async function POST(req: NextRequest) {
     }
 
     const sent = results.filter((r) => r.ok).length
-    const failed = results.length - sent
+    const failed = results.filter((r) => !r.ok).length
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    await createAuditLog({
+      actorId: session.user.id,
+      targetType: 'Payroll',
+      action: 'UPDATE',
+      after: {
+        type: 'PAYSLIP_LINE_SEND',
+        month: anchor.month,
+        year: anchor.year,
+        branchId: branchId ?? null,
+        userId: userId ?? null,
+        sent,
+        failed,
+        payrollIds: payrolls.map((p) => p.id),
+      },
+      ip,
+      userAgent: req.headers.get('user-agent') ?? undefined,
+    })
 
     return NextResponse.json({
       success: failed === 0,

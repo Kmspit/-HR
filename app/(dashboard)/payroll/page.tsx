@@ -105,6 +105,7 @@ export default async function PayrollPage({
       lateDays: 0,
       absentDays: 0,
       lateMinutes: 0,
+      lateBillableMinutes: 0,
       status: 'PENDING',
       hasPayroll: false,
       payslipSentAt: null,

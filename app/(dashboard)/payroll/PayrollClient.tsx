@@ -174,6 +174,10 @@ export default function PayrollClient({
       toast.error('ต้องอนุมัติ payroll ก่อนส่งสลิป')
       return
     }
+    if (!row.lineLinked) {
+      toast.error('พนักงานยังไม่ได้เชื่อม LINE OA')
+      return
+    }
     setSendingId(row.id)
     const { ok, data, status } = await apiJson<{
       sent?: number
@@ -182,7 +186,11 @@ export default function PayrollClient({
     }>('/api/payslip/send-line', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payrollId: row.id, userId: row.userId }),
+      body: JSON.stringify({
+        payrollId: row.id,
+        userId: row.userId,
+        ...(filterBranchId ? { branchId: filterBranchId } : {}),
+      }),
     })
     if (ok && (data.results?.[0]?.ok ?? data.sent === 1)) {
       toast.success(`ส่งสลิป LINE ให้ ${row.name} แล้ว`)
@@ -197,17 +205,21 @@ export default function PayrollClient({
 
   const sendAllSlipsLine = async () => {
     const approved = payrolls.filter((p) => p.hasPayroll && p.status === 'APPROVED')
-    if (approved.length === 0) {
-      toast.error('ไม่มี payroll ที่อนุมัติแล้ว')
+    const linked = approved.filter((p) => p.lineLinked)
+    if (linked.length === 0) {
+      toast.error('ไม่มีพนักงานที่อนุมัติแล้วและเชื่อม LINE')
       return
     }
+    const skipped = approved.length - linked.length
     const okConfirm = window.confirm(
-      `ส่งสลิปเงินเดือนผ่าน LINE ให้พนักงาน ${approved.length} คน?\n\nPDF จะถูกเข้ารหัสด้วยเลขบัตรประชาชน 4 ตัวท้าย`,
+      `ส่งสลิปเงินเดือนผ่าน LINE ให้พนักงาน ${linked.length} คน?` +
+        (skipped > 0 ? `\n(ข้าม ${skipped} คนที่ยังไม่เชื่อม LINE)` : '') +
+        `\n\nPDF จะถูกเข้ารหัสด้วยเลขบัตรประชาชน 4 ตัวท้าย`,
     )
     if (!okConfirm) return
 
     setSendingBatch(true)
-    const anchor = approved[0]
+    const anchor = linked[0]
     const { ok, data, status } = await apiJson<{
       sent?: number
       failed?: number
@@ -215,7 +227,10 @@ export default function PayrollClient({
     }>('/api/payslip/send-line', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payrollId: anchor.id }),
+      body: JSON.stringify({
+        payrollId: anchor.id,
+        ...(filterBranchId ? { branchId: filterBranchId } : {}),
+      }),
     })
     if (ok) {
       toast.success(`ส่งสลิป LINE สำเร็จ ${data.sent ?? 0} คน${(data.failed ?? 0) > 0 ? ` (ล้มเหลว ${data.failed} คน)` : ''}`)

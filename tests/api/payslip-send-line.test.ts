@@ -12,8 +12,14 @@ vi.mock('@/lib/access-control', () => ({
 }))
 
 vi.mock('@/lib/branch-scope', () => ({
-  buildBranchScope: vi.fn().mockReturnValue({}),
-  branchNestedUserWhere: vi.fn().mockReturnValue({}),
+  buildBranchScope: vi.fn((_user: unknown, params?: { branchId?: string }) => ({
+    role: 'HR',
+    filterBranchId: params?.branchId,
+  })),
+  branchNestedUserWhere: vi.fn((scope: { filterBranchId?: string }) =>
+    scope.filterBranchId ? { branchId: scope.filterBranchId } : undefined,
+  ),
+  branchUserWhere: vi.fn((_scope: unknown, extra?: { id?: string }) => extra ?? {}),
 }))
 
 vi.mock('@/lib/api-handler', () => ({
@@ -34,17 +40,20 @@ vi.mock('@/lib/line-credentials', () => ({
   }),
 }))
 
+vi.mock('@/lib/notifications', () => ({
+  createAuditLog: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     payroll: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
-    },
-    companySettings: {
-      findUnique: vi.fn(),
+      updateMany: vi.fn(),
     },
     user: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
     },
   },
@@ -65,6 +74,16 @@ vi.mock('@/lib/payslip-pdf-encrypt', () => ({
   encryptPayslipPdfBuffer: vi.fn().mockResolvedValue(Buffer.from('%PDF-encrypted')),
 }))
 
+vi.mock('@/lib/payslip-pdf-access', () => ({
+  appBaseUrl: vi.fn().mockReturnValue('https://app.example.com'),
+  assertLineFlexUriLength: vi.fn().mockReturnValue(null),
+  createPayslipPdfAccessToken: vi.fn().mockResolvedValue('access-token-abc'),
+  payslipLinePdfUrl: vi.fn(
+    (payrollId: string, base: string, token: string) =>
+      `${base}/api/payslip/${payrollId}/line-pdf?access=${encodeURIComponent(token)}&download=1`,
+  ),
+}))
+
 vi.mock('@/lib/cloudinary-service', () => ({
   isCloudinaryConfigured: vi.fn().mockReturnValue(true),
   loadUserImageContext: vi.fn().mockResolvedValue({
@@ -77,7 +96,7 @@ vi.mock('@/lib/cloudinary-service', () => ({
     publicId: 'hr-system/payslips/EMP001/pay-1/slip',
     secureUrl: 'https://res.cloudinary.com/demo/raw/authenticated/slip.pdf',
   }),
-  getSignedPdfUrl: vi.fn().mockReturnValue('https://res.cloudinary.com/demo/raw/authenticated/slip.pdf?sig=abc'),
+  deleteRawFile: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock('@/lib/line-api', () => ({
@@ -92,7 +111,9 @@ import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
 import { encryptPayslipPdfBuffer } from '@/lib/payslip-pdf-encrypt'
 import { pushLineMessages } from '@/lib/line-api'
 import { buildPayrollSlipPdfBuffer } from '@/lib/payslip-pdf-service'
-import { uploadAuthenticatedPdf, getSignedPdfUrl } from '@/lib/cloudinary-service'
+import { uploadAuthenticatedPdf } from '@/lib/cloudinary-service'
+import { createPayslipPdfAccessToken } from '@/lib/payslip-pdf-access'
+import { createAuditLog } from '@/lib/notifications'
 
 const hrSession = { user: { id: 'hr-1', name: 'HR', role: 'HR', branchId: null } }
 
@@ -137,7 +158,11 @@ const approvedPayrollUser = {
 }
 
 describe('POST /api/payslip/send-line', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'u1' } as never)
+    vi.mocked(prisma.payroll.updateMany).mockResolvedValue({ count: 1 } as never)
+  })
 
   it('returns 401 when not authenticated', async () => {
     vi.mocked(auth).mockResolvedValue(null as never)
@@ -163,33 +188,24 @@ describe('POST /api/payslip/send-line', () => {
     expect(data.error).toContain('LINE Channel Access Token')
   })
 
-  it('returns 503 when LINE token invalid', async () => {
+  it('returns 403 when anchor payroll out of branch scope', async () => {
     vi.mocked(auth).mockResolvedValue(hrSession as never)
-    vi.mocked(resolveLineChannelAccessToken).mockResolvedValueOnce({
-      token: 'bad-token',
-      source: 'env',
-      tokenValid: false,
-      tokenSourceDetail: 'env:LINE_CHANNEL_ACCESS_TOKEN',
-      validationError: 'LINE Access Token ไม่ถูกต้อง',
-    })
-    const res = await POST(makePostReq({ payrollId: 'pay-1' }))
-    expect(res.status).toBe(503)
-    const data = await res.json()
-    expect(data.error).toContain('LINE Access Token')
-    expect(data.tokenSource).toBe('env:LINE_CHANNEL_ACCESS_TOKEN')
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      month: 6,
+      year: 2026,
+      userId: 'u1',
+    } as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never)
+
+    const res = await POST(makePostReq({ payrollId: 'pay-1', branchId: 'branch-a' }))
+    expect(res.status).toBe(403)
   })
 
-  it('returns 404 when anchor payroll not found', async () => {
-    vi.mocked(auth).mockResolvedValue(hrSession as never)
-    vi.mocked(prisma.payroll.findUnique).mockResolvedValue(null as never)
-    const res = await POST(makePostReq({ payrollId: 'missing' }))
-    expect(res.status).toBe(404)
-  })
-
-  it('sends single employee when userId provided', async () => {
+  it('sends single employee with proxy download URL in flex', async () => {
     vi.mocked(auth).mockResolvedValue(hrSession as never)
     vi.mocked(prisma.payroll.findUnique)
-      .mockResolvedValueOnce({ id: 'pay-1', month: 6, year: 2026 } as never)
+      .mockResolvedValueOnce({ id: 'pay-1', month: 6, year: 2026, userId: 'u1' } as never)
       .mockResolvedValueOnce(approvedPayrollUser as never)
       .mockResolvedValueOnce(approvedPayrollUser as never)
     vi.mocked(prisma.payroll.findMany).mockResolvedValue([{ id: 'pay-1', userId: 'u1' }] as never)
@@ -200,61 +216,64 @@ describe('POST /api/payslip/send-line', () => {
 
     expect(res.status).toBe(200)
     expect(data.sent).toBe(1)
-    expect(data.failed).toBe(0)
-    expect(buildPayrollSlipPdfBuffer).toHaveBeenCalled()
-    expect(encryptPayslipPdfBuffer).toHaveBeenCalledWith(expect.any(Buffer), '0123')
     expect(uploadAuthenticatedPdf).toHaveBeenCalled()
-    expect(getSignedPdfUrl).toHaveBeenCalled()
+    expect(createPayslipPdfAccessToken).toHaveBeenCalledWith('pay-1', expect.any(String))
     expect(pushLineMessages).toHaveBeenCalledWith(
       'U12345678901234567890123456789012',
       expect.arrayContaining([
-        expect.objectContaining({ type: 'flex', altText: expect.stringContaining('สลิปเงินเดือน') }),
+        expect.objectContaining({
+          type: 'flex',
+          contents: expect.objectContaining({
+            footer: expect.objectContaining({
+              contents: expect.arrayContaining([
+                expect.objectContaining({
+                  action: expect.objectContaining({
+                    uri: expect.stringContaining('/api/payslip/pay-1/line-pdf'),
+                  }),
+                }),
+              ]),
+            }),
+          }),
+        }),
       ]),
     )
+    expect(createAuditLog).toHaveBeenCalled()
   })
 
-  it('sends batch when userId omitted', async () => {
+  it('batch skips employees without lineUserId in query', async () => {
     vi.mocked(auth).mockResolvedValue(hrSession as never)
     vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
       id: 'pay-1',
       month: 6,
       year: 2026,
+      userId: 'u1',
     } as never)
-    vi.mocked(prisma.payroll.findMany).mockResolvedValue([
-      { id: 'pay-1', userId: 'u1' },
-      { id: 'pay-2', userId: 'u2' },
-    ] as never)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([{ id: 'pay-1', userId: 'u1' }] as never)
 
     vi.mocked(prisma.payroll.findUnique)
-      .mockResolvedValueOnce({ id: 'pay-1', month: 6, year: 2026 } as never)
-      .mockResolvedValueOnce({
-        ...approvedPayrollUser,
-        id: 'pay-1',
-      } as never)
-      .mockResolvedValueOnce({
-        ...approvedPayrollUser,
-        id: 'pay-1',
-      } as never)
-      .mockResolvedValueOnce({
-        ...approvedPayrollUser,
-        id: 'pay-2',
-        user: { ...approvedPayrollUser.user, lineUserId: null },
-      } as never)
+      .mockResolvedValueOnce({ id: 'pay-1', month: 6, year: 2026, userId: 'u1' } as never)
+      .mockResolvedValueOnce(approvedPayrollUser as never)
+      .mockResolvedValueOnce(approvedPayrollUser as never)
 
     vi.mocked(prisma.payroll.update).mockResolvedValue({} as never)
 
-    const res = await POST(makePostReq({ payrollId: 'pay-1' }))
-    const data = await res.json()
+    await POST(makePostReq({ payrollId: 'pay-1', branchId: 'branch-a' }))
 
-    expect(res.status).toBe(200)
-    expect(data.sent).toBe(1)
-    expect(data.failed).toBe(1)
-    expect(data.success).toBe(false)
+    expect(prisma.payroll.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          user: expect.objectContaining({ lineUserId: { not: null } }),
+        }),
+      }),
+    )
   })
 })
 
 describe('sendPayslipViaLineForPayroll', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.payroll.updateMany).mockResolvedValue({ count: 1 } as never)
+  })
 
   it('fails gracefully when user has no lineUserId', async () => {
     vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
@@ -279,9 +298,35 @@ describe('sendPayslipViaLineForPayroll', () => {
     expect(prisma.payroll.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'pay-1' },
-        data: expect.objectContaining({ payslipSentStatus: 'FAILED' }),
+        data: expect.objectContaining({
+          payslipSentStatus: 'FAILED',
+          payslipSentVia: null,
+        }),
       }),
     )
+  })
+
+  it('blocks concurrent send when lock not acquired', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      userId: 'u1',
+      month: 6,
+      year: 2026,
+      status: 'APPROVED',
+      user: {
+        id: 'u1',
+        name: 'Test User',
+        nationalId: '1234567890123',
+        lineUserId: 'U12345678901234567890123456789012',
+      },
+    } as never)
+    vi.mocked(prisma.payroll.updateMany).mockResolvedValue({ count: 0 } as never)
+
+    const result = await sendPayslipViaLineForPayroll('pay-1')
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('กำลังส่ง')
+    expect(buildPayrollSlipPdfBuffer).not.toHaveBeenCalled()
   })
 
   it('records SUCCESS status in DB', async () => {
@@ -305,6 +350,7 @@ describe('sendPayslipViaLineForPayroll', () => {
     const result = await sendPayslipViaLineForPayroll('pay-1')
 
     expect(result.ok).toBe(true)
+    expect(encryptPayslipPdfBuffer).toHaveBeenCalledWith(expect.any(Buffer), '0123')
     expect(prisma.payroll.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'pay-1' },

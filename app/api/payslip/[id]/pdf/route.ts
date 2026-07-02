@@ -34,6 +34,10 @@ export async function GET(
 
     if (!payroll) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    if (payroll.status !== 'APPROVED') {
+      return NextResponse.json({ error: 'ต้องอนุมัติ payroll ก่อนดาวน์โหลดสลิป' }, { status: 403 })
+    }
+
     const isHr = (HR_ROLES as readonly string[]).includes(session.user.role)
     if (payroll.userId !== session.user.id && !isHr) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
