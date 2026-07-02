@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { DollarSign, Download, Loader2, RefreshCw, Clock, X } from 'lucide-react'
+import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X } from 'lucide-react'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -29,6 +29,10 @@ type PayrollRow = {
   lateDeductionDetail?: string | null
   status: string
   hasPayroll?: boolean
+  payslipSentAt?: string | null
+  payslipSentVia?: string | null
+  payslipSentStatus?: string | null
+  payslipSentError?: string | null
 }
 
 type LateSummary = {
@@ -75,6 +79,8 @@ export default function PayrollClient({
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [detailRow, setDetailRow] = useState<PayrollRow | null>(null)
+  const [sendingId, setSendingId] = useState<string | null>(null)
+  const [sendingBatch, setSendingBatch] = useState(false)
 
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
@@ -158,6 +164,87 @@ export default function PayrollClient({
     a.click()
   }
 
+  const sendSlipLine = async (row: PayrollRow) => {
+    if (!row.hasPayroll || row.status !== 'APPROVED') {
+      toast.error('ต้องอนุมัติ payroll ก่อนส่งสลิป')
+      return
+    }
+    setSendingId(row.id)
+    const { ok, data, status } = await apiJson<{
+      sent?: number
+      failed?: number
+      results?: { ok: boolean; error?: string }[]
+    }>('/api/payslip/send-line', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payrollId: row.id, userId: row.userId }),
+    })
+    if (ok && (data.results?.[0]?.ok ?? data.sent === 1)) {
+      toast.success(`ส่งสลิป LINE ให้ ${row.name} แล้ว`)
+      await loadPayrolls(month, year)
+    } else {
+      const err = data.results?.[0]?.error ?? apiErrorMessage(data, 'ส่งสลิปไม่สำเร็จ', status)
+      toast.error(err)
+      await loadPayrolls(month, year)
+    }
+    setSendingId(null)
+  }
+
+  const sendAllSlipsLine = async () => {
+    const approved = payrolls.filter((p) => p.hasPayroll && p.status === 'APPROVED')
+    if (approved.length === 0) {
+      toast.error('ไม่มี payroll ที่อนุมัติแล้ว')
+      return
+    }
+    const okConfirm = window.confirm(
+      `ส่งสลิปเงินเดือนผ่าน LINE ให้พนักงาน ${approved.length} คน?\n\nPDF จะถูกเข้ารหัสด้วยเลขบัตรประชาชน 4 ตัวท้าย`,
+    )
+    if (!okConfirm) return
+
+    setSendingBatch(true)
+    const anchor = approved[0]
+    const { ok, data, status } = await apiJson<{
+      sent?: number
+      failed?: number
+      results?: { ok: boolean; error?: string; name?: string }[]
+    }>('/api/payslip/send-line', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payrollId: anchor.id }),
+    })
+    if (ok) {
+      toast.success(`ส่งสลิป LINE สำเร็จ ${data.sent ?? 0} คน${(data.failed ?? 0) > 0 ? ` (ล้มเหลว ${data.failed} คน)` : ''}`)
+      await loadPayrolls(month, year)
+    } else {
+      toast.error(apiErrorMessage(data, 'ส่งสลิป batch ไม่สำเร็จ', status))
+    }
+    setSendingBatch(false)
+  }
+
+  const renderPayslipSendStatus = (p: PayrollRow) => {
+    if (!p.hasPayroll || p.status !== 'APPROVED') return <span className="text-white/30">—</span>
+    if (p.payslipSentStatus === 'SUCCESS' && p.payslipSentAt) {
+      const d = new Date(p.payslipSentAt)
+      const label = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+      return (
+        <span className="text-green-400 text-xs" title={p.payslipSentVia === 'LINE' ? 'ส่งผ่าน LINE' : undefined}>
+          ✅ {label}
+        </span>
+      )
+    }
+    if (p.payslipSentStatus === 'FAILED') {
+      return (
+        <span className="text-red-400 text-xs" title={p.payslipSentError ?? 'ส่งไม่สำเร็จ'}>
+          ❌ ส่งไม่สำเร็จ
+        </span>
+      )
+    }
+    if (p.payslipSentStatus === 'PENDING') {
+      return <span className="text-amber-400 text-xs">⏳ กำลังส่ง…</span>
+    }
+    return <span className="text-white/40 text-xs">— ยังไม่ส่ง</span>
+  }
+
   const totalNet = payrolls.reduce((s, p) => s + p.netSalary, 0)
   const summary: LateSummary = lateSummary ?? {
     employeesWithLate: payrolls.filter((p) => p.lateDeduction > 0).length,
@@ -218,6 +305,14 @@ export default function PayrollClient({
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
+          <button
+            onClick={sendAllSlipsLine}
+            disabled={sendingBatch || loading}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50"
+          >
+            {sendingBatch ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+            ส่งสลิปทุกคน
+          </button>
         </div>
       </div>
 
@@ -246,7 +341,7 @@ export default function PayrollClient({
 
       <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
         <div className="table-scroll">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1050px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-white/10">
                 <th className="text-left p-3 text-slate-400 dark:text-white/40 font-medium">พนักงาน</th>
@@ -258,10 +353,12 @@ export default function PayrollClient({
                 <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">สุทธิ</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">สถิติ</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">สถานะ</th>
+                <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">ส่งสลิป LINE</th>
+                <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>
               </tr>
             </thead>
             <tbody>
-              {loading && <TableSkeletonRows rows={6} cols={9} />}
+              {loading && <TableSkeletonRows rows={6} cols={11} />}
               {!loading &&
                 payrolls.map((p) => (
                   <tr key={p.id} className={`table-row-hover ${!p.hasPayroll ? 'opacity-70' : ''}`}>
@@ -330,11 +427,31 @@ export default function PayrollClient({
                               : 'ร่าง'}
                       </span>
                     </td>
+                    <td className="p-3 text-center">{renderPayslipSendStatus(p)}</td>
+                    <td className="p-3 text-center">
+                      {p.hasPayroll && p.status === 'APPROVED' ? (
+                        <button
+                          type="button"
+                          onClick={() => sendSlipLine(p)}
+                          disabled={sendingId === p.id || sendingBatch}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50 transition"
+                        >
+                          {sendingId === p.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <MessageCircle className="w-3 h-3" />
+                          )}
+                          ส่ง LINE
+                        </button>
+                      ) : (
+                        <span className="text-white/20 text-xs">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               {!loading && payrolls.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-white/30">
+                  <td colSpan={11} className="p-8 text-center text-white/30">
                     ยังไม่มีข้อมูล กด &quot;คำนวณ&quot; เพื่อสร้าง payroll
                   </td>
                 </tr>

@@ -1089,6 +1089,10 @@ model Payroll {
   taxDetail       String?   // JSON: { annualGross, taxableIncome, annualTax, monthlyWithholding }
   status          String    @default("DRAFT")
   slipSentAt      DateTime?
+  payslipSentAt     DateTime?
+  payslipSentVia    String?   // 'LINE' | 'EMAIL'
+  payslipSentStatus String?   // 'SUCCESS' | 'FAILED' | 'PENDING'
+  payslipSentError  String?
   approvedById    String?
   approvedAt      DateTime?
   note            String?

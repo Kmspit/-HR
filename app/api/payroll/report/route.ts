@@ -105,6 +105,10 @@ export async function GET(req: NextRequest) {
         status: p.status,
         note: p.note,
         hasPayroll: true,
+        payslipSentAt: p.payslipSentAt?.toISOString() ?? null,
+        payslipSentVia: p.payslipSentVia ?? null,
+        payslipSentStatus: p.payslipSentStatus ?? null,
+        payslipSentError: p.payslipSentError ?? null,
       }
     }
     return {
@@ -131,6 +135,10 @@ export async function GET(req: NextRequest) {
       status: 'PENDING',
       note: null,
       hasPayroll: false,
+      payslipSentAt: null,
+      payslipSentVia: null,
+      payslipSentStatus: null,
+      payslipSentError: null,
     }
   })
 

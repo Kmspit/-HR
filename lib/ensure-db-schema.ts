@@ -8,7 +8,7 @@ import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches. */
-export const CURRENT_SCHEMA_VERSION = 900001
+export const CURRENT_SCHEMA_VERSION = 900002
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -270,6 +270,22 @@ async function runEnsure(force = false): Promise<boolean> {
   await addPayrollColumnIfMissing(
     'approvedAt',
     `ALTER TABLE payrolls ADD COLUMN approvedAt DATETIME`,
+  )
+  await addPayrollColumnIfMissing(
+    'payslipSentAt',
+    `ALTER TABLE payrolls ADD COLUMN payslipSentAt DATETIME`,
+  )
+  await addPayrollColumnIfMissing(
+    'payslipSentVia',
+    `ALTER TABLE payrolls ADD COLUMN payslipSentVia TEXT`,
+  )
+  await addPayrollColumnIfMissing(
+    'payslipSentStatus',
+    `ALTER TABLE payrolls ADD COLUMN payslipSentStatus TEXT`,
+  )
+  await addPayrollColumnIfMissing(
+    'payslipSentError',
+    `ALTER TABLE payrolls ADD COLUMN payslipSentError TEXT`,
   )
 
   await prisma.$executeRawUnsafe(`

@@ -76,6 +76,10 @@ export default async function PayrollPage({
         lateDeductionDetail: p.lateDeductionDetail,
         status: p.status,
         hasPayroll: true,
+        payslipSentAt: p.payslipSentAt?.toISOString() ?? null,
+        payslipSentVia: p.payslipSentVia ?? null,
+        payslipSentStatus: p.payslipSentStatus ?? null,
+        payslipSentError: p.payslipSentError ?? null,
       }
     }
     return {
@@ -97,6 +101,10 @@ export default async function PayrollPage({
       lateMinutes: 0,
       status: 'PENDING',
       hasPayroll: false,
+      payslipSentAt: null,
+      payslipSentVia: null,
+      payslipSentStatus: null,
+      payslipSentError: null,
     }
   })
 
