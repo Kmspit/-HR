@@ -5,6 +5,7 @@ import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQu
 import { createAuditLog } from '@/lib/notifications'
 import { canManagePayroll } from '@/lib/access-control'
 import { requireCsrf } from '@/lib/api-guard'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -19,6 +20,8 @@ export async function GET(req: NextRequest) {
   const branchParam = parseBranchQueryParam(searchParams.get('branchId') ?? undefined)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = branchNestedUserWhere(scope)
+
+  await ensurePayrollPayslipColumns()
 
   const role = session.user.role
   const isPayrollAdmin = canManagePayroll(role)

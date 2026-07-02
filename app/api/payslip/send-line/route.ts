@@ -7,6 +7,7 @@ import { requireCsrf } from '@/lib/api-guard'
 import { canManagePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchNestedUserWhere } from '@/lib/branch-scope'
 import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
 const bodySchema = z.object({
   payrollId: z.string().min(1),
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { payrollId, userId } = parsed.data
+
+    await ensurePayrollPayslipColumns()
 
     const anchor = await prisma.payroll.findUnique({
       where: { id: payrollId },

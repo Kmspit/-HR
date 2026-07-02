@@ -5,6 +5,7 @@ import PayrollClient from './PayrollClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { canAccessPage } from '@/lib/page-access'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { Suspense } from 'react'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -27,6 +28,8 @@ export default async function PayrollPage({
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+
+  await ensurePayrollPayslipColumns()
 
   const [employees, payrollRecords] = await Promise.all([
     prisma.user.findMany({

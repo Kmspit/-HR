@@ -68,7 +68,7 @@ export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<P
   const base = {
     payrollId,
     userId: payroll?.userId ?? '',
-    name: payroll?.user.name ?? '',
+    name: payroll?.user?.name ?? '',
     ok: false,
   }
 

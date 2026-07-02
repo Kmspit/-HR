@@ -21,6 +21,10 @@ vi.mock('@/lib/api-handler', () => ({
     new Response(JSON.stringify({ error: String(err) }), { status: 500 }),
 }))
 
+vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
+  ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     payroll: {
