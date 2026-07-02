@@ -1093,6 +1093,7 @@ model Payroll {
   payslipSentVia    String?   // 'LINE' | 'EMAIL'
   payslipSentStatus String?   // 'SUCCESS' | 'FAILED' | 'PENDING'
   payslipSentError  String?
+  payslipCloudinaryPublicId String?
   approvedById    String?
   approvedAt      DateTime?
   note            String?

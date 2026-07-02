@@ -287,6 +287,10 @@ async function runEnsure(force = false): Promise<boolean> {
     'payslipSentError',
     `ALTER TABLE payrolls ADD COLUMN payslipSentError TEXT`,
   )
+  await addPayrollColumnIfMissing(
+    'payslipCloudinaryPublicId',
+    `ALTER TABLE payrolls ADD COLUMN payslipCloudinaryPublicId TEXT`,
+  )
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS user_face_profiles (

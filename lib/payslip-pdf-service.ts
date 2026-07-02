@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
 import { parseTaxDetail } from '@/lib/payroll-tax'
+import { payslipPdfFilename } from '@/lib/payslip-cloudinary-path'
 
 const DEFAULT_COMPANY = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
 
@@ -64,6 +65,11 @@ export async function buildPayrollSlipPdfBuffer(payroll: NonNullable<PayrollSlip
       : null,
   })
 
-  const filename = `slip_${payroll.year}_${String(payroll.month).padStart(2, '0')}_${payroll.user.employeeId ?? payroll.userId.slice(0, 6)}.pdf`
+  const filename = payslipPdfFilename({
+    year: payroll.year,
+    month: payroll.month,
+    userId: payroll.userId,
+    employeeId: payroll.user.employeeId,
+  })
   return { buffer, filename }
 }

@@ -10,7 +10,7 @@ export function payslipPdfFilename(params: {
   return `slip_${params.year}_${String(params.month).padStart(2, '0')}_${emp}.pdf`
 }
 
-/** Deterministic Cloudinary public_id — ต้องตรงกับ upload ใน payslip-line-send */
+/** Deterministic Cloudinary public_id — fallback เมื่อยังไม่มีค่าใน DB */
 export async function resolvePayslipCloudinaryPublicId(
   payrollId: string,
   userId: string,
@@ -20,4 +20,24 @@ export async function resolvePayslipCloudinaryPublicId(
   const folder = payslipFolder(ctx, payrollId)
   const stem = filename.replace(/\.pdf$/i, '')
   return `${folder}/${stem}`
+}
+
+/** ใช้ publicId จาก DB ก่อน ( authoritative จาก upload ) */
+export async function resolvePayslipPdfPublicId(params: {
+  payrollId: string
+  userId: string
+  year: number
+  month: number
+  employeeId: string | null
+  storedPublicId: string | null | undefined
+}): Promise<string> {
+  const stored = params.storedPublicId?.trim()
+  if (stored) return stored
+  const filename = payslipPdfFilename({
+    year: params.year,
+    month: params.month,
+    userId: params.userId,
+    employeeId: params.employeeId,
+  })
+  return resolvePayslipCloudinaryPublicId(params.payrollId, params.userId, filename)
 }

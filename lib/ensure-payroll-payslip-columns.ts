@@ -26,6 +26,11 @@ export async function ensurePayrollPayslipColumns(): Promise<void> {
         'payslipSentError',
         `ALTER TABLE payrolls ADD COLUMN payslipSentError TEXT`,
       )
+      await addColumnIfMissing(
+        'payrolls',
+        'payslipCloudinaryPublicId',
+        `ALTER TABLE payrolls ADD COLUMN payslipCloudinaryPublicId TEXT`,
+      )
     })().catch((err) => {
       ensurePromise = null
       console.error('[ensurePayrollPayslipColumns]', err)

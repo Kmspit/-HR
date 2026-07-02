@@ -251,7 +251,7 @@ export function getSignedPdfUrl(
 
 /** ดึง PDF raw จาก Cloudinary (authenticated) */
 export async function fetchRawPdfBuffer(publicId: string): Promise<Buffer | null> {
-  const url = getSignedPdfUrl(publicId, { expiresInSec: 120 })
+  const url = getSignedPdfUrl(publicId, { expiresInSec: 300 })
   if (!url) return null
   try {
     const res = await fetch(url)

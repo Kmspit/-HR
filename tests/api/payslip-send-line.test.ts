@@ -711,11 +711,9 @@ describe('sendPayslipViaLineForPayroll', () => {
         where: { id: 'pay-1' },
 
         data: expect.objectContaining({
-
           payslipSentStatus: 'SUCCESS',
-
           payslipSentVia: 'LINE',
-
+          payslipCloudinaryPublicId: expect.any(String),
         }),
 
       }),
