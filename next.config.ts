@@ -1,6 +1,19 @@
 import type { NextConfig } from 'next'
 import { withSentryConfig } from '@sentry/nextjs'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  register: true,
+  skipWaiting: true,
+  reloadOnOnline: true,
+  fallbacks: {
+    document: '/offline.html',
+  },
+  customWorkerDir: 'worker',
+})
+
 const nextConfig: NextConfig = {
   async redirects() {
     return [
@@ -44,16 +57,17 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@vladmandic/face-api'],
 }
 
-// Wrap with Sentry only when DSN is configured (skips source-map upload in dev)
+const configWithPwa = withPWA(nextConfig) as NextConfig
+
 const sentryOptions = {
   org:            process.env.SENTRY_ORG,
   project:        process.env.SENTRY_PROJECT,
-  silent:         true,   // suppress build-time Sentry log output
-  disableLogger:  true,   // strip Sentry logger from client bundle
-  hideSourceMaps: true,   // don't expose source maps publicly
-  telemetry:      false,  // don't send build telemetry to Sentry
+  silent:         true,
+  disableLogger:  true,
+  hideSourceMaps: true,
+  telemetry:      false,
 }
 
 export default process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
-  ? withSentryConfig(nextConfig, sentryOptions)
-  : nextConfig
+  ? withSentryConfig(configWithPwa, sentryOptions)
+  : configWithPwa

@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { LoadingProvider } from '@/components/LoadingProvider'
 import NavigationProgress from '@/components/NavigationProgress'
+import PWARegister from '@/components/PWARegister'
 
 const notoSansThai = Noto_Sans_Thai({
   weight: ['300', '400', '500', '600', '700'],
@@ -26,7 +27,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: { default: 'เค เอ็ม เซอร์วิส พลัส', template: '%s — เค เอ็ม เซอร์วิส พลัส' },
   description: 'ระบบ HR — บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
-  icons: { icon: '/favicon.ico' },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icons/icon-192x192.png',
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -37,10 +41,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#070b14' },
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-  ],
+  themeColor: '#3b82f6',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -61,7 +62,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="th" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#3b82f6" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="KM HR" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+      </head>
       <body className={`${notoSansThai.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
+        <PWARegister />
         <ThemeProvider>
           <SessionProvider session={session}>
             <LoadingProvider>

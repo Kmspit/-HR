@@ -39,6 +39,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# next-pwa — สร้างใหม่ทุกครั้งที่ build
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
+public/fallback-*.js
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

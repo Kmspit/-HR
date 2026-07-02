@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#3b82f6" />
+  <title>ออฟไลน์ — KM HR</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #070b14;
+      color: #e2e8f0;
+    }
+    .card {
+      max-width: 22rem;
+      text-align: center;
+    }
+    .icon {
+      width: 4rem;
+      height: 4rem;
+      margin: 0 auto 1.25rem;
+      border-radius: 1rem;
+      background: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+    p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:active { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">KM</div>
+    <h1>ไม่มีการเชื่อมต่ออินเทอร์เน็ต</h1>
+    <p>กรุณาตรวจสอบ Wi‑Fi หรือข้อมูลมือถือ แล้วลองใหม่อีกครั้ง</p>
+    <button type="button" onclick="location.reload()">ลองใหม่</button>
+  </div>
+</body>
+</html>

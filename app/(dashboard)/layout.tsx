@@ -9,6 +9,7 @@ import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
 import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
 import DashboardMotionShell from '@/components/motion/DashboardMotionShell'
 import { NotificationStreamProvider } from '@/components/notification-center/NotificationStreamProvider'
+import PWAInstallPrompt from '@/components/PWAInstallPrompt'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -56,6 +57,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       {/* Mobile bottom nav */}
       <MobileNav role={user.role} />
+      <PWAInstallPrompt />
     </div>
     </NotificationStreamProvider>
   )
