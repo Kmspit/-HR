@@ -33,6 +33,7 @@ type PayrollRow = {
   payslipSentVia?: string | null
   payslipSentStatus?: string | null
   payslipSentError?: string | null
+  lineLinked?: boolean
 }
 
 type LateSummary = {
@@ -270,6 +271,17 @@ export default function PayrollClient({
     setApprovingBatch(false)
   }
 
+  const renderLineStatus = (p: PayrollRow) => {
+    if (p.lineLinked) {
+      return <span className="text-green-400 text-xs">✅ เชื่อมแล้ว</span>
+    }
+    return (
+      <span className="text-red-400 text-xs cursor-help" title="พนักงานยังไม่ได้เชื่อม LINE OA">
+        ❌ ยังไม่เชื่อม
+      </span>
+    )
+  }
+
   const renderPayslipSendStatus = (p: PayrollRow) => {
     if (!p.hasPayroll || p.status !== 'APPROVED') return <span className="text-white/30">—</span>
     if (p.payslipSentStatus === 'SUCCESS' && p.payslipSentAt) {
@@ -282,8 +294,14 @@ export default function PayrollClient({
       )
     }
     if (p.payslipSentStatus === 'FAILED') {
+      const noLine =
+        !p.lineLinked ||
+        (p.payslipSentError?.includes('LINE OA') ?? false)
+      const tooltip = noLine
+        ? 'พนักงานยังไม่ได้เชื่อม LINE OA'
+        : (p.payslipSentError ?? 'ส่งไม่สำเร็จ')
       return (
-        <span className="text-red-400 text-xs" title={p.payslipSentError ?? 'ส่งไม่สำเร็จ'}>
+        <span className="text-red-400 text-xs cursor-help" title={tooltip}>
           ❌ ส่งไม่สำเร็จ
         </span>
       )
@@ -398,9 +416,13 @@ export default function PayrollClient({
         </div>
       </div>
 
+      <p className="text-xs text-slate-500 dark:text-white/45 px-1">
+        พนักงานที่ยังไม่ได้เชื่อม LINE OA ให้แอดบอท LINE แล้วส่งรหัส 6 หลัก
+      </p>
+
       <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
         <div className="table-scroll">
-          <table className="w-full text-sm min-w-[1050px]">
+          <table className="w-full text-sm min-w-[1150px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-white/10">
                 <th className="text-left p-3 text-slate-400 dark:text-white/40 font-medium">พนักงาน</th>
@@ -412,12 +434,13 @@ export default function PayrollClient({
                 <th className="text-right p-3 text-slate-400 dark:text-white/40 font-medium">สุทธิ</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">สถิติ</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">สถานะ</th>
+                <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">LINE</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">ส่งสลิป LINE</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>
               </tr>
             </thead>
             <tbody>
-              {loading && <TableSkeletonRows rows={6} cols={11} />}
+              {loading && <TableSkeletonRows rows={6} cols={12} />}
               {!loading &&
                 payrolls.map((p) => (
                   <tr key={p.id} className={`table-row-hover ${!p.hasPayroll ? 'opacity-70' : ''}`}>
@@ -503,13 +526,15 @@ export default function PayrollClient({
                         </span>
                       )}
                     </td>
+                    <td className="p-3 text-center">{renderLineStatus(p)}</td>
                     <td className="p-3 text-center">{renderPayslipSendStatus(p)}</td>
                     <td className="p-3 text-center">
                       {p.hasPayroll && p.status === 'APPROVED' ? (
                         <button
                           type="button"
                           onClick={() => sendSlipLine(p)}
-                          disabled={sendingId === p.id || sendingBatch}
+                          disabled={sendingId === p.id || sendingBatch || !p.lineLinked}
+                          title={!p.lineLinked ? 'พนักงานยังไม่ได้เชื่อม LINE OA' : undefined}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50 transition"
                         >
                           {sendingId === p.id ? (
@@ -527,7 +552,7 @@ export default function PayrollClient({
                 ))}
               {!loading && payrolls.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-white/30">
+                  <td colSpan={12} className="p-8 text-center text-white/30">
                     ยังไม่มีข้อมูล กด &quot;คำนวณ&quot; เพื่อสร้าง payroll
                   </td>
                 </tr>

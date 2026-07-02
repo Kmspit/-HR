@@ -1,8 +1,14 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
-import { uploadLineMessageContent } from '@/lib/line-file-upload'
 import { buildPayrollSlipPdfBuffer } from '@/lib/payslip-pdf-service'
 import { encryptPayslipPdfBuffer, nationalIdPdfPassword } from '@/lib/payslip-pdf-encrypt'
+import {
+  isCloudinaryConfigured,
+  loadUserImageContext,
+  payslipFolder,
+  uploadAuthenticatedPdf,
+  getSignedPdfUrl,
+} from '@/lib/cloudinary-service'
 
 const MONTH_TH = [
   '',
@@ -11,6 +17,7 @@ const MONTH_TH = [
 ]
 
 const DEFAULT_COMPANY = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
+const PAYSLIP_URL_TTL_SEC = 60 * 60 * 24 * 7 // 7 วัน
 
 export type PayslipLineSendResult = {
   payrollId: string
@@ -21,15 +28,47 @@ export type PayslipLineSendResult = {
   payslipSentAt?: string
 }
 
-function buildLineText(employeeName: string, month: number, year: number): string {
-  const period = `${MONTH_TH[month]} ${year + 543}`
-  return [
-    `📄 สลิปเงินเดือน ${period}`,
-    DEFAULT_COMPANY,
-    '',
-    `เรียน คุณ ${employeeName}`,
-    'กรุณาเปิดไฟล์ด้วยรหัส: เลขบัตรประชาชน 4 ตัวหลัง',
-  ].join('\n')
+function periodLabel(month: number, year: number): string {
+  return `${MONTH_TH[month]} ${year + 543}`
+}
+
+function buildPayslipLineFlex(month: number, year: number, signedUrl: string) {
+  const period = periodLabel(month, year)
+  return {
+    type: 'flex',
+    altText: `สลิปเงินเดือน ${period}`,
+    contents: {
+      type: 'bubble',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          { type: 'text', text: `📄 สลิปเงินเดือน ${period}`, weight: 'bold', wrap: true },
+          { type: 'text', text: DEFAULT_COMPANY, size: 'sm', color: '#888888', wrap: true, margin: 'sm' },
+          { type: 'text', text: 'กรุณากด Download เพื่อดูสลิป', size: 'sm', color: '#888888', wrap: true, margin: 'md' },
+          {
+            type: 'text',
+            text: 'รหัส: เลขบัตรประชาชน 4 ตัวหลัง',
+            size: 'sm',
+            color: '#cc0000',
+            wrap: true,
+            margin: 'sm',
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: { type: 'uri', label: 'Download สลิป PDF', uri: signedUrl },
+            style: 'primary',
+          },
+        ],
+      },
+    },
+  }
 }
 
 async function markPayslipSendStatus(
@@ -42,12 +81,41 @@ async function markPayslipSendStatus(
     where: { id: payrollId },
     data: {
       payslipSentStatus: status,
-      payslipSentVia: status === 'SUCCESS' ? 'LINE' : status === 'PENDING' ? 'LINE' : 'LINE',
+      payslipSentVia: 'LINE',
       payslipSentAt: now ?? undefined,
       payslipSentError: error ?? null,
       ...(status === 'SUCCESS' ? { slipSentAt: now } : {}),
     },
   })
+}
+
+async function uploadEncryptedPayslipPdf(
+  payrollId: string,
+  userId: string,
+  encrypted: Buffer,
+  filename: string,
+): Promise<{ ok: true; signedUrl: string } | { ok: false; error: string }> {
+  if (!isCloudinaryConfigured()) {
+    return { ok: false, error: 'ยังไม่ได้ตั้งค่า Cloudinary — ต้องมี CLOUDINARY_* บน Vercel' }
+  }
+
+  try {
+    const ctx = await loadUserImageContext(userId)
+    const folder = payslipFolder(ctx, payrollId)
+    const uploaded = await uploadAuthenticatedPdf(encrypted, {
+      folder,
+      publicId: filename.replace(/\.pdf$/i, ''),
+    })
+    const signedUrl = getSignedPdfUrl(uploaded.publicId, { expiresInSec: PAYSLIP_URL_TTL_SEC })
+    if (!signedUrl) {
+      return { ok: false, error: 'สร้าง signed URL สำหรับ PDF ไม่สำเร็จ' }
+    }
+    return { ok: true, signedUrl }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'อัปโหลด PDF ไม่สำเร็จ'
+    console.error('[payslip-line] cloudinary upload', payrollId, message)
+    return { ok: false, error: message }
+  }
 }
 
 export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<PayslipLineSendResult> {
@@ -127,7 +195,12 @@ export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<P
     const { buffer, filename } = await buildPayrollSlipPdfBuffer(fullPayroll)
     const encrypted = await encryptPayslipPdfBuffer(buffer, password)
 
-    const upload = await uploadLineMessageContent(encrypted, 'application/pdf', filename)
+    const upload = await uploadEncryptedPayslipPdf(
+      payrollId,
+      payroll.userId,
+      encrypted,
+      filename,
+    )
     if (!upload.ok) {
       await markPayslipSendStatus(payrollId, 'FAILED', upload.error)
       return {
@@ -138,13 +211,16 @@ export async function sendPayslipViaLineForPayroll(payrollId: string): Promise<P
       }
     }
 
-    const text = buildLineText(payroll.user.name, payroll.month, payroll.year)
-    const push = await pushLineMessages(payroll.user.lineUserId, [
-      { type: 'text', text },
-      { type: 'file', fileName: filename, messageId: upload.messageId },
-    ])
+    const flex = buildPayslipLineFlex(payroll.month, payroll.year, upload.signedUrl)
+    const push = await pushLineMessages(payroll.user.lineUserId, [flex])
 
     if (!push.ok) {
+      console.error('[payslip-line] LINE push failed', {
+        payrollId,
+        userId: payroll.userId,
+        lineUserId: payroll.user.lineUserId,
+        error: push.error,
+      })
       await markPayslipSendStatus(payrollId, 'FAILED', push.error ?? 'ส่ง LINE ไม่สำเร็จ')
       return {
         ...base,

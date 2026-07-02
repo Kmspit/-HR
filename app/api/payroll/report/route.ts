@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
         position: true,
         socialSecurity: true,
         baseSalary: true,
+        lineUserId: true,
       },
       orderBy: { name: 'asc' },
     }),
@@ -112,6 +113,7 @@ export async function GET(req: NextRequest) {
         payslipSentVia: p.payslipSentVia ?? null,
         payslipSentStatus: p.payslipSentStatus ?? null,
         payslipSentError: p.payslipSentError ?? null,
+        lineLinked: !!emp.lineUserId,
       }
     }
     return {
@@ -142,6 +144,7 @@ export async function GET(req: NextRequest) {
       payslipSentVia: null,
       payslipSentStatus: null,
       payslipSentError: null,
+      lineLinked: !!emp.lineUserId,
     }
   })
 

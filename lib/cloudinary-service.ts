@@ -145,6 +145,10 @@ export function warningFolder(ctx: UserImageContext, warningId: string): string 
   return `${ROOT}/warnings/${employeeFolderKey(ctx)}/${warningId}`
 }
 
+export function payslipFolder(ctx: UserImageContext, payrollId: string): string {
+  return `${ROOT}/payslips/${employeeFolderKey(ctx)}/${payrollId}`
+}
+
 /** อัปโหลดรูป — type authenticated (ไม่ public) */
 export async function uploadImage(
   buffer: Buffer,
@@ -194,6 +198,54 @@ export async function deleteImage(publicId: string): Promise<boolean> {
   } catch (err) {
     console.error('[cloudinary] delete', publicId, err)
     return false
+  }
+}
+
+const MAX_PDF_BYTES = 10 * 1024 * 1024
+
+/** อัปโหลด PDF — type authenticated (private, ต้องใช้ signed URL) */
+export async function uploadAuthenticatedPdf(
+  buffer: Buffer,
+  options: { folder: string; publicId?: string; filename?: string },
+): Promise<{ publicId: string; secureUrl: string }> {
+  requireCloudinary()
+  if (buffer.length > MAX_PDF_BYTES) {
+    throw new Error(`PDF size ${(buffer.length / 1024 / 1024).toFixed(1)} MB exceeds 10 MB limit.`)
+  }
+
+  const dataUri = `data:application/pdf;base64,${buffer.toString('base64')}`
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: options.folder,
+    public_id: options.publicId,
+    resource_type: 'raw',
+    type: 'authenticated',
+    overwrite: true,
+    format: 'pdf',
+  })
+
+  return {
+    publicId: result.public_id,
+    secureUrl: result.secure_url,
+  }
+}
+
+/** Signed download URL สำหรับ PDF (authenticated raw) */
+export function getSignedPdfUrl(
+  publicId: string,
+  options?: { expiresInSec?: number },
+): string | null {
+  if (!publicId || !isCloudinaryConfigured()) return null
+  ensureCloudinaryConfig()
+  const expiresIn = options?.expiresInSec ?? 60 * 60 * 24 * 7 // 7 วัน
+  try {
+    return cloudinary.utils.private_download_url(publicId, 'pdf', {
+      resource_type: 'raw',
+      type: 'authenticated',
+      expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+    })
+  } catch (err) {
+    console.error('[cloudinary] getSignedPdfUrl', err)
+    return null
   }
 }
 

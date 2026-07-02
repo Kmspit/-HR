@@ -8,6 +8,7 @@ import { canManagePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchNestedUserWhere } from '@/lib/branch-scope'
 import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { resolveLineChannelAccessToken } from '@/lib/line-credentials'
 
 const bodySchema = z.object({
   payrollId: z.string().min(1),
@@ -25,6 +26,34 @@ export async function POST(req: NextRequest) {
     }
     if (!canManagePayroll(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const tokenResolve = await resolveLineChannelAccessToken()
+    if (!tokenResolve.token) {
+      console.error('[payslip/send-line] LINE token missing — set LINE_CHANNEL_ACCESS_TOKEN on Vercel')
+      return NextResponse.json(
+        {
+          error:
+            'ไม่พบ LINE Channel Access Token — ตั้ง LINE_CHANNEL_ACCESS_TOKEN บน Vercel ให้ตรงกับ LINE Official Account แล้ว Redeploy',
+        },
+        { status: 503 },
+      )
+    }
+    if (tokenResolve.tokenValid === false) {
+      console.error('[payslip/send-line] LINE token invalid', {
+        source: tokenResolve.tokenSourceDetail ?? tokenResolve.source,
+        validationError: tokenResolve.validationError,
+        hint: 'Issue new token in LINE Developers → Messaging API → match Vercel LINE_CHANNEL_ACCESS_TOKEN',
+      })
+      return NextResponse.json(
+        {
+          error:
+            tokenResolve.validationError ??
+            'LINE Access Token ไม่ถูกต้องหรือหมดอายุ — Issue token ใหม่ใน LINE Developers แล้วอัปเดต Vercel',
+          tokenSource: tokenResolve.tokenSourceDetail ?? tokenResolve.source,
+        },
+        { status: 503 },
+      )
     }
 
     const parsed = bodySchema.safeParse(await req.json())
