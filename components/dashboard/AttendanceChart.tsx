@@ -44,7 +44,7 @@ export default function AttendanceChart({ data }: { data: DayData[] }) {
           tickLine={false}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)', radius: 6 }} />
-        <Bar dataKey="present" name="เข้างาน" fill="#3b82f6" radius={[4,4,0,0]} />
+        <Bar dataKey="present" name="เข้างาน" fill="#22c55e" radius={[4,4,0,0]} />
         <Bar dataKey="late"    name="มาสาย"  fill="#f59e0b" radius={[4,4,0,0]} />
         <Bar dataKey="absent"  name="ขาด/ลา" fill="#ef4444" radius={[4,4,0,0]} />
       </BarChart>

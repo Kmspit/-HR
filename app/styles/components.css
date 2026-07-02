@@ -26,15 +26,15 @@
 
   /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-green-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent;
   }
   .gradient-text-blue {
-    @apply bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent;
   }
 
   /* Glow effects */
-  .glow-blue { box-shadow: 0 0 40px rgba(59, 130, 246, 0.15), 0 0 80px rgba(59, 130, 246, 0.05); }
-  .glow-sm { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+  .glow-blue { box-shadow: 0 0 40px rgba(34, 197, 94, 0.15), 0 0 80px rgba(34, 197, 94, 0.05); }
+  .glow-sm { box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
 
   /* Card hover */
   .card-hover {
@@ -109,25 +109,24 @@
   /* Gradient borders */
   .border-gradient {
     position: relative;
-    background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1));
+    background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(139,92,246,0.1));
     border: 1px solid transparent;
     background-clip: padding-box;
   }
 
-  /* Sidebar active — light mode: solid blue-50 with blue-200 border (clearly visible) */
+  /* Sidebar active — light mode */
   .nav-active {
-    background: #EFF6FF;
-    border: 1px solid #BFDBFE;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
   }
-  /* Dark mode nav-active — blue (unchanged) */
   .dark .nav-active {
-    background: linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.15) 100%);
-    border: 1px solid rgba(59,130,246,0.25);
-    box-shadow: 0 0 20px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+    background: linear-gradient(135deg, rgba(34,197,94,0.2) 0%, rgba(22,163,74,0.15) 100%);
+    border: 1px solid rgba(34,197,94,0.25);
+    box-shadow: 0 0 20px rgba(34,197,94,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
   }
 
   /* Stat card gradients */
-  .stat-blue { background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(37,99,235,0.06) 100%); border: 1px solid rgba(59,130,246,0.2); }
+  .stat-blue { background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(22,163,74,0.06) 100%); border: 1px solid rgba(34,197,94,0.2); }
   .stat-violet { background: linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(109,40,217,0.06) 100%); border: 1px solid rgba(139,92,246,0.2); }
   .stat-green { background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(21,128,61,0.06) 100%); border: 1px solid rgba(34,197,94,0.2); }
   .stat-amber { background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(180,83,9,0.06) 100%); border: 1px solid rgba(245,158,11,0.2); }
@@ -136,8 +135,8 @@
   /* Badge — light-mode-first, dark mode via dark: variants */
   .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
   .badge-blue {
-    @apply badge bg-blue-100 text-blue-700 border border-blue-200;
-    @apply dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/25;
+    @apply badge bg-green-100 text-green-700 border border-green-200;
+    @apply dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/25;
   }
   .badge-green {
     @apply badge bg-green-100 text-green-700 border border-green-200;
@@ -176,8 +175,8 @@
     @apply dashboard-form-control w-full rounded-xl border px-4 py-3 text-[14px] leading-relaxed transition-all duration-150
            border-slate-600 bg-slate-800 text-slate-50 placeholder-slate-400
            light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-           dark:hover:bg-slate-700 dark:hover:border-blue-500;
+           focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500
+           dark:hover:bg-slate-700 dark:hover:border-green-500;
   }
 
   /* Native select trigger */
@@ -185,14 +184,14 @@
     @apply dashboard-form-control w-full rounded-xl border px-3 py-2.5 text-sm shadow-sm cursor-pointer appearance-none transition-all duration-150
            border-slate-600 bg-slate-800 text-slate-50
            light:border-slate-300 light:bg-white light:text-slate-900
-           hover:border-blue-500 dark:hover:bg-slate-700 dark:hover:border-blue-500
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+           hover:border-green-500 dark:hover:bg-slate-700 dark:hover:border-green-500
+           focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500;
   }
 
   .dashboard-form-control {
     @apply appearance-none border-slate-600 bg-slate-800 text-slate-50 placeholder-slate-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-           dark:hover:bg-slate-700 dark:hover:border-blue-500;
+           focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500
+           dark:hover:bg-slate-700 dark:hover:border-green-500;
   }
 
   .dashboard-dialog-panel {
@@ -206,11 +205,11 @@
 
   /* Button variants */
   .btn-primary {
-    @apply flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white
-           shadow-lg shadow-blue-600/25 transition-all duration-150
-           hover:bg-blue-500 hover:-translate-y-0.5 hover:shadow-blue-500/30
+    @apply flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white
+           shadow-lg shadow-green-600/25 transition-all duration-150
+           hover:bg-green-500 hover:-translate-y-0.5 hover:shadow-green-500/30
            active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-           focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+           focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2
            dark:focus-visible:ring-offset-slate-900 light:focus-visible:ring-offset-white;
   }
   .btn-secondary {
@@ -220,7 +219,7 @@
            light:border-slate-300 light:bg-white light:text-slate-700 light:shadow-sm
            light:hover:border-slate-400 light:hover:bg-slate-50 light:hover:text-slate-900
            hover:-translate-y-0.5 active:translate-y-0
-           focus-visible:ring-2 focus-visible:ring-blue-500/30;
+           focus-visible:ring-2 focus-visible:ring-green-500/30;
   }
   .btn-ghost {
     @apply flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition-all duration-150
@@ -230,11 +229,11 @@
 
   /* hr-btn-* / hr-input — aliases used by AutomationClient and similar pages */
   .hr-btn-primary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white
            shadow-sm cursor-pointer transition-all duration-150
-           hover:bg-blue-500 hover:-translate-y-0.5
+           hover:bg-green-500 hover:-translate-y-0.5
            active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2
            dark:focus-visible:ring-offset-slate-900;
   }
   .hr-btn-secondary {
@@ -244,15 +243,15 @@
            active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
            dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200
            dark:hover:bg-white/[0.1] dark:hover:border-white/20
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30;
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30;
   }
   .hr-input {
     @apply dashboard-form-control rounded-lg border px-3 py-2 text-sm
            border-slate-600 bg-slate-800 text-slate-50 placeholder-slate-400
            light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-400
            transition-colors duration-150
-           hover:border-blue-500 dark:hover:bg-slate-700 dark:hover:border-blue-500
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+           hover:border-green-500 dark:hover:bg-slate-700 dark:hover:border-green-500
+           focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500;
   }
 
   /* Table */

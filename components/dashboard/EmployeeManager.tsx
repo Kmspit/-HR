@@ -126,7 +126,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           { label: 'Active', value: stats.active, color: 'text-green-600 dark:text-green-400' },
           { label: 'รออนุมัติ', value: stats.pending, color: 'text-amber-600 dark:text-yellow-400' },
           { label: 'ระงับ', value: stats.disabled, color: 'text-slate-500 dark:text-slate-400' },
-          { label: 'ทั้งหมด', value: stats.total, color: 'text-blue-600 dark:text-blue-400' },
+          { label: 'ทั้งหมด', value: stats.total, color: 'text-green-600 dark:text-green-400' },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 text-center shadow-sm">
             <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
@@ -156,7 +156,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
               <SlidersHorizontal size={15} className="text-slate-400" />
               ตัวกรองขั้นสูง
               {(sel('divisionId') || sel('departmentId') || sel('sectionId')) && (
-                <span className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="h-2 w-2 rounded-full bg-green-500" />
               )}
             </span>
             <ChevronDown size={15} className={`text-slate-400 transition-transform ${showOrgFilter ? 'rotate-180' : ''}`} />
@@ -166,7 +166,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
               <div>
                 <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ฝ่าย</label>
                 <select value={sel('divisionId') || 'all'} onChange={(e) => setOrgFilter('divisionId', e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-green-500">
                   <option value="all">ทุกฝ่าย</option>
                   {orgFilterOptions.divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -174,7 +174,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
               <div>
                 <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">แผนก</label>
                 <select value={sel('departmentId') || 'all'} onChange={(e) => setOrgFilter('departmentId', e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-green-500">
                   <option value="all">ทุกแผนก</option>
                   {orgFilterOptions.departments.filter((d) => !sel('divisionId') || d.divisionId === sel('divisionId')).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
@@ -182,7 +182,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
               <div>
                 <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ส่วนงาน</label>
                 <select value={sel('sectionId') || 'all'} onChange={(e) => setOrgFilter('sectionId', e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500">
+                  className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-green-500">
                   <option value="all">ทุกส่วนงาน</option>
                   {orgFilterOptions.sections.filter((s) => !sel('departmentId') || s.departmentId === sel('departmentId')).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -201,7 +201,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
             { id: 'disabled' as const, label: `ระงับ (${stats.disabled})` },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-shrink-0 rounded-lg px-4 py-2 text-[13px] font-semibold transition-all min-h-[40px] ${tab === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+              className={`flex-shrink-0 rounded-lg px-4 py-2 text-[13px] font-semibold transition-all min-h-[40px] ${tab === t.id ? 'bg-green-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
               {t.label}
             </button>
           ))}
@@ -210,7 +210,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           <div className="relative flex-1 max-w-xs">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" placeholder="ค้นหาชื่อ, อีเมล, แผนก..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900 py-2.5 pl-9 pr-3 text-[13px] text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500" />
+              className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-900 py-2.5 pl-9 pr-3 text-[13px] text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-green-500" />
           </div>
         )}
       </div>
@@ -225,7 +225,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           ) : filtered.map((u) => (
             <div key={`card-${u.id}`} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/10 text-sm font-bold text-blue-700 dark:text-blue-400">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-500/10 text-sm font-bold text-green-700 dark:text-green-400">
                   {u.name[0]}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -255,7 +255,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                 <button
                   type="button"
                   onClick={() => setAssignUser(u)}
-                  className="flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-blue-300 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-500/10 text-[13px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 touch-manipulation"
+                  className="flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 text-[13px] font-semibold text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-500/20 touch-manipulation"
                 >
                   <Layers size={12} /> ฝ่าย/แผนก
                 </button>
@@ -273,7 +273,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           ) : filtered.map((u) => (
             <div key={`card-${u.id}`} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/10 text-sm font-bold text-blue-700 dark:text-blue-400">{u.name[0]}</div>
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-500/10 text-sm font-bold text-green-700 dark:text-green-400">{u.name[0]}</div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-slate-900 dark:text-white text-[14px]">{u.name}</p>
                   <p className="text-[12px] text-slate-500 mt-0.5 truncate">{u.position ?? '—'} · {u.department ?? '—'}</p>
@@ -317,7 +317,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                 <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-500/10 text-[13px] font-bold text-blue-700 dark:text-blue-400">{u.name[0]}</div>
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-100 dark:bg-green-500/10 text-[13px] font-bold text-green-700 dark:text-green-400">{u.name[0]}</div>
                       <div>
                         <p className="font-semibold text-[14px] text-slate-900 dark:text-white">{u.name}</p>
                         <p className="text-[12px] text-slate-500">{u.email}</p>
@@ -358,7 +358,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                         <Pencil size={12} /> แก้ไข
                       </Link>
                       <button type="button" onClick={() => setAssignUser(u)}
-                        className="flex min-h-[40px] items-center gap-1 rounded-lg border border-blue-300 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-500/10 px-3 py-2 text-[13px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 touch-manipulation">
+                        className="flex min-h-[40px] items-center gap-1 rounded-lg border border-green-300 dark:border-green-500/40 bg-green-50 dark:bg-green-500/10 px-3 py-2 text-[13px] font-semibold text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-500/20 touch-manipulation">
                         <Layers size={12} /> กำหนดฝ่าย/แผนก
                       </button>
                     </div>
@@ -382,7 +382,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
       {/* Mobile FAB — เพิ่มพนักงาน */}
       <Link
         href="/register"
-        className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+        className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-green-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-green-600/30 active:scale-95 transition-transform"
         style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}
       >
         <UserPlus size={16} />

@@ -68,7 +68,7 @@ export default function ApprovalDetailDrawer({ item, onClose }: Props) {
           <div className="border-t border-slate-100 dark:border-white/[0.06] px-5 py-4">
             <Link
               href={item.deepLink}
-              className="inline-flex items-center gap-2 text-[13px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+              className="inline-flex items-center gap-2 text-[13px] font-semibold text-green-600 dark:text-green-400 hover:underline"
             >
               เปิดหน้ารายละเอียดเต็ม <ExternalLink className="h-3.5 w-3.5" />
             </Link>

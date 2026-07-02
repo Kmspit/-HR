@@ -12,7 +12,7 @@ import {
 
 const KANBAN_COLS: { id: string; label: string; colorCls: string }[] = [
   { id: 'NEW',            label: 'ใหม่',      colorCls: 'border-slate-300 dark:border-slate-600' },
-  { id: 'ASSIGNED',       label: 'มอบหมาย',   colorCls: 'border-blue-300 dark:border-blue-700' },
+  { id: 'ASSIGNED',       label: 'มอบหมาย',   colorCls: 'border-green-300 dark:border-green-700' },
   { id: 'IN_PROGRESS',    label: 'กำลังทำ',   colorCls: 'border-amber-300 dark:border-amber-700' },
   { id: 'WAITING_REVIEW', label: 'รอตรวจ',    colorCls: 'border-purple-300 dark:border-purple-700' },
   { id: 'WAITING_DOC',    label: 'รอเอกสาร',  colorCls: 'border-yellow-300 dark:border-yellow-700' },
@@ -44,7 +44,7 @@ export function KanbanBoard({ tasks, onSelect }: KanbanProps) {
             )}
             {colTasks.map((t) => (
               <button key={t.id} type="button" onClick={() => onSelect(t)}
-                className="w-full text-left rounded-xl bg-white dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.07] px-3 py-2.5 hover:border-blue-200 dark:hover:border-blue-500/30 hover:shadow-sm transition-all">
+                className="w-full text-left rounded-xl bg-white dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.07] px-3 py-2.5 hover:border-green-200 dark:hover:border-green-500/30 hover:shadow-sm transition-all">
                 {(t.taskDepartment || t.caseNumber) && (
                   <div className="flex items-center gap-1.5 mb-1.5">
                     {t.taskDepartment && (
@@ -119,7 +119,7 @@ export function TaskRow({ task, showAssigner, onClick }: TaskRowProps) {
 
   return (
     <tr onClick={onClick}
-      className={`border-b border-slate-100 dark:border-white/[0.04] hover:bg-blue-50/60 dark:hover:bg-white/[0.03] transition-colors cursor-pointer ${overdue ? 'bg-red-50/40 dark:bg-red-500/[0.03]' : ''}`}>
+      className={`border-b border-slate-100 dark:border-white/[0.04] hover:bg-green-50/60 dark:hover:bg-white/[0.03] transition-colors cursor-pointer ${overdue ? 'bg-red-50/40 dark:bg-red-500/[0.03]' : ''}`}>
 
       <td className="px-4 py-3 max-w-[160px]">
         {task.caseNumber && (

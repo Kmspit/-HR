@@ -135,12 +135,12 @@ export default function RecoveryClient({ userId, userRole, userName }: {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setView('payments')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === 'payments' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === 'payments' ? 'bg-green-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
             รายการชำระ
           </button>
           {canConfirm && (
             <button onClick={() => setView('dashboard')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-green-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
               Dashboard
             </button>
           )}
@@ -162,7 +162,7 @@ export default function RecoveryClient({ userId, userRole, userName }: {
           {/* Left: payment list */}
           <div className="w-full md:w-[40%] md:max-w-[480px] shrink-0 flex flex-col gap-2 border-r border-slate-200 dark:border-white/[0.06] overflow-y-auto p-3">
             <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}
-              className="h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition">
+              className="h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500/20 transition">
               <option value="">ทุกสถานะ</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
@@ -181,7 +181,7 @@ export default function RecoveryClient({ userId, userRole, userName }: {
                 <button key={p.id} onClick={() => setSelected(p)}
                   className={`w-full text-left p-3 rounded-xl border transition-all ${
                     selected?.id === p.id
-                      ? 'border-blue-500/50 bg-blue-50/80 dark:bg-blue-900/20'
+                      ? 'border-green-500/50 bg-green-50/80 dark:bg-green-900/20'
                       : 'border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.03] hover:border-slate-300 dark:hover:border-white/[0.12]'
                   }`}>
                   <div className="flex items-start justify-between gap-2">
@@ -343,9 +343,9 @@ function PaymentDetail({ payment, userId, userRole, canConfirm, uploading, onCon
 
       {/* Case & Promise links */}
       {payment.case && (
-        <div className="rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 p-3">
-          <p className="text-[10px] text-blue-500 mb-0.5">เชื่อมกับคดี</p>
-          <p className="text-[13px] font-medium text-blue-700 dark:text-blue-300">[{payment.case.caseNumber}] {payment.case.caseTitle}</p>
+        <div className="rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 p-3">
+          <p className="text-[10px] text-green-500 mb-0.5">เชื่อมกับคดี</p>
+          <p className="text-[13px] font-medium text-green-700 dark:text-green-300">[{payment.case.caseNumber}] {payment.case.caseTitle}</p>
         </div>
       )}
 
@@ -418,7 +418,7 @@ function PaymentDetail({ payment, userId, userRole, canConfirm, uploading, onCon
 
 function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (id: string) => void }) {
   const kpiCards = [
-    { label: 'วันนี้',       value: data.kpi.today,    color: 'text-blue-600' },
+    { label: 'วันนี้',       value: data.kpi.today,    color: 'text-green-600' },
     { label: 'สัปดาห์นี้',   value: data.kpi.week,     color: 'text-violet-600' },
     { label: 'เดือนนี้',     value: data.kpi.month,    color: 'text-green-600' },
     { label: 'ทั้งหมด',       value: data.kpi.allTime,  color: 'text-slate-700 dark:text-slate-200' },
@@ -654,7 +654,7 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
             <div>
               <label className="text-xs text-slate-500 mb-1 block">ลูกหนี้ *</label>
               <select value={form.debtorId} onChange={e => set('debtorId', e.target.value)}
-                className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
                 <option value="">— เลือกลูกหนี้ —</option>
                 {debtors.map(d => <option key={d.id} value={d.id}>[{d.debtorNumber}] {d.firstName} {d.lastName}</option>)}
               </select>
@@ -681,7 +681,7 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">จำนวน (บาท) *</label>
                 <input type="number" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0"
-                  className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                  className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">วันที่ชำระ</label>

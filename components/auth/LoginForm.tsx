@@ -159,14 +159,14 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
   }
 
   const inputBase =
-    'w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all bg-white/[0.06] text-white placeholder:text-slate-500 border-white/10 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10'
+    'w-full rounded-xl border px-4 py-3.5 text-[15px] outline-none transition-all bg-white/[0.06] text-white placeholder:text-slate-500 border-white/10 focus:border-green-500/60 focus:ring-2 focus:ring-green-500/10'
   const inputError = `${inputBase} border-red-500/50`
 
   if (step === '2fa') {
     return (
       <form onSubmit={handleVerifyOtp} className="space-y-4">
         <div className="flex flex-col items-center gap-2 pb-2">
-          <ShieldCheck size={40} className="text-blue-400" />
+          <ShieldCheck size={40} className="text-green-400" />
           <p className="text-sm text-slate-300 text-center">
             กรุณากรอกรหัส OTP 6 หลักที่ส่งไปยัง LINE ของคุณ
           </p>
@@ -194,7 +194,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
           type="submit"
           disabled={loading}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+          style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}
         >
           {loading
             ? <><Loader2 size={16} className="animate-spin" /> กำลังยืนยัน...</>
@@ -259,7 +259,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         type="submit"
         disabled={loading || englishBlocked}
         className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
-        style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+        style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}
       >
         {loading
           ? <><Loader2 size={16} className="animate-spin" /> กำลังเข้าสู่ระบบ...</>

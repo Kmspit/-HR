@@ -43,7 +43,7 @@ const CATEGORIES: Record<string, string> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  CONTRACT: 'bg-blue-500/15 text-blue-400',
+  CONTRACT: 'bg-green-500/15 text-green-400',
   AGREEMENT: 'bg-indigo-500/15 text-indigo-400',
   EVIDENCE: 'bg-orange-500/15 text-orange-400',
   COURT_DOCUMENT: 'bg-red-500/15 text-red-400',
@@ -60,7 +60,7 @@ function FileTypeIcon({ mimeType, format, resourceType }: { mimeType?: string | 
   const mime = mimeType ?? ''
   if (resourceType === 'image' && !fmt.includes('pdf') && !mime.includes('pdf')) return <ImageIcon className="w-4 h-4 text-green-400" />
   if (mime.includes('pdf') || fmt === 'pdf') return <FileText className="w-4 h-4 text-red-400" />
-  if (['doc', 'docx'].includes(fmt) || mime.includes('word')) return <FileText className="w-4 h-4 text-blue-400" />
+  if (['doc', 'docx'].includes(fmt) || mime.includes('word')) return <FileText className="w-4 h-4 text-green-400" />
   if (['xls', 'xlsx'].includes(fmt) || mime.includes('sheet')) return <FileText className="w-4 h-4 text-green-400" />
   if (fmt === 'zip' || mime.includes('zip')) return <Archive className="w-4 h-4 text-yellow-400" />
   return <File className="w-4 h-4 text-slate-400" />
@@ -156,7 +156,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
                 download={f.fileName}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition"
               >
                 <Download className="w-4 h-4" /> ดาวน์โหลด
               </a>
@@ -263,7 +263,7 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
             onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
             onClick={() => inputRef.current?.click()}
             className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
-              dragging ? 'border-blue-500 bg-blue-500/10' : file ? 'border-green-500/40 bg-green-500/5' : 'border-white/20 hover:border-white/30'
+              dragging ? 'border-green-500 bg-green-500/10' : file ? 'border-green-500/40 bg-green-500/5' : 'border-white/20 hover:border-white/30'
             }`}
           >
             <input ref={inputRef} type="file" className="hidden"
@@ -282,9 +282,9 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
             )}
             {uploading && (
               <div className="absolute inset-0 rounded-xl bg-slate-900/80 flex flex-col items-center justify-center gap-1.5">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                <Loader2 className="w-5 h-5 animate-spin text-green-400" />
                 <div className="w-24 bg-white/10 rounded-full h-1">
-                  <div className="bg-blue-500 h-1 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                  <div className="bg-green-500 h-1 rounded-full transition-all" style={{ width: `${progress}%` }} />
                 </div>
               </div>
             )}
@@ -292,16 +292,16 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
 
           <input value={title} onChange={(e) => setTitle(e.target.value)}
             placeholder="ชื่อเอกสาร *"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
 
           <select value={category} onChange={(e) => setCategory(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50">
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/50">
             {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
 
           <div className="flex gap-2">
             <button onClick={submit} disabled={uploading || !file}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition">
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               อัปโหลด
             </button>
@@ -359,7 +359,7 @@ export default function CaseDocumentsTab({
         <select
           value={catFilter}
           onChange={(e) => setCatFilter(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
+          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/50"
         >
           <option value="">ทุกประเภท</option>
           {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -368,7 +368,7 @@ export default function CaseDocumentsTab({
         {canEdit && (
           <button
             onClick={() => setShowUpload(true)}
-            className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+            className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition"
           >
             <Plus className="w-4 h-4" /> อัปโหลดเอกสาร
           </button>
@@ -383,7 +383,7 @@ export default function CaseDocumentsTab({
           <FolderOpen className="w-10 h-10 opacity-30" />
           <p className="text-sm">ไม่มีเอกสารในคดีนี้</p>
           {canEdit && (
-            <button onClick={() => setShowUpload(true)} className="flex items-center gap-1.5 text-blue-400 text-sm hover:text-blue-300 transition">
+            <button onClick={() => setShowUpload(true)} className="flex items-center gap-1.5 text-green-400 text-sm hover:text-green-300 transition">
               <Plus className="w-4 h-4" /> อัปโหลดเอกสารแรก
             </button>
           )}
@@ -408,7 +408,7 @@ export default function CaseDocumentsTab({
                     <span>{doc.uploadedBy.name}</span>
                     <span>{formatDate(doc.createdAt)}</span>
                     {f?.fileSize && <span>{formatBytes(f.fileSize)}</span>}
-                    {doc._count.files > 1 && <span className="text-blue-400">v{f?.version ?? 1}</span>}
+                    {doc._count.files > 1 && <span className="text-green-400">v{f?.version ?? 1}</span>}
                   </div>
                   {doc.tags && (
                     <div className="flex gap-1 mt-1 flex-wrap">

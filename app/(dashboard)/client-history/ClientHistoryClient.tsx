@@ -88,7 +88,7 @@ export default function ClientHistoryClient({ userId, userRole }: { userId: stri
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Left: company list */}
         <div className="w-72 flex-shrink-0 flex flex-col gap-3">
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาบริษัท…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาบริษัท…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
           <select value={filterSt} onChange={e => setFilterSt(e.target.value)} className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
             <option value="">ทุกสถานะ</option>
             {['ACTIVE', 'INACTIVE', 'SUSPENDED', 'CONTRACT_EXPIRED'].map(s => (
@@ -102,7 +102,7 @@ export default function ClientHistoryClient({ userId, userRole }: { userId: stri
             ) : companies.length === 0 ? (
               <p className="text-center text-sm text-gray-400 py-6">ไม่มีข้อมูล</p>
             ) : companies.map(c => (
-              <button key={c.id} onClick={() => { loadDetail(c.id); setActiveTab('summary') }} className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'}`}>
+              <button key={c.id} onClick={() => { loadDetail(c.id); setActiveTab('summary') }} className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id === c.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-300'}`}>
                 <div className="flex items-start justify-between">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400 font-mono">{c.clientCode}</p>
@@ -169,14 +169,14 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
             {company.contactName && <p className="text-sm text-gray-500">👤 {company.contactName}</p>}
             {company.phone && <p className="text-sm text-gray-500">📱 {company.phone}</p>}
           </div>
-          <Link href="/client-companies" className="text-sm text-blue-600 hover:underline">แก้ไขข้อมูล →</Link>
+          <Link href="/client-companies" className="text-sm text-green-600 hover:underline">แก้ไขข้อมูล →</Link>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 px-4 overflow-x-auto">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
+          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
         ))}
       </div>
 
@@ -187,7 +187,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
             {/* KPI */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'คดีทั้งหมด',        value: String(company.tasks?.length ?? 0),                color: 'text-blue-600' },
+                { label: 'คดีทั้งหมด',        value: String(company.tasks?.length ?? 0),                color: 'text-green-600' },
                 { label: 'คดีเสร็จสิ้น',      value: String(completedTasks),                           color: 'text-green-600' },
                 { label: 'สัญญามีผล',          value: String(activeContracts.length),                   color: 'text-purple-600' },
                 { label: 'SLA ผ่าน',           value: slaRate != null ? `${slaRate}%` : '—',            color: Number(slaRate ?? 100) >= 80 ? 'text-green-600' : 'text-red-600' },
@@ -210,9 +210,9 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                   <p className="text-xs text-gray-500 mb-1">ค่าใช้จ่ายรวม</p>
                   <p className="text-lg font-bold text-red-600">฿{fmt(company._revenue.expense)}</p>
                 </div>
-                <div className={`rounded-xl p-3 text-center ${company._revenue.profit >= 0 ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-orange-50 dark:bg-orange-900/10'}`}>
+                <div className={`rounded-xl p-3 text-center ${company._revenue.profit >= 0 ? 'bg-green-50 dark:bg-green-900/10' : 'bg-orange-50 dark:bg-orange-900/10'}`}>
                   <p className="text-xs text-gray-500 mb-1">กำไรสุทธิ</p>
-                  <p className={`text-lg font-bold ${company._revenue.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>฿{fmt(company._revenue.profit)}</p>
+                  <p className={`text-lg font-bold ${company._revenue.profit >= 0 ? 'text-green-600' : 'text-orange-600'}`}>฿{fmt(company._revenue.profit)}</p>
                 </div>
               </div>
             )}
@@ -246,7 +246,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                         <p className="truncate text-gray-800 dark:text-gray-200">{t.title}</p>
                         {t.caseNumber && <p className="text-xs text-gray-400 font-mono">{t.caseNumber}</p>}
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-green-100 text-green-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
                     </div>
                   ))}
                 </div>
@@ -268,7 +268,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                     <p className="text-xs text-gray-500 mt-0.5">ผู้รับผิดชอบ: {t.assignee.name}{t.assignee.department ? ` · ${t.assignee.department}` : ''}</p>
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : t.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : t.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
                     <p className="text-xs text-gray-400 mt-1">{fmtDate(t.updatedAt)}</p>
                   </div>
                 </div>
@@ -317,7 +317,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                 <div className="grid grid-cols-3 gap-3 mb-3">
                   <div className="bg-green-50 dark:bg-green-900/10 rounded-lg p-3 text-center"><p className="text-lg font-bold text-green-600">{met}</p><p className="text-xs text-gray-500">ผ่าน</p></div>
                   <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-3 text-center"><p className="text-lg font-bold text-red-600">{missed}</p><p className="text-xs text-gray-500">ไม่ผ่าน</p></div>
-                  <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-3 text-center"><p className="text-lg font-bold text-blue-600">{slaRate != null ? `${slaRate}%` : '—'}</p><p className="text-xs text-gray-500">อัตราผ่าน</p></div>
+                  <div className="bg-green-50 dark:bg-green-900/10 rounded-lg p-3 text-center"><p className="text-lg font-bold text-green-600">{slaRate != null ? `${slaRate}%` : '—'}</p><p className="text-xs text-gray-500">อัตราผ่าน</p></div>
                 </div>
                 {(company.slaRecords ?? []).map(r => (
                   <div key={r.id} className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3 text-sm">

@@ -252,7 +252,7 @@ export default function EmployeeEditClient({
           type="button"
           onClick={save}
           disabled={saving}
-          className="hidden sm:flex ml-auto items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-sm transition disabled:opacity-50"
+          className="hidden sm:flex ml-auto items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold text-sm transition disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           บันทึก
@@ -296,7 +296,7 @@ export default function EmployeeEditClient({
             onClick={() => setActiveTab(t.key)}
             className={`relative flex-1 py-2.5 rounded-xl text-[14px] font-semibold transition-all ${
               activeTab === t.key
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
                 : 'text-white/50 hover:text-white/80 hover:bg-white/5'
             }`}
           >
@@ -313,7 +313,7 @@ export default function EmployeeEditClient({
         <div className="space-y-4">
           <section className="glass-card rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
-              <User className="w-4 h-4 text-blue-400" /> ข้อมูลส่วนตัว
+              <User className="w-4 h-4 text-green-400" /> ข้อมูลส่วนตัว
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <FormField label="คำนำหน้า">
@@ -409,7 +409,7 @@ export default function EmployeeEditClient({
         <div className="space-y-4">
           <section className="glass-card rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
-              <Briefcase className="w-4 h-4 text-blue-400" /> ข้อมูลการจ้างงาน
+              <Briefcase className="w-4 h-4 text-green-400" /> ข้อมูลการจ้างงาน
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="แผนก">
@@ -456,7 +456,7 @@ export default function EmployeeEditClient({
                   type="checkbox"
                   checked={form.socialSecurity}
                   onChange={(e) => set('socialSecurity', e.target.checked)}
-                  className="w-4 h-4 accent-blue-500"
+                  className="w-4 h-4 accent-green-500"
                 />
                 <span className="text-sm text-white/70">ประกันสังคม</span>
               </label>
@@ -465,7 +465,7 @@ export default function EmployeeEditClient({
                   type="checkbox"
                   checked={form.isCoworker}
                   onChange={(e) => set('isCoworker', e.target.checked)}
-                  className="w-4 h-4 accent-blue-500"
+                  className="w-4 h-4 accent-green-500"
                 />
                 <span className="text-sm text-white/70">พนักงาน Coworker</span>
               </label>
@@ -474,7 +474,7 @@ export default function EmployeeEditClient({
 
           <section className="glass-card rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
-              <DollarSign className="w-4 h-4 text-blue-400" /> เงินเดือน
+              <DollarSign className="w-4 h-4 text-green-400" /> เงินเดือน
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="เงินเดือนฐาน (บาท/เดือน)">
@@ -599,7 +599,7 @@ export default function EmployeeEditClient({
           type="button"
           onClick={save}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 text-white font-semibold disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-green-600 text-white font-semibold disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           บันทึกข้อมูลพนักงาน

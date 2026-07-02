@@ -22,7 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   general: 'ทั่วไป', hr: 'HR', safety: 'ความปลอดภัย', conduct: 'จรรยาบรรณ',
 }
 const CATEGORY_COLORS: Record<string, string> = {
-  general: 'bg-blue-500/20 text-blue-400',
+  general: 'bg-green-500/20 text-green-400',
   hr: 'bg-purple-500/20 text-purple-400',
   safety: 'bg-red-500/20 text-red-400',
   conduct: 'bg-green-500/20 text-green-400',
@@ -130,7 +130,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
         {isManager && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-semibold transition-colors"
           >
             <Plus className="w-4 h-4" /> เพิ่มกฎระเบียบ
           </button>
@@ -152,12 +152,12 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
             <div className="sm:col-span-2">
               <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">ชื่อเรื่อง *</label>
               <input value={form.title} onChange={(e) => set('title', e.target.value)}
-                className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-blue-500" />
+                className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500" />
             </div>
             <div>
               <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">หมวดหมู่</label>
               <select value={form.category} onChange={(e) => set('category', e.target.value)}
-                className="w-full dark:bg-slate-800 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-blue-500">
+                className="w-full dark:bg-slate-800 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500">
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
@@ -167,7 +167,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
             <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">เนื้อหา</label>
             <textarea value={form.content} onChange={(e) => set('content', e.target.value)}
               rows={4} placeholder="พิมพ์เนื้อหากฎระเบียบ..."
-              className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-blue-500 resize-none" />
+              className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500 resize-none" />
           </div>
 
           {/* File upload */}
@@ -188,13 +188,13 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
               <div
                 onClick={() => fileRef.current?.click()}
                 className="border-2 border-dashed dark:border-white/10 light:border-slate-200 rounded-xl px-4 py-6 text-center cursor-pointer
-                  hover:dark:border-blue-500/40 hover:light:border-blue-400 transition-colors group"
+                  hover:dark:border-green-500/40 hover:light:border-green-400 transition-colors group"
               >
                 {uploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto text-blue-400" />
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto text-green-400" />
                 ) : (
                   <>
-                    <Upload className="w-5 h-5 mx-auto mb-1 dark:text-slate-500 light:text-slate-400 group-hover:text-blue-400 transition-colors" />
+                    <Upload className="w-5 h-5 mx-auto mb-1 dark:text-slate-500 light:text-slate-400 group-hover:text-green-400 transition-colors" />
                     <p className="text-xs dark:text-slate-400 light:text-slate-500">คลิกเพื่ออัปโหลดไฟล์</p>
                   </>
                 )}
@@ -217,7 +217,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
               </label>
               <input value={form.fileUrl} onChange={(e) => set('fileUrl', e.target.value)}
                 placeholder="https://..."
-                className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-blue-500" />
+                className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500" />
             </div>
           )}
 
@@ -225,7 +225,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
             <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">เวอร์ชัน</label>
             <input value={form.version} onChange={(e) => set('version', e.target.value)}
               placeholder="เช่น v1.0, v2024.05"
-              className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-blue-500" />
+              className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500" />
           </div>
 
           <div className="flex gap-3">
@@ -234,7 +234,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
               ยกเลิก
             </button>
             <button onClick={submit} disabled={submitting || uploading}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 dark:text-white text-sm font-semibold transition-colors disabled:opacity-50">
+              className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 dark:text-white text-sm font-semibold transition-colors disabled:opacity-50">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'บันทึก'}
             </button>
           </div>
@@ -253,7 +253,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
           {rules.map((r) => (
             <button key={r.id} onClick={() => setSelected(r)}
               className={`w-full text-left p-3 rounded-xl border transition-colors ${selected?.id === r.id
-                ? 'dark:bg-blue-500/20 dark:border-blue-500/40 light:bg-blue-50 light:border-blue-300'
+                ? 'dark:bg-green-500/20 dark:border-green-500/40 light:bg-green-50 light:border-green-300'
                 : 'dark:bg-white/5 dark:border-white/10 light:bg-white light:border-slate-200 dark:hover:bg-white/[0.07] light:hover:bg-slate-50'}`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -332,7 +332,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
                           </a>
                           <button
                             onClick={() => downloadFile(selected.fileUrl, `${selected.title}.pdf`)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-xs text-white font-semibold transition-colors"
                           >
                             <Download className="w-3 h-3" />
                             ดาวน์โหลด
@@ -360,7 +360,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
                       <div className="flex gap-2">
                         <button
                           onClick={() => downloadFile(selected.fileUrl, selected.title)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-xs text-white font-semibold transition-colors"
                         >
                           <Download className="w-3 h-3" /> ดาวน์โหลด
                         </button>
@@ -376,7 +376,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
                       <span className="text-xs dark:text-slate-400 light:text-slate-500 flex-1 truncate">{selected.fileUrl.split('/').pop()}</span>
                       <button
                         onClick={() => downloadFile(selected.fileUrl, selected.title)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs text-white font-semibold transition-colors"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-xs text-white font-semibold transition-colors"
                       >
                         <Download className="w-3 h-3" /> ดาวน์โหลด
                       </button>

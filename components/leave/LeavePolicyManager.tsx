@@ -79,7 +79,7 @@ function PolicyRow({
     finally { setDeleting(false) }
   }
 
-  const inputCls = 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50'
+  const inputCls = 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-green-500/50'
 
   return (
     <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 space-y-3">
@@ -91,7 +91,7 @@ function PolicyRow({
           <input
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            className="bg-transparent text-sm font-semibold text-white outline-none border-b border-transparent hover:border-white/20 focus:border-blue-500 px-0 py-0.5"
+            className="bg-transparent text-sm font-semibold text-white outline-none border-b border-transparent hover:border-white/20 focus:border-green-500 px-0 py-0.5"
             placeholder="ชื่อ Policy"
           />
         </div>
@@ -140,7 +140,7 @@ function PolicyRow({
         type="button"
         onClick={save}
         disabled={saving}
-        className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+        className="flex items-center gap-1.5 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
       >
         {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
         บันทึก
@@ -180,16 +180,16 @@ export default function LeavePolicyManager({ initialPolicies, defaults }: Props)
     finally { setCreating(false) }
   }
 
-  const inputCls = 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50'
+  const inputCls = 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-green-500/50'
 
   return (
     <div className="space-y-6">
 
       {/* Info */}
-      <div className="flex items-start gap-2.5 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
-        <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2.5 rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-3">
+        <Info className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
         <div className="text-xs text-slate-300 space-y-1">
-          <p className="font-semibold text-blue-300">วิธีทำงาน</p>
+          <p className="font-semibold text-green-300">วิธีทำงาน</p>
           <p>Policy ที่ตรงกับ Role ของพนักงานจะถูกใช้อัตโนมัติเมื่อเริ่มปีใหม่หรือพนักงานใหม่เข้ามา</p>
           <p>ช่วงทดลองงาน ({defaults.probationMonths} เดือน) — พักร้อน = 0 วัน โดยอัตโนมัติ</p>
           <p>Policy = Default จะใช้กับ Role ที่ไม่มี Policy เฉพาะ</p>

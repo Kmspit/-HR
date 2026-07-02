@@ -41,7 +41,7 @@ type TwoFactorStatus = {
 type Tab = 'dashboard' | 'events' | 'backups' | '2fa'
 
 const SEVERITY_COLOR: Record<string, string> = {
-  INFO:     'text-blue-400 bg-blue-500/10',
+  INFO:     'text-green-400 bg-green-500/10',
   WARNING:  'text-yellow-400 bg-yellow-500/10',
   CRITICAL: 'text-red-400 bg-red-500/10',
 }
@@ -150,9 +150,9 @@ export default function SecurityClient() {
   return (
     <div className="p-4 md:p-6 space-y-5">
       {/* Header */}
-      <div className="glass-card rounded-2xl p-4 border border-blue-500/15 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/20">
-          <Shield className="w-6 h-6 text-blue-400" />
+      <div className="glass-card rounded-2xl p-4 border border-green-500/15 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/20">
+          <Shield className="w-6 h-6 text-green-400" />
         </div>
         <div>
           <h1 className="text-lg font-bold dark:text-white">ความปลอดภัย &amp; สำรองข้อมูล</h1>
@@ -168,7 +168,7 @@ export default function SecurityClient() {
             type="button"
             onClick={() => setTab(t.id)}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition ${
-              tab === t.id ? 'bg-blue-600 text-white' : 'dark:text-slate-400 dark:hover:text-white'
+              tab === t.id ? 'bg-green-600 text-white' : 'dark:text-slate-400 dark:hover:text-white'
             }`}
           >
             {t.icon}
@@ -185,7 +185,7 @@ export default function SecurityClient() {
               {[
                 { label: 'Login ล้มเหลว (24h)',    value: stats.failedLogins24h,  icon: <AlertTriangle size={18} className="text-red-400" />,    danger: stats.failedLogins24h > 10 },
                 { label: 'เหตุการณ์วิกฤต (7d)',   value: stats.criticalEvents7d, icon: <AlertTriangle size={18} className="text-orange-400" />, danger: stats.criticalEvents7d > 0 },
-                { label: 'Session ที่ใช้งาน',      value: stats.activeSessions,   icon: <Users size={18} className="text-blue-400" />,          danger: false },
+                { label: 'Session ที่ใช้งาน',      value: stats.activeSessions,   icon: <Users size={18} className="text-green-400" />,          danger: false },
                 { label: 'บัญชีถูกล็อค',           value: stats.lockedAccounts,   icon: <Shield size={18} className="text-yellow-400" />,       danger: stats.lockedAccounts > 0 },
                 { label: 'Backup ทั้งหมด',          value: stats.totalBackups,     icon: <HardDrive size={18} className="text-green-400" />,     danger: false },
                 { label: 'Backup ล่าสุด',           value: fmtDate(stats.lastBackupAt), icon: <CheckCircle size={18} className="text-green-400" />, danger: false },
@@ -257,7 +257,7 @@ export default function SecurityClient() {
             type="button"
             onClick={createBackup}
             disabled={creating}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold disabled:opacity-50"
           >
             {creating ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
             สร้าง Backup ทันที
@@ -290,7 +290,7 @@ export default function SecurityClient() {
                           <button
                             type="button"
                             onClick={() => void downloadBackup(b)}
-                            className="p-1 rounded hover:bg-blue-500/20 text-blue-400"
+                            className="p-1 rounded hover:bg-green-500/20 text-green-400"
                             title="ดาวน์โหลด"
                           >
                             <Download size={13} />
@@ -350,7 +350,7 @@ export default function SecurityClient() {
             className={`w-full py-2.5 rounded-xl text-sm font-semibold text-white transition ${
               twofa.enabled
                 ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-green-600 hover:bg-green-700'
             }`}
           >
             {twofa.enabled ? 'ปิดการใช้งาน 2FA' : 'เปิดใช้งาน 2FA ผ่าน LINE'}

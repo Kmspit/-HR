@@ -93,26 +93,26 @@ export default function PWAInstallPrompt() {
           </div>
 
           <div className="mb-4 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500 text-xl font-bold text-white shadow-lg shadow-blue-500/30">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500 text-xl font-bold text-white shadow-lg shadow-green-500/30">
               KM
             </div>
           </div>
 
           <ol className="space-y-3 text-gray-700 dark:text-slate-300">
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-600 dark:bg-green-500/20 dark:text-green-400">
                 1
               </span>
               <span className="pt-0.5 text-sm leading-relaxed">
                 กดปุ่ม{' '}
                 <span className="inline-flex items-center gap-1 font-medium text-gray-900 dark:text-white">
-                  Share <Share2 className="h-4 w-4 text-blue-500" aria-hidden />
+                  Share <Share2 className="h-4 w-4 text-green-500" aria-hidden />
                 </span>{' '}
                 ด้านล่างหน้าจอ Safari
               </span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-600 dark:bg-green-500/20 dark:text-green-400">
                 2
               </span>
               <span className="pt-0.5 text-sm leading-relaxed">
@@ -120,7 +120,7 @@ export default function PWAInstallPrompt() {
               </span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-600 dark:bg-green-500/20 dark:text-green-400">
                 3
               </span>
               <span className="pt-0.5 text-sm leading-relaxed">
@@ -131,7 +131,7 @@ export default function PWAInstallPrompt() {
 
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
             <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm dark:bg-slate-900">
-              <div className="flex gap-4 text-blue-500">
+              <div className="flex gap-4 text-green-500">
                 <Share2 className="h-5 w-5" aria-hidden />
               </div>
               <div className="h-1 flex-1 mx-3 rounded-full bg-slate-200 dark:bg-slate-700" />
@@ -160,9 +160,9 @@ export default function PWAInstallPrompt() {
       aria-label="ติดตั้งแอพ"
       className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[60] md:bottom-4 md:left-auto md:right-4 md:max-w-sm"
     >
-      <div className="rounded-xl border border-blue-500/30 bg-white p-4 shadow-xl dark:border-blue-400/25 dark:bg-slate-900">
+      <div className="rounded-xl border border-green-500/30 bg-white p-4 shadow-xl dark:border-green-400/25 dark:bg-slate-900">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-sm font-bold text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-500 text-sm font-bold text-white">
             KM
           </div>
           <div className="min-w-0 flex-1">
@@ -186,7 +186,7 @@ export default function PWAInstallPrompt() {
             type="button"
             onClick={install}
             disabled={installing}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-60"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
             {installing ? 'กำลังติดตั้ง…' : 'ติดตั้งแอพ'}

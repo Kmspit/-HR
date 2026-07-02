@@ -27,7 +27,7 @@ function sep(margin = 'sm'): FlexSep { return { type: 'separator', margin } }
 type ApprovalType = 'LEAVE' | 'EXPENSE' | 'OUTSIDE' | 'FORGOT_SCAN'
 
 const APPROVAL_CFG: Record<ApprovalType, { label: string; color: string; icon: string }> = {
-  LEAVE:       { label: 'คำขอลา',          color: '#3b82f6', icon: '🏖' },
+  LEAVE:       { label: 'คำขอลา',          color: '#22c55e', icon: '🏖' },
   EXPENSE:     { label: 'เบิกค่าใช้จ่าย', color: '#8b5cf6', icon: '💰' },
   OUTSIDE:     { label: 'ปฏิบัติงานนอก',  color: '#f97316', icon: '📍' },
   FORGOT_SCAN: { label: 'ลืมสแกน',         color: '#6b7280', icon: '🔍' },
@@ -92,7 +92,7 @@ export function buildApprovalFlex(params: {
 type TaskNotifType = 'ASSIGNED' | 'DEADLINE' | 'OVERDUE'
 
 const TASK_CFG: Record<TaskNotifType, { label: string; color: string; icon: string }> = {
-  ASSIGNED: { label: 'งานใหม่',       color: '#3b82f6', icon: '📋' },
+  ASSIGNED: { label: 'งานใหม่',       color: '#22c55e', icon: '📋' },
   DEADLINE: { label: 'ใกล้ครบกำหนด', color: '#f59e0b', icon: '⏰' },
   OVERDUE:  { label: 'งานเกินกำหนด', color: '#ef4444', icon: '🚨' },
 }
@@ -150,7 +150,7 @@ export function buildTaskNotifyFlex(params: {
 
 const CAL_CFG: Record<string, { color: string; icon: string }> = {
   COURT:    { color: '#ef4444', icon: '⚖️' },
-  CLIENT:   { color: '#3b82f6', icon: '🤝' },
+  CLIENT:   { color: '#22c55e', icon: '🤝' },
   DEBTOR:   { color: '#f97316', icon: '💼' },
   INTERNAL: { color: '#22c55e', icon: '🏢' },
 }

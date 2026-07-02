@@ -140,7 +140,7 @@ export default function NotificationBell({ initialCount }: Props) {
               {count > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300 transition-colors"
                 >
                   <CheckCheck size={12} />
                   อ่านทั้งหมด
@@ -151,7 +151,7 @@ export default function NotificationBell({ initialCount }: Props) {
             <div className="max-h-[340px] overflow-y-auto overscroll-contain">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-green-500/30 border-t-green-500 rounded-full animate-spin" />
                 </div>
               ) : items.length === 0 ? (
                 <div className="py-10 text-center">
@@ -169,7 +169,7 @@ export default function NotificationBell({ initialCount }: Props) {
                         onClick={() => handleClick(n)}
                         className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors
                           hover:dark:bg-white/[0.03] hover:light:bg-slate-50
-                          ${!n.isRead ? 'dark:bg-blue-500/[0.04] light:bg-blue-50/60' : ''}`}
+                          ${!n.isRead ? 'dark:bg-green-500/[0.04] light:bg-green-50/60' : ''}`}
                       >
                         <span className="text-base flex-shrink-0 mt-0.5 select-none">
                           {TYPE_ICONS[n.type] ?? '🔔'}
@@ -200,7 +200,7 @@ export default function NotificationBell({ initialCount }: Props) {
             <Link
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="block text-center py-2.5 text-[11px] font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300
+              className="block text-center py-2.5 text-[11px] font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300
                 border-t border-slate-100 dark:border-white/[0.06] transition-colors"
             >
               เปิดศูนย์แจ้งเตือน →

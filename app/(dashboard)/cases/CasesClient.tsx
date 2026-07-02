@@ -40,7 +40,7 @@ const TYPE_LABELS: Record<CaseType, string> = {
 }
 const TYPE_COLOR: Record<CaseType, string> = {
   DEBT_COLLECTION:   'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  LEGAL:             'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  LEGAL:             'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   COURT:             'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   ASSET_INVESTIGATION: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
   ENFORCEMENT:       'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
@@ -48,7 +48,7 @@ const TYPE_COLOR: Record<CaseType, string> = {
 }
 const STATUS_COLOR: Record<CaseStatus, string> = {
   NEW:           'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300',
-  ASSIGNED:      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  ASSIGNED:      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
   INVESTIGATING: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
   NEGOTIATING:   'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
   WAITING_DOCUMENT: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
@@ -63,7 +63,7 @@ const STATUS_COLOR: Record<CaseStatus, string> = {
 const PRIORITY_LABELS: Record<CasePriority, string> = { LOW: 'ต่ำ', MEDIUM: 'ปกติ', HIGH: 'สูง', CRITICAL: 'วิกฤต' }
 const PRIORITY_COLOR: Record<CasePriority, string> = {
   LOW:      'text-slate-500',
-  MEDIUM:   'text-blue-600',
+  MEDIUM:   'text-green-600',
   HIGH:     'text-orange-600 font-semibold',
   CRITICAL: 'text-red-600 font-bold',
 }
@@ -181,7 +181,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
             {canCreate && (
               <button
                 onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 active:scale-[0.97] transition-all shadow-lg shadow-blue-600/20"
+                className="flex items-center gap-1.5 rounded-xl bg-green-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-green-500 active:scale-[0.97] transition-all shadow-lg shadow-green-600/20"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                 สร้างคดี
@@ -194,7 +194,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
         <div className="flex gap-1.5 mt-2 overflow-x-auto scrollbar-none pb-0.5">
           <button
             onClick={() => setSmartFilter('')}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${smartFilter === '' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${smartFilter === '' ? 'bg-green-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
           >
             ทั้งหมด
           </button>
@@ -202,7 +202,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
             <button
               key={k}
               onClick={() => setSmartFilter(sf => sf === k ? '' : k)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors whitespace-nowrap ${smartFilter === k ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors whitespace-nowrap ${smartFilter === k ? 'bg-green-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
             >
               {l}
             </button>
@@ -215,17 +215,17 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาเลขคดี / ลูกค้า / ลูกหนี้..."
-              className="flex-1 min-w-[160px] rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-1.5 text-[13px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 min-w-[160px] rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-1.5 text-[13px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-            <select value={statusF} onChange={e => setStatusF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={statusF} onChange={e => setStatusF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">ทุกสถานะ</option>
               {(Object.entries(STATUS_LABELS) as [CaseStatus, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-            <select value={typeF} onChange={e => setTypeF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={typeF} onChange={e => setTypeF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">ทุกประเภท</option>
               {(Object.entries(TYPE_LABELS) as [CaseType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-            <select value={priorityF} onChange={e => setPriorityF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select value={priorityF} onChange={e => setPriorityF(e.target.value)} className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">ทุกความเร่งด่วน</option>
               {(Object.entries(PRIORITY_LABELS) as [CasePriority, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
@@ -238,7 +238,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
         <div className="px-4 py-4 md:px-6 space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'คดีที่ดำเนินการ', value: execSummary.summary.totalActive,    color: 'text-blue-600' },
+              { label: 'คดีที่ดำเนินการ', value: execSummary.summary.totalActive,    color: 'text-green-600' },
               { label: 'เกินกำหนด',        value: execSummary.summary.totalOverdue,   color: 'text-red-600' },
               { label: 'ความเสี่ยงสูง',    value: execSummary.summary.totalHighRisk,  color: 'text-orange-600' },
               { label: 'นัดศาลสัปดาห์นี้', value: execSummary.summary.courtThisWeek, color: 'text-purple-600' },
@@ -263,7 +263,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
                 <div key={r.risk} className="flex items-center gap-2 mb-1.5">
                   <span className={`text-[11px] font-medium w-16 ${RISK_COLOR[r.risk] ?? ''} px-1.5 py-0.5 rounded text-center`}>{r.risk}</span>
                   <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div className="h-2 rounded-full bg-blue-500" style={{ width: `${Math.min(100, (r.count / Math.max(1, execSummary.summary.totalActive)) * 100)}%` }} />
+                    <div className="h-2 rounded-full bg-green-500" style={{ width: `${Math.min(100, (r.count / Math.max(1, execSummary.summary.totalActive)) * 100)}%` }} />
                   </div>
                   <span className="text-[12px] text-slate-500 w-5 text-right">{r.count}</span>
                 </div>
@@ -298,7 +298,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
                 {displayCases.map(c => (
                   <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => window.location.href = `/cases/${c.id}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono text-[12px] text-blue-600 dark:text-blue-400 font-semibold">{c.caseNumber}</span>
+                      <span className="font-mono text-[12px] text-green-600 dark:text-green-400 font-semibold">{c.caseNumber}</span>
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
                       <p className="font-medium text-slate-900 dark:text-white truncate text-[13px]">{c.caseTitle}</p>
@@ -359,7 +359,7 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
           <Link key={c.id} href={`/cases/${c.id}`} className="block rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 active:scale-[0.98] transition-transform">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex-1 min-w-0">
-                <p className="font-mono text-[11px] text-blue-600 dark:text-blue-400 font-semibold">{c.caseNumber}</p>
+                <p className="font-mono text-[11px] text-green-600 dark:text-green-400 font-semibold">{c.caseNumber}</p>
                 <p className="font-semibold text-slate-900 dark:text-white text-[14px] leading-snug truncate mt-0.5">{c.caseTitle}</p>
               </div>
               <span className={`flex-shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLOR[c.status]}`}>{STATUS_LABELS[c.status]}</span>
@@ -452,7 +452,7 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
         {/* Tab Nav */}
         <div className="flex border-b border-slate-100 dark:border-white/[0.06]">
           {(['basic', 'client', 'debtor'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} className={`px-5 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${tab === t ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+            <button key={t} onClick={() => setTab(t)} className={`px-5 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${tab === t ? 'border-green-600 text-green-600 dark:text-green-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
               {t === 'basic' ? 'ข้อมูลคดี' : t === 'client' ? 'ลูกค้า' : 'ลูกหนี้'}
             </button>
           ))}
@@ -464,18 +464,18 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
               <>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อคดี <span className="text-red-500">*</span></label>
-                  <input value={form.caseTitle} onChange={e => set('caseTitle', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ระบุชื่อคดี" />
+                  <input value={form.caseTitle} onChange={e => set('caseTitle', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ระบุชื่อคดี" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทคดี <span className="text-red-500">*</span></label>
-                    <select value={form.caseType} onChange={e => set('caseType', e.target.value as CaseType)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select value={form.caseType} onChange={e => set('caseType', e.target.value as CaseType)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                       {(Object.entries(TYPE_LABELS) as [CaseType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ความเร่งด่วน</label>
-                    <select value={form.priority} onChange={e => set('priority', e.target.value as CasePriority)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select value={form.priority} onChange={e => set('priority', e.target.value as CasePriority)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                       {(Object.entries(PRIORITY_LABELS) as [CasePriority, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </div>
@@ -483,23 +483,23 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">มูลหนี้ (บาท)</label>
-                    <input type="number" value={form.debtAmount} onChange={e => set('debtAmount', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0.00" min="0" step="0.01" />
+                    <input type="number" value={form.debtAmount} onChange={e => set('debtAmount', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="0.00" min="0" step="0.01" />
                   </div>
                   <div>
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันครบกำหนด</label>
-                    <input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้รับผิดชอบ</label>
-                  <select value={form.assignedEmployeeId} onChange={e => set('assignedEmployeeId', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select value={form.assignedEmployeeId} onChange={e => set('assignedEmployeeId', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">— ไม่ระบุ —</option>
                     {employees.map(u => <option key={u.id} value={u.id}>{u.name} {u.department ? `(${u.department})` : ''}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">รายละเอียด</label>
-                  <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="รายละเอียดคดี..." />
+                  <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="รายละเอียดคดี..." />
                 </div>
               </>
             )}
@@ -512,12 +512,12 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       {k === 'clientName' ? 'ชื่อลูกค้า' : k === 'companyName' ? 'ชื่อบริษัท' : k === 'taxId' ? 'เลขประจำตัวผู้เสียภาษี' : k === 'phone' ? 'โทรศัพท์' : k === 'email' ? 'อีเมล' : 'ผู้ติดต่อ'}
                     </label>
-                    <input value={client[k]} onChange={e => setClient(p => ({ ...p, [k]: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={client[k]} onChange={e => setClient(p => ({ ...p, [k]: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 ))}
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ที่อยู่</label>
-                  <textarea value={client.address} onChange={e => setClient(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  <textarea value={client.address} onChange={e => setClient(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
                 </div>
               </>
             )}
@@ -527,21 +527,21 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                 <p className="text-[12px] text-slate-400 mb-2">ข้อมูลลูกหนี้/ผู้ถูกฟ้อง</p>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อ-นามสกุล</label>
-                  <input value={debtor.fullName} onChange={e => setDebtor(p => ({ ...p, fullName: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ชื่อ-นามสกุลลูกหนี้" />
+                  <input value={debtor.fullName} onChange={e => setDebtor(p => ({ ...p, fullName: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ชื่อ-นามสกุลลูกหนี้" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เลขบัตรประชาชน</label>
-                    <input value={debtor.idCard} onChange={e => setDebtor(p => ({ ...p, idCard: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={debtor.idCard} onChange={e => setDebtor(p => ({ ...p, idCard: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                   <div>
                     <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">โทรศัพท์</label>
-                    <input value={debtor.phone} onChange={e => setDebtor(p => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={debtor.phone} onChange={e => setDebtor(p => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ระดับความเสี่ยง</label>
-                  <select value={debtor.riskLevel} onChange={e => setDebtor(p => ({ ...p, riskLevel: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select value={debtor.riskLevel} onChange={e => setDebtor(p => ({ ...p, riskLevel: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="LOW">ต่ำ</option>
                     <option value="MEDIUM">ปานกลาง</option>
                     <option value="HIGH">สูง</option>
@@ -550,15 +550,15 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">สถานที่ทำงาน</label>
-                  <input value={debtor.workplace} onChange={e => setDebtor(p => ({ ...p, workplace: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input value={debtor.workplace} onChange={e => setDebtor(p => ({ ...p, workplace: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ที่อยู่</label>
-                  <textarea value={debtor.address} onChange={e => setDebtor(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  <textarea value={debtor.address} onChange={e => setDebtor(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ข้อมูลทรัพย์สิน</label>
-                  <textarea value={debtor.assetInfo} onChange={e => setDebtor(p => ({ ...p, assetInfo: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="บ้าน / ที่ดิน / รถยนต์ ฯลฯ" />
+                  <textarea value={debtor.assetInfo} onChange={e => setDebtor(p => ({ ...p, assetInfo: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="บ้าน / ที่ดิน / รถยนต์ ฯลฯ" />
                 </div>
               </>
             )}
@@ -570,7 +570,7 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
             <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 py-2.5 text-[14px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors">
               ยกเลิก
             </button>
-            <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-500 disabled:opacity-60 transition-colors">
+            <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-green-600 py-2.5 text-[14px] font-semibold text-white hover:bg-green-500 disabled:opacity-60 transition-colors">
               {saving ? 'กำลังสร้าง...' : 'สร้างคดี'}
             </button>
           </div>

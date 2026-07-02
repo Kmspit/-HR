@@ -67,7 +67,7 @@ export default function MapPicker({ lat, lng, radiusMeters, onPick }: MapPickerP
           <Circle
             center={[lat, lng]}
             radius={radiusMeters}
-            pathOptions={{ color: '#3b82f6', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.12 }}
+            pathOptions={{ color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.12 }}
           />
         </>
       )}

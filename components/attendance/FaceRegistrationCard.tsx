@@ -188,10 +188,10 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
   }
 
   return (
-    <div className="glass-card rounded-2xl p-4 md:p-5 border dark:border-blue-500/25 light:border-blue-200 space-y-4">
+    <div className="glass-card rounded-2xl p-4 md:p-5 border dark:border-green-500/25 light:border-green-200 space-y-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15">
-          <ScanFace className="w-5 h-5 text-blue-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/15">
+          <ScanFace className="w-5 h-5 text-green-400" />
         </div>
         <div>
           <h3 className="text-sm font-semibold dark:text-white light:text-slate-900">
@@ -274,7 +274,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
                 ))}
               </div>
 
-              <p className="text-center text-sm font-medium dark:text-cyan-300 light:text-blue-700 min-h-[2.5rem]">
+              <p className="text-center text-sm font-medium dark:text-cyan-300 light:text-green-700 min-h-[2.5rem]">
                 {saving ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />

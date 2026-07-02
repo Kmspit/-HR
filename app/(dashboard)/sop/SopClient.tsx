@@ -50,7 +50,7 @@ const DEPT_COLORS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT:    'bg-yellow-100 text-yellow-700',
-  REVIEW:   'bg-blue-100 text-blue-700',
+  REVIEW:   'bg-green-100 text-green-700',
   APPROVED: 'bg-green-100 text-green-700',
   ARCHIVED: 'bg-gray-100 text-gray-500',
 }
@@ -313,7 +313,7 @@ export default function SopClient({
                   )}
                   {isEditor && selected.status === 'DRAFT' && (
                     <button onClick={() => changeSopStatus(selected.id, 'REVIEW')}
-                      className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                      className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">
                       📤 ส่งตรวจ
                     </button>
                   )}

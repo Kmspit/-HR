@@ -45,7 +45,7 @@ const STATUS_LABELS: Record<EventStatus, string> = {
 }
 
 const STATUS_COLORS: Record<EventStatus, string> = {
-  SCHEDULED:    'bg-blue-100 text-blue-700',
+  SCHEDULED:    'bg-green-100 text-green-700',
   CONFIRMED:    'bg-green-100 text-green-700',
   COMPLETED:    'bg-slate-100 text-slate-600',
   MISSED:       'bg-red-100 text-red-700',
@@ -55,7 +55,7 @@ const STATUS_COLORS: Record<EventStatus, string> = {
 
 const PRIORITY_COLORS: Record<CourtPriority, string> = {
   LOW:      'bg-slate-100 text-slate-500',
-  NORMAL:   'bg-blue-50 text-blue-600',
+  NORMAL:   'bg-green-50 text-green-600',
   HIGH:     'bg-orange-100 text-orange-700',
   CRITICAL: 'bg-red-100 text-red-700',
 }
@@ -202,7 +202,7 @@ function CourtCard({ event: e, canEdit, onEdit, onDelete, onStatus }: {
           {e.location && (
             <p className="text-[12px] text-slate-400 mt-0.5 flex items-center gap-1">
               📍 {e.location}
-              <a href={`https://maps.google.com/?q=${encodeURIComponent(e.location)}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline text-[11px]">แผนที่</a>
+              <a href={`https://maps.google.com/?q=${encodeURIComponent(e.location)}`} target="_blank" rel="noopener noreferrer" className="text-green-500 underline text-[11px]">แผนที่</a>
             </p>
           )}
           {e.roomNumber        && <p className="text-[12px] text-slate-400 mt-0.5">ห้อง: {e.roomNumber}</p>}
@@ -217,7 +217,7 @@ function CourtCard({ event: e, canEdit, onEdit, onDelete, onStatus }: {
         </div>
         {canEdit && (
           <div className="flex flex-col gap-1">
-            <button onClick={() => onEdit(e)} className="h-7 w-7 flex items-center justify-center rounded-lg text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="แก้ไข">
+            <button onClick={() => onEdit(e)} className="h-7 w-7 flex items-center justify-center rounded-lg text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" title="แก้ไข">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             </button>
             <button onClick={() => onDelete(e.id)} className="h-7 w-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="ลบ">
@@ -232,7 +232,7 @@ function CourtCard({ event: e, canEdit, onEdit, onDelete, onStatus }: {
           <button onClick={() => onStatus(e.id, 'MISSED')}    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors">พลาดนัด</button>
           <button onClick={() => onStatus(e.id, 'RESCHEDULED')} className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 transition-colors">นัดใหม่</button>
           {e.status === 'SCHEDULED' && (
-            <button onClick={() => onStatus(e.id, 'CONFIRMED')} className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">ยืนยันนัด</button>
+            <button onClick={() => onStatus(e.id, 'CONFIRMED')} className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors">ยืนยันนัด</button>
           )}
         </div>
       )}

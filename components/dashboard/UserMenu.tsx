@@ -63,7 +63,7 @@ export default function UserMenu({ user, showName = true }: Props) {
         <div
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white"
           style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+            background: 'linear-gradient(135deg, #22c55e 0%, #8b5cf6 100%)',
             boxShadow: open ? '0 0 0 2px rgba(99,102,241,0.45)' : 'none',
           }}
         >
@@ -96,7 +96,7 @@ export default function UserMenu({ user, showName = true }: Props) {
             <p className="text-[13px] font-semibold truncate dark:text-white light:text-slate-800">{user.name}</p>
             <p className="text-[11px] truncate dark:text-slate-400 light:text-slate-500 mt-0.5">{user.email}</p>
             <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full
-              dark:bg-blue-500/15 dark:text-blue-400 light:bg-blue-50 light:text-blue-600">
+              dark:bg-green-500/15 dark:text-green-400 light:bg-green-50 light:text-green-600">
               {ROLE_ICONS[user.role]} {ROLE_LABELS[user.role]}
             </span>
           </div>

@@ -213,7 +213,7 @@ export default function OrganizationClient({
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 flex-shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            className={`flex items-center gap-1.5 flex-shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition ${tab === t.id ? 'bg-green-600 text-white' : 'text-slate-400 hover:text-white'}`}
           >
             <t.icon className="w-4 h-4" />{t.label}
           </button>
@@ -222,13 +222,13 @@ export default function OrganizationClient({
 
       <div className="flex justify-between items-center">
         <p className="text-xs text-slate-500">{loading ? 'กำลังโหลด...' : `${list.length} รายการ`}</p>
-        <button type="button" onClick={openCreate} className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+        <button type="button" onClick={openCreate} className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500">
           <Plus className="w-4 h-4" /> เพิ่ม{TABS.find((t) => t.id === tab)?.label}
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-2xl border border-blue-500/30 bg-slate-900 p-4 space-y-3">
+        <div className="rounded-2xl border border-green-500/30 bg-slate-900 p-4 space-y-3">
           <p className="text-sm font-semibold text-white">{editingId ? 'แก้ไข' : 'เพิ่ม'}{TABS.find((t) => t.id === tab)?.label}</p>
           {tab === 'departments' && (
             <select value={form.divisionId} onChange={(e) => setForm((f) => ({ ...f, divisionId: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white">
@@ -251,7 +251,7 @@ export default function OrganizationClient({
             <input placeholder="ชื่อ" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white" />
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="accent-blue-500" />
+            <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="accent-green-500" />
             เปิดใช้งาน
           </label>
           <div className="flex gap-2">
@@ -268,7 +268,7 @@ export default function OrganizationClient({
           <div key={String(row.id)} className="flex items-center justify-between rounded-xl border border-white/5 bg-slate-900 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-white">
-                <span className="text-blue-400 font-mono text-xs mr-2">{String(row.code)}</span>
+                <span className="text-green-400 font-mono text-xs mr-2">{String(row.code)}</span>
                 {String(row.name)}
               </p>
               {tab === 'departments' && (

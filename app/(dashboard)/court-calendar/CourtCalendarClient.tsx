@@ -74,31 +74,31 @@ const EVENT_TYPES: Record<string, string> = {
 // Color by event type
 const TYPE_COLOR: Record<string, string> = {
   COURT_APPOINTMENT: 'bg-red-500',
-  FILING:            'bg-blue-500',
+  FILING:            'bg-green-500',
   MEDIATION:         'bg-purple-500',
   HEARING:           'bg-orange-500',
   JUDGEMENT:         'bg-rose-600',
   ENFORCEMENT:       'bg-amber-600',
   CLIENT_MEETING:    'bg-teal-500',
-  LEGAL_DEADLINE:    'bg-blue-600',
+  LEGAL_DEADLINE:    'bg-green-600',
   OTHER:             'bg-slate-500',
   INTERNAL:          'bg-slate-400',
 }
 
 const TYPE_LIGHT: Record<string, string> = {
   COURT_APPOINTMENT: 'bg-red-500/15 text-red-400 border-red-500/20',
-  FILING:            'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  FILING:            'bg-green-500/15 text-green-400 border-green-500/20',
   MEDIATION:         'bg-purple-500/15 text-purple-400 border-purple-500/20',
   HEARING:           'bg-orange-500/15 text-orange-400 border-orange-500/20',
   JUDGEMENT:         'bg-rose-500/15 text-rose-400 border-rose-500/20',
   ENFORCEMENT:       'bg-amber-500/15 text-amber-400 border-amber-500/20',
   CLIENT_MEETING:    'bg-teal-500/15 text-teal-400 border-teal-500/20',
-  LEGAL_DEADLINE:    'bg-blue-600/15 text-blue-400 border-blue-600/20',
+  LEGAL_DEADLINE:    'bg-green-600/15 text-green-400 border-green-600/20',
   OTHER:             'bg-slate-500/15 text-slate-400 border-slate-500/20',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED:    'text-blue-400',
+  SCHEDULED:    'text-green-400',
   COMPLETED:    'text-green-400',
   MISSED:       'text-red-400',
   CANCELLED:    'text-slate-500',
@@ -224,7 +224,7 @@ function MonthView({ anchor, events, onSelectDay, onSelectEvent, today }: {
             >
               {cell.date && (
                 <>
-                  <div className={`text-[12px] font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-500 text-white' : 'text-white/60'}`}>
+                  <div className={`text-[12px] font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-green-500 text-white' : 'text-white/60'}`}>
                     {cell.date.getDate()}
                   </div>
                   <div className="flex flex-wrap gap-0.5">
@@ -294,12 +294,12 @@ function WeekView({ anchor, events, onSelectEvent, onSelectDay, today }: {
           const isToday = dk === today
           return (
             <div key={dk} className="text-center py-2 border-r border-white/[0.04] last:border-r-0">
-              <p className={`text-[11px] font-medium ${isToday ? 'text-blue-400' : 'text-white/40'}`}>
+              <p className={`text-[11px] font-medium ${isToday ? 'text-green-400' : 'text-white/40'}`}>
                 {THAI_DAYS_SHORT[d.getDay()]}
               </p>
               <button
                 onClick={() => onSelectDay(d)}
-                className={`w-8 h-8 flex items-center justify-center mx-auto rounded-full text-sm font-semibold transition ${isToday ? 'bg-blue-500 text-white' : 'text-white/70 hover:bg-white/10'}`}
+                className={`w-8 h-8 flex items-center justify-center mx-auto rounded-full text-sm font-semibold transition ${isToday ? 'bg-green-500 text-white' : 'text-white/70 hover:bg-white/10'}`}
               >
                 {d.getDate()}
               </button>
@@ -351,13 +351,13 @@ function AgendaView({ events, onSelectEvent, today }: {
         const dayEvents = byDate.get(dateKey)!
         return (
           <div key={dateKey}>
-            <div className={`flex items-center gap-2 mb-2 ${isToday ? 'text-blue-400' : 'text-white/50'}`}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isToday ? 'bg-blue-500 text-white' : 'bg-white/5'}`}>
+            <div className={`flex items-center gap-2 mb-2 ${isToday ? 'text-green-400' : 'text-white/50'}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isToday ? 'bg-green-500 text-white' : 'bg-white/5'}`}>
                 {d.getDate()}
               </div>
               <span className="text-xs font-semibold">
                 {THAI_DAYS_SHORT[d.getDay()]}. {d.getDate()} {THAI_MONTHS_SHORT[d.getMonth()]} {d.getFullYear() + 543}
-                {isToday && <span className="ml-2 text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">วันนี้</span>}
+                {isToday && <span className="ml-2 text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">วันนี้</span>}
               </span>
               <div className="flex-1 h-px bg-white/[0.06]" />
             </div>
@@ -411,7 +411,7 @@ function AgendaView({ events, onSelectEvent, today }: {
                           </span>
                         )}
                         {e.caseNumber && (
-                          <span className="text-blue-400/70">{e.caseNumber}</span>
+                          <span className="text-green-400/70">{e.caseNumber}</span>
                         )}
                         {e.location && (
                           <span className="flex items-center gap-1">
@@ -523,7 +523,7 @@ function EventDetail({ event, onClose, onStatusChange, canEdit }: {
           <div className="flex items-center gap-2 text-white/60">
             <span className="text-white/30 text-xs">คดี</span>
             {event.caseId ? (
-              <Link href={`/cases/${event.caseId}`} className="text-blue-400 hover:text-blue-300 transition hover:underline">
+              <Link href={`/cases/${event.caseId}`} className="text-green-400 hover:text-green-300 transition hover:underline">
                 {event.caseNumber}
               </Link>
             ) : (
@@ -536,7 +536,7 @@ function EventDetail({ event, onClose, onStatusChange, canEdit }: {
             <MapPin className="w-3.5 h-3.5 shrink-0 text-white/30" />
             <span className="flex-1">{event.location}</span>
             {event.googleMapsUrl && (
-              <a href={event.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition">
+              <a href={event.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 transition">
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
@@ -693,19 +693,19 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
               <label className="text-white/50 text-xs mb-1 block">ชื่อนัดหมาย *</label>
               <input value={form.title} onChange={e => set('title', e.target.value)}
                 placeholder="เช่น นัดสืบพยาน คดีนาย..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
               <label className="text-white/50 text-xs mb-1 block">ประเภท</label>
               <select value={form.eventType} onChange={e => set('eventType', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50">
                 {Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
               <label className="text-white/50 text-xs mb-1 block">ความสำคัญ</label>
               <select value={form.priority} onChange={e => set('priority', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50">
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50">
                 <option value="LOW">ต่ำ</option>
                 <option value="MEDIUM">ปานกลาง</option>
                 <option value="HIGH">สูง</option>
@@ -719,54 +719,54 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
             <div className="col-span-3 md:col-span-1">
               <label className="text-white/50 text-xs mb-1 block">วันที่ *</label>
               <input type="date" value={form.startAt} onChange={e => set('startAt', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
               <label className="text-white/50 text-xs mb-1 block">เวลาเริ่ม</label>
               <input type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
               <label className="text-white/50 text-xs mb-1 block">เวลาสิ้นสุด</label>
               <input type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50" />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
           </div>
 
           <input value={form.courtName} onChange={e => set('courtName', e.target.value)}
             placeholder="ชื่อศาล (ไม่บังคับ)"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
 
           <div className="grid grid-cols-2 gap-3">
             <input value={form.caseNumber} onChange={e => set('caseNumber', e.target.value)}
               placeholder="หมายเลขคดี"
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
             <input value={form.clientName} onChange={e => set('clientName', e.target.value)}
               placeholder="ชื่อลูกค้า/บริษัท"
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
           </div>
 
           <input value={form.location} onChange={e => set('location', e.target.value)}
             placeholder="สถานที่"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
 
           <input value={form.googleMapsUrl} onChange={e => set('googleMapsUrl', e.target.value)}
             placeholder="Google Maps URL (ไม่บังคับ)"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
 
           <textarea value={form.description} onChange={e => set('description', e.target.value)}
             placeholder="รายละเอียด / หมายเหตุ" rows={2}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-500/50" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 resize-none focus:outline-none focus:border-green-500/50" />
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.reminderEnabled} onChange={e => set('reminderEnabled', e.target.checked)}
-              className="w-4 h-4 rounded accent-blue-500" />
+              className="w-4 h-4 rounded accent-green-500" />
             <span className="text-white/60 text-sm">เปิดการแจ้งเตือน (7 วัน / 3 วัน / 1 วัน / วันเดียวกัน)</span>
           </label>
 
           <div className="flex gap-2 pt-1">
             <button onClick={submit} disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition">
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {editEvent ? 'บันทึก' : 'เพิ่มนัด'}
             </button>
@@ -900,7 +900,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
       {summary && (
         <div className="px-4 pt-3 pb-2 grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0">
           {[
-            { label: 'วันนี้',    val: summary.today,            color: 'text-blue-400',   bg: 'bg-blue-500/10' },
+            { label: 'วันนี้',    val: summary.today,            color: 'text-green-400',   bg: 'bg-green-500/10' },
             { label: 'สัปดาห์นี้', val: summary.thisWeek,         color: 'text-purple-400', bg: 'bg-purple-500/10' },
             { label: 'พลาด',      val: summary.missed,           color: 'text-red-400',    bg: 'bg-red-500/10' },
             { label: 'วิกฤต',    val: summary.criticalUpcoming, color: 'text-orange-400', bg: 'bg-orange-500/10' },
@@ -939,14 +939,14 @@ export default function CourtCalendarClient({ userId, userName, role, department
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
               placeholder="ค้นหา..."
-              className="bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 w-40"
+              className="bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-green-500/50 w-40"
             />
           </div>
 
           {/* Filter toggle */}
           <button
             onClick={() => setShowFilters(f => !f)}
-            className={`p-1.5 rounded-xl transition ${showFilters ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-white/40 hover:text-white'}`}
+            className={`p-1.5 rounded-xl transition ${showFilters ? 'bg-green-500/20 text-green-400' : 'hover:bg-white/10 text-white/40 hover:text-white'}`}
           >
             <Filter className="w-4 h-4" />
           </button>
@@ -957,7 +957,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`px-2.5 py-1.5 rounded-lg font-medium transition ${view === v ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white'}`}
+                className={`px-2.5 py-1.5 rounded-lg font-medium transition ${view === v ? 'bg-green-600 text-white' : 'text-white/40 hover:text-white'}`}
               >
                 {v === 'month' ? 'เดือน' : v === 'week' ? 'สัปดาห์' : 'รายการ'}
               </button>
@@ -971,7 +971,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
           {canEdit && (
             <button
               onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-xs font-semibold transition"
             >
               <Plus className="w-3.5 h-3.5" /> เพิ่มนัด
             </button>
@@ -986,15 +986,15 @@ export default function CourtCalendarClient({ userId, userName, role, department
             value={searchQ}
             onChange={e => setSearchQ(e.target.value)}
             placeholder="ค้นหา..."
-            className="md:hidden bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 flex-1 min-w-[140px]"
+            className="md:hidden bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs placeholder:text-white/30 focus:outline-none focus:border-green-500/50 flex-1 min-w-[140px]"
           />
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50">
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-green-500/50">
             <option value="">ทุกประเภท</option>
             {Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <select value={priorityFilter} onChange={e => setPriority(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50">
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-green-500/50">
             <option value="">ทุกความสำคัญ</option>
             <option value="CRITICAL">วิกฤต</option>
             <option value="HIGH">สูง</option>
@@ -1002,7 +1002,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
             <option value="LOW">ต่ำ</option>
           </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50">
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none focus:border-green-500/50">
             <option value="">ทุกสถานะ</option>
             {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -1071,7 +1071,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
       {canEdit && (
         <button
           onClick={() => setShowAdd(true)}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 shadow-xl flex items-center justify-center z-30 transition"
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 shadow-xl flex items-center justify-center z-30 transition"
         >
           <Plus className="w-6 h-6 text-white" />
         </button>

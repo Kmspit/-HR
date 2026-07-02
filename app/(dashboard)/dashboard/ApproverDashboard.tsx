@@ -90,7 +90,7 @@ export default async function ApproverDashboard({ userId, name, role }: Props) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {[
               { href: '/approval-center', label: 'ศูนย์อนุมัติ', sub: inbox.total > 0 ? `${inbox.total} รอดำเนินการ` : 'ไม่มีค้าง', iconClass: 'bg-orange-600 border-orange-700', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-              { href: '/attendance', label: 'ลงเวลางาน', sub: attSub, iconClass: 'bg-blue-600 border-blue-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+              { href: '/attendance', label: 'ลงเวลางาน', sub: attSub, iconClass: 'bg-green-600 border-green-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
               { href: '/leave', label: 'ขอลาหยุด', sub: 'ยื่นคำขอลา', iconClass: 'bg-violet-600 border-violet-700', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
               ...(showOutside
                 ? [{ href: '/outside-work', label: 'ออกนอกสถานที่', sub: 'ขออนุมัติ', iconClass: 'bg-amber-600 border-amber-700', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' }]

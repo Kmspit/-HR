@@ -46,7 +46,7 @@ type CreateForm = {
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<string, { label: string; bg: string; icon: string }> = {
-  GENERAL:  { label: 'ทั่วไป',    bg: 'from-blue-600 to-blue-700',     icon: '📢' },
+  GENERAL:  { label: 'ทั่วไป',    bg: 'from-green-600 to-green-700',     icon: '📢' },
   PAYROLL:  { label: 'เงินเดือน', bg: 'from-green-600 to-emerald-700', icon: '💰' },
   HOLIDAY:  { label: 'วันหยุด',   bg: 'from-amber-500 to-orange-600',  icon: '🎌' },
   POLICY:   { label: 'นโยบาย',    bg: 'from-purple-600 to-violet-700', icon: '📋' },
@@ -70,7 +70,7 @@ function isPdf(type: string | null) { return type === 'application/pdf' }
 function fileIcon(type: string | null) {
   if (isImage(type)) return <ImageIcon size={14} />
   if (isPdf(type)) return <FileText size={14} className="text-red-400" />
-  return <FileText size={14} className="text-blue-400" />
+  return <FileText size={14} className="text-green-400" />
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -384,7 +384,7 @@ export default function AnnouncementsClient({
           <div>
             <h2 className="font-semibold text-slate-800 dark:text-white text-[15px]">ประกาศจากบริษัท</h2>
             {unreadCount > 0 && (
-              <p className="text-[11px] text-blue-400 mt-0.5">ยังไม่อ่าน {unreadCount} รายการ</p>
+              <p className="text-[11px] text-green-400 mt-0.5">ยังไม่อ่าน {unreadCount} รายการ</p>
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -392,7 +392,7 @@ export default function AnnouncementsClient({
             <div className="hidden sm:flex rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden text-xs">
               {(['all', 'unread'] as const).map((f) => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 transition-colors ${filter === f ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white'}`}>
+                  className={`px-3 py-1.5 transition-colors ${filter === f ? 'bg-green-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white'}`}>
                   {f === 'all' ? 'ทั้งหมด' : `ยังไม่อ่าน${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
                 </button>
               ))}
@@ -404,7 +404,7 @@ export default function AnnouncementsClient({
                   <Archive size={13} /> Archive
                 </button>
                 <button onClick={openCreate}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-xs font-semibold transition-colors">
                   <Plus size={13} /> ส่งประกาศ
                 </button>
               </>
@@ -414,7 +414,7 @@ export default function AnnouncementsClient({
 
         {/* ── Create / Edit Form ── */}
         {showForm && isHR && (
-          <div className="px-4 md:px-5 py-4 border-b border-slate-200/60 dark:border-white/[0.06] bg-blue-50/60 dark:bg-blue-950/20">
+          <div className="px-4 md:px-5 py-4 border-b border-slate-200/60 dark:border-white/[0.06] bg-green-50/60 dark:bg-green-950/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
                 {editingId ? 'แก้ไขประกาศ' : 'สร้างประกาศใหม่'}
@@ -430,7 +430,7 @@ export default function AnnouncementsClient({
                 <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">หัวเรื่อง *</label>
                 <input value={form.title} onChange={(e) => setField('title', e.target.value)}
                   placeholder="หัวเรื่องประกาศ..."
-                  className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500" />
+                  className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500" />
               </div>
 
               {/* Body */}
@@ -438,7 +438,7 @@ export default function AnnouncementsClient({
                 <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">เนื้อหา *</label>
                 <textarea value={form.body} onChange={(e) => setField('body', e.target.value)}
                   rows={4} placeholder="รายละเอียดประกาศ..."
-                  className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none" />
+                  className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500 resize-none" />
               </div>
 
               {/* Type + Target row */}
@@ -446,7 +446,7 @@ export default function AnnouncementsClient({
                 <div>
                   <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">ประเภท</label>
                   <select value={form.type} onChange={(e) => setField('type', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500">
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500">
                     {Object.entries(TYPE_CONFIG).map(([k, v]) => (
                       <option key={k} value={k}>{v.icon} {v.label}</option>
                     ))}
@@ -456,7 +456,7 @@ export default function AnnouncementsClient({
                   <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">กลุ่มเป้าหมาย</label>
                   <select value={form.targetType}
                     onChange={(e) => { setField('targetType', e.target.value); setField('targetIds', []); setEmpSearch('') }}
-                    className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500">
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500">
                     {TARGET_ORDER.map((k) => (
                       <option key={k} value={k}>{TARGET_LABELS[k]}</option>
                     ))}
@@ -469,7 +469,7 @@ export default function AnnouncementsClient({
                 <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] p-3">
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1">
                     <Users size={11} /> เลือก{TARGET_LABELS[form.targetType]}
-                    {form.targetIds.length > 0 && <span className="ml-1 text-blue-400">({form.targetIds.length} เลือก)</span>}
+                    {form.targetIds.length > 0 && <span className="ml-1 text-green-400">({form.targetIds.length} เลือก)</span>}
                   </p>
 
                   {/* Individual: employee search */}
@@ -479,11 +479,11 @@ export default function AnnouncementsClient({
                         <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <input value={empSearch} onChange={(e) => setEmpSearch(e.target.value)}
                           placeholder="ค้นหาชื่อ / รหัสพนักงาน..."
-                          className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-blue-500" />
+                          className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-green-500" />
                       </div>
                       {loadingEmps ? (
                         <div className="flex items-center justify-center py-3">
-                          <Loader2 size={14} className="animate-spin text-blue-400" />
+                          <Loader2 size={14} className="animate-spin text-green-400" />
                         </div>
                       ) : (
                         <div className="max-h-40 overflow-y-auto space-y-1">
@@ -492,8 +492,8 @@ export default function AnnouncementsClient({
                             return (
                               <button key={e.id} onClick={() => toggleTargetId(e.id)}
                                 className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-left transition-colors
-                                  ${selected ? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300' : 'hover:bg-white hover:dark:bg-white/5 text-slate-700 dark:text-slate-300'}`}>
-                                {selected ? <CheckSquare size={13} className="text-blue-400 flex-shrink-0" /> : <Square size={13} className="text-slate-400 dark:text-slate-600 flex-shrink-0" />}
+                                  ${selected ? 'bg-green-50 dark:bg-green-600/20 text-green-700 dark:text-green-300' : 'hover:bg-white hover:dark:bg-white/5 text-slate-700 dark:text-slate-300'}`}>
+                                {selected ? <CheckSquare size={13} className="text-green-400 flex-shrink-0" /> : <Square size={13} className="text-slate-400 dark:text-slate-600 flex-shrink-0" />}
                                 <span className="truncate font-medium">{e.name}</span>
                                 <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">{e.employeeId}</span>
                               </button>
@@ -513,8 +513,8 @@ export default function AnnouncementsClient({
                         return (
                           <button key={ent.id} onClick={() => toggleTargetId(ent.id)}
                             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-left transition-colors
-                              ${selected ? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300' : 'hover:bg-white hover:dark:bg-white/5 text-slate-700 dark:text-slate-300'}`}>
-                            {selected ? <CheckSquare size={13} className="text-blue-400 flex-shrink-0" /> : <Square size={13} className="text-slate-400 dark:text-slate-600 flex-shrink-0" />}
+                              ${selected ? 'bg-green-50 dark:bg-green-600/20 text-green-700 dark:text-green-300' : 'hover:bg-white hover:dark:bg-white/5 text-slate-700 dark:text-slate-300'}`}>
+                            {selected ? <CheckSquare size={13} className="text-green-400 flex-shrink-0" /> : <Square size={13} className="text-slate-400 dark:text-slate-600 flex-shrink-0" />}
                             <span className="truncate">{ent.name}</span>
                           </button>
                         )
@@ -535,7 +535,7 @@ export default function AnnouncementsClient({
                 </label>
                 <input type="datetime-local" value={form.publishAt} min={nowISO}
                   onChange={(e) => setField('publishAt', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-blue-500" />
+                  className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500" />
               </div>
 
               {/* File attachment */}
@@ -557,9 +557,9 @@ export default function AnnouncementsClient({
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-dashed transition-colors cursor-pointer
-                      ${uploading ? 'border-blue-500/50 dark:bg-blue-500/5' : 'border-slate-300 dark:border-white/10 hover:border-slate-400 hover:dark:border-white/20'}`}>
+                      ${uploading ? 'border-green-500/50 dark:bg-green-500/5' : 'border-slate-300 dark:border-white/10 hover:border-slate-400 hover:dark:border-white/20'}`}>
                       {uploading ? (
-                        <><Loader2 size={13} className="animate-spin text-blue-400" /><span className="text-xs text-slate-500 dark:text-slate-400">กำลังอัปโหลด...</span></>
+                        <><Loader2 size={13} className="animate-spin text-green-400" /><span className="text-xs text-slate-500 dark:text-slate-400">กำลังอัปโหลด...</span></>
                       ) : (
                         <><Paperclip size={13} className="text-slate-400 dark:text-slate-500" /><span className="text-xs text-slate-500 dark:text-slate-400">คลิกเพื่อเลือกไฟล์หรือลากวาง</span></>
                       )}
@@ -575,7 +575,7 @@ export default function AnnouncementsClient({
                   ยกเลิก
                 </button>
                 <button onClick={submit} disabled={submitting || uploading}
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                   {submitting ? <Loader2 size={15} className="animate-spin" /> : null}
                   {editingId ? 'บันทึก' : 'ส่งประกาศ'}
                 </button>
@@ -597,7 +597,7 @@ export default function AnnouncementsClient({
               const isExpanded = expanded === ann.id
               const hasAttachment = !!ann.attachmentUrl
               return (
-                <div key={ann.id} className={`transition-colors ${!ann.isRead ? 'bg-blue-50/40 dark:bg-blue-500/[0.03]' : ''}`}>
+                <div key={ann.id} className={`transition-colors ${!ann.isRead ? 'bg-green-50/40 dark:bg-green-500/[0.03]' : ''}`}>
                   <button onClick={() => handleExpand(ann.id)}
                     className="w-full text-left px-4 md:px-5 py-4 flex items-start gap-3">
                     <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-base bg-gradient-to-br ${cfg.bg}`}>
@@ -609,7 +609,7 @@ export default function AnnouncementsClient({
                           {ann.title}
                         </h3>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {!ann.isRead && <div className="w-2 h-2 bg-blue-400 rounded-full" />}
+                          {!ann.isRead && <div className="w-2 h-2 bg-green-400 rounded-full" />}
                           <ChevronDown size={14} className={`text-slate-400 dark:text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                         </div>
                       </div>
@@ -657,7 +657,7 @@ export default function AnnouncementsClient({
                               {ann.targetIds?.length > 0 && ` (${ann.targetIds.length})`}
                             </span>
                             <button onClick={() => openEdit(ann)}
-                              className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-blue-400 transition-colors">
+                              className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-green-400 transition-colors">
                               <Edit2 size={11} /> แก้ไข
                             </button>
                             <button onClick={() => toggleArchive(ann.id, true)}
@@ -697,7 +697,7 @@ export default function AnnouncementsClient({
         {(unreadCount > 0 || isHR) && (
           <div className="sm:hidden px-4 py-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center gap-2">
             <button onClick={() => setFilter(filter === 'all' ? 'unread' : 'all')}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors border ${filter === 'unread' ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400'}`}>
+              className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors border ${filter === 'unread' ? 'bg-green-600 border-green-600 text-white' : 'border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400'}`}>
               {filter === 'unread' ? 'ดูทั้งหมด' : `ยังไม่อ่าน${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
             </button>
             {isHR && (
@@ -729,7 +729,7 @@ export default function AnnouncementsClient({
                 <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
                   className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2 py-1 text-xs text-slate-800 dark:text-white focus:outline-none" />
                 <button onClick={loadArchive}
-                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                  className="px-3 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-semibold transition-colors">
                   ค้นหา
                 </button>
                 <button onClick={() => setShowArchive(false)} className="p-1 rounded-lg text-slate-500 dark:text-slate-400">
@@ -740,7 +740,7 @@ export default function AnnouncementsClient({
             <div className="overflow-y-auto flex-1">
               {archiveLoading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 size={20} className="animate-spin text-blue-400" />
+                  <Loader2 size={20} className="animate-spin text-green-400" />
                 </div>
               ) : archive.length === 0 ? (
                 <div className="py-10 text-center text-slate-400 dark:text-slate-500 text-sm">ไม่มีประกาศ archive</div>
@@ -758,7 +758,7 @@ export default function AnnouncementsClient({
                         </div>
                         {isHR && (
                           <button onClick={() => { toggleArchive(ann.id, false); setArchive((p) => p.filter((a) => a.id !== ann.id)) }}
-                            className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                            className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-green-400 transition-colors flex-shrink-0"
                             title="กู้คืน">
                             <ArchiveRestore size={14} />
                           </button>
@@ -789,12 +789,12 @@ function AttachmentView({ name, url, type, onPreview }: {
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {canPreview && (
           <button onClick={onPreview}
-            className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-blue-400 transition-colors px-2 py-1 rounded-lg hover:dark:bg-white/5">
+            className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-green-400 transition-colors px-2 py-1 rounded-lg hover:dark:bg-white/5">
             <Eye size={11} /> ดู
           </button>
         )}
         <a href={url} download={name} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-blue-400 transition-colors px-2 py-1 rounded-lg hover:dark:bg-white/5">
+          className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-green-400 transition-colors px-2 py-1 rounded-lg hover:dark:bg-white/5">
           <Download size={11} /> ดาวน์โหลด
         </a>
       </div>
@@ -844,7 +844,7 @@ function FileViewer({ attachment, onClose }: { attachment: Attachment; onClose: 
             <FileText size={48} className="text-white/40 mx-auto mb-4" />
             <p className="text-white/70 text-sm mb-4">{attachment.name}</p>
             <a href={attachment.url} download={attachment.name} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors">
               <Download size={15} /> ดาวน์โหลดไฟล์
             </a>
           </div>

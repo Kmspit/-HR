@@ -79,14 +79,14 @@ const CASE_STATUS: Record<string, string> = {
   CLOSED: 'ปิดคดี', SUSPENDED: 'ระงับ',
 }
 const CASE_STATUS_COLOR: Record<string, string> = {
-  OPEN:        'bg-blue-100 text-blue-700',
+  OPEN:        'bg-green-100 text-green-700',
   IN_PROGRESS: 'bg-amber-100 text-amber-700',
   PENDING:     'bg-gray-100 text-gray-600',
   CLOSED:      'bg-green-100 text-green-700',
   SUSPENDED:   'bg-red-100 text-red-700',
 }
 const COURT_STATUS_COLOR: Record<string, string> = {
-  SCHEDULED:   'bg-blue-100 text-blue-700',
+  SCHEDULED:   'bg-green-100 text-green-700',
   CONFIRMED:   'bg-green-100 text-green-700',
   COMPLETED:   'bg-gray-100 text-gray-500',
   MISSED:      'bg-red-100 text-red-700',
@@ -95,7 +95,7 @@ const COURT_STATUS_COLOR: Record<string, string> = {
 const COURT_PRIORITY_COLOR: Record<string, string> = {
   CRITICAL: 'bg-red-500 text-white',
   HIGH:     'bg-orange-500 text-white',
-  NORMAL:   'bg-blue-500 text-white',
+  NORMAL:   'bg-green-500 text-white',
   LOW:      'bg-gray-400 text-white',
 }
 
@@ -190,7 +190,7 @@ export default function PortalDashboard({ fullName, email }: Props) {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">KM</div>
+          <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-sm">KM</div>
           <div>
             <div className="font-semibold text-gray-800 text-sm leading-tight">KM Service Plus</div>
             <div className="text-xs text-gray-400">Client Portal</div>
@@ -217,7 +217,7 @@ export default function PortalDashboard({ fullName, email }: Props) {
             onClick={() => setTab(t.key)}
             className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
               tab === t.key
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-green-600 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
             {t.label}
@@ -236,7 +236,7 @@ export default function PortalDashboard({ fullName, email }: Props) {
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    { label: 'คดีที่ดำเนินการอยู่', value: String(kpi.activeCases),             color: 'bg-blue-50   text-blue-700' },
+                    { label: 'คดีที่ดำเนินการอยู่', value: String(kpi.activeCases),             color: 'bg-green-50   text-green-700' },
                     { label: 'คดีที่ปิดแล้ว',        value: String(kpi.completedCases),          color: 'bg-green-50  text-green-700' },
                     { label: 'ยอดเรียกคืน (บาท)',    value: fmtMoney(kpi.totalRecovery),          color: 'bg-emerald-50 text-emerald-700' },
                     { label: 'อัตราเรียกคืน',        value: `${kpi.collectionRate}%`,             color: 'bg-indigo-50  text-indigo-700' },

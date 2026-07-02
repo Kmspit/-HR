@@ -17,7 +17,7 @@ export function ManualButton({ section, className }: ManualButtonProps) {
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-1 text-sm text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors',
+        'flex items-center gap-1 text-sm text-slate-400 hover:text-green-500 dark:hover:text-green-400 transition-colors',
         className,
       )}
     >

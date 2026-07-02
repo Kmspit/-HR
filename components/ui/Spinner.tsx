@@ -14,7 +14,7 @@ export default function Spinner({ size = 'md', className }: Props) {
   return (
     <Loader2
       size={sizes[size]}
-      className={cn('animate-spin text-blue-500', className)}
+      className={cn('animate-spin text-green-500', className)}
       aria-hidden
     />
   )

@@ -53,7 +53,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           .doc-title { text-align: right; }
           .doc-title h1 { font-size: 18px; font-weight: 700; color: #1e3a8a; }
           .doc-number { font-size: 13px; color: #374151; margin-top: 4px; }
-          .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #1d4ed8; margin-top: 4px; }
+          .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #15803d; margin-top: 4px; }
           .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
           .info-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
           .info-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }

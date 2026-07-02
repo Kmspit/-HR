@@ -152,7 +152,7 @@ export default async function DashboardPage({
           pendingUsers > 0 && canAccessModule(role, EMPLOYEE_MGMT) ? (
             <Link
               href="/employees?tab=pending"
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+              className="flex items-center gap-1.5 rounded-xl bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-500 transition-all shadow-lg shadow-green-600/20"
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
@@ -178,7 +178,7 @@ export default async function DashboardPage({
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมงาน</h2>
               {canLinkTasks ? (
-                <Link href="/tasks" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                <Link href="/tasks" className="text-[12px] text-green-600 dark:text-green-400 font-medium hover:underline">
                   ดูทั้งหมด →
                 </Link>
               ) : (
@@ -189,7 +189,7 @@ export default async function DashboardPage({
               {(
                 [
                   { label: 'ทั้งหมด', val: taskTotal, color: 'text-slate-700 dark:text-slate-200', bg: 'bg-slate-50 dark:bg-white/[0.03]' },
-                  { label: 'กำลังดำเนินการ', val: taskInProgress, color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/[0.07]' },
+                  { label: 'กำลังดำเนินการ', val: taskInProgress, color: 'text-green-700 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-500/[0.07]' },
                   { label: 'รอตรวจ/อนุมัติ', val: taskWaitingReview, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/[0.07]' },
                   { label: 'เกินกำหนด', val: overdueTaskCount, color: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/[0.07]' },
                   { label: 'เสร็จสิ้น', val: taskCompleted, color: 'text-green-700 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-500/[0.07]' },
@@ -236,7 +236,7 @@ export default async function DashboardPage({
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.05]">
               <h2 className="font-semibold text-slate-900 dark:text-white text-[15px]">ภาพรวมคดี</h2>
               {canLinkCases ? (
-                <Link href="/cases" className="text-[12px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                <Link href="/cases" className="text-[12px] text-green-600 dark:text-green-400 font-medium hover:underline">
                   ดูทั้งหมด →
                 </Link>
               ) : (
@@ -246,7 +246,7 @@ export default async function DashboardPage({
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(
                 [
-                  { label: 'คดีที่ดำเนินการ', val: caseActive, color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/[0.07]' },
+                  { label: 'คดีที่ดำเนินการ', val: caseActive, color: 'text-green-700 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-500/[0.07]' },
                   { label: 'นัดศาลสัปดาห์นี้', val: caseCourtThisWeek, color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/[0.07]' },
                   { label: 'ความเสี่ยงสูง/วิกฤต', val: caseHighRisk, color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/[0.07]' },
                   { label: 'เกินกำหนด', val: caseOverdue, color: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/[0.07]' },

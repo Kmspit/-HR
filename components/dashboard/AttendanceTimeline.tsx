@@ -15,7 +15,7 @@ const STEPS = [
   { key: 'checkIn', label: 'เช็คอิน', color: 'text-green-400' },
   { key: 'lunchOut', label: 'เริ่มพักกลางวัน', color: 'text-amber-400' },
   { key: 'lunchIn', label: 'กลับจากพัก', color: 'text-amber-300' },
-  { key: 'checkOut', label: 'เช็คเอาท์', color: 'text-blue-400' },
+  { key: 'checkOut', label: 'เช็คเอาท์', color: 'text-green-400' },
 ] as const
 
 function fmt(iso: string | null) {

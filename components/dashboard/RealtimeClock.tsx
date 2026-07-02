@@ -37,14 +37,14 @@ export default function RealtimeClock() {
     <div
       className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4"
       style={{
-        background: 'linear-gradient(135deg,rgba(59,130,246,0.1),rgba(99,102,241,0.07))',
-        border: '1px solid rgba(59,130,246,0.18)',
+        background: 'linear-gradient(135deg,rgba(34,197,94,0.1),rgba(99,102,241,0.07))',
+        border: '1px solid rgba(34,197,94,0.18)',
       }}
     >
       {/* Left: icon + date */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+          style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)', boxShadow: '0 4px 12px rgba(22,163,74,0.3)' }}>
           <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>

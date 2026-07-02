@@ -51,7 +51,7 @@ function riskColor(r: string) {
   if (r === 'MEDIUM')   return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20'
   return 'text-green-600 bg-green-50 dark:bg-green-900/20'
 }
-function pctBar(pct: number, color = 'bg-blue-500') {
+function pctBar(pct: number, color = 'bg-green-500') {
   return (
     <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 mt-1">
       <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
@@ -127,7 +127,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
         {/* Tabs */}
         <div className="flex gap-1 mt-3 overflow-x-auto pb-1 scrollbar-none">
           {TABS.map(t => (
-            <button key={t} onClick={() => setTab(t)} className={`flex-none px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${tab === t ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
+            <button key={t} onClick={() => setTab(t)} className={`flex-none px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${tab === t ? 'bg-green-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
               {t}
             </button>
           ))}
@@ -137,7 +137,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
       <div className="p-4 space-y-4 max-w-7xl mx-auto">
         {loading && !overview && (
           <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
           </div>
         )}
 
@@ -180,7 +180,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
             {/* Today summary */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] p-4 text-center">
-                <p className="text-2xl font-bold text-blue-600">{team.summary.presentToday}</p>
+                <p className="text-2xl font-bold text-green-600">{team.summary.presentToday}</p>
                 <p className="text-[12px] text-slate-500 mt-0.5">เช็คอินวันนี้</p>
               </div>
               <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] p-4 text-center">
@@ -435,7 +435,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
                         <p className="text-[11px] text-slate-400">{r.trigger}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[13px] font-bold text-blue-600">{r.runCount}</p>
+                        <p className="text-[13px] font-bold text-green-600">{r.runCount}</p>
                         <p className="text-[10px] text-green-500">{r.runCount > 0 ? Math.round((r.successCount / r.runCount) * 100) : 0}% ok</p>
                       </div>
                     </div>
@@ -466,7 +466,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
             </div>
 
             <div className="text-center">
-              <Link href="/automation" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-blue-600 hover:underline">
+              <Link href="/automation" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-600 hover:underline">
                 จัดการ Automation Rules →
               </Link>
             </div>
@@ -483,12 +483,12 @@ function KpiCard({ label, value, sub, color, icon, href, bar }: {
   label: string; value: string; sub: string; color: string; icon: string; href?: string; bar?: number
 }) {
   const colorMap: Record<string, string> = {
-    blue: 'text-blue-600', red: 'text-red-600', green: 'text-green-600',
+    blue: 'text-green-600', red: 'text-red-600', green: 'text-green-600',
     orange: 'text-orange-600', purple: 'text-purple-600', yellow: 'text-yellow-600',
     slate: 'text-slate-700 dark:text-slate-300',
   }
   const barColorMap: Record<string, string> = {
-    blue: 'bg-blue-500', red: 'bg-red-500', green: 'bg-green-500',
+    blue: 'bg-green-500', red: 'bg-red-500', green: 'bg-green-500',
     orange: 'bg-orange-500', purple: 'bg-purple-500', yellow: 'bg-yellow-500', slate: 'bg-slate-400',
   }
   const content = (
@@ -499,7 +499,7 @@ function KpiCard({ label, value, sub, color, icon, href, bar }: {
       </div>
       <p className={`text-[22px] font-bold leading-none mb-1 ${colorMap[color] ?? colorMap.slate}`}>{value}</p>
       {sub && <p className="text-[11px] text-slate-400 mt-1">{sub}</p>}
-      {bar !== undefined && pctBar(bar, barColorMap[color] ?? 'bg-blue-500')}
+      {bar !== undefined && pctBar(bar, barColorMap[color] ?? 'bg-green-500')}
     </div>
   )
   return href ? <Link href={href}>{content}</Link> : content
@@ -610,7 +610,7 @@ function RiskPanel({ risk }: { risk: RiskData }) {
 
 function BigStat({ label, value, color, sub, small }: { label: string; value: string; color: string; sub?: string; small?: boolean }) {
   const colorMap: Record<string, string> = {
-    blue: 'text-blue-600', red: 'text-red-600', green: 'text-green-600',
+    blue: 'text-green-600', red: 'text-red-600', green: 'text-green-600',
     orange: 'text-orange-600', purple: 'text-purple-600', slate: 'text-slate-700 dark:text-slate-300',
   }
   return (
@@ -634,7 +634,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 function LeaderboardCard({ title, subtitle, entries, metric, color }: {
   title: string; subtitle: string; entries: LeaderEntry[]; metric: (e: LeaderEntry) => string; color: string
 }) {
-  const colorMap: Record<string, string> = { green: 'text-green-600', red: 'text-red-600', blue: 'text-blue-600', orange: 'text-orange-600' }
+  const colorMap: Record<string, string> = { green: 'text-green-600', red: 'text-red-600', blue: 'text-green-600', orange: 'text-orange-600' }
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] p-4">
       <h3 className="text-[13px] font-bold text-slate-800 dark:text-white">{title}</h3>

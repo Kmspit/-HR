@@ -48,7 +48,7 @@ const LEAVE_LABELS: Record<string, string> = {
 }
 
 const STATUS_STYLE: Record<string, { dot: string; bg: string; label: string }> = {
-  NORMAL: { dot: 'bg-blue-400', bg: 'bg-blue-500/15 border-blue-500/25', label: 'ปกติ' },
+  NORMAL: { dot: 'bg-green-400', bg: 'bg-green-500/15 border-green-500/25', label: 'ปกติ' },
   LATE: { dot: 'bg-yellow-400', bg: 'bg-yellow-500/15 border-yellow-500/25', label: 'สาย' },
   ABSENT: { dot: 'bg-red-400', bg: 'bg-red-500/15 border-red-500/25', label: 'ขาด' },
   LEAVE: { dot: 'bg-cyan-400', bg: 'bg-cyan-500/15 border-cyan-500/25', label: 'ลา' },
@@ -151,7 +151,7 @@ export default function CalendarClient({
     <div className="p-4 md:p-5 xl:p-6 space-y-5">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: 'มาทำงาน', value: presentDays, dot: 'bg-blue-400' },
+          { label: 'มาทำงาน', value: presentDays, dot: 'bg-green-400' },
           { label: 'มาสาย', value: lateDays, dot: 'bg-yellow-400' },
           { label: 'ขาดงาน', value: absentDays, dot: 'bg-red-400' },
           { label: 'วันลา', value: leaveDays, dot: 'bg-cyan-400' },
@@ -204,7 +204,7 @@ export default function CalendarClient({
               key={d}
               className={cn(
                 'py-2.5 text-center text-[11px] font-semibold',
-                i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'dark:text-slate-500 light:text-slate-500',
+                i === 0 ? 'text-red-400' : i === 6 ? 'text-green-400' : 'dark:text-slate-500 light:text-slate-500',
               )}
             >
               {d}
@@ -233,7 +233,7 @@ export default function CalendarClient({
                 }}
                 className={cn(
                   'relative flex flex-col items-center justify-start py-1.5 min-h-[48px] md:h-16 border-b border-r dark:border-white/[0.03] light:border-slate-100 transition-all text-xs touch-manipulation',
-                  isSelected ? 'bg-blue-500/20 border-blue-500/30' : 'hover:bg-white/[0.04]',
+                  isSelected ? 'bg-green-500/20 border-green-500/30' : 'hover:bg-white/[0.04]',
                   holiday && !isSelected ? HOLIDAY_STYLE.cell : '',
                 )}
               >
@@ -241,7 +241,7 @@ export default function CalendarClient({
                   className={cn(
                     'flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-semibold leading-none',
                     isToday
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-green-500 text-white'
                       : holiday
                         ? 'text-emerald-300'
                         : 'dark:text-slate-300 light:text-slate-700',
@@ -288,8 +288,8 @@ export default function CalendarClient({
       </div>
 
       {selected && (
-        <div className="glass-card rounded-2xl p-4 border dark:border-blue-500/20 light:border-blue-200">
-          <p className="text-[13px] font-semibold text-blue-300 dark:text-blue-300 light:text-blue-700 mb-3">
+        <div className="glass-card rounded-2xl p-4 border dark:border-green-500/20 light:border-green-200">
+          <p className="text-[13px] font-semibold text-green-300 dark:text-green-300 light:text-green-700 mb-3">
             รายละเอียด —{' '}
             {new Date(selected).toLocaleDateString('th-TH', {
               weekday: 'long',

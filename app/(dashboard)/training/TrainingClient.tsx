@@ -56,7 +56,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 const ENROLL_COLORS: Record<string, string> = {
   NOT_STARTED:  'bg-gray-100 text-gray-500',
-  IN_PROGRESS:  'bg-blue-100 text-blue-700',
+  IN_PROGRESS:  'bg-green-100 text-green-700',
   COMPLETED:    'bg-green-100 text-green-700',
   FAILED:       'bg-red-100 text-red-700',
 }
@@ -259,7 +259,7 @@ export default function TrainingClient({
             <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'หลักสูตรทั้งหมด', value: dashboard.totalModules, color: 'text-indigo-600' },
-                { label: 'ลงทะเบียนทั้งหมด', value: dashboard.totalEnrollments, color: 'text-blue-600' },
+                { label: 'ลงทะเบียนทั้งหมด', value: dashboard.totalEnrollments, color: 'text-green-600' },
                 { label: 'อัตราสำเร็จ', value: `${dashboard.completionRate}%`, color: 'text-green-600' },
               ].map((kpi) => (
                 <div key={kpi.label} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
@@ -364,7 +364,7 @@ export default function TrainingClient({
                 <div className={`mt-4 rounded-lg p-3 flex items-center justify-between ${
                   enrollment.status === 'COMPLETED' ? 'bg-green-50 dark:bg-green-900/10' :
                   enrollment.status === 'FAILED'    ? 'bg-red-50 dark:bg-red-900/10' :
-                  'bg-blue-50 dark:bg-blue-900/10'
+                  'bg-green-50 dark:bg-green-900/10'
                 }`}>
                   <div>
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200">

@@ -145,18 +145,18 @@ export default function TasksClient({
         <div className="flex items-center gap-2">
           <div className="flex rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden bg-white dark:bg-slate-900">
             <button type="button" onClick={() => setViewMode('list')} title="มุมมองรายการ"
-              className={`flex h-9 w-9 items-center justify-center transition-colors ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05]'}`}>
+              className={`flex h-9 w-9 items-center justify-center transition-colors ${viewMode === 'list' ? 'bg-green-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05]'}`}>
               <List className="w-4 h-4" />
             </button>
             <button type="button" onClick={() => setViewMode('kanban')} title="มุมมองกระดาน"
-              className={`flex h-9 w-9 items-center justify-center transition-colors ${viewMode === 'kanban' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05]'}`}>
+              className={`flex h-9 w-9 items-center justify-center transition-colors ${viewMode === 'kanban' ? 'bg-green-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05]'}`}>
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
           {canAssign && (
             <button type="button" onClick={() => setCreate(true)}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+              style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}>
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">สร้างงาน</span>
               <span className="sm:hidden">สร้าง</span>
@@ -178,7 +178,7 @@ export default function TasksClient({
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
               {t.label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.id ? 'bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.id ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                 {t.count}
               </span>
             </button>
@@ -194,7 +194,7 @@ export default function TasksClient({
             <SlidersHorizontal size={14} />
             ตัวกรองฝ่าย
             {deptFilter !== 'all' && (
-              <span className="rounded-full bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5">{DEPT_LABEL[deptFilter] ?? deptFilter}</span>
+              <span className="rounded-full bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5">{DEPT_LABEL[deptFilter] ?? deptFilter}</span>
             )}
           </span>
           <ChevronDown size={14} className={`transition-transform ${showDeptFilter ? 'rotate-180' : ''}`} />
@@ -220,7 +220,7 @@ export default function TasksClient({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="ค้นหางาน, เลขคดี, ลูกค้า, พนักงาน..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400/60" />
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-green-400/60" />
         {search && (
           <button type="button" onClick={() => setSearch('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -282,7 +282,7 @@ export default function TasksClient({
               <p className="text-[14px] font-medium text-slate-500 dark:text-slate-400">ยังไม่มีงาน</p>
               {canAssign && filter === 'all' && (
                 <button type="button" onClick={() => setCreate(true)}
-                  className="mt-2 text-[13px] text-blue-600 dark:text-blue-400 hover:underline">
+                  className="mt-2 text-[13px] text-green-600 dark:text-green-400 hover:underline">
                   + สร้างงานใหม่
                 </button>
               )}
@@ -300,7 +300,7 @@ export default function TasksClient({
                       className="w-full text-left px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <p className="text-[14px] font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2 flex-1">
-                          {task.caseNumber && <span className="text-blue-600 dark:text-blue-400 mr-1">{task.caseNumber}</span>}
+                          {task.caseNumber && <span className="text-green-600 dark:text-green-400 mr-1">{task.caseNumber}</span>}
                           {task.title}
                         </p>
                         <StatusBadge status={eff} />
@@ -367,7 +367,7 @@ export default function TasksClient({
       {/* Mobile FAB */}
       {canAssign && (
         <button type="button" onClick={() => setCreate(true)}
-          className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+          className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-green-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-green-600/30 active:scale-95 transition-transform"
           style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}>
           <Plus className="w-4 h-4" />
           สร้างงาน

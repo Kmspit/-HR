@@ -84,7 +84,7 @@ const CATEGORIES: Record<string, string> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  CONTRACT:         'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  CONTRACT:         'bg-green-500/15 text-green-400 border-green-500/20',
   AGREEMENT:        'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
   EVIDENCE:         'bg-orange-500/15 text-orange-400 border-orange-500/20',
   COURT_DOCUMENT:   'bg-red-500/15 text-red-400 border-red-500/20',
@@ -114,7 +114,7 @@ function FileIcon({ mimeType, format, resourceType, className = 'w-5 h-5' }: {
     return <FileText className={`${className} text-red-400`} />
   }
   if (type.includes('word') || ['doc', 'docx'].includes(fmt)) {
-    return <FileText className={`${className} text-blue-400`} />
+    return <FileText className={`${className} text-green-400`} />
   }
   if (type.includes('sheet') || type.includes('excel') || ['xls', 'xlsx'].includes(fmt)) {
     return <FileText className={`${className} text-green-400`} />
@@ -216,7 +216,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
           download={file.fileName}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition"
         >
           <Download className="w-4 h-4" /> ดาวน์โหลด
         </a>
@@ -439,7 +439,7 @@ function UploadModal({
             onClick={() => inputRef.current?.click()}
             className={`relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${
               dragging
-                ? 'border-blue-500 bg-blue-500/10'
+                ? 'border-green-500 bg-green-500/10'
                 : file
                 ? 'border-green-500/40 bg-green-500/5'
                 : 'border-white/20 hover:border-white/30 hover:bg-white/5'
@@ -475,9 +475,9 @@ function UploadModal({
             )}
             {uploading && (
               <div className="absolute inset-0 rounded-2xl bg-slate-900/80 flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-green-400" />
                 <div className="w-32 bg-white/10 rounded-full h-1.5">
-                  <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                  <div className="bg-green-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
                 </div>
                 <p className="text-white/50 text-xs">กำลังอัปโหลด {progress}%</p>
               </div>
@@ -491,7 +491,7 @@ function UploadModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="เช่น คำฟ้อง-ชื่อลูกหนี้"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50"
             />
           </div>
 
@@ -516,7 +516,7 @@ function UploadModal({
               value={caseNumber}
               onChange={(e) => setCaseNum(e.target.value)}
               placeholder="เช่น CS-2024-001"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50"
             />
           </div>
 
@@ -528,7 +528,7 @@ function UploadModal({
               onChange={(e) => setDesc(e.target.value)}
               rows={2}
               placeholder="รายละเอียดเพิ่มเติม..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 resize-none focus:outline-none focus:border-green-500/50"
             />
           </div>
 
@@ -539,7 +539,7 @@ function UploadModal({
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="เช่น court, urgent, evidence"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50"
             />
           </div>
 
@@ -547,7 +547,7 @@ function UploadModal({
             <button
               onClick={submit}
               disabled={uploading || !file}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition"
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {uploading ? 'กำลังอัปโหลด...' : 'อัปโหลด'}
@@ -620,7 +620,7 @@ function DocCard({ doc, onPreview, onArchive, userId, role }: {
               {formatDate(doc.updatedAt)}
             </span>
             {doc._count.files > 1 && (
-              <span className="text-blue-400">v{latestFile?.version ?? 1} ({doc._count.files} ไฟล์)</span>
+              <span className="text-green-400">v{latestFile?.version ?? 1} ({doc._count.files} ไฟล์)</span>
             )}
             {latestFile?.fileSize && (
               <span>{formatBytes(latestFile.fileSize)}</span>
@@ -760,7 +760,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
             onClick={() => changeTab(tab.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
               activeTab === tab.id
-                ? 'bg-blue-600 text-white'
+                ? 'bg-green-600 text-white'
                 : 'text-white/50 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -778,7 +778,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="ค้นหาชื่อเอกสาร, หมายเลขคดี, ลูกค้า, แท็ก..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50"
           />
         </div>
 
@@ -802,7 +802,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
 
         <button
           onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition"
         >
           <Plus className="w-4 h-4" /> อัปโหลดเอกสาร
         </button>
@@ -826,7 +826,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
           <p className="text-sm">ไม่มีเอกสาร</p>
           <button
             onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 text-blue-400 text-sm hover:text-blue-300 transition"
+            className="flex items-center gap-2 text-green-400 text-sm hover:text-green-300 transition"
           >
             <Plus className="w-4 h-4" /> อัปโหลดเอกสารแรก
           </button>
@@ -870,7 +870,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
       {/* Upload FAB (mobile) */}
       <button
         onClick={() => setShowUpload(true)}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 shadow-lg flex items-center justify-center z-40 transition"
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 shadow-lg flex items-center justify-center z-40 transition"
       >
         <Plus className="w-6 h-6 text-white" />
       </button>

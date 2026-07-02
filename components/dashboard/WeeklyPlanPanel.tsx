@@ -35,11 +35,11 @@ type Plan = {
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING:                'text-yellow-400 bg-yellow-500/10',
-  ADMIN_APPROVED:         'text-blue-400 bg-blue-500/10',
+  ADMIN_APPROVED:         'text-green-400 bg-green-500/10',
   APPROVED:               'text-green-400 bg-green-500/10',
   REJECTED:               'text-red-400 bg-red-500/10',
   pending_supervisor:     'text-yellow-400 bg-yellow-500/10',
-  pending_executive:      'text-blue-400 bg-blue-500/10',
+  pending_executive:      'text-green-400 bg-green-500/10',
   approved:               'text-green-400 bg-green-500/10',
   approved_by_executive:  'text-green-400 bg-green-500/10',
   rejected_by_supervisor: 'text-red-400 bg-red-500/10',
@@ -142,15 +142,15 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
     finally { setLoading(false) }
   }
 
-  const inputCls = 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500/50'
+  const inputCls = 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-green-500/50'
 
   return (
     <div className="p-5 space-y-5">
       {/* Deadline banner */}
-      <div className={`rounded-2xl border p-4 flex items-center gap-3 ${isLate ? 'border-red-500/30 bg-red-500/10' : hoursLeft < 24 ? 'border-yellow-500/30 bg-yellow-500/10' : 'border-blue-500/20 bg-blue-500/5'}`}>
+      <div className={`rounded-2xl border p-4 flex items-center gap-3 ${isLate ? 'border-red-500/30 bg-red-500/10' : hoursLeft < 24 ? 'border-yellow-500/30 bg-yellow-500/10' : 'border-green-500/20 bg-green-500/5'}`}>
         <span className="text-2xl">{isLate ? '⚠️' : '⏰'}</span>
         <div>
-          <p className={`font-semibold text-sm ${isLate ? 'text-red-400' : hoursLeft < 24 ? 'text-yellow-400' : 'text-blue-400'}`}>
+          <p className={`font-semibold text-sm ${isLate ? 'text-red-400' : hoursLeft < 24 ? 'text-yellow-400' : 'text-green-400'}`}>
             {isLate ? 'เกินกำหนดส่งแล้ว!' : `กำหนดส่ง: ${formatThaiDate(deadline)}`}
           </p>
           <p className="text-xs text-slate-400">
@@ -160,17 +160,17 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
       </div>
 
       {/* GPS validation info banner */}
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 flex items-start gap-2.5">
-        <MapPin className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+      <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-3 flex items-start gap-2.5">
+        <MapPin className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-slate-400">
-          <span className="text-blue-400 font-semibold">บันทึก GPS ต่อวัน</span> เพื่อให้ระบบตรวจสอบตำแหน่งเช็คอินนอกสถานที่ — หากเช็คอินห่างเกิน 500 เมตร ระบบจะแจ้งหัวหน้างานและ CEO โดยอัตโนมัติ
+          <span className="text-green-400 font-semibold">บันทึก GPS ต่อวัน</span> เพื่อให้ระบบตรวจสอบตำแหน่งเช็คอินนอกสถานที่ — หากเช็คอินห่างเกิน 500 เมตร ระบบจะแจ้งหัวหน้างานและ CEO โดยอัตโนมัติ
         </p>
       </div>
 
       {isLawyer && (
         <div className="flex gap-1 rounded-xl bg-slate-900 p-1 border border-white/5">
           {[{ id: 'submit' as const, label: '📝 ส่งแผนงาน' }, { id: 'history' as const, label: `📜 ประวัติ (${plans.length})` }].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-1 items-center justify-center rounded-lg py-2 text-xs font-semibold transition-all ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>{t.label}</button>
+            <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-1 items-center justify-center rounded-lg py-2 text-xs font-semibold transition-all ${tab === t.id ? 'bg-green-600 text-white' : 'text-slate-400 hover:text-white'}`}>{t.label}</button>
           ))}
         </div>
       )}
@@ -193,7 +193,7 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
               <div
                 key={day.id}
                 className={`rounded-2xl border p-4 transition-colors ${
-                  hasEntry ? 'border-blue-500/20 bg-slate-900' : 'border-white/5 bg-slate-900/60'
+                  hasEntry ? 'border-green-500/20 bg-slate-900' : 'border-white/5 bg-slate-900/60'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -248,13 +248,13 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
             <textarea
               rows={2}
               placeholder="เช่น อยู่ออฟฟิศทั้งสัปดาห์ / ไม่มีนัดนอกสถานที่..."
-              className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none resize-none focus:border-blue-500/50"
+              className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none resize-none focus:border-green-500/50"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
 
-          <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
+          <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all disabled:opacity-60">
             {loading ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</> : '📤 ส่งแผนงาน'}
           </button>
         </form>
@@ -289,7 +289,7 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                 ) : (
                   p.days.map((d) => (
                     <div key={d.dayOfWeek} className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs">
-                      <span className="font-semibold text-blue-400 w-16 flex-shrink-0">{weeklyDayLabel(d.dayOfWeek)}</span>
+                      <span className="font-semibold text-green-400 w-16 flex-shrink-0">{weeklyDayLabel(d.dayOfWeek)}</span>
                       <span className="text-slate-300 flex-1">{d.place} — {d.purpose}</span>
                       {d.lat != null && d.lng != null && (
                         <span className="flex items-center gap-1 text-green-400 text-[10px] flex-shrink-0">

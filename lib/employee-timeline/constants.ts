@@ -27,7 +27,7 @@ export const CATEGORY_LABELS: Record<TimelineCategory, string> = {
 
 export const CATEGORY_COLORS: Record<TimelineCategory, string> = {
   attendance: 'bg-emerald-500',
-  leave: 'bg-blue-500',
+  leave: 'bg-green-500',
   outside: 'bg-violet-500',
   warning: 'bg-amber-500',
   payroll: 'bg-teal-500',
@@ -36,7 +36,7 @@ export const CATEGORY_COLORS: Record<TimelineCategory, string> = {
 
 export const CATEGORY_BADGE: Record<TimelineCategory, string> = {
   attendance: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
-  leave: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
+  leave: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
   outside: 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300',
   warning: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
   payroll: 'bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-300',

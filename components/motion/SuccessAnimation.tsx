@@ -16,7 +16,7 @@ const LABELS: Record<SuccessVariant, string> = {
 }
 
 const COLORS: Record<SuccessVariant, string> = {
-  checkin: 'from-blue-500 to-cyan-500',
+  checkin: 'from-green-500 to-cyan-500',
   leave: 'from-violet-500 to-purple-500',
   approval: 'from-emerald-500 to-green-500',
 }

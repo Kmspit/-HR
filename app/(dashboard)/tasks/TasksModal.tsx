@@ -81,15 +81,15 @@ function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; 
       {items.length > 0 && (
         <>
           <div className="h-1.5 rounded-full bg-slate-100 dark:bg-white/10 mb-3 overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+            <div className={`h-full rounded-full transition-all ${pct === 100 ? 'bg-green-500' : 'bg-green-500'}`} style={{ width: `${pct}%` }} />
           </div>
           <div className="space-y-1.5 mb-3">
             {items.map((item) => (
               <div key={item.id} className={`flex items-center gap-2.5 rounded-xl px-3 py-2 border transition-colors ${item.isCompleted ? 'bg-green-50 dark:bg-green-500/[0.06] border-green-100 dark:border-green-500/20' : 'bg-slate-50 dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.05]'}`}>
                 <button type="button" disabled={loading === item.id} onClick={() => toggleItem(item)}
-                  className="flex-shrink-0 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-40">
+                  className="flex-shrink-0 text-slate-400 hover:text-green-500 transition-colors disabled:opacity-40">
                   {loading === item.id
-                    ? <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                    ? <Loader2 className="w-4 h-4 animate-spin text-green-500" />
                     : item.isCompleted
                       ? <CheckSquare className="w-4 h-4 text-green-500" />
                       : <Square className="w-4 h-4" />
@@ -112,9 +112,9 @@ function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; 
         <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addItem() } }}
           placeholder="เพิ่มรายการตรวจสอบ..."
-          className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400/60" />
+          className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-green-400/60" />
         <button type="button" disabled={adding || !newTitle.trim()} onClick={addItem}
-          className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+          className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-semibold text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-40">
           {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           เพิ่ม
         </button>
@@ -207,7 +207,7 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
               </div>
               <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{c.content}</p>
               <button type="button" onClick={() => setReplyTo(replyingTo === c.id ? null : c.id)}
-                className="mt-1 text-[11px] text-blue-500 hover:text-blue-600 transition-colors">
+                className="mt-1 text-[11px] text-green-500 hover:text-green-600 transition-colors">
                 ตอบกลับ
               </button>
             </div>
@@ -215,7 +215,7 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
             {c.replies && c.replies.length > 0 && (
               <div className="ml-5 mt-1.5 space-y-1.5">
                 {c.replies.map((r) => (
-                  <div key={r.id} className="rounded-xl bg-blue-50/50 dark:bg-blue-500/[0.04] border border-blue-100 dark:border-blue-500/10 px-3 py-2">
+                  <div key={r.id} className="rounded-xl bg-green-50/50 dark:bg-green-500/[0.04] border border-green-100 dark:border-green-500/10 px-3 py-2">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{r.user.name}</span>
                       <div className="flex items-center gap-1.5">
@@ -239,9 +239,9 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
                 <input type="text" value={replyText} onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(replyText, c.id) } }}
                   placeholder={`ตอบกลับ ${c.user.name}...`}
-                  className="flex-1 rounded-xl px-3 py-2 text-[12px] bg-white dark:bg-white/5 border border-blue-200 dark:border-blue-500/25 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
+                  className="flex-1 rounded-xl px-3 py-2 text-[12px] bg-white dark:bg-white/5 border border-green-200 dark:border-green-500/25 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
                 <button type="button" disabled={posting || !replyText.trim()} onClick={() => postComment(replyText, c.id)}
-                  className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-xl text-blue-600 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+                  className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-xl text-green-600 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-40">
                   {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </button>
               </div>
@@ -253,9 +253,9 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
       <div className="flex gap-2">
         <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)}
           placeholder="เพิ่มความคิดเห็น..."
-          className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-blue-400/60" />
+          className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-green-400/60" />
         <button type="button" disabled={posting || !text.trim()} onClick={() => postComment(text)}
-          className="flex-shrink-0 self-end flex h-9 w-9 items-center justify-center rounded-xl text-blue-600 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+          className="flex-shrink-0 self-end flex h-9 w-9 items-center justify-center rounded-xl text-green-600 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-40">
           {posting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
         </button>
       </div>
@@ -266,7 +266,7 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
 // ── Timeline Section ──────────────────────────────────────────────────────────
 
 const TIMELINE_ACTION_ICON: Record<string, React.ReactNode> = {
-  created:              <Plus className="w-3 h-3 text-blue-500" />,
+  created:              <Plus className="w-3 h-3 text-green-500" />,
   status_changed:       <RotateCcw className="w-3 h-3 text-amber-500" />,
   edited:               <FileText className="w-3 h-3 text-slate-400" />,
   commented:            <MessageSquare className="w-3 h-3 text-purple-400" />,
@@ -459,7 +459,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
               { id: 'timeline' as const,  label: 'ประวัติ' },
             ]).map((t) => (
               <button key={t.id} type="button" onClick={() => setDetailTab(t.id)}
-                className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all ${detailTab === t.id ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
+                className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all ${detailTab === t.id ? 'bg-green-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06]'}`}>
                 {t.label}
               </button>
             ))}
@@ -540,7 +540,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                 <div className="space-y-1.5">
                   {links.map((lk) => (
                     <a key={lk._key ?? lk.url} href={lk.url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors group">
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-[13px] text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 hover:bg-green-100 dark:hover:bg-green-500/20 transition-colors group">
                       <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-60 group-hover:opacity-100" />
                       <span className="flex-1 truncate">{lk.label || lk.url}</span>
                     </a>
@@ -574,7 +574,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                     uploading={uploading} />
                   {pendingFiles.length > 0 && (
                     <button type="button" disabled={uploading} onClick={handleUploadFiles}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50">
+                      className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50">
                       {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                       {uploading ? 'กำลังอัปโหลด...' : `อัปโหลด ${pendingFiles.length} ไฟล์`}
                     </button>
@@ -609,10 +609,10 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
             )}
 
             {task.resultNote && (
-              <div className="rounded-xl bg-blue-50 dark:bg-blue-500/[0.07] border border-blue-100 dark:border-blue-500/15 px-4 py-3">
-                <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-1">ผลงานที่ส่ง</p>
-                <p className="text-[13px] text-blue-800 dark:text-blue-300">{task.resultNote}</p>
-                {task.submittedAt && <p className="text-[10px] text-blue-500 dark:text-blue-400/60 mt-1">ส่งเมื่อ {fmtDate(task.submittedAt)}</p>}
+              <div className="rounded-xl bg-green-50 dark:bg-green-500/[0.07] border border-green-100 dark:border-green-500/15 px-4 py-3">
+                <p className="text-[11px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-1">ผลงานที่ส่ง</p>
+                <p className="text-[13px] text-green-800 dark:text-green-300">{task.resultNote}</p>
+                {task.submittedAt && <p className="text-[10px] text-green-500 dark:text-green-400/60 mt-1">ส่งเมื่อ {fmtDate(task.submittedAt)}</p>}
               </div>
             )}
 
@@ -624,7 +624,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                 <div className="relative pl-4 space-y-2 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-px before:bg-slate-200 dark:before:bg-white/[0.06]">
                   {noteHist.map((n) => (
                     <div key={n.timestamp} className="relative">
-                      <div className="absolute -left-[11px] top-2 w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500 ring-2 ring-white dark:ring-slate-900" />
+                      <div className="absolute -left-[11px] top-2 w-2 h-2 rounded-full bg-green-400 dark:bg-green-500 ring-2 ring-white dark:ring-slate-900" />
                       <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{n.userName}</span>
@@ -644,10 +644,10 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                 <div className="flex gap-2">
                   <textarea rows={2} value={progressInput} onChange={(e) => setProgress(e.target.value)}
                     placeholder="บันทึกความคืบหน้า..."
-                    className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-blue-400/60" />
+                    className="flex-1 rounded-xl px-3 py-2 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-green-400/60" />
                   <button type="button" disabled={isPending || !progressInput.trim()}
                     onClick={() => { if (!progressInput.trim()) return; patch({ progressNote: progressInput.trim() }); setProgress('') }}
-                    className="flex-shrink-0 self-end flex items-center justify-center rounded-xl px-3 py-2 text-[12px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-40">
+                    className="flex-shrink-0 self-end flex items-center justify-center rounded-xl px-3 py-2 text-[12px] font-semibold text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-40">
                     {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'บันทึก'}
                   </button>
                 </div>
@@ -662,7 +662,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
 
                 {canStart && (
                   <button type="button" disabled={isPending} onClick={() => patch({ status: 'IN_PROGRESS' })}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-50">
+                    className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-semibold text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-50">
                     {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
                     รับงาน / เริ่มทำ
                   </button>
@@ -672,7 +672,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                   <div className="space-y-2">
                     <textarea rows={3} value={resultNote} onChange={(e) => setResultNote(e.target.value)}
                       placeholder="รายละเอียดผลงาน / สิ่งที่ทำเสร็จแล้ว..."
-                      className="w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-blue-400/60" />
+                      className="w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-green-400/60" />
                     <div className="grid grid-cols-2 gap-2">
                       {task.status === 'IN_PROGRESS' && (
                         <button type="button" disabled={isPending} onClick={() => patch({ status: 'WAITING_DOC' })}
@@ -683,7 +683,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                       )}
                       {task.status === 'WAITING_DOC' && (
                         <button type="button" disabled={isPending} onClick={() => patch({ status: 'IN_PROGRESS' })}
-                          className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/25 hover:bg-blue-100 transition-colors disabled:opacity-50">
+                          className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-semibold text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-50">
                           {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
                           ได้รับเอกสารแล้ว
                         </button>
@@ -705,7 +705,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                 <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide pt-1">ตรวจงาน</p>
                 <textarea rows={2} value={reviewNote} onChange={(e) => setReviewNote(e.target.value)}
                   placeholder="หมายเหตุ (ไม่บังคับ)..."
-                  className="w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-blue-400/60" />
+                  className="w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:border-green-400/60" />
                 <div className="flex gap-2">
                   <button type="button" disabled={isPending} onClick={() => patch({ status: 'COMPLETED', reviewNote })}
                     className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-semibold text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/25 hover:bg-green-100 transition-colors disabled:opacity-50">
@@ -787,7 +787,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
   const [checklistItems,   setChecklistItems] = useState<{ _key: string; value: string }[]>([])
   const [dueTime,          setDueTime]        = useState('')
 
-  const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-400/60'
+  const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-green-400/60'
 
   const taskTypeOptions = DEPT_TASK_OPTIONS[taskDepartment] ?? DEPT_TASK_OPTIONS['']
 
@@ -894,14 +894,14 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
             <div className="px-5 py-4 space-y-4">
 
               {templates.length > 0 && (
-                <div className="rounded-xl border border-dashed border-blue-300 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/[0.04] px-3 py-2.5">
+                <div className="rounded-xl border border-dashed border-green-300 dark:border-green-500/30 bg-green-50/50 dark:bg-green-500/[0.04] px-3 py-2.5">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[12px] font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                    <p className="text-[12px] font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5">
                       <ClipboardList className="w-3.5 h-3.5" />
                       {selectedTemplateId ? `เทมเพลต: ${templates.find(t => t.id === selectedTemplateId)?.name ?? ''}` : 'สร้างจากเทมเพลต (ไม่บังคับ)'}
                     </p>
                     <button type="button" onClick={() => setShowTemplatePicker(v => !v)}
-                      className="text-[11px] text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                      className="text-[11px] text-green-600 dark:text-green-400 font-medium hover:underline">
                       {showTemplatePicker ? 'ซ่อน' : selectedTemplateId ? 'เปลี่ยน' : 'เลือก'}
                     </button>
                   </div>
@@ -909,7 +909,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                     <div className="space-y-1.5 max-h-40 overflow-y-auto">
                       {templates.map((tpl) => (
                         <button key={tpl.id} type="button" onClick={() => applyTemplate(tpl)}
-                          className="w-full text-left rounded-lg px-3 py-2 text-[12px] hover:bg-blue-100 dark:hover:bg-blue-500/15 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-500/30">
+                          className="w-full text-left rounded-lg px-3 py-2 text-[12px] hover:bg-green-100 dark:hover:bg-green-500/15 transition-colors border border-transparent hover:border-green-200 dark:hover:border-green-500/30">
                           <p className="font-semibold text-slate-800 dark:text-slate-200">{tpl.name}</p>
                           {tpl.description && <p className="text-slate-500 dark:text-slate-400 truncate text-[11px]">{tpl.description}</p>}
                           <div className="flex gap-1.5 mt-1 flex-wrap">
@@ -1050,7 +1050,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</label>
                   <button type="button" onClick={() => setLinks((p) => [...p, { _key: String(Date.now()), label: '', url: '' }])}
-                    className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
+                    className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400 hover:text-green-700 font-medium">
                     <Plus className="w-3.5 h-3.5" />เพิ่มลิงก์
                   </button>
                 </div>
@@ -1082,7 +1082,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                     <CheckSquare className="w-3.5 h-3.5" />รายการตรวจสอบ (ไม่บังคับ)
                   </label>
                   <button type="button" onClick={() => setChecklistItems((p) => [...p, { _key: String(Date.now()), value: '' }])}
-                    className="flex items-center gap-1 text-[12px] text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
+                    className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400 hover:text-green-700 font-medium">
                     <Plus className="w-3.5 h-3.5" />เพิ่ม
                   </button>
                 </div>
@@ -1121,7 +1121,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
             <div className="sticky bottom-0 px-5 pb-5 pt-3 border-t border-slate-100 dark:border-white/[0.06] bg-white dark:bg-slate-900">
               <button type="submit" disabled={isSubmitting}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold text-white shadow-sm transition-all disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+                style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}>
                 {isSubmitting
                   ? <><Loader2 className="w-4 h-4 animate-spin" />{uploading ? 'กำลังอัปโหลดไฟล์...' : 'กำลังสร้างงาน...'}</>
                   : <><Plus className="w-4 h-4" />สร้างงาน / มอบหมาย</>

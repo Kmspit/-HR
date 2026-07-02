@@ -113,7 +113,7 @@ export default function ProbationClient() {
               onClick={() => setFilter(val)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 filter === val
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-green-600 text-white'
                   : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10'
               }`}
             >
@@ -141,8 +141,8 @@ export default function ProbationClient() {
           return (
             <div key={emp.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
               <div className="flex items-center gap-3 p-4">
-                <div className="w-9 h-9 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-blue-400" />
+                <div className="w-9 h-9 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-green-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-medium truncate">{emp.name}</p>
@@ -222,12 +222,12 @@ export default function ProbationClient() {
                         onChange={(e) => setForm((prev) => ({ ...prev, [emp.id]: { ...f, notes: e.target.value } }))}
                         placeholder="หมายเหตุ / ข้อเสนอแนะ (ไม่บังคับ)"
                         rows={2}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-500/50"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-green-500/50"
                       />
                       <button
                         onClick={() => submit(emp)}
                         disabled={evaluating === emp.id || !f.result}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition"
                       >
                         {evaluating === emp.id ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                         บันทึกผลการประเมิน

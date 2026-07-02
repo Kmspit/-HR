@@ -330,10 +330,10 @@ export default function ApprovalCenterClient(props: Props) {
         {TABS.map(({ id, icon: Icon }) => (
           <button key={id} type="button"
             onClick={() => changeTab(id)}
-            className={`flex flex-1 min-w-[120px] items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${tab === id ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+            className={`flex flex-1 min-w-[120px] items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${tab === id ? 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
             <Icon size={16} /> {TAB_LABELS[id]}
             {tabCounts[id] > 0 && (
-              <span className={`rounded-full px-1.5 text-[10px] font-bold ${tab === id ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+              <span className={`rounded-full px-1.5 text-[10px] font-bold ${tab === id ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                 {tabCounts[id]}
               </span>
             )}
@@ -348,25 +348,25 @@ export default function ApprovalCenterClient(props: Props) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value as ApprovalType | 'ALL' }))}
-            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-blue-500">
+            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-green-500">
             {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <select value={filters.department} onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))}
-            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-blue-500">
+            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-green-500">
             <option value="ALL">ทุกแผนก</option>
             {departments.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
           <select value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-blue-500">
+            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-green-500">
             {statusOptions.map((s) => (
               <option key={s} value={s}>{s === 'ALL' ? 'ทุกสถานะ' : STATUS_LABELS[s] ?? s}</option>
             ))}
           </select>
           <input type="date" value={filters.dateFrom} onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-blue-500"
+            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-green-500"
             placeholder="จากวันที่" />
           <input type="date" value={filters.dateTo} onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-blue-500"
+            className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] outline-none focus:border-green-500"
             placeholder="ถึงวันที่" />
         </div>
         <div className="relative">
@@ -375,7 +375,7 @@ export default function ApprovalCenterClient(props: Props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อพนักงาน แผนก หรือรายละเอียด..."
-            className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 pl-10 pr-4 py-2.5 text-[13px] outline-none focus:border-blue-500"
+            className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 pl-10 pr-4 py-2.5 text-[13px] outline-none focus:border-green-500"
           />
         </div>
       </div>

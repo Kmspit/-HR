@@ -53,7 +53,7 @@ export function validateSelfProfileForm(form: {
 }
 
 export const profileInputClass =
-  'w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-blue-500 transition'
+  'w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-green-500 transition'
 
 export const profileInputErrorClass =
   'w-full bg-white/5 border border-red-500/50 rounded-xl px-3 py-2.5 text-white text-sm outline-none focus:border-red-500 transition'

@@ -124,9 +124,9 @@ export const PRIORITY_STYLES: Record<NotificationPriority, {
     label: 'ควรทราบ',
   },
   info: {
-    border: 'border-l-blue-500',
-    dot: 'bg-blue-500',
-    badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25',
+    border: 'border-l-green-500',
+    dot: 'bg-green-500',
+    badge: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/25',
     label: 'ทั่วไป',
   },
 }

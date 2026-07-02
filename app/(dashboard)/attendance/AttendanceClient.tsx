@@ -87,7 +87,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   NORMAL:   { label: 'ปกติ',      color: 'text-green-700 dark:text-green-400' },
   LATE:     { label: 'มาสาย',    color: 'text-amber-700 dark:text-yellow-400' },
   ABSENT:   { label: 'ขาดงาน',   color: 'text-red-700 dark:text-red-400' },
-  LEAVE:    { label: 'ลา',        color: 'text-blue-700 dark:text-blue-400' },
+  LEAVE:    { label: 'ลา',        color: 'text-green-700 dark:text-green-400' },
   OT:       { label: 'OT',        color: 'text-purple-700 dark:text-purple-400' },
   HALF_DAY: { label: 'ครึ่งวัน', color: 'text-orange-700 dark:text-orange-400' },
   EARLY_LEAVE: { label: 'กลับก่อน', color: 'text-orange-400' },
@@ -104,10 +104,10 @@ const ACTION_STEPS: { key: AttendanceAction; label: string; short: string }[] = 
 ]
 
 const ACTION_STYLE: Record<AttendanceAction, { grad: string; icon: string }> = {
-  checkin: { grad: 'linear-gradient(135deg,#06b6d4,#3b82f6)', icon: '🟢' },
+  checkin: { grad: 'linear-gradient(135deg,#06b6d4,#22c55e)', icon: '🟢' },
   'lunch-out': { grad: 'linear-gradient(135deg,#f59e0b,#ea580c)', icon: '☕' },
   'lunch-in': { grad: 'linear-gradient(135deg,#eab308,#f59e0b)', icon: '🔔' },
-  checkout: { grad: 'linear-gradient(135deg,#3b82f6,#6366f1)', icon: '🔵' },
+  checkout: { grad: 'linear-gradient(135deg,#22c55e,#6366f1)', icon: '🔵' },
 }
 
 export default function AttendanceClient({
@@ -265,7 +265,7 @@ export default function AttendanceClient({
           ].map((tab) => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id as 'today' | 'history' | 'team'); setSelectedType(null) }}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white/80'
+                activeTab === tab.id ? 'bg-green-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white/80'
               }`}>
               {tab.icon}
               <span className="hidden sm:inline">{tab.label}</span>
@@ -292,7 +292,7 @@ export default function AttendanceClient({
             </div>
             <div className="rounded-xl p-3 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
               <p className="text-[11px] text-slate-500 mb-1">เช็คเอาท์</p>
-              <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{formatTime(todayRecord?.checkOut ?? null)}</p>
+              <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatTime(todayRecord?.checkOut ?? null)}</p>
             </div>
             <div className="rounded-xl p-3 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
               <p className="text-[11px] text-slate-500 mb-1">สถานะ</p>
@@ -358,8 +358,8 @@ export default function AttendanceClient({
               : null
             const late = todayRecord.lateMinutes ?? 0
             return (
-              <div className="rounded-xl p-4 space-y-3 bg-blue-50 dark:bg-slate-900/70 border border-blue-100 dark:border-blue-500/20">
-                <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">สรุปวันนี้</p>
+              <div className="rounded-xl p-4 space-y-3 bg-green-50 dark:bg-slate-900/70 border border-green-100 dark:border-green-500/20">
+                <p className="text-xs font-semibold text-green-700 dark:text-green-400">สรุปวันนี้</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div className="flex justify-between">
                     <span className="text-slate-500">เข้างาน</span>
@@ -367,7 +367,7 @@ export default function AttendanceClient({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">ออกงาน</span>
-                    <span className="text-blue-700 dark:text-blue-400 font-medium">{formatTime(todayRecord.checkOut)}</span>
+                    <span className="text-green-700 dark:text-green-400 font-medium">{formatTime(todayRecord.checkOut)}</span>
                   </div>
                   {todayRecord.lunchOut && (
                     <div className="flex justify-between">
@@ -444,7 +444,7 @@ export default function AttendanceClient({
                       <div
                         className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
                           done ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
-                          : current ? 'bg-blue-600 text-white ring-2 ring-blue-400/50 scale-110'
+                          : current ? 'bg-green-600 text-white ring-2 ring-green-400/50 scale-110'
                           : 'bg-white/5 text-slate-600'
                         }`}
                       >
@@ -502,7 +502,7 @@ export default function AttendanceClient({
                   type="button"
                   disabled={isPending}
                   onClick={() => { setSelectedType(null); setLunchPanel('checkout') }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold text-blue-700 dark:text-slate-300 bg-blue-100 dark:bg-blue-500/12 border border-blue-300 dark:border-blue-500/30 transition-all active:scale-[0.98] hover:bg-blue-200 dark:hover:text-white disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold text-green-700 dark:text-slate-300 bg-green-100 dark:bg-green-500/12 border border-green-300 dark:border-green-500/30 transition-all active:scale-[0.98] hover:bg-green-200 dark:hover:text-white disabled:opacity-50"
                 >
                   <span>🔵</span>
                   <span>เช็คเอาท์ (ไม่พักกลางวัน)</span>
@@ -568,11 +568,11 @@ export default function AttendanceClient({
           {faceRegistered && !showFaceUpdate && (
             <div className="flex flex-wrap items-center gap-2 px-1">
               <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                <ScanFace className="w-3.5 h-3.5 text-blue-400" />
+                <ScanFace className="w-3.5 h-3.5 text-green-400" />
                 ลงทะเบียนใบหน้าแล้ว — สแกนใบหน้าตรงกล้องเพื่อลงเวลา
               </p>
               <button type="button" onClick={() => setShowFaceUpdate(true)}
-                className="text-[10px] text-blue-400 hover:text-blue-300 underline">
+                className="text-[10px] text-green-400 hover:text-green-300 underline">
                 อัปเดตใบหน้า
               </button>
             </div>
@@ -626,7 +626,7 @@ export default function AttendanceClient({
                     <tr
                       key={r.id}
                       onClick={() => setDetailRecordId(r.id)}
-                      className="border-b border-slate-100 dark:border-white/[0.04] hover:bg-blue-50/60 dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      className="border-b border-slate-100 dark:border-white/[0.04] hover:bg-green-50/60 dark:hover:bg-white/[0.03] transition-colors cursor-pointer"
                     >
                       <td className="p-3 text-slate-700 dark:text-slate-300 text-xs">{formatDate(r.date)}</td>
                       <td className="p-3 text-center text-slate-500 dark:text-slate-400 text-xs">{r.sessionIndex ?? 1}</td>
@@ -634,7 +634,7 @@ export default function AttendanceClient({
                       <td className="p-3 text-center text-amber-700 dark:text-amber-400 font-medium text-xs">{formatTime(r.lunchOut)}</td>
                       <td className="p-3 text-center text-amber-600 dark:text-amber-300 font-medium text-xs">{formatTime(r.lunchIn)}</td>
                       <td className="p-3 text-center text-xs">
-                        <span className={r.checkOut ? (r.autoCheckout ? 'text-orange-700 dark:text-orange-400' : 'text-blue-700 dark:text-blue-400') : 'text-slate-400'}>
+                        <span className={r.checkOut ? (r.autoCheckout ? 'text-orange-700 dark:text-orange-400' : 'text-green-700 dark:text-green-400') : 'text-slate-400'}>
                           {formatTime(r.checkOut)}
                         </span>
                         {r.autoCheckout && r.checkOut && (
@@ -656,7 +656,7 @@ export default function AttendanceClient({
                             href={`https://www.google.com/maps?q=${r.lat},${r.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                            className="text-[10px] text-green-600 dark:text-green-400 hover:underline"
                           >
                             ดูแผนที่
                           </a>
@@ -710,7 +710,7 @@ export default function AttendanceClient({
               return (
                 <div key={emp.id} className="flex items-center gap-3 rounded-xl p-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+                    style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}>
                     {emp.name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">

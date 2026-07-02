@@ -36,7 +36,7 @@ const TYPE_BADGE: Record<HolidayType, string> = {
 }
 
 const inputCls =
-  'dashboard-select w-full rounded-xl border dark:border-slate-600 light:border-slate-200 dark:bg-slate-800 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  'dashboard-select w-full rounded-xl border dark:border-slate-600 light:border-slate-200 dark:bg-slate-800 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500'
 
 type Props = {
   initialHolidays: HolidayItem[]
@@ -217,7 +217,7 @@ export default function HolidayManagePanel({
       </div>
 
       {showForm && (
-        <div className="rounded-xl border dark:border-blue-500/30 light:border-blue-200 dark:bg-white/[0.02] light:bg-slate-50 p-4 space-y-3">
+        <div className="rounded-xl border dark:border-green-500/30 light:border-green-200 dark:bg-white/[0.02] light:bg-slate-50 p-4 space-y-3">
           <p className="text-sm font-medium dark:text-white light:text-slate-800">
             {editingId ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุดใหม่'}
           </p>
@@ -293,7 +293,7 @@ export default function HolidayManagePanel({
               type="button"
               onClick={save}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               บันทึก

@@ -179,7 +179,7 @@ const STATUS_COLORS: Record<string, string> = {
 
   Late: 'text-amber-400',
 
-  Leave: 'text-blue-400',
+  Leave: 'text-green-400',
 
   Absent: 'text-red-400',
 
@@ -585,7 +585,7 @@ export default function MonthlyAttendanceClient({
 
           onClick={() => void load()}
 
-          className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-sm text-white"
+          className="rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-sm text-white"
 
         >
 
@@ -705,7 +705,7 @@ export default function MonthlyAttendanceClient({
 
             { label: 'มาสาย', value: summary.late, color: 'text-amber-400' },
 
-            { label: 'ลา', value: summary.leave, color: 'text-blue-400' },
+            { label: 'ลา', value: summary.leave, color: 'text-green-400' },
 
             { label: 'ขาด', value: summary.absent, color: 'text-red-400' },
 
@@ -781,7 +781,7 @@ export default function MonthlyAttendanceClient({
               <p className="text-[12px] text-amber-400">สาย {formatLateMinutes(r.lateMinutes)}</p>
             )}
             {r.leaveTypeLabel && (
-              <p className="text-[12px] text-blue-400">{r.leaveTypeLabel}</p>
+              <p className="text-[12px] text-green-400">{r.leaveTypeLabel}</p>
             )}
             {r.note && (
               <p className="text-[12px] text-slate-500 truncate">{r.note}</p>

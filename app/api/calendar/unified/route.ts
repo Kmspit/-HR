@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // Color map for event types
 const EVENT_TYPE_META: Record<string, { label: string; color: string }> = {
   COURT:      { label: 'นัดศาล',    color: '#ef4444' },
-  CLIENT:     { label: 'นัดลูกค้า', color: '#3b82f6' },
+  CLIENT:     { label: 'นัดลูกค้า', color: '#22c55e' },
   DEBTOR:     { label: 'นัดลูกหนี้', color: '#f97316' },
   INTERNAL:   { label: 'ภายใน',     color: '#22c55e' },
   TASK_COURT: { label: 'ศาล(งาน)',  color: '#dc2626' },

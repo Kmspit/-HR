@@ -31,7 +31,7 @@ const TYPE_ICONS_LOCAL: Record<string, string> = {
 
 const TYPE_BG_READ: Record<string, string> = {
   TASK_OVERDUE:    'bg-red-900/30',
-  TASK_COURT_REMINDER:       'bg-blue-900/20',
+  TASK_COURT_REMINDER:       'bg-green-900/20',
   TASK_DEADLINE_REMINDER:    'bg-amber-900/20',
   TASK_APPOINTMENT_REMINDER: 'bg-amber-900/20',
   TASK_WAITING_DOC: 'bg-yellow-900/20',
@@ -39,7 +39,7 @@ const TYPE_BG_READ: Record<string, string> = {
 
 const TYPE_BG_UNREAD: Record<string, string> = {
   TASK_OVERDUE:    'bg-red-500/10 border-red-500/25',
-  TASK_COURT_REMINDER:       'bg-blue-500/10 border-blue-500/25',
+  TASK_COURT_REMINDER:       'bg-green-500/10 border-green-500/25',
   TASK_DEADLINE_REMINDER:    'bg-amber-500/10 border-amber-500/25',
   TASK_APPOINTMENT_REMINDER: 'bg-amber-500/10 border-amber-500/25',
   TASK_WAITING_DOC: 'bg-yellow-500/10 border-yellow-500/25',
@@ -124,7 +124,7 @@ export default function NotificationList({ notifications: initial }: { notificat
             <button key={id} type="button" onClick={() => setFilter(id)}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-all border ${
                 filter === id
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
                   : 'bg-white/[0.04] dark:bg-white/[0.04] text-slate-400 dark:text-slate-400 border-white/[0.08] hover:bg-white/[0.08]'
               }`}>
               <span className="text-base leading-none">{emoji}</span>
@@ -165,19 +165,19 @@ export default function NotificationList({ notifications: initial }: { notificat
           {filtered.map((n) => {
             const bgCls = n.isRead
               ? `border-white/[0.05] ${TYPE_BG_READ[n.type] ?? 'bg-slate-900/50'}`
-              : `${TYPE_BG_UNREAD[n.type] ?? 'bg-blue-500/[0.07] border-blue-500/20'} hover:border-blue-500/40`
+              : `${TYPE_BG_UNREAD[n.type] ?? 'bg-green-500/[0.07] border-green-500/20'} hover:border-green-500/40`
 
             return (
               <div key={n.id} onClick={() => { if (!n.isRead) markRead(n.id) }}
                 className={`rounded-2xl border p-4 transition-all cursor-pointer ${bgCls}`}>
                 <div className="flex items-start gap-3">
-                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl ${n.isRead ? 'bg-slate-800' : 'bg-blue-500/10'}`}>
+                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl ${n.isRead ? 'bg-slate-800' : 'bg-green-500/10'}`}>
                     {TYPE_ICONS_LOCAL[n.type] ?? TYPE_ICONS[n.type as NotificationType] ?? '🔔'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 justify-between">
                       <p className={`text-[13px] font-semibold leading-snug ${n.isRead ? 'text-slate-300' : 'text-white'}`}>{n.title}</p>
-                      {!n.isRead && <div className="h-2 w-2 rounded-full bg-blue-400 flex-shrink-0" />}
+                      {!n.isRead && <div className="h-2 w-2 rounded-full bg-green-400 flex-shrink-0" />}
                     </div>
                     {n.message && (
                       <p className="mt-0.5 text-[12px] text-slate-400 line-clamp-2 leading-relaxed">{n.message}</p>
@@ -185,7 +185,7 @@ export default function NotificationList({ notifications: initial }: { notificat
                     <div className="mt-1.5 flex items-center gap-3">
                       <span className="text-[10px] text-slate-500">{formatThaiDateTime(n.createdAt)}</span>
                       {n.link && (
-                        <Link href={resolveLink(n.type as NotificationType, n.link)} className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <Link href={resolveLink(n.type as NotificationType, n.link)} className="text-[11px] font-semibold text-green-400 hover:text-green-300 transition-colors" onClick={(e) => e.stopPropagation()}>
                           ดูรายละเอียด →
                         </Link>
                       )}

@@ -20,7 +20,7 @@ function WelcomeContent() {
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 py-8">
       {/* Background orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-72 w-72 rounded-full opacity-10 blur-3xl" style={{ background: 'radial-gradient(circle,#3b82f6,transparent)' }} />
+        <div className="absolute -left-32 -top-32 h-72 w-72 rounded-full opacity-10 blur-3xl" style={{ background: 'radial-gradient(circle,#22c55e,transparent)' }} />
         <div className="absolute -right-32 bottom-0 h-72 w-72 rounded-full opacity-8 blur-3xl" style={{ background: 'radial-gradient(circle,#8b5cf6,transparent)' }} />
       </div>
       <div className="pointer-events-none absolute inset-0 opacity-[0.02]"
@@ -29,7 +29,7 @@ function WelcomeContent() {
       {/* Logo */}
       <div className="relative mb-6 text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-extrabold text-white"
-          style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: '0 0 32px rgba(99,102,241,0.4)' }}>
+          style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)', boxShadow: '0 0 32px rgba(22,163,74,0.4)' }}>
           HR
         </div>
         <h1 className="text-base font-extrabold tracking-tight text-white leading-snug">
@@ -70,7 +70,7 @@ function WelcomeContent() {
           <div className="space-y-2.5">
             <Link href="/login"
               className="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl px-5 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)', boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }}>
+              style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)', boxShadow: '0 4px 16px rgba(22,163,74,0.3)' }}>
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-sm">🔑</span>
               <span className="flex-1">เข้าสู่ระบบ</span>
               <svg className="h-4 w-4 opacity-60 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

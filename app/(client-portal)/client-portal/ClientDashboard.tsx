@@ -55,7 +55,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  NEW:            'bg-blue-100 text-blue-700',
+  NEW:            'bg-green-100 text-green-700',
   ASSIGNED:       'bg-indigo-100 text-indigo-700',
   IN_PROGRESS:    'bg-amber-100 text-amber-700',
   WAITING_DOC:    'bg-orange-100 text-orange-700',
@@ -86,10 +86,10 @@ function CaseTimeline({ histories }: { histories: StatusHistory[] }) {
   }
   return (
     <div className="relative pl-6">
-      <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-blue-200" />
+      <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-green-200" />
       {histories.map((h, i) => (
         <div key={h.id} className="relative mb-4 last:mb-0">
-          <div className={`absolute -left-4 mt-1 w-3 h-3 rounded-full border-2 border-white ${i === histories.length - 1 ? 'bg-blue-600' : 'bg-blue-300'}`} />
+          <div className={`absolute -left-4 mt-1 w-3 h-3 rounded-full border-2 border-white ${i === histories.length - 1 ? 'bg-green-600' : 'bg-green-300'}`} />
           <div className="ml-2">
             <div className="font-medium text-sm text-gray-800">{h.status}</div>
             {h.note && <div className="text-xs text-gray-500 mt-0.5">{h.note}</div>}
@@ -157,7 +157,7 @@ export default function ClientDashboard({ userName }: Props) {
       {/* ── Header ── */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">KM</div>
+          <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-sm">KM</div>
           <div>
             <div className="font-semibold text-gray-800 text-sm leading-tight">KM Service Plus</div>
             <div className="text-xs text-gray-500">ติดตามสถานะคดี</div>
@@ -182,7 +182,7 @@ export default function ClientDashboard({ userName }: Props) {
       {/* ── Summary Cards ── */}
       <div className="px-4 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'คดีทั้งหมด',      value: summary.total,     color: 'bg-blue-50    text-blue-700',   dot: 'bg-blue-400'  },
+          { label: 'คดีทั้งหมด',      value: summary.total,     color: 'bg-green-50    text-green-700',   dot: 'bg-green-400'  },
           { label: 'กำลังดำเนินการ', value: summary.active,    color: 'bg-amber-50   text-amber-700',  dot: 'bg-amber-400' },
           { label: 'เสร็จสิ้น',       value: summary.completed, color: 'bg-green-50   text-green-700',  dot: 'bg-green-400' },
           { label: 'นัดศาลใน 30 วัน', value: summary.upcoming,  color: 'bg-purple-50  text-purple-700', dot: 'bg-purple-400'},
@@ -198,7 +198,7 @@ export default function ClientDashboard({ userName }: Props) {
       <div className="px-4 pt-4 flex gap-1">
         {([['cases', 'คดีของฉัน'], ['docs', 'เอกสาร'], ['messages', 'ข้อความ']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setActiveNav(k)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeNav === k ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeNav === k ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
             {label}
           </button>
         ))}
@@ -217,12 +217,12 @@ export default function ClientDashboard({ userName }: Props) {
                 placeholder="ค้นหาเลขคดี / ชื่อ..."
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               <button onClick={() => fetchCases()}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm">ค้นหา</button>
+                className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm">ค้นหา</button>
             </div>
             <div className="flex gap-1">
               {([['all', 'ทั้งหมด'], ['active', 'กำลังดำเนิน'], ['completed', 'เสร็จสิ้น']] as const).map(([k, label]) => (
                 <button key={k} onClick={() => setTab(k)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${tab === k ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${tab === k ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
                   {label}
                 </button>
               ))}
@@ -236,7 +236,7 @@ export default function ClientDashboard({ userName }: Props) {
               <div className="flex flex-col gap-2">
                 {displayedTasks.map((t) => (
                   <button key={t.id} onClick={() => setSelected(t)}
-                    className={`text-left border rounded-xl p-3 transition-all ${selected?.id === t.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'}`}>
+                    className={`text-left border rounded-xl p-3 transition-all ${selected?.id === t.id ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:border-green-300'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm text-gray-800 truncate">{t.title}</div>
@@ -287,7 +287,7 @@ export default function ClientDashboard({ userName }: Props) {
 
               <div className="flex gap-2 pt-2 border-t border-gray-100">
                 <Link href={`/client-portal/messages?caseId=${selected.id}`}
-                  className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors">
+                  className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors">
                   ส่งข้อความ
                 </Link>
               </div>
@@ -350,7 +350,7 @@ function DocumentsView() {
               <div className="flex flex-col gap-1.5">
                 {doc.files.map((f) => (
                   <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 text-xs text-blue-600 hover:underline bg-blue-50 rounded-lg px-3 py-2">
+                    className="flex items-center gap-2 text-xs text-green-600 hover:underline bg-green-50 rounded-lg px-3 py-2">
                     <span>📄</span>
                     <span className="flex-1 truncate">{f.fileName}</span>
                     <span className="shrink-0 text-gray-400">v{f.version}</span>
@@ -402,10 +402,10 @@ function MessagesView({ userName }: { userName: string }) {
         {!loading && msgs.length === 0 && <div className="text-center text-gray-400 text-sm">ยังไม่มีข้อความ</div>}
         {msgs.map((m) => (
           <div key={m.id} className={`flex ${m.isFromClient ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-xs rounded-2xl px-4 py-2.5 text-sm ${m.isFromClient ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
-              <div className={`text-xs mb-1 font-medium ${m.isFromClient ? 'text-blue-200' : 'text-gray-500'}`}>{m.isFromClient ? userName : m.senderName}</div>
+            <div className={`max-w-xs rounded-2xl px-4 py-2.5 text-sm ${m.isFromClient ? 'bg-green-600 text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+              <div className={`text-xs mb-1 font-medium ${m.isFromClient ? 'text-green-200' : 'text-gray-500'}`}>{m.isFromClient ? userName : m.senderName}</div>
               <div>{m.content}</div>
-              <div className={`text-xs mt-1 ${m.isFromClient ? 'text-blue-200' : 'text-gray-400'}`}>
+              <div className={`text-xs mt-1 ${m.isFromClient ? 'text-green-200' : 'text-gray-400'}`}>
                 {new Date(m.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
@@ -417,7 +417,7 @@ function MessagesView({ userName }: { userName: string }) {
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
           placeholder="พิมพ์ข้อความ..." className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm" />
         <button onClick={send} disabled={sending || !content.trim()}
-          className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-blue-700">
+          className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-green-700">
           ส่ง
         </button>
       </div>

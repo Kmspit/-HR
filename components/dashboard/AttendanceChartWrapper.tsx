@@ -6,7 +6,7 @@ const AttendanceChart = dynamic(() => import('./AttendanceChart'), {
   ssr: false,
   loading: () => (
     <div className="flex h-[200px] items-center justify-center">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
     </div>
   ),
 })

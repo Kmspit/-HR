@@ -29,15 +29,15 @@ export function AttendanceTrendChart({ data }: { data: TrendPoint[] }) {
       <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
         <defs>
           <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
         <Tooltip content={<ChartTooltip />} />
-        <Area type="monotone" dataKey="present" name="เข้างาน" stroke="#3b82f6" fill="url(#presentGrad)" strokeWidth={2} />
+        <Area type="monotone" dataKey="present" name="เข้างาน" stroke="#22c55e" fill="url(#presentGrad)" strokeWidth={2} />
         <Line type="monotone" dataKey="late" name="มาสาย" stroke="#f59e0b" strokeWidth={2} dot={false} />
       </AreaChart>
     </ResponsiveContainer>

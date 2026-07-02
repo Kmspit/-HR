@@ -145,7 +145,7 @@ export const DEPT_LABEL: Record<string, string> = {
 
 export const DEPT_COLOR: Record<string, string> = {
   DEBT:    'text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20',
-  LAW:     'text-blue-700   dark:text-blue-400   bg-blue-50   dark:bg-blue-500/10   border-blue-200   dark:border-blue-500/20',
+  LAW:     'text-green-700   dark:text-green-400   bg-green-50   dark:bg-green-500/10   border-green-200   dark:border-green-500/20',
   ASSET:   'text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20',
   ENFORCE: 'text-red-700    dark:text-red-400    bg-red-50    dark:bg-red-500/10    border-red-200    dark:border-red-500/20',
 }
@@ -207,7 +207,7 @@ export const STATUS_CLS: Record<string, string> = {
   PENDING:          'text-slate-600  dark:text-slate-400  bg-slate-100  dark:bg-slate-500/10',
   NEW:              'text-slate-600  dark:text-slate-400  bg-slate-100  dark:bg-slate-500/10',
   ASSIGNED:         'text-teal-700   dark:text-teal-400   bg-teal-100   dark:bg-teal-500/10',
-  IN_PROGRESS:      'text-blue-700   dark:text-blue-400   bg-blue-100   dark:bg-blue-500/10',
+  IN_PROGRESS:      'text-green-700   dark:text-green-400   bg-green-100   dark:bg-green-500/10',
   WAITING_DOC:      'text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-500/10',
   WAITING_REVIEW:   'text-amber-700  dark:text-amber-400  bg-amber-100  dark:bg-amber-500/10',
   WAITING_APPROVAL: 'text-purple-700 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/10',
@@ -264,7 +264,7 @@ export const PRIORITY_LABEL: Record<string, string> = {
 
 export const PRIORITY_TEXT: Record<string, string> = {
   LOW:    'text-slate-500 dark:text-slate-400',
-  MEDIUM: 'text-blue-600  dark:text-blue-400',
+  MEDIUM: 'text-green-600  dark:text-green-400',
   HIGH:   'text-amber-700 dark:text-amber-400',
   URGENT: 'text-red-700   dark:text-red-400 font-bold',
 }
@@ -273,7 +273,7 @@ export const ACTIVE_STATUSES = ['PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'WA
 
 export const WORKLOAD_CLS: Record<string, string> = {
   LOW:        'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20',
-  NORMAL:     'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
+  NORMAL:     'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20',
   HIGH:       'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
   OVERLOADED: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20',
 }
@@ -346,7 +346,7 @@ export function fmtFileSize(bytes: number | null): string {
 export function fileIcon(fileType: string): React.ReactNode {
   if (fileType.startsWith('image/')) return <File className="w-4 h-4 text-purple-500" />
   if (fileType === 'application/pdf') return <FileText className="w-4 h-4 text-red-500" />
-  if (fileType.includes('word'))      return <FileText className="w-4 h-4 text-blue-500" />
+  if (fileType.includes('word'))      return <FileText className="w-4 h-4 text-green-500" />
   if (fileType.includes('excel') || fileType.includes('spreadsheet')) return <FileText className="w-4 h-4 text-green-600" />
   return <File className="w-4 h-4 text-slate-400" />
 }
@@ -417,7 +417,7 @@ export function AttachmentItem({
         </p>
       </div>
       <a href={att.fileUrl} target="_blank" rel="noopener noreferrer"
-        className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="เปิดไฟล์">
+        className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 transition-colors" title="เปิดไฟล์">
         <Download className="w-3.5 h-3.5" />
       </a>
       {canDelete && (
@@ -457,12 +457,12 @@ export function FileUploadZone({
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors ${
-          dragOver ? 'border-blue-400 bg-blue-50 dark:bg-blue-500/10'
-                   : 'border-slate-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-500/40 bg-slate-50 dark:bg-white/[0.02]'}`}
+          dragOver ? 'border-green-400 bg-green-50 dark:bg-green-500/10'
+                   : 'border-slate-200 dark:border-white/10 hover:border-green-300 dark:hover:border-green-500/40 bg-slate-50 dark:bg-white/[0.02]'}`}
       >
         <Upload className="w-5 h-5 mx-auto mb-1.5 text-slate-400 dark:text-slate-500" />
         <p className="text-[12px] font-medium text-slate-600 dark:text-slate-400">
-          ลากไฟล์มาวาง หรือ <span className="text-blue-600 dark:text-blue-400">คลิกเลือกไฟล์</span>
+          ลากไฟล์มาวาง หรือ <span className="text-green-600 dark:text-green-400">คลิกเลือกไฟล์</span>
         </p>
         <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">PDF, Word, Excel, PNG, JPG, ZIP · สูงสุด 20 MB</p>
         <input ref={inputRef} type="file" multiple accept={ACCEPTED_FILE_TYPES} className="hidden"
@@ -472,7 +472,7 @@ export function FileUploadZone({
       {pendingFiles.length > 0 && (
         <div className="space-y-1.5">
           {pendingFiles.map((f, i) => (
-            <div key={f.name + '-' + f.size} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+            <div key={f.name + '-' + f.size} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20">
               <div className="flex-shrink-0">{fileIcon(f.type)}</div>
               <span className="flex-1 text-[13px] text-slate-700 dark:text-slate-300 truncate">{f.name}</span>
               <span className="text-[11px] text-slate-400 flex-shrink-0">{fmtFileSize(f.size)}</span>

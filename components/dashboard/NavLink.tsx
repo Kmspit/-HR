@@ -35,7 +35,7 @@ export default function NavLink({ href, onClick, className, children, showSpinne
     >
       {children}
       {showSpinner && pending && (
-        <span className="ml-auto h-3.5 w-3.5 flex-shrink-0 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
+        <span className="ml-auto h-3.5 w-3.5 flex-shrink-0 rounded-full border-2 border-green-500/30 border-t-green-500 animate-spin" />
       )}
     </Link>
   )

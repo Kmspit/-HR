@@ -148,7 +148,7 @@ export default function BranchesClient({ initial }: Props) {
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-semibold"
         >
           <Plus className="w-4 h-4" /> เพิ่มสาขา
         </button>
@@ -157,7 +157,7 @@ export default function BranchesClient({ initial }: Props) {
       {showForm && (
         <div className="glass-card rounded-2xl p-5 space-y-4">
           <h3 className="font-semibold text-white flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-400" />
+            <Building2 className="w-4 h-4 text-green-400" />
             {editingId ? 'แก้ไขสาขา' : 'เพิ่มสาขาใหม่'}
           </h3>
 
@@ -209,9 +209,9 @@ export default function BranchesClient({ initial }: Props) {
           </div>
 
           {/* Geofence Map Picker */}
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 space-y-3">
+          <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-3 space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-blue-300 font-semibold flex items-center gap-1.5">
+              <p className="text-xs text-green-300 font-semibold flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" />
                 ตำแหน่งสาขา &amp; Geofence
               </p>
@@ -220,7 +220,7 @@ export default function BranchesClient({ initial }: Props) {
                   href={`https://maps.google.com/?q=${parsedLat},${parsedLng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300"
+                  className="flex items-center gap-1 text-[10px] text-green-400 hover:text-green-300"
                 >
                   <ExternalLink className="w-3 h-3" />
                   เปิดใน Google Maps
@@ -296,7 +296,7 @@ export default function BranchesClient({ initial }: Props) {
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                className="accent-blue-500"
+                className="accent-green-500"
               />
               เปิดใช้งาน
             </label>
@@ -305,7 +305,7 @@ export default function BranchesClient({ initial }: Props) {
                 type="checkbox"
                 checked={form.isDefault}
                 onChange={(e) => setForm((f) => ({ ...f, isDefault: e.target.checked }))}
-                className="accent-blue-500"
+                className="accent-green-500"
               />
               สาขาหลัก (ค่าเริ่มต้น)
             </label>
@@ -323,7 +323,7 @@ export default function BranchesClient({ initial }: Props) {
               type="button"
               onClick={save}
               disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-50"
             >
               {saving ? 'กำลังบันทึก...' : 'บันทึก'}
             </button>
@@ -347,7 +347,7 @@ export default function BranchesClient({ initial }: Props) {
           <tbody>
             {list.map((b) => (
               <tr key={b.id} className="border-b border-white/5 table-row-hover">
-                <td className="p-3 font-mono text-blue-300">{b.code}</td>
+                <td className="p-3 font-mono text-green-300">{b.code}</td>
                 <td className="p-3 text-white">
                   {b.name}
                   {b.isDefault && (

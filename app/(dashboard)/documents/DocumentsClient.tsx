@@ -28,7 +28,7 @@ const DOC_TYPES: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  PROCESSING: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  PROCESSING: 'text-green-400 bg-green-500/10 border-green-500/20',
   READY: 'text-green-400 bg-green-500/10 border-green-500/20',
   REJECTED: 'text-red-400 bg-red-500/10 border-red-500/20',
 }
@@ -125,7 +125,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
         {!isHr && (
           <button
             onClick={() => setShowNew(!showNew)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition"
           >
             <Plus className="w-4 h-4" /> ยื่นคำขอใหม่
           </button>
@@ -147,7 +147,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50"
             >
               <option value="">— เลือกประเภท —</option>
               {Object.entries(DOC_TYPES).map(([k, v]) => (
@@ -161,14 +161,14 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
               value={newPurpose}
               onChange={(e) => setNewPurpose(e.target.value)}
               placeholder="เช่น ยื่นธนาคาร, ขอสินเชื่อ"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={submitRequest}
               disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               ยื่นคำขอ
@@ -208,13 +208,13 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
               onChange={(e) => setHrAction((a) => a ? { ...a, notes: e.target.value } : a)}
               placeholder="หมายเหตุ / แจ้งพนักงาน (ไม่บังคับ)"
               rows={2}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-blue-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-green-500/50"
             />
             <div className="flex gap-2">
               <button
                 onClick={submitHrAction}
                 disabled={actioning}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-40 transition"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-40 transition"
               >
                 {actioning ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 บันทึก
@@ -242,7 +242,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
           {!isHr && (
             <button
               onClick={() => setShowNew(true)}
-              className="mt-3 text-blue-400 text-sm hover:text-blue-300 transition"
+              className="mt-3 text-green-400 text-sm hover:text-green-300 transition"
             >
               + ยื่นคำขอแรก
             </button>
@@ -288,7 +288,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
               )}
 
               {r.status === 'PROCESSING' && (
-                <div className="flex items-center gap-2 text-blue-400 text-sm">
+                <div className="flex items-center gap-2 text-green-400 text-sm">
                   <Clock className="w-4 h-4" />
                   HR กำลังดำเนินการ
                 </div>

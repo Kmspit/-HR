@@ -319,8 +319,8 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   }, [ready, done, cameraError, verifyNow])
 
   return (
-    <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-3 space-y-3">
-      <p className="text-xs text-blue-300 flex items-center gap-1.5 font-medium">
+    <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 space-y-3">
+      <p className="text-xs text-green-300 flex items-center gap-1.5 font-medium">
         <ScanFace className="w-4 h-4" />
         ยืนยันตัวตนด้วยใบหน้า (ต้องเป็นคนเดียวกับที่ลงทะเบียน)
       </p>

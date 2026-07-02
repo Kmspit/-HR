@@ -14,7 +14,7 @@ type Props = {
 }
 
 const variants = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50',
+  primary: 'bg-green-600 text-white hover:bg-green-500 disabled:opacity-50',
   secondary:
     'border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5',
   danger: 'bg-red-600 text-white hover:bg-red-500 disabled:opacity-50',

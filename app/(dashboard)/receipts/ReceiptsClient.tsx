@@ -48,7 +48,7 @@ export default function ReceiptsClient({ userId, userRole }: { userId: string; u
       </div>
 
       {/* Search */}
-      <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาเลขใบเสร็จ / ชื่อลูกค้า…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-md" />
+      <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาเลขใบเสร็จ / ชื่อลูกค้า…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 max-w-md" />
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -84,7 +84,7 @@ export default function ReceiptsClient({ userId, userRole }: { userId: string; u
                     <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{r.payment?.paymentMethod ?? '—'}{r.payment?.bankAccount ? ` · ${r.payment.bankAccount}` : ''}</td>
                     <td className="py-3 px-4 text-gray-600">{fmtDate(r.issuedAt)}</td>
                     <td className="py-3 px-4">
-                      <Link href={`/invoices`} className="text-xs text-blue-600 hover:underline mr-2">ดูใบแจ้งหนี้</Link>
+                      <Link href={`/invoices`} className="text-xs text-green-600 hover:underline mr-2">ดูใบแจ้งหนี้</Link>
                     </td>
                   </tr>
                 ))}

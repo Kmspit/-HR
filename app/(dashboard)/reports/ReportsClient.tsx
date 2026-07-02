@@ -142,7 +142,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
       <h1 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
 
-        <FileBarChart className="w-5 h-5 text-blue-400" /> รายงานสรุปรายเดือน
+        <FileBarChart className="w-5 h-5 text-green-400" /> รายงานสรุปรายเดือน
 
       </h1>
 
@@ -200,7 +200,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
           disabled={loading}
 
-          className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50 flex items-center gap-2 smooth-transition hover:bg-blue-500"
+          className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-50 flex items-center gap-2 smooth-transition hover:bg-green-500"
 
         >
 

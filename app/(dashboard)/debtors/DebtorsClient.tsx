@@ -82,7 +82,7 @@ const RESULT_LABELS: Record<string, string> = {
 const RESULT_COLORS: Record<string, string> = {
   REACHED: 'bg-green-100 text-green-700', NO_ANSWER: 'bg-gray-100 text-gray-600',
   WRONG_NUMBER: 'bg-red-100 text-red-700', DISCONNECTED: 'bg-orange-100 text-orange-700',
-  REFUSED: 'bg-red-100 text-red-700', LEFT_MESSAGE: 'bg-blue-100 text-blue-700',
+  REFUSED: 'bg-red-100 text-red-700', LEFT_MESSAGE: 'bg-green-100 text-green-700',
 }
 
 const PROMISE_STATUS_LABELS: Record<string, string> = {
@@ -91,13 +91,13 @@ const PROMISE_STATUS_LABELS: Record<string, string> = {
 }
 const PROMISE_STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-700', KEPT: 'bg-green-100 text-green-700',
-  PARTIALLY_KEPT: 'bg-blue-100 text-blue-700', BROKEN: 'bg-red-100 text-red-700',
+  PARTIALLY_KEPT: 'bg-green-100 text-green-700', BROKEN: 'bg-red-100 text-red-700',
   CANCELLED: 'bg-gray-100 text-gray-600',
 }
 
 const STATUSES = ['NEW', 'FOLLOWING', 'PROMISE_TO_PAY', 'PARTIAL_PAYMENT', 'PAID', 'LEGAL_ACTION', 'OVERDUE', 'UNREACHABLE']
 const STATUS_COLORS: Record<string, string> = {
-  NEW: 'bg-gray-100 text-gray-700', FOLLOWING: 'bg-blue-100 text-blue-700',
+  NEW: 'bg-gray-100 text-gray-700', FOLLOWING: 'bg-green-100 text-green-700',
   PROMISE_TO_PAY: 'bg-yellow-100 text-yellow-700', PARTIAL_PAYMENT: 'bg-orange-100 text-orange-700',
   PAID: 'bg-green-100 text-green-700', LEGAL_ACTION: 'bg-red-100 text-red-700',
   OVERDUE: 'bg-red-100 text-red-800', UNREACHABLE: 'bg-gray-200 text-gray-600',
@@ -177,9 +177,9 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Debt Collection CRM</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setMainTab('list')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mainTab === 'list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'}`}>รายชื่อลูกหนี้</button>
-          {canManage && <button onClick={() => setMainTab('dashboard')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mainTab === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'}`}>Dashboard</button>}
-          <button onClick={() => setShowCreate(true)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">+ เพิ่มลูกหนี้</button>
+          <button onClick={() => setMainTab('list')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mainTab === 'list' ? 'bg-green-600 text-white' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'}`}>รายชื่อลูกหนี้</button>
+          {canManage && <button onClick={() => setMainTab('dashboard')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mainTab === 'dashboard' ? 'bg-green-600 text-white' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'}`}>Dashboard</button>}
+          <button onClick={() => setShowCreate(true)} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">+ เพิ่มลูกหนี้</button>
         </div>
       </div>
 
@@ -195,10 +195,10 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาชื่อ / เบอร์ / เลขคดี…"
-                className="w-full h-10 pl-10 pr-3 text-sm rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition" />
+                className="w-full h-10 pl-10 pr-3 text-sm rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500/50 transition" />
             </div>
             <select value={filterSt} onChange={e => { setFilterSt(e.target.value); setPage(1) }}
-              className="h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition">
+              className="h-10 px-3 text-sm rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500/50 transition">
               <option value="">ทุกสถานะ</option>
               {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
@@ -221,7 +221,7 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
                 <button key={d.id} onClick={() => handleSelectDebtor(d)}
                   className={`w-full text-left p-3 rounded-xl border transition-all ${
                     selected?.id === d.id
-                      ? 'border-blue-500/50 bg-blue-50/80 dark:bg-blue-900/20 shadow-sm'
+                      ? 'border-green-500/50 bg-green-50/80 dark:bg-green-900/20 shadow-sm'
                       : 'border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.03] hover:border-slate-300 dark:hover:border-white/[0.12] hover:bg-slate-50 dark:hover:bg-white/[0.05]'
                   }`}>
                   <div className="flex items-start justify-between gap-2">
@@ -329,7 +329,7 @@ function DashboardView({ summary }: { summary: Summary | null }) {
   if (!summary) return <div className="text-center py-16 text-gray-400">กำลังโหลด…</div>
 
   const cards = [
-    { label: 'ลูกหนี้ทั้งหมด',     value: summary.totalDebtors.toLocaleString(),                      color: 'text-blue-600' },
+    { label: 'ลูกหนี้ทั้งหมด',     value: summary.totalDebtors.toLocaleString(),                      color: 'text-green-600' },
     { label: 'หนี้รวม',             value: `฿${summary.totalDebt.toLocaleString('th-TH')}`,           color: 'text-gray-700' },
     { label: 'เก็บได้เดือนนี้',      value: `฿${summary.monthCollected.toLocaleString('th-TH')}`,     color: 'text-green-600' },
     { label: 'คงเหลือทั้งหมด',      value: `฿${summary.remainingDebt.toLocaleString('th-TH')}`,      color: 'text-red-600' },
@@ -479,7 +479,7 @@ function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employ
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={`text-[12px] px-2.5 py-2.5 whitespace-nowrap border-b-2 transition-colors font-medium ${
               activeTab === t.key
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                ? 'border-green-500 text-green-600 dark:text-green-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}>{t.label}</button>
         ))}
@@ -628,12 +628,12 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
   return (
     <div className="space-y-3">
       <button onClick={() => setShowForm(!showForm)}
-        className="w-full py-2 border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg text-sm hover:bg-blue-50 dark:hover:bg-blue-900/10 transition">
+        className="w-full py-2 border-2 border-dashed border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 rounded-lg text-sm hover:bg-green-50 dark:hover:bg-green-900/10 transition">
         + บันทึกการติดต่อ
       </button>
 
       {showForm && (
-        <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 space-y-3 border border-blue-200 dark:border-blue-800">
+        <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">ช่องทาง</label>
@@ -686,7 +686,7 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="text-sm px-4 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">ยกเลิก</button>
             <button onClick={save} disabled={saving}
-              className="text-sm px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">
+              className="text-sm px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">
               {saving ? 'บันทึก…' : 'บันทึก'}
             </button>
           </div>
@@ -720,7 +720,7 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
                 </p>
               )}
               {c.nextContactAt && (
-                <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">📅 ติดตามครั้งถัดไป: {fmtDate(c.nextContactAt)}</p>
+                <p className="text-[11px] text-green-600 dark:text-green-400 mt-0.5">📅 ติดตามครั้งถัดไป: {fmtDate(c.nextContactAt)}</p>
               )}
               <p className="text-[10px] text-slate-400 mt-1">โดย: {c.performedBy.name}</p>
             </div>
@@ -877,9 +877,9 @@ function FollowUpTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
   const list = debtor.followUps ?? []
   return (
     <div className="space-y-3">
-      <button onClick={() => setShowForm(!showForm)} className="w-full py-2 border-2 border-dashed border-blue-300 text-blue-600 rounded-lg text-sm hover:bg-blue-50 dark:hover:bg-blue-900/10">+ บันทึกการติดตาม</button>
+      <button onClick={() => setShowForm(!showForm)} className="w-full py-2 border-2 border-dashed border-green-300 text-green-600 rounded-lg text-sm hover:bg-green-50 dark:hover:bg-green-900/10">+ บันทึกการติดตาม</button>
       {showForm && (
-        <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 space-y-3 border border-blue-200 dark:border-blue-800">
+        <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
@@ -908,14 +908,14 @@ function FollowUpTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !result} className="text-sm px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
+            <button onClick={save} disabled={saving || !result} className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
           </div>
         </div>
       )}
       {list.length === 0 ? <p className="text-center text-sm text-gray-400 py-4">ยังไม่มีบันทึกการติดตาม</p> : list.map(f => (
         <div key={f.id} className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3 text-sm">
           <div className="flex items-center justify-between mb-1">
-            <span className="font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-xs">{f.method}</span>
+            <span className="font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded text-xs">{f.method}</span>
             <span className="text-xs text-gray-400">{new Date(f.followedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
           </div>
           <p className="text-gray-800 dark:text-gray-200">{f.result}</p>
@@ -1153,7 +1153,7 @@ function FilesTab({ debtor, onRefresh }: { debtor: Debtor; onRefresh: () => void
       {list.length === 0 ? <p className="text-center text-sm text-gray-400 py-4">ยังไม่มีไฟล์</p> : list.map(f => (
         <div key={f.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg text-sm">
           <div className="flex-1 min-w-0">
-            <a href={f.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate block">{f.filename}</a>
+            <a href={f.url} target="_blank" rel="noopener noreferrer" className="font-medium text-green-600 hover:underline truncate block">{f.filename}</a>
             <p className="text-xs text-gray-400">{docTypeMap[f.docType] ?? f.docType} · {(f.size / 1024).toFixed(1)} KB · {fmtDate(f.createdAt)}</p>
           </div>
           <button onClick={() => deleteFile(f.id)} className="ml-2 text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50">ลบ</button>
@@ -1248,7 +1248,7 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
           <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
             {([['basic', 'ข้อมูลพื้นฐาน'], ['crm', 'ข้อมูล CRM']] as const).map(([key, label]) => (
               <button key={key} onClick={() => setActiveSection(key)}
-                className={`text-sm px-4 py-2.5 border-b-2 transition-colors font-medium ${activeSection === key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                className={`text-sm px-4 py-2.5 border-b-2 transition-colors font-medium ${activeSection === key ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                 {label}
               </button>
             ))}
@@ -1372,7 +1372,7 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
           )}
           <div className="p-6 pt-0 flex gap-3 justify-end">
             <button onClick={onClose} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !form.firstName || !form.lastName} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : mode === 'create' ? 'เพิ่มลูกหนี้' : 'บันทึก'}</button>
+            <button onClick={save} disabled={saving || !form.firstName || !form.lastName} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : mode === 'create' ? 'เพิ่มลูกหนี้' : 'บันทึก'}</button>
           </div>
         </div>
       </div>

@@ -54,13 +54,13 @@ export default function BranchFilter({
   if (branches.length === 0) return null
 
   const btnBase =
-    'group flex min-h-[48px] min-w-[120px] flex-1 sm:flex-none sm:max-w-[220px] flex-col items-start justify-center rounded-xl border px-4 py-2.5 text-left transition-all duration-200 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
+    'group flex min-h-[48px] min-w-[120px] flex-1 sm:flex-none sm:max-w-[220px] flex-col items-start justify-center rounded-xl border px-4 py-2.5 text-left transition-all duration-200 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
 
   const btnActive =
-    'border-blue-400/70 bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 md:scale-[1.02]'
+    'border-green-400/70 bg-gradient-to-br from-green-600 to-indigo-600 text-white shadow-md shadow-green-500/30 md:scale-[1.02]'
 
   const btnIdle =
-    'border-white/15 bg-slate-800 md:bg-slate-800/90 text-slate-200 hover:border-blue-400/50 hover:bg-slate-700 md:hover:bg-slate-700/90 hover:text-white hover:shadow-md hover:shadow-black/20 md:active:scale-[0.98]'
+    'border-white/15 bg-slate-800 md:bg-slate-800/90 text-slate-200 hover:border-green-400/50 hover:bg-slate-700 md:hover:bg-slate-700/90 hover:text-white hover:shadow-md hover:shadow-black/20 md:active:scale-[0.98]'
 
   return (
     <div
@@ -69,8 +69,8 @@ export default function BranchFilter({
       aria-label="เลือกสาขาที่ต้องการดูข้อมูล"
     >
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
-          <Building2 className="h-4 w-4 text-blue-400" aria-hidden />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/15">
+          <Building2 className="h-4 w-4 text-green-400" aria-hidden />
         </div>
         <div>
           <p className="text-sm font-bold text-white leading-tight">ดูข้อมูลตามสาขา</p>
@@ -92,7 +92,7 @@ export default function BranchFilter({
             </span>
             <span
               className={`mt-0.5 text-[11px] leading-snug ${
-                active === 'all' ? 'text-blue-100' : 'text-slate-500 group-hover:text-slate-300'
+                active === 'all' ? 'text-green-100' : 'text-slate-500 group-hover:text-slate-300'
               }`}
             >
               รวมสาขาหลักและสาขาย่อย
@@ -115,7 +115,7 @@ export default function BranchFilter({
               <span className="text-sm font-bold leading-tight">{headline}</span>
               <span
                 className={`mt-0.5 text-[11px] leading-snug ${
-                  isOn ? 'text-blue-100' : 'text-slate-500 group-hover:text-slate-300'
+                  isOn ? 'text-green-100' : 'text-slate-500 group-hover:text-slate-300'
                 }`}
               >
                 {detail}

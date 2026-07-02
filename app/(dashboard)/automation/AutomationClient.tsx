@@ -122,7 +122,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${checked ? 'bg-green-600' : 'bg-gray-300'}`}
     >
       <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
     </button>
@@ -251,7 +251,7 @@ function RuleModal({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">เงื่อนไข (Conditions) — ทุกเงื่อนไขต้องผ่าน</label>
-              <button onClick={addCondition} className="rounded-lg bg-blue-50 px-3 py-1 text-xs text-blue-700 hover:bg-blue-100">+ เพิ่มเงื่อนไข</button>
+              <button onClick={addCondition} className="rounded-lg bg-green-50 px-3 py-1 text-xs text-green-700 hover:bg-green-100">+ เพิ่มเงื่อนไข</button>
             </div>
             {conditions.length === 0 && <p className="text-xs text-gray-400 italic">ไม่มีเงื่อนไข — rule จะทำงานทุกครั้งที่ trigger เกิดขึ้น</p>}
             <div className="space-y-2">
@@ -437,7 +437,7 @@ export default function AutomationClient({
         {rules.map(rule => (
           <div
             key={rule.id}
-            className={`rounded-xl border p-4 cursor-pointer transition-all hover:shadow-sm ${selectedRule?.id === rule.id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${!rule.isActive ? 'opacity-60' : ''}`}
+            className={`rounded-xl border p-4 cursor-pointer transition-all hover:shadow-sm ${selectedRule?.id === rule.id ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${!rule.isActive ? 'opacity-60' : ''}`}
             onClick={() => setSelected(rule.id === selectedRule?.id ? null : rule)}
           >
             <div className="flex items-start justify-between gap-3">
@@ -459,20 +459,20 @@ export default function AutomationClient({
               </div>
               <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                 <Toggle checked={rule.isActive} onChange={() => toggleActive(rule)} />
-                <button onClick={() => openEdit(rule)} className="rounded p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                <button onClick={() => openEdit(rule)} className="rounded p-1 text-gray-400 hover:text-green-600 hover:bg-green-50">✏️</button>
                 <button onClick={() => deleteRule(rule.id)} className="rounded p-1 text-gray-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
               </div>
             </div>
 
             {selectedRule?.id === rule.id && (
-              <div className="mt-3 pt-3 border-t border-blue-200">
+              <div className="mt-3 pt-3 border-t border-green-200">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="font-medium text-gray-600 mb-1">Conditions ({(parseSafe(rule.conditions) as Condition[]).length})</p>
                     {(parseSafe(rule.conditions) as Condition[]).length === 0
                       ? <p className="text-gray-400 italic">ไม่มีเงื่อนไข (ทำงานเสมอ)</p>
                       : (parseSafe(rule.conditions) as Condition[]).map((c) => (
-                        <div key={c.field + '-' + c.operator} className="rounded bg-blue-50 px-2 py-1 mb-1">
+                        <div key={c.field + '-' + c.operator} className="rounded bg-green-50 px-2 py-1 mb-1">
                           {c.field} {c.operator} {c.value}
                         </div>
                       ))
@@ -574,7 +574,7 @@ export default function AutomationClient({
       {/* KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Rules ทั้งหมด',   value: insights.totalRules,      color: 'text-blue-600' },
+          { label: 'Rules ทั้งหมด',   value: insights.totalRules,      color: 'text-green-600' },
           { label: 'Rules เปิดใช้งาน', value: insights.activeRules,     color: 'text-green-600' },
           { label: 'Executions ทั้งหมด', value: fmt(insights.totalExecutions), color: 'text-purple-600' },
           { label: 'Success Rate',     value: `${insights.successRate}%`, color: insights.successRate >= 80 ? 'text-green-600' : 'text-red-600' },
@@ -686,7 +686,7 @@ export default function AutomationClient({
             <button
               key={tab.key}
               onClick={() => setView(tab.key)}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${view === tab.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${view === tab.key ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
               {tab.label}
             </button>

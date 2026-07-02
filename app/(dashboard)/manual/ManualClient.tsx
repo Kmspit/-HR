@@ -214,7 +214,7 @@ function SectionCard({
       className={cn(
         'rounded-xl border overflow-hidden scroll-mt-24 transition-shadow duration-300',
         highlighted
-          ? 'border-blue-400 dark:border-blue-500/60 ring-2 ring-blue-400/40 dark:ring-blue-500/30'
+          ? 'border-green-400 dark:border-green-500/60 ring-2 ring-green-400/40 dark:ring-green-500/30'
           : 'border-slate-200 dark:border-white/[0.07]',
       )}
     >
@@ -241,7 +241,7 @@ function SectionCard({
           <ol className="space-y-2 mt-2">
             {section.steps.map((step, i) => (
               <li key={i} className="flex gap-3 text-[13.5px] text-slate-700 dark:text-slate-300 leading-snug">
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 text-[11px] font-bold mt-0.5">
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400 text-[11px] font-bold mt-0.5">
                   {i + 1}
                 </span>
                 <span>{step}</span>

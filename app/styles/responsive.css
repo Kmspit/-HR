@@ -239,7 +239,7 @@
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  background: linear-gradient(135deg, #22c55e, #6366f1);
   color: #fff;
   box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
   display: flex;
@@ -364,12 +364,12 @@
 }
 .ds-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .ds-btn-primary {
-  background: #3b82f6;
+  background: #22c55e;
   color: #fff;
   border: 1px solid transparent;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
-.ds-btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+.ds-btn-primary:hover { background: #16a34a; transform: translateY(-1px); }
 .ds-btn-primary:active { transform: translateY(0); }
 
 .ds-btn-secondary {

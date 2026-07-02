@@ -156,7 +156,7 @@ function buildWarningLineFlex(params: {
           {
             type: 'button',
             style: 'primary',
-            color: '#2563eb',
+            color: '#16a34a',
             action: {
               type: 'uri',
               label: 'เปิดเอกสาร PDF',

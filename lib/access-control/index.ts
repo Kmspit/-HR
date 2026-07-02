@@ -309,7 +309,7 @@ export const ROLE_COLORS: Record<Role, string> = {
   HR:           'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-400 dark:border-violet-500/30',
   MANAGER:      'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30',
   TEAM_LEADER:  'bg-sky-100    text-sky-700    border-sky-200    dark:bg-sky-500/20    dark:text-sky-400    dark:border-sky-500/30',
-  ADMIN:        'bg-blue-100   text-blue-700   border-blue-200   dark:bg-blue-500/20   dark:text-blue-400   dark:border-blue-500/30',
+  ADMIN:        'bg-green-100   text-green-700   border-green-200   dark:bg-green-500/20   dark:text-green-400   dark:border-green-500/30',
   EMPLOYEE:     'bg-green-100  text-green-700  border-green-200  dark:bg-green-500/20  dark:text-green-400  dark:border-green-500/30',
   LAWYER:       'bg-amber-100  text-amber-700  border-amber-200  dark:bg-amber-500/20  dark:text-amber-400  dark:border-amber-500/30',
   ENFORCEMENT:  'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30',

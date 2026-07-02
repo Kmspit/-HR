@@ -40,7 +40,7 @@ interface Receipt {
 const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PENDING_PAYMENT', 'PAID', 'OVERDUE', 'CANCELLED']
 const STATUS_COLORS: Record<string, string> = {
   DRAFT:           'bg-gray-100 text-gray-600',
-  SENT:            'bg-blue-100 text-blue-700',
+  SENT:            'bg-green-100 text-green-700',
   PENDING_PAYMENT: 'bg-yellow-100 text-yellow-700',
   PAID:            'bg-green-100 text-green-700',
   OVERDUE:         'bg-red-100 text-red-700',
@@ -105,13 +105,13 @@ export default function InvoicesClient({ userId, userRole }: { userId: string; u
           <p className="text-sm text-gray-500 mt-0.5">Invoice Management ({total.toLocaleString()} รายการ)</p>
         </div>
         <div className="flex gap-2">
-          {canManage && <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">+ สร้างใบแจ้งหนี้</button>}
+          {canManage && <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">+ สร้างใบแจ้งหนี้</button>}
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาเลขใบแจ้งหนี้ / ลูกค้า…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-56" />
+        <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาเลขใบแจ้งหนี้ / ลูกค้า…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 min-w-56" />
         <select value={filterSt} onChange={e => { setFilterSt(e.target.value); setPage(1) }} className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
           <option value="">ทุกสถานะ</option>
           {INVOICE_STATUSES.map(s => <option key={s} value={s}>{STATUS_TH[s]}</option>)}
@@ -133,7 +133,7 @@ export default function InvoicesClient({ userId, userRole }: { userId: string; u
             const late = inv.status !== 'PAID' && inv.status !== 'CANCELLED' && days < 0
             const warn = inv.status !== 'PAID' && inv.status !== 'CANCELLED' && days >= 0 && days <= 7
             return (
-              <button key={inv.id} onClick={() => { loadDetail(inv.id); setDetailTab('info') }} className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id === inv.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'}`}>
+              <button key={inv.id} onClick={() => { loadDetail(inv.id); setDetailTab('info') }} className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id === inv.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-300'}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400 font-mono">{inv.invoiceNumber}</p>
@@ -150,7 +150,7 @@ export default function InvoicesClient({ userId, userRole }: { userId: string; u
                   {late && <span className="text-red-600 font-medium">เกิน {Math.abs(days)}ว.</span>}
                   {warn && !late && <span className="text-orange-600 font-medium">เหลือ {days}ว.</span>}
                   {inv.remainingAmount > 0 && inv.status !== 'CANCELLED' && !late && !warn && (
-                    <span className="text-blue-600">ค้าง ฿{fmt(inv.remainingAmount)}</span>
+                    <span className="text-green-600">ค้าง ฿{fmt(inv.remainingAmount)}</span>
                   )}
                 </div>
               </button>
@@ -238,7 +238,7 @@ function InvoiceDetail({ invoice, userId, userRole, canManage, activeTab, setAct
         {canManage && (
           <div className="flex gap-2 mt-3 flex-wrap">
             {invoice.status === 'DRAFT' && (
-              <button onClick={() => onStatusChange(invoice.id, 'SENT')} className="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">ส่งใบแจ้งหนี้</button>
+              <button onClick={() => onStatusChange(invoice.id, 'SENT')} className="text-sm px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg">ส่งใบแจ้งหนี้</button>
             )}
             {['SENT', 'PENDING_PAYMENT', 'OVERDUE'].includes(invoice.status) && (
               <button onClick={() => setActiveTab('payments')} className="text-sm px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg">บันทึกการรับชำระ</button>
@@ -260,7 +260,7 @@ function InvoiceDetail({ invoice, userId, userRole, canManage, activeTab, setAct
       {/* Tabs */}
       <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 px-4">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
+          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
         ))}
       </div>
 
@@ -425,7 +425,7 @@ function PaymentsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
               <p className="text-xs text-gray-400">{fmtDate(p.paidAt)} · รับโดย {p.receivedBy?.name ?? p.createdBy.name}</p>
               {p.note && <p className="text-xs text-gray-400">{p.note}</p>}
             </div>
-            {p.slipUrl && <a href={p.slipUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">ดูสลิป</a>}
+            {p.slipUrl && <a href={p.slipUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:underline">ดูสลิป</a>}
           </div>
         </div>
       ))}
@@ -471,7 +471,7 @@ function ReceiptsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
               <p className="text-xs text-gray-500">ผู้รับ: {r.receiverName}</p>
               <p className="text-xs text-gray-400">{fmtDate(r.issuedAt)} · ออกโดย {r.createdBy.name}</p>
             </div>
-            <Link href={`/invoices/${invoice.id}/print`} target="_blank" className="text-xs text-blue-600 hover:underline">🖨️ พิมพ์</Link>
+            <Link href={`/invoices/${invoice.id}/print`} target="_blank" className="text-xs text-green-600 hover:underline">🖨️ พิมพ์</Link>
           </div>
         </div>
       ))}
@@ -588,7 +588,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-gray-500 font-medium">รายการบริการ</p>
-                <button onClick={addLine} className="text-xs text-blue-600 hover:underline">+ เพิ่มรายการ</button>
+                <button onClick={addLine} className="text-xs text-green-600 hover:underline">+ เพิ่มรายการ</button>
               </div>
               <div className="space-y-2">
                 {lineItems.map((l, i) => (
@@ -625,11 +625,11 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
             </div>
 
             {/* Total summary */}
-            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 space-y-1 text-sm">
+            <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">ยอดก่อนภาษี</span><span>฿{fmt(subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">VAT {(Number(form.vatRate) * 100).toFixed(0)}%</span><span>฿{fmt(vatAmt)}</span></div>
               {Number(form.whtRate) > 0 && <div className="flex justify-between"><span className="text-gray-500">หัก ณ ที่จ่าย {(Number(form.whtRate) * 100).toFixed(0)}%</span><span>-฿{fmt(whtAmt)}</span></div>}
-              <div className="border-t border-blue-100 dark:border-blue-800 pt-1 flex justify-between font-bold"><span>ยอดสุทธิ</span><span className="text-blue-600">฿{fmt(totalAmt)}</span></div>
+              <div className="border-t border-green-100 dark:border-green-800 pt-1 flex justify-between font-bold"><span>ยอดสุทธิ</span><span className="text-green-600">฿{fmt(totalAmt)}</span></div>
             </div>
 
             <div>
@@ -639,7 +639,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
           </div>
           <div className="p-6 pt-0 flex gap-3 justify-end border-t border-gray-200 dark:border-gray-700 mt-4">
             <button onClick={onClose} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !form.clientName || !form.serviceType || !form.issueDate || !form.dueDate} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'สร้างใบแจ้งหนี้'}</button>
+            <button onClick={save} disabled={saving || !form.clientName || !form.serviceType || !form.issueDate || !form.dueDate} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'สร้างใบแจ้งหนี้'}</button>
           </div>
         </div>
       </div>

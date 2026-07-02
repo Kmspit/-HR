@@ -1,6 +1,6 @@
 /**
  * สร้าง PWA icons ทุกขนาด — รันอัตโนมัติใน prebuild
- * พื้นหลัง #070b14, กล่องน้ำเงิน #3b82f6, ตัวอักษร KM
+ * พื้นหลัง #070b14, กล่องเขียว #22c55e, ตัวอักษร KM
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -20,7 +20,7 @@ function svgForSize(size) {
   const fontSize = Math.round(size * 0.34)
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <rect width="${size}" height="${size}" fill="#070b14"/>
-  <rect x="${pad}" y="${pad}" width="${inner}" height="${inner}" rx="${radius}" fill="#3b82f6"/>
+  <rect x="${pad}" y="${pad}" width="${inner}" height="${inner}" rx="${radius}" fill="#22c55e"/>
   <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="${fontSize}">KM</text>
 </svg>`)
 }

@@ -52,7 +52,7 @@ const STATUS_LABELS: Record<CaseStatus, string> = {
 }
 const STATUS_COLOR: Record<CaseStatus, string> = {
   NEW:           'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300',
-  ASSIGNED:      'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  ASSIGNED:      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
   INVESTIGATING: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
   NEGOTIATING:   'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
   WAITING_DOCUMENT: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
@@ -66,14 +66,14 @@ const STATUS_COLOR: Record<CaseStatus, string> = {
 }
 const PRIORITY_LABELS: Record<CasePriority, string> = { LOW: 'ต่ำ', MEDIUM: 'ปกติ', HIGH: 'สูง', CRITICAL: 'วิกฤต' }
 const PRIORITY_COLOR: Record<CasePriority, string> = {
-  LOW: 'text-slate-500', MEDIUM: 'text-blue-600', HIGH: 'text-orange-600 font-semibold', CRITICAL: 'text-red-600 font-bold',
+  LOW: 'text-slate-500', MEDIUM: 'text-green-600', HIGH: 'text-orange-600 font-semibold', CRITICAL: 'text-red-600 font-bold',
 }
 const RISK_COLOR: Record<string, string> = {
   LOW: 'bg-green-100 text-green-700', MEDIUM: 'bg-yellow-100 text-yellow-700',
   HIGH: 'bg-orange-100 text-orange-700', CRITICAL: 'bg-red-100 text-red-700 font-bold',
 }
 const TASK_STATUS_COLOR: Record<string, string> = {
-  PENDING: 'bg-slate-100 text-slate-600', IN_PROGRESS: 'bg-blue-100 text-blue-700',
+  PENDING: 'bg-slate-100 text-slate-600', IN_PROGRESS: 'bg-green-100 text-green-700',
   WAITING_REVIEW: 'bg-amber-100 text-amber-700', COMPLETED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-red-100 text-red-600', OVERDUE: 'bg-red-200 text-red-800',
 }
@@ -170,7 +170,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </Link>
           <div className="flex-1 min-w-0">
-            <p className="font-mono text-[12px] text-blue-600 dark:text-blue-400 font-semibold">{c.caseNumber}</p>
+            <p className="font-mono text-[12px] text-green-600 dark:text-green-400 font-semibold">{c.caseNumber}</p>
             <h1 className="font-bold text-slate-900 dark:text-white text-[17px] leading-tight">{c.caseTitle}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-medium ${STATUS_COLOR[c.status]}`}>
@@ -193,7 +193,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
               {showStatus && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-20 py-1 overflow-hidden">
                   {(Object.entries(STATUS_LABELS) as [CaseStatus, string][]).map(([v, l]) => (
-                    <button key={v} onClick={() => changeStatus(v)} className={`w-full text-left px-3 py-2 text-[13px] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors ${c.status === v ? 'font-semibold text-blue-600' : 'text-slate-700 dark:text-slate-300'}`}>{l}</button>
+                    <button key={v} onClick={() => changeStatus(v)} className={`w-full text-left px-3 py-2 text-[13px] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors ${c.status === v ? 'font-semibold text-green-600' : 'text-slate-700 dark:text-slate-300'}`}>{l}</button>
                   ))}
                 </div>
               )}
@@ -204,7 +204,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
         {/* Tab Nav */}
         <div className="flex overflow-x-auto scrollbar-none gap-0 -mb-px">
           {TABS.map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`flex-shrink-0 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === t ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+            <button key={t} onClick={() => setActiveTab(t)} className={`flex-shrink-0 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === t ? 'border-green-600 text-green-600 dark:text-green-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
               {t}
             </button>
           ))}
@@ -220,7 +220,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
             <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ข้อมูลทั่วไป</h3>
-                <button onClick={recalcRisk} className="text-[11px] text-blue-600 hover:underline">คำนวณความเสี่ยงใหม่</button>
+                <button onClick={recalcRisk} className="text-[11px] text-green-600 hover:underline">คำนวณความเสี่ยงใหม่</button>
               </div>
               <div className="grid grid-cols-2 gap-3 text-[13px]">
                 <Info label="เลขคดี"        value={c.caseNumber} mono />
@@ -259,7 +259,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
               <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-4 space-y-2">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">สถิติ</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  <Stat label="งาน"        value={c._count.tasks}      color="text-blue-600" />
+                  <Stat label="งาน"        value={c._count.tasks}      color="text-green-600" />
                   <Stat label="นัดศาล"     value={c._count.courts}     color="text-purple-600" />
                   <Stat label="เช็คลิสต์" value={`${c.checklists.filter(ch => ch.done).length}/${c._count.checklists}`} color="text-green-600" small />
                   <Stat label="เหตุการณ์" value={c.timeline.length}    color="text-slate-600" />
@@ -314,9 +314,9 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
               <input
                 value={commentText} onChange={e => setCommentText(e.target.value)}
                 placeholder="เพิ่มบันทึก / ความคิดเห็น..."
-                className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500"
               />
-              <button type="submit" disabled={posting || !commentText.trim()} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">
+              <button type="submit" disabled={posting || !commentText.trim()} className="rounded-xl bg-green-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-green-500 disabled:opacity-50 transition-colors">
                 {posting ? '...' : 'บันทึก'}
               </button>
             </form>
@@ -343,7 +343,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[13px] text-slate-500">{c.tasks.length} งานที่เชื่อมกับคดีนี้</p>
-              <Link href={`/tasks?search=${c.caseNumber}`} className="text-[12px] text-blue-600 hover:underline">ดูทั้งหมดใน Tasks →</Link>
+              <Link href={`/tasks?search=${c.caseNumber}`} className="text-[12px] text-green-600 hover:underline">ดูทั้งหมดใน Tasks →</Link>
             </div>
             {c.tasks.length === 0 ? (
               <p className="text-[13px] text-slate-400">ยังไม่มีงานที่เชื่อมกับคดีนี้</p>
@@ -499,9 +499,9 @@ function ChecklistTab({ caseId, items, canEdit, onRefresh }: {
           <input
             value={newLabel} onChange={e => setNewLabel(e.target.value)}
             placeholder="เพิ่มรายการใหม่..."
-            className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500"
           />
-          <button type="submit" disabled={adding || !newLabel.trim()} className="rounded-xl bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors">
+          <button type="submit" disabled={adding || !newLabel.trim()} className="rounded-xl bg-green-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-green-500 disabled:opacity-50 transition-colors">
             {adding ? '...' : 'เพิ่ม'}
           </button>
         </form>
@@ -562,39 +562,39 @@ function DebtorTab({ caseId, debtor, activities, canEdit, onRefresh }: {
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">ประวัติการติดต่อ ({activities.length})</h3>
           {canEdit && (
-            <button onClick={() => setShowForm(!showForm)} className="text-[12px] text-blue-600 hover:underline">
+            <button onClick={() => setShowForm(!showForm)} className="text-[12px] text-green-600 hover:underline">
               {showForm ? 'ยกเลิก' : '+ บันทึกการติดต่อ'}
             </button>
           )}
         </div>
 
         {showForm && (
-          <form onSubmit={submitActivity} className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 mb-3 space-y-3">
+          <form onSubmit={submitActivity} className="rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 mb-3 space-y-3">
             <div>
               <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทการติดต่อ</label>
-              <select value={form.activityType} onChange={e => setForm(p => ({ ...p, activityType: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select value={form.activityType} onChange={e => setForm(p => ({ ...p, activityType: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500">
                 {Object.entries(ACTIVITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">บันทึก</label>
-              <textarea value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="รายละเอียดการติดต่อ..." />
+              <textarea value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="รายละเอียดการติดต่อ..." />
             </div>
             {['payment_promise'].includes(form.activityType) && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันที่นัดชำระ</label>
-                  <input type="date" value={form.promisedDate} onChange={e => setForm(p => ({ ...p, promisedDate: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="date" value={form.promisedDate} onChange={e => setForm(p => ({ ...p, promisedDate: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">จำนวนเงิน (บาท)</label>
-                  <input type="number" value={form.promisedAmount} onChange={e => setForm(p => ({ ...p, promisedAmount: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500" min="0" />
+                  <input type="number" value={form.promisedAmount} onChange={e => setForm(p => ({ ...p, promisedAmount: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500" min="0" />
                 </div>
               </div>
             )}
             <div className="flex gap-2">
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-slate-200 dark:border-white/10 py-2 text-[13px] text-slate-600 dark:text-slate-300">ยกเลิก</button>
-              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-600 py-2 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:opacity-60">
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-green-600 py-2 text-[13px] font-semibold text-white hover:bg-green-500 disabled:opacity-60">
                 {saving ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>
             </div>
@@ -613,7 +613,7 @@ function DebtorTab({ caseId, debtor, activities, canEdit, onRefresh }: {
                   <span className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{ACTIVITY_LABELS[act.activityType] ?? act.activityType}</span>
                 </div>
                 {act.note && <p className="text-[12px] text-slate-600 dark:text-slate-400">{act.note}</p>}
-                {act.promisedDate && <p className="text-[11px] text-blue-600">นัดชำระ: {fmtDate(act.promisedDate)} {act.promisedAmount ? `฿${thb(act.promisedAmount)}` : ''}</p>}
+                {act.promisedDate && <p className="text-[11px] text-green-600">นัดชำระ: {fmtDate(act.promisedDate)} {act.promisedAmount ? `฿${thb(act.promisedAmount)}` : ''}</p>}
                 <p className="text-[11px] text-slate-400 mt-0.5">{act.actor.name} · {fmtDateTime(act.createdAt)}</p>
               </div>
             </div>
@@ -689,7 +689,7 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
           value={form[k]}
           onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
           disabled={!editing}
-          className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 disabled:bg-slate-50 dark:disabled:bg-slate-900 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 disabled:bg-slate-50 dark:disabled:bg-slate-900 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500"
         />
       </div>
     )
@@ -712,7 +712,7 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
           <p className="text-[11px] text-slate-400 mt-0.5">คงค้าง</p>
         </div>
         <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-3 text-center">
-          <p className="text-[18px] font-bold text-blue-600">{recovery}%</p>
+          <p className="text-[18px] font-bold text-green-600">{recovery}%</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Recovery</p>
         </div>
       </div>
@@ -723,7 +723,7 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
           <span>Progress</span><span>{recovery}%</span>
         </div>
         <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div className="h-3 rounded-full transition-all" style={{ width: `${Math.min(100, recovery)}%`, background: recovery >= 80 ? '#22c55e' : recovery >= 50 ? '#3b82f6' : '#f97316' }} />
+          <div className="h-3 rounded-full transition-all" style={{ width: `${Math.min(100, recovery)}%`, background: recovery >= 80 ? '#22c55e' : recovery >= 50 ? '#22c55e' : '#f97316' }} />
         </div>
       </div>
 
@@ -732,7 +732,7 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-slate-900 dark:text-white text-[14px]">รายละเอียดการเงิน</h3>
           {canEdit && !editing && (
-            <button onClick={() => setEditing(true)} className="text-[12px] text-blue-600 hover:underline">แก้ไข</button>
+            <button onClick={() => setEditing(true)} className="text-[12px] text-green-600 hover:underline">แก้ไข</button>
           )}
         </div>
         <form onSubmit={save} className="space-y-3">
@@ -751,7 +751,7 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
           {editing && (
             <div className="flex gap-2">
               <button type="button" onClick={() => setEditing(false)} className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 py-2.5 text-[14px] font-medium text-slate-700 dark:text-slate-300">ยกเลิก</button>
-              <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-[14px] font-semibold text-white hover:bg-blue-500 disabled:opacity-60">
+              <button type="submit" disabled={saving} className="flex-1 rounded-xl bg-green-600 py-2.5 text-[14px] font-semibold text-white hover:bg-green-500 disabled:opacity-60">
                 {saving ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>
             </div>

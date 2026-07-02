@@ -25,7 +25,7 @@ export default function FaceStepGuide({ steps, currentIndex, className }: Props)
         <p className="text-[11px] font-semibold uppercase tracking-wide dark:text-slate-400 light:text-slate-500">
           ขั้นตอนที่ {currentIndex + 1} / {total}
         </p>
-        <span className="text-[11px] tabular-nums dark:text-cyan-400 light:text-blue-600 font-medium">
+        <span className="text-[11px] tabular-nums dark:text-cyan-400 light:text-green-600 font-medium">
           {pct}%
         </span>
       </div>
@@ -38,7 +38,7 @@ export default function FaceStepGuide({ steps, currentIndex, className }: Props)
         aria-valuemax={total}
       >
         <div
-          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300"
+          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-green-500 transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -53,7 +53,7 @@ export default function FaceStepGuide({ steps, currentIndex, className }: Props)
               className={cn(
                 'flex gap-2.5 rounded-xl px-3 py-2.5 border transition-colors',
                 active &&
-                  'dark:bg-cyan-500/10 dark:border-cyan-500/30 light:bg-blue-50 light:border-blue-200',
+                  'dark:bg-cyan-500/10 dark:border-cyan-500/30 light:bg-green-50 light:border-green-200',
                 done &&
                   !active &&
                   'dark:bg-white/[0.02] dark:border-white/5 light:bg-slate-50/80 light:border-slate-100 opacity-80',
@@ -66,7 +66,7 @@ export default function FaceStepGuide({ steps, currentIndex, className }: Props)
                 className={cn(
                   'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
                   done && 'bg-green-500/20 text-green-400',
-                  active && !done && 'bg-cyan-500/25 text-cyan-300 light:text-blue-700',
+                  active && !done && 'bg-cyan-500/25 text-cyan-300 light:text-green-700',
                   !done && !active && 'dark:bg-white/5 light:bg-slate-200 dark:text-slate-500 light:text-slate-500',
                 )}
                 aria-hidden

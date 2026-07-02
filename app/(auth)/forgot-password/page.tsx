@@ -106,12 +106,12 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
+  const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-green-500/50 focus:ring-2 focus:ring-green-500/50'
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4">
       <Link href="/login" className="mb-8 flex items-center gap-2 group">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-lg">⚡</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-green-500/30 bg-green-500/10 text-lg">⚡</div>
         <span className="text-lg font-bold text-white">HR<span className="gradient-text">Flow</span></span>
       </Link>
 
@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
           {step === 'email' && (
             <>
               <div className="mb-6 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl">🔐</div>
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-500/10 text-2xl">🔐</div>
                 <h1 className="text-xl font-bold text-white">ลืมรหัสผ่าน?</h1>
                 <p className="mt-1 text-sm text-slate-400">กรอกอีเมลเพื่อรับรหัส OTP ทาง LINE</p>
               </div>
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
                   <input type="email" placeholder="name@company.com" className={`${inputCls} ${emailError ? 'border-red-500/50' : ''}`} value={email} onChange={(e) => onEmailChange(e.target.value)} required />
                   {emailError && <p className="mt-1 text-xs text-red-400">{emailError}</p>}
                 </div>
-                <button type="submit" disabled={loading || !!emailError} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-60">
+                <button type="submit" disabled={loading || !!emailError} className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all disabled:opacity-60">
                   {loading ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</> : 'ส่งรหัส OTP'}
                 </button>
               </form>
@@ -141,11 +141,11 @@ export default function ForgotPasswordPage() {
               <div className="mb-6 text-center">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-500/10 text-2xl">📱</div>
                 <h1 className="text-xl font-bold text-white">ยืนยัน OTP</h1>
-                <p className="mt-1 text-sm text-slate-400">กรอกรหัส 6 หลักที่ส่งไปยัง<br /><span className="text-blue-400">{email}</span></p>
+                <p className="mt-1 text-sm text-slate-400">กรอกรหัส 6 หลักที่ส่งไปยัง<br /><span className="text-green-400">{email}</span></p>
               </div>
               <form onSubmit={handleVerifyOTP} className="space-y-4">
                 <input type="text" placeholder="000000" maxLength={6} className={`${inputCls} text-center text-2xl tracking-[0.5em] font-bold`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required />
-                <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all">
+                <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all">
                   ยืนยัน OTP
                 </button>
               </form>
@@ -179,7 +179,7 @@ export default function ForgotPasswordPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/10 text-3xl">✅</div>
               <h1 className="text-xl font-bold text-white">สำเร็จ!</h1>
               <p className="mt-2 text-sm text-slate-400">รหัสผ่านของคุณถูกเปลี่ยนแล้ว</p>
-              <Link href="/login" className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white hover:bg-blue-500 transition-all">
+              <Link href="/login" className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all">
                 กลับไปเข้าสู่ระบบ
               </Link>
             </div>

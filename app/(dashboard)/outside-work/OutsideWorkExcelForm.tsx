@@ -310,8 +310,8 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
 
   const TH = 'border border-black bg-gray-200 text-sm font-semibold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
   const TD = 'border border-black align-top text-sm text-gray-900'
-  const INP = 'form-on-light w-full bg-white text-sm !text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-400 leading-snug rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-  const SEL = 'select-on-light w-full bg-white text-sm !text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug border border-gray-300 shadow-sm rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  const INP = 'form-on-light w-full bg-white text-sm !text-gray-900 outline-none px-1 py-1 border border-gray-300 shadow-sm placeholder:text-gray-400 leading-snug rounded-sm focus:ring-2 focus:ring-green-500 focus:border-green-500'
+  const SEL = 'select-on-light w-full bg-white text-sm !text-gray-900 outline-none px-0.5 py-1 cursor-pointer leading-snug border border-gray-300 shadow-sm rounded-sm focus:ring-2 focus:ring-green-500 focus:border-green-500'
   const INP_RO = 'cursor-default bg-slate-100 !text-gray-900'
   const RO_SPAN = 'text-sm font-medium text-gray-900'
 
@@ -328,7 +328,7 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
             <select
               value={viewUserId}
               onChange={e => setViewUserId(e.target.value)}
-              className="form-on-light select-on-light flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="form-on-light select-on-light flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
             >
               {employees.map(e => (
                 <option key={e.id} value={e.id}>{e.name}{e.id === userId ? ' (ตัวเอง)' : ''}</option>
@@ -420,19 +420,19 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
                     <Fragment key={ymd}>
 
                       {/* Morning row */}
-                      <tr className={`${stripe} ${today ? 'outline outline-1 outline-blue-400 outline-offset-[-1px]' : ''}`}>
+                      <tr className={`${stripe} ${today ? 'outline outline-1 outline-green-400 outline-offset-[-1px]' : ''}`}>
 
                         {/* วัน — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle font-bold text-sm text-gray-900 ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle font-bold text-sm text-gray-900 ${today ? 'bg-green-50' : stripe}`}
                           rowSpan={2}>
                           <div className="flex flex-col items-center gap-0.5 text-gray-900">
-                            {today && <span className="text-xs text-blue-800 font-semibold">วันนี้</span>}
+                            {today && <span className="text-xs text-green-800 font-semibold">วันนี้</span>}
                             {DAYS_TH[dayIdx]}
                           </div>
                         </td>
 
                         {/* ว/ด/ปี — rowSpan 2 */}
-                        <td className={`border border-black text-center align-middle text-sm text-gray-900 ${today ? 'bg-blue-50' : stripe}`}
+                        <td className={`border border-black text-center align-middle text-sm text-gray-900 ${today ? 'bg-green-50' : stripe}`}
                           rowSpan={2}>
                           {fmtDateTH(ymd)}
                         </td>
@@ -651,7 +651,7 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
           {canEditForm && (
             <div className="border-t border-gray-300 px-4 py-3 flex justify-end gap-2 bg-slate-50 print:hidden">
               <button type="button" onClick={save} disabled={saving}
-                className="flex items-center gap-2 px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow-sm transition">
+                className="flex items-center gap-2 px-5 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow-sm transition">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {saving ? 'กำลังบันทึก...' : 'บันทึกและส่งอนุมัติ'}
               </button>

@@ -210,7 +210,7 @@ export default function WarningDetailClient({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-blue-500/50 resize-none"
+              className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 resize-none"
               placeholder="ระบุหมายเหตุเพิ่มเติม..."
             />
           </div>

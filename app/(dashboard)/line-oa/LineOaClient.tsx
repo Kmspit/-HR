@@ -55,7 +55,7 @@ function AutoTab() {
         ))}
       </div>
 
-      <div className="rounded-xl border dark:border-white/10 bg-blue-500/5 p-4 text-xs dark:text-slate-300 space-y-1.5">
+      <div className="rounded-xl border dark:border-white/10 bg-green-500/5 p-4 text-xs dark:text-slate-300 space-y-1.5">
         <p className="font-semibold dark:text-white">💬 คำสั่ง self-service ที่รองรับ:</p>
         {[
           ['งานวันนี้', 'งานที่กำหนดวันนี้'],
@@ -129,7 +129,7 @@ function SettingsTab() {
     return (
       <p className="text-sm dark:text-slate-400 text-center py-6">
         ผูก LINE OA ก่อนเพื่อตั้งค่าการแจ้งเตือน —{' '}
-        <Link href="/profile" className="text-blue-400 underline">ไปที่โปรไฟล์</Link>
+        <Link href="/profile" className="text-green-400 underline">ไปที่โปรไฟล์</Link>
       </p>
     )
   }
@@ -201,7 +201,7 @@ function SettingsTab() {
         type="button"
         onClick={save}
         disabled={saving}
-        className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold disabled:opacity-50 transition"
+        className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold disabled:opacity-50 transition"
       >
         {saving ? 'กำลังบันทึก…' : 'บันทึกการตั้งค่า'}
       </button>
@@ -247,7 +247,7 @@ export default function LineOaClient() {
             onClick={() => setTab(t.id)}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition ${
               tab === t.id
-                ? 'bg-blue-600 text-white'
+                ? 'bg-green-600 text-white'
                 : 'dark:text-slate-400 dark:hover:text-white'
             }`}
           >
@@ -265,7 +265,7 @@ export default function LineOaClient() {
           <ol className="text-sm dark:text-slate-300 space-y-3 list-decimal list-inside leading-relaxed">
             <li>
               ตั้งค่า Token ที่{' '}
-              <Link href="/settings" className="text-blue-400 hover:underline">
+              <Link href="/settings" className="text-green-400 hover:underline">
                 ตั้งค่าบริษัท
               </Link>{' '}
               หรือ Vercel Environment (โปรเจกต์ hrprogramkm)
@@ -277,7 +277,7 @@ export default function LineOaClient() {
             <li>HR: เลือกพนักงาน → พิมพ์ข้อความ → กด ส่งเข้า LINE</li>
             <li>
               ใบเตือน: หน้า{' '}
-              <Link href="/warnings" className="text-blue-400 hover:underline">
+              <Link href="/warnings" className="text-green-400 hover:underline">
                 ใบเตือน
               </Link>{' '}
               — ติ๊กส่งทันที หรือกดปุ่ม ส่งใหม่ไป LINE

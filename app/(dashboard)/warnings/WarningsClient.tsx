@@ -51,7 +51,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   APPROVED:         { label: 'อนุมัติแล้ว', cls: 'bg-green-500/20 text-green-400' },
   REJECTED:         { label: 'ปฏิเสธแล้ว',  cls: 'bg-red-500/20 text-red-400' },
   ARCHIVED:         { label: 'เก็บถาวร',    cls: 'bg-slate-500/20 text-slate-400' },
-  DRAFT:            { label: 'ร่าง',         cls: 'bg-blue-500/20 text-blue-400' },
+  DRAFT:            { label: 'ร่าง',         cls: 'bg-green-500/20 text-green-400' },
 }
 
 const LINE_STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -558,7 +558,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
               อัตโนมัติ
             </span>
           ) : (
-            <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium bg-blue-500/15 text-blue-400 light:bg-blue-50 light:text-blue-700">
+            <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium bg-green-500/15 text-green-400 light:bg-green-50 light:text-green-700">
               ด้วยตนเอง
             </span>
           )}
@@ -614,7 +614,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
                 onClick={() => handleSendWarning(w.id)}
                 disabled={sendingId === w.id}
                 title="ส่ง PDF ใบเตือนไป LINE พนักงาน (retry อัตโนมัติ)"
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400 light:border-blue-200 light:bg-blue-50 light:text-blue-700 hover:bg-blue-500/20 light:hover:bg-blue-100 disabled:opacity-50 touch-manipulation min-h-[36px]"
+                className="inline-flex items-center gap-1 rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-green-400 light:border-green-200 light:bg-green-50 light:text-green-700 hover:bg-green-500/20 light:hover:bg-green-100 disabled:opacity-50 touch-manipulation min-h-[36px]"
               >
                 <Send className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="hidden sm:inline">
@@ -704,7 +704,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-semibold transition"
             >
               <Plus className="w-4 h-4" /> ออกใบเตือน
             </button>
@@ -720,7 +720,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
             <label className="text-sm text-white/50 block mb-1.5">เลือกพนักงาน</label>
             <div
               ref={empPickerRef}
-              className="relative rounded-xl border border-white/15 bg-slate-900/80 focus-within:border-blue-500/50 transition-colors"
+              className="relative rounded-xl border border-white/15 bg-slate-900/80 focus-within:border-green-500/50 transition-colors"
             >
               <div className="flex items-center gap-1 pr-1">
                 <input
@@ -736,7 +736,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
                   className="flex-1 min-w-0 bg-transparent border-0 px-4 py-3.5 text-sm text-white placeholder:text-slate-500 outline-none"
                 />
                 {loadingEmployees ? (
-                  <Loader2 className="w-5 h-5 text-blue-400 animate-spin flex-shrink-0" />
+                  <Loader2 className="w-5 h-5 text-green-400 animate-spin flex-shrink-0" />
                 ) : (
                   <button
                     type="button"
@@ -766,7 +766,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
                           type="button"
                           onClick={() => pickEmployee(e)}
                           className={`w-full text-left px-4 py-2.5 text-sm transition hover:bg-white/5 touch-manipulation ${
-                            form.userId === e.id ? 'bg-blue-500/15 text-blue-200' : 'text-white'
+                            form.userId === e.id ? 'bg-green-500/15 text-green-200' : 'text-white'
                           }`}
                         >
                           <span className="font-medium">{e.name}</span>
@@ -817,7 +817,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
             <input
               value={form.reason}
               onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
               placeholder="ระบุเหตุผลการออกใบเตือน..."
             />
           </div>
@@ -827,7 +827,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500 resize-none"
             />
           </div>
 
@@ -896,7 +896,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
                 type="checkbox"
                 checked={sendToEmployee}
                 onChange={(e) => setSendToEmployee(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded accent-blue-500"
+                className="mt-0.5 h-4 w-4 rounded accent-green-500"
               />
               <span className="text-xs text-slate-300 leading-relaxed">
                 ส่งแจ้งพนักงานทันที (แอพ + LINE){pdfFile ? ' พร้อมลิงก์ไฟล์ PDF' : ''}
@@ -923,7 +923,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
               type="button"
               onClick={submit}
               disabled={submitting || !form.userId}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition disabled:opacity-50"
             >
               {submitting ? 'กำลังส่ง...' : `ออกใบเตือน (ครั้งที่ ${warningNumber})`}
             </button>

@@ -139,7 +139,7 @@ export default function ProfileDataHistory({ record, history }: Props) {
                   {item.changes.map((line, i) => (
                     <li
                       key={i}
-                      className="text-xs leading-relaxed dark:text-slate-400 light:text-slate-600 pl-3 border-l-2 dark:border-blue-500/40 light:border-blue-400"
+                      className="text-xs leading-relaxed dark:text-slate-400 light:text-slate-600 pl-3 border-l-2 dark:border-green-500/40 light:border-green-400"
                     >
                       {line}
                     </li>

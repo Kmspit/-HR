@@ -84,11 +84,11 @@ function StepRow({
 
       <div className="flex-1 space-y-2 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-bold text-blue-400">
+          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-500/20 text-xs font-bold text-green-400">
             {idx + 1}
           </span>
           <input
-            className="flex-1 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-1.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50"
+            className="flex-1 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-1.5 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50"
             placeholder="ชื่อขั้นตอน เช่น หัวหน้าทีมอนุมัติ"
             value={step.stepName}
             onChange={(e) => onChange({ ...step, stepName: e.target.value })}
@@ -98,7 +98,7 @@ function StepRow({
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase">Role ที่อนุมัติ</label>
             <select
-              className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500/50"
+              className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-green-500/50"
               value={step.approverRole}
               onChange={(e) => onChange({ ...step, approverRole: e.target.value, approverId: '' })}
             >
@@ -111,7 +111,7 @@ function StepRow({
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase">หรือระบุคน</label>
             <select
-              className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500/50"
+              className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-green-500/50"
               value={step.approverId}
               onChange={(e) => onChange({ ...step, approverId: e.target.value, approverRole: e.target.value ? '' : step.approverRole })}
             >
@@ -123,7 +123,7 @@ function StepRow({
           </div>
         </div>
         <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-          <input type="checkbox" checked={step.canSkip} onChange={(e) => onChange({ ...step, canSkip: e.target.checked })} className="accent-blue-500" />
+          <input type="checkbox" checked={step.canSkip} onChange={(e) => onChange({ ...step, canSkip: e.target.checked })} className="accent-green-500" />
           สามารถข้ามขั้นตอนนี้ได้ (canSkip)
         </label>
       </div>
@@ -208,7 +208,7 @@ function ChainForm({
   }
 
   return (
-    <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-4">
+    <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-white">{initial ? 'แก้ไข Chain' : 'สร้าง Approval Chain ใหม่'}</h3>
         <button type="button" onClick={onCancel} className="rounded-lg p-1.5 text-slate-500 hover:text-white"><X size={16}/></button>
@@ -217,16 +217,16 @@ function ChainForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-slate-400 uppercase">ชื่อ Chain *</label>
-          <input className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50" placeholder="เช่น Standard Leave Approval" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50" placeholder="เช่น Standard Leave Approval" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-semibold text-slate-400 uppercase">คำอธิบาย</label>
-          <input className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50" placeholder="optional" value={desc} onChange={(e) => setDesc(e.target.value)} />
+          <input className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50" placeholder="optional" value={desc} onChange={(e) => setDesc(e.target.value)} />
         </div>
       </div>
 
       <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
-        <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="accent-blue-500" />
+        <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="accent-green-500" />
         ใช้เป็น Default Chain ({CHAIN_ENTITY_LABELS[entityType]})
       </label>
 
@@ -242,14 +242,14 @@ function ChainForm({
             users={users}
           />
         ))}
-        <button type="button" onClick={addStep} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 py-2.5 text-xs text-slate-400 hover:border-blue-500/40 hover:text-blue-400 transition-colors">
+        <button type="button" onClick={addStep} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 py-2.5 text-xs text-slate-400 hover:border-green-500/40 hover:text-green-400 transition-colors">
           <Plus size={14} /> เพิ่มขั้นตอน
         </button>
       </div>
 
       <div className="flex gap-2 pt-1">
         <button type="button" onClick={onCancel} className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/10 transition-colors">ยกเลิก</button>
-        <button type="button" onClick={handleSave} disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60 transition-colors">
+        <button type="button" onClick={handleSave} disabled={saving} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-60 transition-colors">
           <Save size={14} /> {saving ? 'กำลังบันทึก...' : 'บันทึก'}
         </button>
       </div>
@@ -308,13 +308,13 @@ function ChainCard({
   }
 
   return (
-    <div className={`rounded-2xl border p-4 transition-all ${chain.isDefault ? 'border-blue-500/40 bg-blue-500/5' : chain.isActive ? 'border-white/10 bg-slate-800/30' : 'border-white/5 bg-slate-800/10 opacity-60'}`}>
+    <div className={`rounded-2xl border p-4 transition-all ${chain.isDefault ? 'border-green-500/40 bg-green-500/5' : chain.isActive ? 'border-white/10 bg-slate-800/30' : 'border-white/5 bg-slate-800/10 opacity-60'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-white">{chain.name}</h3>
             {chain.isDefault && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">
                 <Star size={10} /> Default
               </span>
             )}
@@ -337,7 +337,7 @@ function ChainCard({
           <button type="button" title={chain.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} onClick={toggleActive} disabled={toggling} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-700/60 hover:text-white transition-colors disabled:opacity-50">
             {chain.isActive ? <PowerOff size={14} /> : <Power size={14} />}
           </button>
-          <button type="button" title="แก้ไข" onClick={() => setEditing(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-500/10 hover:text-blue-400 transition-colors">
+          <button type="button" title="แก้ไข" onClick={() => setEditing(true)} className="rounded-lg p-1.5 text-slate-500 hover:bg-green-500/10 hover:text-green-400 transition-colors">
             <Edit3 size={14} />
           </button>
           <button type="button" title="ลบ" onClick={() => onDelete(chain.id)} className="rounded-lg p-1.5 text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors">
@@ -350,7 +350,7 @@ function ChainCard({
       <div className="mt-3 flex flex-wrap gap-2">
         {chain.steps.map((s, idx) => (
           <div key={s.id} className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-[10px] font-bold text-blue-400">{idx + 1}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/20 text-[10px] font-bold text-green-400">{idx + 1}</span>
             <span className="text-xs text-white">{s.stepName}</span>
             {s.approverRole && <span className="text-[10px] text-slate-500">({ROLE_LABELS[s.approverRole] ?? s.approverRole})</span>}
             {s.approver    && <span className="text-[10px] text-slate-500">({s.approver.name})</span>}
@@ -419,7 +419,7 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+            className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-500 transition-colors"
           >
             <Plus size={16} /> สร้าง Chain
           </button>
@@ -434,7 +434,7 @@ export default function ApprovalChainManager({ initialChains, users }: Props) {
             onClick={() => setEntityFilter(t)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
               entityFilter === t
-                ? 'bg-blue-600 text-white'
+                ? 'bg-green-600 text-white'
                 : 'bg-slate-800 text-slate-400 hover:text-white'
             }`}
           >

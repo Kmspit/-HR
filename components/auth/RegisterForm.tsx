@@ -218,7 +218,7 @@ export default function RegisterForm() {
   }
 
   const inputClass = (key: keyof FormData) =>
-    `w-full rounded-xl border bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-2 focus:ring-blue-500/50 ${errors[key] ? 'border-red-500/50' : 'border-white/10 focus:border-blue-500/50'}`
+    `w-full rounded-xl border bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-2 focus:ring-green-500/50 ${errors[key] ? 'border-red-500/50' : 'border-white/10 focus:border-green-500/50'}`
 
   return (
     <form onSubmit={handleSubmit}>
@@ -226,7 +226,7 @@ export default function RegisterForm() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2">
         {STEPS.map((s, i) => (
           <div key={s} className="flex flex-1 items-center gap-2 min-w-0">
-            <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${i < step ? 'bg-green-500 text-white' : i === step ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+            <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${i < step ? 'bg-green-500 text-white' : i === step ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
               {i < step ? '✓' : i + 1}
             </div>
             <span className={`text-xs transition-colors truncate ${i === step ? 'text-white font-semibold' : 'text-slate-500'}`}>{s}</span>
@@ -240,7 +240,7 @@ export default function RegisterForm() {
         <div className="space-y-4 animate-fade-in">
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Building2 size={14} className="text-blue-400" />
+              <Building2 size={14} className="text-green-400" />
               เลือกสาขาที่สังกัด *
             </label>
             {loadingBranches ? (
@@ -252,7 +252,7 @@ export default function RegisterForm() {
                     key={b.id}
                     className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all ${
                       form.branchId === b.id
-                        ? 'border-blue-500/50 bg-blue-500/10'
+                        ? 'border-green-500/50 bg-green-500/10'
                         : 'border-white/10 hover:border-white/20'
                     }`}
                   >
@@ -262,11 +262,11 @@ export default function RegisterForm() {
                       value={b.id}
                       checked={form.branchId === b.id}
                       onChange={(e) => set('branchId', e.target.value)}
-                      className="accent-blue-500 mt-1"
+                      className="accent-green-500 mt-1"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-white leading-snug">{b.name}</p>
-                      <p className="text-xs text-blue-300/90 mt-0.5">({b.registerTag})</p>
+                      <p className="text-xs text-green-300/90 mt-0.5">({b.registerTag})</p>
                     </div>
                   </label>
                 ))}
@@ -363,8 +363,8 @@ export default function RegisterForm() {
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ตำแหน่ง / Role *</label>
             <div className="grid gap-2">
               {ROLES.map((r) => (
-                <label key={r.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all ${form.role === r.value ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 hover:border-white/20'}`}>
-                  <input type="radio" name="role" value={r.value} checked={form.role === r.value} onChange={(e) => set('role', e.target.value)} className="accent-blue-500" />
+                <label key={r.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all ${form.role === r.value ? 'border-green-500/50 bg-green-500/10' : 'border-white/10 hover:border-white/20'}`}>
+                  <input type="radio" name="role" value={r.value} checked={form.role === r.value} onChange={(e) => set('role', e.target.value)} className="accent-green-500" />
                   <div>
                     <p className="text-sm font-semibold text-white">{r.label}</p>
                     <p className="text-xs text-slate-400">{r.desc}</p>
@@ -390,8 +390,8 @@ export default function RegisterForm() {
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">สถานะประกันสังคม</label>
             <div className="flex flex-col sm:flex-row gap-3">
               {[{ val: true, label: '✅ อยู่ในประกันสังคม' }, { val: false, label: '❌ ไม่อยู่ในประกันสังคม' }].map(({ val, label }) => (
-                <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all min-h-[44px] ${form.socialSecurity === val ? 'border-blue-500/50 bg-blue-500/10 text-white' : 'border-white/10 text-slate-400 hover:border-white/20'}`}>
-                  <input type="radio" name="ss" checked={form.socialSecurity === val} onChange={() => set('socialSecurity', val)} className="accent-blue-500" />
+                <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all min-h-[44px] ${form.socialSecurity === val ? 'border-green-500/50 bg-green-500/10 text-white' : 'border-white/10 text-slate-400 hover:border-white/20'}`}>
+                  <input type="radio" name="ss" checked={form.socialSecurity === val} onChange={() => set('socialSecurity', val)} className="accent-green-500" />
                   {label}
                 </label>
               ))}
@@ -403,7 +403,7 @@ export default function RegisterForm() {
       {/* STEP 2: Password */}
       {step === 2 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-slate-300">
+          <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 text-sm text-slate-300">
             <p className="font-semibold text-white mb-1">สรุปข้อมูล</p>
             <p>ชื่อ: {form.prefix}{form.firstName} {form.lastName} ({form.nickname || '-'})</p>
             <p>อีเมล: {form.email}</p>
@@ -469,7 +469,7 @@ export default function RegisterForm() {
           </button>
         )}
         {step < STEPS.length - 1 ? (
-          <button type="button" onClick={next} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-all">
+          <button type="button" onClick={next} className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-500 transition-all">
             ถัดไป <ChevronRight size={16} />
           </button>
         ) : (

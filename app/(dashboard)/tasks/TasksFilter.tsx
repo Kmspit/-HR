@@ -49,32 +49,32 @@ export function TasksFilter({
           <input
             type="search" value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหางาน..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-400/60"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-green-400/60"
           />
         </div>
 
         <button type="button" onClick={() => setShowDeptFilter(!showDeptFilter)}
           className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium border transition-colors
             ${hasActiveFilter
-              ? 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
+              ? 'bg-green-50 dark:bg-green-500/15 text-green-700 dark:text-green-300 border-green-200 dark:border-green-500/30'
               : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
             }`}>
           <SlidersHorizontal className="w-3.5 h-3.5" />
           ตัวกรอง
           {hasActiveFilter && (
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" aria-hidden />
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400" aria-hidden />
           )}
         </button>
 
         <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-white/10">
           <button type="button" onClick={() => setViewMode('list')}
             className={`flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium transition-colors
-              ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.08]'}`}>
+              ${viewMode === 'list' ? 'bg-green-600 text-white' : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.08]'}`}>
             <List className="w-3.5 h-3.5" />รายการ
           </button>
           <button type="button" onClick={() => setViewMode('kanban')}
             className={`flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium border-l border-slate-200 dark:border-white/10 transition-colors
-              ${viewMode === 'kanban' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.08]'}`}>
+              ${viewMode === 'kanban' ? 'bg-green-600 text-white' : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.08]'}`}>
             <LayoutGrid className="w-3.5 h-3.5" />Kanban
           </button>
         </div>
@@ -82,7 +82,7 @@ export function TasksFilter({
         {canAssign && (
           <button type="button" onClick={onCreateTask}
             className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold text-white border border-transparent transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+            style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}>
             <Plus className="w-4 h-4" />สร้างงาน
           </button>
         )}
@@ -155,7 +155,7 @@ export function TasksFilter({
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={`flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12px] font-semibold transition-all
               ${tab === t.id
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-green-600 text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/[0.06]'
               }`}>
             {t.label}

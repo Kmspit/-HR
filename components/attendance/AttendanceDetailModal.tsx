@@ -60,7 +60,7 @@ const STATUS_COLOR: Record<string, string> = {
   NORMAL:      'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/10',
   LATE:        'text-amber-700 dark:text-yellow-400 bg-amber-100 dark:bg-yellow-500/10',
   ABSENT:      'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/10',
-  LEAVE:       'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/10',
+  LEAVE:       'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/10',
   OT:          'text-purple-700 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/10',
   HALF_DAY:    'text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10',
   EARLY_LEAVE: 'text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/10',
@@ -189,7 +189,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
 
             {loading && (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-6 h-6 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
+                <div className="w-6 h-6 rounded-full border-2 border-green-500/30 border-t-green-500 animate-spin" />
                 <p className="text-sm text-slate-500">กำลังโหลดข้อมูล...</p>
               </div>
             )}
@@ -230,7 +230,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
                     </InfoRow>
                   )}
                   <InfoRow label="เช็คเอาท์">
-                    <span className={detail.checkOut ? (detail.autoCheckout ? 'text-orange-700 dark:text-orange-400' : 'text-blue-700 dark:text-blue-400') : 'text-slate-400'}>
+                    <span className={detail.checkOut ? (detail.autoCheckout ? 'text-orange-700 dark:text-orange-400' : 'text-green-700 dark:text-green-400') : 'text-slate-400'}>
                       {detail.checkOut ? formatTimeBangkok(detail.checkOut) : '—'}
                     </span>
                     {detail.autoCheckout && detail.checkOut && (
@@ -294,7 +294,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
                           href={detail.outsideWork.googleMapsUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 underline underline-offset-2 break-all text-[12px]"
+                          className="text-green-600 dark:text-green-400 underline underline-offset-2 break-all text-[12px]"
                         >
                           ดูแผนที่จากคำขอ →
                         </a>
@@ -321,7 +321,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
                             href={`https://maps.google.com/?q=${detail.checkInLat},${detail.checkInLng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 underline underline-offset-2 text-[12px]"
+                            className="text-green-600 dark:text-green-400 underline underline-offset-2 text-[12px]"
                           >
                             {detail.checkInLat.toFixed(6)}, {detail.checkInLng.toFixed(6)} →
                           </a>
@@ -340,7 +340,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
                             href={`https://maps.google.com/?q=${detail.checkOutLat},${detail.checkOutLng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 underline underline-offset-2 text-[12px]"
+                            className="text-green-600 dark:text-green-400 underline underline-offset-2 text-[12px]"
                           >
                             {detail.checkOutLat.toFixed(6)}, {detail.checkOutLng.toFixed(6)} →
                           </a>

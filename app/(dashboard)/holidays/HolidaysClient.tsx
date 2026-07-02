@@ -133,7 +133,7 @@ export default function HolidaysClient({
   }
 
   const inputCls =
-    'w-full rounded-xl border dark:border-white/10 light:border-slate-200 dark:bg-slate-800/60 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:border-blue-500/50'
+    'w-full rounded-xl border dark:border-white/10 light:border-slate-200 dark:bg-slate-800/60 light:bg-white px-3 py-2.5 text-sm dark:text-white light:text-slate-800 outline-none focus:border-green-500/50'
 
   return (
     <div className="p-4 md:p-6 space-y-5 pb-10">
@@ -144,7 +144,7 @@ export default function HolidaysClient({
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold"
         >
           <Plus className="w-4 h-4" /> เพิ่มวันหยุด
         </button>
@@ -184,9 +184,9 @@ export default function HolidaysClient({
       </div>
 
       {showForm && (
-        <div className="glass-card rounded-2xl p-5 space-y-4 border dark:border-blue-500/30 light:border-blue-200">
+        <div className="glass-card rounded-2xl p-5 space-y-4 border dark:border-green-500/30 light:border-green-200">
           <h3 className="font-semibold dark:text-white light:text-slate-900 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-blue-400" />
+            <CalendarDays className="w-4 h-4 text-green-400" />
             {editingId ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุดใหม่'}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -251,7 +251,7 @@ export default function HolidaysClient({
                 type="checkbox"
                 checked={form.repeatEveryYear}
                 onChange={(e) => setForm((f) => ({ ...f, repeatEveryYear: e.target.checked }))}
-                className="w-4 h-4 accent-blue-500"
+                className="w-4 h-4 accent-green-500"
               />
               <span className="text-sm dark:text-slate-300 light:text-slate-700 flex items-center gap-1">
                 <Repeat className="w-3.5 h-3.5" /> ซ้ำทุกปี (เสาร์/อาทิตย์ = ทุกสัปดาห์)
@@ -270,7 +270,7 @@ export default function HolidaysClient({
               type="button"
               onClick={save}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               บันทึก
@@ -322,7 +322,7 @@ export default function HolidaysClient({
                     </td>
                     <td className="px-4 py-3 text-center">
                       {h.repeatEveryYear ? (
-                        <Repeat className="w-4 h-4 inline text-blue-400" />
+                        <Repeat className="w-4 h-4 inline text-green-400" />
                       ) : (
                         <span className="text-slate-600">—</span>
                       )}

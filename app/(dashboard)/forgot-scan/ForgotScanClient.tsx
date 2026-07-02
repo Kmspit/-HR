@@ -63,7 +63,7 @@ type Props = {
 
 const STATUS_CONFIG = {
   PENDING:        { label: 'รอหัวหน้าอนุมัติ', cls: 'text-amber-700 dark:text-yellow-400 bg-amber-100 dark:bg-yellow-500/12 border-amber-200 dark:border-yellow-500/30'   },
-  ADMIN_APPROVED: { label: 'รอ HR อนุมัติ',    cls: 'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/12 border-blue-200 dark:border-blue-500/30'             },
+  ADMIN_APPROVED: { label: 'รอ HR อนุมัติ',    cls: 'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/12 border-green-200 dark:border-green-500/30'             },
   APPROVED:       { label: 'อนุมัติแล้ว',       cls: 'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/12 border-green-200 dark:border-green-500/30'       },
   REJECTED:       { label: 'ปฏิเสธ (หัวหน้า)', cls: 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/12 border-red-200 dark:border-red-500/30'                   },
   ADMIN_REJECTED: { label: 'ปฏิเสธ (HR)',       cls: 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/12 border-red-200 dark:border-red-500/30'                   },
@@ -154,7 +154,7 @@ function RequestCard({
                 href={req.evidenceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:underline"
               >
                 <FileText className="w-3.5 h-3.5" />
                 ดูไฟล์หลักฐาน
@@ -195,7 +195,7 @@ function RequestCard({
               <p className="text-xs text-amber-700 dark:text-yellow-400/80">หมายเหตุหัวหน้า: {req.supervisorNote}</p>
             )}
             {req.hrNote && (
-              <p className="text-xs text-blue-600 dark:text-blue-400/80">หมายเหตุ HR: {req.hrNote}</p>
+              <p className="text-xs text-green-600 dark:text-green-400/80">หมายเหตุ HR: {req.hrNote}</p>
             )}
           </div>
 
@@ -219,7 +219,7 @@ function RequestCard({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="หมายเหตุ (ไม่บังคับ)..."
-                className="w-full rounded-lg px-3 py-2 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-blue-500/50"
+                className="w-full rounded-lg px-3 py-2 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-green-500/50"
               />
               <div className="flex gap-2">
                 <button
@@ -357,7 +357,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
             type="button"
             onClick={() => setShowForm((p) => !p)}
             className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all active:scale-[0.97]"
-            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+            style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}
           >
             {showForm ? 'ยกเลิก' : '+ ยื่นคำขอ'}
           </button>
@@ -368,9 +368,9 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl p-4 space-y-4 bg-blue-50 dark:bg-slate-900/70 border border-blue-100 dark:border-blue-500/25"
+          className="rounded-2xl p-4 space-y-4 bg-green-50 dark:bg-slate-900/70 border border-green-100 dark:border-green-500/25"
         >
-          <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">แบบฟอร์มขอแก้ไขเวลา</p>
+          <p className="text-sm font-semibold text-green-700 dark:text-green-400">แบบฟอร์มขอแก้ไขเวลา</p>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Date */}
@@ -382,7 +382,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
                 value={date}
                 max={bangkokDateKey()}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50"
+                className="w-full rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-green-500/50"
               />
             </div>
 
@@ -394,7 +394,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
                 required
                 value={correctTime}
                 onChange={(e) => setCorrectTime(e.target.value)}
-                className="w-full rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50"
+                className="w-full rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-green-500/50"
               />
             </div>
           </div>
@@ -410,7 +410,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
                   onClick={() => setScanType(t)}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border ${
                     scanType === t
-                      ? 'bg-blue-100 dark:bg-blue-500/20 border-blue-400 dark:border-blue-500/50 text-blue-700 dark:text-blue-300'
+                      ? 'bg-green-100 dark:bg-green-500/20 border-green-400 dark:border-green-500/50 text-green-700 dark:text-green-300'
                       : 'bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-slate-400'
                   }`}
                 >
@@ -430,7 +430,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="อธิบายสาเหตุที่ลืมสแกน..."
-              className="w-full rounded-lg px-3 py-2 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-blue-500/50"
+              className="w-full rounded-lg px-3 py-2 text-sm bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 resize-none focus:outline-none focus:border-green-500/50"
             />
           </div>
 
@@ -441,7 +441,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
               type="file"
               accept="image/*,.pdf"
               onChange={(e) => setEvidence(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 dark:file:bg-blue-500/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 dark:hover:file:bg-blue-500/25"
+              className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-green-100 dark:file:bg-green-500/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-green-700 dark:file:text-green-300 hover:file:bg-green-200 dark:hover:file:bg-green-500/25"
             />
           </div>
 
@@ -457,7 +457,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
             type="submit"
             disabled={isPending}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:opacity-50 active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}
+            style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             ส่งคำขอ
@@ -477,7 +477,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
               type="button"
               onClick={() => setTab(t.id as 'mine' | 'pending')}
               className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition ${
-                tab === t.id ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white/80'
+                tab === t.id ? 'bg-green-600 text-white' : 'text-white/50 hover:text-white/80'
               }`}
             >
               {t.label}
@@ -515,7 +515,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
       <div className="rounded-xl px-4 py-3 space-y-1.5 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/[0.05]">
         <p className="text-[11px] text-slate-500 font-medium">ขั้นตอนการอนุมัติ</p>
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="text-blue-700 dark:text-blue-300">พนักงาน</span>
+          <span className="text-green-700 dark:text-green-300">พนักงาน</span>
           <span className="text-slate-400 dark:text-slate-600">→</span>
           <span className="text-amber-700 dark:text-yellow-300">หัวหน้างาน</span>
           <span className="text-slate-400 dark:text-slate-600">→</span>

@@ -103,7 +103,7 @@ function severityDot(severity: SmartAlert['severity']) {
   switch (severity) {
     case 'critical': return 'bg-red-500'
     case 'warning': return 'bg-amber-500'
-    default: return 'bg-blue-500'
+    default: return 'bg-green-500'
   }
 }
 

@@ -178,7 +178,7 @@ export default function ClientsClient({ userRole }: Props) {
           placeholder="ค้นหาลูกค้า..."
           className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm min-w-48" />
         <button onClick={() => fetchClients()} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">ค้นหา</button>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 ml-auto">+ เพิ่มลูกค้า</button>
+        <button onClick={() => setShowCreate(true)} className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 ml-auto">+ เพิ่มลูกค้า</button>
       </div>
 
       <div className="flex gap-4 items-start">
@@ -193,7 +193,7 @@ export default function ClientsClient({ userRole }: Props) {
             <div className="flex flex-col gap-2">
               {clients.map((c) => (
                 <div key={c.id} onClick={() => openDetail(c)}
-                  className={`border rounded-lg p-3 cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors ${selected?.id === c.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                  className={`border rounded-lg p-3 cursor-pointer hover:border-green-300 hover:bg-green-50 transition-colors ${selected?.id === c.id ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-medium text-sm text-gray-800">{c.name}</div>
@@ -227,7 +227,7 @@ export default function ClientsClient({ userRole }: Props) {
 
             <div className="flex gap-2 flex-wrap">
               <button onClick={() => { setShowLinkTask(true); fetchAvailableTasks('') }}
-                className="text-xs px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700">
+                className="text-xs px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700">
                 เชื่อมคดี
               </button>
               {canDelete && (
@@ -310,7 +310,7 @@ export default function ClientsClient({ userRole }: Props) {
                 <button type="button" onClick={() => setShowCreate(false)}
                   className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600">ยกเลิก</button>
                 <button type="submit" disabled={creating}
-                  className="px-5 py-2 rounded bg-blue-600 text-white text-sm disabled:opacity-50">
+                  className="px-5 py-2 rounded bg-green-600 text-white text-sm disabled:opacity-50">
                   {creating ? 'กำลังสร้าง...' : 'สร้างบัญชี'}
                 </button>
               </div>
@@ -374,7 +374,7 @@ export default function ClientsClient({ userRole }: Props) {
             <div className="flex-1 overflow-y-auto flex flex-col gap-1.5">
               {availableTasks.map((t) => (
                 <button key={t.id} onClick={() => handleLinkTask(t.id)}
-                  className="text-left border border-gray-200 rounded-lg p-2.5 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                  className="text-left border border-gray-200 rounded-lg p-2.5 hover:border-green-400 hover:bg-green-50 transition-colors">
                   <div className="text-sm font-medium text-gray-800">{t.title}</div>
                   {t.caseNumber && <div className="text-xs text-gray-500">เลขคดี: {t.caseNumber}</div>}
                   <div className="text-xs text-gray-400">{STATUS_LABELS[t.status] ?? t.status}</div>

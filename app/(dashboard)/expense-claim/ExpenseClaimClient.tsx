@@ -25,7 +25,7 @@ const CAN_PAY         = ['SUPER_ADMIN','CEO','MANAGER_HR','HR']
 
 const STATUS_COLOR: Record<string, string> = {
   PENDING:             'bg-yellow-100 text-yellow-700',
-  SUPERVISOR_APPROVED: 'bg-blue-100 text-blue-700',
+  SUPERVISOR_APPROVED: 'bg-green-100 text-green-700',
   CEO_APPROVED:        'bg-green-100 text-green-700',
   PAID:                'bg-emerald-100 text-emerald-700',
   REJECTED:            'bg-red-100 text-red-700',
@@ -143,7 +143,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'รอการอนุมัติ', value: pending,  color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-          { label: 'อนุมัติแล้ว',  value: approved, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+          { label: 'อนุมัติแล้ว',  value: approved, color: 'bg-green-50 border-green-200 text-green-700' },
           { label: 'จ่ายเงินแล้ว', value: paid,     color: 'bg-green-50 border-green-200 text-green-700' },
         ].map(c => (
           <div key={c.label} className={`rounded-xl border p-4 ${c.color}`}>
@@ -157,7 +157,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
       <div className="flex gap-1 border-b border-gray-200">
         {(['list','submit'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab===t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab===t ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {t === 'list' ? '📋 รายการเบิก' : '➕ ยื่นเบิกใหม่'}
           </button>
         ))}
@@ -181,7 +181,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
               {claims.map(c => (
                 <div key={c.id}
                   onClick={() => setSelected(c === selected ? null : c)}
-                  className={`rounded-xl border p-4 cursor-pointer transition-all hover:border-blue-300 ${selected?.id === c.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                  className={`rounded-xl border p-4 cursor-pointer transition-all hover:border-green-300 ${selected?.id === c.id ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-gray-800 truncate">{c.title}</p>
@@ -236,7 +236,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
                   <div className="space-y-1">
                     {selected.files.map(f => (
                       <a key={f.id} href={f.url} target="_blank" rel="noreferrer"
-                        className="flex items-center gap-2 text-xs text-blue-600 hover:underline">
+                        className="flex items-center gap-2 text-xs text-green-600 hover:underline">
                         <span>📎</span>
                         <span className="truncate">{f.filename}</span>
                         <span className="text-gray-400 flex-shrink-0">{fmtSize(f.size)}</span>
@@ -252,7 +252,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
                   <input ref={fileInputRef} type="file" className="hidden" accept="image/*,.pdf,.zip"
                     onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(selected.id, f) }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}
-                    className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50">
+                    className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:border-green-400 hover:bg-green-50 transition-colors disabled:opacity-50">
                     {uploadingFile ? 'กำลังอัพโหลด...' : '+ แนบไฟล์/ใบเสร็จ'}
                   </button>
                 </div>
@@ -277,7 +277,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
               {!showNote && (
                 <div className="flex flex-col gap-2">
                   {canApproveSup && selected.status === 'PENDING' && (
-                    <button onClick={() => setShowNote('supervisor_approve')} className="py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">
+                    <button onClick={() => setShowNote('supervisor_approve')} className="py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700">
                       อนุมัติขั้น 1 (หัวหน้า)
                     </button>
                   )}
@@ -352,7 +352,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
               {/* File attachments */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-700">แนบใบเสร็จ / เอกสาร</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-green-400 transition-colors"
                   onClick={() => document.getElementById('claim-files')?.click()}>
                   <input id="claim-files" type="file" multiple accept="image/*,.pdf,.zip" className="hidden"
                     onChange={e => setFiles(Array.from(e.target.files ?? []))} />
@@ -367,7 +367,7 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
                 <button type="button" onClick={() => { setForm(empty); setFiles([]) }}
                   className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600">ล้างข้อมูล</button>
                 <button type="submit" disabled={submitting}
-                  className="px-6 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50">
+                  className="px-6 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-50">
                   {submitting ? 'กำลังส่ง...' : 'ยื่นเบิก'}
                 </button>
               </div>

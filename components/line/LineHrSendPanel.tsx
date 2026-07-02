@@ -151,7 +151,7 @@ export default function LineHrSendPanel({
         <button
           type="button"
           onClick={copyWebhook}
-          className="inline-flex items-center gap-1 text-blue-400 hover:underline"
+          className="inline-flex items-center gap-1 text-green-400 hover:underline"
         >
           <Copy className="w-3 h-3" />
           คัดลอก

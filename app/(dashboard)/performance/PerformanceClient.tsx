@@ -65,14 +65,14 @@ function fmtDate(iso: string): string {
 
 function kpiColor(score: number): string {
   if (score >= 90) return 'text-green-600 dark:text-green-400'
-  if (score >= 70) return 'text-blue-600  dark:text-blue-400'
+  if (score >= 70) return 'text-green-600  dark:text-green-400'
   if (score >= 50) return 'text-amber-600 dark:text-amber-400'
   return 'text-red-600 dark:text-red-400'
 }
 
 function kpiBg(score: number): string {
   if (score >= 90) return 'bg-green-500'
-  if (score >= 70) return 'bg-blue-500'
+  if (score >= 70) return 'bg-green-500'
   if (score >= 50) return 'bg-amber-500'
   return 'bg-red-500'
 }
@@ -86,14 +86,14 @@ function kpiLabel(score: number): string {
 
 function kpiRingCls(score: number): string {
   if (score >= 90) return 'stroke-green-500'
-  if (score >= 70) return 'stroke-blue-500'
+  if (score >= 70) return 'stroke-green-500'
   if (score >= 50) return 'stroke-amber-500'
   return 'stroke-red-500'
 }
 
 const DEPT_COLOR: Record<string, string> = {
   DEBT:    '#f97316', // orange
-  LAW:     '#3b82f6', // blue
+  LAW:     '#22c55e', // blue
   ASSET:   '#a855f7', // purple
   ENFORCE: '#ef4444', // red
 }
@@ -162,7 +162,7 @@ export default function PerformanceClient({
 
   const summaryCards = [
     { label: 'คดี/งานทั้งหมด',   value: summary.totalCases,        icon: <Target  className="w-4 h-4" />, color: 'bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300', sub: 'ทั้งหมดในระบบ' },
-    { label: 'กำลังดำเนินการ',    value: summary.activeCases,       icon: <Clock   className="w-4 h-4" />, color: 'bg-blue-50  dark:bg-blue-500/10  text-blue-600  dark:text-blue-400',   sub: 'งานที่ยังค้างอยู่' },
+    { label: 'กำลังดำเนินการ',    value: summary.activeCases,       icon: <Clock   className="w-4 h-4" />, color: 'bg-green-50  dark:bg-green-500/10  text-green-600  dark:text-green-400',   sub: 'งานที่ยังค้างอยู่' },
     { label: 'งานเกินกำหนด',      value: summary.overdueTasks,      icon: <AlertCircle className="w-4 h-4" />, color: 'bg-red-50   dark:bg-red-500/10   text-red-600   dark:text-red-400',     sub: 'ต้องรีบดำเนินการ' },
     { label: 'ใกล้ครบกำหนด 7 วัน', value: summary.upcomingDeadlines, icon: <TrendingDown className="w-4 h-4" />, color: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', sub: 'ภายใน 7 วันข้างหน้า' },
     { label: 'นัดศาล 30 วัน',     value: summary.upcomingCourt,     icon: <Calendar className="w-4 h-4" />, color: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400', sub: 'ภายใน 30 วันข้างหน้า' },
@@ -220,7 +220,7 @@ export default function PerformanceClient({
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               { label: 'เสร็จตรงเวลา', value: ownStats.total > 0 ? Math.round(ownStats.onTime / Math.max(1, ownStats.completed) * 100) : 0, pts: 30, color: 'bg-green-500' },
-              { label: 'อัตราเสร็จงาน', value: ownStats.total > 0 ? Math.round(ownStats.completed / ownStats.total * 100) : 0, pts: 30, color: 'bg-blue-500' },
+              { label: 'อัตราเสร็จงาน', value: ownStats.total > 0 ? Math.round(ownStats.completed / ownStats.total * 100) : 0, pts: 30, color: 'bg-green-500' },
               { label: 'เกินกำหนด', value: ownStats.total > 0 ? Math.round(ownStats.overdue / ownStats.total * 100) : 0, pts: -20, color: 'bg-red-500' },
               { label: 'คะแนนฐาน', value: 100, pts: 20, color: 'bg-slate-400' },
             ].map(({ label, value, pts, color }) => (
@@ -244,7 +244,7 @@ export default function PerformanceClient({
         <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-white/[0.05]">
             <h2 className="text-[14px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-blue-500" />ผลงานรายฝ่าย
+              <Building2 className="w-4 h-4 text-green-500" />ผลงานรายฝ่าย
             </h2>
           </div>
 
@@ -265,7 +265,7 @@ export default function PerformanceClient({
                   {[
                     { label: 'งานทั้งหมด', val: d.total,          cls: 'text-slate-600 dark:text-slate-400' },
                     { label: 'เสร็จแล้ว',  val: `${d.completed} (${d.completionRate}%)`, cls: 'text-green-600 dark:text-green-400' },
-                    { label: 'ตรงเวลา',    val: `${d.onTime} (${d.onTimeRate}%)`,        cls: 'text-blue-600  dark:text-blue-400' },
+                    { label: 'ตรงเวลา',    val: `${d.onTime} (${d.onTimeRate}%)`,        cls: 'text-green-600  dark:text-green-400' },
                     { label: 'เกินกำหนด', val: d.overdue,          cls: d.overdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400' },
                   ].map(({ label, val, cls }) => (
                     <div key={label} className="flex justify-between">
@@ -276,7 +276,7 @@ export default function PerformanceClient({
                 </div>
                 {/* completion rate bar */}
                 <div className="mt-2.5 h-1 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${d.completionRate}%` }} />
+                  <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${d.completionRate}%` }} />
                 </div>
               </div>
             ))}
@@ -307,7 +307,7 @@ export default function PerformanceClient({
       {(canSeeAll || canSeeTeam) && mounted && (
         <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm p-5">
           <h2 className="text-[14px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-4">
-            <TrendingUp className="w-4 h-4 text-blue-500" />แนวโน้มรายเดือน (6 เดือนล่าสุด)
+            <TrendingUp className="w-4 h-4 text-green-500" />แนวโน้มรายเดือน (6 เดือนล่าสุด)
           </h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={monthlyTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
@@ -329,7 +329,7 @@ export default function PerformanceClient({
         <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-white/[0.05]">
             <h2 className="text-[14px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-              <User2 className="w-4 h-4 text-blue-500" />อันดับผลงานพนักงาน
+              <User2 className="w-4 h-4 text-green-500" />อันดับผลงานพนักงาน
             </h2>
           </div>
           <div className="overflow-x-auto">
@@ -344,7 +344,7 @@ export default function PerformanceClient({
               <tbody>
                 {employeeRanking.map((emp, i) => (
                   <tr key={emp.userId}
-                    className={`border-b border-slate-100 dark:border-white/[0.04] ${emp.userId === userId ? 'bg-blue-50/40 dark:bg-blue-500/[0.04]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.02]'} transition-colors`}>
+                    className={`border-b border-slate-100 dark:border-white/[0.04] ${emp.userId === userId ? 'bg-green-50/40 dark:bg-green-500/[0.04]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.02]'} transition-colors`}>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`text-[12px] font-bold ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-700' : 'text-slate-400'}`}>
                         {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
@@ -353,7 +353,7 @@ export default function PerformanceClient({
                     <td className="px-4 py-3 whitespace-nowrap">
                       <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
                         {emp.name}
-                        {emp.userId === userId && <span className="text-[10px] text-blue-500 font-normal">(คุณ)</span>}
+                        {emp.userId === userId && <span className="text-[10px] text-green-500 font-normal">(คุณ)</span>}
                       </p>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-[12px] text-slate-500 dark:text-slate-400">
@@ -361,7 +361,7 @@ export default function PerformanceClient({
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center font-medium text-slate-700 dark:text-slate-300">{emp.total}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-center font-medium text-green-600 dark:text-green-400">{emp.completed}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center font-medium text-blue-600 dark:text-blue-400">{emp.onTime}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center font-medium text-green-600 dark:text-green-400">{emp.onTime}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-center font-medium text-red-600 dark:text-red-400">{emp.overdue}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">

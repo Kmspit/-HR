@@ -89,7 +89,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         value={value ?? ''}
         onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) : e.target.value)}
         placeholder={placeholder}
-        className="w-full min-w-0 max-w-full box-border bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-white/20 focus:outline-none focus:border-blue-500"
+        className="w-full min-w-0 max-w-full box-border bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-white/20 focus:outline-none focus:border-green-500"
       />
     </div>
   )
@@ -101,7 +101,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         <button
           onClick={save}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-sm transition disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold text-sm transition disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           บันทึก
@@ -111,7 +111,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       {/* Company Info */}
       <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
         <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-blue-400" /> ข้อมูลบริษัท
+          <Building2 className="w-4 h-4 text-green-400" /> ข้อมูลบริษัท
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="ชื่อบริษัท (ไทย)" value={form.companyName} onChange={(v: string) => set('companyName', v)} />
@@ -122,7 +122,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       {/* Work Hours */}
       <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
         <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-          <Clock className="w-4 h-4 text-blue-400" /> เวลาทำงาน
+          <Clock className="w-4 h-4 text-green-400" /> เวลาทำงาน
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="min-w-0">
@@ -181,7 +181,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       {/* Geofence */}
       <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
         <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-blue-400" /> Geofence เช็คอิน
+          <MapPin className="w-4 h-4 text-green-400" /> Geofence เช็คอิน
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input label="Latitude" value={form.geofenceLat} onChange={(v: number) => set('geofenceLat', v)} type="number" placeholder="13.xxxx" />
@@ -204,7 +204,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
           </h2>
           <Link
             href="/line-oa"
-            className="text-xs text-blue-400 hover:underline"
+            className="text-xs text-green-400 hover:underline"
           >
             เปิดหน้า LINE OA →
           </Link>
@@ -225,7 +225,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
             type="button"
             onClick={() => setLineTab('config')}
             className={`flex flex-1 items-center justify-center gap-2 py-2 text-xs font-semibold transition ${
-              lineTab === 'config' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-white'
+              lineTab === 'config' ? 'bg-green-600 text-white' : 'text-slate-500 dark:text-white/50 hover:text-white'
             }`}
           >
             <MessageCircle className="w-3.5 h-3.5" />

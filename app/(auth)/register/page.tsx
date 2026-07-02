@@ -8,7 +8,7 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-8 sm:py-12">
       <Link href="/" className="mb-6 flex items-center gap-2 group">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-lg">⚡</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-green-500/30 bg-green-500/10 text-lg">⚡</div>
         <span className="text-lg font-bold text-white">HR<span className="gradient-text">Flow</span></span>
       </Link>
 
@@ -29,7 +29,7 @@ export default function RegisterPage() {
 
         <p className="mt-5 text-center text-sm text-slate-500">
           มีบัญชีแล้ว?{' '}
-          <Link href="/login" className="font-semibold text-blue-400 hover:text-blue-300 transition-colors">
+          <Link href="/login" className="font-semibold text-green-400 hover:text-green-300 transition-colors">
             เข้าสู่ระบบ
           </Link>
         </p>

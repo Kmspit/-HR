@@ -190,7 +190,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
               style={{
                 background: avatarPreview
                   ? undefined
-                  : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                  : 'linear-gradient(135deg, #22c55e 0%, #8b5cf6 100%)',
               }}
             >
               {avatarPreview ? (
@@ -203,7 +203,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="absolute -bottom-1 -right-1 p-2.5 rounded-xl bg-blue-600 text-white shadow-lg hover:bg-blue-500 transition touch-manipulation"
+              className="absolute -bottom-1 -right-1 p-2.5 rounded-xl bg-green-600 text-white shadow-lg hover:bg-green-500 transition touch-manipulation"
               aria-label="เปลี่ยนรูปโปรไฟล์"
             >
               <Camera className="w-4 h-4" />
@@ -232,7 +232,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
       {/* Personal */}
       <section className="glass-card rounded-2xl p-5 md:p-6 space-y-4">
         <h3 className="text-sm font-semibold dark:text-white light:text-slate-900 flex items-center gap-2">
-          <User className="w-4 h-4 text-blue-400" />
+          <User className="w-4 h-4 text-green-400" />
           ข้อมูลส่วนตัว
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
@@ -374,7 +374,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
           type="button"
           onClick={save}
           disabled={saving}
-          className="flex items-center gap-2 px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold disabled:opacity-50 transition"
+          className="flex items-center gap-2 px-8 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-50 transition"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์'}
@@ -390,7 +390,7 @@ export default function ProfileClient({ initial, recordInfo, editHistory }: Prop
           type="button"
           onClick={save}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm disabled:opacity-50 transition touch-manipulation"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold text-sm disabled:opacity-50 transition touch-manipulation"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           {saving ? 'กำลังบันทึก...' : 'บันทึกโปรไฟล์'}

@@ -20,7 +20,7 @@ interface Summary {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'bg-gray-100 text-gray-600', SENT: 'bg-blue-100 text-blue-700',
+  DRAFT: 'bg-gray-100 text-gray-600', SENT: 'bg-green-100 text-green-700',
   PENDING_PAYMENT: 'bg-yellow-100 text-yellow-700', PAID: 'bg-green-100 text-green-700',
   OVERDUE: 'bg-red-100 text-red-700', CANCELLED: 'bg-gray-100 text-gray-400',
 }
@@ -67,7 +67,7 @@ export default function BillingClient({ userId, userRole }: { userId: string; us
         </div>
         <div className="flex gap-2 flex-wrap">
           {['dashboard', 'outstanding'].map(t => (
-            <button key={t} onClick={() => setTab(t as 'dashboard'|'outstanding')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab===t ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>
+            <button key={t} onClick={() => setTab(t as 'dashboard'|'outstanding')} className={`px-4 py-2 rounded-lg text-sm font-medium ${tab===t ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>
               {t === 'dashboard' ? 'Dashboard' : `ค้างชำระ (${overdue.length})`}
             </button>
           ))}
@@ -82,7 +82,7 @@ export default function BillingClient({ userId, userRole }: { userId: string; us
             {[
               { label: 'รายรับเดือนนี้',     value: `฿${fmt(summary.monthRevenue)}`,     color: 'text-green-600',  bg: 'bg-green-50 dark:bg-green-900/10' },
               { label: 'ยอดค้างชำระรวม',    value: `฿${fmt(summary.totalOutstanding)}`, color: 'text-red-600',    bg: 'bg-red-50 dark:bg-red-900/10' },
-              { label: 'ใบแจ้งหนี้ทั้งหมด', value: summary.totalInvoices.toLocaleString(), color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/10' },
+              { label: 'ใบแจ้งหนี้ทั้งหมด', value: summary.totalInvoices.toLocaleString(), color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/10' },
               { label: 'เกินกำหนดชำระ',     value: summary.overdueCount.toLocaleString(), color: summary.overdueCount > 0 ? 'text-red-600' : 'text-gray-500', bg: summary.overdueCount > 0 ? 'bg-red-50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-gray-700/30' },
             ].map(c => (
               <div key={c.label} className={`${c.bg} rounded-xl p-4`}>
@@ -187,7 +187,7 @@ export default function BillingClient({ userId, userRole }: { userId: string; us
                           <span className={`text-xs font-bold px-2 py-0.5 rounded ${days > 60 ? 'bg-red-200 text-red-800' : days > 30 ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{days} วัน</span>
                         </td>
                         <td className="py-3 px-4"><span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[inv.status]}`}>{STATUS_TH[inv.status]}</span></td>
-                        <td className="py-3 px-4"><Link href="/invoices" className="text-xs text-blue-600 hover:underline">ดูรายละเอียด</Link></td>
+                        <td className="py-3 px-4"><Link href="/invoices" className="text-xs text-green-600 hover:underline">ดูรายละเอียด</Link></td>
                       </tr>
                     )
                   })}

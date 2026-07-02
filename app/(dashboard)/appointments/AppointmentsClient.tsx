@@ -23,7 +23,7 @@ type SummaryData = {
 const EVENT_TYPES = [
   { value: 'ALL',      label: 'ทั้งหมด',    color: '#6b7280', icon: '📅' },
   { value: 'COURT',    label: 'นัดศาล',     color: '#ef4444', icon: '⚖️' },
-  { value: 'CLIENT',   label: 'นัดลูกค้า',  color: '#3b82f6', icon: '🤝' },
+  { value: 'CLIENT',   label: 'นัดลูกค้า',  color: '#22c55e', icon: '🤝' },
   { value: 'DEBTOR',   label: 'นัดลูกหนี้', color: '#f97316', icon: '💰' },
   { value: 'INTERNAL', label: 'ภายใน',      color: '#22c55e', icon: '🏢' },
 ]
@@ -31,12 +31,12 @@ const EVENT_TYPES = [
 const ALL_TYPES_SET = ['COURT','CLIENT','DEBTOR','INTERNAL','TASK_COURT','TASK_APPT','PAYMENT']
 
 const STATUS_COLORS: Record<string, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-700', COMPLETED: 'bg-green-100 text-green-700',
+  SCHEDULED: 'bg-green-100 text-green-700', COMPLETED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-gray-100 text-gray-500', MISSED: 'bg-red-100 text-red-700',
   PENDING:   'bg-yellow-100 text-yellow-700', KEPT: 'bg-green-100 text-green-700',
 }
 const PRIORITY_COLORS: Record<string, string> = {
-  LOW: 'bg-gray-100 text-gray-500', NORMAL: 'bg-blue-100 text-blue-600',
+  LOW: 'bg-gray-100 text-gray-500', NORMAL: 'bg-green-100 text-green-600',
   HIGH: 'bg-orange-100 text-orange-700', URGENT: 'bg-red-100 text-red-700',
 }
 
@@ -169,7 +169,7 @@ export default function AppointmentsClient({
         {isCeo && summary && (
           <div className="grid grid-cols-2 gap-2 p-3 border-b border-gray-100 dark:border-gray-800">
             {[
-              { label: 'วันนี้', value: summary.todayEvents + summary.todayPayments, color: 'text-blue-600' },
+              { label: 'วันนี้', value: summary.todayEvents + summary.todayPayments, color: 'text-green-600' },
               { label: 'ศาล 7 วัน', value: summary.courtIn7, color: 'text-red-600' },
               { label: 'ค้าง', value: summary.missedEvents, color: 'text-orange-600' },
               { label: 'ศาล 30 วัน', value: summary.courtIn30, color: 'text-purple-600' },
@@ -200,7 +200,7 @@ export default function AppointmentsClient({
           {(['calendar', 'agenda'] as const).map((v) => (
             <button key={v} onClick={() => setView(v)}
               className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                view === v ? 'text-blue-600 border-b-2 border-blue-500' : 'text-gray-500'
+                view === v ? 'text-green-600 border-b-2 border-green-500' : 'text-gray-500'
               }`}>
               {v === 'calendar' ? '📅 ปฏิทิน' : '📋 ตาราง'}
             </button>
@@ -219,7 +219,7 @@ export default function AppointmentsClient({
             </div>
             <div className="grid grid-cols-7 mb-1">
               {THAI_DAYS_SHORT.map((d) => (
-                <div key={d} className={`text-center text-[10px] font-medium ${d === 'อา' ? 'text-red-500' : d === 'ส' ? 'text-blue-500' : 'text-gray-400'}`}>{d}</div>
+                <div key={d} className={`text-center text-[10px] font-medium ${d === 'อา' ? 'text-red-500' : d === 'ส' ? 'text-green-500' : 'text-gray-400'}`}>{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-px">
@@ -233,9 +233,9 @@ export default function AppointmentsClient({
                 return (
                   <button key={key} onClick={() => setSelectedDay(key)}
                     className={`relative min-h-[32px] flex flex-col items-center py-0.5 rounded text-[11px] transition-colors
-                      ${isSelected ? 'bg-blue-500 text-white' : isToday ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : ''}
+                      ${isSelected ? 'bg-green-500 text-white' : isToday ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : ''}
                       ${!isCurrentMonth ? 'opacity-30' : ''}
-                      ${!isSelected && !isToday ? (dow === 0 ? 'text-red-500' : dow === 6 ? 'text-blue-500' : 'text-gray-700 dark:text-gray-300') : ''}
+                      ${!isSelected && !isToday ? (dow === 0 ? 'text-red-500' : dow === 6 ? 'text-green-500' : 'text-gray-700 dark:text-gray-300') : ''}
                       hover:bg-gray-100 dark:hover:bg-gray-800`}>
                     <span className={`font-medium ${isSelected ? 'text-white' : ''}`}>{day.getDate()}</span>
                     {dayEvs.length > 0 && (
@@ -262,7 +262,7 @@ export default function AppointmentsClient({
               <div className="p-6 text-center text-sm text-gray-400">ไม่มีนัดหมายในเดือนนี้</div>
             ) : events.map((ev) => (
               <button key={ev.id} onClick={() => setSelected(ev)}
-                className={`w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 ${selectedEvent?.id === ev.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                className={`w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 ${selectedEvent?.id === ev.id ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
                 <div className="flex items-start gap-2">
                   <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: ev.color }} />
                   <div className="min-w-0 flex-1">
@@ -279,7 +279,7 @@ export default function AppointmentsClient({
         {/* Create button */}
         <div className="p-2 border-t border-gray-100 dark:border-gray-800 mt-auto">
           <button onClick={() => { setShowForm(true); setForm(f => ({ ...f, startAt: `${selectedDay}T09:00` })) }}
-            className="w-full py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+            className="w-full py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg">
             + เพิ่มนัดหมาย
           </button>
         </div>
@@ -312,7 +312,7 @@ export default function AppointmentsClient({
                         <p className="text-sm text-gray-600 dark:text-gray-400">📍 {selectedEvent.location}</p>
                         <a href={`https://maps.google.com/?q=${encodeURIComponent(selectedEvent.location ?? '')}`}
                           target="_blank" rel="noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-700 underline">เปิด Maps</a>
+                          className="text-xs text-green-600 hover:text-green-700 underline">เปิด Maps</a>
                       </div>
                     )}
                     {selectedEvent.caseNumber   && <p className="text-sm text-gray-500">เลขคดี: {selectedEvent.caseNumber}</p>}
@@ -354,7 +354,7 @@ export default function AppointmentsClient({
             {isCeo && summary && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                 {[
-                  { label: 'นัดวันนี้',      value: summary.todayEvents,   color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-900/10' },
+                  { label: 'นัดวันนี้',      value: summary.todayEvents,   color: 'text-green-600',   bg: 'bg-green-50 dark:bg-green-900/10' },
                   { label: 'นัดชำระวันนี้',  value: summary.todayPayments, color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/10' },
                   { label: 'นัดศาล 7 วัน',  value: summary.courtIn7,      color: 'text-red-600',    bg: 'bg-red-50 dark:bg-red-900/10' },
                   { label: 'ค้างดำเนินการ', value: summary.missedEvents,  color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/10' },
@@ -369,7 +369,7 @@ export default function AppointmentsClient({
 
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
               นัดหมาย {fmtDate(`${selectedDay}T00:00:00`)}
-              {dayEvents.length > 0 && <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">{dayEvents.length}</span>}
+              {dayEvents.length > 0 && <span className="ml-2 text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">{dayEvents.length}</span>}
             </h3>
 
             {dayEvents.length === 0 ? (
@@ -377,7 +377,7 @@ export default function AppointmentsClient({
                 <p className="text-3xl mb-2">📅</p>
                 <p className="text-sm text-gray-400">ไม่มีนัดหมายวันที่เลือก</p>
                 <button onClick={() => setShowForm(true)}
-                  className="mt-3 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ เพิ่มนัดหมาย</button>
+                  className="mt-3 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700">+ เพิ่มนัดหมาย</button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -540,7 +540,7 @@ export default function AppointmentsClient({
               <button onClick={() => setShowForm(false)}
                 className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">ยกเลิก</button>
               <button onClick={saveEvent} disabled={saving || !form.title || !form.startAt}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">
+                className="px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">
                 {saving ? 'กำลังบันทึก…' : 'บันทึก'}
               </button>
             </div>

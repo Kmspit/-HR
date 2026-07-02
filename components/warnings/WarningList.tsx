@@ -34,7 +34,7 @@ const STATUS_STYLE: Record<string, string> = {
   APPROVED:         'bg-green-500/20 text-green-400 border border-green-500/30',
   REJECTED:         'bg-red-500/20 text-red-400 border border-red-500/30',
   ARCHIVED:         'bg-slate-500/20 text-slate-400 border border-slate-500/30',
-  DRAFT:            'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  DRAFT:            'bg-green-500/20 text-green-400 border border-green-500/30',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -119,7 +119,7 @@ export default function WarningList({ initialWarnings, canApprove, isEmployee }:
               onClick={() => setStatusFilter(f.value)}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                 statusFilter === f.value
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-green-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >

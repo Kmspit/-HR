@@ -132,9 +132,9 @@ export default function ClientCompaniesClient({ userId, userRole }: { userId: st
           <p className="text-sm text-gray-500 mt-0.5">Client CRM — Contract & SLA Management</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setMainTab('list')} className={`px-4 py-2 rounded-lg text-sm font-medium ${mainTab==='list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>รายชื่อ</button>
-          {canManage && <button onClick={() => setMainTab('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-medium ${mainTab==='dashboard' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>Dashboard</button>}
-          {canManage && <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">+ เพิ่มลูกค้า</button>}
+          <button onClick={() => setMainTab('list')} className={`px-4 py-2 rounded-lg text-sm font-medium ${mainTab==='list' ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>รายชื่อ</button>
+          {canManage && <button onClick={() => setMainTab('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-medium ${mainTab==='dashboard' ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'}`}>Dashboard</button>}
+          {canManage && <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">+ เพิ่มลูกค้า</button>}
         </div>
       </div>
 
@@ -144,7 +144,7 @@ export default function ClientCompaniesClient({ userId, userRole }: { userId: st
         <div className="flex gap-4 flex-1 min-h-0">
           {/* Left: list */}
           <div className="w-80 flex-shrink-0 flex flex-col gap-3">
-            <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาบริษัท / รหัส…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาบริษัท / รหัส…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
             <select value={filterSt} onChange={e => { setFilterSt(e.target.value); setPage(1) }} className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
               <option value="">ทุกสถานะ</option>
               {CLIENT_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
@@ -159,7 +159,7 @@ export default function ClientCompaniesClient({ userId, userRole }: { userId: st
                 const days       = daysLeft(nearestEnd)
                 const expWarn    = days != null && days >= 0 && days <= 30
                 return (
-                  <button key={c.id} onClick={() => { loadDetail(c.id); setDetailTab('info') }} className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'}`}>
+                  <button key={c.id} onClick={() => { loadDetail(c.id); setDetailTab('info') }} className={`w-full text-left p-3 rounded-xl border transition-all ${selected?.id === c.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-300'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs text-gray-400 font-mono">{c.clientCode}</p>
@@ -226,7 +226,7 @@ function DashboardTab({ summary }: { summary: Summary | null }) {
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'ลูกค้าทั้งหมด',       value: summary.totalCompanies.toLocaleString(),                        color: 'text-blue-600' },
+          { label: 'ลูกค้าทั้งหมด',       value: summary.totalCompanies.toLocaleString(),                        color: 'text-green-600' },
           { label: 'มูลค่าสัญญารวม',      value: `฿${fmt(summary.totalContractValue)}`,                         color: 'text-green-600' },
           { label: 'หมดอายุใน 30 วัน',    value: summary.expiring30.toLocaleString(),                           color: summary.expiring30 > 0 ? 'text-orange-600' : 'text-gray-500' },
           { label: 'SLA ผ่าน',            value: summary.sla.rate != null ? `${summary.sla.rate.toFixed(1)}%` : '—', color: 'text-purple-600' },
@@ -357,7 +357,7 @@ function CompanyDetail({ company, activeTab, setActiveTab, userId, userRole, can
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 px-4 overflow-x-auto">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
+          <button key={t.key} onClick={() => setActiveTab(t.key)} className={`text-sm px-3 py-2.5 whitespace-nowrap border-b-2 transition-colors ${activeTab===t.key ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>{t.label}</button>
         ))}
       </div>
 
@@ -430,9 +430,9 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
   const contracts = company.contracts ?? []
   return (
     <div className="space-y-3">
-      <button onClick={() => setShowForm(!showForm)} className="w-full py-2 border-2 border-dashed border-blue-300 text-blue-600 rounded-lg text-sm hover:bg-blue-50 dark:hover:bg-blue-900/10">+ เพิ่มสัญญา</button>
+      <button onClick={() => setShowForm(!showForm)} className="w-full py-2 border-2 border-dashed border-green-300 text-green-600 rounded-lg text-sm hover:bg-green-50 dark:hover:bg-green-900/10">+ เพิ่มสัญญา</button>
       {showForm && (
-        <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-4 space-y-3 border border-blue-200 dark:border-blue-800">
+        <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-2 gap-3">
             {[
               { key: 'serviceType', label: 'ประเภทบริการ *', placeholder: 'เช่น เร่งรัดหนี้สิน' },
@@ -456,7 +456,7 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-gray-200 rounded-lg">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !form.serviceType || !form.startDate || !form.endDate} className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'เพิ่มสัญญา'}</button>
+            <button onClick={save} disabled={saving || !form.serviceType || !form.startDate || !form.endDate} className="text-sm px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'เพิ่มสัญญา'}</button>
           </div>
         </div>
       )}
@@ -475,7 +475,7 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
                 <p className="font-medium">{c.serviceType}</p>
                 <p className="text-green-600 font-semibold">฿{fmt(c.value)}</p>
                 <p className="text-xs text-gray-500">{fmtDate(c.startDate)} — {fmtDate(c.endDate)}</p>
-                {c.slaAgreement && <p className="text-xs text-blue-600 mt-1">SLA: {c.slaAgreement}</p>}
+                {c.slaAgreement && <p className="text-xs text-green-600 mt-1">SLA: {c.slaAgreement}</p>}
                 {c.paymentTerms && <p className="text-xs text-gray-400">เงื่อนไข: {c.paymentTerms}</p>}
               </div>
               {c.status === 'ACTIVE' && (
@@ -532,7 +532,7 @@ function SlaTab({ company, userId, onRefresh }: { company: ClientCompany; userId
         <div className="grid grid-cols-3 gap-3 mb-2">
           <div className="text-center bg-green-50 dark:bg-green-900/10 rounded-lg p-2"><p className="text-lg font-bold text-green-600">{met}</p><p className="text-xs text-gray-500">ผ่าน SLA</p></div>
           <div className="text-center bg-red-50 dark:bg-red-900/10 rounded-lg p-2"><p className="text-lg font-bold text-red-600">{missed}</p><p className="text-xs text-gray-500">ไม่ผ่าน</p></div>
-          <div className="text-center bg-blue-50 dark:bg-blue-900/10 rounded-lg p-2"><p className="text-lg font-bold text-blue-600">{rate != null ? `${rate}%` : '—'}</p><p className="text-xs text-gray-500">อัตราผ่าน</p></div>
+          <div className="text-center bg-green-50 dark:bg-green-900/10 rounded-lg p-2"><p className="text-lg font-bold text-green-600">{rate != null ? `${rate}%` : '—'}</p><p className="text-xs text-gray-500">อัตราผ่าน</p></div>
         </div>
       )}
       <button onClick={() => setShowForm(!showForm)} className="w-full py-2 border-2 border-dashed border-purple-300 text-purple-600 rounded-lg text-sm hover:bg-purple-50 dark:hover:bg-purple-900/10">+ บันทึก SLA</button>
@@ -611,7 +611,7 @@ function HistoryTab({ company }: { company: ClientCompany }) {
               {t.caseNumber && <p className="text-xs text-gray-400 font-mono">{t.caseNumber}</p>}
               <p className="text-xs text-gray-400">ผู้รับผิดชอบ: {t.assignee.name}</p>
             </div>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{STATUS_TH[t.status] ?? t.status}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-green-100 text-green-700'}`}>{STATUS_TH[t.status] ?? t.status}</span>
           </div>
         </div>
       ))}
@@ -635,9 +635,9 @@ function RevenueTab({ company }: { company: ClientCompany }) {
           <p className="text-xs text-gray-500 mb-1">ค่าใช้จ่ายรวม</p>
           <p className="text-xl font-bold text-red-600">฿{fmt(rev?.expense ?? 0)}</p>
         </div>
-        <div className={`rounded-xl p-4 text-center ${(rev?.profit ?? 0) >= 0 ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-orange-50 dark:bg-orange-900/10'}`}>
+        <div className={`rounded-xl p-4 text-center ${(rev?.profit ?? 0) >= 0 ? 'bg-green-50 dark:bg-green-900/10' : 'bg-orange-50 dark:bg-orange-900/10'}`}>
           <p className="text-xs text-gray-500 mb-1">กำไรสุทธิ</p>
-          <p className={`text-xl font-bold ${(rev?.profit ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>฿{fmt(rev?.profit ?? 0)}</p>
+          <p className={`text-xl font-bold ${(rev?.profit ?? 0) >= 0 ? 'text-green-600' : 'text-orange-600'}`}>฿{fmt(rev?.profit ?? 0)}</p>
         </div>
       </div>
       <div className="bg-white dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-600 p-4 space-y-2 text-sm">
@@ -705,7 +705,7 @@ function FilesTab({ company, onRefresh }: { company: ClientCompany; onRefresh: (
       {files.length === 0 ? <p className="text-center text-sm text-gray-400 py-4">ยังไม่มีไฟล์</p> : files.map(f => (
         <div key={f.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg text-sm">
           <div className="flex-1 min-w-0">
-            <a href={f.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate block">{f.filename}</a>
+            <a href={f.url} target="_blank" rel="noopener noreferrer" className="font-medium text-green-600 hover:underline truncate block">{f.filename}</a>
             <p className="text-xs text-gray-400">{f.docType} · {(f.size/1024).toFixed(1)} KB · {fmtDate(f.createdAt)}</p>
           </div>
           <button onClick={() => del(f.id)} className="ml-2 text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded">ลบ</button>
@@ -798,7 +798,7 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
           </div>
           <div className="p-6 pt-0 flex gap-3 justify-end">
             <button onClick={onClose} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !form.companyName} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : mode === 'create' ? 'เพิ่มลูกค้า' : 'บันทึก'}</button>
+            <button onClick={save} disabled={saving || !form.companyName} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : mode === 'create' ? 'เพิ่มลูกค้า' : 'บันทึก'}</button>
           </div>
         </div>
       </div>

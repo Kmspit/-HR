@@ -37,7 +37,7 @@ function NotificationCard({
       onClick={() => onClick(item)}
       className={`w-full text-left rounded-2xl border border-slate-200 dark:border-white/[0.07] border-l-4 ${styles.border}
         bg-white dark:bg-slate-900/80 shadow-sm hover:shadow-md transition-all duration-200
-        ${!item.isRead ? 'ring-1 ring-blue-500/10 dark:ring-blue-400/10' : 'opacity-90 hover:opacity-100'}`}
+        ${!item.isRead ? 'ring-1 ring-green-500/10 dark:ring-green-400/10' : 'opacity-90 hover:opacity-100'}`}
     >
       <div className="p-4 sm:p-5 flex items-start gap-3">
         <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-xl
@@ -170,7 +170,7 @@ export default function NotificationCenterClient({
       {/* Summary bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-white/[0.07] bg-gradient-to-r from-slate-50 to-white dark:from-slate-900/80 dark:to-slate-900/40 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 text-white">
             <Bell className="h-5 w-5" />
           </div>
           <div>
@@ -185,7 +185,7 @@ export default function NotificationCenterClient({
             type="button"
             onClick={markAllRead}
             disabled={markingAll}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50 btn-press"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50 btn-press"
           >
             {markingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
             อ่านทั้งหมด
@@ -205,8 +205,8 @@ export default function NotificationCenterClient({
               onClick={() => setTab(t)}
               className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all border btn-press
                 ${active
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-blue-300 dark:hover:border-blue-500/30'
+                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                  : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-green-300 dark:hover:border-green-500/30'
                 }`}
             >
               <span>{TAB_ICONS[t]}</span>
@@ -226,7 +226,7 @@ export default function NotificationCenterClient({
       <div className="flex flex-wrap gap-3 text-[11px] text-slate-500">
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> ด่วน</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /> ควรทราบ</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" /> ทั่วไป</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" /> ทั่วไป</span>
       </div>
 
       {/* List */}

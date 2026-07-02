@@ -15,29 +15,29 @@ export const cardTitle = 'text-sm font-semibold dark:text-white light:text-slate
 export const dashboardFormControl =
   'dashboard-form-control w-full rounded-lg border px-3 py-2 text-sm appearance-none ' +
   'bg-slate-800 text-slate-50 border-slate-600 placeholder:text-slate-400 ' +
-  'hover:bg-slate-700 hover:border-blue-500 ' +
-  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  'hover:bg-slate-700 hover:border-green-500 ' +
+  'focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500'
 
 export const fieldInput =
   'dashboard-form-control w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150 ' +
   'border-slate-600 bg-slate-800 text-slate-50 placeholder:text-slate-400 ' +
   'light:border-slate-300 light:bg-white light:text-slate-900 light:placeholder-slate-400 ' +
-  'hover:border-blue-500 dark:hover:bg-slate-700 hover:border-blue-500 ' +
-  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  'hover:border-green-500 dark:hover:bg-slate-700 hover:border-green-500 ' +
+  'focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500'
 
 /** Native <select> trigger */
 export const fieldSelect =
   'dashboard-select dashboard-form-control w-full rounded-xl border px-3 py-2.5 text-sm shadow-sm cursor-pointer appearance-none ' +
   'border-slate-600 bg-slate-800 text-slate-50 ' +
   'light:border-slate-300 light:bg-white light:text-slate-900 ' +
-  'hover:border-blue-500 dark:hover:bg-slate-700 hover:border-blue-500 ' +
-  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  'hover:border-green-500 dark:hover:bg-slate-700 hover:border-green-500 ' +
+  'focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500'
 
 /** Modal / dialog form fields */
 export const modalFieldInput =
   'modal-field-input dashboard-form-control w-full rounded-lg px-3 py-2 ' +
   'bg-slate-800 text-slate-50 border border-slate-600 placeholder:text-slate-400 ' +
-  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  'focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500'
 
 /** Dark dialog panel shell */
 export const dashboardDialogPanel =

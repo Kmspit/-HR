@@ -106,7 +106,7 @@ export default function CheckInPanel({
     ? 'linear-gradient(135deg,#f97316,#ef4444)'
     : isLunch
       ? 'linear-gradient(135deg,#f59e0b,#d97706)'
-      : 'linear-gradient(135deg,#06b6d4,#3b82f6)'
+      : 'linear-gradient(135deg,#06b6d4,#22c55e)'
   const accentBorder = isOutsideType
     ? 'rgba(249,115,22,0.3)'
     : isLunch
@@ -562,7 +562,7 @@ export default function CheckInPanel({
                   type="checkbox"
                   checked={savePlace}
                   onChange={(e) => setSavePlace(e.target.checked)}
-                  className="accent-blue-500"
+                  className="accent-green-500"
                 />
                 <BookmarkPlus className="w-3.5 h-3.5" /> บันทึกเป็นสถานที่ใช้ประจำ
               </label>

@@ -143,7 +143,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
           <button
             type="button"
             onClick={downloadPdf}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 touch-manipulation"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 text-xs font-semibold text-white hover:bg-green-500 touch-manipulation"
           >
             <Download className="w-3.5 h-3.5" />
             ดาวน์โหลด
@@ -165,7 +165,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
             เปิดแท็บใหม่
           </button>
           <button type="button" onClick={downloadPdf}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600/90 text-xs font-semibold text-white touch-manipulation">
+            className="flex-1 py-2.5 rounded-xl bg-green-600/90 text-xs font-semibold text-white touch-manipulation">
             ดาวน์โหลด
           </button>
         </div>
@@ -185,7 +185,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
               <p className="text-xs text-slate-500">กรุณาใช้ปุ่ม &quot;เปิดแท็บใหม่&quot; หรือ &quot;ดาวน์โหลด&quot;</p>
               <div className="flex flex-wrap gap-2 justify-center mt-1">
                 <button type="button" onClick={openNewTab}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-sm font-semibold text-white">
+                  className="px-4 py-2 rounded-xl bg-green-600 text-sm font-semibold text-white">
                   เปิดแท็บใหม่
                 </button>
                 <button type="button" onClick={downloadPdf}
@@ -248,7 +248,7 @@ export function WarningPdfActions({
         <button
           type="button"
           onClick={() => window.open(viewUrl, '_blank', 'noopener,noreferrer')}
-          className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 whitespace-nowrap touch-manipulation px-1 py-0.5"
+          className="inline-flex items-center gap-1 text-xs text-green-400 hover:text-green-300 whitespace-nowrap touch-manipulation px-1 py-0.5"
           title="เปิดแท็บใหม่"
         >
           <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />

@@ -71,7 +71,7 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาสัญญา / บริษัท…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-60" />
+        <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาสัญญา / บริษัท…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 min-w-60" />
         <select value={filterSt} onChange={e => { setFilterSt(e.target.value); setPage(1) }} className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
           <option value="">ทุกสถานะ</option>
           {CONTRACT_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
@@ -106,10 +106,10 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
                     <tr key={c.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${expWarn ? 'bg-red-50 dark:bg-red-900/5' : expYell ? 'bg-yellow-50 dark:bg-yellow-900/5' : ''}`}>
                       <td className="py-3 px-4">
                         <span className="font-mono text-xs text-gray-600 dark:text-gray-400">{c.contractNumber}</span>
-                        {c.slaAgreement && <p className="text-[10px] text-blue-500 mt-0.5">{c.slaAgreement}</p>}
+                        {c.slaAgreement && <p className="text-[10px] text-green-500 mt-0.5">{c.slaAgreement}</p>}
                       </td>
                       <td className="py-3 px-4">
-                        <Link href={`/client-companies`} className="font-medium text-blue-600 hover:underline">{c.clientCompany.companyName}</Link>
+                        <Link href={`/client-companies`} className="font-medium text-green-600 hover:underline">{c.clientCompany.companyName}</Link>
                         <p className="text-xs text-gray-400 font-mono">{c.clientCompany.clientCode}</p>
                       </td>
                       <td className="py-3 px-4 text-gray-700 dark:text-gray-300">{c.serviceType}</td>

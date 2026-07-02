@@ -20,7 +20,7 @@ interface DebtorOption { id: string; debtorNumber: string; firstName: string; la
 
 const FOLLOW_METHODS = ['โทรศัพท์', 'LINE', 'SMS', 'Email', 'เข้าพบ']
 const METHOD_COLORS: Record<string, string> = {
-  'โทรศัพท์': 'bg-blue-100 text-blue-700',
+  'โทรศัพท์': 'bg-green-100 text-green-700',
   'LINE':     'bg-green-100 text-green-700',
   'SMS':      'bg-purple-100 text-purple-700',
   'Email':    'bg-orange-100 text-orange-700',
@@ -96,7 +96,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">การติดตามหนี้</h1>
           <p className="text-sm text-gray-500 mt-0.5">บันทึกการติดต่อลูกหนี้ทั้งหมด</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">+ บันทึกการติดตาม</button>
+        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">+ บันทึกการติดตาม</button>
       </div>
 
       {/* Stats row */}
@@ -104,7 +104,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
         {FOLLOW_METHODS.map(m => {
           const cnt = items.filter(i => i.method === m).length
           return (
-            <button key={m} onClick={() => setMethod(method === m ? '' : m)} className={`rounded-xl border p-3 text-sm text-center transition-colors ${method === m ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'}`}>
+            <button key={m} onClick={() => setMethod(method === m ? '' : m)} className={`rounded-xl border p-3 text-sm text-center transition-colors ${method === m ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-300'}`}>
               <p className="font-semibold text-gray-900 dark:text-white">{cnt}</p>
               <p className="text-xs text-gray-500">{m}</p>
             </button>
@@ -114,7 +114,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
 
       {/* Filters */}
       <div className="flex gap-3 mb-4">
-        <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาผล / ชื่อลูกหนี้…" className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input value={q} onChange={e => { setQ(e.target.value); setPage(1) }} placeholder="ค้นหาผล / ชื่อลูกหนี้…" className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
         <select value={method} onChange={e => { setMethod(e.target.value); setPage(1) }} className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
           <option value="">ทุกช่องทาง</option>
           {FOLLOW_METHODS.map(m => <option key={m}>{m}</option>)}
@@ -136,7 +136,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
                   <span className="text-xs text-gray-500">{fmtDT(item.followedAt)}</span>
                   <span className="text-xs text-gray-400">โดย: {item.performedBy.name}</span>
                 </div>
-                <a href={`/debtors`} className="text-sm font-semibold text-blue-600 hover:underline">
+                <a href={`/debtors`} className="text-sm font-semibold text-green-600 hover:underline">
                   {item.debtor.firstName} {item.debtor.lastName}
                 </a>
                 <span className="text-xs text-gray-400 ml-2 font-mono">{item.debtor.debtorNumber}</span>
@@ -180,7 +180,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">เลือกลูกหนี้ *</label>
                   {selDebtor ? (
-                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                       <span className="text-sm font-medium">{selDebtor.firstName} {selDebtor.lastName} <span className="text-xs text-gray-400 font-mono">({selDebtor.debtorNumber})</span></span>
                       <button onClick={() => { setSelDebtor(null); setSearchDeb('') }} className="text-xs text-red-500">เปลี่ยน</button>
                     </div>
@@ -232,7 +232,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
 
               <div className="p-5 pt-0 flex gap-3 justify-end">
                 <button onClick={() => setShowForm(false)} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
-                <button onClick={save} disabled={saving || !selDebtor || !fResult} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
+                <button onClick={save} disabled={saving || !selDebtor || !fResult} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
               </div>
             </div>
           </div>

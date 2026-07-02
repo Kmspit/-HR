@@ -452,7 +452,7 @@ export default function LineLinkCard({ onLinked }: Props) {
 
             onClick={load}
 
-            className="w-full text-xs text-blue-400 hover:underline"
+            className="w-full text-xs text-green-400 hover:underline"
 
           >
 

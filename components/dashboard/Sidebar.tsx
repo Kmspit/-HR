@@ -308,20 +308,20 @@ function SidebarContent({
                               'group relative flex items-center rounded-xl py-2.5 text-[13px] transition-all duration-150',
                               collapsed ? 'justify-center px-2' : 'gap-3 px-3',
                               active
-                                ? 'nav-active text-blue-700 dark:text-blue-300 font-semibold'
-                                : 'text-slate-600 hover:bg-blue-50 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
+                                ? 'nav-active text-green-700 dark:text-green-300 font-semibold'
+                                : 'text-slate-600 hover:bg-green-50 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-white/[0.04] dark:hover:text-slate-200',
                             )}
                           >
                             {!collapsed && (
                               <span className={cn(
                                 'absolute left-0 h-7 w-0.5 rounded-r-full transition-all',
-                                active ? 'bg-blue-600 dark:bg-blue-500 opacity-100' : 'opacity-0',
+                                active ? 'bg-green-600 dark:bg-green-500 opacity-100' : 'opacity-0',
                               )} />
                             )}
                             <Icon
                               d={ICONS[item.icon] ?? ICONS.dashboard}
                               className={cn('h-4 w-4', active
-                                ? 'text-blue-600 dark:text-blue-400'
+                                ? 'text-green-600 dark:text-green-400'
                                 : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-slate-300'
                               )}
                             />

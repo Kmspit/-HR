@@ -3,7 +3,7 @@
     <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950">
       {/* Animated gradient blobs */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-blue-600/20 blur-[120px] animate-float" />
+        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-green-600/20 blur-[120px] animate-float" />
         <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/15 blur-[120px] animate-float [animation-delay:1.5s]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-cyan-600/10 blur-[100px] animate-float [animation-delay:3s]" />
       </div>

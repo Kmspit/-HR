@@ -26,7 +26,7 @@ type Leave = {
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING:        'text-amber-700 bg-amber-100 dark:text-yellow-400 dark:bg-yellow-500/10',
-  ADMIN_APPROVED: 'text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10',
+  ADMIN_APPROVED: 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-500/10',
   APPROVED:       'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-500/10',
   REJECTED:       'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-500/10',
 }
@@ -160,7 +160,7 @@ export default function LeavePanel({
     } finally { setLoading(false) }
   }
 
-  const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50'
+  const inputCls = 'w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:border-green-500/50 focus:ring-2 focus:ring-green-500/50'
 
   const { used, remaining, balance, isProbation } = stats
 
@@ -207,7 +207,7 @@ export default function LeavePanel({
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex flex-1 items-center justify-center rounded-lg py-2 text-xs font-semibold transition-all ${
-              tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              tab === t.id ? 'bg-green-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
           >
             {t.label}
@@ -229,7 +229,7 @@ export default function LeavePanel({
               colorClass={isProbation ? 'text-slate-600' : 'text-green-700 dark:text-green-400'}
               barColor="bg-green-500"
             />
-            <BalanceCard label="ลากิจ" icon="🗓️" used={used.PERSONAL} total={balance.personal} colorClass="text-blue-700 dark:text-blue-400" barColor="bg-blue-500" />
+            <BalanceCard label="ลากิจ" icon="🗓️" used={used.PERSONAL} total={balance.personal} colorClass="text-green-700 dark:text-green-400" barColor="bg-green-500" />
           </div>
 
         <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-6 space-y-5">
@@ -248,7 +248,7 @@ export default function LeavePanel({
                         : form.type === t.value
                           ? t.value === 'ORDINATION'
                             ? 'border-purple-500/50 bg-purple-500/10'
-                            : 'border-blue-500/50 bg-blue-500/10'
+                            : 'border-green-500/50 bg-green-500/10'
                           : 'border-white/10 hover:border-white/20'
                     }`}
                   >
@@ -259,7 +259,7 @@ export default function LeavePanel({
                       checked={form.type === t.value}
                       onChange={(e) => !isDisabledVacation && set('type', e.target.value)}
                       disabled={isDisabledVacation}
-                      className="accent-blue-500"
+                      className="accent-green-500"
                     />
                     <span className="text-sm text-white flex-1">{t.label}</span>
                     {t.value === 'ORDINATION' && (
@@ -322,7 +322,7 @@ export default function LeavePanel({
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">แนบเอกสาร (ใบรับรองแพทย์ ฯลฯ)</label>
-            <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-dashed border-white/15 px-4 py-3 text-sm text-slate-400 hover:border-blue-500/40">
+            <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-dashed border-white/15 px-4 py-3 text-sm text-slate-400 hover:border-green-500/40">
               <Paperclip className="w-4 h-4" />
               {attachment ? attachment.name : 'เลือกไฟล์ PDF / รูปภาพ'}
               <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => setAttachment(e.target.files?.[0] ?? null)} />
@@ -348,7 +348,7 @@ export default function LeavePanel({
         <button
           type="button"
           onClick={() => setTab('request')}
-          className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+          className="md:hidden fixed z-30 right-4 flex items-center gap-2 rounded-2xl bg-green-600 px-5 py-3.5 text-[14px] font-bold text-white shadow-lg shadow-green-600/30 active:scale-95 transition-transform"
           style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}
         >
           <Plus className="w-4 h-4" />
@@ -366,7 +366,7 @@ export default function LeavePanel({
               <button
                 type="button"
                 onClick={() => setTab('request')}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-500 transition-colors"
               >
                 <Plus className="w-4 h-4" /> ยื่นคำขอลาแรก
               </button>
@@ -387,7 +387,7 @@ export default function LeavePanel({
               <p className="text-xs text-slate-400">{formatThaiDate(l.startDate)} — {formatThaiDate(l.endDate)} ({l.days} วัน)</p>
               {l.reason && <p className="mt-1.5 text-xs text-slate-300 bg-white/5 rounded-lg px-3 py-1.5">{l.reason}</p>}
               {l.attachmentUrl && (
-                <a href={l.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-blue-400 hover:underline">
+                <a href={l.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-green-400 hover:underline">
                   📎 ดูเอกสารแนบ
                 </a>
               )}

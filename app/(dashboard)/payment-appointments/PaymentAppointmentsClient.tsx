@@ -97,8 +97,8 @@ export default function PaymentAppointmentsClient({ userId, userRole }: { userId
           <p className="text-xl font-bold text-gray-600">{stats.missed}</p>
           <p className="text-xs text-gray-500">ผิดนัด</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-900/30 p-3 text-center">
-          <p className="text-sm font-bold text-blue-600">฿{fmt(stats.totalAgreed)}</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-green-200 dark:border-green-900/30 p-3 text-center">
+          <p className="text-sm font-bold text-green-600">฿{fmt(stats.totalAgreed)}</p>
           <p className="text-xs text-gray-500">ยอดรออยู่</p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function PaymentAppointmentsClient({ userId, userRole }: { userId
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           {(['all', 'upcoming', 'overdue'] as const).map(f => (
-            <button key={f} onClick={() => { setFilter(f); setPage(1) }} className={`px-3 py-2 text-sm transition-colors ${filter === f ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            <button key={f} onClick={() => { setFilter(f); setPage(1) }} className={`px-3 py-2 text-sm transition-colors ${filter === f ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
               {{ all: 'ทั้งหมด', upcoming: 'กำลังจะถึง', overdue: 'เลยกำหนด' }[f]}
             </button>
           ))}
@@ -140,7 +140,7 @@ export default function PaymentAppointmentsClient({ userId, userRole }: { userId
                   </div>
                   <p className="text-sm font-semibold text-green-600">฿{fmt(appt.agreedAmount)}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
-                    <a href="/debtors" className="text-sm text-blue-600 hover:underline font-medium">
+                    <a href="/debtors" className="text-sm text-green-600 hover:underline font-medium">
                       {appt.debtor.firstName} {appt.debtor.lastName}
                     </a>
                     <span className="text-xs text-gray-400 font-mono">{appt.debtor.debtorNumber}</span>
