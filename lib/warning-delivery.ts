@@ -7,7 +7,7 @@ import {
   createWarningPdfAccessToken,
   warningPdfSignedUrl,
 } from '@/lib/warning-pdf-access'
-import { warningPdfApiPath } from '@/lib/warning-pdf-url'
+import { validateAppBaseUrl } from '@/lib/payslip-pdf-access'
 
 export type LineDeliveryStatus = 'pending' | 'sent' | 'failed'
 
@@ -23,10 +23,6 @@ export type WarningDeliveryResult = {
 
 const LINE_RETRY = 3
 const RETRY_DELAY_MS = 1200
-
-function appBaseUrl() {
-  return (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
-}
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
@@ -192,8 +188,6 @@ export async function deliverWarningToEmployee(
   warningId: string,
   options?: { warningNumber?: number },
 ): Promise<WarningDeliveryResult> {
-  const base = appBaseUrl()
-
   await prisma.warning.update({
     where: { id: warningId },
     data: { lineDeliveryStatus: 'pending', lineErrorMessage: null },
@@ -253,10 +247,12 @@ export async function deliverWarningToEmployee(
       }
     }
 
+    const baseCheck = validateAppBaseUrl()
+    if (!baseCheck.ok) {
+      throw new Error(baseCheck.error)
+    }
     const accessToken = await createWarningPdfAccessToken(warningId)
-    const signedPdfUrl = base
-      ? warningPdfSignedUrl(warningId, base, accessToken)
-      : `${warningPdfApiPath(warningId)}`
+    const signedPdfUrl = warningPdfSignedUrl(warningId, baseCheck.url, accessToken)
 
     const flex = buildWarningLineFlex({
       employeeName: warning.user.name,

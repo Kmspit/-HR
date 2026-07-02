@@ -111,19 +111,8 @@ async function rollbackPayslipUpload(payrollId: string, publicId: string) {
   })
 }
 
-/** ล็อกส่ง — ป้องกัน double-click; forceResend ข้าม PENDING ค้าง */
-async function acquireSendLock(payrollId: string, forceResend?: boolean): Promise<boolean> {
-  if (forceResend) {
-    await prisma.payroll.updateMany({
-      where: { id: payrollId },
-      data: {
-        payslipSentStatus: 'PENDING',
-        payslipSentError: null,
-      },
-    })
-    return true
-  }
-
+/** ล็อกส่ง — ป้องกัน double-click / forceResend พร้อมกัน (atomic updateMany) */
+async function acquireSendLock(payrollId: string, _forceResend?: boolean): Promise<boolean> {
   const staleBefore = new Date(Date.now() - PENDING_STALE_MS)
   const result = await prisma.payroll.updateMany({
     where: {

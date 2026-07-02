@@ -10,9 +10,13 @@ import { apiError } from '@/lib/api-handler'
 import { validateChangePasswordInput } from '@/lib/change-password'
 import { logSecurityEvent } from '@/lib/security-events'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
+import { requireCsrf } from '@/lib/api-guard'
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

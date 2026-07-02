@@ -78,8 +78,9 @@ export async function getPendingLeaveForApprover(
         (s) => s.stepOrder === row.currentStepOrder && s.status === 'PENDING',
       )
       if (!step) continue
-      if (!canUserActOnStep(step, userId, role)) continue
-      if (!(await canApproverActOnRequester(prisma, userId, role, row.userId))) continue
+      const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+      if (!ceoOverride && !canUserActOnStep(step, userId, role)) continue
+      if (!ceoOverride && !(await canApproverActOnRequester(prisma, userId, role, row.userId))) continue
       out.push({
         id: row.id,
         type: row.type,
@@ -124,8 +125,9 @@ export async function getPendingOutsideForApprover(
         (s) => s.stepOrder === row.currentStepOrder && s.status === 'PENDING',
       )
       if (!step) continue
-      if (!canUserActOnStep(step, userId, role)) continue
-      if (!(await canApproverActOnRequester(prisma, userId, role, row.userId))) continue
+      const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+      if (!ceoOverride && !canUserActOnStep(step, userId, role)) continue
+      if (!ceoOverride && !(await canApproverActOnRequester(prisma, userId, role, row.userId))) continue
       out.push({
         id: row.id,
         date: row.date,

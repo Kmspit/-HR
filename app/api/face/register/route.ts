@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-handler'
+import { requireCsrf } from '@/lib/api-guard'
 import { parseSamplesFromBody, registerFaceProfile } from '@/lib/face-attendance'
 
 function parseRegistrationImage(body: Record<string, unknown>) {
@@ -13,6 +14,9 @@ function parseRegistrationImage(body: Record<string, unknown>) {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

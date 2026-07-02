@@ -626,10 +626,11 @@ export async function executeLeaveStepAction(
   })
   if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
 
-  if (!canUserActOnStep(currentStep, actorId, role)) {
+  const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+  if (!ceoOverride && !canUserActOnStep(currentStep, actorId, role)) {
     return { error: `คุณไม่มีสิทธิ์อนุมัติขั้นนี้`, status: 403 }
   }
-  if (!(await canApproverActOnRequester(prisma, actorId, role, leave.userId))) {
+  if (!ceoOverride && !(await canApproverActOnRequester(prisma, actorId, role, leave.userId))) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
   }
 
@@ -685,10 +686,11 @@ export async function executeOutsideWorkStepAction(
   })
   if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
 
-  if (!canUserActOnStep(currentStep, actorId, role)) {
+  const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+  if (!ceoOverride && !canUserActOnStep(currentStep, actorId, role)) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติขั้นนี้', status: 403 }
   }
-  if (!(await canApproverActOnRequester(prisma, actorId, role, request.userId))) {
+  if (!ceoOverride && !(await canApproverActOnRequester(prisma, actorId, role, request.userId))) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
   }
 

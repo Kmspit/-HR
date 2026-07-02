@@ -15,6 +15,7 @@ import { validateAppBaseUrl } from '@/lib/payslip-pdf-access'
 export const maxDuration = 300
 
 const BATCH_CHUNK = 15
+const PENDING_STALE_MS = 10 * 60 * 1000
 
 const bodySchema = z.object({
   payrollId: z.string().min(1),
@@ -106,13 +107,24 @@ export async function POST(req: NextRequest) {
       ? nestedUser
       : { ...(nestedUser ?? {}), lineUserId: { not: null } }
 
+    const staleBefore = new Date(Date.now() - PENDING_STALE_MS)
+
     const where = {
       month: anchor.month,
       year: anchor.year,
       status: 'APPROVED' as const,
       ...(userId ? { userId } : {}),
       ...(userRelationFilter ? { user: userRelationFilter } : {}),
-      ...(!forceResend && !userId ? { NOT: { payslipSentStatus: 'SUCCESS' as const } } : {}),
+      ...(!forceResend && !userId
+        ? {
+            NOT: {
+              OR: [
+                { payslipSentStatus: 'SUCCESS' as const },
+                { payslipSentStatus: 'PENDING' as const, updatedAt: { gt: staleBefore } },
+              ],
+            },
+          }
+        : {}),
     }
 
     const total = await prisma.payroll.count({ where })

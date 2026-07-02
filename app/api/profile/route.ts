@@ -9,6 +9,7 @@ import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
 import { ROLE_LABELS } from '@/lib/access-control'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { parseSelfProfileInput, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
+import { requireCsrf } from '@/lib/api-guard'
 
 function formatDate(d: Date | null | undefined) {
   if (!d) return null
@@ -153,6 +154,9 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

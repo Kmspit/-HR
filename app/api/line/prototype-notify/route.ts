@@ -87,20 +87,17 @@ export async function POST(req: NextRequest) {
       return json({ ok: sent > 0, sent, failed }, 200, origin)
     }
 
-    // 2. Fallback: broadcast to all OA followers
-    const { resolveLineChannelAccessToken } = await import('@/lib/line-credentials')
-    const resolved = await resolveLineChannelAccessToken()
-    if (!resolved.token) {
-      return json({ ok: false, reason: 'no_token', sent: 0, failed: 1 }, 200, origin)
-    }
-    const res = await fetch('https://api.line.me/v2/bot/message/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + resolved.token },
-      body: JSON.stringify({ messages }),
-    })
-    if (res.ok) return json({ ok: true, sent: 1, via: 'broadcast' }, 200, origin)
-    const errText = await res.text().catch(() => String(res.status))
-    return json({ ok: false, reason: 'broadcast_failed', detail: errText }, 200, origin)
+    return json(
+      {
+        ok: false,
+        reason: 'no_hr_recipients',
+        error: 'ไม่พบผู้รับแจ้งเตือน HR ที่ผูก LINE — ตั้ง ATTENDANCE_LINE_NOTIFY_TARGETS หรือให้ HR ผูก LINE OA',
+        sent: 0,
+        failed: 0,
+      },
+      503,
+      origin,
+    )
   } catch (err) {
     console.error('[line/prototype-notify]', err)
     return json({ ok: false, reason: 'server_error' }, 500, origin)

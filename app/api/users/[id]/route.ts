@@ -8,6 +8,7 @@ import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
 import { requireAuth, requireOrgScope, isGuardResponse, requireCsrf } from '@/lib/api-guard'
 import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
+import { HR_ADMIN } from '@/lib/module-gates'
 import type { Role, UserStatus } from '@prisma/client'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -73,35 +74,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    for (const key of Object.keys(body)) {
-      if (SELF_PROFILE_FORBIDDEN.has(key) && !['role', 'status'].includes(key)) {
-        if (['password', 'passwordHash'].includes(key)) {
-          return NextResponse.json({ error: 'ไม่รองรับการเปลี่ยนรหัสผ่านทาง API นี้' }, { status: 400 })
+    if (id === session.user.id) {
+      for (const key of Object.keys(body)) {
+        if (SELF_PROFILE_FORBIDDEN.has(key) && !['role', 'status'].includes(key)) {
+          if (['password', 'passwordHash'].includes(key)) {
+            return NextResponse.json({ error: 'ไม่รองรับการเปลี่ยนรหัสผ่านทาง API นี้' }, { status: 400 })
+          }
+          return NextResponse.json(
+            { error: 'ไม่สามารถแก้ไขข้อมูลนี้ได้ — ติดต่อ HR' },
+            { status: 403 },
+          )
         }
       }
     }
 
-    const lineParsed = parseLineFields(
-      {
-        lineId: body.lineId,
-        lineUserId: body.lineUserId,
-        lineDisplayName: body.lineDisplayName,
-      },
-      { requireLineId: false },
-    )
-    if (!lineParsed.ok) {
-      return NextResponse.json({ error: lineParsed.error }, { status: 400 })
-    }
-    const lineUnique = await assertLineFieldsUnique(lineParsed, id)
-    if (!lineUnique.ok) {
-      return NextResponse.json({ error: lineUnique.error }, { status: 409 })
+    if ('lineUserId' in body || 'lineDisplayName' in body) {
+      return NextResponse.json(
+        { error: 'การเชื่อม LINE OA ต้องทำผ่านเมนูผูก LINE ในโปรไฟล์' },
+        { status: 403 },
+      )
     }
 
-    const data: Record<string, unknown> = {
-      lineId: lineParsed.lineId,
-      lineUserId: lineParsed.lineUserId,
-      lineDisplayName: lineParsed.lineDisplayName,
-    }
+    const data: Record<string, unknown> = {}
 
     if (body.email != null) {
       const email = normalizeEmail(String(body.email))
@@ -188,6 +182,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     for (const key of allowedFields) {
       if (key in body) data[key] = body[key]
+    }
+
+    if ('lineId' in body) {
+      if (id === session.user.id) {
+        return NextResponse.json(
+          { error: 'แก้ LINE ID ได้ที่หน้าโปรไฟล์เท่านั้น' },
+          { status: 403 },
+        )
+      }
+      if (!HR_ADMIN.includes(session.user.role as Role)) {
+        return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ LINE ID' }, { status: 403 })
+      }
+      const lineParsed = parseLineFields(
+        { lineId: body.lineId },
+        { requireLineId: false, allowUserId: false, allowDisplayName: false },
+      )
+      if (!lineParsed.ok) {
+        return NextResponse.json({ error: lineParsed.error }, { status: 400 })
+      }
+      const lineUnique = await assertLineFieldsUnique(lineParsed, id)
+      if (!lineUnique.ok) {
+        return NextResponse.json({ error: lineUnique.error }, { status: 409 })
+      }
+      data.lineId = lineParsed.lineId
     }
 
     if (id === session.user.id) {

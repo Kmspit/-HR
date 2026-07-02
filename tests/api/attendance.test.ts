@@ -30,7 +30,7 @@ vi.mock('@/lib/api-handler', () => ({
 }))
 
 vi.mock('@/lib/device', () => ({
-  assertDeviceAllowed: vi.fn().mockResolvedValue(undefined),
+  assertDeviceAllowed: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
 vi.mock('@/lib/face-checkin-guard', () => ({

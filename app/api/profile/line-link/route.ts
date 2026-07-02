@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { requireCsrf } from '@/lib/api-guard'
 import { createLineLinkCode, ensureLineLinkTable, unlinkLineUser } from '@/lib/line-link'
 import { getLineWebhookUrl, isLineOaConfigured } from '@/lib/line-config'
 import { getLineOaBasicId, getLineOaChatUrl, getLineOaChatUrlWithText, normalizeLineOaBasicId } from '@/lib/line-oa-url'
@@ -47,8 +48,11 @@ export async function GET() {
 }
 
 /** สร้างรหัสเชื่อม LINE (อายุ 15 นาที) */
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -85,8 +89,11 @@ export async function POST() {
 }
 
 /** ยกเลิกการผูก LINE (จากแอป) */
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

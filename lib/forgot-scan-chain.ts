@@ -196,7 +196,21 @@ export async function applyChainToForgotScan(
 
     const applied = await applyToAttendance(requestId, prisma)
     if (!applied) {
-      console.error('[forgot-scan apply] auto-approve skipped — no attendance row')
+      await prisma.forgotScanRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'REJECTED',
+          currentStepOrder: 0,
+          hrNote: APPLY_ATTENDANCE_FAILED_MSG,
+        },
+      })
+      await createNotification({
+        userId,
+        type: 'FORGOT_SCAN_REJECTED',
+        title: '❌ คำขอแก้ไขเวลาไม่สำเร็จ',
+        message: APPLY_ATTENDANCE_FAILED_MSG,
+        link: '/forgot-scan',
+      })
       return
     }
 
