@@ -97,7 +97,7 @@ export default function EmployeeTimelineClient({ employee, events, counts }: Pro
 
       <div className="rounded-2xl border border-slate-200 dark:border-white/[0.07] bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/80 dark:to-slate-900/40 p-5">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[#1E3A5F] text-white">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-green-600 text-white">
             <User className="h-6 w-6" />
           </div>
           <div className="min-w-0">
@@ -125,7 +125,7 @@ export default function EmployeeTimelineClient({ employee, events, counts }: Pro
             onClick={() => setFilter(f)}
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all border btn-press
               ${filter === f
-                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F] shadow-sm'
+                ? 'bg-green-600 text-white border-green-600 shadow-sm'
                 : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-green-300'
               }`}
           >

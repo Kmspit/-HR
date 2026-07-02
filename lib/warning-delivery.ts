@@ -103,7 +103,7 @@ function buildWarningLineFlex(params: {
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#1e3a8a',
+        backgroundColor: '#22c55e',
         paddingAll: '16px',
         contents: [
           {

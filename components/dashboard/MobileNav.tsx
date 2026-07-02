@@ -59,17 +59,17 @@ export default function MobileNav({ role }: { role: Role }) {
               onClick={() => { if (!active) setPendingHref(item.href) }}
               className={cn(
                 'mnav-item relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
-                active && 'active text-[#1E3A5F] dark:text-green-400',
+                active && 'active text-green-600 dark:text-green-400',
                 pending && 'opacity-70 pointer-events-none',
               )}
             >
               {active && (
-                <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-[#1E3A5F] dark:bg-green-400" />
+                <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full bg-green-600 dark:bg-green-400" />
               )}
 
               <span className={cn(
                 'flex h-8 w-8 items-center justify-center rounded-xl transition-colors',
-                active && 'bg-[#1E3A5F]/8 dark:bg-green-500/15',
+                active && 'bg-green-600/8 dark:bg-green-500/15',
               )}>
                 {pending ? (
                   <span className="h-4 w-4 rounded-full border-2 border-green-500/30 border-t-green-500 animate-spin" />

@@ -122,7 +122,7 @@ export async function sendPayslipLine(userId: string, payroll: {
   const flex = {
     type: 'bubble',
     header: {
-      type: 'box', layout: 'vertical', backgroundColor: '#1e3a8a',
+      type: 'box', layout: 'vertical', backgroundColor: '#22c55e',
       contents: [
         { type: 'text', text: 'สลิปเงินเดือน', color: '#ffffff', size: 'lg', weight: 'bold' },
         { type: 'text', text: monthLabel, color: '#93c5fd', size: 'sm' },

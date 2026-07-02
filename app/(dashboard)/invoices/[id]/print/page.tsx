@@ -43,30 +43,31 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{docTitle} — {isReceipt ? receipt?.receiptNumber : invoice.invoiceNumber}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet" />
         <style>{`
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Sarabun', 'Noto Sans Thai', sans-serif; font-size: 13px; color: #1a1a1a; background: #f5f5f5; }
+          body { font-family: 'Noto Sans Thai', system-ui, sans-serif; font-size: 13px; color: #1a1a1a; background: #f5f5f5; }
           .page { background: white; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 20mm; position: relative; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #1e3a8a; padding-bottom: 16px; }
-          .company-name { font-size: 20px; font-weight: 800; color: #1e3a8a; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #22c55e; padding-bottom: 16px; }
+          .company-name { font-size: 20px; font-weight: 800; color: #16a34a; }
           .company-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
           .doc-title { text-align: right; }
-          .doc-title h1 { font-size: 18px; font-weight: 700; color: #1e3a8a; }
+          .doc-title h1 { font-size: 18px; font-weight: 700; color: #16a34a; }
           .doc-number { font-size: 13px; color: #374151; margin-top: 4px; }
-          .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #15803d; margin-top: 4px; }
+          .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #dcfce7; color: #15803d; margin-top: 4px; }
           .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
           .info-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
           .info-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
           .info-value { font-size: 13px; color: #111827; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: #1e3a8a; color: white; padding: 8px 10px; text-align: left; font-size: 12px; }
+          th { background: #16a34a; color: white; padding: 8px 10px; text-align: left; font-size: 12px; }
           td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
           tr:nth-child(even) td { background: #f9fafb; }
           .amount-col { text-align: right; }
           .totals { margin-left: auto; width: 280px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
           .totals-row { display: flex; justify-content: space-between; padding: 7px 14px; font-size: 13px; }
           .totals-row.divider { border-top: 2px solid #e5e7eb; }
-          .totals-row.grand-total { background: #1e3a8a; color: white; font-weight: 700; font-size: 15px; }
+          .totals-row.grand-total { background: #16a34a; color: white; font-weight: 700; font-size: 15px; }
           .totals-row.paid-row { background: #dcfce7; color: #166534; }
           .totals-row.due-row { background: #fee2e2; color: #991b1b; font-weight: 700; }
           .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
@@ -79,7 +80,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
             .page { width: 100%; margin: 0; padding: 15mm; box-shadow: none; }
             .no-print { display: none !important; }
           }
-          .print-btn { position: fixed; top: 16px; right: 16px; background: #1e3a8a; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; z-index: 100; }
+          .print-btn { position: fixed; top: 16px; right: 16px; background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; z-index: 100; font-family: inherit; }
         `}</style>
       </head>
       <body>

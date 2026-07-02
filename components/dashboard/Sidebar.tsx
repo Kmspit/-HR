@@ -227,13 +227,13 @@ function SidebarContent({
         >
           <div
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-            style={{ background: 'linear-gradient(135deg,#1E3A5F 0%,#3B82F6 100%)', boxShadow: '0 2px 12px rgba(30,58,95,0.25)' }}
+            style={{ background: 'linear-gradient(135deg,#16a34a 0%,#22c55e 100%)', boxShadow: '0 2px 12px rgba(22,163,74,0.25)' }}
           >
             HR
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-[12px] font-extrabold tracking-tight text-[#1E3A5F] dark:text-white leading-tight">
+              <div className="text-[12px] font-extrabold tracking-tight text-green-700 dark:text-white leading-tight">
                 เค เอ็ม <span className="gradient-text-blue">เซอร์วิส</span> พลัส
               </div>
               <div className="text-[11px] text-slate-400 leading-tight">จำกัด</div>

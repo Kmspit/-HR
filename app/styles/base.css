@@ -46,7 +46,7 @@
     --secondary: 222 47% 11%;
     --secondary-foreground: 210 40% 98%;
     --muted: 223 47% 11%;
-    --muted-foreground: 215 16% 62%;
+    --muted-foreground: 215 16% 70%;
     --accent: 216 34% 17%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
@@ -138,10 +138,39 @@
   h1, h2, h3, h4 {
     font-family: var(--font-thai), system-ui, sans-serif;
     font-weight: 700;
-    color: hsl(var(--primary));
   }
-  .dark h1, .dark h2, .dark h3, .dark h4 {
-    color: inherit;
+  h1 {
+    color: hsl(var(--foreground));
+    font-size: 1.875rem;
+  }
+  h2 {
+    color: hsl(var(--foreground));
+    font-size: 1.5rem;
+  }
+  h3 {
+    color: hsl(var(--primary));
+    font-size: 1.25rem;
+  }
+  h4 {
+    color: hsl(var(--muted-foreground));
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* Light mode — increase muted text contrast */
+  .light .text-slate-400 {
+    color: #64748b;
+  }
+  .light .text-gray-400 {
+    color: #6b7280;
+  }
+
+  /* Dark mode — increase muted text contrast */
+  .dark .text-slate-400 {
+    color: #94a3b8;
+  }
+  .dark .text-gray-400 {
+    color: #9ca3af;
   }
 
   /* Dark scrollbar */

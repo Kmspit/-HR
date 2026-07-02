@@ -60,24 +60,25 @@ export default async function PrintOutsideWorkPage({
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>ใบขออนุมัติออกนอกสถานที่ — {request.documentNumber ?? request.id.slice(0, 8).toUpperCase()}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet" />
         <style>{`
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
-            font-family: 'Sarabun', 'Noto Sans Thai', 'TH Sarabun New', sans-serif;
+            font-family: 'Noto Sans Thai', system-ui, sans-serif;
             font-size: 14px;
             color: #111827;
             background: #f3f4f6;
           }
           .print-btn {
             position: fixed; top: 16px; right: 16px;
-            background: #1e3a8a; color: #fff;
+            background: #22c55e; color: #fff;
             border: none; padding: 10px 20px;
             border-radius: 8px; cursor: pointer;
             font-size: 14px; font-weight: 600;
             font-family: inherit; z-index: 100;
             display: flex; align-items: center; gap: 8px;
           }
-          .print-btn:hover { background: #1e40af; }
+          .print-btn:hover { background: #16a34a; }
           .page {
             background: #fff;
             width: 210mm;
@@ -93,15 +94,15 @@ export default async function PrintOutsideWorkPage({
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 3px solid #1e3a8a;
+            border-bottom: 3px solid #22c55e;
             padding-bottom: 14px;
             margin-bottom: 18px;
           }
           .company-block { }
-          .company-name { font-size: 17px; font-weight: 800; color: #1e3a8a; }
+          .company-name { font-size: 17px; font-weight: 800; color: #16a34a; }
           .company-sub  { font-size: 11px; color: #6b7280; margin-top: 2px; }
           .doc-block { text-align: right; }
-          .doc-title { font-size: 16px; font-weight: 800; color: #1e3a8a; }
+          .doc-title { font-size: 16px; font-weight: 800; color: #16a34a; }
           .doc-number { font-size: 12px; color: #374151; margin-top: 4px; font-family: monospace; }
           .doc-date   { font-size: 11px; color: #6b7280; margin-top: 3px; }
           .status-badge {
@@ -138,10 +139,10 @@ export default async function PrintOutsideWorkPage({
           .section-title {
             font-size: 12px;
             font-weight: 700;
-            color: #1e3a8a;
+            color: #16a34a;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            border-left: 3px solid #1e3a8a;
+            border-left: 3px solid #22c55e;
             padding-left: 8px;
             margin: 18px 0 10px;
           }
@@ -149,7 +150,7 @@ export default async function PrintOutsideWorkPage({
           /* ── Detail table ── */
           .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
           .detail-table th {
-            background: #1e3a8a;
+            background: #16a34a;
             color: #fff;
             padding: 8px 12px;
             text-align: left;

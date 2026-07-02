@@ -39,7 +39,7 @@ export default function SignaturePad({ onSave, onCancel }: Props) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.strokeStyle = '#1e3a5f'
+    ctx.strokeStyle = '#16a34a'
     ctx.lineWidth   = 2
     ctx.lineCap     = 'round'
     ctx.lineJoin    = 'round'

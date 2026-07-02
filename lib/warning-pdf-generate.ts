@@ -29,8 +29,11 @@ export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<
     day: 'numeric',
   })
 
+  const green = rgb(0.086, 0.639, 0.290) // #16a34a
+  const bodyColor = rgb(0.1, 0.1, 0.15)
+
   let y = 780
-  const draw = (text: string, size = 12, bold = false) => {
+  const draw = (text: string, size = 12, bold = false, color = bodyColor) => {
     const lines = wrapText(text, 70)
     for (const line of lines) {
       page.drawText(line, {
@@ -38,25 +41,25 @@ export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<
         y,
         size,
         font: bold ? fontBold : font,
-        color: rgb(0.1, 0.1, 0.15),
+        color,
       })
       y -= size + 8
     }
   }
 
-  draw(input.companyName, 16, true)
+  draw(input.companyName, 16, true, green)
   y -= 4
-  draw('เอกสารใบเตือนพนักงาน (Warning Letter)', 14, true)
+  draw('เอกสารใบเตือนพนักงาน (Warning Letter)', 14, true, green)
   y -= 12
   draw(`วันที่ออกเอกสาร: ${dateStr}`)
   draw(`ครั้งที่: ${input.warningNumber}  |  ระดับ: ${input.level}`)
   y -= 8
-  draw('ข้อมูลพนักงาน', 12, true)
+  draw('ข้อมูลพนักงาน', 12, true, green)
   draw(`ชื่อ: ${input.employeeName}`)
   if (input.employeeId) draw(`รหัสพนักงาน: ${input.employeeId}`)
   if (input.department) draw(`แผนก/ฝ่าย: ${input.department}`)
   y -= 8
-  draw('รายละเอียดการเตือน', 12, true)
+  draw('รายละเอียดการเตือน', 12, true, green)
   draw(`สาเหตุ: ${input.reason}`)
   if (input.description?.trim()) draw(`หมายเหตุ: ${input.description.trim()}`)
   y -= 12

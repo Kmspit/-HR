@@ -31,7 +31,7 @@ export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
       </button>
 
       <div className="flex-1 min-w-0 md:hidden">
-        <p className="truncate text-[13.5px] font-bold text-[#1E3A5F] dark:text-white">
+        <p className="truncate text-[13.5px] font-bold text-green-700 dark:text-white">
           เค เอ็ม เซอร์วิส พลัส
         </p>
       </div>

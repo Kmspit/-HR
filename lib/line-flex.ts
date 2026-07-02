@@ -229,7 +229,7 @@ export function buildDailySummaryFlex(params: {
   const bubble: FlexBubble = {
     type: 'bubble',
     header: {
-      type: 'box', layout: 'vertical', backgroundColor: '#1e3a8a', paddingAll: 'md',
+      type: 'box', layout: 'vertical', backgroundColor: '#22c55e', paddingAll: 'md',
       contents: [
         { type: 'text', text: '📊 สรุปประจำวัน',     color: '#ffffff',  weight: 'bold', size: 'md' } as FlexText,
         { type: 'text', text: date,                    color: '#93c5fd',  size: 'sm' } as FlexText,

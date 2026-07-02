@@ -14,8 +14,8 @@
 }
 
 .light .nav-active {
-  background: linear-gradient(135deg, rgba(30,58,95,0.09) 0%, rgba(34,197,94,0.07) 100%) !important;
-  border: 1px solid rgba(30,58,95,0.18) !important;
+  background: linear-gradient(135deg, rgba(34,197,94,0.09) 0%, rgba(34,197,94,0.07) 100%) !important;
+  border: 1px solid rgba(34,197,94,0.18) !important;
 }
 
 .light .gradient-text {
@@ -26,6 +26,22 @@
   @apply bg-gradient-to-r from-green-600 to-cyan-600 bg-clip-text text-transparent;
 }
 
+/* Light mode — increase muted text contrast */
+.light .text-slate-400 {
+  color: #64748b;
+}
+.light .text-gray-400 {
+  color: #6b7280;
+}
+
+/* Dark mode — increase muted text contrast */
+.dark .text-slate-400 {
+  color: #94a3b8;
+}
+.dark .text-gray-400 {
+  color: #9ca3af;
+}
+
 .light .badge-blue   { @apply bg-green-50 text-green-700 border-green-200; }
 .light .badge-green  { @apply bg-green-50 text-green-700 border-green-200; }
 .light .badge-yellow { @apply bg-yellow-50 text-yellow-700 border-yellow-200; }
@@ -33,7 +49,7 @@
 .light .badge-violet { @apply bg-violet-50 text-violet-700 border-violet-200; }
 .light .badge-slate  { @apply bg-slate-100 text-slate-600 border-slate-200; }
 
-.light .stat-blue   { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
+.light .stat-blue   { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0; }
 .light .stat-violet { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-color: #ddd6fe; }
 .light .stat-green  { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0; }
 .light .stat-amber  { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-color: #fde68a; }
@@ -198,7 +214,7 @@
 .dark main textarea:not(.form-on-light):hover:not(:disabled),
 .dark main select:not(.select-on-light):not(.form-on-light):hover:not(:disabled) {
   background-color: rgb(51 65 85) !important;
-  border-color: rgb(59 130 246) !important;
+  border-color: rgb(34 197 94) !important;
 }
 
 .dark main input:not(.form-on-light):not(.select-on-light):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='color']):not([type='range']):not([type='submit']):not([type='button']):not([type='reset']):focus,
@@ -208,8 +224,8 @@
 .dark main select:not(.select-on-light):not(.form-on-light):focus,
 .dark main select:not(.select-on-light):not(.form-on-light):focus-visible {
   outline: none;
-  border-color: rgb(59 130 246) !important;
-  box-shadow: 0 0 0 2px rgb(59 130 246);
+  border-color: rgb(34 197 94) !important;
+  box-shadow: 0 0 0 2px rgb(34 197 94);
 }
 
 .dark main select:not(.select-on-light):not(.form-on-light):has(> option[value='']:checked),
@@ -265,15 +281,15 @@
 .light main select:not(.select-on-light):hover:not(:disabled),
 .light .dashboard-select:hover:not(:disabled) {
   background-color: rgb(248 250 252);
-  border-color: rgb(59 130 246);
+  border-color: rgb(34 197 94);
 }
 .light main select:not(.select-on-light):focus,
 .light main select:not(.select-on-light):focus-visible,
 .light .dashboard-select:focus,
 .light .dashboard-select:focus-visible {
   outline: none;
-  border-color: rgb(59 130 246);
-  box-shadow: 0 0 0 2px rgb(59 130 246);
+  border-color: rgb(34 197 94);
+  box-shadow: 0 0 0 2px rgb(34 197 94);
 }
 .light main select:not(.select-on-light):has(> option[value='']:checked),
 .light main select:not(.select-on-light):has(> option[value='all']:checked),
@@ -297,7 +313,7 @@ select option,
 .dark select option:checked,
 .dark .dashboard-select option:checked,
 .dark main select:not(.select-on-light) option:checked {
-  background-color: rgb(37 99 235);
+  background-color: rgb(22 163 74);
   color: rgb(255 255 255);
 }
 
