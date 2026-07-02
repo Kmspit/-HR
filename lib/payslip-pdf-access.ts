@@ -5,8 +5,13 @@ const TOKEN_TTL_SEC = 60 * 60 * 24 * 7 // 7 วัน
 function secretKey() {
   const raw =
     process.env.PAYSLIP_PDF_ACCESS_SECRET?.trim() ||
-    process.env.NEXTAUTH_SECRET?.trim() ||
-    'hrflow-payslip-pdf-dev-only'
+    process.env.NEXTAUTH_SECRET?.trim()
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('PAYSLIP_PDF_ACCESS_SECRET or NEXTAUTH_SECRET is required in production')
+    }
+    return new TextEncoder().encode('hrflow-payslip-pdf-dev-only')
+  }
   return new TextEncoder().encode(raw)
 }
 
@@ -54,8 +59,13 @@ export function validateAppBaseUrl(): { ok: true; url: string } | { ok: false; e
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       return { ok: false, error: 'NEXTAUTH_URL ไม่ถูกต้อง — ต้องขึ้นต้นด้วย https://' }
     }
-    if (parsed.hostname === 'localhost' && process.env.NODE_ENV === 'production') {
-      console.warn('[payslip] NEXTAUTH_URL points to localhost in production')
+    if (process.env.NODE_ENV === 'production') {
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+        return {
+          ok: false,
+          error: 'NEXTAUTH_URL ต้องเป็น domain production — ห้ามใช้ localhost บน Vercel',
+        }
+      }
     }
     return { ok: true, url }
   } catch {

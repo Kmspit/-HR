@@ -44,6 +44,7 @@ describe('middleware gates', () => {
     expect(isPublicApiRoute('/api/auth/login')).toBe(true)
     expect(isPublicApiRoute('/api/cron/schema-migrate')).toBe(true)
     expect(isPublicApiRoute('/api/client-portal/auth/login')).toBe(true)
+    expect(isPublicApiRoute('/api/payslip/pay-abc123/line-pdf')).toBe(true)
     expect(isPublicApiRoute('/api/notifications')).toBe(false)
     expect(isPublicApiRoute('/api/announcements/sse')).toBe(false)
   })

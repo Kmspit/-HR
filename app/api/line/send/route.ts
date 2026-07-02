@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-handler'
+import { requireCsrf } from '@/lib/api-guard'
 import { getLineConfigStatus } from '@/lib/line-config'
 import { sendLineHrMessage } from '@/lib/line-hr-send'
 import { prisma } from '@/lib/prisma'
@@ -47,6 +48,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const csrfErr = requireCsrf(req)
+    if (csrfErr) return csrfErr
+
     const session = await auth()
     if (!session?.user?.id || !['MANAGER_HR', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์ส่งข้อความ LINE' }, { status: 403 })

@@ -176,7 +176,7 @@ describe('advanceForgotScanChain finalize', () => {
             approverId: null,
             status: 'PENDING',
           }),
-        update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       attendance: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn(), create: vi.fn() },
     }

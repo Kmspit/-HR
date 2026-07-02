@@ -617,8 +617,13 @@ export async function executeLeaveStepAction(
     return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
   }
 
-  await prisma.leaveApprovalStep.update({
-    where: { id: currentStep.id },
+  const claim = await prisma.leaveApprovalStep.updateMany({
+    where: {
+      id: currentStep.id,
+      leaveRequestId: leaveId,
+      stepOrder: leave.currentStepOrder,
+      status: 'PENDING',
+    },
     data: {
       status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
       actorId,
@@ -627,6 +632,9 @@ export async function executeLeaveStepAction(
       actedAt: new Date(),
     },
   })
+  if (claim.count === 0) {
+    return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
 
   if (action === 'APPROVE') {
     const { finalized, nextStepOrder } = await advanceLeaveChain(prisma, leaveId)
@@ -668,8 +676,13 @@ export async function executeOutsideWorkStepAction(
     return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
   }
 
-  await prisma.outsideWorkApprovalStep.update({
-    where: { id: currentStep.id },
+  const claim = await prisma.outsideWorkApprovalStep.updateMany({
+    where: {
+      id: currentStep.id,
+      requestId,
+      stepOrder: request.currentStepOrder,
+      status: 'PENDING',
+    },
     data: {
       status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
       actorId,
@@ -678,6 +691,9 @@ export async function executeOutsideWorkStepAction(
       actedAt: new Date(),
     },
   })
+  if (claim.count === 0) {
+    return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
 
   if (action === 'APPROVE') {
     const { finalized, nextStepOrder } = await advanceOutsideWorkChain(prisma, requestId)

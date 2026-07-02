@@ -477,5 +477,29 @@ export async function recordFaceScanAndNotifyHr(params: {
     console.error('[face-scan-persist]', err)
   }
 
+  try {
+    const { notifyHrAttendanceOnLine } = await import('@/lib/attendance-line-notify')
+    const notifyResult = await notifyHrAttendanceOnLine({
+      event: params.event,
+      employeeUserId: params.userId,
+      attendanceId: params.attendanceId,
+      faceLogId: params.faceLogId,
+      faceScanId,
+      photoUrl: params.photoUrl,
+      eventTime: params.eventTime,
+      location: params.locationName ?? params.location ?? params.address ?? null,
+      lateMinutes: params.lateMinutes,
+      earlyLeaveMinutes: params.earlyLeaveMinutes,
+      isOutside: params.isOutside,
+      lat: params.lat,
+      lng: params.lng,
+    })
+    lineNotify.sent = notifyResult.sent
+    lineNotify.failed = notifyResult.failed
+  } catch (err) {
+    console.error('[attendance-line-notify]', err)
+    lineNotify.failed = 1
+  }
+
   return { faceScanId, lineNotify }
 }

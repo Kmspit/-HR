@@ -252,6 +252,7 @@ export async function sendPayslipViaLineForPayroll(
   }
 
   let uploadedPublicId: string | null = null
+  let linePushed = false
 
   try {
     const fullPayroll = await prisma.payroll.findUnique({
@@ -320,6 +321,8 @@ export async function sendPayslipViaLineForPayroll(
       }
     }
 
+    linePushed = true
+
     const sentAt = new Date()
     await prisma.payroll.update({
       where: { id: payrollId },
@@ -341,14 +344,19 @@ export async function sendPayslipViaLineForPayroll(
       payslipSentAt: sentAt.toISOString(),
     }
   } catch (err) {
-    if (uploadedPublicId) await rollbackPayslipUpload(payrollId, uploadedPublicId)
+    if (uploadedPublicId && !linePushed) {
+      await rollbackPayslipUpload(payrollId, uploadedPublicId)
+    }
     const message = err instanceof Error ? err.message : 'ส่งสลิปไม่สำเร็จ'
-    await markPayslipSendStatus(payrollId, 'FAILED', message)
+    const failMsg = linePushed
+      ? `${message} (ส่ง LINE แล้ว — ลิงก์ยังใช้ได้ กรุณาติดต่อ IT เพื่อ sync สถานะ)`
+      : message
+    await markPayslipSendStatus(payrollId, 'FAILED', failMsg)
     return {
       ...base,
       userId: payroll.userId,
       name: payroll.user.name,
-      error: message,
+      error: failMsg,
     }
   }
 }

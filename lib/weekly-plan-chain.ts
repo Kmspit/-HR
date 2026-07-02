@@ -240,8 +240,13 @@ export async function executeWeeklyPlanStepAction(
     return { error: 'คุณไม่มีสิทธิ์อนุมัติแผนงานของทนายคนนี้', status: 403 }
   }
 
-  await prisma.weeklyPlanApprovalStep.update({
-    where: { id: currentStep.id },
+  const claim = await prisma.weeklyPlanApprovalStep.updateMany({
+    where: {
+      id: currentStep.id,
+      weeklyPlanId: planId,
+      stepOrder: plan.currentStepOrder,
+      status: 'PENDING',
+    },
     data: {
       status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
       actorId,
@@ -250,6 +255,9 @@ export async function executeWeeklyPlanStepAction(
       actedAt: new Date(),
     },
   })
+  if (claim.count === 0) {
+    return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
 
   if (action === 'APPROVE') {
     const { finalized, nextStepOrder } = await advanceWeeklyPlanChain(prisma, planId)

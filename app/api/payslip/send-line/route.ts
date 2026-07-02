@@ -127,6 +127,20 @@ export async function POST(req: NextRequest) {
     })
 
     if (payrolls.length === 0) {
+      const emptyBatchDone = !userId && (offset > 0 || total === 0)
+      if (emptyBatchDone) {
+        return NextResponse.json({
+          success: true,
+          sent: 0,
+          failed: 0,
+          skipped: 0,
+          results: [],
+          total,
+          offset,
+          processed: 0,
+          hasMore: false,
+        })
+      }
       return NextResponse.json(
         {
           error: userId

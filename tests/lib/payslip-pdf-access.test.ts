@@ -40,4 +40,14 @@ describe('payslip-pdf-access', () => {
     expect(validateAppBaseUrl().ok).toBe(false)
     process.env.NEXTAUTH_URL = prev
   })
+
+  it('validateAppBaseUrl rejects localhost in production', () => {
+    const prevEnv = process.env.NODE_ENV
+    const prevUrl = process.env.NEXTAUTH_URL
+    process.env.NODE_ENV = 'production'
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+    expect(validateAppBaseUrl().ok).toBe(false)
+    process.env.NODE_ENV = prevEnv
+    process.env.NEXTAUTH_URL = prevUrl
+  })
 })

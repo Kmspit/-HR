@@ -22,7 +22,6 @@ import {
 import {
   findActiveAttendanceSession,
   getNextSessionIndex,
-  hasCheckInToday,
 } from '@/lib/attendance-session'
 import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
 import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
@@ -30,7 +29,8 @@ import { findApprovedWeeklyPlanDayForDate, WEEKLY_PLAN_LOCATION_TOLERANCE_METERS
 import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 
 export async function POST(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))
@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
       geofenceName = 'สำนักงาน'
     }
     const hasGeofence = geofenceLat != null && geofenceLng != null
+    const branchMissingCoords = !!(userBranch?.branchId && userBranch?.branch && !hasGeofence)
 
     let isOutside = forceOutside
     let checkInDistanceM: number | null = null
@@ -134,6 +135,17 @@ export async function POST(req: NextRequest) {
       }
     } else if (forceOutside && hasGeofence && lat != null && lng != null) {
       checkInDistanceM = haversineDistanceMeters(lat, lng, geofenceLat!, geofenceLng!)
+    }
+
+    if (branchMissingCoords && !forceOutside) {
+      return NextResponse.json(
+        {
+          error:
+            'สาขาของคุณยังไม่ตั้งพิกัด GPS — ติดต่อ HR หรือเลือกเช็คอินนอกสถานที่พร้อมใบอนุมัติ',
+          code: 'BRANCH_GEOFENCE_NOT_CONFIGURED',
+        },
+        { status: 403 },
+      )
     }
 
     // Outside work: ตรวจสอบใบอนุมัติออกนอกสถานที่สำหรับวันนี้
@@ -203,13 +215,6 @@ export async function POST(req: NextRequest) {
         lateMinutes = Math.floor((now.getTime() - effectiveDeadline.getTime()) / 60000)
         status = 'LATE'
       }
-    }
-
-    if (await hasCheckInToday(session.user.id, today)) {
-      return NextResponse.json(
-        { error: attendanceFlowErrorMessage('ALREADY_CHECKIN_TODAY'), code: 'ALREADY_CHECKIN_TODAY' },
-        { status: 400 },
-      )
     }
 
     const activeSession = await findActiveAttendanceSession(session.user.id, today)
@@ -298,6 +303,13 @@ export async function POST(req: NextRequest) {
           preReadImage,
         })
         await syncAttendancePhotoFromFaceScan(finalized.id, scanResult.faceScanId, 'photoUrl')
+        if (scanResult.lineNotify.failed > 0 && scanResult.lineNotify.sent === 0) {
+          console.error('[checkin-bg] LINE notify failed for all HR recipients', {
+            attendanceId: finalized.id,
+            userId: session.user.id,
+            ...scanResult.lineNotify,
+          })
+        }
       } catch (err) {
         console.error('[checkin-bg]', err)
       }
@@ -357,6 +369,13 @@ export async function POST(req: NextRequest) {
       plannedPlace,
     })
   } catch (err) {
+    const prismaCode = (err as { code?: string })?.code
+    if (prismaCode === 'P2002') {
+      return NextResponse.json(
+        { error: 'มีการเช็คอินซ้ำ กรุณารีเฟรชหน้า', code: 'ALREADY_CHECKIN' },
+        { status: 409 },
+      )
+    }
     return apiError(err)
   }
 }

@@ -366,8 +366,13 @@ export async function executeForgotScanStepAction(
     return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
   }
 
-  await prisma.forgotScanApprovalStep.update({
-    where: { id: currentStep.id },
+  const claim = await prisma.forgotScanApprovalStep.updateMany({
+    where: {
+      id: currentStep.id,
+      forgotScanId: requestId,
+      stepOrder: req.currentStepOrder,
+      status: 'PENDING',
+    },
     data: {
       status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
       actorId,
@@ -376,6 +381,9 @@ export async function executeForgotScanStepAction(
       actedAt: new Date(),
     },
   })
+  if (claim.count === 0) {
+    return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
 
   if (action === 'APPROVE') {
     if (currentStep.stepOrder === 1) {
