@@ -506,7 +506,7 @@ export default function PayrollClient({
                         {p.department} · {p.position}
                       </p>
                       {!p.hasPayroll && (
-                        <p className="text-[10px] text-amber-400 mt-0.5">ยังไม่คำนวณ — กดปุ่มคำนวณ</p>
+                        <p className="text-[12px] text-amber-400 mt-0.5">ยังไม่คำนวณ — กดปุ่มคำนวณ</p>
                       )}
                     </td>
                     <td className="p-3 text-right text-white/70">

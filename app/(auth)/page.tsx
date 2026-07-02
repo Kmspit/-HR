@@ -35,7 +35,7 @@ function WelcomeContent() {
         <h1 className="text-base font-extrabold tracking-tight text-white leading-snug">
           เค เอ็ม <span className="gradient-text">เซอร์วิส</span> พลัส
         </h1>
-        <p className="mt-0.5 text-[9px] text-slate-500">บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
+        <p className="mt-0.5 text-[11px] text-slate-500">บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
       </div>
 
       {/* Status banner */}
@@ -90,7 +90,7 @@ function WelcomeContent() {
           {/* Feature pills */}
           <div className="mt-5 flex flex-wrap gap-2 justify-center">
             {[['⏱️','เวลางาน'],['💰','เงินเดือน'],['📅','ลาหยุด'],['⚠️','ใบเตือน']].map(([icon,label]) => (
-              <div key={label} className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] text-slate-500"
+              <div key={label} className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] text-slate-500"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <span>{icon}</span>{label}
               </div>
@@ -100,7 +100,7 @@ function WelcomeContent() {
 
       </div>
 
-      <p className="relative mt-6 text-[10px] text-slate-700">© 2026 บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
+      <p className="relative mt-6 text-[12px] text-slate-700">© 2026 บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด</p>
     </div>
   )
 }

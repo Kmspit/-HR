@@ -735,7 +735,7 @@ export default function MonthlyAttendanceClient({
 
               <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
 
-              <div className="text-[10px] text-slate-500 uppercase">{s.label}</div>
+              <div className="text-[12px] text-slate-500 uppercase">{s.label}</div>
 
             </div>
 
@@ -851,13 +851,13 @@ export default function MonthlyAttendanceClient({
 
                       {r.employeeCode && (
 
-                        <span className="block text-[10px] text-slate-500">{r.employeeCode}</span>
+                        <span className="block text-[12px] text-slate-500">{r.employeeCode}</span>
 
                       )}
 
                       {r.userStatus === 'PENDING' && (
 
-                        <span className="text-[10px] text-amber-400">รออนุมัติ</span>
+                        <span className="text-[12px] text-amber-400">รออนุมัติ</span>
 
                       )}
 

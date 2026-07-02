@@ -46,10 +46,10 @@ function NotificationCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold border ${styles.badge}`}>
+            <span className={`inline-flex rounded-md px-2 py-0.5 text-[12px] font-bold border ${styles.badge}`}>
               {styles.label}
             </span>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+            <span className="text-[12px] font-semibold text-slate-400 uppercase tracking-wide">
               {TAB_LABELS[tab]}
             </span>
             {!item.isRead && <span className={`h-2 w-2 rounded-full ${styles.dot} ml-auto sm:ml-0`} />}
@@ -212,7 +212,7 @@ export default function NotificationCenterClient({
               <span>{TAB_ICONS[t]}</span>
               {TAB_LABELS[t]}
               {unread > 0 && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold min-w-[18px] text-center
+                <span className={`rounded-full px-1.5 py-0.5 text-[12px] font-bold min-w-[18px] text-center
                   ${active ? 'bg-white/25 text-white' : 'bg-red-500 text-white'}`}>
                   {unread > 99 ? '99+' : unread}
                 </span>

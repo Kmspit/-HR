@@ -236,7 +236,7 @@ function SidebarContent({
               <div className="text-[12px] font-extrabold tracking-tight text-[#1E3A5F] dark:text-white leading-tight">
                 เค เอ็ม <span className="gradient-text-blue">เซอร์วิส</span> พลัส
               </div>
-              <div className="text-[9px] text-slate-400 leading-tight">จำกัด</div>
+              <div className="text-[11px] text-slate-400 leading-tight">จำกัด</div>
             </div>
           )}
         </Link>
@@ -275,7 +275,7 @@ function SidebarContent({
                 <button
                   onClick={() => onToggleSection(section.title)}
                   className="flex w-full items-center justify-between mb-2 px-2.5 rounded transition-colors
-                    text-[9.5px] font-semibold uppercase tracking-[0.18em]
+                    text-[12px] font-semibold uppercase tracking-[0.18em]
                     text-slate-500 hover:text-slate-700
                     dark:text-slate-600 dark:hover:text-slate-400"
                 >
@@ -329,7 +329,7 @@ function SidebarContent({
                               <>
                                 <span className="flex-1 leading-none">{item.label}</span>
                                 {item.badge && (
-                                  <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                                  <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[12px] font-bold text-white">
                                     {item.badge}
                                   </span>
                                 )}

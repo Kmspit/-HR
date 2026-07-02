@@ -48,12 +48,12 @@ export function KanbanBoard({ tasks, onSelect }: KanbanProps) {
                 {(t.taskDepartment || t.caseNumber) && (
                   <div className="flex items-center gap-1.5 mb-1.5">
                     {t.taskDepartment && (
-                      <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 border ${DEPT_COLOR[t.taskDepartment] ?? 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600'}`}>
+                      <span className={`text-[12px] font-semibold rounded-full px-1.5 py-0.5 border ${DEPT_COLOR[t.taskDepartment] ?? 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600'}`}>
                         {DEPT_LABEL[t.taskDepartment] ?? t.taskDepartment}
                       </span>
                     )}
                     {t.caseNumber && (
-                      <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">{t.caseNumber}</span>
+                      <span className="text-[12px] font-mono text-slate-400 dark:text-slate-500">{t.caseNumber}</span>
                     )}
                   </div>
                 )}
@@ -62,12 +62,12 @@ export function KanbanBoard({ tasks, onSelect }: KanbanProps) {
                   {isOverdue(t) && <OverdueSeverityBadge task={t} />}
                   {t.isBlocked && <BlockedBadge />}
                   {t.dueDate && (
-                    <span className={`text-[10px] font-medium ${isOverdue(t) ? 'text-red-500 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                    <span className={`text-[12px] font-medium ${isOverdue(t) ? 'text-red-500 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'}`}>
                       {fmtDate(t.dueDate)}
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 truncate">{t.assignee.name}</p>
+                <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1.5 truncate">{t.assignee.name}</p>
               </button>
             ))}
           </div>
@@ -123,7 +123,7 @@ export function TaskRow({ task, showAssigner, onClick }: TaskRowProps) {
 
       <td className="px-4 py-3 max-w-[160px]">
         {task.caseNumber && (
-          <p className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 mb-0.5">{task.caseNumber}</p>
+          <p className="text-[12px] font-mono font-bold text-slate-400 dark:text-slate-500 mb-0.5">{task.caseNumber}</p>
         )}
         <p className="text-[13px] font-semibold text-slate-900 dark:text-white leading-snug truncate">{task.title}</p>
         {task.clientName && (
@@ -132,7 +132,7 @@ export function TaskRow({ task, showAssigner, onClick }: TaskRowProps) {
           </p>
         )}
         {(task._count?.attachments ?? task.attachments?.length ?? 0) > 0 && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 mt-0.5">
+          <span className="inline-flex items-center gap-0.5 text-[12px] text-slate-400 mt-0.5">
             <Paperclip className="w-2.5 h-2.5" />{task._count?.attachments ?? task.attachments?.length}
           </span>
         )}
@@ -165,14 +165,14 @@ export function TaskRow({ task, showAssigner, onClick }: TaskRowProps) {
         {overdue && <OverdueSeverityBadge task={task} />}
         {task.isBlocked && <BlockedBadge />}
         {(task.courtDate || task.appointmentDate) && (
-          <p className="text-[10px] text-amber-500 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
+          <p className="text-[12px] text-amber-500 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
             <Calendar className="w-2.5 h-2.5" />
             {fmtDate(task.courtDate ?? task.appointmentDate)}
           </p>
         )}
       </td>
 
-      <td className="px-3 py-3 text-slate-300 dark:text-slate-600 text-[10px]">›</td>
+      <td className="px-3 py-3 text-slate-300 dark:text-slate-600 text-[12px]">›</td>
     </tr>
   )
 }

@@ -68,7 +68,7 @@
   .table-scroll::after {
     content: 'เลื่อนซ้าย-ขวา →';
     display: block;
-    font-size: 10px;
+    font-size: 12px;
     text-align: center;
     padding: 6px 0 2px;
   }
@@ -86,6 +86,14 @@
     min-height: 56px;
   }
 
+  .mnav-item:not(.active) {
+    color: #64748b;
+  }
+
+  .dark .mnav-item:not(.active) {
+    color: #94a3b8;
+  }
+
   .warnings-table th,
   .warnings-table td {
     white-space: nowrap;
@@ -100,9 +108,13 @@
 }
 .warnings-table thead th,
 .hr-table thead th {
-  @apply px-4 py-3.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+  @apply px-4 py-3.5 font-semibold whitespace-nowrap
          bg-slate-50 text-slate-600
          dark:bg-slate-900/55 dark:text-slate-400;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
 }
 .warnings-table tbody tr:nth-child(even),
 .hr-table tbody tr:nth-child(even),

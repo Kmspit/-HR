@@ -324,7 +324,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
               <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-slate-200 dark:bg-white/[0.08]" />
               {[...c.timeline].reverse().map(entry => (
                 <div key={entry.id} className="relative mb-4">
-                  <div className="absolute -left-[15px] top-[3px] h-4 w-4 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center text-[10px]">
+                  <div className="absolute -left-[15px] top-[3px] h-4 w-4 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center text-[12px]">
                     {ACTION_ICON[entry.action] ?? ACTION_ICON.default}
                   </div>
                   <div className="rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] shadow-sm px-3 py-2.5">
@@ -605,7 +605,7 @@ function DebtorTab({ caseId, debtor, activities, canEdit, onRefresh }: {
           <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-slate-200 dark:bg-white/[0.08]" />
           {activities.map(act => (
             <div key={act.id} className="relative">
-              <div className="absolute -left-[15px] top-[3px] h-4 w-4 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center text-[9px]">
+              <div className="absolute -left-[15px] top-[3px] h-4 w-4 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center text-[11px]">
                 {(ACTIVITY_LABELS[act.activityType] ?? '').slice(0, 2)}
               </div>
               <div className="rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.07] px-3 py-2.5">

@@ -67,11 +67,11 @@ function BalanceCard({
       <div className="flex items-end justify-between gap-2">
         <div>
           <p className={`text-2xl font-extrabold leading-none ${colorClass}`}>{remaining}</p>
-          <p className="text-[10px] text-slate-600 mt-1">คงเหลือ</p>
+          <p className="text-[12px] text-slate-600 mt-1">คงเหลือ</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-slate-400">{used} / {total} วัน</p>
-          <p className="text-[10px] text-slate-600">ใช้แล้ว</p>
+          <p className="text-[12px] text-slate-600">ใช้แล้ว</p>
         </div>
       </div>
       <ProgressBar used={used} total={total} color={barColor} />
@@ -181,7 +181,7 @@ export default function LeavePanel({
       {/* Extra types used (ordination etc.) */}
       {(used.ORDINATION > 0 || used.FUNERAL > 0 || used.WEDDING > 0 || used.MATERNITY > 0) && (
         <div className="rounded-xl border border-white/5 bg-slate-900 px-4 py-3">
-          <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-2">วันลาประเภทอื่น (ปีนี้)</p>
+          <p className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider mb-2">วันลาประเภทอื่น (ปีนี้)</p>
           <div className="flex flex-wrap gap-3">
             {[
               { key: 'ORDINATION', label: '🙏 ลาบวช', val: used.ORDINATION },
@@ -263,10 +263,10 @@ export default function LeavePanel({
                     />
                     <span className="text-sm text-white flex-1">{t.label}</span>
                     {t.value === 'ORDINATION' && (
-                      <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-md font-semibold">อัตโนมัติ</span>
+                      <span className="text-[12px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-md font-semibold">อัตโนมัติ</span>
                     )}
                     {isDisabledVacation && (
-                      <span className="text-[10px] text-amber-400">ทดลองงาน</span>
+                      <span className="text-[12px] text-amber-400">ทดลองงาน</span>
                     )}
                   </label>
                 )
@@ -377,10 +377,10 @@ export default function LeavePanel({
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-white">{LEAVE_TYPE_LABELS[l.type] ?? l.type}</p>
                   {l.type === 'ORDINATION' && l.status === 'APPROVED' && (
-                    <span className="rounded-md bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-purple-300">อัตโนมัติ</span>
+                    <span className="rounded-md bg-purple-500/20 px-1.5 py-0.5 text-[12px] font-semibold text-purple-300">อัตโนมัติ</span>
                   )}
                 </div>
-                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[l.status] ?? 'text-slate-400 bg-slate-700'}`}>
+                <span className={`rounded-lg px-2 py-0.5 text-[12px] font-bold ${STATUS_COLORS[l.status] ?? 'text-slate-400 bg-slate-700'}`}>
                   {STATUS_LABELS[l.status] ?? l.status}
                 </span>
               </div>

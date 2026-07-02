@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -395,7 +395,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
                       <div className="text-right">
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${riskColor(d.riskLevel)}`}>{d.riskLevel}</span>
                         <p className="text-[11px] text-slate-500 mt-0.5">฿{fmtB(d.remainingDebt)}</p>
-                        <p className="text-[10px] text-red-400">{d.lastContactAt ? `ล่าสุด: ${fmtDate(d.lastContactAt)}` : 'ไม่เคยติดต่อ'}</p>
+                        <p className="text-[12px] text-red-400">{d.lastContactAt ? `ล่าสุด: ${fmtDate(d.lastContactAt)}` : 'ไม่เคยติดต่อ'}</p>
                       </div>
                     </div>
                   ))}
@@ -436,7 +436,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
                       </div>
                       <div className="text-right">
                         <p className="text-[13px] font-bold text-green-600">{r.runCount}</p>
-                        <p className="text-[10px] text-green-500">{r.runCount > 0 ? Math.round((r.successCount / r.runCount) * 100) : 0}% ok</p>
+                        <p className="text-[12px] text-green-500">{r.runCount > 0 ? Math.round((r.successCount / r.runCount) * 100) : 0}% ok</p>
                       </div>
                     </div>
                   ))}
@@ -456,7 +456,7 @@ export default function ExecutiveClient({ role, department }: { role: string; de
                         </div>
                         <div className="text-right">
                           <p className="text-[13px] font-bold text-red-600">{r.failCount} fails</p>
-                          <p className="text-[10px] text-slate-400">{r.runCount} total</p>
+                          <p className="text-[12px] text-slate-400">{r.runCount} total</p>
                         </div>
                       </div>
                     ))}
@@ -533,7 +533,7 @@ function RiskPanel({ risk }: { risk: RiskData }) {
                     <p className="text-[12px] font-medium text-slate-800 dark:text-white">{c.caseNumber} — {c.caseTitle}</p>
                     <p className="text-[11px] text-slate-500">{c.assignedEmployee?.name ?? 'ไม่ระบุ'}</p>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${riskColor(c.riskLevel)}`}>{c.riskLevel}</span>
+                  <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${riskColor(c.riskLevel)}`}>{c.riskLevel}</span>
                 </Link>
               ))}
             </div>
@@ -567,7 +567,7 @@ function RiskPanel({ risk }: { risk: RiskData }) {
                   </div>
                   <div className="text-right">
                     <p className="text-[13px] font-bold text-orange-600">฿{fmtB(d.remainingDebt)}</p>
-                    {d.lastContactAt && <p className="text-[10px] text-slate-400">ล่าสุด: {fmtDate(d.lastContactAt)}</p>}
+                    {d.lastContactAt && <p className="text-[12px] text-slate-400">ล่าสุด: {fmtDate(d.lastContactAt)}</p>}
                   </div>
                 </div>
               ))}
@@ -648,7 +648,7 @@ function LeaderboardCard({ title, subtitle, entries, metric, color }: {
               <span className={`text-[12px] font-bold w-5 ${i === 0 ? 'text-yellow-500' : 'text-slate-400'}`}>{i + 1}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-medium text-slate-800 dark:text-white truncate">{e.name}</p>
-                <p className="text-[10px] text-slate-400">{e.department ?? e.role}</p>
+                <p className="text-[12px] text-slate-400">{e.department ?? e.role}</p>
               </div>
               <span className={`text-[13px] font-bold ${colorMap[color] ?? 'text-slate-600'}`}>{metric(e)}</span>
             </div>

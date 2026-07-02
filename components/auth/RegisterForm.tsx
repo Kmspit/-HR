@@ -432,7 +432,7 @@ export default function RegisterForm() {
                 {[8, 12, 16].map((len, i) => (
                   <div key={i} className={`h-1 flex-1 rounded-full transition-all ${form.password.length >= len ? ['bg-red-500', 'bg-yellow-500', 'bg-green-500'][i] : 'bg-slate-700'}`} />
                 ))}
-                <span className="ml-1 text-[10px] text-slate-400">{form.password.length < 8 ? 'อ่อนแอ' : form.password.length < 12 ? 'ปานกลาง' : 'แข็งแกร่ง'}</span>
+                <span className="ml-1 text-[12px] text-slate-400">{form.password.length < 8 ? 'อ่อนแอ' : form.password.length < 12 ? 'ปานกลาง' : 'แข็งแกร่ง'}</span>
               </div>
             )}
           </div>

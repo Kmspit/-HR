@@ -122,7 +122,7 @@ export default function BillingClient({ userId, userRole }: { userId: string; us
                       <p className="text-sm font-medium truncate">{inv.clientName}</p>
                     </div>
                     <div className="text-right ml-2 flex-shrink-0">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full block mb-0.5 ${STATUS_COLORS[inv.status]}`}>{STATUS_TH[inv.status]}</span>
+                      <span className={`text-[12px] px-1.5 py-0.5 rounded-full block mb-0.5 ${STATUS_COLORS[inv.status]}`}>{STATUS_TH[inv.status]}</span>
                       <p className="text-xs font-semibold">฿{fmt(inv.totalAmount)}</p>
                     </div>
                   </Link>

@@ -112,7 +112,7 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
               {filteredSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             {departmentId && filteredSections.length === 0 && (
-              <p className="mt-1 text-[10px] text-slate-500">แผนกนี้ไม่มีส่วนงาน — บันทึกได้โดยไม่เลือก</p>
+              <p className="mt-1 text-[12px] text-slate-500">แผนกนี้ไม่มีส่วนงาน — บันทึกได้โดยไม่เลือก</p>
             )}
           </div>
         </div>

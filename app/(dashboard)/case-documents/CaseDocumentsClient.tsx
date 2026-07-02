@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -599,7 +599,7 @@ function DocCard({ doc, onPreview, onArchive, userId, role }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2 flex-wrap">
             <p className="text-white font-medium text-sm leading-tight truncate max-w-[200px] md:max-w-none">{doc.title}</p>
-            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border shrink-0 ${CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.OTHER}`}>
+            <span className={`px-2 py-0.5 rounded-lg text-[12px] font-medium border shrink-0 ${CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.OTHER}`}>
               {CATEGORIES[doc.category] ?? doc.category}
             </span>
           </div>
@@ -630,7 +630,7 @@ function DocCard({ doc, onPreview, onArchive, userId, role }: {
           {doc.tags && (
             <div className="flex flex-wrap gap-1 mt-2">
               {doc.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
-                <span key={tag} className="flex items-center gap-1 text-[10px] text-white/40 bg-white/5 px-2 py-0.5 rounded-lg">
+                <span key={tag} className="flex items-center gap-1 text-[12px] text-white/40 bg-white/5 px-2 py-0.5 rounded-lg">
                   <Tag className="w-2.5 h-2.5" /> {tag}
                 </span>
               ))}

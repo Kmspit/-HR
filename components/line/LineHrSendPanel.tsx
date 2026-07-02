@@ -221,7 +221,7 @@ export default function LineHrSendPanel({
           placeholder="พิมพ์ข้อความที่ HR ต้องการส่งเข้า LINE..."
           className="w-full rounded-xl dark:bg-white/5 light:bg-slate-50 border dark:border-white/10 light:border-slate-200 px-3 py-2.5 text-sm dark:text-white light:text-slate-900 resize-none"
         />
-        <p className="text-[10px] dark:text-slate-600 mt-1">{message.length}/5000</p>
+        <p className="text-[12px] dark:text-slate-600 mt-1">{message.length}/5000</p>
       </div>
 
       <button

@@ -44,7 +44,7 @@ export default async function OrgPendingPage() {
           >
             ดูโปรไฟล์ของฉัน
           </Link>
-          <p className="text-[10px] text-slate-600 flex items-center justify-center gap-1">
+          <p className="text-[12px] text-slate-600 flex items-center justify-center gap-1">
             <Building2 className="w-3 h-3" /> เค เอ็ม เซอร์วิสพลัส จำกัด
           </p>
         </div>

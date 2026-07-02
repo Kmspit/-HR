@@ -86,7 +86,7 @@ function PolicyRow({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {form.isDefault && (
-            <span className="rounded-md bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">Default</span>
+            <span className="rounded-md bg-green-500/20 px-2 py-0.5 text-[12px] font-semibold text-green-400">Default</span>
           )}
           <input
             value={form.name}
@@ -113,7 +113,7 @@ function PolicyRow({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
+          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
           <select
             value={form.role ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value || null }))}
@@ -123,15 +123,15 @@ function PolicyRow({
           </select>
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย (วัน/ปี)</label>
+          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย (วัน/ปี)</label>
           <input type="number" min="0" max="365" value={form.sickDays} onChange={(e) => setNum('sickDays', e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน (วัน/ปี)</label>
+          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน (วัน/ปี)</label>
           <input type="number" min="0" max="365" value={form.vacationDays} onChange={(e) => setNum('vacationDays', e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ (วัน/ปี)</label>
+          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ (วัน/ปี)</label>
           <input type="number" min="0" max="365" value={form.personalDays} onChange={(e) => setNum('personalDays', e.target.value)} className={inputCls} />
         </div>
       </div>
@@ -219,25 +219,25 @@ export default function LeavePolicyManager({ initialPolicies, defaults }: Props)
         <h3 className="text-sm font-semibold text-white">+ สร้าง Policy ใหม่</h3>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1">
-            <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ชื่อ Policy *</label>
+            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ชื่อ Policy *</label>
             <input value={newForm.name} onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="เช่น มาตรฐาน, ผู้จัดการ" />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
+            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
             <select value={newForm.role} onChange={(e) => setNewForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none">
               {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย</label>
+            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย</label>
             <input type="number" min="0" max="365" value={newForm.sickDays} onChange={(e) => setNewForm((f) => ({ ...f, sickDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน</label>
+            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน</label>
             <input type="number" min="0" max="365" value={newForm.vacationDays} onChange={(e) => setNewForm((f) => ({ ...f, vacationDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ</label>
+            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ</label>
             <input type="number" min="0" max="365" value={newForm.personalDays} onChange={(e) => setNewForm((f) => ({ ...f, personalDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
           </div>
           <div className="flex items-end">

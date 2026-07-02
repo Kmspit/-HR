@@ -73,7 +73,7 @@
   }
 
   body {
-    font-family: "LINE Seed Sans TH", var(--font-thai), var(--font-jakarta), -apple-system, sans-serif;
+    font-family: var(--font-thai), var(--font-jakarta), system-ui, sans-serif;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     background-attachment: fixed;
@@ -136,7 +136,7 @@
   }
 
   h1, h2, h3, h4 {
-    font-family: "LINE Seed Sans TH", var(--font-thai), sans-serif;
+    font-family: var(--font-thai), system-ui, sans-serif;
     font-weight: 700;
     color: hsl(var(--primary));
   }

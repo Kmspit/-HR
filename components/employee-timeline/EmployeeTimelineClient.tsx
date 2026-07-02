@@ -40,11 +40,11 @@ function TimelineRow({ event }: { event: TimelineEvent }) {
     <article className="rounded-xl border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-slate-900/70 p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`inline-flex rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${CATEGORY_BADGE[event.category]}`}>
+          <span className={`inline-flex rounded-lg px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide ${CATEGORY_BADGE[event.category]}`}>
             {CATEGORY_LABELS[event.category]}
           </span>
           {event.status && (
-            <span className={`inline-flex rounded-lg px-2 py-0.5 text-[10px] font-bold ${STATUS_TONE_CLASS[event.statusTone ?? 'neutral']}`}>
+            <span className={`inline-flex rounded-lg px-2 py-0.5 text-[12px] font-bold ${STATUS_TONE_CLASS[event.statusTone ?? 'neutral']}`}>
               {event.status}
             </span>
           )}
@@ -131,7 +131,7 @@ export default function EmployeeTimelineClient({ employee, events, counts }: Pro
           >
             <span>{FILTER_ICONS[f]}</span>
             {FILTER_LABELS[f]}
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold min-w-[18px] text-center
+            <span className={`rounded-full px-1.5 py-0.5 text-[12px] font-bold min-w-[18px] text-center
               ${filter === f ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-white/10 text-slate-500'}`}>
               {counts[f]}
             </span>
@@ -179,7 +179,7 @@ export default function EmployeeTimelineClient({ employee, events, counts }: Pro
                       <time dateTime={event.date} className="block text-[12px] font-bold text-slate-700 dark:text-slate-200">
                         {formatTimelineDate(event.date)}
                       </time>
-                      <span className="block text-[10px] text-slate-400 mt-0.5">
+                      <span className="block text-[12px] text-slate-400 mt-0.5">
                         {new Date(event.date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })}
                       </span>
                     </div>

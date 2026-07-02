@@ -58,7 +58,7 @@ export default function AttendanceTimeline({ checkIn, lunchOut, lunchIn, checkOu
                   {fmt(times[step.key])}
                 </p>
                 {step.key === 'checkOut' && autoCheckout && done && (
-                  <span className="inline-flex items-center mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium text-orange-300"
+                  <span className="inline-flex items-center mt-0.5 rounded-full px-2 py-0.5 text-[12px] font-medium text-orange-300"
                     style={{ background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.3)' }}>
                     ระบบปิดเวลาอัตโนมัติ
                   </span>

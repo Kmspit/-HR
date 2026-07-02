@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { RECOVERY_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
@@ -194,12 +194,12 @@ export default function RecoveryClient({ userId, userRole, userName }: {
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <p className="text-[14px] font-bold text-green-600">฿{fmt(p.amount)}</p>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>
+                      <span className={`text-[12px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>
                         {STATUS_LABELS[p.status]}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400">
+                  <div className="flex items-center justify-between mt-1.5 text-[12px] text-slate-400">
                     <span>{fmtD(p.paymentDate)}</span>
                     <span>ผู้รับ: {p.collector.name}</span>
                   </div>
@@ -335,7 +335,7 @@ function PaymentDetail({ payment, userId, userRole, canConfirm, uploading, onCon
           ['แผนก',          payment.collector.department ?? '—'],
         ].map(([label, val]) => (
           <div key={label} className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] p-3">
-            <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
+            <p className="text-[12px] text-slate-400 mb-0.5">{label}</p>
             <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200">{val}</p>
           </div>
         ))}
@@ -344,14 +344,14 @@ function PaymentDetail({ payment, userId, userRole, canConfirm, uploading, onCon
       {/* Case & Promise links */}
       {payment.case && (
         <div className="rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 p-3">
-          <p className="text-[10px] text-green-500 mb-0.5">เชื่อมกับคดี</p>
+          <p className="text-[12px] text-green-500 mb-0.5">เชื่อมกับคดี</p>
           <p className="text-[13px] font-medium text-green-700 dark:text-green-300">[{payment.case.caseNumber}] {payment.case.caseTitle}</p>
         </div>
       )}
 
       {payment.promise && (
         <div className="rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 p-3">
-          <p className="text-[10px] text-amber-500 mb-0.5">สัญญาชำระที่เชื่อมกัน</p>
+          <p className="text-[12px] text-amber-500 mb-0.5">สัญญาชำระที่เชื่อมกัน</p>
           <p className="text-[13px] font-medium text-amber-700 dark:text-amber-300">
             ฿{fmt(payment.promise.promisedAmount)} — ครบกำหนด {fmtD(payment.promise.promisedDate)}
           </p>
@@ -362,7 +362,7 @@ function PaymentDetail({ payment, userId, userRole, canConfirm, uploading, onCon
       {/* Note */}
       {payment.note && (
         <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] p-3">
-          <p className="text-[10px] text-slate-400 mb-1">หมายเหตุ</p>
+          <p className="text-[12px] text-slate-400 mb-1">หมายเหตุ</p>
           <p className="text-[13px] text-slate-700 dark:text-slate-300">{payment.note}</p>
         </div>
       )}
@@ -452,7 +452,7 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
           { label: 'ปฏิเสธ',     value: data.counts.rejected,   color: 'text-red-600' },
         ].map(c => (
           <div key={c.label} className="rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-white/[0.07] p-3 text-center">
-            <p className="text-[10px] text-slate-400 mb-1">{c.label}</p>
+            <p className="text-[12px] text-slate-400 mb-1">{c.label}</p>
             <p className={`text-xl font-bold ${c.color}`}>{c.value}</p>
           </div>
         ))}
@@ -474,7 +474,7 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate">{c.name}</p>
-                  <p className="text-[10px] text-slate-400">{c.department ?? '—'} · {c.count} รายการ</p>
+                  <p className="text-[12px] text-slate-400">{c.department ?? '—'} · {c.count} รายการ</p>
                 </div>
                 <p className="text-[13px] font-bold text-green-600 flex-shrink-0">฿{fmt(c.amount)}</p>
               </div>
@@ -494,11 +494,11 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
               <div key={d.debtorId} className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03]">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate">{d.firstName} {d.lastName}</p>
-                  <p className="text-[10px] text-slate-400 font-mono">{d.debtorNumber}</p>
+                  <p className="text-[12px] text-slate-400 font-mono">{d.debtorNumber}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-[13px] font-bold text-green-600">฿{fmt(d.paidThisMonth)}</p>
-                  <p className="text-[10px] text-red-400">คงเหลือ ฿{fmt(d.remainingDebt ?? 0)}</p>
+                  <p className="text-[12px] text-red-400">คงเหลือ ฿{fmt(d.remainingDebt ?? 0)}</p>
                 </div>
               </div>
             ))}
@@ -519,11 +519,11 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
               <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-red-100 dark:border-red-800/30 bg-red-50/50 dark:bg-red-900/10">
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 truncate">{p.debtorName}</p>
-                  <p className="text-[10px] text-slate-400 font-mono">{p.debtorNumber}</p>
+                  <p className="text-[12px] text-slate-400 font-mono">{p.debtorNumber}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-[13px] font-bold text-amber-600">฿{fmt(p.promisedAmount)}</p>
-                  <p className="text-[10px] text-red-500">เกินกำหนด {p.daysOverdue} วัน</p>
+                  <p className="text-[12px] text-red-500">เกินกำหนด {p.daysOverdue} วัน</p>
                 </div>
               </div>
             ))}
@@ -540,9 +540,9 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
           <div className="p-3 grid grid-cols-2 md:grid-cols-3 gap-2">
             {data.byType.map(t => (
               <div key={t.type} className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05]">
-                <p className="text-[10px] text-slate-400 truncate">{TYPE_LABELS[t.type] ?? t.type}</p>
+                <p className="text-[12px] text-slate-400 truncate">{TYPE_LABELS[t.type] ?? t.type}</p>
                 <p className="text-[13px] font-bold text-green-600 mt-0.5">฿{fmt(t.amount)}</p>
-                <p className="text-[10px] text-slate-400">{t.count} รายการ</p>
+                <p className="text-[12px] text-slate-400">{t.count} รายการ</p>
               </div>
             ))}
           </div>
@@ -571,14 +571,14 @@ function DashboardView({ data, onConfirm }: { data: DashboardData; onConfirm: (i
                 <tr key={p.id} className="border-b border-slate-50 dark:border-white/[0.03] hover:bg-slate-50 dark:hover:bg-white/[0.02]">
                   <td className="px-4 py-2">
                     <p className="font-medium text-slate-800 dark:text-slate-200">{p.debtor.firstName} {p.debtor.lastName}</p>
-                    <p className="text-[10px] text-slate-400 font-mono">{p.debtor.debtorNumber}</p>
+                    <p className="text-[12px] text-slate-400 font-mono">{p.debtor.debtorNumber}</p>
                   </td>
                   <td className="px-4 py-2 text-[12px] text-slate-600 dark:text-slate-400">{TYPE_LABELS[p.paymentType] ?? p.paymentType}</td>
                   <td className="px-4 py-2 text-right font-bold text-green-600">฿{fmt(p.amount)}</td>
                   <td className="px-4 py-2 text-[12px] text-slate-600 dark:text-slate-400">{p.collector.name}</td>
                   <td className="px-4 py-2 text-[11px] text-slate-400">{fmtD(p.paymentDate)}</td>
                   <td className="px-4 py-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>
+                    <span className={`text-[12px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>
                       {STATUS_LABELS[p.status]}
                     </span>
                   </td>

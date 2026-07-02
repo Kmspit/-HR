@@ -163,7 +163,7 @@ export default function CalendarClient({
           >
             <div className={`mx-auto mb-1.5 h-2 w-2 rounded-full ${s.dot}`} />
             <p className="text-xl font-extrabold dark:text-white light:text-slate-900">{s.value}</p>
-            <p className="text-[10px] dark:text-slate-500 light:text-slate-500 mt-0.5">{s.label}</p>
+            <p className="text-[12px] dark:text-slate-500 light:text-slate-500 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
@@ -183,7 +183,7 @@ export default function CalendarClient({
             <p className="font-semibold dark:text-white light:text-slate-900 text-[15px]">
               {MONTHS_TH[month]} {year + 543}
             </p>
-            <p className="text-[10px] dark:text-slate-500 light:text-slate-500 mt-0.5">
+            <p className="text-[12px] dark:text-slate-500 light:text-slate-500 mt-0.5">
               วันหยุดบริษัทแสดงสีเขียว — ทุกคนในสาขาเห็นเหมือนกัน
             </p>
           </div>
@@ -274,7 +274,7 @@ export default function CalendarClient({
                 {!holiday && attStyle && (
                   <span
                     className={cn(
-                      'hidden md:block mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold border',
+                      'hidden md:block mt-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold border',
                       attStyle.bg,
                     )}
                   >
@@ -347,7 +347,7 @@ export default function CalendarClient({
                   key={item.label}
                   className="rounded-xl dark:bg-white/[0.04] light:bg-slate-50 p-3 border dark:border-white/[0.06] light:border-slate-200"
                 >
-                  <p className="text-[10px] dark:text-slate-500">{item.label}</p>
+                  <p className="text-[12px] dark:text-slate-500">{item.label}</p>
                   <p className="text-[13px] font-semibold dark:text-white light:text-slate-800 mt-0.5">
                     {item.value}
                   </p>

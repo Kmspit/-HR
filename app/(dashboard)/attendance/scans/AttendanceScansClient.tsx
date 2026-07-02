@@ -123,7 +123,7 @@ function ScanPhoto({ scan }: { scan: ScanRow }) {
         </div>
       )}
       <span
-        className={`absolute left-2 top-2 rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur-sm ${style.badge}`}
+        className={`absolute left-2 top-2 rounded-md border px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wide backdrop-blur-sm ${style.badge}`}
       >
         {scan.scanTypeLabel}
       </span>
@@ -314,7 +314,7 @@ export default function AttendanceScansClient({
                         </p>
                       )}
                       {(s.confidenceScore != null || !s.matched) && (
-                        <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500">
+                        <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-2 text-[12px] text-slate-500">
                           {s.confidenceScore != null && (
                             <span>
                               ความมั่นใจ {(s.confidenceScore * 100).toFixed(0)}%

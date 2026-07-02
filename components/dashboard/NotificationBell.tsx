@@ -179,11 +179,11 @@ export default function NotificationBell({ initialCount }: Props) {
                             {n.title}
                           </p>
                           {n.message && (
-                            <p className="text-[10px] dark:text-slate-500 light:text-slate-400 line-clamp-1 mt-0.5">
+                            <p className="text-[12px] dark:text-slate-500 light:text-slate-400 line-clamp-1 mt-0.5">
                               {n.message}
                             </p>
                           )}
-                          <p className="text-[10px] dark:text-slate-600 light:text-slate-400 mt-0.5">
+                          <p className="text-[12px] dark:text-slate-600 light:text-slate-400 mt-0.5">
                             {formatThaiDateTime(n.createdAt)}
                           </p>
                         </div>

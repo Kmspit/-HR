@@ -314,7 +314,7 @@ export default function LineLinkCard({ onLinked }: Props) {
 
         )}
 
-        <p className="text-[10px] dark:text-slate-500 font-mono break-all">{status.lineUserId}</p>
+        <p className="text-[12px] dark:text-slate-500 font-mono break-all">{status.lineUserId}</p>
 
         <p className="text-[11px] dark:text-slate-400">
 
@@ -406,7 +406,7 @@ export default function LineLinkCard({ onLinked }: Props) {
 
           {expiresAt && (
 
-            <p className="text-[10px] text-center dark:text-slate-500">
+            <p className="text-[12px] text-center dark:text-slate-500">
 
               หมดอายุ {new Date(expiresAt).toLocaleTimeString('th-TH')}
 

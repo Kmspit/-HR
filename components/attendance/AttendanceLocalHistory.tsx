@@ -81,7 +81,7 @@ export default function AttendanceLocalHistory({
           <Smartphone className="w-5 h-5 text-indigo-400" />
           <div>
             <p className="text-sm font-bold text-white">บันทึกบนเครื่องมือถือ</p>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[12px] text-slate-400">
               เก็บในเครื่องนี้ · ส่ง LINE HR ผ่านเซิร์ฟเวอร์เมื่อสแกนสำเร็จ
             </p>
           </div>
@@ -94,7 +94,7 @@ export default function AttendanceLocalHistory({
               reload()
             }
           }}
-          className="text-[10px] text-slate-500 hover:text-red-400 flex items-center gap-1"
+          className="text-[12px] text-slate-500 hover:text-red-400 flex items-center gap-1"
         >
           <Trash2 className="w-3 h-3" />
           ล้างในเครื่อง
@@ -102,7 +102,7 @@ export default function AttendanceLocalHistory({
       </div>
 
       <div className="flex flex-wrap gap-2 items-end">
-        <label className="text-[10px] text-slate-400">
+        <label className="text-[12px] text-slate-400">
           เดือน
           <select
             className="input mt-0.5 block text-xs min-w-[120px]"
@@ -116,7 +116,7 @@ export default function AttendanceLocalHistory({
             ))}
           </select>
         </label>
-        <label className="text-[10px] text-slate-400">
+        <label className="text-[12px] text-slate-400">
           ปี
           <input
             type="number"
@@ -161,7 +161,7 @@ export default function AttendanceLocalHistory({
                     </div>
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <span
-                        className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded border ${eventBadgeClass(e.event)}`}
+                        className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded border ${eventBadgeClass(e.event)}`}
                       >
                         {e.eventLabel}
                       </span>
@@ -176,13 +176,13 @@ export default function AttendanceLocalHistory({
                         })}
                       </p>
                       {(e.workPlaceName || e.address) && (
-                        <p className="text-[10px] text-slate-500 line-clamp-1 flex items-center gap-0.5">
+                        <p className="text-[12px] text-slate-500 line-clamp-1 flex items-center gap-0.5">
                           <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
                           {e.workPlaceName ?? e.address}
                         </p>
                       )}
                       <p
-                        className={`text-[9px] flex items-center gap-0.5 ${
+                        className={`text-[11px] flex items-center gap-0.5 ${
                           e.lineSent ? 'text-green-400' : e.lineFailed > 0 ? 'text-amber-400' : 'text-slate-600'
                         }`}
                       >

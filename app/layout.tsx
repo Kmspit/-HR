@@ -11,8 +11,8 @@ import NavigationProgress from '@/components/NavigationProgress'
 import PWARegister from '@/components/PWARegister'
 
 const notoSansThai = Noto_Sans_Thai({
-  weight: ['300', '400', '500', '600', '700'],
   subsets: ['thai', 'latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
   variable: '--font-thai',
 })

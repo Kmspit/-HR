@@ -198,29 +198,29 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
               >
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <p className="text-sm font-semibold text-white">{day.label}</p>
-                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[10px] text-slate-500">ไม่บังคับ</span>
+                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[12px] text-slate-500">ไม่บังคับ</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                  <div><label className="block text-[10px] text-slate-500 mb-1">เวลา</label>
+                  <div><label className="block text-[12px] text-slate-500 mb-1">เวลา</label>
                     <div className="flex items-center gap-1"><input type="time" className={inputCls} value={d.startTime} onChange={(e) => setDay(day.id, 'startTime', e.target.value)} /><span className="text-slate-500 text-xs">—</span><input type="time" className={inputCls} value={d.endTime} onChange={(e) => setDay(day.id, 'endTime', e.target.value)} /></div>
                   </div>
-                  <div><label className="block text-[10px] text-slate-500 mb-1">สถานที่</label><input type="text" placeholder="สถานที่..." className={inputCls} value={d.place} onChange={(e) => setDay(day.id, 'place', e.target.value)} /></div>
-                  <div><label className="block text-[10px] text-slate-500 mb-1">วัตถุประสงค์</label><input type="text" placeholder="วัตถุประสงค์..." className={inputCls} value={d.purpose} onChange={(e) => setDay(day.id, 'purpose', e.target.value)} /></div>
-                  <div><label className="block text-[10px] text-slate-500 mb-1">ลูกค้า/หน่วยงาน</label><input type="text" placeholder="ชื่อลูกค้า..." className={inputCls} value={d.client} onChange={(e) => setDay(day.id, 'client', e.target.value)} /></div>
+                  <div><label className="block text-[12px] text-slate-500 mb-1">สถานที่</label><input type="text" placeholder="สถานที่..." className={inputCls} value={d.place} onChange={(e) => setDay(day.id, 'place', e.target.value)} /></div>
+                  <div><label className="block text-[12px] text-slate-500 mb-1">วัตถุประสงค์</label><input type="text" placeholder="วัตถุประสงค์..." className={inputCls} value={d.purpose} onChange={(e) => setDay(day.id, 'purpose', e.target.value)} /></div>
+                  <div><label className="block text-[12px] text-slate-500 mb-1">ลูกค้า/หน่วยงาน</label><input type="text" placeholder="ชื่อลูกค้า..." className={inputCls} value={d.client} onChange={(e) => setDay(day.id, 'client', e.target.value)} /></div>
                 </div>
 
                 {/* GPS capture */}
                 <div className="mt-2 flex items-center gap-2">
                   {hasGps ? (
                     <>
-                      <div className="flex items-center gap-1.5 rounded-lg bg-green-500/10 border border-green-500/20 px-2.5 py-1.5 text-[10px] text-green-400">
+                      <div className="flex items-center gap-1.5 rounded-lg bg-green-500/10 border border-green-500/20 px-2.5 py-1.5 text-[12px] text-green-400">
                         <MapPin className="w-3 h-3" />
                         <span className="font-mono">{d.lat!.toFixed(5)}, {d.lng!.toFixed(5)}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => clearGps(day.id)}
-                        className="text-[10px] text-slate-500 hover:text-red-400 px-2 py-1"
+                        className="text-[12px] text-slate-500 hover:text-red-400 px-2 py-1"
                       >
                         ลบ GPS
                       </button>
@@ -230,7 +230,7 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                       type="button"
                       disabled={isCapturing}
                       onClick={() => captureGps(day.id)}
-                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-800/60 px-2.5 py-1.5 text-[10px] text-slate-400 hover:text-white hover:border-white/20 transition disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-800/60 px-2.5 py-1.5 text-[12px] text-slate-400 hover:text-white hover:border-white/20 transition disabled:opacity-50"
                     >
                       {isCapturing
                         ? <><Loader2 className="w-3 h-3 animate-spin" /> กำลังอ่าน GPS...</>
@@ -274,9 +274,9 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="font-semibold text-white">{isLawyer ? '' : p.lawyer.name + ' · '}{formatThaiDate(p.weekStart)} — {formatThaiDate(p.weekEnd)}</p>
-                  {p.isLate && <span className="text-[10px] text-red-400">⚠️ ส่งช้า</span>}
+                  {p.isLate && <span className="text-[12px] text-red-400">⚠️ ส่งช้า</span>}
                 </div>
-                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[displayStatus] ?? ''}`}>{STATUS_LABELS[displayStatus] ?? displayStatus}</span>
+                <span className={`rounded-lg px-2 py-0.5 text-[12px] font-bold ${STATUS_COLORS[displayStatus] ?? ''}`}>{STATUS_LABELS[displayStatus] ?? displayStatus}</span>
               </div>
               {rejectionComment && (
                 <p className="mb-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">❌ {rejectionComment}</p>
@@ -292,7 +292,7 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                       <span className="font-semibold text-green-400 w-16 flex-shrink-0">{weeklyDayLabel(d.dayOfWeek)}</span>
                       <span className="text-slate-300 flex-1">{d.place} — {d.purpose}</span>
                       {d.lat != null && d.lng != null && (
-                        <span className="flex items-center gap-1 text-green-400 text-[10px] flex-shrink-0">
+                        <span className="flex items-center gap-1 text-green-400 text-[12px] flex-shrink-0">
                           <MapPin className="w-2.5 h-2.5" /> GPS
                         </span>
                       )}

@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: Props) {
         </div>
         <div>
           <p className="text-sm font-extrabold text-white leading-tight">เค เอ็ม <span className="gradient-text-blue">เซอร์วิส</span> พลัส</p>
-          <p className="text-[9px] text-slate-600">จำกัด</p>
+          <p className="text-[11px] text-slate-600">จำกัด</p>
         </div>
       </Link>
 

@@ -236,21 +236,21 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3 text-center">
               <p className="text-lg font-bold text-yellow-400">{report.lateSummary.employeesWithLate}</p>
-              <p className="text-[10px] text-slate-400">พนักงานมาสาย (หักได้)</p>
+              <p className="text-[12px] text-slate-400">พนักงานมาสาย (หักได้)</p>
             </div>
             <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 p-3 text-center">
               <p className="text-lg font-bold text-orange-400">{report.lateSummary.totalBillableLateMinutes}</p>
-              <p className="text-[10px] text-slate-400">นาทีหักมาสายรวม</p>
+              <p className="text-[12px] text-slate-400">นาทีหักมาสายรวม</p>
             </div>
             <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center">
               <p className="text-lg font-bold text-red-400">
                 ฿{report.lateSummary.totalEstimatedLateDeduction.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-[10px] text-slate-400">ประมาณหักมาสายรวม</p>
+              <p className="text-[12px] text-slate-400">ประมาณหักมาสายรวม</p>
             </div>
             <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white/5 p-3 text-center">
               <p className="text-lg font-bold text-slate-300">{report.lateSummary.totalRecordedLateMinutes}</p>
-              <p className="text-[10px] text-slate-400">นาทีสายที่บันทึก (หลัง grace)</p>
+              <p className="text-[12px] text-slate-400">นาทีสายที่บันทึก (หลัง grace)</p>
             </div>
           </div>
         )}
@@ -325,7 +325,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                       {emp.employeeId && (
 
-                        <p className="text-[10px] text-slate-500">{emp.employeeId}</p>
+                        <p className="text-[12px] text-slate-500">{emp.employeeId}</p>
 
                       )}
 
@@ -369,7 +369,7 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
                               key={l.label}
 
-                              className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-300"
+                              className="rounded bg-white/5 px-1.5 py-0.5 text-[12px] text-slate-300"
 
                             >
 

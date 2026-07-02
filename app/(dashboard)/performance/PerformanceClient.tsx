@@ -126,7 +126,7 @@ function SummaryCard({ label, value, icon, color, sub }: {
       </div>
       <p className="text-2xl font-bold text-slate-900 dark:text-white">{value.toLocaleString()}</p>
       <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{label}</p>
-      {sub && <p className="text-[10px] text-slate-400 dark:text-slate-600 mt-0.5">{sub}</p>}
+      {sub && <p className="text-[12px] text-slate-400 dark:text-slate-600 mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -210,7 +210,7 @@ export default function PerformanceClient({
                 ].map(({ label, val }) => (
                   <div key={label} className="text-center rounded-xl bg-slate-50 dark:bg-white/[0.03] p-2">
                     <p className="text-[16px] font-bold text-slate-900 dark:text-white">{val}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{label}</p>
+                    <p className="text-[12px] text-slate-400 mt-0.5">{label}</p>
                   </div>
                 ))}
               </div>
@@ -226,13 +226,13 @@ export default function PerformanceClient({
             ].map(({ label, value, pts, color }) => (
               <div key={label}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{label}</span>
-                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">{pts > 0 ? `+${pts}` : pts} คะแนน</span>
+                  <span className="text-[12px] text-slate-500 dark:text-slate-400">{label}</span>
+                  <span className="text-[12px] font-semibold text-slate-600 dark:text-slate-300">{pts > 0 ? `+${pts}` : pts} คะแนน</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                   <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${value}%` }} />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">{value}%</p>
+                <p className="text-[12px] text-slate-400 mt-0.5">{value}%</p>
               </div>
             ))}
           </div>
@@ -257,7 +257,7 @@ export default function PerformanceClient({
                   <div className="relative flex-shrink-0">
                     <KpiRing score={d.kpiScore} size={40} />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-[10px] font-bold ${kpiColor(d.kpiScore)}`}>{d.kpiScore}</span>
+                      <span className={`text-[12px] font-bold ${kpiColor(d.kpiScore)}`}>{d.kpiScore}</span>
                     </div>
                   </div>
                 </div>
@@ -269,7 +269,7 @@ export default function PerformanceClient({
                     { label: 'เกินกำหนด', val: d.overdue,          cls: d.overdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400' },
                   ].map(({ label, val, cls }) => (
                     <div key={label} className="flex justify-between">
-                      <span className="text-[10px] text-slate-400">{label}</span>
+                      <span className="text-[12px] text-slate-400">{label}</span>
                       <span className={`text-[11px] font-semibold ${cls}`}>{val}</span>
                     </div>
                   ))}
@@ -353,7 +353,7 @@ export default function PerformanceClient({
                     <td className="px-4 py-3 whitespace-nowrap">
                       <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
                         {emp.name}
-                        {emp.userId === userId && <span className="text-[10px] text-green-500 font-normal">(คุณ)</span>}
+                        {emp.userId === userId && <span className="text-[12px] text-green-500 font-normal">(คุณ)</span>}
                       </p>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-[12px] text-slate-500 dark:text-slate-400">
@@ -394,7 +394,7 @@ export default function PerformanceClient({
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                     {ev.caseNumber && (
-                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">{ev.caseNumber}</span>
+                      <span className="text-[12px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">{ev.caseNumber}</span>
                     )}
                     <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 truncate">{ev.title}</span>
                   </div>
@@ -431,7 +431,7 @@ export default function PerformanceClient({
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                     {ev.caseNumber && (
-                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">{ev.caseNumber}</span>
+                      <span className="text-[12px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">{ev.caseNumber}</span>
                     )}
                     <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 truncate">{ev.title}</span>
                   </div>

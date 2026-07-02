@@ -287,7 +287,7 @@ export default function HolidaysClient({
                 {['ชื่อวันหยุด', 'วันที่', 'ประเภท', 'สาขา', 'ซ้ำทุกปี', ''].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-[10px] font-semibold uppercase dark:text-slate-500 light:text-slate-500"
+                    className="px-4 py-3 text-left text-[12px] font-semibold uppercase dark:text-slate-500 light:text-slate-500"
                   >
                     {h}
                   </th>
@@ -312,7 +312,7 @@ export default function HolidaysClient({
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${TYPE_BADGE[h.holidayType]}`}
+                        className={`text-[12px] font-bold px-2 py-0.5 rounded-lg ${TYPE_BADGE[h.holidayType]}`}
                       >
                         {HOLIDAY_TYPE_LABELS[h.holidayType]}
                       </span>

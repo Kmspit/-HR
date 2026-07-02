@@ -135,7 +135,7 @@ export default function PWAInstallPrompt() {
                 <Share2 className="h-5 w-5" aria-hidden />
               </div>
               <div className="h-1 flex-1 mx-3 rounded-full bg-slate-200 dark:bg-slate-700" />
-              <div className="text-[10px] text-slate-400">Safari</div>
+              <div className="text-[12px] text-slate-400">Safari</div>
             </div>
             <p className="mt-2 text-center text-[11px] text-slate-500">
               ปุ่ม Share อยู่กลางแถบด้านล่าง (ไอคอนลูกศรชี้ขึ้น)

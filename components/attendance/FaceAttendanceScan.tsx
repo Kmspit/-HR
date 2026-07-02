@@ -363,7 +363,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
             )}
           </p>
           {retryCount > 0 && !cooldownUntil && (
-            <p className="text-center text-[10px] text-red-400">
+            <p className="text-center text-[12px] text-red-400">
               ลองใหม่ได้อีก {MAX_RETRIES - retryCount} ครั้ง
             </p>
           )}

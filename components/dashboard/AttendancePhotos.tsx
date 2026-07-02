@@ -47,7 +47,7 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
               <div className="p-2 bg-slate-50 dark:bg-white/5">
                 <p className="text-[11px] font-semibold text-slate-700 dark:text-white truncate">{item.label}</p>
                 {item.time && (
-                  <p className="text-[10px] text-slate-500 tabular-nums">
+                  <p className="text-[12px] text-slate-500 tabular-nums">
                     {new Date(item.time).toLocaleTimeString('th-TH', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -59,7 +59,7 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
             </button>
           ))}
         </div>
-        <p className="text-[10px] text-slate-500">แตะรูปเพื่อขยายดู</p>
+        <p className="text-[12px] text-slate-500">แตะรูปเพื่อขยายดู</p>
       </div>
 
       {lightbox && (

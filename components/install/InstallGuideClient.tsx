@@ -37,7 +37,7 @@ function IosAddHomeMock() {
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-100 to-slate-50 p-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-[220px] rounded-xl border border-slate-300 bg-white p-3 shadow-md dark:border-slate-600 dark:bg-slate-950">
-        <p className="mb-2 text-[10px] font-semibold text-slate-500">Share Sheet</p>
+        <p className="mb-2 text-[12px] font-semibold text-slate-500">Share Sheet</p>
         <div className="space-y-1.5">
           <div className="h-7 rounded-md bg-slate-100 dark:bg-slate-800" />
           <div className="flex items-center gap-2 rounded-lg bg-green-50 px-2 py-2 dark:bg-green-500/10">
@@ -58,12 +58,12 @@ function AndroidInstallMock() {
     <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-100 to-slate-50 p-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
       <div className="mx-auto max-w-[220px] rounded-xl border border-slate-300 bg-white p-3 shadow-md dark:border-slate-600 dark:bg-slate-950">
         <div className="mb-2 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500 text-[10px] font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500 text-[12px] font-bold text-white">
             KM
           </div>
           <div>
             <p className="text-[11px] font-semibold text-slate-900 dark:text-white">KM HR</p>
-            <p className="text-[9px] text-slate-500">hrflow-app</p>
+            <p className="text-[11px] text-slate-500">hrflow-app</p>
           </div>
         </div>
         <div className="rounded-lg bg-green-500 py-2 text-center text-[11px] font-medium text-white">

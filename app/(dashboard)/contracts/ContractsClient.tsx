@@ -106,7 +106,7 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
                     <tr key={c.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${expWarn ? 'bg-red-50 dark:bg-red-900/5' : expYell ? 'bg-yellow-50 dark:bg-yellow-900/5' : ''}`}>
                       <td className="py-3 px-4">
                         <span className="font-mono text-xs text-gray-600 dark:text-gray-400">{c.contractNumber}</span>
-                        {c.slaAgreement && <p className="text-[10px] text-green-500 mt-0.5">{c.slaAgreement}</p>}
+                        {c.slaAgreement && <p className="text-[12px] text-green-500 mt-0.5">{c.slaAgreement}</p>}
                       </td>
                       <td className="py-3 px-4">
                         <Link href={`/client-companies`} className="font-medium text-green-600 hover:underline">{c.clientCompany.companyName}</Link>
@@ -128,13 +128,13 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
                           {c.status === 'ACTIVE' && (
-                            <button onClick={() => updateStatus(c.id, 'EXPIRED')} className="text-[10px] px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 rounded">หมดอายุ</button>
+                            <button onClick={() => updateStatus(c.id, 'EXPIRED')} className="text-[12px] px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 rounded">หมดอายุ</button>
                           )}
                           {c.status === 'ACTIVE' && (
-                            <button onClick={() => updateStatus(c.id, 'TERMINATED')} className="text-[10px] px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">ยกเลิก</button>
+                            <button onClick={() => updateStatus(c.id, 'TERMINATED')} className="text-[12px] px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">ยกเลิก</button>
                           )}
                           {canDelete && (
-                            <button onClick={() => del(c.id)} className="text-[10px] px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-500 rounded">ลบ</button>
+                            <button onClick={() => del(c.id)} className="text-[12px] px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-500 rounded">ลบ</button>
                           )}
                         </div>
                       </td>

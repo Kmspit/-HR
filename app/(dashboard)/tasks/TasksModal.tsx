@@ -75,7 +75,7 @@ function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; 
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
           <CheckSquare className="w-3 h-3" />รายการตรวจสอบ
-          {items.length > 0 && <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 text-[10px] font-bold">{done}/{items.length}</span>}
+          {items.length > 0 && <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 text-[12px] font-bold">{done}/{items.length}</span>}
         </p>
       </div>
       {items.length > 0 && (
@@ -97,7 +97,7 @@ function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; 
                 </button>
                 <span className={`flex-1 text-[13px] ${item.isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>{item.title}</span>
                 {item.completedBy && (
-                  <span className="text-[10px] text-slate-400 truncate max-w-[80px]">{item.completedBy.name}</span>
+                  <span className="text-[12px] text-slate-400 truncate max-w-[80px]">{item.completedBy.name}</span>
                 )}
                 <button type="button" onClick={() => deleteItem(item.id)} disabled={loading === item.id}
                   className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
@@ -182,7 +182,7 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
     <div>
       <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
         <MessageSquare className="w-3 h-3" />ความคิดเห็น
-        {comments.length > 0 && <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 text-[10px] font-bold">{comments.length}</span>}
+        {comments.length > 0 && <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 text-[12px] font-bold">{comments.length}</span>}
       </p>
 
       {comments.length === 0 && (
@@ -196,7 +196,7 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{c.user.name}</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-slate-400">{fmtRelative(c.createdAt)}</span>
+                  <span className="text-[12px] text-slate-400">{fmtRelative(c.createdAt)}</span>
                   {c.user.id === currentUserId && (
                     <button type="button" disabled={deleting === c.id} onClick={() => deleteComment(c.id)}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
@@ -219,7 +219,7 @@ function CommentsSection({ taskId, initial, currentUserId }: { taskId: string; i
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{r.user.name}</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-slate-400">{fmtRelative(r.createdAt)}</span>
+                        <span className="text-[12px] text-slate-400">{fmtRelative(r.createdAt)}</span>
                         {r.user.id === currentUserId && (
                           <button type="button" disabled={deleting === r.id} onClick={() => deleteComment(r.id)}
                             className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
@@ -313,7 +313,7 @@ function TimelineSection({ taskId }: { taskId: string }) {
             <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
               <div className="flex items-center justify-between gap-2 mb-0.5">
                 <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{entry.user.name}</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">
+                <span className="text-[12px] text-slate-400 dark:text-slate-500 flex-shrink-0">
                   {new Date(entry.createdAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}
                 </span>
               </div>
@@ -553,7 +553,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
               <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                 <Paperclip className="w-3 h-3" />ไฟล์แนบ
                 {attachments.length > 0 && (
-                  <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 text-[10px] font-bold">{attachments.length}</span>
+                  <span className="rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 text-[12px] font-bold">{attachments.length}</span>
                 )}
               </p>
               {attachments.length > 0 && (
@@ -612,7 +612,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
               <div className="rounded-xl bg-green-50 dark:bg-green-500/[0.07] border border-green-100 dark:border-green-500/15 px-4 py-3">
                 <p className="text-[11px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-1">ผลงานที่ส่ง</p>
                 <p className="text-[13px] text-green-800 dark:text-green-300">{task.resultNote}</p>
-                {task.submittedAt && <p className="text-[10px] text-green-500 dark:text-green-400/60 mt-1">ส่งเมื่อ {fmtDate(task.submittedAt)}</p>}
+                {task.submittedAt && <p className="text-[12px] text-green-500 dark:text-green-400/60 mt-1">ส่งเมื่อ {fmtDate(task.submittedAt)}</p>}
               </div>
             )}
 
@@ -628,7 +628,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                       <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] px-3 py-2.5">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300">{n.userName}</span>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">{fmtDateTime(n.timestamp)}</span>
+                          <span className="text-[12px] text-slate-400 dark:text-slate-500 flex-shrink-0">{fmtDateTime(n.timestamp)}</span>
                         </div>
                         <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed">{n.note}</p>
                       </div>
@@ -913,11 +913,11 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                           <p className="font-semibold text-slate-800 dark:text-slate-200">{tpl.name}</p>
                           {tpl.description && <p className="text-slate-500 dark:text-slate-400 truncate text-[11px]">{tpl.description}</p>}
                           <div className="flex gap-1.5 mt-1 flex-wrap">
-                            {tpl.department && <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 border ${DEPT_COLOR[tpl.department] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>{DEPT_LABEL[tpl.department] ?? tpl.department}</span>}
-                            <span className="text-[10px] text-slate-400">{PRIORITY_LABEL[tpl.priority]}</span>
-                            {tpl.defaultSlaHours && <span className="text-[10px] text-slate-400">SLA {tpl.defaultSlaHours}h</span>}
+                            {tpl.department && <span className={`text-[12px] font-semibold rounded-full px-1.5 py-0.5 border ${DEPT_COLOR[tpl.department] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>{DEPT_LABEL[tpl.department] ?? tpl.department}</span>}
+                            <span className="text-[12px] text-slate-400">{PRIORITY_LABEL[tpl.priority]}</span>
+                            {tpl.defaultSlaHours && <span className="text-[12px] text-slate-400">SLA {tpl.defaultSlaHours}h</span>}
                             {tpl.defaultChecklist !== '[]' && (() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })() > 0 && (
-                              <span className="text-[10px] text-slate-400">✓ {(() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })()} รายการ</span>
+                              <span className="text-[12px] text-slate-400">✓ {(() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })()} รายการ</span>
                             )}
                           </div>
                         </button>

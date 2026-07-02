@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
@@ -234,7 +234,7 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
                       {detail.checkOut ? formatTimeBangkok(detail.checkOut) : '—'}
                     </span>
                     {detail.autoCheckout && detail.checkOut && (
-                      <span className="ml-2 text-[10px] text-orange-600 dark:text-orange-400/70">(ระบบปิดอัตโนมัติ)</span>
+                      <span className="ml-2 text-[12px] text-orange-600 dark:text-orange-400/70">(ระบบปิดอัตโนมัติ)</span>
                     )}
                   </InfoRow>
                 </Section>

@@ -202,7 +202,7 @@ export default function OrganizationClient({
             โหลดทุกสาขา
           </button>
         </div>
-        <p className="text-[10px] text-slate-600 leading-relaxed">
+        <p className="text-[12px] text-slate-600 leading-relaxed">
           ฝ่ายเร่งรัดหนี้สิน · ฝ่ายกฎหมาย · ฝ่ายสนับสนุน — พร้อมแผนกและส่วนงานตามโครงสร้างบริษัท (ไม่ลบรายการที่ HR สร้างเอง)
         </p>
       </div>
@@ -272,12 +272,12 @@ export default function OrganizationClient({
                 {String(row.name)}
               </p>
               {tab === 'departments' && (
-                <p className="text-[10px] text-slate-500">ฝ่าย: {String(row.divisionName ?? '—')}</p>
+                <p className="text-[12px] text-slate-500">ฝ่าย: {String(row.divisionName ?? '—')}</p>
               )}
               {tab === 'sections' && (
-                <p className="text-[10px] text-slate-500">{String(row.divisionName)} · {String(row.departmentName)}</p>
+                <p className="text-[12px] text-slate-500">{String(row.divisionName)} · {String(row.departmentName)}</p>
               )}
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[12px] text-slate-600">
                 พนักงาน {Number(row.userCount ?? 0)}
                 {tab === 'divisions' && ` · แผนก ${Number(row.departmentCount ?? 0)}`}
                 {tab === 'departments' && ` · ส่วนงาน ${Number(row.sectionCount ?? 0)}`}

@@ -74,7 +74,7 @@ export default function UserMenu({ user, showName = true }: Props) {
             <p className="max-w-[120px] truncate text-[12px] font-semibold leading-tight dark:text-slate-200 light:text-slate-800">
               {user.name}
             </p>
-            <p className="text-[10px] leading-tight dark:text-slate-500 light:text-slate-500">
+            <p className="text-[12px] leading-tight dark:text-slate-500 light:text-slate-500">
               {ROLE_ICONS[user.role]} {ROLE_LABELS[user.role]}
             </p>
           </div>
@@ -95,7 +95,7 @@ export default function UserMenu({ user, showName = true }: Props) {
           <div className="px-4 py-2.5 border-b dark:border-white/8 light:border-slate-100">
             <p className="text-[13px] font-semibold truncate dark:text-white light:text-slate-800">{user.name}</p>
             <p className="text-[11px] truncate dark:text-slate-400 light:text-slate-500 mt-0.5">{user.email}</p>
-            <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full
+            <span className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-medium px-2 py-0.5 rounded-full
               dark:bg-green-500/15 dark:text-green-400 light:bg-green-50 light:text-green-600">
               {ROLE_ICONS[user.role]} {ROLE_LABELS[user.role]}
             </span>

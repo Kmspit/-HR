@@ -58,8 +58,8 @@ export default function MobileNav({ role }: { role: Role }) {
               href={item.href}
               onClick={() => { if (!active) setPendingHref(item.href) }}
               className={cn(
-                'relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
-                active ? 'text-[#1E3A5F] dark:text-green-400' : 'text-slate-400 dark:text-slate-500',
+                'mnav-item relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
+                active && 'active text-[#1E3A5F] dark:text-green-400',
                 pending && 'opacity-70 pointer-events-none',
               )}
             >
@@ -89,7 +89,7 @@ export default function MobileNav({ role }: { role: Role }) {
                 )}
               </span>
 
-              <span className={cn('text-[10px] font-semibold leading-none tracking-tight')}>
+              <span className={cn('text-[12px] font-semibold leading-none tracking-tight')}>
                 {pending ? '...' : item.label}
               </span>
             </Link>
@@ -100,8 +100,7 @@ export default function MobileNav({ role }: { role: Role }) {
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('hrflow:open-sidebar'))}
           className={cn(
-            'relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
-            'text-slate-400 dark:text-slate-500',
+            'mnav-item relative flex flex-1 flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 transition-all duration-150 min-h-[58px] justify-center',
           )}
           aria-label="เมนูทั้งหมด"
         >
@@ -110,7 +109,7 @@ export default function MobileNav({ role }: { role: Role }) {
               <path strokeLinecap="round" strokeLinejoin="round" d={MENU_ICON} />
             </svg>
           </span>
-          <span className="text-[10px] font-semibold leading-none tracking-tight">เมนู</span>
+          <span className="text-[12px] font-semibold leading-none tracking-tight">เมนู</span>
         </button>
       </div>
     </nav>

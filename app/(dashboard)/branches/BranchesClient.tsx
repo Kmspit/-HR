@@ -220,7 +220,7 @@ export default function BranchesClient({ initial }: Props) {
                   href={`https://maps.google.com/?q=${parsedLat},${parsedLng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-green-400 hover:text-green-300"
+                  className="flex items-center gap-1 text-[12px] text-green-400 hover:text-green-300"
                 >
                   <ExternalLink className="w-3 h-3" />
                   เปิดใน Google Maps
@@ -228,7 +228,7 @@ export default function BranchesClient({ initial }: Props) {
               )}
             </div>
 
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[12px] text-slate-500">
               คลิกบนแผนที่เพื่อปักหมุดตำแหน่งสาขา — วงกลมสีน้ำเงินคือรัศมี geofence ที่พนักงานต้องอยู่ภายใน
             </p>
 
@@ -248,7 +248,7 @@ export default function BranchesClient({ initial }: Props) {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
               <div>
-                <label className="text-[10px] text-white/40 block mb-1">Latitude</label>
+                <label className="text-[12px] text-white/40 block mb-1">Latitude</label>
                 <input
                   type="number"
                   step="any"
@@ -259,7 +259,7 @@ export default function BranchesClient({ initial }: Props) {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-white/40 block mb-1">Longitude</label>
+                <label className="text-[12px] text-white/40 block mb-1">Longitude</label>
                 <input
                   type="number"
                   step="any"
@@ -270,7 +270,7 @@ export default function BranchesClient({ initial }: Props) {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-white/40 block mb-1">รัศมี (เมตร)</label>
+                <label className="text-[12px] text-white/40 block mb-1">รัศมี (เมตร)</label>
                 <input
                   type="number"
                   min={10}
@@ -284,7 +284,7 @@ export default function BranchesClient({ initial }: Props) {
             </div>
 
             {!hasCoords && (
-              <p className="text-[10px] text-amber-400/70">
+              <p className="text-[12px] text-amber-400/70">
                 ยังไม่มีพิกัด — คลิกบนแผนที่เพื่อตั้งค่า หรือกรอก Latitude/Longitude ด้วยตนเอง
               </p>
             )}
@@ -351,7 +351,7 @@ export default function BranchesClient({ initial }: Props) {
                 <td className="p-3 text-white">
                   {b.name}
                   {b.isDefault && (
-                    <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] text-amber-400">
+                    <span className="ml-2 inline-flex items-center gap-0.5 text-[12px] text-amber-400">
                       <Star className="w-3 h-3" /> หลัก
                     </span>
                   )}
@@ -363,13 +363,13 @@ export default function BranchesClient({ initial }: Props) {
                       href={`https://maps.google.com/?q=${b.lat},${b.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-col items-center gap-0.5 text-[10px] text-green-400 font-mono hover:text-green-300"
+                      className="inline-flex flex-col items-center gap-0.5 text-[12px] text-green-400 font-mono hover:text-green-300"
                     >
                       <span>{b.lat.toFixed(4)}, {b.lng.toFixed(4)}</span>
                       <span className="text-slate-500">{b.radiusMeters}m</span>
                     </a>
                   ) : (
-                    <span className="text-[10px] text-slate-600">ไม่ตั้งค่า</span>
+                    <span className="text-[12px] text-slate-600">ไม่ตั้งค่า</span>
                   )}
                 </td>
                 <td className="p-3 text-center">

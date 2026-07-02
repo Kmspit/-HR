@@ -333,7 +333,7 @@ export default function ApprovalCenterClient(props: Props) {
             className={`flex flex-1 min-w-[120px] items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${tab === id ? 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
             <Icon size={16} /> {TAB_LABELS[id]}
             {tabCounts[id] > 0 && (
-              <span className={`rounded-full px-1.5 text-[10px] font-bold ${tab === id ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+              <span className={`rounded-full px-1.5 text-[12px] font-bold ${tab === id ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                 {tabCounts[id]}
               </span>
             )}

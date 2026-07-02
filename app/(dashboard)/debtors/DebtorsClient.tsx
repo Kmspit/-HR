@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { DEBTOR_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
@@ -226,17 +226,17 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
                   }`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{d.debtorNumber}</p>
+                      <p className="text-[12px] text-slate-400 dark:text-slate-500 font-mono">{d.debtorNumber}</p>
                       <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 truncate">{d.firstName} {d.lastName}</p>
                       {d.phone && <p className="text-[11px] text-slate-500 dark:text-slate-400">{d.phone}</p>}
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${STATUS_COLORS[d.status]}`}>{STATUS_LABELS[d.status]}</span>
+                    <span className={`text-[12px] px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${STATUS_COLORS[d.status]}`}>{STATUS_LABELS[d.status]}</span>
                   </div>
                   <div className="mt-1.5 flex justify-between text-[11px]">
                     <span className="text-slate-400 dark:text-slate-500">คงเหลือ</span>
                     <span className={`font-bold ${d.remainingDebt > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>฿{fmt(d.remainingDebt)}</span>
                   </div>
-                  {d.assignedTo && <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">ผู้รับผิดชอบ: {d.assignedTo.name}</p>}
+                  {d.assignedTo && <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-0.5">ผู้รับผิดชอบ: {d.assignedTo.name}</p>}
                 </button>
               ))}
             </div>
@@ -383,7 +383,7 @@ function DashboardView({ summary }: { summary: Summary | null }) {
                 <tr key={d.id} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
                   <td className="py-1.5 font-mono text-xs text-gray-500">{d.debtorNumber}</td>
                   <td className="py-1.5 font-medium">{d.firstName} {d.lastName}</td>
-                  <td className="py-1.5"><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${STATUS_COLORS[d.status ?? '']}`}>{STATUS_LABELS[d.status ?? ''] ?? d.status}</span></td>
+                  <td className="py-1.5"><span className={`text-[12px] px-1.5 py-0.5 rounded-full ${STATUS_COLORS[d.status ?? '']}`}>{STATUS_LABELS[d.status ?? ''] ?? d.status}</span></td>
                   <td className="py-1.5 text-right">฿{(d.totalDebt ?? 0).toLocaleString('th-TH')}</td>
                   <td className="py-1.5 text-right text-red-600 font-semibold">฿{(d.remainingDebt ?? 0).toLocaleString('th-TH')}</td>
                   <td className="py-1.5 text-xs text-gray-500">{(d as Debtor).assignedTo?.name ?? '—'}</td>
@@ -426,8 +426,8 @@ function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employ
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-[10px] text-slate-400 font-mono">{debtor.debtorNumber}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${RISK_COLORS[debtor.riskLevel ?? 'MEDIUM']}`}>
+              <p className="text-[12px] text-slate-400 font-mono">{debtor.debtorNumber}</p>
+              <span className={`text-[12px] px-2 py-0.5 rounded-full font-medium ${RISK_COLORS[debtor.riskLevel ?? 'MEDIUM']}`}>
                 ความเสี่ยง: {RISK_LABELS[debtor.riskLevel ?? 'MEDIUM']}
               </span>
             </div>
@@ -448,15 +448,15 @@ function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employ
         {/* Debt progress */}
         <div className="mt-3 grid grid-cols-3 gap-3">
           <div className="text-center">
-            <p className="text-[10px] text-slate-400">ยอดหนี้รวม</p>
+            <p className="text-[12px] text-slate-400">ยอดหนี้รวม</p>
             <p className="text-[13px] font-bold text-slate-800 dark:text-slate-200">฿{fmt(debtor.totalDebt)}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] text-slate-400">ชำระแล้ว</p>
+            <p className="text-[12px] text-slate-400">ชำระแล้ว</p>
             <p className="text-[13px] font-bold text-green-600">฿{fmt(debtor.paidAmount)}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] text-slate-400">คงเหลือ</p>
+            <p className="text-[12px] text-slate-400">คงเหลือ</p>
             <p className={`text-[13px] font-bold ${debtor.remainingDebt > 0 ? 'text-red-600' : 'text-green-600'}`}>฿{fmt(debtor.remainingDebt)}</p>
           </div>
         </div>
@@ -470,7 +470,7 @@ function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employ
             }}
           />
         </div>
-        <p className="text-right text-[10px] text-slate-400 mt-0.5">{progress.toFixed(0)}% ชำระแล้ว</p>
+        <p className="text-right text-[12px] text-slate-400 mt-0.5">{progress.toFixed(0)}% ชำระแล้ว</p>
       </div>
 
       {/* Tabs */}
@@ -701,15 +701,15 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
             <div key={c.id} className="rounded-xl border border-slate-200 dark:border-white/[0.07] p-3 bg-white dark:bg-white/[0.02]">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 rounded-full font-medium">
+                  <span className="text-[12px] px-2 py-0.5 bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-400 rounded-full font-medium">
                     {CHANNEL_LABELS[c.channel] ?? c.channel}
                   </span>
-                  <span className="text-[10px] text-slate-400">{c.direction === 'OUTBOUND' ? '↗ โทรออก' : '↙ โทรเข้า'}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${RESULT_COLORS[c.result] ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className="text-[12px] text-slate-400">{c.direction === 'OUTBOUND' ? '↗ โทรออก' : '↙ โทรเข้า'}</span>
+                  <span className={`text-[12px] px-2 py-0.5 rounded-full font-medium ${RESULT_COLORS[c.result] ?? 'bg-gray-100 text-gray-600'}`}>
                     {RESULT_LABELS[c.result] ?? c.result}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[12px] text-slate-400">
                   {new Date(c.createdAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
                 </span>
               </div>
@@ -722,7 +722,7 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
               {c.nextContactAt && (
                 <p className="text-[11px] text-green-600 dark:text-green-400 mt-0.5">📅 ติดตามครั้งถัดไป: {fmtDate(c.nextContactAt)}</p>
               )}
-              <p className="text-[10px] text-slate-400 mt-1">โดย: {c.performedBy.name}</p>
+              <p className="text-[12px] text-slate-400 mt-1">โดย: {c.performedBy.name}</p>
             </div>
           ))}
         </div>
@@ -821,18 +821,18 @@ function PromisesTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
                   <p className="text-[13px] font-bold text-amber-600">฿{fmt(p.promisedAmount)}</p>
                   <p className="text-[11px] text-slate-500">ครบกำหนด: {fmtDate(p.promisedDate)}</p>
                   {p.note && <p className="text-[11px] text-slate-400 mt-0.5">{p.note}</p>}
-                  <p className="text-[10px] text-slate-400 mt-0.5">สร้างโดย: {p.createdBy.name}</p>
+                  <p className="text-[12px] text-slate-400 mt-0.5">สร้างโดย: {p.createdBy.name}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${PROMISE_STATUS_COLORS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`text-[12px] px-2 py-0.5 rounded-full font-medium ${PROMISE_STATUS_COLORS[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {PROMISE_STATUS_LABELS[p.status] ?? p.status}
                   </span>
                   {p.status === 'PENDING' && (
                     <div className="flex gap-1">
                       <button onClick={() => updateStatus(p.id, 'KEPT')}
-                        className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200">ชำระแล้ว</button>
+                        className="text-[12px] px-2 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200">ชำระแล้ว</button>
                       <button onClick={() => updateStatus(p.id, 'BROKEN')}
-                        className="text-[10px] px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200">ผิดสัญญา</button>
+                        className="text-[12px] px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200">ผิดสัญญา</button>
                     </div>
                   )}
                 </div>
@@ -1084,11 +1084,11 @@ function ApptTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: string
               {a.note && <p className="text-xs text-gray-400">{a.note}</p>}
             </div>
             <div className="flex flex-col items-end gap-1">
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${APPT_COLORS[a.status]}`}>{APPT_LABELS[a.status]}</span>
+              <span className={`text-[12px] px-2 py-0.5 rounded-full ${APPT_COLORS[a.status]}`}>{APPT_LABELS[a.status]}</span>
               {a.status === 'PENDING' && (
                 <div className="flex gap-1 mt-1">
-                  <button onClick={() => updateApptStatus(a.id, 'KEPT')} className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200">ชำระแล้ว</button>
-                  <button onClick={() => updateApptStatus(a.id, 'MISSED')} className="text-[10px] px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200">ผิดนัด</button>
+                  <button onClick={() => updateApptStatus(a.id, 'KEPT')} className="text-[12px] px-2 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200">ชำระแล้ว</button>
+                  <button onClick={() => updateApptStatus(a.id, 'MISSED')} className="text-[12px] px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200">ผิดนัด</button>
                 </div>
               )}
             </div>

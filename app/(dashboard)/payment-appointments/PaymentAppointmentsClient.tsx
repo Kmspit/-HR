@@ -136,7 +136,7 @@ export default function PaymentAppointmentsClient({ userId, userRole }: { userId
                   {overdue && <p className="text-xs text-red-600 font-medium mb-1">⚠️ เลยกำหนดแล้ว</p>}
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="text-sm font-bold text-gray-900 dark:text-white">{fmtDT(appt.appointDate)}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[appt.status]}`}>{STATUS_LABELS[appt.status]}</span>
+                    <span className={`text-[12px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[appt.status]}`}>{STATUS_LABELS[appt.status]}</span>
                   </div>
                   <p className="text-sm font-semibold text-green-600">฿{fmt(appt.agreedAmount)}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">

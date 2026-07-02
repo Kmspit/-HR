@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -617,15 +617,15 @@ export default function AnnouncementsClient({
                         <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">{ann.body}</p>
                       )}
                       <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{formatDate(ann.publishAt)}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-gradient-to-r ${cfg.bg} text-white/90`}>{cfg.label}</span>
+                        <span className="text-[12px] text-slate-400 dark:text-slate-500">{formatDate(ann.publishAt)}</span>
+                        <span className={`text-[12px] px-1.5 py-0.5 rounded-full bg-gradient-to-r ${cfg.bg} text-white/90`}>{cfg.label}</span>
                         {hasAttachment && (
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-0.5">
+                          <span className="text-[12px] text-slate-400 dark:text-slate-500 flex items-center gap-0.5">
                             <Paperclip size={9} /> ไฟล์แนบ
                           </span>
                         )}
                         {isHR && (
-                          <span className="text-[10px] text-slate-400 dark:text-slate-600 flex items-center gap-0.5">
+                          <span className="text-[12px] text-slate-400 dark:text-slate-600 flex items-center gap-0.5">
                             <Users size={9} /> {ann.readCount} คนอ่านแล้ว
                           </span>
                         )}
@@ -754,7 +754,7 @@ export default function AnnouncementsClient({
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-medium text-slate-800 dark:text-white leading-snug">{ann.title}</p>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{ann.body}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-600 mt-0.5">{formatDate(ann.publishAt)}</p>
+                          <p className="text-[12px] text-slate-400 dark:text-slate-600 mt-0.5">{formatDate(ann.publishAt)}</p>
                         </div>
                         {isHR && (
                           <button onClick={() => { toggleArchive(ann.id, false); setArchive((p) => p.filter((a) => a.id !== ann.id)) }}

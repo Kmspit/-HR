@@ -368,7 +368,7 @@ export function DeptBadge({ dept }: { dept: string | null }) {
   if (!dept) return null
   const cls = DEPT_COLOR[dept] ?? 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20'
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-semibold border ${cls}`}>
       <Building2 className="w-2.5 h-2.5" />
       {DEPT_LABEL[dept] ?? dept}
     </span>
@@ -381,7 +381,7 @@ export function OverdueSeverityBadge({ task }: { task: Task }) {
   const info = getOverdueInfo(task.dueDate, task.status)
   if (!info.isOverdue) return null
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${getSeverityBadgeClass(info.severity)}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold ${getSeverityBadgeClass(info.severity)}`}>
       <AlertCircle className="w-2.5 h-2.5" />{info.label}
     </span>
   )
@@ -391,7 +391,7 @@ export function OverdueSeverityBadge({ task }: { task: Task }) {
 
 export function BlockedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
       🔒 รอ
     </span>
   )
@@ -412,7 +412,7 @@ export function AttachmentItem({
       <div className="flex-shrink-0">{fileIcon(att.fileType)}</div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium text-slate-800 dark:text-slate-200 truncate">{att.fileName}</p>
-        <p className="text-[10px] text-slate-400 dark:text-slate-500">
+        <p className="text-[12px] text-slate-400 dark:text-slate-500">
           {fmtFileSize(att.fileSize)}{att.fileSize ? ' · ' : ''}{att.uploadedBy.name} · {fmtDate(att.createdAt)}
         </p>
       </div>

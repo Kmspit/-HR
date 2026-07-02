@@ -71,7 +71,7 @@ export default function ApprovalTimeline({ steps, currentStepOrder, leaveStatus,
                     <span className="text-sm font-semibold text-white leading-tight">
                       {idx + 1}. {step.stepName}
                     </span>
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[12px] font-medium ${
                       step.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
                       step.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
                       step.status === 'SKIPPED'  ? 'bg-slate-500/20 text-slate-400' :

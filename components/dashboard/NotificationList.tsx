@@ -130,7 +130,7 @@ export default function NotificationList({ notifications: initial }: { notificat
               <span className="text-base leading-none">{emoji}</span>
               {label}
               {cnt > 0 && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                <span className={`rounded-full px-1.5 py-0.5 text-[12px] font-bold ${
                   filter === id ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-300'
                 }`}>{cnt}</span>
               )}
@@ -183,7 +183,7 @@ export default function NotificationList({ notifications: initial }: { notificat
                       <p className="mt-0.5 text-[12px] text-slate-400 line-clamp-2 leading-relaxed">{n.message}</p>
                     )}
                     <div className="mt-1.5 flex items-center gap-3">
-                      <span className="text-[10px] text-slate-500">{formatThaiDateTime(n.createdAt)}</span>
+                      <span className="text-[12px] text-slate-500">{formatThaiDateTime(n.createdAt)}</span>
                       {n.link && (
                         <Link href={resolveLink(n.type as NotificationType, n.link)} className="text-[11px] font-semibold text-green-400 hover:text-green-300 transition-colors" onClick={(e) => e.stopPropagation()}>
                           ดูรายละเอียด →

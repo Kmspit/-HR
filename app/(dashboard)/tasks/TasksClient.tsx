@@ -178,7 +178,7 @@ export default function TasksClient({
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
               {t.label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t.id ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+              <span className={`rounded-full px-1.5 py-0.5 text-[12px] font-bold ${tab === t.id ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                 {t.count}
               </span>
             </button>
@@ -194,7 +194,7 @@ export default function TasksClient({
             <SlidersHorizontal size={14} />
             ตัวกรองฝ่าย
             {deptFilter !== 'all' && (
-              <span className="rounded-full bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5">{DEPT_LABEL[deptFilter] ?? deptFilter}</span>
+              <span className="rounded-full bg-green-500 text-white text-[12px] font-bold px-1.5 py-0.5">{DEPT_LABEL[deptFilter] ?? deptFilter}</span>
             )}
           </span>
           <ChevronDown size={14} className={`transition-transform ${showDeptFilter ? 'rotate-180' : ''}`} />

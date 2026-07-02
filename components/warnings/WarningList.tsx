@@ -156,7 +156,7 @@ export default function WarningList({ initialWarnings, canApprove, isEmployee }:
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLE[w.status] ?? STATUS_STYLE.DRAFT}`}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${STATUS_STYLE[w.status] ?? STATUS_STYLE.DRAFT}`}
               >
                 {STATUS_ICON[w.status]}
                 {STATUS_LABEL[w.status] ?? w.status}
@@ -167,13 +167,13 @@ export default function WarningList({ initialWarnings, canApprove, isEmployee }:
               </span>
 
               {w.isAuto && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] text-purple-300">
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-[12px] text-purple-300">
                   <Bot className="w-3 h-3" /> อัตโนมัติ
                 </span>
               )}
 
               {w.lateCount != null && (
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[12px] text-slate-400">
                   (สาย {w.lateCount} ครั้ง เดือน {w.month}/{w.year})
                 </span>
               )}

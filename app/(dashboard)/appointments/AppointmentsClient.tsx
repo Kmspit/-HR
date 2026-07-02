@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 
@@ -219,7 +219,7 @@ export default function AppointmentsClient({
             </div>
             <div className="grid grid-cols-7 mb-1">
               {THAI_DAYS_SHORT.map((d) => (
-                <div key={d} className={`text-center text-[10px] font-medium ${d === 'อา' ? 'text-red-500' : d === 'ส' ? 'text-green-500' : 'text-gray-400'}`}>{d}</div>
+                <div key={d} className={`text-center text-[12px] font-medium ${d === 'อา' ? 'text-red-500' : d === 'ส' ? 'text-green-500' : 'text-gray-400'}`}>{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-px">
@@ -267,8 +267,8 @@ export default function AppointmentsClient({
                   <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: ev.color }} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{ev.title}</p>
-                    <p className="text-[10px] text-gray-500">{fmtDate(ev.startAt)} {fmtTime(ev.startAt)}</p>
-                    {ev.assigneeName && <p className="text-[10px] text-gray-400">{ev.assigneeName}</p>}
+                    <p className="text-[12px] text-gray-500">{fmtDate(ev.startAt)} {fmtTime(ev.startAt)}</p>
+                    {ev.assigneeName && <p className="text-[12px] text-gray-400">{ev.assigneeName}</p>}
                   </div>
                 </div>
               </button>

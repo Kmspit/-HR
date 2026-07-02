@@ -159,7 +159,7 @@ export function TasksFilter({
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/[0.06]'
               }`}>
             {t.label}
-            <span className={`rounded-full text-[10px] font-bold px-1.5 min-w-[18px] text-center
+            <span className={`rounded-full text-[12px] font-bold px-1.5 min-w-[18px] text-center
               ${tab === t.id ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-white/[0.08] text-slate-500 dark:text-slate-400'}`}>
               {t.count}
             </span>

@@ -286,7 +286,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
               </p>
 
               {!saving && !allShotsDone && (
-                <p className="text-[10px] text-center dark:text-slate-500">
+                <p className="text-[12px] text-center dark:text-slate-500">
                   ไม่ต้องกดปุ่ม — มองตรงกล้อง ระบบจับให้เอง
                 </p>
               )}

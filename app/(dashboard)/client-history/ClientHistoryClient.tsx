@@ -109,7 +109,7 @@ export default function ClientHistoryClient({ userId, userRole }: { userId: stri
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.companyName}</p>
                     {c.contactName && <p className="text-xs text-gray-500">{c.contactName}</p>}
                   </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-1 ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span>
+                  <span className={`text-[12px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-1 ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span>
                 </div>
                 <div className="mt-1 text-xs text-gray-400">
                   {c._count?.tasks ?? 0} คดี · {c._count?.contracts ?? 0} สัญญา · {c._count?.slaRecords ?? 0} SLA
@@ -246,7 +246,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                         <p className="truncate text-gray-800 dark:text-gray-200">{t.title}</p>
                         {t.caseNumber && <p className="text-xs text-gray-400 font-mono">{t.caseNumber}</p>}
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-green-100 text-green-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
+                      <span className={`text-[12px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-green-100 text-green-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
                     </div>
                   ))}
                 </div>
@@ -268,7 +268,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                     <p className="text-xs text-gray-500 mt-0.5">ผู้รับผิดชอบ: {t.assignee.name}{t.assignee.department ? ` · ${t.assignee.department}` : ''}</p>
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : t.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
+                    <span className={`text-[12px] px-1.5 py-0.5 rounded-full ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : t.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{TASK_STATUS_TH[t.status] ?? t.status}</span>
                     <p className="text-xs text-gray-400 mt-1">{fmtDate(t.updatedAt)}</p>
                   </div>
                 </div>
@@ -298,7 +298,7 @@ function HistoryDetail({ company, activeTab, setActiveTab }: {
                       <p className="text-xs text-gray-500">{fmtDate(c.startDate)} — {fmtDate(c.endDate)}</p>
                     </div>
                     <div className="text-right">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${CONTRACT_STATUS_COLORS[c.status]}`}>{CONTRACT_STATUS_LABELS[c.status]}</span>
+                      <span className={`text-[12px] px-1.5 py-0.5 rounded-full ${CONTRACT_STATUS_COLORS[c.status]}`}>{CONTRACT_STATUS_LABELS[c.status]}</span>
                       <p className="text-sm font-semibold text-green-600 mt-1">฿{fmt(c.value)}</p>
                     </div>
                   </div>

@@ -90,7 +90,7 @@ export default function FaceStepGuide({ steps, currentIndex, className }: Props)
                       {s.body}
                     </p>
                     {s.tip && (
-                      <p className="text-[10px] mt-1.5 rounded-lg px-2 py-1 dark:bg-amber-500/10 dark:text-amber-200/90 light:bg-amber-50 light:text-amber-800">
+                      <p className="text-[12px] mt-1.5 rounded-lg px-2 py-1 dark:bg-amber-500/10 dark:text-amber-200/90 light:bg-amber-50 light:text-amber-800">
                         💡 {s.tip}
                       </p>
                     )}

@@ -96,7 +96,7 @@ function StepRow({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] font-semibold text-slate-500 uppercase">Role ที่อนุมัติ</label>
+            <label className="text-[12px] font-semibold text-slate-500 uppercase">Role ที่อนุมัติ</label>
             <select
               className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-green-500/50"
               value={step.approverRole}
@@ -109,7 +109,7 @@ function StepRow({
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-semibold text-slate-500 uppercase">หรือระบุคน</label>
+            <label className="text-[12px] font-semibold text-slate-500 uppercase">หรือระบุคน</label>
             <select
               className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-green-500/50"
               value={step.approverId}
@@ -314,14 +314,14 @@ function ChainCard({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-white">{chain.name}</h3>
             {chain.isDefault && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5 text-[12px] font-semibold text-green-400">
                 <Star size={10} /> Default
               </span>
             )}
-            <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+            <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-[12px] font-medium text-slate-300">
               {CHAIN_ENTITY_LABELS[chain.entityType]}
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chain.isActive ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${chain.isActive ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
               {chain.isActive ? 'Active' : 'Inactive'}
             </span>
           </div>
@@ -350,10 +350,10 @@ function ChainCard({
       <div className="mt-3 flex flex-wrap gap-2">
         {chain.steps.map((s, idx) => (
           <div key={s.id} className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/20 text-[10px] font-bold text-green-400">{idx + 1}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/20 text-[12px] font-bold text-green-400">{idx + 1}</span>
             <span className="text-xs text-white">{s.stepName}</span>
-            {s.approverRole && <span className="text-[10px] text-slate-500">({ROLE_LABELS[s.approverRole] ?? s.approverRole})</span>}
-            {s.approver    && <span className="text-[10px] text-slate-500">({s.approver.name})</span>}
+            {s.approverRole && <span className="text-[12px] text-slate-500">({ROLE_LABELS[s.approverRole] ?? s.approverRole})</span>}
+            {s.approver    && <span className="text-[12px] text-slate-500">({s.approver.name})</span>}
           </div>
         ))}
       </div>

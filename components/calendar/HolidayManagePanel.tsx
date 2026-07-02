@@ -309,7 +309,7 @@ export default function HolidayManagePanel({
               {['ชื่อ', 'วันที่', 'ประเภท', 'สาขา', ''].map((h) => (
                 <th
                   key={h}
-                  className="px-3 py-2 text-left text-[10px] font-semibold uppercase dark:text-slate-500"
+                  className="px-3 py-2 text-left text-[12px] font-semibold uppercase dark:text-slate-500"
                 >
                   {h}
                 </th>
@@ -334,11 +334,11 @@ export default function HolidayManagePanel({
                     {h.repeatEveryYear ? ' ↻' : ''}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${TYPE_BADGE[h.holidayType]}`}>
+                    <span className={`text-[12px] font-bold px-1.5 py-0.5 rounded ${TYPE_BADGE[h.holidayType]}`}>
                       {HOLIDAY_TYPE_LABELS[h.holidayType]}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-[10px] dark:text-slate-400">{h.branchLabel}</td>
+                  <td className="px-3 py-2 text-[12px] dark:text-slate-400">{h.branchLabel}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-0.5 justify-end">
                       <button type="button" onClick={() => openEdit(h)} className="p-1.5 rounded-lg hover:bg-white/10">

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -170,7 +170,7 @@ function EventPill({ e, onClick }: { e: CalEvent; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left text-[10px] px-1.5 py-1 rounded-lg border truncate mb-0.5 transition hover:opacity-80 ${colorBase}`}
+      className={`w-full text-left text-[12px] px-1.5 py-1 rounded-lg border truncate mb-0.5 transition hover:opacity-80 ${colorBase}`}
     >
       {e.startTime && <span className="font-semibold mr-1">{formatTime(e.startTime)}</span>}
       {priorityDot(e.priority)}
@@ -237,7 +237,7 @@ function MonthView({ anchor, events, onSelectDay, onSelectEvent, today }: {
                       </button>
                     ))}
                     {dayEvents.length > 3 && (
-                      <span className="text-[9px] text-white/30 leading-4">+{dayEvents.length - 3}</span>
+                      <span className="text-[11px] text-white/30 leading-4">+{dayEvents.length - 3}</span>
                     )}
                   </div>
                   {dayEvents.slice(0, 2).map(e => (
@@ -246,7 +246,7 @@ function MonthView({ anchor, events, onSelectDay, onSelectEvent, today }: {
                       onClick={(ev) => { ev.stopPropagation(); onSelectEvent(e) }}
                       className="hidden md:block w-full"
                     >
-                      <div className={`text-[10px] px-1 py-0.5 rounded truncate mb-0.5 text-left ${
+                      <div className={`text-[12px] px-1 py-0.5 rounded truncate mb-0.5 text-left ${
                         e.status === 'COMPLETED' ? 'bg-green-500/15 text-green-400' :
                         e.status === 'MISSED'    ? 'bg-red-500/15 text-red-400' :
                         e.status === 'CANCELLED' ? 'bg-slate-500/10 text-slate-500 line-through' :
@@ -257,7 +257,7 @@ function MonthView({ anchor, events, onSelectDay, onSelectEvent, today }: {
                     </button>
                   ))}
                   {dayEvents.length > 2 && (
-                    <p className="hidden md:block text-[9px] text-white/30">+{dayEvents.length - 2} เพิ่มเติม</p>
+                    <p className="hidden md:block text-[11px] text-white/30">+{dayEvents.length - 2} เพิ่มเติม</p>
                   )}
                 </>
               )}
@@ -357,7 +357,7 @@ function AgendaView({ events, onSelectEvent, today }: {
               </div>
               <span className="text-xs font-semibold">
                 {THAI_DAYS_SHORT[d.getDay()]}. {d.getDate()} {THAI_MONTHS_SHORT[d.getMonth()]} {d.getFullYear() + 543}
-                {isToday && <span className="ml-2 text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">วันนี้</span>}
+                {isToday && <span className="ml-2 text-[12px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">วันนี้</span>}
               </span>
               <div className="flex-1 h-px bg-white/[0.06]" />
             </div>
@@ -385,16 +385,16 @@ function AgendaView({ events, onSelectEvent, today }: {
                         <p className={`text-sm font-medium ${e.status === 'CANCELLED' ? 'line-through text-white/40' : 'text-white'}`}>
                           {e.title}
                         </p>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md border ${TYPE_LIGHT[e.eventType] ?? TYPE_LIGHT.OTHER}`}>
+                        <span className={`text-[12px] px-1.5 py-0.5 rounded-md border ${TYPE_LIGHT[e.eventType] ?? TYPE_LIGHT.OTHER}`}>
                           {EVENT_TYPES[e.eventType] ?? e.eventType}
                         </span>
                         {e.priority === 'CRITICAL' && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 border border-red-500/30 font-semibold">
+                          <span className="text-[12px] px-1.5 py-0.5 rounded-md bg-red-500/20 text-red-400 border border-red-500/30 font-semibold">
                             วิกฤต
                           </span>
                         )}
                         {e.priority === 'HIGH' && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                          <span className="text-[12px] px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-400 border border-orange-500/20">
                             สูง
                           </span>
                         )}
@@ -422,10 +422,10 @@ function AgendaView({ events, onSelectEvent, today }: {
                           {STATUS_LABEL[e.status] ?? e.status}
                         </span>
                         {e.source === 'case_court' && (
-                          <span className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded">คดี</span>
+                          <span className="text-[11px] bg-white/5 px-1.5 py-0.5 rounded">คดี</span>
                         )}
                         {e.source === 'task' && (
-                          <span className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded">งาน</span>
+                          <span className="text-[11px] bg-white/5 px-1.5 py-0.5 rounded">งาน</span>
                         )}
                       </div>
                     </div>
@@ -488,7 +488,7 @@ function EventDetail({ event, onClose, onStatusChange, canEdit }: {
             </span>
           )}
           {event.source !== 'calendar' && (
-            <span className="text-[10px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded-lg">
+            <span className="text-[12px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded-lg">
               {event.source === 'case_court' ? 'นัดจากคดี' : 'จากงาน'}
             </span>
           )}
@@ -907,7 +907,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
           ].map(s => (
             <div key={s.label} className={`${s.bg} rounded-xl px-3 py-2 text-center`}>
               <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
-              <p className="text-white/40 text-[10px] font-medium">{s.label}</p>
+              <p className="text-white/40 text-[12px] font-medium">{s.label}</p>
             </div>
           ))}
         </div>

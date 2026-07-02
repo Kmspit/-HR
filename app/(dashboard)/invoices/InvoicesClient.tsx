@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
@@ -141,7 +141,7 @@ export default function InvoicesClient({ userId, userRole }: { userId: string; u
                     <p className="text-xs text-gray-500">{inv.serviceType}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium block mb-1 ${STATUS_COLORS[inv.status]}`}>{STATUS_TH[inv.status]}</span>
+                    <span className={`text-[12px] px-1.5 py-0.5 rounded-full font-medium block mb-1 ${STATUS_COLORS[inv.status]}`}>{STATUS_TH[inv.status]}</span>
                     <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">฿{fmt(inv.totalAmount)}</p>
                   </div>
                 </div>

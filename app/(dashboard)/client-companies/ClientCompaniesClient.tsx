@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 
@@ -168,8 +168,8 @@ export default function ClientCompaniesClient({ userId, userRole }: { userId: st
                         {c.phone && <p className="text-xs text-gray-400">📱 {c.phone}</p>}
                       </div>
                       <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span>
-                        <span className="text-[10px] text-gray-400">{TYPE_LABELS[c.clientType]}</span>
+                        <span className={`text-[12px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span>
+                        <span className="text-[12px] text-gray-400">{TYPE_LABELS[c.clientType]}</span>
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
@@ -469,8 +469,8 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-mono text-xs text-gray-400">{c.contractNumber}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${CONTRACT_STATUS_COLORS[c.status]}`}>{CONTRACT_STATUS_LABELS[c.status]}</span>
-                  {expiring && <span className="text-[10px] text-orange-600 font-medium">⚠️ หมดใน {days}ว.</span>}
+                  <span className={`text-[12px] px-1.5 py-0.5 rounded-full ${CONTRACT_STATUS_COLORS[c.status]}`}>{CONTRACT_STATUS_LABELS[c.status]}</span>
+                  {expiring && <span className="text-[12px] text-orange-600 font-medium">⚠️ หมดใน {days}ว.</span>}
                 </div>
                 <p className="font-medium">{c.serviceType}</p>
                 <p className="text-green-600 font-semibold">฿{fmt(c.value)}</p>
@@ -481,7 +481,7 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
               {c.status === 'ACTIVE' && (
                 <div className="flex flex-col gap-1">
                   {['EXPIRED', 'TERMINATED'].map(s => (
-                    <button key={s} onClick={() => updateStatus(c.id, s)} className="text-[10px] px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">{CONTRACT_STATUS_LABELS[s]}</button>
+                    <button key={s} onClick={() => updateStatus(c.id, s)} className="text-[12px] px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded">{CONTRACT_STATUS_LABELS[s]}</button>
                   ))}
                 </div>
               )}
@@ -611,7 +611,7 @@ function HistoryTab({ company }: { company: ClientCompany }) {
               {t.caseNumber && <p className="text-xs text-gray-400 font-mono">{t.caseNumber}</p>}
               <p className="text-xs text-gray-400">ผู้รับผิดชอบ: {t.assignee.name}</p>
             </div>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-green-100 text-green-700'}`}>{STATUS_TH[t.status] ?? t.status}</span>
+            <span className={`text-[12px] px-1.5 py-0.5 rounded-full flex-shrink-0 ml-2 ${t.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-green-100 text-green-700'}`}>{STATUS_TH[t.status] ?? t.status}</span>
           </div>
         </div>
       ))}

@@ -600,7 +600,7 @@ export default function CheckInPanel({
                 </div>
               </div>
               {location && (
-                <p className="text-[10px] text-slate-500 font-mono break-all">
+                <p className="text-[12px] text-slate-500 font-mono break-all">
                   พิกัด: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
                   {location.accuracy != null && ` · ความแม่นยำ ±${Math.round(location.accuracy)} ม.`}
                 </p>
@@ -719,7 +719,7 @@ export default function CheckInPanel({
             <Camera className="w-5 h-5" />
             ถ่ายรูป
           </button>
-          <p className="text-[10px] dark:text-slate-500 light:text-slate-500 text-center">
+          <p className="text-[12px] dark:text-slate-500 light:text-slate-500 text-center">
             กดปุ่มเมื่อพร้อม — ไม่มีนับถอยหลังอัตโนมัติ
           </p>
         </div>

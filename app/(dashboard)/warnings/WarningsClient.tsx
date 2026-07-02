@@ -80,13 +80,13 @@ function LineDeliveryBadge({ w }: { w: Warning }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span
-        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.className}`}
+        className={`inline-flex rounded-full px-2 py-0.5 text-[12px] font-semibold ${s.className}`}
         title={w.lineErrorMessage ?? undefined}
       >
         {s.label}
       </span>
       {w.lineSentAt && (
-        <span className="text-[9px] dark:text-slate-500 tabular-nums">
+        <span className="text-[11px] dark:text-slate-500 tabular-nums">
           {new Date(w.lineSentAt).toLocaleString('th-TH', {
             dateStyle: 'short',
             timeStyle: 'short',
@@ -94,7 +94,7 @@ function LineDeliveryBadge({ w }: { w: Warning }) {
         </span>
       )}
       {key === 'failed' && w.lineErrorMessage && (
-        <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={w.lineErrorMessage}>
+        <span className="text-[11px] text-red-400 max-w-[120px] truncate" title={w.lineErrorMessage}>
           {w.lineErrorMessage}
         </span>
       )}
@@ -567,7 +567,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
           {(() => {
             const b = STATUS_BADGE[w.status] ?? STATUS_BADGE.APPROVED
             return (
-              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${b.cls}`}>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[12px] font-semibold ${b.cls}`}>
                 {b.label}
               </span>
             )
@@ -786,7 +786,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
                 </ul>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className="text-[12px] text-slate-500 mt-1">
               พิมพ์ชื่อหรือกดลูกศรเลือกจากรายการ ·{' '}
               {loadingEmployees
                 ? 'กำลังโหลดจากฐานข้อมูล...'
@@ -890,7 +890,7 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-slate-500">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB</p>
+            <p className="text-[12px] text-slate-500">ไม่บังคับ — สูงสุด {MAX_PDF_MB} MB</p>
             <label className="flex items-start gap-2.5 cursor-pointer touch-manipulation">
               <input
                 type="checkbox"

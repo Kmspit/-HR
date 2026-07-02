@@ -318,12 +318,12 @@ export default function AttendanceClient({
 
           {companyGeofence && (
             <div className="rounded-xl px-3.5 py-2.5 space-y-1 bg-cyan-50 dark:bg-cyan-500/[0.08] border border-cyan-200 dark:border-cyan-500/20">
-              <p className="text-[10px] text-cyan-700 dark:text-cyan-400 font-semibold">พิกัดสำนักงาน (Geofence)</p>
+              <p className="text-[12px] text-cyan-700 dark:text-cyan-400 font-semibold">พิกัดสำนักงาน (Geofence)</p>
               <p className="text-xs text-slate-800 dark:text-white font-mono">
                 {companyGeofence.lat.toFixed(5)}, {companyGeofence.lng.toFixed(5)}
                 <span className="text-slate-500 font-sans ml-2">รัศมี {companyGeofence.radiusM} ม.</span>
               </p>
-              <p className="text-[10px] text-slate-500 line-clamp-2">{companyGeofence.address}</p>
+              <p className="text-[12px] text-slate-500 line-clamp-2">{companyGeofence.address}</p>
             </div>
           )}
 
@@ -410,10 +410,10 @@ export default function AttendanceClient({
               <div className="flex items-center justify-between gap-1 px-1">
                 {ACTION_STEPS.map((step) => (
                   <div key={step.key} className="flex flex-1 flex-col items-center gap-1 min-w-0">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold bg-green-500/20 text-green-400 ring-1 ring-green-500/40">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold bg-green-500/20 text-green-400 ring-1 ring-green-500/40">
                       ✓
                     </div>
-                    <span className="text-[9px] text-center text-green-400/80 truncate w-full">{step.label}</span>
+                    <span className="text-[11px] text-center text-green-400/80 truncate w-full">{step.label}</span>
                   </div>
                 ))}
               </div>
@@ -442,7 +442,7 @@ export default function AttendanceClient({
                   return (
                     <div key={step.key} className="flex flex-1 flex-col items-center gap-1 min-w-0">
                       <div
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
+                        className={`flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold transition-all ${
                           done ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40'
                           : current ? 'bg-green-600 text-white ring-2 ring-green-400/50 scale-110'
                           : 'bg-white/5 text-slate-600'
@@ -450,7 +450,7 @@ export default function AttendanceClient({
                       >
                         {done ? '✓' : step.short}
                       </div>
-                      <span className={`text-[9px] text-center leading-tight truncate w-full ${
+                      <span className={`text-[11px] text-center leading-tight truncate w-full ${
                         current ? 'text-white font-semibold' : done ? 'text-green-400/80' : 'text-slate-600'
                       }`}>
                         {step.label}
@@ -572,7 +572,7 @@ export default function AttendanceClient({
                 ลงทะเบียนใบหน้าแล้ว — สแกนใบหน้าตรงกล้องเพื่อลงเวลา
               </p>
               <button type="button" onClick={() => setShowFaceUpdate(true)}
-                className="text-[10px] text-green-400 hover:text-green-300 underline">
+                className="text-[12px] text-green-400 hover:text-green-300 underline">
                 อัปเดตใบหน้า
               </button>
             </div>
@@ -581,7 +581,7 @@ export default function AttendanceClient({
           {/* Leave balance */}
           {leaveBalance && (
             <div className="flex items-center gap-4 rounded-xl px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/[0.06]">
-              <p className="text-[10px] text-slate-500 flex-shrink-0">วันลาคงเหลือ</p>
+              <p className="text-[12px] text-slate-500 flex-shrink-0">วันลาคงเหลือ</p>
               <div className="flex gap-4 text-xs">
                 <span className="text-slate-500 dark:text-slate-400">ป่วย <strong className="text-slate-900 dark:text-white">{leaveBalance.sick}</strong></span>
                 <span className="text-slate-500 dark:text-slate-400">พักร้อน <strong className="text-slate-900 dark:text-white">{leaveBalance.vacation}</strong></span>
@@ -638,7 +638,7 @@ export default function AttendanceClient({
                           {formatTime(r.checkOut)}
                         </span>
                         {r.autoCheckout && r.checkOut && (
-                          <span className="block text-[9px] text-orange-600 dark:text-orange-400/70 mt-0.5">ระบบปิดอัตโนมัติ</span>
+                          <span className="block text-[11px] text-orange-600 dark:text-orange-400/70 mt-0.5">ระบบปิดอัตโนมัติ</span>
                         )}
                       </td>
                       <td className="p-3 text-center text-slate-700 dark:text-slate-300 text-xs">
@@ -656,7 +656,7 @@ export default function AttendanceClient({
                             href={`https://www.google.com/maps?q=${r.lat},${r.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-green-600 dark:text-green-400 hover:underline"
+                            className="text-[12px] text-green-600 dark:text-green-400 hover:underline"
                           >
                             ดูแผนที่
                           </a>
@@ -667,22 +667,22 @@ export default function AttendanceClient({
                       <td className="p-3 text-center">
                         <span className={`text-xs font-semibold ${s.color}`}>{s.label}</span>
                         {r.lateMinutes > 0 && (
-                          <span className="ml-1 text-[10px] text-amber-600 dark:text-yellow-400">+{formatLateMinutesShort(r.lateMinutes)}</span>
+                          <span className="ml-1 text-[12px] text-amber-600 dark:text-yellow-400">+{formatLateMinutesShort(r.lateMinutes)}</span>
                         )}
                       </td>
                       <td className="p-3 text-center">
                         {r.isOutside ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-500/15 px-2 py-0.5 text-[12px] font-semibold text-orange-700 dark:text-orange-400">
                             <Navigation className="w-2.5 h-2.5" /> นอก
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 dark:bg-cyan-500/15 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 dark:bg-cyan-500/15 px-2 py-0.5 text-[12px] font-semibold text-cyan-700 dark:text-cyan-400">
                             <Building2 className="w-2.5 h-2.5" /> ใน
                           </span>
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        <span className="text-slate-300 dark:text-slate-600 text-[10px]">›</span>
+                        <span className="text-slate-300 dark:text-slate-600 text-[12px]">›</span>
                       </td>
                     </tr>
                   )
@@ -715,7 +715,7 @@ export default function AttendanceClient({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-slate-900 dark:text-white font-semibold text-sm truncate">{emp.name}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                    <p className="text-[12px] text-slate-500 mt-0.5 truncate">
                       {emp.department ?? '—'} ·{' '}
                       {emp.hasCheckedIn
                         ? `${formatTime(emp.checkIn)} — ${formatTime(emp.checkOut)}`

@@ -400,7 +400,7 @@ export default function CaseDocumentsTab({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-white text-sm font-medium truncate">{doc.title}</p>
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium shrink-0 ${CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.OTHER}`}>
+                    <span className={`px-2 py-0.5 rounded-lg text-[12px] font-medium shrink-0 ${CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.OTHER}`}>
                       {CATEGORIES[doc.category] ?? doc.category}
                     </span>
                   </div>
@@ -413,7 +413,7 @@ export default function CaseDocumentsTab({
                   {doc.tags && (
                     <div className="flex gap-1 mt-1 flex-wrap">
                       {doc.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
-                        <span key={tag} className="text-[10px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded-lg">{tag}</span>
+                        <span key={tag} className="text-[12px] text-white/30 bg-white/5 px-1.5 py-0.5 rounded-lg">{tag}</span>
                       ))}
                     </div>
                   )}

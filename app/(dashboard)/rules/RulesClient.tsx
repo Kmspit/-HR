@@ -267,10 +267,10 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
                     <p className="dark:text-white light:text-slate-800 text-sm font-medium line-clamp-2">{r.title}</p>
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${CATEGORY_COLORS[r.category] ?? 'bg-white/10 dark:text-white/40 light:text-slate-500'}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[12px] ${CATEGORY_COLORS[r.category] ?? 'bg-white/10 dark:text-white/40 light:text-slate-500'}`}>
                       {CATEGORY_LABELS[r.category] ?? r.category}
                     </span>
-                    {r.version && <span className="dark:text-white/30 light:text-slate-400 text-[10px]">{r.version}</span>}
+                    {r.version && <span className="dark:text-white/30 light:text-slate-400 text-[12px]">{r.version}</span>}
                   </div>
                 </div>
                 {isManager && (

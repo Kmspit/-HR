@@ -206,7 +206,7 @@ export default function SystemLogsClient() {
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{log.detail}</p>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 shrink-0 mt-0.5">{fmtDate(log.createdAt)}</span>
+                  <span className="text-[12px] text-slate-400 shrink-0 mt-0.5">{fmtDate(log.createdAt)}</span>
                 </button>
 
                 {expanded === log.id && (
@@ -229,16 +229,16 @@ export default function SystemLogsClient() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {log.beforeValue && (
                           <div>
-                            <p className="text-[10px] text-slate-400 mb-1">Before</p>
-                            <pre className="text-[10px] font-mono bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg p-2 overflow-x-auto">
+                            <p className="text-[12px] text-slate-400 mb-1">Before</p>
+                            <pre className="text-[12px] font-mono bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg p-2 overflow-x-auto">
                               {JSON.stringify(JSON.parse(log.beforeValue), null, 2)}
                             </pre>
                           </div>
                         )}
                         {log.afterValue && (
                           <div>
-                            <p className="text-[10px] text-slate-400 mb-1">After</p>
-                            <pre className="text-[10px] font-mono bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg p-2 overflow-x-auto">
+                            <p className="text-[12px] text-slate-400 mb-1">After</p>
+                            <pre className="text-[12px] font-mono bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg p-2 overflow-x-auto">
                               {JSON.stringify(JSON.parse(log.afterValue), null, 2)}
                             </pre>
                           </div>

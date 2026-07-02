@@ -267,9 +267,13 @@
     @apply border-b dark:border-white/10 light:border-slate-200;
   }
   .hr-table thead th {
-    @apply px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap
+    @apply px-4 py-3.5 text-left font-semibold whitespace-nowrap
            dark:bg-slate-900/60 dark:text-slate-400
            bg-slate-50 text-slate-600;
+    font-size: 13px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
   }
   .hr-table tbody td {
     @apply px-4 py-3.5 align-middle whitespace-nowrap text-[13.5px] leading-relaxed
