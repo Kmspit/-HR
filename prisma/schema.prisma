@@ -877,7 +877,9 @@ model OutsideWorkRequest {
   // ── ฟอร์มบริษัท (ฉ.2) ───────────────────────────────────────
   timeSlot       String?       @map("time_slot")      // เช้า / บ่าย / เต็มวัน
   caseNumber     String?       @map("case_number")    // หมายเลขคดีดำ
-  productWork    String?       @map("product_work")   // งานโปรดักส์
+  productWork    String?       @map("product_work")   // งานโปรดักส์ (legacy free-text)
+  productCategory String?      @map("product_category") // หมวดหมู่หลัก เช่น เช่าซื้อรถยนต์
+  productType    String?       @map("product_type")   // ประเภทย่อย เช่น รถยนต์มือสอง
   workBranch     String?       @map("work_branch")    // งานของสาขาไหน
   caseCount      Int?          @map("case_count")     // จำนวนคดีที่ไปดำเนินการ
   adminChecked   String?       @map("admin_checked")   // มี / ไม่มี

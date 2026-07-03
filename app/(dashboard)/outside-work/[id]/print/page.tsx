@@ -296,10 +296,14 @@ export default async function PrintOutsideWorkPage({
                   <td className="value-col">{request.caseCount ?? '—'} คดี</td>
                 </tr>
               )}
-              {request.productWork && (
+              {(request.productCategory || request.productWork) && (
                 <tr>
                   <td className="label-col">งานโปรดักส์</td>
-                  <td className="value-col">{request.productWork}</td>
+                  <td className="value-col">
+                    {request.productCategory
+                      ? `${request.productCategory}${request.productType ? ' > ' + request.productType : ''}`
+                      : request.productWork}
+                  </td>
                   <td className="label-col">งานของสาขา</td>
                   <td className="value-col">{request.workBranch ?? '—'}</td>
                 </tr>

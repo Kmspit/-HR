@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import { PRODUCT_CATEGORY_KEYS } from '@/lib/constants/product-types'
+
+const productCategoryKeys = PRODUCT_CATEGORY_KEYS as [string, ...string[]]
 
 export const outsideWorkSchema = z.object({
   // ── Required core fields ──────────────────────────────────────────────────
@@ -10,6 +13,8 @@ export const outsideWorkSchema = z.object({
   timeSlot:     z.enum(['เช้า', 'บ่าย', 'เต็มวัน']).optional().or(z.literal('')),
   caseNumber:   z.string().max(100, 'หมายเลขคดีต้องไม่เกิน 100 ตัวอักษร').optional(),
   productWork:  z.string().max(200, 'งานโปรดักส์ต้องไม่เกิน 200 ตัวอักษร').optional(),
+  productCategory: z.enum(productCategoryKeys).optional(),
+  productType:     z.string().max(100, 'ประเภทย่อยต้องไม่เกิน 100 ตัวอักษร').optional(),
   workBranch:   z.string().max(100, 'ชื่อสาขาต้องไม่เกิน 100 ตัวอักษร').optional(),
   caseCount:    z.union([z.string().regex(/^\d*$/, 'จำนวนคดีต้องเป็นตัวเลข'), z.number().int().min(0, 'จำนวนคดีต้องไม่ติดลบ'), z.null()]).optional(),
   adminChecked: z.enum(['มี', 'ไม่มี']).optional().or(z.literal('')),

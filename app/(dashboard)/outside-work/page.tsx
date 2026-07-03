@@ -108,6 +108,8 @@ export default async function OutsideWorkPage({
       timeSlot:       r.timeSlot        ?? null,
       caseNumber:     r.caseNumber      ?? null,
       productWork:    r.productWork     ?? null,
+      productCategory: r.productCategory ?? null,
+      productType:     r.productType     ?? null,
       workBranch:     r.workBranch      ?? null,
       caseCount:      r.caseCount       ?? null,
       adminChecked:   r.adminChecked    ?? null,

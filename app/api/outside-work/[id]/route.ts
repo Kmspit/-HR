@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       employeeName?: string; ownerName?: string; workType?: string
       distance?: number | string; distanceLimit?: number | string; routeType?: string
       approvalStatus?: string; status?: string
-      timeSlot?: string; caseNumber?: string; productWork?: string; workBranch?: string
+      timeSlot?: string; caseNumber?: string; productWork?: string; productCategory?: string; productType?: string; workBranch?: string
       caseCount?: number | string; adminChecked?: string; supervisedBy?: string
     }
 
@@ -122,6 +122,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.timeSlot     !== undefined) updateData.timeSlot     = body.timeSlot?.trim()  || null
     if (body.caseNumber   !== undefined) updateData.caseNumber   = body.caseNumber?.trim() || null
     if (body.productWork  !== undefined) updateData.productWork  = body.productWork?.trim() || null
+    if (body.productCategory !== undefined) updateData.productCategory = body.productCategory?.trim() || null
+    if (body.productType     !== undefined) updateData.productType     = body.productType?.trim() || null
     if (body.workBranch   !== undefined) updateData.workBranch   = body.workBranch?.trim() || null
     if (body.caseCount    !== undefined) updateData.caseCount    = body.caseCount ? Number(body.caseCount) : null
     if (body.adminChecked !== undefined) updateData.adminChecked = body.adminChecked?.trim() || null

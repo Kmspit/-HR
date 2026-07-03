@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       date, startTime, endTime, place, purpose, client, note, googleMapsUrl,
       attachmentUrl, attachmentName,
       employeeName, ownerName, workType, distance, distanceLimit, routeType,
-      timeSlot, caseNumber, productWork, workBranch, caseCount, adminChecked, supervisedBy,
+      timeSlot, caseNumber, productWork, productCategory, productType, workBranch, caseCount, adminChecked, supervisedBy,
     } = body
 
     if (!date || !place || !purpose) {
@@ -92,6 +92,8 @@ export async function POST(req: NextRequest) {
         timeSlot:       timeSlot      || null,
         caseNumber:     caseNumber    || null,
         productWork:    productWork   || null,
+        productCategory: productCategory || null,
+        productType:     productType     || null,
         workBranch:     workBranch    || null,
         caseCount:      caseCount     ? Number(caseCount)     : null,
         adminChecked:   adminChecked  || null,

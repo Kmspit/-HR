@@ -9,6 +9,7 @@ import { canUserActOnStep, type ApprovalStepRow } from '@/lib/approval-chain-sha
 import type { Role } from '@prisma/client'
 import dynamic from 'next/dynamic'
 import OutsideWorkStatusBadge from './OutsideWorkStatusBadge'
+import { PRODUCT_CATEGORY_KEYS, OTHER_PRODUCT_CATEGORY, productTypesFor } from '@/lib/constants/product-types'
 
 const OutsideWorkApprovalHistory = dynamic(() => import('./OutsideWorkApprovalHistory'), {
   loading: () => <div className="h-24 animate-pulse rounded-lg bg-white border border-gray-200" />,
@@ -28,6 +29,8 @@ export type OWRequest = {
   purpose: string
   caseNumber?: string | null
   productWork?: string | null
+  productCategory?: string | null
+  productType?: string | null
   workBranch?: string | null
   caseCount?: number | null
   adminChecked?: string | null
@@ -49,6 +52,8 @@ type SlotData = {
   purpose: string
   caseNumber: string
   productWork: string
+  productCategory: string
+  productType: string
   workBranch: string
   caseCount: string
   adminChecked: string
@@ -117,7 +122,7 @@ function sKey(ymd: string, slot: 'เช้า' | 'บ่าย'): string {
 }
 
 function emptySlot(): SlotData {
-  return { place:'', purpose:'', caseNumber:'', productWork:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }
+  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }
 }
 
 function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
@@ -133,6 +138,8 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
       purpose:      r.purpose        ?? '',
       caseNumber:   r.caseNumber     ?? '',
       productWork:  r.productWork    ?? '',
+      productCategory: r.productCategory ?? '',
+      productType:     r.productType     ?? '',
       workBranch:   r.workBranch     ?? '',
       caseCount:    r.caseCount != null ? String(r.caseCount) : '',
       adminChecked: r.adminChecked   ?? '',
@@ -171,6 +178,122 @@ function canUserApproveRequest(
     )
   }
   return false
+}
+
+// ── Product work cell (cascading category → type popover) ─────────────────────
+
+function ProductWorkCell({
+  category, type, legacy, readOnly, onChange,
+}: {
+  category: string
+  type: string
+  legacy: string
+  readOnly: boolean
+  onChange: (category: string, type: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draftCategory, setDraftCategory] = useState(category)
+  const [draftType, setDraftType] = useState(type)
+
+  const openPopover = () => {
+    if (readOnly) return
+    setDraftCategory(category)
+    setDraftType(type)
+    setOpen(true)
+  }
+
+  const confirm = () => {
+    onChange(draftCategory, draftType)
+    setOpen(false)
+  }
+
+  const summary = category
+    ? `${category}${type ? ' > ' + type : ''}`
+    : legacy
+
+  const isOther    = draftCategory === OTHER_PRODUCT_CATEGORY
+  const draftTypes = productTypesFor(draftCategory)
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPopover}
+        disabled={readOnly}
+        title={summary || '—'}
+        className={`w-full min-h-[32px] text-left text-xs px-1 py-0.5 rounded truncate ${
+          readOnly ? 'cursor-default text-gray-500' : 'hover:bg-blue-50 cursor-pointer text-gray-900'
+        }`}
+      >
+        {summary || <span className="text-gray-400">—</span>}
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-gray-900 mb-3">เลือกงานโปรดักส์</h3>
+
+            <label className="block text-xs font-medium text-gray-700 mb-1">หมวดหมู่หลัก</label>
+            <select
+              value={draftCategory}
+              onChange={(e) => { setDraftCategory(e.target.value); setDraftType('') }}
+              className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-3 text-gray-900"
+            >
+              <option value="">— เลือกหมวดหมู่ —</option>
+              {PRODUCT_CATEGORY_KEYS.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+
+            <label className="block text-xs font-medium text-gray-700 mb-1">ประเภทย่อย</label>
+            {isOther ? (
+              <input
+                value={draftType}
+                onChange={(e) => setDraftType(e.target.value)}
+                placeholder="ระบุประเภท..."
+                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-4 text-gray-900"
+              />
+            ) : (
+              <select
+                value={draftType}
+                onChange={(e) => setDraftType(e.target.value)}
+                disabled={!draftCategory}
+                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-4 text-gray-900 disabled:bg-gray-100"
+              >
+                <option value="">— เลือกประเภทย่อย —</option>
+                {draftTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={confirm}
+                className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              >
+                ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -215,6 +338,10 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
     setWeekData(prev => ({ ...prev, [key]: { ...prev[key], [field]: value, dirty: true } }))
   }, [])
 
+  const updateProductWork = useCallback((key: string, category: string, type: string) => {
+    setWeekData(prev => ({ ...prev, [key]: { ...prev[key], productCategory: category, productType: type, dirty: true } }))
+  }, [])
+
   const employees = useMemo(() => {
     const map = new Map<string, string>([[userId, userName]])
     reqs.forEach(r => map.set(r.userId, r.userName))
@@ -248,6 +375,8 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
           purpose:      slot.purpose,
           caseNumber:   slot.caseNumber   || null,
           productWork:  slot.productWork  || null,
+          productCategory: slot.productCategory || null,
+          productType:     slot.productType     || null,
           workBranch:   slot.workBranch   || null,
           caseCount:    slot.caseCount    ? Number(slot.caseCount) : null,
           adminChecked: slot.adminChecked || null,
@@ -465,9 +594,13 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
 
                         {/* งานโปรดักส์ */}
                         <td className={`${TD} ${stripe}`}>
-                          <input value={morn.productWork} readOnly={mLock} placeholder="—"
-                            onChange={e => updateSlot(kM, 'productWork', e.target.value)}
-                            className={`${INP} ${mLock ? INP_RO : ''}`} />
+                          <ProductWorkCell
+                            category={morn.productCategory}
+                            type={morn.productType}
+                            legacy={morn.productWork}
+                            readOnly={mLock}
+                            onChange={(category, type) => updateProductWork(kM, category, type)}
+                          />
                         </td>
 
                         {/* สาขา */}
@@ -566,9 +699,13 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
-                          <input value={aftn.productWork} readOnly={aLock} placeholder="—"
-                            onChange={e => updateSlot(kA, 'productWork', e.target.value)}
-                            className={`${INP} ${aLock ? INP_RO : ''}`} />
+                          <ProductWorkCell
+                            category={aftn.productCategory}
+                            type={aftn.productType}
+                            legacy={aftn.productWork}
+                            readOnly={aLock}
+                            onChange={(category, type) => updateProductWork(kA, category, type)}
+                          />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>

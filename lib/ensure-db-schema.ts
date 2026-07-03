@@ -8,7 +8,7 @@ import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches. */
-export const CURRENT_SCHEMA_VERSION = 900002
+export const CURRENT_SCHEMA_VERSION = 900003
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1028,6 +1028,8 @@ async function runEnsure(force = false): Promise<boolean> {
   await addColumnIfMissing('outside_work_requests', 'time_slot',    `ALTER TABLE outside_work_requests ADD COLUMN time_slot TEXT`)
   await addColumnIfMissing('outside_work_requests', 'case_number',  `ALTER TABLE outside_work_requests ADD COLUMN case_number TEXT`)
   await addColumnIfMissing('outside_work_requests', 'product_work', `ALTER TABLE outside_work_requests ADD COLUMN product_work TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'product_category', `ALTER TABLE outside_work_requests ADD COLUMN product_category TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'product_type',     `ALTER TABLE outside_work_requests ADD COLUMN product_type TEXT`)
   await addColumnIfMissing('outside_work_requests', 'work_branch',  `ALTER TABLE outside_work_requests ADD COLUMN work_branch TEXT`)
   await addColumnIfMissing('outside_work_requests', 'case_count',   `ALTER TABLE outside_work_requests ADD COLUMN case_count INTEGER`)
   await addColumnIfMissing('outside_work_requests', 'admin_checked',   `ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)

@@ -29,30 +29,33 @@ type ExportRequest = {
   date: string                    // ISO string from Prisma
   timeSlot?: string | null
   place: string; purpose: string
-  caseNumber?: string | null; productWork?: string | null; workBranch?: string | null
+  caseNumber?: string | null; productWork?: string | null
+  productCategory?: string | null; productType?: string | null; workBranch?: string | null
   caseCount?: number | null; adminChecked?: string | null; supervisedBy?: string | null
   status: string; approvalStatus?: string | null
   note?: string | null
   documentNumber?: string | null
 }
 
-// 13 data columns — no employee columns; employee name goes in row 11 header
+// 15 data columns — no employee columns; employee name goes in row 11 header
 const COLS = [
-  { key: 'day',          label: 'วัน',                         sub: '',                                        width: 10 },
-  { key: 'date',         label: 'ว/ด/ปี',                     sub: '',                                        width: 12 },
-  { key: 'timeSlot',     label: 'ช่วงเวลา',                   sub: '(เช้า/บ่าย/เต็มวัน)',                     width: 13 },
-  { key: 'place',        label: 'สถานที่ไปทำงาน',             sub: '',                                        width: 28 },
-  { key: 'purpose',      label: 'สิ่งที่ไปดำเนินการ',         sub: '',                                        width: 30 },
-  { key: 'caseNumber',   label: 'หมายเลขคดีดำ',              sub: '',                                        width: 14 },
-  { key: 'productWork',  label: 'งานโปรดักส์',                sub: '',                                        width: 16 },
-  { key: 'workBranch',   label: 'งานของสาขาไหน',             sub: '',                                        width: 14 },
-  { key: 'caseCount',    label: 'จำนวนคดีที่ไปดำเนินการ',    sub: '',                                        width: 14 },
-  { key: 'adminChecked', label: 'แอดมินโปรดักส์ตรวจสอบ',     sub: '(มี/ไม่มี)',                              width: 14 },
-  { key: 'supervisedBy', label: 'ผู้สั่งงาน',                 sub: '(แอดมิน/หัวหน้า/ทนายวางแผนตามเอง)',     width: 22 },
-  { key: 'status',       label: 'อนุมัติ/ไม่อนุมัติ',        sub: '',                                        width: 13 },
-  { key: 'note',         label: 'หมายเหตุ',                   sub: '',                                        width: 20 },
+  { key: 'day',             label: 'วัน',                         sub: '',                                        width: 10 },
+  { key: 'date',            label: 'ว/ด/ปี',                     sub: '',                                        width: 12 },
+  { key: 'timeSlot',        label: 'ช่วงเวลา',                   sub: '(เช้า/บ่าย/เต็มวัน)',                     width: 13 },
+  { key: 'place',           label: 'สถานที่ไปทำงาน',             sub: '',                                        width: 28 },
+  { key: 'purpose',         label: 'สิ่งที่ไปดำเนินการ',         sub: '',                                        width: 30 },
+  { key: 'caseNumber',      label: 'หมายเลขคดีดำ',              sub: '',                                        width: 14 },
+  { key: 'productCategory', label: 'หมวดหมู่งานโปรดักส์',        sub: '',                                        width: 18 },
+  { key: 'productType',     label: 'ประเภทย่อย',                 sub: '',                                        width: 16 },
+  { key: 'productWork',     label: 'งานโปรดักส์ (เดิม)',          sub: '',                                        width: 16 },
+  { key: 'workBranch',      label: 'งานของสาขาไหน',             sub: '',                                        width: 14 },
+  { key: 'caseCount',       label: 'จำนวนคดีที่ไปดำเนินการ',    sub: '',                                        width: 14 },
+  { key: 'adminChecked',    label: 'แอดมินโปรดักส์ตรวจสอบ',     sub: '(มี/ไม่มี)',                              width: 14 },
+  { key: 'supervisedBy',    label: 'ผู้สั่งงาน',                 sub: '(แอดมิน/หัวหน้า/ทนายวางแผนตามเอง)',     width: 22 },
+  { key: 'status',          label: 'อนุมัติ/ไม่อนุมัติ',        sub: '',                                        width: 13 },
+  { key: 'note',            label: 'หมายเหตุ',                   sub: '',                                        width: 20 },
 ]
-const NC = COLS.length // 13
+const NC = COLS.length // 15
 
 function thinBorder(argb = 'FFB0C4DE') {
   return {
@@ -63,8 +66,8 @@ function thinBorder(argb = 'FFB0C4DE') {
   }
 }
 
-// Columns whose data cells are centre-aligned
-const CENTRE_COLS = new Set([1, 2, 3, 6, 8, 9, 10, 11, 12])
+// Columns whose data cells are centre-aligned (indices match COLS order above)
+const CENTRE_COLS = new Set([1, 2, 3, 6, 7, 8, 10, 11, 12, 13, 14])
 
 function applyStatusColour(cell: ExcelJS.Cell, label: string) {
   if (!label) return
@@ -211,6 +214,8 @@ function buildEmployeeSheet(
         req?.place       ?? '',
         req?.purpose     ?? '',
         req?.caseNumber  ?? '',
+        req?.productCategory ?? '',
+        req?.productType     ?? '',
         req?.productWork ?? '',
         req?.workBranch  ?? '',
         req?.caseCount != null ? req.caseCount : '',
@@ -237,8 +242,8 @@ function buildEmployeeSheet(
           wrapText:   col >= 4,
         }
       })
-      // Status column (12) colour
-      const statusCell  = row.getCell(12)
+      // Status column (14) colour
+      const statusCell  = row.getCell(14)
       applyStatusColour(statusCell, statusCell.value as string)
     })
 
@@ -266,23 +271,23 @@ function buildEmployeeSheet(
   ws.addRow([]).height = 20
 
   const rSig1 = ws.addRow([])
-  rSig1.getCell(3).value = 'ลงชื่อ ___________________________'
-  rSig1.getCell(9).value = 'ลงชื่อ ___________________________'
-  ws.mergeCells(rSig1.number, 3, rSig1.number, 7)
-  ws.mergeCells(rSig1.number, 9, rSig1.number, NC)
+  rSig1.getCell(3).value  = 'ลงชื่อ ___________________________'
+  rSig1.getCell(10).value = 'ลงชื่อ ___________________________'
+  ws.mergeCells(rSig1.number, 3, rSig1.number, 8)
+  ws.mergeCells(rSig1.number, 10, rSig1.number, NC)
   rSig1.height = 24
-  ;[3, 9].forEach(col => {
+  ;[3, 10].forEach(col => {
     rSig1.getCell(col).alignment = { horizontal: 'center', vertical: 'middle' }
     rSig1.getCell(col).font = { size: 11, name: 'TH SarabunPSK' }
   })
 
   const rSig2 = ws.addRow([])
-  rSig2.getCell(3).value = '(ผู้จัดทำแผน)'
-  rSig2.getCell(9).value = '(ผู้อนุมัติ / CEO)'
-  ws.mergeCells(rSig2.number, 3, rSig2.number, 7)
-  ws.mergeCells(rSig2.number, 9, rSig2.number, NC)
+  rSig2.getCell(3).value  = '(ผู้จัดทำแผน)'
+  rSig2.getCell(10).value = '(ผู้อนุมัติ / CEO)'
+  ws.mergeCells(rSig2.number, 3, rSig2.number, 8)
+  ws.mergeCells(rSig2.number, 10, rSig2.number, NC)
   rSig2.height = 20
-  ;[3, 9].forEach(col => {
+  ;[3, 10].forEach(col => {
     rSig2.getCell(col).alignment = { horizontal: 'center', vertical: 'middle' }
     rSig2.getCell(col).font = { size: 10, name: 'TH SarabunPSK' }
   })
