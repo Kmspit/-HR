@@ -392,7 +392,7 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
                   <th className={`${TH} w-[130px]`}    rowSpan={2}>สถานที่ไปทำงาน</th>
                   <th className={`${TH} w-[150px]`}    rowSpan={2}>สิ่งที่ไปดำเนินการ</th>
                   <th className={`${TH} w-[80px]`}     rowSpan={2}>หมายเลข<br/>คดี</th>
-                  <th className={`${TH} w-[90px]`}     rowSpan={2}>งานผลิตภัณฑ์</th>
+                  <th className={`${TH} w-[90px]`}     rowSpan={2}>งานโปรดักส์</th>
                   <th className={`${TH} w-[76px]`}     rowSpan={2}>งานของ<br/>สาขาไหน</th>
                   <th className={`${TH} w-[52px]`}     rowSpan={2}>จำนวน<br/>คดี</th>
                   <th className={`${TH} w-[68px]`}>แอดมินโปรดักส์<br/>ตรวจสอบ</th>
@@ -463,7 +463,7 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
                             className={`${INP} text-center ${mLock ? INP_RO : ''}`} />
                         </td>
 
-                        {/* งานผลิตภัณฑ์ */}
+                        {/* งานโปรดักส์ */}
                         <td className={`${TD} ${stripe}`}>
                           <input value={morn.productWork} readOnly={mLock} placeholder="—"
                             onChange={e => updateSlot(kM, 'productWork', e.target.value)}
