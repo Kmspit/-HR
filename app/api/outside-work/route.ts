@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const filterUserId = searchParams.get('userId')
+    const filterClientCompanyId = searchParams.get('clientCompanyId')
     const scope = await resolveOrgListScope(prisma, session.user.id, session.user.role as Role)
 
     let where = userIdFilterFromScope(scope)
@@ -35,7 +36,11 @@ export async function GET(req: NextRequest) {
     }
 
     const requests = await prisma.outsideWorkRequest.findMany({
-      where: { ...where, deletedAt: null },
+      where: {
+        ...where,
+        deletedAt: null,
+        ...(filterClientCompanyId ? { clientCompanyId: filterClientCompanyId } : {}),
+      },
       select: {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,

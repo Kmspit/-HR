@@ -7,8 +7,6 @@ import { Loader2, Send, Pencil, Trash2, X } from 'lucide-react'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { PRODUCT_CATEGORY_KEYS, OTHER_PRODUCT_CATEGORY, productTypesFor } from '@/lib/constants/product-types'
 
-type ClientCompanyOption = { id: string; companyName: string }
-
 export type ClientVisitItem = {
   id: string
   date: string
@@ -22,14 +20,11 @@ export type ClientVisitItem = {
   status: string
   approvalStatus: string | null
   documentNumber: string | null
-  clientCompanyId: string | null
-  clientCompanyName: string | null
 }
 
 type Draft = {
   date: string
   timeSlot: 'เช้า' | 'บ่าย' | ''
-  clientCompanyId: string
   place: string
   purpose: string
   caseNumber: string
@@ -45,7 +40,7 @@ function todayYmd(): string {
 
 function emptyDraft(): Draft {
   return {
-    date: todayYmd(), timeSlot: '', clientCompanyId: '',
+    date: todayYmd(), timeSlot: '',
     place: '', purpose: '', caseNumber: '', productCategory: '', productType: '', caseCount: '',
   }
 }
@@ -68,25 +63,21 @@ const STATUS_LABEL: Record<string, string> = {
 
 const INPUT_CLS = 'w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-white/20 focus:outline-none focus:border-green-500'
 
-export default function ClientVisitForm({ initialItems }: { initialItems: ClientVisitItem[] }) {
+export default function ClientVisitCompanyForm({
+  companyId, companyName, initialItems,
+}: {
+  companyId: string
+  companyName: string
+  initialItems: ClientVisitItem[]
+}) {
   const router = useRouter()
   const [items, setItems] = useState<ClientVisitItem[]>(initialItems)
-  const [companies, setCompanies] = useState<ClientCompanyOption[]>([])
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => { setItems(initialItems) }, [initialItems])
-
-  useEffect(() => {
-    let cancelled = false
-    apiJson<{ items?: ClientCompanyOption[] }>('/api/client-companies?status=ACTIVE')
-      .then(({ ok, data }) => {
-        if (!cancelled && ok && Array.isArray(data.items)) setCompanies(data.items)
-      })
-    return () => { cancelled = true }
-  }, [])
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }))
 
@@ -98,7 +89,6 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
     setDraft({
       date: item.date.slice(0, 10),
       timeSlot: (item.timeSlot === 'บ่าย' ? 'บ่าย' : 'เช้า'),
-      clientCompanyId: item.clientCompanyId ?? '',
       place: item.place,
       purpose: item.purpose,
       caseNumber: item.caseNumber ?? '',
@@ -117,7 +107,6 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
   const submit = async () => {
     if (!draft.date)            { toast.error('กรุณาเลือกวันที่'); return }
     if (!draft.timeSlot)        { toast.error('กรุณาเลือกช่วงเวลา'); return }
-    if (!draft.clientCompanyId) { toast.error('กรุณาเลือกบริษัทลูกค้า'); return }
     if (!draft.place.trim())    { toast.error('กรุณาระบุสถานที่'); return }
     if (!draft.purpose.trim())  { toast.error('กรุณาระบุสิ่งที่ไปดำเนินการ'); return }
 
@@ -126,7 +115,7 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
       const body = {
         date: draft.date,
         timeSlot: draft.timeSlot,
-        clientCompanyId: draft.clientCompanyId,
+        clientCompanyId: companyId,
         place: draft.place.trim(),
         purpose: draft.purpose.trim(),
         caseNumber: draft.caseNumber.trim() || null,
@@ -173,7 +162,7 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
       <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-slate-900 dark:text-white">
-            {editingId ? 'แก้ไขรายการ' : 'บันทึกรายการใหม่'}
+            {editingId ? 'แก้ไขรายการ' : `บันทึกรายการใหม่ — ${companyName}`}
           </h2>
           {editingId && (
             <button type="button" onClick={cancelEdit} className="flex items-center gap-1 text-xs text-slate-500 dark:text-white/50 hover:text-slate-700 dark:hover:text-white/80">
@@ -195,16 +184,6 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
               <option value="บ่าย">บ่าย</option>
             </select>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm text-slate-500 dark:text-white/50 mb-1">บริษัทลูกค้า *</label>
-          <select value={draft.clientCompanyId} onChange={(e) => set('clientCompanyId', e.target.value)} className={INPUT_CLS}>
-            <option value="">— เลือกบริษัทลูกค้า —</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>{c.companyName}</option>
-            ))}
-          </select>
         </div>
 
         <div>
@@ -269,11 +248,11 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
         </div>
       </section>
 
-      {/* ── List of submitted items (card, not table) ── */}
+      {/* ── List of submitted items (card, not table) — scoped to this company only ── */}
       <section className="space-y-3">
-        <h2 className="font-semibold text-slate-900 dark:text-white">รายการสัปดาห์นี้ ({items.length})</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-white">รายการสัปดาห์นี้ — {companyName} ({items.length})</h2>
         {items.length === 0 && (
-          <p className="text-sm text-slate-400 dark:text-white/40">ยังไม่มีรายการในสัปดาห์นี้</p>
+          <p className="text-sm text-slate-400 dark:text-white/40">ยังไม่มีรายการในสัปดาห์นี้สำหรับบริษัทนี้</p>
         )}
         {items.map((item) => {
           const canEdit = isPendingItem(item)
@@ -285,9 +264,6 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
                     <span className="font-mono text-slate-500 dark:text-white/40">{item.documentNumber ?? '—'}</span>
                     <span className="font-medium text-slate-900 dark:text-white">{fmtDateTH(item.date)}</span>
                     <span className="text-slate-500 dark:text-white/50">({item.timeSlot ?? '—'})</span>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 text-xs font-semibold">
-                      {item.clientCompanyName ?? '—'}
-                    </span>
                     <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 text-xs font-semibold">
                       {STATUS_LABEL[item.approvalStatus ?? item.status] ?? item.status}
                     </span>
