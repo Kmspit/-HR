@@ -69,6 +69,8 @@ export default async function OutsideWorkPage({
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
         stepLogs: {
           select: {
@@ -132,6 +134,8 @@ export default async function OutsideWorkPage({
       adminChecked:   r.adminChecked    ?? null,
       supervisedBy:   r.supervisedBy    ?? null,
       documentNumber: r.documentNumber  ?? null,
+      clientCompanyId:   r.clientCompanyId ?? null,
+      clientCompanyName: r.clientCompany?.companyName ?? null,
     })))
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string; meta?: unknown }

@@ -20,6 +20,7 @@ export const outsideWorkSchema = z.object({
   adminChecked: z.enum(['มี', 'ไม่มี']).optional().or(z.literal('')),
   supervisedBy: z.enum(['แอดมิน', 'หัวหน้า', 'ทนายวางแผนตามเอง']).optional().or(z.literal('')),
   note:         z.string().max(500, 'หมายเหตุต้องไม่เกิน 500 ตัวอักษร').optional(),
+  clientCompanyId: z.string().cuid().optional().or(z.literal('')),
 
   // ── Legacy / optional fields ──────────────────────────────────────────────
   startTime:     z.string().optional(),

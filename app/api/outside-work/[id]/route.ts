@@ -28,6 +28,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
         approvals: {
           select: {
@@ -105,6 +107,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       approvalStatus?: string; status?: string
       timeSlot?: string; caseNumber?: string; productWork?: string; productCategory?: string; productType?: string; workBranch?: string
       caseCount?: number | string; adminChecked?: string; supervisedBy?: string
+      clientCompanyId?: string
     }
 
     if (body.place !== undefined && !body.place?.trim()) {
@@ -141,12 +144,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.caseCount    !== undefined) updateData.caseCount    = body.caseCount ? Number(body.caseCount) : null
     if (body.adminChecked !== undefined) updateData.adminChecked = body.adminChecked?.trim() || null
     if (body.supervisedBy !== undefined) updateData.supervisedBy = body.supervisedBy?.trim() || null
+    if (body.clientCompanyId !== undefined) updateData.clientCompanyId = body.clientCompanyId || null
 
     if (isHR) {
       // Status changes only via approval chain — not direct PATCH
     }
 
-    const updated = await prisma.outsideWorkRequest.update({ where: { id }, data: updateData })
+    const updated = await prisma.outsideWorkRequest.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true, userId: true, date: true, startTime: true, endTime: true,
+        place: true, purpose: true, client: true, note: true, status: true,
+        chainConfigId: true, currentStepOrder: true, createdAt: true,
+        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
+      },
+    })
 
     await createAuditLog({
       actorId: session.user.id, targetId: id, targetType: 'OutsideWorkRequest',

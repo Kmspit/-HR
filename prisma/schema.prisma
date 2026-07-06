@@ -889,16 +889,18 @@ model OutsideWorkRequest {
   adminChecked   String?       @map("admin_checked")   // มี / ไม่มี
   supervisedBy   String?       @map("supervised_by")   // ผู้สั่งงาน
   documentNumber String?       @unique @map("document_number") // OW-2567-001
+  clientCompanyId String?      @map("client_company_id") // เลือกจาก ClientCompany CRM (optional)
   status           RequestStatus @default(PENDING)
   chainConfigId    String?
   currentStepOrder Int           @default(0)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user         User                      @relation(fields: [userId], references: [id])
-  approvals    ApprovalHistory[]
-  chainConfig  ApprovalChainConfig?      @relation("OutsideChain", fields: [chainConfigId], references: [id])
-  stepLogs     OutsideWorkApprovalStep[]
+  user          User                      @relation(fields: [userId], references: [id])
+  approvals     ApprovalHistory[]
+  chainConfig   ApprovalChainConfig?      @relation("OutsideChain", fields: [chainConfigId], references: [id])
+  stepLogs      OutsideWorkApprovalStep[]
+  clientCompany ClientCompany?            @relation(fields: [clientCompanyId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([date])
@@ -2103,14 +2105,15 @@ model ClientCompany {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt      @map("updated_at")
 
-  createdBy        User                @relation("ClientCompanyCreator", fields: [createdById], references: [id])
-  contracts        ClientContract[]
-  slaRecords       ClientSlaRecord[]
-  files            ClientCompanyFile[]
-  tasks            TaskAssignment[]
-  invoices         BillingInvoice[]
-  recoveryPayments RecoveryPayment[]
-  portalUsers      ClientPortalUser[]
+  createdBy          User                    @relation("ClientCompanyCreator", fields: [createdById], references: [id])
+  contracts          ClientContract[]
+  slaRecords         ClientSlaRecord[]
+  files              ClientCompanyFile[]
+  tasks              TaskAssignment[]
+  invoices           BillingInvoice[]
+  recoveryPayments   RecoveryPayment[]
+  portalUsers        ClientPortalUser[]
+  outsideWorkRequests OutsideWorkRequest[]
 
   @@index([status])
   @@map("client_companies")

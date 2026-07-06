@@ -249,6 +249,7 @@ export async function applyChainToOutsideWork(
         status: 'APPROVED',
         approvalStatus: 'approved',
       },
+      select: { id: true },
     })
     await createNotification({
       userId: requesterId,
@@ -267,6 +268,7 @@ export async function applyChainToOutsideWork(
       status: 'PENDING',
       approvalStatus: 'pending_chain',
     },
+    select: { id: true },
   })
 
   await notifyOutsideStepApprovers(prisma, requestId, firstPending.stepName, firstPending.approverId, firstPending.approverRole)
@@ -449,6 +451,7 @@ export async function advanceOutsideWorkChain(
     await prisma.outsideWorkRequest.update({
       where: { id: requestId },
       data: { currentStepOrder: nextStep.stepOrder, approvalStatus: 'pending_chain' },
+      select: { id: true },
     })
     await notifyOutsideStepApprovers(prisma, requestId, nextStep.stepName, nextStep.approverId, nextStep.approverRole)
     return { finalized: false, nextStepOrder: nextStep.stepOrder }
@@ -457,6 +460,7 @@ export async function advanceOutsideWorkChain(
   await prisma.outsideWorkRequest.update({
     where: { id: requestId },
     data: { status: 'APPROVED', approvalStatus: 'approved', currentStepOrder: 0 },
+    select: { id: true },
   })
 
   await createNotification({
@@ -495,6 +499,7 @@ export async function rejectOutsideWorkChain(
   await prisma.outsideWorkRequest.update({
     where: { id: requestId },
     data: { status: 'REJECTED', approvalStatus: 'rejected', currentStepOrder: 0 },
+    select: { id: true },
   })
 
   if (request?.userId) {
