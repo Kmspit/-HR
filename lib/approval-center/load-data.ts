@@ -194,7 +194,7 @@ async function loadApprovedRejected(
       take: limit,
     }),
     prisma.outsideWorkRequest.findMany({
-      where: { status: { in: outsideStatus }, ...userFilter },
+      where: { status: { in: outsideStatus }, deletedAt: null, ...userFilter },
       select: {
         id: true, date: true, startTime: true, endTime: true, place: true, purpose: true,
         status: true, approvalStatus: true, chainConfigId: true, currentStepOrder: true, createdAt: true,
@@ -323,7 +323,7 @@ async function loadMyRequests(prisma: PrismaClient, userId: string): Promise<Uni
       take: 40,
     }),
     prisma.outsideWorkRequest.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       select: {
         id: true, date: true, startTime: true, endTime: true, place: true, purpose: true,
         status: true, approvalStatus: true, chainConfigId: true, currentStepOrder: true, createdAt: true,
@@ -460,7 +460,7 @@ async function loadPendingWithMeta(
 
   const outsideIds = outside.map((o) => o.id)
   const outsideDates = outsideIds.length
-    ? await prisma.outsideWorkRequest.findMany({ where: { id: { in: outsideIds } }, select: { id: true, createdAt: true } })
+    ? await prisma.outsideWorkRequest.findMany({ where: { id: { in: outsideIds }, deletedAt: null }, select: { id: true, createdAt: true } })
     : []
   const outsideCreated = new Map(outsideDates.map((r) => [r.id, r.createdAt]))
 

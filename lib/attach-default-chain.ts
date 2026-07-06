@@ -57,7 +57,7 @@ export async function attachAllPendingDefaultChains(
   const outsideChain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
   if (outsideChain) {
     const rows = await prisma.outsideWorkRequest.findMany({
-      where: { chainConfigId: null, status: { notIn: ['APPROVED', 'REJECTED'] } },
+      where: { chainConfigId: null, status: { notIn: ['APPROVED', 'REJECTED'] }, deletedAt: null },
       select: { id: true, userId: true },
     })
     for (const row of rows) {
@@ -169,7 +169,7 @@ export async function attachDefaultChainForOutside(
   userId: string,
 ): Promise<boolean> {
   const row = await prisma.outsideWorkRequest.findUnique({
-    where: { id: requestId },
+    where: { id: requestId, deletedAt: null },
     select: { chainConfigId: true },
   })
   if (!row || row.chainConfigId) return false

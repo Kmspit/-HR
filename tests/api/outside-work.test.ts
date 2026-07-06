@@ -48,7 +48,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getDefaultChain, applyChainToOutsideWork } from '@/lib/approval-chain'
 import { POST, GET } from '@/app/api/outside-work/route'
-import { PATCH } from '@/app/api/outside-work/[id]/route'
+import { PATCH, DELETE } from '@/app/api/outside-work/[id]/route'
 
 const mockSession = { user: { id: 'user-1', name: 'Test User', role: 'EMPLOYEE' } }
 const mockHrSession = { user: { id: 'hr-1', name: 'HR Admin', role: 'CEO' } }
@@ -197,5 +197,82 @@ describe('PATCH /api/outside-work/[id]', () => {
 
     const res = await PATCH(makePatchReq('req-1', { place: 'อาคารใหม่' }), { params })
     expect(res.status).toBe(403)
+  })
+})
+
+describe('DELETE /api/outside-work/[id] (soft-delete)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const pendingReq = {
+    userId: 'user-1', status: 'PENDING', approvalStatus: 'pending_ceo', deletedAt: null,
+  }
+  const params = Promise.resolve({ id: 'req-1' })
+
+  function makeDeleteReq(id: string) {
+    return new NextRequest(`http://localhost/api/outside-work/${id}`, { method: 'DELETE' })
+  }
+
+  it('returns 401 when not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue(null as never)
+    const res = await DELETE(makeDeleteReq('req-1'), { params })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 when request does not exist', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue(null as never)
+    const res = await DELETE(makeDeleteReq('missing'), { params })
+    expect(res.status).toBe(404)
+  })
+
+  it('owner soft-deletes their PENDING request via update(), never delete()', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue(pendingReq as never)
+    vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({ id: 'req-1' } as never)
+
+    const res = await DELETE(makeDeleteReq('req-1'), { params })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.success).toBe(true)
+    expect(prisma.outsideWorkRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'req-1' },
+        data: expect.objectContaining({ deletedAt: expect.any(Date), deletedById: 'user-1' }),
+      }),
+    )
+  })
+
+  it('rejects deleting an already soft-deleted request with a clear message', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({
+      ...pendingReq, deletedAt: new Date('2026-01-01'),
+    } as never)
+
+    const res = await DELETE(makeDeleteReq('req-1'), { params })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('รายการนี้ถูกลบไปแล้ว')
+    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
+  })
+
+  it('refuses to delete a request that is no longer PENDING', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({
+      ...pendingReq, status: 'APPROVED', approvalStatus: 'approved',
+    } as never)
+
+    const res = await DELETE(makeDeleteReq('req-1'), { params })
+    expect(res.status).toBe(400)
+    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
+  })
+
+  it('forbids non-owner non-HR from deleting', async () => {
+    const otherUser = { user: { id: 'other-user', name: 'Other', role: 'EMPLOYEE' } }
+    vi.mocked(auth).mockResolvedValue(otherUser as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue(pendingReq as never)
+
+    const res = await DELETE(makeDeleteReq('req-1'), { params })
+    expect(res.status).toBe(403)
+    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
   })
 })

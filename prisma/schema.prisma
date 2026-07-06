@@ -472,6 +472,7 @@ model User {
   attendances     Attendance[]
   leaveRequests   LeaveRequest[]
   outsideRequests OutsideWorkRequest[]
+  outsideRequestsDeleted OutsideWorkRequest[] @relation("OutsideWorkDeletedBy")
   weeklyPlans     WeeklyLawyerPlan[]
   approvalActions ApprovalHistory[]   @relation("ApprovedBy")
   notifications   Notification[]
@@ -893,6 +894,8 @@ model OutsideWorkRequest {
   status           RequestStatus @default(PENDING)
   chainConfigId    String?
   currentStepOrder Int           @default(0)
+  deletedAt        DateTime?     @map("deleted_at")    // soft-delete — เก็บร่องรอยไว้ตรวจสอบย้อนหลัง (ข้อมูลงานคดี)
+  deletedById      String?       @map("deleted_by_id") // ใครเป็นคนลบ (audit)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -901,10 +904,12 @@ model OutsideWorkRequest {
   chainConfig   ApprovalChainConfig?      @relation("OutsideChain", fields: [chainConfigId], references: [id])
   stepLogs      OutsideWorkApprovalStep[]
   clientCompany ClientCompany?            @relation(fields: [clientCompanyId], references: [id], onDelete: SetNull)
+  deletedBy     User?                     @relation("OutsideWorkDeletedBy", fields: [deletedById], references: [id])
 
   @@index([userId])
   @@index([date])
   @@index([status])
+  @@index([deletedAt])
   @@map("outside_work_requests")
 }
 

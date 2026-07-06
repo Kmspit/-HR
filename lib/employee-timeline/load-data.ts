@@ -85,7 +85,7 @@ export async function loadEmployeeTimeline(
       },
     }),
     prisma.outsideWorkRequest.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 80,
       select: {

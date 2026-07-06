@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     if (body.type === 'OUTSIDE') {
       const req_ = await prisma.outsideWorkRequest.findUnique({
-        where: { id: body.requestId },
+        where: { id: body.requestId, deletedAt: null },
         select: { status: true, chainConfigId: true, approvalStatus: true, userId: true },
       })
       if (!req_) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         await attachDefaultChainForOutside(prisma, body.requestId, req_.userId)
       }
       const refreshed = await prisma.outsideWorkRequest.findUnique({
-        where: { id: body.requestId },
+        where: { id: body.requestId, deletedAt: null },
         select: { chainConfigId: true, approvalStatus: true, currentStepOrder: true },
       })
       if (!refreshed?.chainConfigId || refreshed.approvalStatus !== 'pending_chain') {

@@ -219,6 +219,7 @@ export async function getPendingOutsideForApprover(
     where: {
 
       status: { notIn: ['APPROVED', 'REJECTED'] },
+      deletedAt: null,
 
     },
 

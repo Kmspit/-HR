@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900005
+export const CURRENT_SCHEMA_VERSION = 900006
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1037,6 +1037,8 @@ async function runEnsure(force = false): Promise<boolean> {
   await addColumnIfMissing('outside_work_requests', 'supervised_by',   `ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
   await addColumnIfMissing('outside_work_requests', 'document_number', `ALTER TABLE outside_work_requests ADD COLUMN document_number TEXT`)
   await addColumnIfMissing('outside_work_requests', 'client_company_id', `ALTER TABLE outside_work_requests ADD COLUMN client_company_id TEXT`)
+  await addColumnIfMissing('outside_work_requests', 'deleted_at',    `ALTER TABLE outside_work_requests ADD COLUMN deleted_at DATETIME`)
+  await addColumnIfMissing('outside_work_requests', 'deleted_by_id', `ALTER TABLE outside_work_requests ADD COLUMN deleted_by_id TEXT`)
 
   await addCompanySettingsColumnIfMissing(
     'outside_work_plan_title',

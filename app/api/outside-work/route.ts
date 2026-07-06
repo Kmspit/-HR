@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     }
 
     const requests = await prisma.outsideWorkRequest.findMany({
-      where,
+      where: { ...where, deletedAt: null },
       select: {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,
@@ -63,6 +63,10 @@ export async function GET(req: NextRequest) {
  * Derived from the max NNN already assigned (not row count) — some legacy rows have
  * documentNumber = null, so count() undercounts and regenerates a number that already
  * exists, tripping the UNIQUE constraint on outside_work_requests.document_number.
+ *
+ * Intentionally does NOT filter deletedAt: null — document_number stays populated
+ * (and still UNIQUE-constrained at the DB level) on soft-deleted rows, so excluding
+ * them here would let this regenerate a number that collides with a deleted row.
  */
 async function nextOutsideWorkDocumentNumber(year: number): Promise<string> {
   const prefix = `OW-${year}-`
@@ -157,7 +161,7 @@ export async function POST(req: NextRequest) {
     await applyChainToOutsideWork(prisma, request.id, defaultChain.id, session.user.id)
 
     const refreshed = await prisma.outsideWorkRequest.findUnique({
-      where: { id: request.id },
+      where: { id: request.id, deletedAt: null },
       select: {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,

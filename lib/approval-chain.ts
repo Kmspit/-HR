@@ -433,7 +433,7 @@ export async function advanceOutsideWorkChain(
   requestId: string,
 ): Promise<{ finalized: boolean; nextStepOrder: number | null }> {
   const request = await prisma.outsideWorkRequest.findUnique({
-    where: { id: requestId },
+    where: { id: requestId, deletedAt: null },
     select: { currentStepOrder: true, chainConfigId: true, userId: true },
   })
   if (!request?.chainConfigId) return { finalized: false, nextStepOrder: null }
@@ -483,7 +483,7 @@ export async function rejectOutsideWorkChain(
   _ip: string,
 ): Promise<void> {
   const request = await prisma.outsideWorkRequest.findUnique({
-    where: { id: requestId },
+    where: { id: requestId, deletedAt: null },
     select: { userId: true },
   })
 
@@ -677,7 +677,7 @@ export async function executeOutsideWorkStepAction(
   ip: string,
 ): Promise<StepActionResult | { error: string; status: number }> {
   const request = await prisma.outsideWorkRequest.findUnique({
-    where: { id: requestId },
+    where: { id: requestId, deletedAt: null },
     select: { id: true, status: true, chainConfigId: true, currentStepOrder: true, userId: true },
   })
   if (!request) return { error: 'ไม่พบคำขอ', status: 404 }

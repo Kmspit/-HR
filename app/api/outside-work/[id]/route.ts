@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { id } = await params
     const request = await prisma.outsideWorkRequest.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       select: {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,
@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const { id } = await params
     const existing = await prisma.outsideWorkRequest.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       select: { userId: true, status: true, approvalStatus: true, place: true, note: true },
     })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -189,9 +189,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     const { id } = await params
     const existing = await prisma.outsideWorkRequest.findUnique({
       where: { id },
-      select: { userId: true, status: true, approvalStatus: true },
+      select: { userId: true, status: true, approvalStatus: true, deletedAt: true },
     })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (existing.deletedAt) {
+      return NextResponse.json({ error: 'รายการนี้ถูกลบไปแล้ว' }, { status: 400 })
+    }
 
     const role = session.user.role as Role
     const isHR    = hasPermission(role, 'approve_outside_work')
@@ -219,7 +222,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
-    await prisma.outsideWorkRequest.delete({ where: { id }, select: { id: true } })
+    // Soft-delete only — งานคดีความอาจต้องตรวจสอบย้อนหลัง ห้าม hard delete
+    await prisma.outsideWorkRequest.update({
+      where: { id },
+      data: { deletedAt: new Date(), deletedById: session.user.id },
+      select: { id: true },
+    })
 
     return NextResponse.json({ success: true })
   } catch (err) {

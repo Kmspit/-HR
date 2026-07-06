@@ -152,7 +152,7 @@ export default function ClientVisitForm({ initialItems }: { initialItems: Client
   }
 
   const remove = async (id: string) => {
-    if (!window.confirm('ยืนยันลบรายการนี้?')) return
+    if (!window.confirm('ลบรายการนี้ (ยังกู้คืนได้ทาง admin)')) return
     setDeletingId(id)
     try {
       const { ok, data, status } = await apiJson(`/api/outside-work/${id}`, { method: 'DELETE' })

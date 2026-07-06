@@ -31,6 +31,7 @@ export async function findApprovedOutsideWorkForDate(
       userId,
       status: 'APPROVED',
       date: { gte: dayStart, lte: dayEnd },
+      deletedAt: null,
     },
     orderBy: { createdAt: 'desc' },
     select: { id: true, place: true, startTime: true, endTime: true, date: true },

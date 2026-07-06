@@ -56,11 +56,14 @@ export default async function OutsideWorkPage({
 
   try {
     const rows = await prisma.outsideWorkRequest.findMany({
-      where: canViewAll
-        ? nestedUser
-          ? { user: nestedUser }
-          : {}
-        : { userId: session.user.id },
+      where: {
+        ...(canViewAll
+          ? nestedUser
+            ? { user: nestedUser }
+            : {}
+          : { userId: session.user.id }),
+        deletedAt: null,
+      },
       select: {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,

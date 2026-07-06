@@ -37,7 +37,7 @@ export default async function PrintOutsideWorkPage({
 
   const { id } = await params
   const request = await prisma.outsideWorkRequest.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     select: {
       id: true, userId: true, date: true, place: true, purpose: true,
       timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,

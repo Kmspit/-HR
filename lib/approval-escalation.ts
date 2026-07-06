@@ -129,6 +129,7 @@ export async function runApprovalEscalation(prisma: PrismaClient): Promise<Escal
       status: { notIn: ['APPROVED', 'REJECTED'] },
       approvalStatus: 'pending_chain',
       updatedAt: { lte: softCutoff },
+      deletedAt: null,
     },
     select: {
       id: true, currentStepOrder: true, updatedAt: true,

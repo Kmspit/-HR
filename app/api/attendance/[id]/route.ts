@@ -50,7 +50,7 @@ export async function GET(
   let outsideWork = null
   if (record.outsideWorkRequestId) {
     outsideWork = await prisma.outsideWorkRequest.findUnique({
-      where: { id: record.outsideWorkRequestId },
+      where: { id: record.outsideWorkRequestId, deletedAt: null },
       select: { place: true, purpose: true, client: true, googleMapsUrl: true, status: true },
     })
   }

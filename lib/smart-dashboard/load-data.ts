@@ -138,6 +138,7 @@ export async function loadSmartDashboardData(
       where: {
         status: 'PENDING',
         approvalStatus: 'pending_chain',
+        deletedAt: null,
         ...userScope,
       },
     }),
@@ -151,6 +152,7 @@ export async function loadSmartDashboardData(
       where: {
         status: 'APPROVED',
         date: { gte: todayStart, lt: new Date(todayStart.getTime() + DAY_MS) },
+        deletedAt: null,
         ...userScope,
       },
     }),

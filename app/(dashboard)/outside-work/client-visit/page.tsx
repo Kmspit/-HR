@@ -32,6 +32,7 @@ export default async function OutsideWorkClientVisitPage() {
       userId: session.user.id,
       clientCompanyId: { not: null },
       date: { gte: weekStart, lt: weekEnd },
+      deletedAt: null,
     },
     select: {
       id: true, date: true, timeSlot: true, place: true, purpose: true,

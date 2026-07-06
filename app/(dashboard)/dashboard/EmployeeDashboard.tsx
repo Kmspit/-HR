@@ -25,7 +25,7 @@ export default async function EmployeeDashboard({ userId, name, role }: Props) {
     prisma.notification.count({ where: { userId, isRead: false } }),
     prisma.leaveRequest.count({ where: { userId, status: 'PENDING' } }),
     prisma.outsideWorkRequest.count({
-      where: { userId, status: 'PENDING' },
+      where: { userId, status: 'PENDING', deletedAt: null },
     }),
   ])
 
