@@ -47,6 +47,8 @@ export type OWRequest = {
   currentStepOrder?: number
   steps?: ApprovalStepRow[]
   documentNumber?: string | null
+  clientCompanyId?: string | null
+  clientCompanyName?: string | null
   createdAt: string
 }
 

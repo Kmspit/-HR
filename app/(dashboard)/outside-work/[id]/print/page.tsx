@@ -43,6 +43,8 @@ export default async function PrintOutsideWorkPage({
       timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
       workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, note: true,
       status: true, approvalStatus: true, documentNumber: true, createdAt: true,
+      clientCompanyId: true,
+      clientCompany: { select: { companyName: true } },
       user: { select: { name: true, department: true, position: true } },
       approvals: {
         select: {
@@ -301,6 +303,12 @@ export default async function PrintOutsideWorkPage({
                 <td className="label-col">สถานที่ไปทำงาน</td>
                 <td className="value-col" colSpan={3}>{request.place}</td>
               </tr>
+              {request.clientCompany && (
+                <tr>
+                  <td className="label-col">บริษัทลูกค้า</td>
+                  <td className="value-col" colSpan={3}>{request.clientCompany.companyName}</td>
+                </tr>
+              )}
               <tr>
                 <td className="label-col">สิ่งที่ไปดำเนินการ</td>
                 <td className="value-col" colSpan={3} style={{ whiteSpace: 'pre-wrap' }}>{request.purpose}</td>

@@ -179,6 +179,7 @@ export async function attachDefaultChainForOutside(
   await prisma.outsideWorkRequest.update({
     where: { id: requestId },
     data: { approvalStatus: 'pending_chain' },
+    select: { id: true },
   })
   return true
 }

@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest) {
       attachmentUrl, attachmentName,
       employeeName, ownerName, workType, distance, distanceLimit, routeType,
       timeSlot, caseNumber, productWork, productCategory, productType, workBranch, caseCount, adminChecked, supervisedBy,
+      clientCompanyId,
     } = body
 
     if (!date || !place || !purpose) {
@@ -123,16 +126,18 @@ export async function POST(req: NextRequest) {
       caseCount:      caseCount     ? Number(caseCount)     : null,
       adminChecked:   adminChecked  || null,
       supervisedBy:   supervisedBy  || null,
+      clientCompanyId: clientCompanyId || null,
     }
 
     // Retry once or twice on a document_number collision (e.g. a second concurrent
     // submit computed the same next number before either row was inserted).
-    let request: Awaited<ReturnType<typeof prisma.outsideWorkRequest.create>> | undefined
+    let request: { id: string } | undefined
     for (let attempt = 0; attempt < 3; attempt++) {
       const documentNumber = await nextOutsideWorkDocumentNumber(year)
       try {
         request = await prisma.outsideWorkRequest.create({
           data: { ...createData, documentNumber },
+          select: { id: true },
         })
         break
       } catch (err) {
@@ -161,6 +166,8 @@ export async function POST(req: NextRequest) {
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
       },
     })
 

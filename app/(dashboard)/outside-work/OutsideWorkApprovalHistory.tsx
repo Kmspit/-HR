@@ -35,6 +35,11 @@ export default function OutsideWorkApprovalHistory({
                 <span className="shrink-0 font-medium text-gray-900">{r.date.slice(0, 10)}</span>
                 <span className="text-gray-900 shrink-0">({r.timeSlot ?? '—'})</span>
                 <span className="font-medium truncate text-gray-900">{r.place}</span>
+                {r.clientCompanyName && (
+                  <span className="shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                    {r.clientCompanyName}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <OutsideWorkStatusBadge slot={{ approvalStatus: r.approvalStatus, status: r.status }} />

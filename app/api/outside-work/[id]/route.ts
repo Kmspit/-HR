@@ -28,6 +28,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
         approvals: {
           select: {
@@ -105,6 +107,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       approvalStatus?: string; status?: string
       timeSlot?: string; caseNumber?: string; productWork?: string; productCategory?: string; productType?: string; workBranch?: string
       caseCount?: number | string; adminChecked?: string; supervisedBy?: string
+      clientCompanyId?: string
     }
 
     if (body.place !== undefined && !body.place?.trim()) {
@@ -141,12 +144,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.caseCount    !== undefined) updateData.caseCount    = body.caseCount ? Number(body.caseCount) : null
     if (body.adminChecked !== undefined) updateData.adminChecked = body.adminChecked?.trim() || null
     if (body.supervisedBy !== undefined) updateData.supervisedBy = body.supervisedBy?.trim() || null
+    if (body.clientCompanyId !== undefined) updateData.clientCompanyId = body.clientCompanyId || null
 
     if (isHR) {
       // Status changes only via approval chain — not direct PATCH
     }
 
-    const updated = await prisma.outsideWorkRequest.update({ where: { id }, data: updateData })
+    const updated = await prisma.outsideWorkRequest.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true, userId: true, date: true, startTime: true, endTime: true,
+        place: true, purpose: true, client: true, note: true, status: true,
+        chainConfigId: true, currentStepOrder: true, createdAt: true,
+        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        clientCompanyId: true,
+        clientCompany: { select: { companyName: true } },
+      },
+    })
 
     await createAuditLog({
       actorId: session.user.id, targetId: id, targetType: 'OutsideWorkRequest',
@@ -157,6 +175,53 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     })
 
     return NextResponse.json({ success: true, request: updated })
+  } catch (err) {
+    return apiError(err)
+  }
+}
+
+/** เจ้าของลบคำขอที่ยัง PENDING ได้ / HR-Admin ลบได้ทุก field ที่อยู่ในขอบเขต */
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  try {
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { id } = await params
+    const existing = await prisma.outsideWorkRequest.findUnique({
+      where: { id },
+      select: { userId: true, status: true, approvalStatus: true },
+    })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const role = session.user.role as Role
+    const isHR    = hasPermission(role, 'approve_outside_work')
+    const isOwner = existing.userId === session.user.id
+    const isPending = existing.status === 'PENDING'
+      || existing.approvalStatus === 'pending_ceo'
+      || existing.approvalStatus === 'pending_chain'
+
+    if (!isPending) {
+      return NextResponse.json({ error: 'ลบได้เฉพาะรายการที่ยังรออนุมัติเท่านั้น' }, { status: 400 })
+    }
+
+    if (isHR) {
+      const inScope =
+        isCompanyWideApprover(role) ||
+        await canViewUserRecord(
+          prisma,
+          session.user.id,
+          role,
+          session.user.branchId,
+          existing.userId,
+        )
+      if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    } else if (!isOwner) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
+
+    await prisma.outsideWorkRequest.delete({ where: { id }, select: { id: true } })
+
+    return NextResponse.json({ success: true })
   } catch (err) {
     return apiError(err)
   }
