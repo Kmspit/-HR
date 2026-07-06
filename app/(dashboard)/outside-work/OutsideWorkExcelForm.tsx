@@ -47,8 +47,6 @@ export type OWRequest = {
   currentStepOrder?: number
   steps?: ApprovalStepRow[]
   documentNumber?: string | null
-  clientCompanyId?: string | null
-  clientCompanyName?: string | null
   createdAt: string
 }
 
@@ -66,7 +64,6 @@ type SlotData = {
   adminChecked: string
   supervisedBy: string
   note: string
-  clientCompanyId: string
   approvalStatus?: string | null
   status?: string
   documentNumber?: string | null
@@ -132,7 +129,7 @@ function sKey(ymd: string, slot: 'เช้า' | 'บ่าย'): string {
 }
 
 function emptySlot(): SlotData {
-  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'', clientCompanyId:'' }
+  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }
 }
 
 function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
@@ -155,7 +152,6 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
       adminChecked: r.adminChecked   ?? '',
       supervisedBy: r.supervisedBy   ?? '',
       note:         r.note           ?? '',
-      clientCompanyId: r.clientCompanyId ?? '',
       approvalStatus: r.approvalStatus,
       status:         r.status,
       documentNumber: r.documentNumber,
@@ -424,17 +420,6 @@ export default function OutsideWorkExcelForm({
 
   useEffect(() => { setReqs(initReqs) }, [initReqs])
 
-  // ── Client companies (CRM dropdown) ──────────────────────────────────────
-  const [clientCompanies, setClientCompanies] = useState<{ id: string; companyName: string }[]>([])
-  useEffect(() => {
-    let cancelled = false
-    apiJson<{ items?: { id: string; companyName: string }[] }>('/api/client-companies?status=ACTIVE')
-      .then(({ ok, data }) => {
-        if (!cancelled && ok && Array.isArray(data.items)) setClientCompanies(data.items)
-      })
-    return () => { cancelled = true }
-  }, [])
-
   const weekEnd  = addDays(weekStart, 6)
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => toYmd(addDays(weekStart, i))),
@@ -508,7 +493,6 @@ export default function OutsideWorkExcelForm({
           adminChecked: slot.adminChecked || null,
           supervisedBy: slot.supervisedBy || null,
           note:         slot.note         || null,
-          clientCompanyId: slot.clientCompanyId || null,
         }
         const url    = slot.id ? `/api/outside-work/${slot.id}` : '/api/outside-work'
         const method = slot.id ? 'PATCH' : 'POST'
@@ -647,14 +631,13 @@ export default function OutsideWorkExcelForm({
 
           {/* ── Weekly table ─────────────────────────────────────────── */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-gray-900" style={{ minWidth: 1020 }}>
+            <table className="w-full border-collapse text-gray-900" style={{ minWidth: 920 }}>
               <thead>
                 <tr>
                   <th className={`${TH} w-[58px]`}     rowSpan={2}>วัน</th>
                   <th className={`${TH} w-[56px]`}     rowSpan={2}>ว/ด/ปี</th>
                   <th className={`${TH} w-[48px]`}     rowSpan={2}>ช่วง<br/>เวลา</th>
                   <th className={`${TH} w-[130px]`}    rowSpan={2}>สถานที่ไปทำงาน</th>
-                  <th className={`${TH} w-[100px]`}    rowSpan={2}>บริษัทลูกค้า</th>
                   <th className={`${TH} w-[150px]`}    rowSpan={2}>สิ่งที่ไปดำเนินการ</th>
                   <th className={`${TH} w-[80px]`}     rowSpan={2}>หมายเลข<br/>คดี</th>
                   <th className={`${TH} w-[90px]`}     rowSpan={2}>งานโปรดักส์</th>
@@ -712,19 +695,6 @@ export default function OutsideWorkExcelForm({
                           <input value={morn.place} readOnly={mLock} placeholder="สถานที่..."
                             onChange={e => updateSlot(kM, 'place', e.target.value)}
                             className={`${INP} ${mLock ? INP_RO : ''}`} />
-                        </td>
-
-                        {/* บริษัทลูกค้า (CRM) */}
-                        <td className={`${TD} ${stripe}`}>
-                          {mLock
-                            ? <span className={RO_SPAN}>{clientCompanies.find(c => c.id === morn.clientCompanyId)?.companyName ?? '—'}</span>
-                            : <select value={morn.clientCompanyId} onChange={e => updateSlot(kM, 'clientCompanyId', e.target.value)} className={SEL}>
-                                <option value="">อื่นๆ (ไม่อยู่ใน CRM)</option>
-                                {clientCompanies.map(c => (
-                                  <option key={c.id} value={c.id}>{c.companyName}</option>
-                                ))}
-                              </select>
-                          }
                         </td>
 
                         {/* สิ่งที่ไปดำเนินการ */}
@@ -833,19 +803,6 @@ export default function OutsideWorkExcelForm({
                           <input value={aftn.place} readOnly={aLock} placeholder="สถานที่..."
                             onChange={e => updateSlot(kA, 'place', e.target.value)}
                             className={`${INP} ${aLock ? INP_RO : ''}`} />
-                        </td>
-
-                        {/* บริษัทลูกค้า (CRM) */}
-                        <td className={`${TD} ${stripe}`}>
-                          {aLock
-                            ? <span className={RO_SPAN}>{clientCompanies.find(c => c.id === aftn.clientCompanyId)?.companyName ?? '—'}</span>
-                            : <select value={aftn.clientCompanyId} onChange={e => updateSlot(kA, 'clientCompanyId', e.target.value)} className={SEL}>
-                                <option value="">อื่นๆ (ไม่อยู่ใน CRM)</option>
-                                {clientCompanies.map(c => (
-                                  <option key={c.id} value={c.id}>{c.companyName}</option>
-                                ))}
-                              </select>
-                          }
                         </td>
 
                         <td className={`${TD} ${stripe}`}>

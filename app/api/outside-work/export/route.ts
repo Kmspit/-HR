@@ -34,7 +34,6 @@ type ExportRequest = {
   date: string                    // ISO string from Prisma
   timeSlot?: string | null
   place: string; purpose: string
-  clientCompanyName?: string | null
   caseNumber?: string | null; productWork?: string | null
   productCategory?: string | null; productType?: string | null; workBranch?: string | null
   caseCount?: number | null; adminChecked?: string | null; supervisedBy?: string | null
@@ -43,13 +42,12 @@ type ExportRequest = {
   documentNumber?: string | null
 }
 
-// 16 data columns — no employee columns; employee name goes in row 11 header
+// 15 data columns — no employee columns; employee name goes in row 11 header
 const COLS = [
   { key: 'day',             label: 'วัน',                         sub: '',                                        width: 10 },
   { key: 'date',            label: 'ว/ด/ปี',                     sub: '',                                        width: 12 },
   { key: 'timeSlot',        label: 'ช่วงเวลา',                   sub: '(เช้า/บ่าย/เต็มวัน)',                     width: 13 },
   { key: 'place',           label: 'สถานที่ไปทำงาน',             sub: '',                                        width: 28 },
-  { key: 'clientCompanyName', label: 'บริษัทลูกค้า',             sub: '',                                        width: 22 },
   { key: 'purpose',         label: 'สิ่งที่ไปดำเนินการ',         sub: '',                                        width: 30 },
   { key: 'caseNumber',      label: 'หมายเลขคดีดำ',              sub: '',                                        width: 14 },
   { key: 'productCategory', label: 'หมวดหมู่งานโปรดักส์',        sub: '',                                        width: 18 },
@@ -62,7 +60,7 @@ const COLS = [
   { key: 'status',          label: 'อนุมัติ/ไม่อนุมัติ',        sub: '',                                        width: 13 },
   { key: 'note',            label: 'หมายเหตุ',                   sub: '',                                        width: 20 },
 ]
-const NC = COLS.length // 16
+const NC = COLS.length // 15
 
 function thinBorder(argb = 'FFB0C4DE') {
   return {
@@ -74,7 +72,7 @@ function thinBorder(argb = 'FFB0C4DE') {
 }
 
 // Columns whose data cells are centre-aligned (indices match COLS order above)
-const CENTRE_COLS = new Set([1, 2, 3, 7, 8, 9, 11, 12, 13, 14, 15])
+const CENTRE_COLS = new Set([1, 2, 3, 6, 7, 8, 10, 11, 12, 13, 14])
 
 function applyStatusColour(cell: ExcelJS.Cell, label: string) {
   if (!label) return
@@ -221,7 +219,6 @@ function buildEmployeeSheet(
         dateTH,
         req?.timeSlot ?? slotLabel,
         req?.place       ?? '',
-        req?.clientCompanyName ?? '',
         req?.purpose     ?? '',
         req?.caseNumber  ?? '',
         req?.productCategory ?? '',
@@ -252,8 +249,8 @@ function buildEmployeeSheet(
           wrapText:   col >= 4,
         }
       })
-      // Status column (15) colour
-      const statusCell  = row.getCell(15)
+      // Status column (14) colour
+      const statusCell  = row.getCell(14)
       applyStatusColour(statusCell, statusCell.value as string)
     })
 
