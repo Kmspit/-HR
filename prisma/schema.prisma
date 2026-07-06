@@ -2100,8 +2100,8 @@ model ClientCompany {
   endDate     DateTime? @map("end_date")
   note        String?
   createdById String    @map("created_by_id")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt      @map("updated_at")
 
   createdBy        User                @relation("ClientCompanyCreator", fields: [createdById], references: [id])
   contracts        ClientContract[]
@@ -2169,8 +2169,8 @@ model ClientContract {
   status          String   @default("ACTIVE")
   note            String?
   createdById     String   @map("created_by_id")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
 
   clientCompany ClientCompany       @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
   createdBy     User                @relation("ClientContractCreator",  fields: [createdById], references: [id])
@@ -2193,7 +2193,7 @@ model ClientSlaRecord {
   met             Boolean?
   note            String?
   createdById     String    @map("created_by_id")
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime  @default(now()) @map("created_at")
   resolvedAt      DateTime? @map("resolved_at")
 
   clientCompany ClientCompany   @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
