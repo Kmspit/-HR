@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
       { branchId: filterBranchId },
     )
 
-    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    const settings = await prisma.companySettings.findUnique({
+      where: { id: 'singleton' },
+      select: { absentDeductRate: true },
+    })
     const absentRate = settings?.absentDeductRate ?? 0
 
     const { start: startDate, end: endDate } = monthDateRange(month, year)

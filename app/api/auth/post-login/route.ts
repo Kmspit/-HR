@@ -5,7 +5,8 @@ import { resolvePostLoginPath } from '@/lib/post-login-path'
 /** สำรอง — redirect หลังล็อกอิน (หลักใช้ url จาก POST /api/auth/login) */
 export async function GET(request: NextRequest) {
   const base = request.nextUrl.origin
-  try {    const session = await auth()
+  try {
+    const session = await auth()
 
     if (!session?.user?.id) {
       const url = new URL('/login', base)

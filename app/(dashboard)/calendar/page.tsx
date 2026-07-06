@@ -7,7 +7,8 @@ export const metadata = { title: 'ปฏิทิน' }
 
 export default async function CalendarPage() {
   const session = await auth()
-  if (!session?.user) redirect('/')  const { id: userId, role, name, branchId } = session.user
+  if (!session?.user) redirect('/')
+  const { id: userId, role, name, branchId } = session.user
   const canManageHolidays = ['MANAGER_HR', 'ADMIN'].includes(role)
 
   const now = new Date()

@@ -10,12 +10,25 @@ const ALLOWED_FIELDS = [
   'sickDaysYear', 'vacationDaysYear', 'personalDaysYear',
   'lineChannelId', 'lineChannelSecret', 'lineAccessToken', 'lineNotifyToken',
   'geofenceLat', 'geofenceLng', 'geofenceRadius', 'lateDeductRate', 'absentDeductRate',
-  'imageRetentionDays',
+  'imageRetentionDays', 'outsideWorkPlanTitle',
 ] as const
 
 const RETENTION_OPTIONS = [30, 90, 180] as const
 
 const SETTINGS_VIEW_ROLES = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'] as const
+
+// Explicit select — never full-select this model (see CONTRIBUTING.md #4):
+// a newly added schema field can lag behind the actual DB column until the
+// ensure-db-schema migration runs, and a full-select would 500 in that window.
+const SETTINGS_SELECT = {
+  id: true, companyName: true, companyNameEn: true, officeAddress: true, logoUrl: true,
+  workStartTime: true, workEndTime: true, lunchReturnTime: true, lateGraceMin: true,
+  sickDaysYear: true, vacationDaysYear: true, personalDaysYear: true,
+  lineChannelId: true, lineChannelSecret: true, lineAccessToken: true, lineNotifyToken: true,
+  geofenceLat: true, geofenceLng: true, geofenceRadius: true,
+  lateDeductRate: true, absentDeductRate: true, imageRetentionDays: true, probationMonths: true,
+  outsideWorkPlanTitle: true, updatedAt: true,
+} as const
 
 export async function GET() {
   try {
@@ -24,9 +37,9 @@ export async function GET() {
 
     const canSeeSecrets = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
 
-    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' }, select: SETTINGS_SELECT })
     if (!settings) {
-      const created = await prisma.companySettings.create({ data: { id: 'singleton' } })
+      const created = await prisma.companySettings.create({ data: { id: 'singleton' }, select: SETTINGS_SELECT })
       return NextResponse.json({ settings: maskSettingsSecrets(created, canSeeSecrets) })
     }
     return NextResponse.json({ settings: maskSettingsSecrets(settings, canSeeSecrets) })
@@ -63,6 +76,7 @@ export async function PATCH(req: NextRequest) {
       where: { id: 'singleton' },
       update: data,
       create: { id: 'singleton', ...data },
+      select: SETTINGS_SELECT,
     })
 
     if ('lineChannelSecret' in data || 'lineAccessToken' in data) {

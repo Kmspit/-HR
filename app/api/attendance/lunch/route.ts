@@ -111,7 +111,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, attendance: finalized })
     }
 
-    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    const settings = await prisma.companySettings.findUnique({
+      where: { id: 'singleton' },
+      select: { lunchReturnTime: true },
+    })
     const lunchReturnTime = settings?.lunchReturnTime ?? '13:00'
     const dateKey = bangkokDateKey(now)
     const lunchReturn = new Date(`${dateKey}T${lunchReturnTime}:00+07:00`)

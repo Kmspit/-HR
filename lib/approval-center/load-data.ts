@@ -195,7 +195,11 @@ async function loadApprovedRejected(
     }),
     prisma.outsideWorkRequest.findMany({
       where: { status: { in: outsideStatus }, ...userFilter },
-      include: { user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } } },
+      select: {
+        id: true, date: true, startTime: true, endTime: true, place: true, purpose: true,
+        status: true, approvalStatus: true, chainConfigId: true, currentStepOrder: true, createdAt: true,
+        user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } },
+      },
       orderBy: { updatedAt: 'desc' },
       take: limit,
     }),
@@ -320,7 +324,11 @@ async function loadMyRequests(prisma: PrismaClient, userId: string): Promise<Uni
     }),
     prisma.outsideWorkRequest.findMany({
       where: { userId },
-      include: { user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } } },
+      select: {
+        id: true, date: true, startTime: true, endTime: true, place: true, purpose: true,
+        status: true, approvalStatus: true, chainConfigId: true, currentStepOrder: true, createdAt: true,
+        user: { select: { id: true, name: true, email: true, department: true, position: true, role: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 40,
     }),

@@ -1,5 +1,9 @@
 // HRFlow - Prisma Schema
 // Database: SQLite (dev) / Turso (prod)
+//
+// เพิ่ม column ใหม่? อ่าน CONTRIBUTING.md ก่อนเสมอ — ต้องเพิ่มใน lib/ensure-db-schema.ts ด้วย
+// (ไม่มี prisma/migrations — ระบบนี้ใช้ additive ALTER TABLE ของตัวเอง) ไม่งั้น production
+// จะพังชั่วคราวเพราะ full-select ชนกับ column ที่ยังไม่ถูกสร้างจริงใน DB
 
 generator client {
   provider = "prisma-client-js"
@@ -1394,6 +1398,7 @@ model CompanySettings {
   absentDeductRate    Float    @default(0)
   imageRetentionDays  Int      @default(90)
   probationMonths     Int      @default(3) // ช่วงทดลองงาน (เดือน) — ไม่มีพักร้อน
+  outsideWorkPlanTitle String? @default("แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท") @map("outside_work_plan_title")
   updatedAt           DateTime @updatedAt
 
   @@map("company_settings")

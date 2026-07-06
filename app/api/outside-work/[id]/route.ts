@@ -20,10 +20,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { id } = await params
     const request = await prisma.outsideWorkRequest.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true, userId: true, date: true, startTime: true, endTime: true,
+        place: true, purpose: true, client: true, note: true, status: true,
+        chainConfigId: true, currentStepOrder: true, createdAt: true,
+        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
         user: { select: { name: true, department: true, position: true } },
         approvals: {
-          include: { approvedBy: { select: { id: true, name: true, role: true } } },
+          select: {
+            id: true, action: true, reason: true, createdAt: true,
+            approvedBy: { select: { id: true, name: true, role: true } },
+          },
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -59,7 +69,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const existing = await prisma.outsideWorkRequest.findUnique({ where: { id } })
+    const existing = await prisma.outsideWorkRequest.findUnique({
+      where: { id },
+      select: { userId: true, status: true, approvalStatus: true, place: true, note: true },
+    })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const role = session.user.role as Role

@@ -22,6 +22,10 @@ export default async function OutsideWorkPage({
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
+  const companySettings = await prisma.companySettings.findUnique({
+    where: { id: 'singleton' },
+    select: { companyName: true, outsideWorkPlanTitle: true },
+  }).catch(() => null)
   const pageShell = (requests: Parameters<typeof OutsideWorkClient>[0]['requests']) => (
     <div className="flex flex-col">
       <Topbar
@@ -44,6 +48,8 @@ export default async function OutsideWorkPage({
         canViewAll={canViewAll}
         canApproveOutside={canApproveOutside}
         requests={requests}
+        companyName={companySettings?.companyName}
+        outsideWorkPlanTitle={companySettings?.outsideWorkPlanTitle}
       />
     </div>
   )
@@ -55,11 +61,22 @@ export default async function OutsideWorkPage({
           ? { user: nestedUser }
           : {}
         : { userId: session.user.id },
-      include: {
+      select: {
+        id: true, userId: true, date: true, startTime: true, endTime: true,
+        place: true, purpose: true, client: true, note: true, status: true,
+        chainConfigId: true, currentStepOrder: true, createdAt: true,
+        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
         user: { select: { name: true, department: true, position: true } },
         stepLogs: {
+          select: {
+            id: true, stepOrder: true, stepName: true, approverRole: true, approverId: true,
+            status: true, actorId: true, comment: true, actedAt: true,
+            actor: { select: { name: true } },
+          },
           orderBy: { stepOrder: 'asc' },
-          include: { actor: { select: { name: true } } },
         },
       },
       orderBy: { createdAt: 'desc' },

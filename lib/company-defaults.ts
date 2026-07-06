@@ -14,3 +14,7 @@ export const KM_COMPANY = {
   geofenceLng: 100.67712,
   geofenceRadius: 200,
 } as const
+
+/** หัวข้อฟอร์ม "ออกนอกสถานที่" เริ่มต้น — ใช้เมื่อยังไม่ได้ตั้งค่าใน Settings */
+export const OUTSIDE_WORK_PLAN_TITLE_DEFAULT =
+  'แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท'

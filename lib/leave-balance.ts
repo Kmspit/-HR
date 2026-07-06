@@ -74,7 +74,10 @@ export async function ensureLeaveBalance(
   // Load user + settings in parallel
   const [user, settings] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { role: true, startDate: true } }),
-    prisma.companySettings.findUnique({ where: { id: 'singleton' } }),
+    prisma.companySettings.findUnique({
+      where: { id: 'singleton' },
+      select: { probationMonths: true, sickDaysYear: true, vacationDaysYear: true, personalDaysYear: true },
+    }),
   ])
 
   const probationMonths = settings?.probationMonths ?? 3

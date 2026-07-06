@@ -51,7 +51,10 @@ export async function GET(
       if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    const settings = await prisma.companySettings.findUnique({
+      where: { id: 'singleton' },
+      select: { companyName: true },
+    })
     const companyName = settings?.companyName ?? 'บริษัท'
 
     const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)

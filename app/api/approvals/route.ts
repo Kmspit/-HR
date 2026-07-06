@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.type === 'OUTSIDE') {
-      const req_ = await prisma.outsideWorkRequest.findUnique({ where: { id: body.requestId } })
+      const req_ = await prisma.outsideWorkRequest.findUnique({
+        where: { id: body.requestId },
+        select: { status: true, chainConfigId: true, approvalStatus: true, userId: true },
+      })
       if (!req_) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (req_.status === 'APPROVED' || req_.status === 'REJECTED') {
         return NextResponse.json({ error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว' }, { status: 400 })
@@ -80,7 +83,10 @@ export async function POST(req: NextRequest) {
       if (!req_.chainConfigId || req_.approvalStatus !== 'pending_chain') {
         await attachDefaultChainForOutside(prisma, body.requestId, req_.userId)
       }
-      const refreshed = await prisma.outsideWorkRequest.findUnique({ where: { id: body.requestId } })
+      const refreshed = await prisma.outsideWorkRequest.findUnique({
+        where: { id: body.requestId },
+        select: { chainConfigId: true, approvalStatus: true, currentStepOrder: true },
+      })
       if (!refreshed?.chainConfigId || refreshed.approvalStatus !== 'pending_chain') {
         return NextResponse.json(
           { error: 'คำขอนี้ยังไม่ได้เชื่อมสายอนุมัติ — กรุณาติดต่อ HR', code: 'NO_CHAIN' },

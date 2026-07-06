@@ -57,7 +57,10 @@ export async function ensureWarningPdfStored(
     },
   })
 
-  const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+  const settings = await prisma.companySettings.findUnique({
+    where: { id: 'singleton' },
+    select: { companyName: true },
+  })
   const companyName = settings?.companyName ?? 'บริษัท'
 
   const buffer = await generateWarningPdfBuffer({

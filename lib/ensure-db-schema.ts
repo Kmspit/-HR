@@ -7,8 +7,9 @@ import { seedDefaultWeeklyPlanChain } from '@/lib/seed-default-weekly-plan-chain
 import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain'
 import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
 
-/** Bump when runEnsure() logic changes — cron skips full run when DB version matches. */
-export const CURRENT_SCHEMA_VERSION = 900003
+/** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
+ *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
+export const CURRENT_SCHEMA_VERSION = 900004
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1035,6 +1036,11 @@ async function runEnsure(force = false): Promise<boolean> {
   await addColumnIfMissing('outside_work_requests', 'admin_checked',   `ALTER TABLE outside_work_requests ADD COLUMN admin_checked TEXT`)
   await addColumnIfMissing('outside_work_requests', 'supervised_by',   `ALTER TABLE outside_work_requests ADD COLUMN supervised_by TEXT`)
   await addColumnIfMissing('outside_work_requests', 'document_number', `ALTER TABLE outside_work_requests ADD COLUMN document_number TEXT`)
+
+  await addCompanySettingsColumnIfMissing(
+    'outside_work_plan_title',
+    `ALTER TABLE company_settings ADD COLUMN outside_work_plan_title TEXT DEFAULT 'แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท'`,
+  )
 
   // ── Query-performance indexes ─────────────────────────────────────────────
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_attendances_userId_date   ON attendances (userId, date)`)

@@ -36,7 +36,16 @@ export async function GET(req: NextRequest) {
 
     const requests = await prisma.outsideWorkRequest.findMany({
       where,
-      include: { user: { select: { name: true, department: true, position: true } } },
+      select: {
+        id: true, userId: true, date: true, startTime: true, endTime: true,
+        place: true, purpose: true, client: true, note: true, status: true,
+        chainConfigId: true, currentStepOrder: true, createdAt: true,
+        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+        user: { select: { name: true, department: true, position: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: isCompanyWideApprover(session.user.role as Role) ? 200 : 100,
     })
@@ -111,7 +120,18 @@ export async function POST(req: NextRequest) {
     }
     await applyChainToOutsideWork(prisma, request.id, defaultChain.id, session.user.id)
 
-    const refreshed = await prisma.outsideWorkRequest.findUnique({ where: { id: request.id } })
+    const refreshed = await prisma.outsideWorkRequest.findUnique({
+      where: { id: request.id },
+      select: {
+        id: true, userId: true, date: true, startTime: true, endTime: true,
+        place: true, purpose: true, client: true, note: true, status: true,
+        chainConfigId: true, currentStepOrder: true, createdAt: true,
+        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+      },
+    })
 
     return NextResponse.json({ success: true, request: refreshed ?? request, chainApplied: true })
   } catch (err) {

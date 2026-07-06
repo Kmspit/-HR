@@ -68,12 +68,15 @@ export async function POST(req: NextRequest) {
     const today = startOfTodayLocal()
     const now = new Date()
 
-    let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+    const settingsSelect = {
+      lateGraceMin: true, geofenceLat: true, geofenceLng: true, geofenceRadius: true, workStartTime: true,
+    } as const
+    let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' }, select: settingsSelect })
     if (!settings) {
-      settings = await prisma.companySettings.create({ data: { id: 'singleton', lateGraceMin: 5 } })
+      settings = await prisma.companySettings.create({ data: { id: 'singleton', lateGraceMin: 5 }, select: settingsSelect })
     } else if (settings.lateGraceMin === 15) {
       // Migrate old unused default (15) to correct grace period (5 min = 08:35 threshold)
-      settings = await prisma.companySettings.update({ where: { id: 'singleton' }, data: { lateGraceMin: 5 } })
+      settings = await prisma.companySettings.update({ where: { id: 'singleton' }, data: { lateGraceMin: 5 }, select: settingsSelect })
     }
 
     // โหลด branch ของ user สำหรับ geofence แบบ per-branch

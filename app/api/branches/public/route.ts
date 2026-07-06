@@ -9,7 +9,8 @@ const TAG_BY_CODE = Object.fromEntries(
 
 /** รายการสาขาสำหรับหน้าสมัคร (ไม่ต้องล็อกอิน) */
 export async function GET() {
-  try {    const branches = await prisma.companyBranch.findMany({
+  try {
+    const branches = await prisma.companyBranch.findMany({
       where: { isActive: true },
       select: { id: true, code: true, name: true, nameEn: true, isDefault: true },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],

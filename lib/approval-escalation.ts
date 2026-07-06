@@ -130,9 +130,12 @@ export async function runApprovalEscalation(prisma: PrismaClient): Promise<Escal
       approvalStatus: 'pending_chain',
       updatedAt: { lte: softCutoff },
     },
-    include: {
+    select: {
+      id: true, currentStepOrder: true, updatedAt: true,
       user: { select: { name: true } },
-      stepLogs: true,
+      stepLogs: {
+        select: { stepOrder: true, status: true, approverId: true, approverRole: true, stepName: true },
+      },
     },
   })
 

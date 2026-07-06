@@ -37,9 +37,19 @@ export default async function PrintOutsideWorkPage({
   const { id } = await params
   const request = await prisma.outsideWorkRequest.findUnique({
     where: { id },
-    include: {
-      user:      { select: { name: true, department: true, position: true, branchId: true } },
-      approvals: { include: { approvedBy: { select: { name: true, role: true } } }, orderBy: { createdAt: 'asc' } },
+    select: {
+      id: true, userId: true, date: true, place: true, purpose: true,
+      timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+      workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, note: true,
+      status: true, approvalStatus: true, documentNumber: true, createdAt: true,
+      user: { select: { name: true, department: true, position: true } },
+      approvals: {
+        select: {
+          id: true, action: true, reason: true, createdAt: true,
+          approvedBy: { select: { name: true, role: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
   if (!request) notFound()

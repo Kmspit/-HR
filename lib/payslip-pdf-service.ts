@@ -31,7 +31,10 @@ export async function buildPayrollSlipPdfBuffer(payroll: NonNullable<PayrollSlip
   buffer: Buffer
   filename: string
 }> {
-  const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' } })
+  const settings = await prisma.companySettings.findUnique({
+    where: { id: 'singleton' },
+    select: { companyName: true },
+  })
   const companyName = settings?.companyName?.trim() || DEFAULT_COMPANY
   const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
 

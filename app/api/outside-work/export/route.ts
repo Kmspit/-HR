@@ -1,7 +1,12 @@
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
 import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
+import { OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
+
+// Fallback text — matches what was previously hardcoded here before Settings made it editable
+const COMPANY_NAME_FALLBACK = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
 
 const DAY_TH   = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 const MONTH_TH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -89,6 +94,8 @@ function buildEmployeeSheet(
   weekStart: string,   // YYYY-MM-DD (local Bangkok date)
   weekEnd:   string,
   requests:  ExportRequest[],
+  companyName: string,
+  planTitle: string,
 ) {
   ws.columns = COLS.map(c => ({ key: c.key, width: c.width }))
 
@@ -99,7 +106,7 @@ function buildEmployeeSheet(
   }
 
   // ── Row 5: Company name ──────────────────────────────────────────────────
-  const r5 = ws.addRow(['บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'])
+  const r5 = ws.addRow([companyName])
   ws.mergeCells(5, 1, 5, NC)
   r5.height = 28
   r5.getCell(1).font      = { bold: true, size: 14, name: 'TH SarabunPSK' }
@@ -123,7 +130,7 @@ function buildEmployeeSheet(
   ws.addRow([]).height = 10
 
   // ── Row 9: Form title ────────────────────────────────────────────────────
-  const r9 = ws.addRow(['แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท'])
+  const r9 = ws.addRow([planTitle])
   ws.mergeCells(9, 1, 9, NC)
   r9.height = 26
   r9.getCell(1).font      = { bold: true, size: 13, name: 'TH SarabunPSK' }
@@ -319,6 +326,13 @@ export async function POST(req: NextRequest) {
   // Derive weekEnd from weekStart if not provided
   const resolvedWeekEnd = weekEnd || (weekStart ? addDaysToYmd(weekStart, 6) : '')
 
+  const companySettings = await prisma.companySettings.findUnique({
+    where: { id: 'singleton' },
+    select: { companyName: true, outsideWorkPlanTitle: true },
+  }).catch(() => null)
+  const companyName = companySettings?.companyName || COMPANY_NAME_FALLBACK
+  const planTitle    = companySettings?.outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT
+
   const wb = new ExcelJS.Workbook()
   wb.creator  = 'HRflow'
   wb.created  = new Date()
@@ -332,18 +346,18 @@ export async function POST(req: NextRequest) {
     })
 
     if (byEmp.size === 0) {
-      buildEmployeeSheet(wb.addWorksheet('ไม่มีข้อมูล'), '', weekStart, resolvedWeekEnd, [])
+      buildEmployeeSheet(wb.addWorksheet('ไม่มีข้อมูล'), '', weekStart, resolvedWeekEnd, [], companyName, planTitle)
     } else {
       byEmp.forEach(({ name, reqs }) => {
         const sheetName = name.replace(/[\\/*?[\]:]/g, '').slice(0, 31) || 'พนักงาน'
-        buildEmployeeSheet(wb.addWorksheet(sheetName), name, weekStart, resolvedWeekEnd, reqs)
+        buildEmployeeSheet(wb.addWorksheet(sheetName), name, weekStart, resolvedWeekEnd, reqs, companyName, planTitle)
       })
     }
   } else {
     // Single employee view
     const filteredReqs = filterUserId ? requests.filter(r => r.userId === filterUserId) : requests
     const empName      = filteredReqs[0]?.userName ?? session.user.name ?? ''
-    buildEmployeeSheet(wb.addWorksheet('แผนงานออกนอกพื้นที่'), empName, weekStart, resolvedWeekEnd, filteredReqs)
+    buildEmployeeSheet(wb.addWorksheet('แผนงานออกนอกพื้นที่'), empName, weekStart, resolvedWeekEnd, filteredReqs, companyName, planTitle)
   }
 
   const buffer  = await wb.xlsx.writeBuffer()

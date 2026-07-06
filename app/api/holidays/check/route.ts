@@ -10,7 +10,8 @@ import {
 } from '@/lib/company-holidays'
 
 export async function GET(req: NextRequest) {
-  try {    const session = await auth()
+  try {
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

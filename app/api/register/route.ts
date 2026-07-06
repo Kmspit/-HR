@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
         { error: 'คำขอมากเกินไป กรุณารอ 1 ชั่วโมงแล้วลองใหม่' },
         { status: 429 },
       )
-    }    const body = await req.json()
+    }
+    const body = await req.json()
     const parsed = registerSchema.safeParse(body)
 
     if (!parsed.success) {

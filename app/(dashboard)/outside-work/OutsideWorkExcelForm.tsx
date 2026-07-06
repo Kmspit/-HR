@@ -10,6 +10,10 @@ import type { Role } from '@prisma/client'
 import dynamic from 'next/dynamic'
 import OutsideWorkStatusBadge from './OutsideWorkStatusBadge'
 import { PRODUCT_CATEGORY_KEYS, OTHER_PRODUCT_CATEGORY, productTypesFor } from '@/lib/constants/product-types'
+import { OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
+
+// Fallback text — matches what was previously hardcoded here before Settings made it editable
+const COMPANY_NAME_FALLBACK = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
 
 const OutsideWorkApprovalHistory = dynamic(() => import('./OutsideWorkApprovalHistory'), {
   loading: () => <div className="h-24 animate-pulse rounded-lg bg-white border border-gray-200" />,
@@ -74,6 +78,8 @@ export type Props = {
   canViewAll: boolean
   canApproveOutside: boolean
   requests: OWRequest[]
+  companyName?: string | null
+  outsideWorkPlanTitle?: string | null
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -298,7 +304,12 @@ function ProductWorkCell({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function OutsideWorkExcelForm({ userId, userName, currentUserRole, canViewAll, canApproveOutside, requests: initReqs }: Props) {
+export default function OutsideWorkExcelForm({
+  userId, userName, currentUserRole, canViewAll, canApproveOutside, requests: initReqs,
+  companyName, outsideWorkPlanTitle,
+}: Props) {
+  const displayCompanyName = companyName || COMPANY_NAME_FALLBACK
+  const displayPlanTitle   = outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT
   const router = useRouter()
   const [reqs, setReqs]           = useState<OWRequest[]>(initReqs)
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
@@ -472,10 +483,10 @@ export default function OutsideWorkExcelForm({ userId, userName, currentUserRole
           {/* Company header */}
           <div className="border-b-2 border-gray-400 text-center px-4 py-3">
             <p className="text-base font-bold text-gray-900 tracking-wide">
-              บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด
+              {displayCompanyName}
             </p>
             <h1 className="mt-1.5 text-base font-bold text-red-800 leading-snug">
-              แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท
+              {displayPlanTitle}
             </h1>
           </div>
 

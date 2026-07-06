@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Save, MapPin, Clock, MessageCircle, Building2, Loader2, Send, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
-import { KM_COMPANY } from '@/lib/company-defaults'
+import { KM_COMPANY, OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
 import LineHrSendPanel from '@/components/line/LineHrSendPanel'
 
 type Settings = {
@@ -27,6 +27,7 @@ type Settings = {
   lateDeductRate: number
   absentDeductRate: number
   imageRetentionDays: number
+  outsideWorkPlanTitle: string
 }
 
 export default function SettingsClient({ settings }: { settings: Settings | null }) {
@@ -49,6 +50,7 @@ export default function SettingsClient({ settings }: { settings: Settings | null
     lateDeductRate: settings?.lateDeductRate ?? 0,
     absentDeductRate: settings?.absentDeductRate ?? 0,
     imageRetentionDays: settings?.imageRetentionDays ?? 90,
+    outsideWorkPlanTitle: settings?.outsideWorkPlanTitle ?? OUTSIDE_WORK_PLAN_TITLE_DEFAULT,
   })
   const [saving, setSaving] = useState(false)
   const [lineTab, setLineTab] = useState<'config' | 'send'>('send')
@@ -117,6 +119,18 @@ export default function SettingsClient({ settings }: { settings: Settings | null
           <Input label="ชื่อบริษัท (ไทย)" value={form.companyName} onChange={(v: string) => set('companyName', v)} />
           <Input label="ชื่อบริษัท (อังกฤษ)" value={form.companyNameEn} onChange={(v: string) => set('companyNameEn', v)} />
         </div>
+      </section>
+
+      {/* Outside-work form header */}
+      <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-green-400" /> ตั้งค่าฟอร์มออกนอกสถานที่
+        </h2>
+        <Input
+          label="หัวข้อแผนงาน (แสดงในฟอร์ม/Excel)"
+          value={form.outsideWorkPlanTitle}
+          onChange={(v: string) => set('outsideWorkPlanTitle', v)}
+        />
       </section>
 
       {/* Work Hours */}

@@ -12,6 +12,7 @@
     "share": "npx --yes cloudflared tunnel --url http://localhost:3000",
     "postinstall": "prisma generate",
     "build": "prisma generate && next build",
+    "postbuild": "tsx scripts/postbuild-ensure-schema.ts",
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",

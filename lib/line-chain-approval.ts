@@ -60,7 +60,10 @@ export async function runLineChainApproval(
   }
 
   if (docType === 'OUTSIDE') {
-    const ow = await prisma.outsideWorkRequest.findUnique({ where: { id: requestId } })
+    const ow = await prisma.outsideWorkRequest.findUnique({
+      where: { id: requestId },
+      select: { status: true, chainConfigId: true, approvalStatus: true, currentStepOrder: true },
+    })
     if (!ow) return { ok: false, message: 'ไม่พบคำขอปฏิบัติงานนอก' }
     if (ow.status === 'APPROVED' || ow.status === 'REJECTED') {
       return { ok: false, message: `คำขอนี้ดำเนินการแล้ว (${ow.status})` }
