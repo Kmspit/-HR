@@ -9,7 +9,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     outsideWorkRequest: {
       create:     vi.fn(),
-      findMany:   vi.fn(),
+      findMany:   vi.fn().mockResolvedValue([]),
       findUnique: vi.fn(),
       update:     vi.fn(),
       count:      vi.fn().mockResolvedValue(0),

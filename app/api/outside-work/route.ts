@@ -56,6 +56,26 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * Next OW-<yearTH>-NNN document number for the given Buddhist year.
+ * Derived from the max NNN already assigned (not row count) — some legacy rows have
+ * documentNumber = null, so count() undercounts and regenerates a number that already
+ * exists, tripping the UNIQUE constraint on outside_work_requests.document_number.
+ */
+async function nextOutsideWorkDocumentNumber(year: number): Promise<string> {
+  const prefix = `OW-${year}-`
+  const rows = await prisma.outsideWorkRequest.findMany({
+    where: { documentNumber: { startsWith: prefix } },
+    select: { documentNumber: true },
+  })
+  let max = 0
+  for (const row of rows) {
+    const n = Number(row.documentNumber!.slice(prefix.length))
+    if (Number.isFinite(n) && n > max) max = n
+  }
+  return `${prefix}${String(max + 1).padStart(3, '0')}`
+}
+
 export async function POST(req: NextRequest) {
   try {
     const csrfErr = requireCsrf(req)
@@ -75,41 +95,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
     }
 
-    const year  = new Date().getFullYear() + 543
-    const count = await prisma.outsideWorkRequest.count()
-    const documentNumber = `OW-${year}-${String(count + 1).padStart(3, '0')}`
+    const year = new Date().getFullYear() + 543
+    const createData = {
+      userId: session.user.id,
+      date: new Date(date),
+      startTime:      startTime     || '',
+      endTime:        endTime       || '',
+      place,
+      purpose,
+      client:         client        || null,
+      note:           note          || null,
+      googleMapsUrl:  googleMapsUrl || null,
+      attachmentUrl:  attachmentUrl || null,
+      attachmentName: attachmentName || null,
+      employeeName:   employeeName  || null,
+      ownerName:      ownerName     || null,
+      workType:       workType      || null,
+      distance:       distance      ? Number(distance)      : null,
+      distanceLimit:  distanceLimit ? Number(distanceLimit) : null,
+      routeType:      routeType     || null,
+      timeSlot:       timeSlot      || null,
+      caseNumber:     caseNumber    || null,
+      productWork:    productWork   || null,
+      productCategory: productCategory || null,
+      productType:     productType     || null,
+      workBranch:     workBranch    || null,
+      caseCount:      caseCount     ? Number(caseCount)     : null,
+      adminChecked:   adminChecked  || null,
+      supervisedBy:   supervisedBy  || null,
+    }
 
-    const request = await prisma.outsideWorkRequest.create({
-      data: {
-        userId: session.user.id,
-        date: new Date(date),
-        startTime:      startTime     || '',
-        endTime:        endTime       || '',
-        place,
-        purpose,
-        client:         client        || null,
-        note:           note          || null,
-        googleMapsUrl:  googleMapsUrl || null,
-        attachmentUrl:  attachmentUrl || null,
-        attachmentName: attachmentName || null,
-        employeeName:   employeeName  || null,
-        ownerName:      ownerName     || null,
-        workType:       workType      || null,
-        distance:       distance      ? Number(distance)      : null,
-        distanceLimit:  distanceLimit ? Number(distanceLimit) : null,
-        routeType:      routeType     || null,
-        timeSlot:       timeSlot      || null,
-        caseNumber:     caseNumber    || null,
-        productWork:    productWork   || null,
-        productCategory: productCategory || null,
-        productType:     productType     || null,
-        workBranch:     workBranch    || null,
-        caseCount:      caseCount     ? Number(caseCount)     : null,
-        adminChecked:   adminChecked  || null,
-        supervisedBy:   supervisedBy  || null,
-        documentNumber,
-      },
-    })
+    // Retry once or twice on a document_number collision (e.g. a second concurrent
+    // submit computed the same next number before either row was inserted).
+    let request: Awaited<ReturnType<typeof prisma.outsideWorkRequest.create>> | undefined
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const documentNumber = await nextOutsideWorkDocumentNumber(year)
+      try {
+        request = await prisma.outsideWorkRequest.create({
+          data: { ...createData, documentNumber },
+        })
+        break
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (attempt === 2 || !msg.includes('document_number')) throw err
+      }
+    }
+    if (!request) throw new Error('ไม่สามารถสร้างเลขที่เอกสารได้')
 
     const defaultChain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
     if (!defaultChain) {
