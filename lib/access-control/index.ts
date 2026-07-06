@@ -47,6 +47,10 @@ export const HR_ROLES: Role[] = HR_ADMIN
 /** HR core staff — payroll + HR ops (no standalone ADMIN) */
 export const HR_STAFF_ROLES: Role[] = HR_CORE
 
+/** Company settings — view (Settings page) + edit (PATCH /api/settings) share this list.
+ *  Keep these in sync: a role that can see the Settings form must also be able to save it. */
+export const SETTINGS_EDIT_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'ADMIN']
+
 /** Announcement publish / edit gates */
 export const ANNOUNCEMENT_EDITOR_ROLES: Role[] = ['MANAGER_HR', 'ADMIN', 'CEO']
 export const ANNOUNCEMENT_UPLOADER_ROLES: Role[] = ['MANAGER_HR', 'ADMIN']

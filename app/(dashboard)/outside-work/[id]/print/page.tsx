@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect, notFound } from 'next/navigation'
 import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
+import { KM_COMPANY } from '@/lib/company-defaults'
 
 export const metadata = { title: 'พิมพ์ใบขออนุมัติออกนอกสถานที่' }
 
@@ -53,6 +54,12 @@ export default async function PrintOutsideWorkPage({
     },
   })
   if (!request) notFound()
+
+  const companySettings = await prisma.companySettings.findUnique({
+    where: { id: 'singleton' },
+    select: { companyName: true },
+  }).catch(() => null)
+  const companyName = companySettings?.companyName || KM_COMPANY.companyName
 
   const canView =
     request.userId === session.user.id ||
@@ -241,7 +248,7 @@ export default async function PrintOutsideWorkPage({
           {/* ── Company header ── */}
           <div className="header">
             <div className="company-block">
-              <div className="company-name">เค เอ็ม เซอร์วิส พลัส จำกัด</div>
+              <div className="company-name">{companyName}</div>
               <div className="company-sub">KM Service Plus Co., Ltd.</div>
               <div className="company-sub" style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: '#111827' }}>
                 ใบขออนุมัติออกนอกสถานที่ปฏิบัติงาน

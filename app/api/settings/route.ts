@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { clearLineCredentialsCache } from '@/lib/line-credentials'
 import { maskSettingsSecrets } from '@/lib/settings-api'
 import { requireRoles, isGuardResponse, requireCsrf } from '@/lib/api-guard'
+import { SETTINGS_EDIT_ROLES } from '@/lib/access-control'
 
 const ALLOWED_FIELDS = [
   'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
@@ -14,8 +16,6 @@ const ALLOWED_FIELDS = [
 ] as const
 
 const RETENTION_OPTIONS = [30, 90, 180] as const
-
-const SETTINGS_VIEW_ROLES = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'] as const
 
 // Explicit select — never full-select this model (see CONTRIBUTING.md #4):
 // a newly added schema field can lag behind the actual DB column until the
@@ -32,10 +32,10 @@ const SETTINGS_SELECT = {
 
 export async function GET() {
   try {
-    const session = await requireRoles([...SETTINGS_VIEW_ROLES])
+    const session = await requireRoles([...SETTINGS_EDIT_ROLES])
     if (isGuardResponse(session)) return session
 
-    const canSeeSecrets = ['MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'].includes(session.user.role)
+    const canSeeSecrets = SETTINGS_EDIT_ROLES.includes(session.user.role)
 
     const settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' }, select: SETTINGS_SELECT })
     if (!settings) {
@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest) {
     const csrfErr = requireCsrf(req)
     if (csrfErr) return csrfErr
 
-    const session = await requireRoles(['MANAGER_HR', 'ADMIN'])
+    const session = await requireRoles([...SETTINGS_EDIT_ROLES])
     if (isGuardResponse(session)) return session
 
     const body = await req.json()
@@ -82,6 +82,11 @@ export async function PATCH(req: NextRequest) {
     if ('lineChannelSecret' in data || 'lineAccessToken' in data) {
       clearLineCredentialsCache()
     }
+
+    // Keep /settings and any page reading CompanySettings (e.g. /outside-work header) in sync
+    // immediately, regardless of which UI triggered the save (Settings form or inline edit).
+    revalidatePath('/settings')
+    revalidatePath('/outside-work')
 
     return NextResponse.json({ settings: maskSettingsSecrets(settings, true) })
   } catch (err) {

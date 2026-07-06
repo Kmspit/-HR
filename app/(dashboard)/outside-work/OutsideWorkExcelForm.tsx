@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle } from 'lucide-react'
+import { useState, useMemo, useCallback, useEffect, useRef, Fragment } from 'react'
+import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic'
 import OutsideWorkStatusBadge from './OutsideWorkStatusBadge'
 import { PRODUCT_CATEGORY_KEYS, OTHER_PRODUCT_CATEGORY, productTypesFor } from '@/lib/constants/product-types'
 import { OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
+import { SETTINGS_EDIT_ROLES } from '@/lib/access-control'
 
 // Fallback text — matches what was previously hardcoded here before Settings made it editable
 const COMPANY_NAME_FALLBACK = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
@@ -302,14 +303,90 @@ function ProductWorkCell({
   )
 }
 
+// ── Inline-editable header text (company name / plan title) ───────────────────
+
+function InlineEditableText({
+  value, canEdit, onSave, className, tag: Tag = 'p',
+}: {
+  value: string
+  canEdit: boolean
+  onSave: (next: string) => Promise<boolean>
+  className?: string
+  tag?: 'p' | 'h1'
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const [saving, setSaving] = useState(false)
+  const cancelledRef = useRef(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { if (!editing) setDraft(value) }, [value, editing])
+
+  const startEdit = () => {
+    if (!canEdit || saving) return
+    setDraft(value)
+    cancelledRef.current = false
+    setEditing(true)
+  }
+
+  const cancel = () => {
+    cancelledRef.current = true
+    setDraft(value)
+    setEditing(false)
+  }
+
+  const commit = async () => {
+    if (cancelledRef.current) { cancelledRef.current = false; return }
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === value) {
+      setEditing(false)
+      setDraft(value)
+      return
+    }
+    setSaving(true)
+    const ok = await onSave(trimmed)
+    setSaving(false)
+    if (!ok) setDraft(value)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        autoFocus
+        onFocus={(e) => e.target.select()}
+        value={draft}
+        disabled={saving}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+          else if (e.key === 'Escape') { e.preventDefault(); cancel() }
+        }}
+        className={`${className ?? ''} w-full bg-white border border-green-500 rounded px-1 -mx-1 outline-none ${saving ? 'opacity-50' : ''}`}
+      />
+    )
+  }
+
+  return (
+    <Tag
+      onClick={startEdit}
+      title={canEdit ? 'คลิกเพื่อแก้ไข' : undefined}
+      className={`${className ?? ''} ${canEdit ? 'group inline-flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-black/5 transition' : ''}`}
+    >
+      {value}
+      {canEdit && <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition shrink-0 print:hidden" />}
+    </Tag>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function OutsideWorkExcelForm({
   userId, userName, currentUserRole, canViewAll, canApproveOutside, requests: initReqs,
   companyName, outsideWorkPlanTitle,
 }: Props) {
-  const displayCompanyName = companyName || COMPANY_NAME_FALLBACK
-  const displayPlanTitle   = outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT
   const router = useRouter()
   const [reqs, setReqs]           = useState<OWRequest[]>(initReqs)
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
@@ -317,6 +394,29 @@ export default function OutsideWorkExcelForm({
   const [saving, setSaving]       = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [todayYmd]                = useState(() => toYmd(new Date()))
+
+  const canEditCompanyText = SETTINGS_EDIT_ROLES.includes(currentUserRole)
+  const [displayCompanyName, setDisplayCompanyName] = useState(companyName || COMPANY_NAME_FALLBACK)
+  const [displayPlanTitle, setDisplayPlanTitle]     = useState(outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT)
+  useEffect(() => { setDisplayCompanyName(companyName || COMPANY_NAME_FALLBACK) }, [companyName])
+  useEffect(() => { setDisplayPlanTitle(outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT) }, [outsideWorkPlanTitle])
+
+  const saveCompanySetting = useCallback(async (field: 'companyName' | 'outsideWorkPlanTitle', next: string) => {
+    const { ok, data, status } = await apiJson('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: next }),
+    })
+    if (!ok) {
+      toast.error(apiErrorMessage(data, 'บันทึกไม่สำเร็จ', status))
+      return false
+    }
+    if (field === 'companyName') setDisplayCompanyName(next)
+    else setDisplayPlanTitle(next)
+    toast.success('บันทึกแล้ว')
+    router.refresh()
+    return true
+  }, [router])
 
   useEffect(() => { setReqs(initReqs) }, [initReqs])
 
@@ -482,12 +582,20 @@ export default function OutsideWorkExcelForm({
 
           {/* Company header */}
           <div className="border-b-2 border-gray-400 text-center px-4 py-3">
-            <p className="text-base font-bold text-gray-900 tracking-wide">
-              {displayCompanyName}
-            </p>
-            <h1 className="mt-1.5 text-base font-bold text-red-800 leading-snug">
-              {displayPlanTitle}
-            </h1>
+            <InlineEditableText
+              tag="p"
+              value={displayCompanyName}
+              canEdit={canEditCompanyText}
+              onSave={(next) => saveCompanySetting('companyName', next)}
+              className="text-base font-bold text-gray-900 tracking-wide"
+            />
+            <InlineEditableText
+              tag="h1"
+              value={displayPlanTitle}
+              canEdit={canEditCompanyText}
+              onSave={(next) => saveCompanySetting('outsideWorkPlanTitle', next)}
+              className="mt-1.5 text-base font-bold text-red-800 leading-snug"
+            />
           </div>
 
           {/* Week navigation */}
