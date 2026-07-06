@@ -169,6 +169,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/rules',           icon: 'rules',       label: 'กฎระเบียบ' },
       { href: '/branches',        icon: 'settings',    label: 'จัดการสาขา',          roles: HR_ADMIN },
       { href: '/organization',    icon: 'employees',   label: 'ฝ่าย/แผนก/ส่วนงาน',  roles: HR_ADMIN },
+      { href: '/outside-work/deleted', icon: 'outside', label: 'รายการที่ถูกลบ (นอกสถานที่)', roles: HR_CORE },
     ],
   },
   {

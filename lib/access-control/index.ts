@@ -228,6 +228,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/attendance/scans':   SCAN_HISTORY,
   '/leave':              ALL_ROLES,
   '/outside-work':       ALL_ROLES,
+  '/outside-work/deleted': HR_STAFF_ROLES,
   '/weekly-plan':        WEEKLY_PLAN,
   '/calendar':           ALL_ROLES,
   '/holidays':           HR_ADMIN,
