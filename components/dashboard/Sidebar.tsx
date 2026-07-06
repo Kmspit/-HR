@@ -112,7 +112,6 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/calendar',           icon: 'calendar',   label: 'ปฏิทิน' },
       { href: '/leave',              icon: 'leave',      label: 'ขอลาหยุด' },
       { href: '/outside-work',       icon: 'outside',    label: 'ออกนอกสถานที่' },
-      { href: '/outside-work/client-visit', icon: 'outside', label: 'นอกสถานที่ (บริษัทลูกค้า)' },
       { href: '/forgot-scan',        icon: 'attendance', label: 'แก้ไขเวลาลงงาน' },
       { href: '/weekly-plan',        icon: 'plan',       label: 'แผนงานสัปดาห์',    roles: WEEKLY_PLAN },
       { href: '/attendance/scans',   icon: 'attendance', label: 'ประวัติสแกนใบหน้า', roles: SCAN_HISTORY },

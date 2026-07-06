@@ -34,6 +34,7 @@ type ExportRequest = {
   date: string                    // ISO string from Prisma
   timeSlot?: string | null
   place: string; purpose: string
+  clientCompanyId?: string | null
   clientCompanyName?: string | null
   caseNumber?: string | null; productWork?: string | null
   productCategory?: string | null; productType?: string | null; workBranch?: string | null
@@ -316,15 +317,23 @@ export async function POST(req: NextRequest) {
     weekStart    = '',
     weekEnd      = '',
     canViewAll   = false,
-    requests     = [],
+    requests: rawRequests = [],
     filterUserId = null,
+    clientCompanyId = null,
   } = body as {
     weekStart:    string
     weekEnd:      string
     canViewAll:   boolean
     requests:     ExportRequest[]
     filterUserId: string | null
+    clientCompanyId?: string | null
   }
+
+  // Scope export to one client company when the caller is viewing a filtered
+  // grid (e.g. the "บริษัทลูกค้า:" dropdown) — same filter, applied server-side too.
+  const requests = clientCompanyId
+    ? rawRequests.filter((r) => r.clientCompanyId === clientCompanyId)
+    : rawRequests
 
   // Derive weekEnd from weekStart if not provided
   const resolvedWeekEnd = weekEnd || (weekStart ? addDaysToYmd(weekStart, 6) : '')

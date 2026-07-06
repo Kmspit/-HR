@@ -890,7 +890,7 @@ model OutsideWorkRequest {
   adminChecked   String?       @map("admin_checked")   // มี / ไม่มี
   supervisedBy   String?       @map("supervised_by")   // ผู้สั่งงาน
   documentNumber String?       @unique @map("document_number") // OW-2567-001
-  clientCompanyId String?      @map("client_company_id") // เลือกจาก ClientCompany CRM (บังคับกรอกที่หน้า client-visit เท่านั้น ไม่ใช่ DB constraint — record เก่าจาก Excel-grid ไม่มีค่านี้)
+  clientCompanyId String?      @map("client_company_id") // เลือกจาก ClientCompany CRM ผ่าน dropdown กรองในตาราง Excel-grid (optional — record เก่าไม่มีค่านี้)
   status           RequestStatus @default(PENDING)
   chainConfigId    String?
   currentStepOrder Int           @default(0)

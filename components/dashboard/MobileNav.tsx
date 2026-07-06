@@ -27,7 +27,6 @@ const MOBILE_ITEMS: { href: string; icon: keyof typeof NAV_ICONS; label: string;
   { href: '/leave',         icon: 'leave',      label: 'ลาหยุด' },
   { href: '/approval-center',     icon: 'approvals',  label: 'อนุมัติ', roles: APPR_ROLES },
   { href: '/outside-work',  icon: 'outside',    label: 'นอกที่' },
-  { href: '/outside-work/client-visit', icon: 'outside', label: 'นอกที่ (ลูกค้า)' },
   { href: '/payslip',       icon: 'payslip',    label: 'สลิป' },
   { href: '/notifications', icon: 'notif',      label: 'แจ้งเตือน' },
 ]

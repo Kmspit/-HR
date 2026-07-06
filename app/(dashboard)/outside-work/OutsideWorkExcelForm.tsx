@@ -66,11 +66,14 @@ type SlotData = {
   adminChecked: string
   supervisedBy: string
   note: string
+  clientCompanyId: string
   approvalStatus?: string | null
   status?: string
   documentNumber?: string | null
   dirty?: boolean
 }
+
+type ClientCompanyOption = { id: string; companyName: string }
 
 type WeekData = Record<string, SlotData>
 
@@ -131,7 +134,7 @@ function sKey(ymd: string, slot: 'เช้า' | 'บ่าย'): string {
 }
 
 function emptySlot(): SlotData {
-  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'' }
+  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'', clientCompanyId:'' }
 }
 
 function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
@@ -154,6 +157,7 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
       adminChecked: r.adminChecked   ?? '',
       supervisedBy: r.supervisedBy   ?? '',
       note:         r.note           ?? '',
+      clientCompanyId: r.clientCompanyId ?? '',
       approvalStatus: r.approvalStatus,
       status:         r.status,
       documentNumber: r.documentNumber,
@@ -397,6 +401,18 @@ export default function OutsideWorkExcelForm({
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [todayYmd]                = useState(() => toYmd(new Date()))
 
+  // ── Client company filter ("ทุกบริษัท" = '' = no filter, backward compatible) ──
+  const [viewCompanyId, setViewCompanyId] = useState('')
+  const [companies, setCompanies] = useState<ClientCompanyOption[]>([])
+  useEffect(() => {
+    let cancelled = false
+    apiJson<{ items?: ClientCompanyOption[] }>('/api/client-companies?status=ACTIVE')
+      .then(({ ok, data }) => {
+        if (!cancelled && ok && Array.isArray(data.items)) setCompanies(data.items)
+      })
+    return () => { cancelled = true }
+  }, [])
+
   const canEditCompanyText = SETTINGS_EDIT_ROLES.includes(currentUserRole)
   const [displayCompanyName, setDisplayCompanyName] = useState(companyName || COMPANY_NAME_FALLBACK)
   const [displayPlanTitle, setDisplayPlanTitle]     = useState(outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT)
@@ -429,8 +445,12 @@ export default function OutsideWorkExcelForm({
   )
 
   const viewReqs = useMemo(
-    () => reqs.filter(r => weekDays.includes(r.date.slice(0, 10)) && r.userId === viewUserId),
-    [reqs, weekDays, viewUserId],
+    () => reqs.filter(r =>
+      weekDays.includes(r.date.slice(0, 10)) &&
+      r.userId === viewUserId &&
+      (!viewCompanyId || r.clientCompanyId === viewCompanyId),
+    ),
+    [reqs, weekDays, viewUserId, viewCompanyId],
   )
 
   const [weekData, setWeekData] = useState<WeekData>(() => buildWeekData(viewReqs, weekDays))
@@ -495,6 +515,10 @@ export default function OutsideWorkExcelForm({
           adminChecked: slot.adminChecked || null,
           supervisedBy: slot.supervisedBy || null,
           note:         slot.note         || null,
+          // Only set clientCompanyId when a specific company filter is active — when
+          // viewing "ทุกบริษัท" (all), omit it so existing records keep whatever
+          // clientCompanyId they already had (undefined ≠ null: PATCH ignores absent keys).
+          ...(viewCompanyId ? { clientCompanyId: viewCompanyId } : {}),
         }
         const url    = slot.id ? `/api/outside-work/${slot.id}` : '/api/outside-work'
         const method = slot.id ? 'PATCH' : 'POST'
@@ -563,21 +587,36 @@ export default function OutsideWorkExcelForm({
     <div className="bg-gray-50 min-h-screen print:bg-white">
       <div className="max-w-[1440px] mx-auto px-3 py-4 md:px-6 md:py-6 space-y-4">
 
-        {/* Admin — employee switcher */}
-        {canViewAll && (
-          <div className="flex items-center gap-3 bg-white border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm print:hidden">
-            <span className="text-sm text-gray-700 font-semibold shrink-0">ดูแผนของ:</span>
+        {/* Admin — employee switcher + client company filter */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-white border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm print:hidden">
+          {canViewAll && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-700 font-semibold shrink-0">ดูแผนของ:</span>
+              <select
+                value={viewUserId}
+                onChange={e => setViewUserId(e.target.value)}
+                className="form-on-light select-on-light flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+              >
+                {employees.map(e => (
+                  <option key={e.id} value={e.id}>{e.name}{e.id === userId ? ' (ตัวเอง)' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-700 font-semibold shrink-0">บริษัทลูกค้า:</span>
             <select
-              value={viewUserId}
-              onChange={e => setViewUserId(e.target.value)}
+              value={viewCompanyId}
+              onChange={e => setViewCompanyId(e.target.value)}
               className="form-on-light select-on-light flex-1 max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm !text-gray-900 bg-white shadow-sm outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
             >
-              {employees.map(e => (
-                <option key={e.id} value={e.id}>{e.name}{e.id === userId ? ' (ตัวเอง)' : ''}</option>
+              <option value="">ทุกบริษัท</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.companyName}</option>
               ))}
             </select>
           </div>
-        )}
+        </div>
 
         {/* ── Form card ───────────────────────────────────────────────── */}
         <div className="bg-white text-gray-900 border border-gray-400 rounded-lg shadow-sm overflow-hidden print:shadow-none print:rounded-none">
