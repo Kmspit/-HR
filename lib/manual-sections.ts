@@ -1,6 +1,7 @@
 /** Map pathname → manual ?section= slug for ManualButton deep links. */
 const PATH_SECTION: Record<string, string> = {
   '/leave': 'leave',
+  '/outside-work/deleted': 'outside-work-deleted',
   '/outside-work': 'outside-work',
   '/attendance': 'attendance',
   '/weekly-plan': 'weekly-plan',
@@ -53,5 +54,11 @@ export const MANUAL_SECTION_TAB: Record<string, 'employee' | 'hr'> = {
   reports: 'hr',
   settings: 'hr',
   cases: 'hr',
+  'cases-court': 'hr',
+  'cases-checklist': 'hr',
+  'cases-debtor': 'hr',
+  'cases-finance': 'hr',
+  'cases-documents': 'hr',
+  'outside-work-deleted': 'hr',
   'line-oa': 'hr',
 }
