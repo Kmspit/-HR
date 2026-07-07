@@ -1,6 +1,15 @@
 ﻿export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950">
+      {/* Defense-in-depth for the iOS white-flash bug (see app/styles/base.css
+          body.auth-bg): synchronous inline script so <body> gets the dark
+          background before hydration, not after — avoids a flash on first paint.
+          Safe to run on every mount: navigation away from (auth) to (dashboard) in
+          this app always happens via a hard reload (window.location.href / signOut),
+          never a client-side soft-nav across the two route groups, so a fresh
+          document is guaranteed and there's nothing to clean up on unmount. */}
+      <script dangerouslySetInnerHTML={{ __html: "document.body.classList.add('auth-bg')" }} />
+
       {/* Animated gradient blobs */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-green-600/20 blur-[120px] animate-float" />

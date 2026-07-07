@@ -4,7 +4,7 @@
   "description": "ระบบ HR บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#070b14",
+  "background_color": "#020617",
   "theme_color": "#22c55e",
   "orientation": "portrait",
   "lang": "th",

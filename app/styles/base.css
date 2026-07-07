@@ -70,6 +70,15 @@
 
   html {
     overflow-x: hidden;
+    /* Prevents iOS Safari rubber-band bounce from revealing the browser's default
+       white canvas beyond the document edges. Scoped to html (not body) on purpose —
+       html is the real scrolling element here (overflow-x:hidden forces overflow-y to
+       compute as auto per spec), so this stops the bounce at the true root scroller.
+       Do NOT add this to body on mobile — body's overflow-x:clip / .dark body's
+       overflow-x:hidden dance was hard-won to fix an Android Chrome scroll-freeze bug
+       (see the mobile scroll-fix comments in responsive.css); overscroll-behavior on
+       body risks resurrecting it. */
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -124,6 +133,18 @@
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34,197,94,0.1) 0%, transparent 60%),
       radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
+  }
+
+  /* Auth pages (login/register/forgot-password) — always dark (bg-slate-950),
+     independent of the app-wide light/dark theme toggle. Defense-in-depth for the
+     rubber-band/dvh-keyboard white-flash bug: the (auth) route group's own wrapper
+     div is bg-slate-950, but <body> itself has no background set for this case, so
+     any gap (iOS keyboard dvh resize, overscroll before the html-level fix above
+     takes effect on unsupported browsers) would show through as white. Class is
+     added via a synchronous inline <script> in app/(auth)/layout.tsx — see there.
+     #020617 = Tailwind's bg-slate-950, matching the auth wrapper exactly. */
+  body.auth-bg {
+    background-color: #020617 !important;
   }
 
   @media (max-width: 767px) {
