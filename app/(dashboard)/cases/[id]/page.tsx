@@ -64,6 +64,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   const canEdit =
     EXEC.includes(role) ||
     c.createdById === userId ||
+    c.assignedEmployeeId === userId ||
     !!(role === 'MANAGER' && department && c.department === department)
 
   return (

@@ -59,7 +59,8 @@ export async function DELETE(
   const canDelete =
     EXEC_ROLES.includes(session.user.role) ||
     existing.createdById === session.user.id ||
-    existing.case.createdById === session.user.id
+    existing.case.createdById === session.user.id ||
+    existing.case.assignedEmployeeId === session.user.id
 
   if (!canDelete) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
