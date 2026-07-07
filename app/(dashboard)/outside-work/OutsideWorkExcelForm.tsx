@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, useRef, Fragment } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle, Pencil, Printer, Trash2, FileDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -693,6 +693,56 @@ export default function OutsideWorkExcelForm({
     return req ? showApproveFor(req) : false
   }
 
+  // ── Delete (soft-delete, PENDING only) ───────────────────────────────────
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const deleteSlot = async (id: string) => {
+    if (!window.confirm('ลบรายการนี้? HR สามารถกู้คืนได้ภายหลังจากหน้า "รายการที่ถูกลบ"')) return
+    setDeletingId(id)
+    try {
+      const { ok, data, status } = await apiJson(`/api/outside-work/${id}`, { method: 'DELETE' })
+      if (!ok) { toast.error(apiErrorMessage(data, 'ลบไม่สำเร็จ', status)); return }
+      setReqs(prev => prev.filter(r => r.id !== id))
+      toast.success('ลบรายการแล้ว')
+    } catch { toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่') }
+    finally { setDeletingId(null) }
+  }
+
+  // ── Export (current week + person + company filter) ─────────────────────
+
+  const [exporting, setExporting] = useState(false)
+
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/outside-work/export', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekStart: toYmd(weekStart),
+          weekEnd: toYmd(weekEnd),
+          canViewAll: false,
+          filterUserId: viewUserId,
+          clientCompanyId: viewCompanyId || null,
+          requests: viewReqs,
+        }),
+      })
+      if (!res.ok) { toast.error('ส่งออกไม่สำเร็จ'); return }
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `outside-work-${toYmd(weekStart)}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch { toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่') }
+    finally { setExporting(false) }
+  }
+
   // ── CSS tokens ────────────────────────────────────────────────────────────
 
   const TH = 'border border-black bg-gray-200 text-sm font-semibold text-center px-1 py-1.5 leading-tight align-middle text-gray-900'
@@ -737,6 +787,16 @@ export default function OutsideWorkExcelForm({
               ))}
             </select>
           </div>
+
+          <button
+            type="button"
+            onClick={exportExcel}
+            disabled={exporting}
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm hover:bg-slate-100 hover:border-gray-400 text-gray-800 font-semibold transition disabled:opacity-50"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            Export Excel
+          </button>
         </div>
 
         {/* ── Form card ───────────────────────────────────────────────── */}
@@ -809,6 +869,7 @@ export default function OutsideWorkExcelForm({
                   <th className={`${TH} w-[86px]`}>ผู้สั่งงาน</th>
                   <th className={`${TH} w-[70px]`}     rowSpan={2}>อนุมัติ/<br/>ไม่อนุมัติ</th>
                   <th className={`${TH} w-[90px]`}     rowSpan={2}>หมายเหตุ</th>
+                  <th className={`${TH} w-[56px] print:hidden`} rowSpan={2}>จัดการ</th>
                 </tr>
                 <tr>
                   <th className={`${TH} font-semibold`}>(มี/ไม่มี)</th>
@@ -959,6 +1020,24 @@ export default function OutsideWorkExcelForm({
                             onChange={e => updateSlot(kM, 'note', e.target.value)}
                             className={`${INP} ${mLock ? INP_RO : ''}`} />
                         </td>
+
+                        {/* จัดการ — พิมพ์ / ลบ */}
+                        <td className={`${TD} ${stripe} text-center print:hidden`}>
+                          {morn.id && (
+                            <div className="flex items-center justify-center gap-1">
+                              <button type="button" onClick={() => window.open(`/outside-work/${morn.id}/print`, '_blank')}
+                                title="พิมพ์" className="p-1 rounded hover:bg-gray-200 text-gray-700 transition">
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                              {(morn.userId === userId || canApproveOutside) && isPendingSlot(morn) && (
+                                <button type="button" onClick={() => deleteSlot(morn.id!)} disabled={deletingId === morn.id}
+                                  title="ลบ" className="p-1 rounded hover:bg-red-100 text-red-700 transition disabled:opacity-40">
+                                  {deletingId === morn.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
                       </tr>
 
                       {/* Afternoon row */}
@@ -1065,6 +1144,24 @@ export default function OutsideWorkExcelForm({
                           <input value={aftn.note} readOnly={aLock} placeholder="—"
                             onChange={e => updateSlot(kA, 'note', e.target.value)}
                             className={`${INP} ${aLock ? INP_RO : ''}`} />
+                        </td>
+
+                        {/* จัดการ — พิมพ์ / ลบ */}
+                        <td className={`${TD} ${stripe} text-center print:hidden`}>
+                          {aftn.id && (
+                            <div className="flex items-center justify-center gap-1">
+                              <button type="button" onClick={() => window.open(`/outside-work/${aftn.id}/print`, '_blank')}
+                                title="พิมพ์" className="p-1 rounded hover:bg-gray-200 text-gray-700 transition">
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+                              {(aftn.userId === userId || canApproveOutside) && isPendingSlot(aftn) && (
+                                <button type="button" onClick={() => deleteSlot(aftn.id!)} disabled={deletingId === aftn.id}
+                                  title="ลบ" className="p-1 rounded hover:bg-red-100 text-red-700 transition disabled:opacity-40">
+                                  {deletingId === aftn.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
 
