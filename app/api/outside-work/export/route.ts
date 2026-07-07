@@ -42,6 +42,7 @@ type ExportRequest = {
   status: string; approvalStatus?: string | null
   note?: string | null
   documentNumber?: string | null
+  assignees?: { id: string; name: string }[] | null
 }
 
 // 16 data columns — no employee columns; employee name goes in row 11 header
@@ -56,6 +57,7 @@ const COLS = [
   { key: 'productCategory', label: 'หมวดหมู่งานโปรดักส์',        sub: '',                                        width: 18 },
   { key: 'productType',     label: 'ประเภทย่อย',                 sub: '',                                        width: 16 },
   { key: 'productWork',     label: 'งานโปรดักส์ (เดิม)',          sub: '',                                        width: 16 },
+  { key: 'assignees',       label: 'ผู้รับผิดชอบ',               sub: '',                                        width: 22 },
   { key: 'workBranch',      label: 'งานของสาขาไหน',             sub: '',                                        width: 14 },
   { key: 'caseCount',       label: 'จำนวนคดีที่ไปดำเนินการ',    sub: '',                                        width: 14 },
   { key: 'adminChecked',    label: 'แอดมินโปรดักส์ตรวจสอบ',     sub: '(มี/ไม่มี)',                              width: 14 },
@@ -75,7 +77,7 @@ function thinBorder(argb = 'FFB0C4DE') {
 }
 
 // Columns whose data cells are centre-aligned (indices match COLS order above)
-const CENTRE_COLS = new Set([1, 2, 3, 7, 8, 9, 11, 12, 13, 14, 15])
+const CENTRE_COLS = new Set([1, 2, 3, 7, 8, 9, 12, 13, 14, 15, 16])
 
 function applyStatusColour(cell: ExcelJS.Cell, label: string) {
   if (!label) return
@@ -228,6 +230,7 @@ function buildEmployeeSheet(
         req?.productCategory ?? '',
         req?.productType     ?? '',
         req?.productWork ?? '',
+        req?.assignees?.map(a => a.name).join(', ') ?? '',
         req?.workBranch  ?? '',
         req?.caseCount != null ? req.caseCount : '',
         req?.adminChecked ?? '',
@@ -253,8 +256,8 @@ function buildEmployeeSheet(
           wrapText:   col >= 4,
         }
       })
-      // Status column (15) colour
-      const statusCell  = row.getCell(15)
+      // Status column (16) colour
+      const statusCell  = row.getCell(16)
       applyStatusColour(statusCell, statusCell.value as string)
     })
 

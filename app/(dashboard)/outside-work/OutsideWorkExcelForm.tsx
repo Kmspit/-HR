@@ -49,6 +49,7 @@ export type OWRequest = {
   documentNumber?: string | null
   clientCompanyId?: string | null
   clientCompanyName?: string | null
+  assignees?: { id: string; name: string }[]
   createdAt: string
 }
 
@@ -67,6 +68,7 @@ type SlotData = {
   supervisedBy: string
   note: string
   clientCompanyId: string
+  assigneeIds: string[]
   approvalStatus?: string | null
   status?: string
   documentNumber?: string | null
@@ -134,7 +136,7 @@ function sKey(ymd: string, slot: 'เช้า' | 'บ่าย'): string {
 }
 
 function emptySlot(): SlotData {
-  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'', clientCompanyId:'' }
+  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'', clientCompanyId:'', assigneeIds:[] }
 }
 
 function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
@@ -158,6 +160,7 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
       supervisedBy: r.supervisedBy   ?? '',
       note:         r.note           ?? '',
       clientCompanyId: r.clientCompanyId ?? '',
+      assigneeIds:  r.assignees?.map(a => a.id) ?? [],
       approvalStatus: r.approvalStatus,
       status:         r.status,
       documentNumber: r.documentNumber,
@@ -309,6 +312,108 @@ function ProductWorkCell({
   )
 }
 
+// ── Assignee picker (multi-select popover — พนักงานที่รับผิดชอบ) ──────────────
+
+function AssigneeCell({
+  value, options, readOnly, onChange,
+}: {
+  value: string[]
+  options: { id: string; name: string }[]
+  readOnly: boolean
+  onChange: (ids: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<string[]>(value)
+
+  const openPopover = () => {
+    if (readOnly) return
+    setDraft(value)
+    setOpen(true)
+  }
+
+  const toggle = (id: string) => {
+    setDraft(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
+  }
+
+  const confirm = () => {
+    onChange(draft)
+    setOpen(false)
+  }
+
+  const names = value
+    .map(id => options.find(o => o.id === id)?.name)
+    .filter((n): n is string => Boolean(n))
+  const summary = names.length === 0
+    ? ''
+    : names.length === 1
+      ? names[0]
+      : `${names[0]} และอีก ${names.length - 1} คน`
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPopover}
+        disabled={readOnly}
+        title={names.join(', ') || 'ยังไม่ได้ระบุผู้รับผิดชอบ'}
+        className={`w-full min-h-[20px] text-left text-[11px] px-1 py-0.5 rounded truncate ${
+          readOnly ? 'cursor-default text-gray-400' : 'hover:bg-blue-50 cursor-pointer text-gray-600'
+        }`}
+      >
+        {summary || <span className="text-gray-400">+ ผู้รับผิดชอบ</span>}
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-gray-900 mb-3">เลือกพนักงานที่รับผิดชอบ</h3>
+
+            <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100 mb-4">
+              {options.length === 0 && (
+                <div className="px-3 py-2 text-sm text-gray-500">ไม่มีรายชื่อพนักงาน</div>
+              )}
+              {options.map(opt => (
+                <label key={opt.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-900 cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={draft.includes(opt.id)}
+                    onChange={() => toggle(opt.id)}
+                    className="accent-green-600"
+                  />
+                  {opt.name}
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={confirm}
+                className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
+              >
+                ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ── Inline-editable header text (company name / plan title) ───────────────────
 
 function InlineEditableText({
@@ -413,6 +518,17 @@ export default function OutsideWorkExcelForm({
     return () => { cancelled = true }
   }, [])
 
+  // ── Assignable employees (พนักงานที่รับผิดชอบ picker) ────────────────────────
+  const [assignableEmployees, setAssignableEmployees] = useState<{ id: string; name: string }[]>([])
+  useEffect(() => {
+    let cancelled = false
+    apiJson<{ employees?: { id: string; name: string }[] }>('/api/outside-work/employees')
+      .then(({ ok, data }) => {
+        if (!cancelled && ok && Array.isArray(data.employees)) setAssignableEmployees(data.employees)
+      })
+    return () => { cancelled = true }
+  }, [])
+
   const canEditCompanyText = SETTINGS_EDIT_ROLES.includes(currentUserRole)
   const [displayCompanyName, setDisplayCompanyName] = useState(companyName || COMPANY_NAME_FALLBACK)
   const [displayPlanTitle, setDisplayPlanTitle]     = useState(outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT)
@@ -475,6 +591,10 @@ export default function OutsideWorkExcelForm({
     setWeekData(prev => ({ ...prev, [key]: { ...prev[key], productCategory: category, productType: type, dirty: true } }))
   }, [])
 
+  const updateAssignees = useCallback((key: string, ids: string[]) => {
+    setWeekData(prev => ({ ...prev, [key]: { ...prev[key], assigneeIds: ids, dirty: true } }))
+  }, [])
+
   const employees = useMemo(() => {
     const map = new Map<string, string>([[userId, userName]])
     reqs.forEach(r => map.set(r.userId, r.userName))
@@ -515,6 +635,7 @@ export default function OutsideWorkExcelForm({
           adminChecked: slot.adminChecked || null,
           supervisedBy: slot.supervisedBy || null,
           note:         slot.note         || null,
+          assigneeIds:  slot.assigneeIds,
           // Only set clientCompanyId when a specific company filter is active — when
           // viewing "ทุกบริษัท" (all), omit it so existing records keep whatever
           // clientCompanyId they already had (undefined ≠ null: PATCH ignores absent keys).
@@ -761,6 +882,14 @@ export default function OutsideWorkExcelForm({
                             readOnly={mLock}
                             onChange={(category, type) => updateProductWork(kM, category, type)}
                           />
+                          <div className="border-t border-gray-200 mt-0.5 pt-0.5">
+                            <AssigneeCell
+                              value={morn.assigneeIds}
+                              options={assignableEmployees}
+                              readOnly={mLock}
+                              onChange={(ids) => updateAssignees(kM, ids)}
+                            />
+                          </div>
                         </td>
 
                         {/* สาขา */}
@@ -866,6 +995,14 @@ export default function OutsideWorkExcelForm({
                             readOnly={aLock}
                             onChange={(category, type) => updateProductWork(kA, category, type)}
                           />
+                          <div className="border-t border-gray-200 mt-0.5 pt-0.5">
+                            <AssigneeCell
+                              value={aftn.assigneeIds}
+                              options={assignableEmployees}
+                              readOnly={aLock}
+                              onChange={(ids) => updateAssignees(kA, ids)}
+                            />
+                          </div>
                         </td>
 
                         <td className={`${TD} ${stripe}`}>

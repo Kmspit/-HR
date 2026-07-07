@@ -75,6 +75,7 @@ export default async function OutsideWorkPage({
         clientCompanyId: true,
         clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
+        assignees: { select: { user: { select: { id: true, name: true } } } },
         stepLogs: {
           select: {
             id: true, stepOrder: true, stepName: true, approverRole: true, approverId: true,
@@ -139,6 +140,7 @@ export default async function OutsideWorkPage({
       documentNumber: r.documentNumber  ?? null,
       clientCompanyId:   r.clientCompanyId ?? null,
       clientCompanyName: r.clientCompany?.companyName ?? null,
+      assignees: r.assignees.map((a) => ({ id: a.user.id, name: a.user.name })),
     })))
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string; meta?: unknown }

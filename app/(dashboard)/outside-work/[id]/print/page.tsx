@@ -46,6 +46,7 @@ export default async function PrintOutsideWorkPage({
       clientCompanyId: true,
       clientCompany: { select: { companyName: true } },
       user: { select: { name: true, department: true, position: true } },
+      assignees: { select: { user: { select: { id: true, name: true } } } },
       approvals: {
         select: {
           id: true, action: true, reason: true, createdAt: true,
@@ -331,6 +332,14 @@ export default async function PrintOutsideWorkPage({
                   </td>
                   <td className="label-col">งานของสาขา</td>
                   <td className="value-col">{request.workBranch ?? '—'}</td>
+                </tr>
+              )}
+              {request.assignees.length > 0 && (
+                <tr>
+                  <td className="label-col">ผู้รับผิดชอบ</td>
+                  <td className="value-col" colSpan={3}>
+                    {request.assignees.map((a) => a.user.name).join(', ')}
+                  </td>
                 </tr>
               )}
               {request.adminChecked && (

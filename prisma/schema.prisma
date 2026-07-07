@@ -473,6 +473,7 @@ model User {
   leaveRequests   LeaveRequest[]
   outsideRequests OutsideWorkRequest[]
   outsideRequestsDeleted OutsideWorkRequest[] @relation("OutsideWorkDeletedBy")
+  outsideWorkAssignments OutsideWorkAssignee[] @relation("OutsideWorkAssignee")
   weeklyPlans     WeeklyLawyerPlan[]
   approvalActions ApprovalHistory[]   @relation("ApprovedBy")
   notifications   Notification[]
@@ -905,12 +906,28 @@ model OutsideWorkRequest {
   stepLogs      OutsideWorkApprovalStep[]
   clientCompany ClientCompany?            @relation(fields: [clientCompanyId], references: [id], onDelete: SetNull)
   deletedBy     User?                     @relation("OutsideWorkDeletedBy", fields: [deletedById], references: [id])
+  assignees     OutsideWorkAssignee[]
 
   @@index([userId])
   @@index([date])
   @@index([status])
   @@index([deletedAt])
   @@map("outside_work_requests")
+}
+
+/** พนักงานที่รับผิดชอบงานโปรดักส์ (หลายคนต่อ 1 คำขอออกนอกสถานที่) */
+model OutsideWorkAssignee {
+  id                   String   @id @default(cuid())
+  outsideWorkRequestId String   @map("outside_work_request_id")
+  userId               String   @map("user_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  outsideWorkRequest OutsideWorkRequest @relation(fields: [outsideWorkRequestId], references: [id], onDelete: Cascade)
+  user               User               @relation("OutsideWorkAssignee", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([outsideWorkRequestId, userId])
+  @@index([userId])
+  @@map("outside_work_assignees")
 }
 
 // ── WEEKLY LAWYER PLAN ──────────────────────────

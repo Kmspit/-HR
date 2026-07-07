@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
         clientCompanyId: true,
         clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
+        assignees: { select: { user: { select: { id: true, name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: isCompanyWideApprover(session.user.role as Role) ? 200 : 100,
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
       timeSlot, caseNumber, productWork, productCategory, productType, workBranch, caseCount, adminChecked, supervisedBy,
       clientCompanyId,
     } = body
+    const assigneeIds: string[] | undefined = body.assigneeIds
 
     if (!date || !place || !purpose) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
@@ -156,6 +158,12 @@ export async function POST(req: NextRequest) {
     }
     if (!request) throw new Error('ไม่สามารถสร้างเลขที่เอกสารได้')
 
+    if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+      await prisma.outsideWorkAssignee.createMany({
+        data: [...new Set(assigneeIds)].map((userId) => ({ outsideWorkRequestId: request!.id, userId })),
+      })
+    }
+
     const defaultChain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
     if (!defaultChain) {
       return NextResponse.json(
@@ -177,6 +185,7 @@ export async function POST(req: NextRequest) {
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
         clientCompanyId: true,
         clientCompany: { select: { companyName: true } },
+        assignees: { select: { user: { select: { id: true, name: true } } } },
       },
     })
 

@@ -8,7 +8,7 @@ import {
   canViewUserRecord,
   isCompanyWideApprover,
 } from '@/lib/org-scope'
-import type { Role } from '@prisma/client'
+import type { Role, Prisma } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -31,6 +31,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         clientCompanyId: true,
         clientCompany: { select: { companyName: true } },
         user: { select: { name: true, department: true, position: true } },
+        assignees: { select: { user: { select: { id: true, name: true } } } },
         approvals: {
           select: {
             id: true, action: true, reason: true, createdAt: true,
@@ -108,6 +109,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       timeSlot?: string; caseNumber?: string; productWork?: string; productCategory?: string; productType?: string; workBranch?: string
       caseCount?: number | string; adminChecked?: string; supervisedBy?: string
       clientCompanyId?: string
+      assigneeIds?: string[]
     }
 
     if (body.place !== undefined && !body.place?.trim()) {
@@ -150,21 +152,36 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       // Status changes only via approval chain — not direct PATCH
     }
 
-    const updated = await prisma.outsideWorkRequest.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true, userId: true, date: true, startTime: true, endTime: true,
-        place: true, purpose: true, client: true, note: true, status: true,
-        chainConfigId: true, currentStepOrder: true, createdAt: true,
-        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
-        employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
-        timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
-        workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
-        clientCompanyId: true,
-        clientCompany: { select: { companyName: true } },
-      },
-    })
+    const selectShape = {
+      id: true, userId: true, date: true, startTime: true, endTime: true,
+      place: true, purpose: true, client: true, note: true, status: true,
+      chainConfigId: true, currentStepOrder: true, createdAt: true,
+      googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+      employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
+      timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
+      workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
+      clientCompanyId: true,
+      clientCompany: { select: { companyName: true } },
+      assignees: { select: { user: { select: { id: true, name: true } } } },
+    } as const
+
+    let updated: Prisma.OutsideWorkRequestGetPayload<{ select: typeof selectShape }>
+    if (body.assigneeIds !== undefined) {
+      const assigneeIds = body.assigneeIds
+      const ops: Prisma.PrismaPromise<unknown>[] = [
+        prisma.outsideWorkRequest.update({ where: { id }, data: updateData, select: { id: true } }),
+        prisma.outsideWorkAssignee.deleteMany({ where: { outsideWorkRequestId: id } }),
+      ]
+      if (assigneeIds.length > 0) {
+        ops.push(prisma.outsideWorkAssignee.createMany({
+          data: [...new Set(assigneeIds)].map((userId) => ({ outsideWorkRequestId: id, userId })),
+        }))
+      }
+      await prisma.$transaction(ops)
+      updated = await prisma.outsideWorkRequest.findUniqueOrThrow({ where: { id }, select: selectShape })
+    } else {
+      updated = await prisma.outsideWorkRequest.update({ where: { id }, data: updateData, select: selectShape })
+    }
 
     await createAuditLog({
       actorId: session.user.id, targetId: id, targetType: 'OutsideWorkRequest',

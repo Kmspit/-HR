@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900006
+export const CURRENT_SCHEMA_VERSION = 900007
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1039,6 +1039,18 @@ async function runEnsure(force = false): Promise<boolean> {
   await addColumnIfMissing('outside_work_requests', 'client_company_id', `ALTER TABLE outside_work_requests ADD COLUMN client_company_id TEXT`)
   await addColumnIfMissing('outside_work_requests', 'deleted_at',    `ALTER TABLE outside_work_requests ADD COLUMN deleted_at DATETIME`)
   await addColumnIfMissing('outside_work_requests', 'deleted_by_id', `ALTER TABLE outside_work_requests ADD COLUMN deleted_by_id TEXT`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS outside_work_assignees (
+      id TEXT NOT NULL PRIMARY KEY,
+      outside_work_request_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(outside_work_request_id, user_id)
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_assignees_user ON outside_work_assignees (user_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_outside_work_assignees_request ON outside_work_assignees (outside_work_request_id)`)
 
   await addCompanySettingsColumnIfMissing(
     'outside_work_plan_title',
