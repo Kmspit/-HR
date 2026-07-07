@@ -87,7 +87,10 @@ export async function POST(req: NextRequest) {
     if (csrfErr) return csrfErr
 
     const session = await auth()
-    if (!session?.user?.id || !['MANAGER_HR', 'ADMIN', 'CEO'].includes(session.user.role)) {
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const issuerRole = session.user.role as Role
+    if (!canApproveWarning(issuerRole) && !canManageUsers(issuerRole)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
