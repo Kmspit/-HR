@@ -12,7 +12,6 @@ import {
   FORGOT_SCAN_SUPERVISOR_ROLES,
 } from '@/lib/access-control'
 import { resolveOrgListScope, userIdFilterFromScope } from '@/lib/org-scope'
-import { validateCsrfOrigin } from '@/lib/csrf'
 
 const SCAN_TYPES = ['checkin', 'lunch-out', 'lunch-in', 'checkout'] as const
 type ScanType = (typeof SCAN_TYPES)[number]
@@ -35,9 +34,6 @@ const NOTIFY_ROLES: Role[] = ['MANAGER', 'TEAM_LEADER', 'HR', 'MANAGER_HR']
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = validateCsrfOrigin(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

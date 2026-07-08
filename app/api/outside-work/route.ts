@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { getDefaultChain, applyChainToOutsideWork } from '@/lib/approval-chain'
-import { requireCsrf } from '@/lib/api-guard'
 import {
   canViewUserRecord,
   isCompanyWideApprover,
@@ -90,9 +89,6 @@ async function nextOutsideWorkDocumentNumber(year: number): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const body = await req.json()

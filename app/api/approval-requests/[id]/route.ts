@@ -7,7 +7,6 @@ import {
   canActOnApprovalStep,
   canViewApprovalRequest,
 } from '@/lib/approval-request-access'
-import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -53,9 +52,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const csrfErr = requireCsrf(req)
-  if (csrfErr) return csrfErr
-
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

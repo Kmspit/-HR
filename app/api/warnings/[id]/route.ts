@@ -8,7 +8,6 @@ import {
   canViewUserRecord,
   isCompanyWideApprover,
 } from '@/lib/org-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import type { Role } from '@prisma/client'
 
 export async function GET(
@@ -72,9 +71,6 @@ export async function PATCH(
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
 
     const role = session.user.role as Role
     if (!canApproveWarning(role) && !canManageUsers(role)) {

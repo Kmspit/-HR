@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { validateHolidayInput } from '@/lib/company-holidays'
 import { z } from 'zod'
-import { requireCsrf } from '@/lib/api-guard'
 
 const holidayTypes = ['SATURDAY', 'SUNDAY', 'PUBLIC_HOLIDAY', 'COMPANY_HOLIDAY'] as const
 
@@ -22,9 +21,6 @@ function canManageHolidays(role: string) {
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id || !canManageHolidays(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -102,9 +98,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id || !canManageHolidays(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

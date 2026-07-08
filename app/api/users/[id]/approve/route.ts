@@ -5,14 +5,10 @@ import { createNotification, sendLineNotify, createAuditLog } from '@/lib/notifi
 import { apiError, runNotify } from '@/lib/api-handler'
 import { canApproveAccounts } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import { headers } from 'next/headers'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user || !canApproveAccounts(session.user.role)) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์อนุมัติบัญชี' }, { status: 403 })

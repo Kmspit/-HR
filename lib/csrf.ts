@@ -36,3 +36,49 @@ export function validateCsrfOrigin(req: NextRequest): NextResponse | null {
 
   return NextResponse.json({ error: 'Cross-origin request rejected' }, { status: 403 })
 }
+
+const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
+
+export function isMutatingMethod(method: string): boolean {
+  return MUTATING_METHODS.has(method.toUpperCase())
+}
+
+/**
+ * API routes that legitimately receive cross-origin mutating requests without
+ * a same-origin browser session — each authenticates via its own shared-secret
+ * or signature check instead of a cookie, so origin-based CSRF protection
+ * doesn't apply and would break them. Verified individually (round-3 audit):
+ *   - /api/line/webhook            — LINE HMAC signature (x-line-signature)
+ *   - /api/cron/sync-deploy-env    — shared CRON_SECRET (+ X-Vercel-Token)
+ *   - /api/cron/invoice-reminders  — shared CRON_SECRET
+ *   - /api/cron/contract-reminders — shared CRON_SECRET
+ *   - /api/leave/prototype         — PROTOTYPE_BRIDGE_SECRET header
+ *   - /api/line/prototype-notify   — PROTOTYPE_BRIDGE_SECRET header (checked
+ *                                    before the session it also requires)
+ * None of these have a session-cookie-only code path a cross-site request
+ * could ride on. Keep this list in sync with that audit.
+ */
+const CSRF_EXEMPT_API_ROUTES = [
+  '/api/line/webhook',
+  '/api/cron/sync-deploy-env',
+  '/api/cron/invoice-reminders',
+  '/api/cron/contract-reminders',
+  '/api/leave/prototype',
+  '/api/line/prototype-notify',
+]
+
+export function isCsrfExemptApiRoute(pathname: string): boolean {
+  return CSRF_EXEMPT_API_ROUTES.includes(pathname)
+}
+
+/**
+ * Global CSRF gate for API routes — call once in middleware for every
+ * /api/* request. Returns a 403 response to short-circuit the request, or
+ * null to let it continue. Individual route handlers no longer need their
+ * own requireCsrf()/validateCsrfOrigin() call now that this runs centrally.
+ */
+export function csrfGateForApiRoute(req: NextRequest, pathname: string): NextResponse | null {
+  if (!isMutatingMethod(req.method)) return null
+  if (isCsrfExemptApiRoute(pathname)) return null
+  return validateCsrfOrigin(req)
+}

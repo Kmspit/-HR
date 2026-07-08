@@ -14,7 +14,6 @@ import { runWarningCheck } from '@/lib/warningEngine'
 
 import { isCompanyWideApprover, resolveOrgListScope } from '@/lib/org-scope'
 
-import { validateCsrfOrigin } from '@/lib/csrf'
 
 import type { Role } from '@prisma/client'
 
@@ -28,11 +27,7 @@ const ALLOWED_ROLES = new Set<Role>([
 
 
 
-export async function POST(req: NextRequest) {
-
-  const csrfErr = validateCsrfOrigin(req)
-
-  if (csrfErr) return csrfErr
+export async function POST(_req: NextRequest) {
 
 
 

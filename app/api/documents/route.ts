@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { HR_ROLES } from '@/lib/access-control'
 import { buildBranchScope, branchNestedUserWhere, branchUserWhere } from '@/lib/branch-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import type { Prisma } from '@prisma/client'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -81,9 +80,6 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id || !(HR_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { monthDateRange } from '@/lib/utils'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import {
   buildApprovedLeaveDateSet,
   computeLateDeduction,
@@ -22,9 +21,6 @@ const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN', 'HR'] as co
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id || !(GENERATE_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

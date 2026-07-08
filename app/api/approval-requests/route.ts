@@ -8,7 +8,6 @@ import {
   isCompanyWideApprover,
   resolveOrgListScope,
 } from '@/lib/org-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import type { Prisma, Role } from '@prisma/client'
 
 export async function GET(req: NextRequest) {
@@ -88,9 +87,6 @@ type StepInput = {
 }
 
 export async function POST(req: NextRequest) {
-  const csrfErr = requireCsrf(req)
-  if (csrfErr) return csrfErr
-
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

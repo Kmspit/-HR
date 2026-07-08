@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { requireCsrf } from '@/lib/api-guard'
 import { buildBranchScope, isUserInBranchScope } from '@/lib/branch-scope'
 import { HR_ADMIN } from '@/lib/module-gates'
 import type { Role } from '@prisma/client'
@@ -13,9 +12,6 @@ export async function POST(
   { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!HR_ADMIN.includes(session.user.role as Role)) {

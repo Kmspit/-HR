@@ -2,7 +2,6 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { requireCsrf } from '@/lib/api-guard'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
 import { bangkokDateKey } from '@/lib/datetime-bangkok'
@@ -31,9 +30,6 @@ import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

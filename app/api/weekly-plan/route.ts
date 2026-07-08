@@ -6,13 +6,9 @@ import { apiError, runNotify } from '@/lib/api-handler'
 import { dateForPlanDay } from '@/lib/weekly-plan-days'
 import { getDefaultChain } from '@/lib/approval-chain'
 import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
-import { requireCsrf } from '@/lib/api-guard'
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user || session.user.role !== 'LAWYER') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })

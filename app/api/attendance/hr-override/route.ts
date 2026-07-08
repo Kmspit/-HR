@@ -10,7 +10,6 @@ import {
   getNextSessionIndex,
 } from '@/lib/attendance-session'
 import { buildBranchScope, isUserInBranchScope } from '@/lib/branch-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import { HR_ADMIN } from '@/lib/module-gates'
 import type { Role } from '@prisma/client'
 
@@ -18,9 +17,6 @@ const ALLOWED_ROLES: Role[] = HR_ADMIN
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

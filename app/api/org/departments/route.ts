@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageOrg } from '@/lib/org-permissions'
-import { requireCsrf } from '@/lib/api-guard'
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,8 +45,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
     const session = await auth()
     if (!session?.user || !canManageOrg(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

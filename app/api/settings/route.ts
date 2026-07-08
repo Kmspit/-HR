@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { clearLineCredentialsCache } from '@/lib/line-credentials'
 import { maskSettingsSecrets } from '@/lib/settings-api'
-import { requireRoles, isGuardResponse, requireCsrf } from '@/lib/api-guard'
+import { requireRoles, isGuardResponse } from '@/lib/api-guard'
 import { SETTINGS_EDIT_ROLES } from '@/lib/access-control'
 
 const ALLOWED_FIELDS = [
@@ -50,9 +50,6 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await requireRoles([...SETTINGS_EDIT_ROLES])
     if (isGuardResponse(session)) return session
 

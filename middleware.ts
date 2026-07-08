@@ -13,6 +13,7 @@ import { matchRoutePermission, rolesForPath } from '@/lib/route-match'
 import { logAccessDenied } from '@/lib/access-log'
 import { isPathHiddenByDeployProfile } from '@/lib/deploy-profile'
 import { isPublicApiRoute } from '@/lib/api-public-routes'
+import { csrfGateForApiRoute } from '@/lib/csrf'
 import {
   isPublicPrototypePath,
   isPrototypeHtmlPath,
@@ -49,6 +50,8 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
       })
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+    const csrfBlocked = csrfGateForApiRoute(req, pathname)
+    if (csrfBlocked) return csrfBlocked
     if (!isPublicApiRoute(pathname) && !session?.user) {
       logAccessDenied('missing_session', { path: pathname, api: true })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

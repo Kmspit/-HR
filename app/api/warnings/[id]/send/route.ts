@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { deliverWarningToEmployee } from '@/lib/warning-delivery'
-import { requireCsrf } from '@/lib/api-guard'
 import { canViewUserRecord } from '@/lib/org-scope'
 import { canApproveWarning, canManageUsers } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
@@ -13,9 +12,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

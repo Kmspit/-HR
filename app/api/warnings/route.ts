@@ -12,7 +12,6 @@ import {
   resolveOrgListScope,
   userIdFilterFromScope,
 } from '@/lib/org-scope'
-import { validateCsrfOrigin } from '@/lib/csrf'
 import type { Prisma, Role } from '@prisma/client'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
@@ -83,9 +82,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = validateCsrfOrigin(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

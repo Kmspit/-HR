@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { requireCsrf } from '@/lib/api-guard'
 
 const FINANCE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const csrfErr = requireCsrf(req)
-  if (csrfErr) return csrfErr
-
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!FINANCE_ROLES.includes(session.user.role)) {

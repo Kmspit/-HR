@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { apiError } from '@/lib/api-handler'
-import { requireCsrf } from '@/lib/api-guard'
 import { parseDescriptorFromBody, verifyFaceForAttendance } from '@/lib/face-attendance'
 import { notifyHrFaceMismatchOnLine } from '@/lib/attendance-line-notify'
 import { logAccessDenied } from '@/lib/access-log'
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) {
       logAccessDenied('missing_session', { route: '/api/face/verify' })

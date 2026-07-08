@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { createAuditLog } from '@/lib/notifications'
-import { requireCsrf } from '@/lib/api-guard'
 import { hasPermission } from '@/lib/access-control'
 import { canViewUserRecord, isCompanyWideApprover } from '@/lib/org-scope'
 import type { Role } from '@prisma/client'
@@ -15,9 +14,6 @@ type Params = { params: Promise<{ id: string }> }
  * เห็นทุกอัน, MANAGER/TEAM_LEADER จำกัดแค่ direct reports ของตัวเอง */
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const role = session.user.role as Role

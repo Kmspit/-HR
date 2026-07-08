@@ -99,15 +99,6 @@ describe('POST /api/invoices/[id]/receipt — per-payment amount, no duplicate/o
     expect(res.status).toBe(409)
   })
 
-  it('rejects a cross-origin request with 403 (CSRF)', async () => {
-    vi.mocked(prisma.billingInvoice.findUnique).mockResolvedValue(baseInvoice as never)
-    const req = new NextRequest('http://localhost/api/invoices/inv-1/receipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', origin: 'https://evil.example.com', host: 'localhost' },
-      body: JSON.stringify({ paymentId: 'pmt-1' }),
-    })
-    const res = await POST(req, { params })
-    expect(res.status).toBe(403)
-    expect(prisma.billingReceipt.create).not.toHaveBeenCalled()
-  })
+  // CSRF is now enforced globally in middleware.ts (see tests/middleware.test.ts)
+  // rather than per-route — this route no longer performs its own origin check.
 })

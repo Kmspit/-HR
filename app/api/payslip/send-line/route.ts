@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { requireCsrf } from '@/lib/api-guard'
 import { canManagePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchNestedUserWhere, branchUserWhere } from '@/lib/branch-scope'
 import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
@@ -28,9 +27,6 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

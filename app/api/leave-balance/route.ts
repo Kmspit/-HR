@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageUsers } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import { getLeaveBalanceStats, ensureLeaveBalance, getLeaveUsedByYear } from '@/lib/leave-balance'
 import { createAuditLog } from '@/lib/notifications'
 import type { Role } from '@prisma/client'
@@ -76,9 +75,6 @@ export async function GET(req: NextRequest) {
 /** HR: update leave balance for a specific user */
 export async function PUT(req: NextRequest) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!canManageUsers(session.user.role as Role)) {

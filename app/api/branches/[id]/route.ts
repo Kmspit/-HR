@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageBranches } from '@/lib/branch-scope'
-import { requireCsrf } from '@/lib/api-guard'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -25,9 +24,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id || !canManageBranches(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -98,9 +94,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const csrfErr = requireCsrf(req)
-    if (csrfErr) return csrfErr
-
     const session = await auth()
     if (!session?.user?.id || !canManageBranches(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
