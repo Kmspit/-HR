@@ -50,16 +50,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const updated = await prisma.recoveryPayment.update({
-    where: { id },
-    data: {
-      status,
-      note:            note            ?? payment.note,
-      referenceNumber: referenceNumber ?? payment.referenceNumber,
-    },
-  })
+  // Confirming a payment fires one-time side effects (debtor balance, case
+  // financials, notifications, automation) that must never fire twice for one
+  // payment. A plain read-then-update lets two concurrent confirms both see
+  // "not yet confirmed" and both run the side-effect block. Gate the CONFIRMED
+  // transition on an atomic compare-and-swap instead: only the request that
+  // actually flips status away from CONFIRMED wins the race.
+  let isNewlyConfirmed = false
+  if (status === 'CONFIRMED') {
+    const result = await prisma.recoveryPayment.updateMany({
+      where: { id, status: { not: 'CONFIRMED' } },
+      data: {
+        status,
+        note:            note            ?? payment.note,
+        referenceNumber: referenceNumber ?? payment.referenceNumber,
+      },
+    })
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'การชำระเงินนี้ถูกยืนยันไปแล้ว' }, { status: 409 })
+    }
+    isNewlyConfirmed = true
+  } else {
+    await prisma.recoveryPayment.update({
+      where: { id },
+      data: {
+        status,
+        note:            note            ?? payment.note,
+        referenceNumber: referenceNumber ?? payment.referenceNumber,
+      },
+    })
+  }
 
-  if (status === 'CONFIRMED' && payment.status !== 'CONFIRMED') {
+  const updated = await prisma.recoveryPayment.findUniqueOrThrow({ where: { id } })
+
+  if (isNewlyConfirmed) {
     // 1. Update debtor debt balance
     await prisma.debtor.update({
       where: { id: payment.debtorId },
@@ -141,7 +165,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // Fire automation triggers (non-blocking)
-  if (status === 'CONFIRMED' && payment.status !== 'CONFIRMED') {
+  if (isNewlyConfirmed) {
     const debtorSnap = await prisma.debtor.findUnique({
       where: { id: payment.debtorId },
       select: { id: true, debtorNumber: true, firstName: true, lastName: true, remainingDebt: true, riskLevel: true, assignedToId: true },

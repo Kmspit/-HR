@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireCsrf } from '@/lib/api-guard'
+import { checkDebtorAccess, DEBTOR_MANAGE_ROLES as CAN_MANAGE } from '@/lib/debtor-access'
 
 const CAN_DELETE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
-// Matches the scoping already established by GET/POST /api/debtors: company-wide
-// roles can act on any debtor, everyone else only on debtors assigned to them.
-const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 const userSel    = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,6 +12,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const debtor = await prisma.debtor.findUnique({
     where: { id },
     include: {

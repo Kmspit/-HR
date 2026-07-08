@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
 import { requireCsrf } from '@/lib/api-guard'
+import { checkDebtorAccess } from '@/lib/debtor-access'
 
 function configureCloudinary() {
   cloudinary.config({
@@ -19,6 +20,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const files = await prisma.debtorFile.findMany({
     where: { debtorId: id },
     include: { createdBy: { select: userSel } },
@@ -33,6 +38,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Debtor not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const formData = await req.formData()
   const file     = formData.get('file') as File | null
   const docType  = (formData.get('docType') as string) || 'OTHER'
@@ -72,6 +81,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id }   = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { fileId } = await req.json()
 
   const file = await prisma.debtorFile.findUnique({ where: { id: fileId } })

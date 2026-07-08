@@ -723,10 +723,8 @@ export default function OutsideWorkExcelForm({
         body: JSON.stringify({
           weekStart: toYmd(weekStart),
           weekEnd: toYmd(weekEnd),
-          canViewAll: false,
           filterUserId: viewUserId,
           clientCompanyId: viewCompanyId || null,
-          requests: viewReqs,
         }),
       })
       if (!res.ok) { toast.error('ส่งออกไม่สำเร็จ'); return }

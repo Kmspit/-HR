@@ -7,7 +7,7 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    recoveryPayment: { findUnique: vi.fn(), update: vi.fn() },
+    recoveryPayment: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
     debtor:          { update: vi.fn(), findUnique: vi.fn() },
     promiseToPay:    { update: vi.fn(), count: vi.fn().mockResolvedValue(0) },
     caseFinancial:   { upsert: vi.fn() },
@@ -49,8 +49,37 @@ describe('PATCH /api/recovery/payments/[id] — confirming reliably upserts Case
     vi.mocked(auth).mockResolvedValue(confirmSession as never)
     vi.mocked(prisma.recoveryPayment.findUnique).mockResolvedValue(basePayment as never)
     vi.mocked(prisma.recoveryPayment.update).mockResolvedValue({ ...basePayment, status: 'CONFIRMED' } as never)
+    vi.mocked(prisma.recoveryPayment.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.recoveryPayment.findUniqueOrThrow).mockResolvedValue({ ...basePayment, status: 'CONFIRMED' } as never)
     vi.mocked(prisma.debtor.update).mockResolvedValue({} as never)
     vi.mocked(prisma.debtor.findUnique).mockResolvedValue({ riskLevel: 'LOW' } as never)
+  })
+
+  it('confirms via an atomic compare-and-swap, not a plain update', async () => {
+    const res = await PATCH(makeReq({ status: 'CONFIRMED' }), { params })
+    expect(res.status).toBe(200)
+    expect(prisma.recoveryPayment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'pmt-1', status: { not: 'CONFIRMED' } } }),
+    )
+    expect(prisma.recoveryPayment.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a double-confirm (concurrent request already won the race) with 409, and never re-applies side effects', async () => {
+    vi.mocked(prisma.recoveryPayment.updateMany).mockResolvedValue({ count: 0 } as never)
+    const res = await PATCH(makeReq({ status: 'CONFIRMED' }), { params })
+    expect(res.status).toBe(409)
+    expect(prisma.debtor.update).not.toHaveBeenCalled()
+    expect(prisma.caseFinancial.upsert).not.toHaveBeenCalled()
+    expect(prisma.case.update).not.toHaveBeenCalled()
+  })
+
+  it('non-CONFIRMED status edits (e.g. note-only update) still use a plain update, no side effects', async () => {
+    vi.mocked(prisma.recoveryPayment.findUniqueOrThrow).mockResolvedValue({ ...basePayment, status: 'PENDING', note: 'x' } as never)
+    const res = await PATCH(makeReq({ status: 'PENDING', note: 'x' }), { params })
+    expect(res.status).toBe(200)
+    expect(prisma.recoveryPayment.update).toHaveBeenCalled()
+    expect(prisma.recoveryPayment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.debtor.update).not.toHaveBeenCalled()
   })
 
   it('upserts CaseFinancial.collectedAmount even when no row exists yet for the case', async () => {

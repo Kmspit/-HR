@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { HR_STAFF_ROLES } from '@/lib/access-control'
+import { hasPermission } from '@/lib/access-control'
+import { resolveOrgListScope, userIdFilterFromScope } from '@/lib/org-scope'
 import type { Role, Prisma } from '@prisma/client'
 
-/** ดูรายการ "ออกนอกสถานที่" ที่ถูก soft-delete ไปแล้ว — จำกัดเฉพาะ role ที่ไว้ใจได้ */
+/** ดูรายการ "ออกนอกสถานที่" ที่ถูก soft-delete ไปแล้ว — เปิดให้ role เดียวกับที่
+ * DELETE/PATCH ใช้ (approve_outside_work), scope แบบเดียวกัน: company-wide roles
+ * เห็นทุกอัน, MANAGER/TEAM_LEADER จำกัดแค่ direct reports ของตัวเอง */
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!HR_STAFF_ROLES.includes(session.user.role as Role)) {
+    const role = session.user.role as Role
+    if (!hasPermission(role, 'approve_outside_work')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -22,9 +26,12 @@ export async function GET(req: NextRequest) {
     if (from) deletedAtFilter.gte = new Date(from)
     if (to)   deletedAtFilter.lte = new Date(to)
 
+    const scope = await resolveOrgListScope(prisma, session.user.id, role)
+
     const rows = await prisma.outsideWorkRequest.findMany({
       where: {
         deletedAt: Object.keys(deletedAtFilter).length ? deletedAtFilter : { not: null },
+        ...userIdFilterFromScope(scope),
       },
       select: {
         id: true, date: true, place: true, purpose: true, documentNumber: true,

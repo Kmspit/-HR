@@ -4,6 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
 import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 import { OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
+import { buildBranchScope, branchNestedUserWhere } from '@/lib/branch-scope'
+import type { Role } from '@prisma/client'
+
+// Matches app/(dashboard)/outside-work/page.tsx's own canViewAll check — the
+// export must derive this from the caller's real role, never trust a
+// client-supplied `canViewAll` flag.
+const CAN_VIEW_ALL_ROLES = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'MANAGER', 'TEAM_LEADER', 'CEO']
 
 // Fallback text — matches what was previously hardcoded here before Settings made it editable
 const COMPANY_NAME_FALLBACK = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
@@ -319,27 +326,75 @@ export async function POST(req: NextRequest) {
   const {
     weekStart    = '',
     weekEnd      = '',
-    canViewAll   = false,
-    requests: rawRequests = [],
     filterUserId = null,
     clientCompanyId = null,
   } = body as {
     weekStart:    string
     weekEnd:      string
-    canViewAll:   boolean
-    requests:     ExportRequest[]
-    filterUserId: string | null
+    filterUserId?: string | null
     clientCompanyId?: string | null
   }
 
-  // Scope export to one client company when the caller is viewing a filtered
-  // grid (e.g. the "บริษัทลูกค้า:" dropdown) — same filter, applied server-side too.
-  const requests = clientCompanyId
-    ? rawRequests.filter((r) => r.clientCompanyId === clientCompanyId)
-    : rawRequests
-
   // Derive weekEnd from weekStart if not provided
   const resolvedWeekEnd = weekEnd || (weekStart ? addDaysToYmd(weekStart, 6) : '')
+
+  // Never trust client-supplied request data (status, approver, names, "who
+  // approved" signature line) — an export of this module's paperwork must be
+  // built from the caller's own real, current, scope-checked records.
+  const canViewAll = CAN_VIEW_ALL_ROLES.includes(session.user.role)
+  const scope = buildBranchScope({ role: session.user.role as Role, branchId: session.user.branchId })
+  const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
+
+  const dateWhere = weekStart
+    ? { gte: new Date(`${weekStart}T00:00:00.000Z`), lte: new Date(`${resolvedWeekEnd}T23:59:59.999Z`) }
+    : undefined
+
+  const rows = await prisma.outsideWorkRequest.findMany({
+    where: {
+      ...(canViewAll
+        ? { ...(nestedUser ? { user: nestedUser } : {}), ...(filterUserId ? { userId: filterUserId } : {}) }
+        : { userId: session.user.id }),
+      ...(clientCompanyId ? { clientCompanyId } : {}),
+      ...(dateWhere ? { date: dateWhere } : {}),
+      deletedAt: null,
+    },
+    select: {
+      userId: true, date: true, timeSlot: true, place: true, purpose: true,
+      clientCompanyId: true, caseNumber: true, productWork: true, productCategory: true,
+      productType: true, workBranch: true, caseCount: true, adminChecked: true,
+      supervisedBy: true, status: true, approvalStatus: true, note: true, documentNumber: true,
+      user:            { select: { name: true, department: true, position: true } },
+      clientCompany:   { select: { companyName: true } },
+      assignees:       { select: { user: { select: { id: true, name: true } } } },
+    },
+    orderBy: { date: 'asc' },
+  })
+
+  const requests: ExportRequest[] = rows.map((r) => ({
+    userId:            r.userId,
+    userName:          r.user.name,
+    userDept:          r.user.department ?? '',
+    userPosition:      r.user.position   ?? '',
+    date:              r.date.toISOString(),
+    timeSlot:          r.timeSlot,
+    place:             r.place,
+    purpose:           r.purpose,
+    clientCompanyId:   r.clientCompanyId ?? null,
+    clientCompanyName: r.clientCompany?.companyName ?? null,
+    caseNumber:        r.caseNumber,
+    productWork:       r.productWork,
+    productCategory:   r.productCategory,
+    productType:       r.productType,
+    workBranch:        r.workBranch,
+    caseCount:         r.caseCount,
+    adminChecked:      r.adminChecked,
+    supervisedBy:      r.supervisedBy,
+    status:            r.status,
+    approvalStatus:    r.approvalStatus,
+    note:              r.note,
+    documentNumber:    r.documentNumber,
+    assignees:         r.assignees.map((a) => ({ id: a.user.id, name: a.user.name })),
+  }))
 
   const companySettings = await prisma.companySettings.findUnique({
     where: { id: 'singleton' },

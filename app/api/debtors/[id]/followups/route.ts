@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkDebtorAccess } from '@/lib/debtor-access'
 
 const userSel = { id: true, name: true, department: true, role: true }
 
@@ -9,6 +10,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const items = await prisma.debtFollowUp.findMany({
     where: { debtorId: id },
     include: { performedBy: { select: userSel } },
@@ -23,6 +28,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id }  = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const body    = await req.json()
   const { method, followedAt, result, note, nextFollowUp } = body
 

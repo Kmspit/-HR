@@ -219,6 +219,10 @@ export const EMPLOYEE_TYPES = [
 
 const ALL_ROLES = CORE_STAFF
 const CLIENT_ROLE: Role[] = ['CLIENT']
+// Matches whoever holds the 'approve_outside_work' permission (same population
+// that can already DELETE/PATCH a request) — kept in sync with ROLE_PERMISSIONS
+// so the deleted-requests page/API stay consistent with each other.
+const OUTSIDE_WORK_APPROVERS: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
@@ -228,7 +232,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/attendance/scans':   SCAN_HISTORY,
   '/leave':              ALL_ROLES,
   '/outside-work':       ALL_ROLES,
-  '/outside-work/deleted': HR_STAFF_ROLES,
+  '/outside-work/deleted': OUTSIDE_WORK_APPROVERS,
   '/weekly-plan':        WEEKLY_PLAN,
   '/calendar':           ALL_ROLES,
   '/holidays':           HR_ADMIN,

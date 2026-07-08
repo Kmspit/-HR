@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { triggerAutomation } from '@/lib/automation-engine'
 import { requireCsrf } from '@/lib/api-guard'
+import { checkDebtorAccess } from '@/lib/debtor-access'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
 
@@ -12,6 +13,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const promises = await prisma.promiseToPay.findMany({
     where: { debtorId: id },
     include: { createdBy: { select: { id: true, name: true } } },
@@ -26,6 +31,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!CAN_MANAGE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
+  const access = await checkDebtorAccess(prisma, id, session.user.id, session.user.role)
+  if (access.status === 'not_found') return NextResponse.json({ error: 'Debtor not found' }, { status: 404 })
+  if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const body = await req.json()
   const { promisedAmount, promisedDate, note } = body
 

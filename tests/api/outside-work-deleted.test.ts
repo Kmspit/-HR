@@ -12,6 +12,9 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: vi.fn(),
       update:     vi.fn(),
     },
+    user: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   },
 }))
 
@@ -28,9 +31,10 @@ import { prisma } from '@/lib/prisma'
 import { GET } from '@/app/api/outside-work/deleted/route'
 import { POST } from '@/app/api/outside-work/[id]/restore/route'
 
-const allowedSession = { user: { id: 'hr-1', name: 'HR Admin', role: 'MANAGER_HR' } }
-const forbiddenSession = { user: { id: 'user-1', name: 'Employee', role: 'EMPLOYEE' } }
-const adminForbiddenSession = { user: { id: 'admin-1', name: 'Admin', role: 'ADMIN' } }
+const allowedSession    = { user: { id: 'hr-1', name: 'HR Admin', role: 'MANAGER_HR', branchId: null } }
+const forbiddenSession  = { user: { id: 'user-1', name: 'Employee', role: 'EMPLOYEE', branchId: null } }
+const adminSession      = { user: { id: 'admin-1', name: 'Admin', role: 'ADMIN', branchId: null } }
+const managerSession    = { user: { id: 'mgr-1', name: 'Manager', role: 'MANAGER', branchId: null } }
 
 describe('GET /api/outside-work/deleted', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -41,19 +45,13 @@ describe('GET /api/outside-work/deleted', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 403 for EMPLOYEE (not in HR_STAFF_ROLES)', async () => {
+  it('returns 403 for EMPLOYEE (no approve_outside_work permission)', async () => {
     vi.mocked(auth).mockResolvedValue(forbiddenSession as never)
     const res = await GET(new NextRequest('http://localhost/api/outside-work/deleted'))
     expect(res.status).toBe(403)
   })
 
-  it('returns 403 for ADMIN (excluded per this feature — more sensitive than client-companies)', async () => {
-    vi.mocked(auth).mockResolvedValue(adminForbiddenSession as never)
-    const res = await GET(new NextRequest('http://localhost/api/outside-work/deleted'))
-    expect(res.status).toBe(403)
-  })
-
-  it('returns items for MANAGER_HR', async () => {
+  it('returns items for MANAGER_HR, company-wide (no userId filter)', async () => {
     vi.mocked(auth).mockResolvedValue(allowedSession as never)
     vi.mocked(prisma.outsideWorkRequest.findMany).mockResolvedValue([] as never)
     const res = await GET(new NextRequest('http://localhost/api/outside-work/deleted'))
@@ -63,6 +61,26 @@ describe('GET /api/outside-work/deleted', () => {
     expect(prisma.outsideWorkRequest.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { deletedAt: { not: null } } }),
     )
+  })
+
+  it('now allows ADMIN (matches DELETE/PATCH access, company-wide, no userId filter)', async () => {
+    vi.mocked(auth).mockResolvedValue(adminSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findMany).mockResolvedValue([] as never)
+    const res = await GET(new NextRequest('http://localhost/api/outside-work/deleted'))
+    expect(res.status).toBe(200)
+    expect(prisma.outsideWorkRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { deletedAt: { not: null } } }),
+    )
+  })
+
+  it('scopes MANAGER to their own direct reports (userId filter applied)', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }, { id: 'report-2' }] as never)
+    vi.mocked(prisma.outsideWorkRequest.findMany).mockResolvedValue([] as never)
+    const res = await GET(new NextRequest('http://localhost/api/outside-work/deleted'))
+    expect(res.status).toBe(200)
+    const call = vi.mocked(prisma.outsideWorkRequest.findMany).mock.calls[0][0] as { where: { userId?: unknown } }
+    expect(call.where.userId).toEqual({ in: ['mgr-1', 'report-1', 'report-2'] })
   })
 
   it('filters by from/to date range when provided', async () => {
@@ -91,7 +109,7 @@ describe('POST /api/outside-work/[id]/restore', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 403 for EMPLOYEE', async () => {
+  it('returns 403 for EMPLOYEE (no approve_outside_work permission)', async () => {
     vi.mocked(auth).mockResolvedValue(forbiddenSession as never)
     const res = await POST(makeReq(), { params })
     expect(res.status).toBe(403)
@@ -107,7 +125,7 @@ describe('POST /api/outside-work/[id]/restore', () => {
 
   it('returns 400 when the request is not deleted', async () => {
     vi.mocked(auth).mockResolvedValue(allowedSession as never)
-    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: null } as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: null, userId: 'x' } as never)
     const res = await POST(makeReq(), { params })
     expect(res.status).toBe(400)
     const data = await res.json()
@@ -115,9 +133,9 @@ describe('POST /api/outside-work/[id]/restore', () => {
     expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
   })
 
-  it('restores a deleted request (clears deletedAt/deletedById)', async () => {
+  it('restores a deleted request for a company-wide role (clears deletedAt/deletedById)', async () => {
     vi.mocked(auth).mockResolvedValue(allowedSession as never)
-    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: new Date('2026-01-01') } as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: new Date('2026-01-01'), userId: 'anyone' } as never)
     vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({ id: 'req-1' } as never)
 
     const res = await POST(makeReq(), { params })
@@ -130,5 +148,31 @@ describe('POST /api/outside-work/[id]/restore', () => {
         data: { deletedAt: null, deletedById: null },
       }),
     )
+  })
+
+  it('now allows ADMIN to restore (matches DELETE/PATCH access)', async () => {
+    vi.mocked(auth).mockResolvedValue(adminSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: new Date('2026-01-01'), userId: 'anyone' } as never)
+    vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({ id: 'req-1' } as never)
+    const res = await POST(makeReq(), { params })
+    expect(res.status).toBe(200)
+  })
+
+  it('allows MANAGER to restore a direct report\'s deleted request', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: new Date('2026-01-01'), userId: 'report-1' } as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }] as never)
+    vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({ id: 'req-1' } as never)
+    const res = await POST(makeReq(), { params })
+    expect(res.status).toBe(200)
+  })
+
+  it('forbids MANAGER from restoring a request outside their direct reports', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue({ deletedAt: new Date('2026-01-01'), userId: 'stranger-1' } as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }] as never)
+    const res = await POST(makeReq(), { params })
+    expect(res.status).toBe(403)
+    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
   })
 })
