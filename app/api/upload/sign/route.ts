@@ -4,6 +4,13 @@ import { v2 as cloudinary } from 'cloudinary'
 
 const ROOT = (process.env.CLOUDINARY_ROOT_FOLDER ?? 'hr-system').replace(/^\/|\/$/g, '')
 
+// Matches the file picker's `accept` list on the document-upload pages
+// (CaseDocumentsTab.tsx / CaseDocumentsClient.tsx) — enforced by Cloudinary itself
+// via the signed params below, since this is a direct-to-Cloudinary upload that
+// never passes through our server.
+const ALLOWED_FORMATS = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'txt']
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB — matches the UI's advertised limit
+
 function parseCloudinaryUrl(url: string): { name: string; key: string; sec: string } | null {
   try {
     const u = new URL(url.replace(/^cloudinary:\/\//, 'https://'))
@@ -44,6 +51,8 @@ export async function GET(req: NextRequest) {
       timestamp: now,
       folder,
       type: 'authenticated',
+      allowed_formats: ALLOWED_FORMATS.join(','),
+      max_file_size: MAX_FILE_SIZE_BYTES,
     }
 
     const signature = cloudinary.utils.api_sign_request(paramsToSign, sec)
@@ -55,6 +64,8 @@ export async function GET(req: NextRequest) {
       cloudName: name,
       folder,
       type: 'authenticated',
+      allowedFormats: ALLOWED_FORMATS.join(','),
+      maxFileSize: MAX_FILE_SIZE_BYTES,
     })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

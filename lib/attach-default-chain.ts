@@ -175,12 +175,13 @@ export async function attachDefaultChainForOutside(
   if (!row || row.chainConfigId) return false
   const chain = await getDefaultChain(prisma, 'OUTSIDE_WORK')
   if (!chain) return false
+  // applyChainToOutsideWork already sets the correct status/approvalStatus for
+  // both outcomes (auto-finalized to APPROVED with no pending steps, or PENDING
+  // with approvalStatus 'pending_chain' when a real step is waiting) — do not
+  // overwrite it here. A trailing unconditional 'pending_chain' write used to
+  // clobber the APPROVED case back to pending, leaving a request that was fully
+  // approved still editable/deletable as if it were awaiting approval.
   await applyChainToOutsideWork(prisma, requestId, chain.id, userId)
-  await prisma.outsideWorkRequest.update({
-    where: { id: requestId },
-    data: { approvalStatus: 'pending_chain' },
-    select: { id: true },
-  })
   return true
 }
 

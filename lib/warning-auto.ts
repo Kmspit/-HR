@@ -45,23 +45,33 @@ export async function checkAndCreateAutoWarning(userId: string): Promise<boolean
   const expiredAt = new Date()
   expiredAt.setMonth(expiredAt.getMonth() + 12)
 
-  const [employee, warning] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true, department: true } }),
-    prisma.warning.create({
-      data: {
-        userId,
-        issuedById: sysAdmin?.id ?? userId,
-        level: 1,
-        reason: `มาสายสะสม ${lateCount} ครั้ง ในเดือน ${month}/${year} (ระบบอัตโนมัติ)`,
-        isAuto: true,
-        month,
-        year,
-        status: 'PENDING_APPROVAL',
-        expiredAt,
-        lateCount,
-      },
-    }),
-  ])
+  let employee: { name: string | null; department: string | null } | null
+  let warning: Awaited<ReturnType<typeof prisma.warning.create>>
+  try {
+    ;[employee, warning] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { name: true, department: true } }),
+      prisma.warning.create({
+        data: {
+          userId,
+          issuedById: sysAdmin?.id ?? userId,
+          level: 1,
+          reason: `มาสายสะสม ${lateCount} ครั้ง ในเดือน ${month}/${year} (ระบบอัตโนมัติ)`,
+          isAuto: true,
+          month,
+          year,
+          status: 'PENDING_APPROVAL',
+          expiredAt,
+          lateCount,
+        },
+      }),
+    ])
+  } catch (err) {
+    // Racing against warningEngine.runWarningCheck (or another concurrent checkin)
+    // for the same user/month — the DB-level dedup index (warnings_auto_dedup_idx)
+    // rejected this insert because the other path already won. Not an error.
+    if ((err as { code?: string })?.code === 'P2002') return false
+    throw err
+  }
 
   // Notify all SUPER_ADMIN users (CEO)
   const admins = await prisma.user.findMany({

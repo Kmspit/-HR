@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
       where: { id: { in: caseIds }, status: { in: COMPLETED_STATUSES as unknown as never } },
     }),
     prisma.recoveryPayment.aggregate({
-      where: { caseId: { in: caseIds }, status: 'RECEIVED' },
+      where: { caseId: { in: caseIds }, status: 'CONFIRMED' },
       _sum:  { amount: true },
     }),
     prisma.case.aggregate({

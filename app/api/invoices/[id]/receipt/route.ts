@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { requireCsrf } from '@/lib/api-guard'
 
 const FINANCE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!FINANCE_ROLES.includes(session.user.role)) {
@@ -17,20 +21,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const invoice = await prisma.billingInvoice.findUnique({
     where: { id },
-    include: { payments: true },
+    include: { payments: true, receipts: true },
   })
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
 
-  // Determine amount from specific payment or total paid
-  let amount    = invoice.paidAmount
-  let vatAmount = 0
-  let whtAmount = 0
+  // Determine amount from the specific payment (never cumulative paidAmount,
+  // which would overstate/duplicate the receipt on a repeat call).
+  let amount: number
   if (paymentId) {
     const pmt = invoice.payments.find(p => p.id === paymentId)
-    if (pmt) amount = pmt.amount
+    if (!pmt) return NextResponse.json({ error: 'ไม่พบรายการชำระเงินนี้ในใบแจ้งหนี้' }, { status: 404 })
+    if (invoice.receipts.some(r => r.paymentId === paymentId)) {
+      return NextResponse.json({ error: 'ออกใบเสร็จสำหรับรายการชำระเงินนี้ไปแล้ว' }, { status: 409 })
+    }
+    amount = pmt.amount
+  } else {
+    const alreadyReceipted = invoice.receipts.reduce((sum, r) => sum + r.amount, 0)
+    amount = invoice.paidAmount - alreadyReceipted
+    if (amount <= 0) {
+      return NextResponse.json({ error: 'ออกใบเสร็จครบยอดชำระแล้ว' }, { status: 409 })
+    }
   }
-  vatAmount = Math.round(amount * invoice.vatRate / (1 + invoice.vatRate) * 100) / 100
-  whtAmount = Math.round(amount * invoice.whtRate * 100) / 100
+  const vatAmount = Math.round(amount * invoice.vatRate / (1 + invoice.vatRate) * 100) / 100
+  const whtAmount = Math.round(amount * invoice.whtRate * 100) / 100
 
   // Auto-generate receipt number: RCP-YYYY-NNNN
   const year  = new Date().getFullYear()

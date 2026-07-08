@@ -369,6 +369,8 @@ function UploadModal({
       formData.append('signature', sig.signature)
       formData.append('folder', sig.folder)
       formData.append('type', sig.type ?? 'authenticated')
+      formData.append('allowed_formats', sig.allowedFormats)
+      formData.append('max_file_size', String(sig.maxFileSize))
 
       const uploadRes = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,

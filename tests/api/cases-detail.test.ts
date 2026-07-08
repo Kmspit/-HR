@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextRequest } from 'next/server'
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ import { PATCH as courtPatch, DELETE as courtDelete } from '@/app/api/cases/[id]
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makePatch(body: Record<string, unknown>) {
-  return new Request('http://localhost/api/cases/case-1', {
+  return new NextRequest('http://localhost/api/cases/case-1', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -125,7 +126,7 @@ describe('DELETE /api/cases/[id]/court/[courtId] — assignee can delete a court
       user: { id: 'assignee-1', role: 'LAWYER', name: 'Assignee' },
     } as never)
 
-    const res = await courtDelete(new Request('http://localhost', { method: 'DELETE' }), { params: courtParams })
+    const res = await courtDelete(new NextRequest('http://localhost', { method: 'DELETE' }), { params: courtParams })
     expect(res.status).toBe(200)
     expect(prisma.caseCourt.delete).toHaveBeenCalledWith({ where: { id: 'court-1' } })
   })
@@ -135,7 +136,7 @@ describe('DELETE /api/cases/[id]/court/[courtId] — assignee can delete a court
       user: { id: 'other-1', role: 'LAWYER', name: 'Other' },
     } as never)
 
-    const res = await courtDelete(new Request('http://localhost', { method: 'DELETE' }), { params: courtParams })
+    const res = await courtDelete(new NextRequest('http://localhost', { method: 'DELETE' }), { params: courtParams })
     expect(res.status).toBe(403)
     expect(prisma.caseCourt.delete).not.toHaveBeenCalled()
   })
@@ -147,7 +148,7 @@ describe('DELETE /api/cases/[id]/court/[courtId] — assignee can delete a court
     vi.mocked(prisma.caseCourt.update).mockResolvedValue({ id: 'court-1' } as never)
 
     const res = await courtPatch(
-      new Request('http://localhost', {
+      new NextRequest('http://localhost', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: 'เลื่อนนัด' }),

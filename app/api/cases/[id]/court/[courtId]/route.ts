@@ -1,13 +1,17 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireCsrf } from '@/lib/api-guard'
 
 const EXEC_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; courtId: string }> },
 ) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id, courtId } = await params
@@ -43,9 +47,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; courtId: string }> },
 ) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id, courtId } = await params

@@ -111,6 +111,13 @@ export async function POST(req: NextRequest) {
     if (!start || !end) {
       return NextResponse.json({ error: 'รูปแบบวันที่ไม่ถูกต้อง' }, { status: 400 })
     }
+    if (end < start) {
+      return NextResponse.json({ error: 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น' }, { status: 400 })
+    }
+
+    // Never trust the client-supplied `days` — always derive it from the actual
+    // date range so a forged/mismatched value can't inflate leave balances.
+    const days = Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1
 
     const branchId = session.user.branchId ?? null
     const holidays = await loadHolidaysForBranch(prisma, branchId)
@@ -131,7 +138,7 @@ export async function POST(req: NextRequest) {
         type: parsed.type as LeaveType,
         startDate: new Date(parsed.startDate),
         endDate: new Date(parsed.endDate),
-        days: parsed.days,
+        days,
         reason: parsed.reason,
         attachmentUrl,
         // ลาบวช: อนุมัติอัตโนมัติทันที ไม่ต้องรอ Approver
@@ -154,10 +161,10 @@ export async function POST(req: NextRequest) {
       // แจ้ง HR ว่ามีการลาบวชอัตโนมัติ
       await runNotify(() =>
         notifyRole('MANAGER_HR', 'LEAVE_APPROVED', '🙏 ลาบวชอัตโนมัติ',
-          `${leave.user.name} ลาบวช ${parsed.days} วัน (อนุมัติอัตโนมัติ)`, '/approval-center'),
+          `${leave.user.name} ลาบวช ${days} วัน (อนุมัติอัตโนมัติ)`, '/approval-center'),
       )
       await runNotify(() =>
-        sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] 🙏 ลาบวชอัตโนมัติ\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
+        sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] 🙏 ลาบวชอัตโนมัติ\nชื่อ: ${leave.user.name}\nจำนวน: ${days} วัน`),
       )
       return NextResponse.json({ success: true, id: leave.id, autoApproved: true, chainApplied: false })
     }
@@ -174,19 +181,19 @@ export async function POST(req: NextRequest) {
     await applyChainToLeave(prisma, leave.id, defaultChain.id, session.user.id)
 
     await runNotify(() =>
-      sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${parsed.days} วัน`),
+      sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${days} วัน`),
     )
     // Phase 14 — LINE approval card
     await runNotify(() =>
       sendLineApprovalRequest({
         approvalType: 'LEAVE',
         id: leave.id,
-        title: `ลา ${parsed.type} ${parsed.days} วัน`,
+        title: `ลา ${parsed.type} ${days} วัน`,
         requesterName: leave.user.name,
         details: [
           { label: 'ประเภท', value: parsed.type },
           { label: 'วันที่', value: `${parsed.startDate} — ${parsed.endDate}` },
-          { label: 'จำนวน', value: `${parsed.days} วัน` },
+          { label: 'จำนวน', value: `${days} วัน` },
           ...(parsed.reason ? [{ label: 'เหตุผล', value: parsed.reason.slice(0, 60) }] : []),
         ],
       }),

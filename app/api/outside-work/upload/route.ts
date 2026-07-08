@@ -8,6 +8,17 @@ import { randomBytes } from 'crypto'
 const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 
+// Extension is derived from the validated MIME type ONLY — never trust the
+// client-supplied filename's extension (a spoofed `file.type` + a filename like
+// "x.html"/"x.svg" would otherwise get written to disk with a dangerous
+// extension and be served as executable HTML/SVG from public/uploads).
+const EXT_BY_TYPE: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -21,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'รองรับเฉพาะ JPG, PNG, WebP, PDF' }, { status: 400 })
     }
 
-    const ext = file.name.split('.').pop() ?? 'bin'
+    const ext = EXT_BY_TYPE[file.type] ?? 'bin'
     const filename = `${randomBytes(8).toString('hex')}.${ext}`
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'outside-work')
     await mkdir(uploadDir, { recursive: true })

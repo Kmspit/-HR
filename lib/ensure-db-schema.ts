@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900007
+export const CURRENT_SCHEMA_VERSION = 900008
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -373,6 +373,16 @@ async function runEnsure(force = false): Promise<boolean> {
   await addWarningColumnIfMissing('archivedAt', `ALTER TABLE warnings ADD COLUMN archivedAt DATETIME`)
   await addWarningColumnIfMissing('approvalNote', `ALTER TABLE warnings ADD COLUMN approvalNote TEXT`)
   await addWarningColumnIfMissing('lateCount', `ALTER TABLE warnings ADD COLUMN lateCount INTEGER`)
+
+  // Prevent the checkin-triggered auto-warning path (lib/warning-auto.ts) and the
+  // manual/cron run-check path (lib/warningEngine.ts) from racing each other into
+  // creating two auto-warnings for the same user/month. REJECTED rows are excluded
+  // so a re-triggered warning after rejection in the same month is still allowed.
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS warnings_auto_dedup_idx
+    ON warnings (userId, month, year)
+    WHERE isAuto = 1 AND status != 'REJECTED'
+  `)
 
   // Cloudinary image fields (req: image_public_id, image_url)
   await addAttendanceColumnIfMissing('image_public_id', `ALTER TABLE attendances ADD COLUMN image_public_id TEXT`)

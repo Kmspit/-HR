@@ -3,13 +3,33 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { triggerAutomation } from '@/lib/automation-engine'
 import { createNotification, notifyRole, sendLineMessage } from '@/lib/notifications'
+import { requireCsrf } from '@/lib/api-guard'
 
 const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const LEGAL_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
 
-async function canEdit(event: { createdById: string; assignedLawyerId: string | null }, userId: string, role: string) {
+// Matches the case-level `canEdit` gate in app/(dashboard)/cases/[id]/page.tsx that
+// controls whether the court-events edit/delete buttons are shown: EXEC roles, the
+// event's own creator/assigned lawyer, the case's creator/assignee, or a MANAGER in
+// the case's own department. Checking only the event's own creator/lawyer (as before)
+// left case-level assignees and same-department managers seeing buttons the API then
+// rejected with 403.
+async function canEdit(
+  event: { caseId: string; createdById: string; assignedLawyerId: string | null },
+  userId: string,
+  role: string,
+  department?: string | null,
+) {
   if (EXEC_ROLES.includes(role)) return true
-  return event.createdById === userId || event.assignedLawyerId === userId
+  if (event.createdById === userId || event.assignedLawyerId === userId) return true
+
+  const c = await prisma.case.findUnique({
+    where: { id: event.caseId },
+    select: { createdById: true, assignedEmployeeId: true, department: true },
+  })
+  if (!c) return false
+  if (role === 'MANAGER' && department && c.department === department) return true
+  return c.createdById === userId || c.assignedEmployeeId === userId
 }
 
 async function handleMissed(event: {
@@ -91,16 +111,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (!await canEdit(event, session.user.id, session.user.role)) {
-    if (!EXEC_ROLES.includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+  if (!await canEdit(event, session.user.id, session.user.role, session.user.department)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   return NextResponse.json(event)
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -112,7 +133,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   })
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (!await canEdit(existing, session.user.id, session.user.role)) {
+  if (!await canEdit(existing, session.user.id, session.user.role, session.user.department)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -181,7 +202,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(updated)
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -190,7 +214,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const event = await prisma.courtEvent.findUnique({ where: { id } })
   if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (!await canEdit(event, session.user.id, session.user.role)) {
+  if (!await canEdit(event, session.user.id, session.user.role, session.user.department)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

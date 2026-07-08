@@ -30,7 +30,15 @@ export async function canAccessUserProfile(
   )
 }
 
-/** Whether viewer may PATCH another user's HR record. */
+/**
+ * Whether viewer may PATCH another user's HR record (name, salary, department,
+ * role, status, etc.) — stricter than canAccessUserProfile (view-only). A
+ * MANAGER/TEAM_LEADER passes canAccessUserProfile for their own direct reports
+ * (so they can view the employee timeline), but that alone must NOT be enough
+ * to edit fields like baseSalary — canManageUserProfile is the same role list
+ * the employees/[id] edit page itself gates on, so this keeps the API in sync
+ * with what the UI actually shows.
+ */
 export async function canEditUserProfile(
   prisma: PrismaClient,
   viewerId: string,
@@ -39,7 +47,8 @@ export async function canEditUserProfile(
   targetUserId: string,
 ): Promise<boolean> {
   if (viewerId === targetUserId) return true
-  return canAccessUserProfile(
+  if (!canManageUserProfile(viewerRole)) return false
+  return canViewEmployeeTimeline(
     prisma,
     viewerId,
     viewerRole,

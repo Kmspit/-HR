@@ -10,6 +10,22 @@ function configureCloudinary() {
   if (name && key && sec) cloudinary.config({ cloud_name: name, api_key: key, api_secret: sec, secure: true })
 }
 
+// Same case-access pattern used across app/api/cases/[id]/{route,checklist,financial}.ts —
+// duplicated locally per existing convention in this module rather than introducing
+// a new shared helper as part of this fix.
+const EXEC_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
+
+async function canAccessCase(caseId: string, userId: string, role: string, department?: string | null) {
+  if (EXEC_ROLES.includes(role)) return true
+  const c = await prisma.case.findUnique({
+    where: { id: caseId },
+    select: { createdById: true, assignedEmployeeId: true, department: true },
+  })
+  if (!c) return false
+  if (role === 'MANAGER' && department && c.department === department) return true
+  return c.createdById === userId || c.assignedEmployeeId === userId
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,6 +33,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id: documentId } = await params
   const doc = await prisma.caseDocument.findUnique({ where: { id: documentId } })
   if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+
+  if (doc.caseId) {
+    const allowed = await canAccessCase(doc.caseId, session.user.id, session.user.role, session.user.department)
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const body = await req.json()
   const { fileUrl, secureUrl, publicId, fileName, fileType, mimeType, resourceType, format, fileSize } = body
@@ -76,6 +97,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id: documentId } = await params
   const { fileId } = await req.json()
   if (!fileId) return NextResponse.json({ error: 'fileId required' }, { status: 400 })
+
+  const doc = await prisma.caseDocument.findUnique({ where: { id: documentId } })
+  if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+
+  if (doc.caseId) {
+    const allowed = await canAccessCase(doc.caseId, session.user.id, session.user.role, session.user.department)
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const file = await prisma.caseDocumentFile.findUnique({ where: { id: fileId } })
   if (!file || file.documentId !== documentId) {

@@ -128,6 +128,29 @@ describe('POST /api/leave', () => {
     expect(data.id).toBeTruthy()
     expect(applyChainToLeave).toHaveBeenCalled()
   })
+
+  it('ignores a forged client-supplied `days` and recomputes it from startDate/endDate', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    const created = { id: 'leave-1', userId: 'user-1', status: 'PENDING', user: { name: 'Employee' } }
+    vi.mocked(prisma.leaveRequest.create).mockResolvedValue(created as never)
+    vi.mocked(getDefaultChain).mockResolvedValue({ id: 'chain-1' } as never)
+
+    // Actual range is 5 calendar days (Jul 1 – Jul 5), but the client claims only 1.
+    const res = await POST(makeJsonReq({
+      ...validLeave, startDate: '2026-07-01', endDate: '2026-07-05', days: 1,
+    }))
+    expect(res.status).toBe(200)
+    expect(prisma.leaveRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ days: 5 }) }),
+    )
+  })
+
+  it('rejects an endDate before startDate', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    const res = await POST(makeJsonReq({ ...validLeave, startDate: '2026-07-05', endDate: '2026-07-01' }))
+    expect(res.status).toBe(400)
+    expect(prisma.leaveRequest.create).not.toHaveBeenCalled()
+  })
 })
 
 describe('GET /api/leave', () => {

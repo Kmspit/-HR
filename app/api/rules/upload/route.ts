@@ -16,6 +16,18 @@ const ALLOWED_TYPES = [
   'image/webp',
 ]
 
+// Extension/format derived from the validated MIME type ONLY — never trust the
+// client-supplied filename's extension (see outside-work/upload/route.ts for
+// the same fix and rationale).
+const EXT_BY_TYPE: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/msword': 'doc',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -40,7 +52,7 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
       const dataUri = `data:${file.type};base64,${buffer.toString('base64')}`
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+      const ext = EXT_BY_TYPE[file.type] ?? 'bin'
       const publicId = `hr-system/rules/${Date.now()}-${randomBytes(4).toString('hex')}`
 
       const result = await cloudinary.uploader.upload(dataUri, {
@@ -59,7 +71,7 @@ export async function POST(req: NextRequest) {
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'rules')
     await mkdir(uploadsDir, { recursive: true })
 
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+    const ext = EXT_BY_TYPE[file.type] ?? 'bin'
     const fname = `${Date.now()}-${randomBytes(6).toString('hex')}.${ext}`
     const dest = path.join(uploadsDir, fname)
 

@@ -2,6 +2,22 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Same case-access pattern used across app/api/cases/[id]/{route,checklist,financial}.ts —
+// duplicated locally per existing convention in this module rather than introducing
+// a new shared helper as part of this fix.
+const EXEC_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
+
+async function canAccessCase(caseId: string, userId: string, role: string, department?: string | null) {
+  if (EXEC_ROLES.includes(role)) return true
+  const c = await prisma.case.findUnique({
+    where: { id: caseId },
+    select: { createdById: true, assignedEmployeeId: true, department: true },
+  })
+  if (!c) return false
+  if (role === 'MANAGER' && department && c.department === department) return true
+  return c.createdById === userId || c.assignedEmployeeId === userId
+}
+
 // POST /api/case-documents/upload
 // Creates CaseDocument + CaseDocumentFile in one transaction.
 // Caller has already uploaded the file to Cloudinary and provides the result.
@@ -37,6 +53,11 @@ export async function POST(req: NextRequest) {
   if (!title?.trim()) return NextResponse.json({ error: 'title required' }, { status: 400 })
   if (!publicId || !secureUrl || !fileName) {
     return NextResponse.json({ error: 'publicId, secureUrl, fileName required' }, { status: 400 })
+  }
+
+  if (caseId) {
+    const allowed = await canAccessCase(caseId, session.user.id, session.user.role, session.user.department)
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   try {

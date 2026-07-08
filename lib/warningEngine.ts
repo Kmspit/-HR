@@ -80,19 +80,28 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
     }
     const reason = reasons.join(' และ ')
 
-    const warning = await prisma.warning.create({
-      data: {
-        userId: emp.id,
-        issuedById: emp.id, // system
-        level: triggeredRule.level,
-        reason,
-        description: `ออกโดยระบบอัตโนมัติ เดือน ${month}/${year}`,
-        isAuto: true,
-        month,
-        year,
-        lineDeliveryStatus: 'pending',
-      },
-    })
+    let warning: Awaited<ReturnType<typeof prisma.warning.create>>
+    try {
+      warning = await prisma.warning.create({
+        data: {
+          userId: emp.id,
+          issuedById: emp.id, // system
+          level: triggeredRule.level,
+          reason,
+          description: `ออกโดยระบบอัตโนมัติ เดือน ${month}/${year}`,
+          isAuto: true,
+          month,
+          year,
+          lineDeliveryStatus: 'pending',
+        },
+      })
+    } catch (err) {
+      // Racing against warning-auto.ts's checkin-triggered path for the same
+      // user/month — the DB-level dedup index (warnings_auto_dedup_idx) rejected
+      // this insert because the other path already won. Skip this employee.
+      if ((err as { code?: string })?.code === 'P2002') continue
+      throw err
+    }
 
     const warningNumber = await prisma.warning.count({
       where: { userId: emp.id, createdAt: { lte: warning.createdAt } },

@@ -125,7 +125,11 @@ export default function PayrollClient({
       body: JSON.stringify({ month, year, branchId: filterBranchId }),
     })
     if (ok) {
-      toast.success(`สร้าง payroll สำเร็จ ${(data as { count?: number }).count ?? 0} คน`)
+      const result = data as { count?: number; message?: string; skippedApproved?: { userId: string; name: string }[] }
+      toast.success(`สร้าง payroll สำเร็จ ${result.count ?? 0} คน`)
+      if (result.skippedApproved && result.skippedApproved.length > 0) {
+        toast.warning(result.message ?? `ข้าม ${result.skippedApproved.length} รายการที่อนุมัติแล้ว`)
+      }
       await loadPayrolls(month, year)
     } else {
       toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status))

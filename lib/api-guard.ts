@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import type { Session } from 'next-auth'
 import { auth } from '@/lib/auth'
 import { hasPermission, type AppPermission } from '@/lib/access-control'
-import { canAccessUserProfile } from '@/lib/user-access'
+import { canAccessUserProfile, canEditUserProfile } from '@/lib/user-access'
 import { prisma } from '@/lib/prisma'
 import { validateCsrfOrigin } from '@/lib/csrf'
 import type { Role } from '@prisma/client'
@@ -58,6 +58,26 @@ export async function requireOrgScope(
   const session = await requireAuth()
   if (isGuardResponse(session)) return session
   const allowed = await canAccessUserProfile(
+    prisma,
+    session.user.id,
+    session.user.role as Role,
+    session.user.branchId,
+    targetUserId,
+  )
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return session
+}
+
+/** Stricter than requireOrgScope — for endpoints that EDIT another user's HR
+ * record rather than just viewing it (see canEditUserProfile). */
+export async function requireEditOrgScope(
+  targetUserId: string,
+): Promise<AuthSession | NextResponse> {
+  const session = await requireAuth()
+  if (isGuardResponse(session)) return session
+  const allowed = await canEditUserProfile(
     prisma,
     session.user.id,
     session.user.role as Role,

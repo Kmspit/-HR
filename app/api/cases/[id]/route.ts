@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
+import { requireCsrf } from '@/lib/api-guard'
 
 const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const MANAGE_ROLES = [...EXEC_ROLES, 'MANAGER', 'TEAM_LEADER']
@@ -60,9 +61,12 @@ export async function GET(
 }
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -172,9 +176,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const csrfErr = requireCsrf(req)
+  if (csrfErr) return csrfErr
+
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params

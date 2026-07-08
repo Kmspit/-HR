@@ -61,11 +61,25 @@ export async function POST(req: NextRequest) {
 
     const employees = await prisma.user.findMany({
       where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } }),
-      select: { id: true, baseSalary: true, socialSecurity: true, branchId: true },
+      select: { id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true },
     })
 
+    // Never silently recalculate over a payroll HR has already approved — that
+    // would overwrite approvedById/approvedAt semantics with fresh DRAFT numbers
+    // underneath them. Skip those employees and report exactly who was skipped.
+    const existingApproved = await prisma.payroll.findMany({
+      where: {
+        month, year, status: 'APPROVED',
+        userId: { in: employees.map((e) => e.id) },
+      },
+      select: { userId: true },
+    })
+    const approvedUserIds = new Set(existingApproved.map((p) => p.userId))
+    const skippedApproved = employees.filter((e) => approvedUserIds.has(e.id))
+    const pendingEmployees = employees.filter((e) => !approvedUserIds.has(e.id))
+
     const results = await Promise.all(
-      employees.map(async (emp) => {
+      pendingEmployees.map(async (emp) => {
         const baseSalary = emp.baseSalary ?? 0
 
         const [attendances, approvedLeaves, unpaidLeaves] = await Promise.all([
@@ -167,7 +181,14 @@ export async function POST(req: NextRequest) {
       }),
     )
 
-    return NextResponse.json({ success: true, count: results.filter(Boolean).length })
+    return NextResponse.json({
+      success: true,
+      count: results.filter(Boolean).length,
+      skippedApproved: skippedApproved.map((e) => ({ userId: e.id, name: e.name })),
+      ...(skippedApproved.length > 0 && {
+        message: `ข้าม ${skippedApproved.length} รายการที่อนุมัติแล้ว (ไม่คำนวณทับ): ${skippedApproved.map((e) => e.name).join(', ')}`,
+      }),
+    })
   } catch (err) {
     return apiError(err)
   }

@@ -62,7 +62,7 @@ export async function GET(
         },
       },
       recoveryPayments: {
-        where:   { status: 'RECEIVED' },
+        where:   { status: 'CONFIRMED' },
         orderBy: { paymentDate: 'desc' },
         take:    20,
         select: {

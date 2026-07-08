@@ -5,7 +5,7 @@ import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { normalizeEmail, normalizeNationalId, parseBirthDate, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
 import { normalizeThaiPhone } from '@/lib/profile-name'
 import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
-import { requireAuth, requireOrgScope, isGuardResponse, requireCsrf } from '@/lib/api-guard'
+import { requireAuth, requireOrgScope, requireEditOrgScope, isGuardResponse, requireCsrf } from '@/lib/api-guard'
 import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
 import { HR_ADMIN } from '@/lib/module-gates'
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params
     if (id !== session.user.id) {
-      const scopeCheck = await requireOrgScope(id)
+      const scopeCheck = await requireEditOrgScope(id)
       if (isGuardResponse(scopeCheck)) return scopeCheck
     }
 
