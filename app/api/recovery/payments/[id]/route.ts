@@ -79,18 +79,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
     }
 
-    // 3. Update case financial if caseId linked
+    // 3. Update case financial if caseId linked — upsert so collectedAmount is
+    // reliably tracked here even if no one has opened the case's Finance tab yet
+    // (collectedAmount is derived exclusively from confirmed payments; it must
+    // never silently no-op just because the CaseFinancial row didn't exist).
     if (payment.caseId) {
-      const existing = await prisma.caseFinancial.findUnique({ where: { caseId: payment.caseId } })
-      if (existing) {
-        await prisma.caseFinancial.update({
-          where: { caseId: payment.caseId },
-          data: {
-            collectedAmount: { increment: payment.amount },
-            updatedById: session.user.id,
-          },
-        })
-      }
+      await prisma.caseFinancial.upsert({
+        where: { caseId: payment.caseId },
+        create: {
+          caseId:          payment.caseId,
+          collectedAmount: payment.amount,
+          updatedById:     session.user.id,
+        },
+        update: {
+          collectedAmount: { increment: payment.amount },
+          updatedById:     session.user.id,
+        },
+      })
       await prisma.case.update({
         where: { id: payment.caseId },
         data: { collectedAmount: { increment: payment.amount } },

@@ -52,25 +52,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
   const receiptNumber = `RCP-${year}-${String(count + 1).padStart(4, '0')}`
 
-  const receipt = await prisma.billingReceipt.create({
-    data: {
-      receiptNumber,
-      invoiceId:    id,
-      paymentId:    paymentId || null,
-      amount,
-      vatAmount,
-      whtAmount,
-      totalAmount:  amount,
-      receiverName: receiverName || invoice.clientName,
-      issuedAt:     new Date(),
-      note:         note || null,
-      createdById:  session.user.id,
-    },
-    include: {
-      invoice:   { select: { invoiceNumber: true, clientName: true } },
-      createdBy: { select: { id: true, name: true } },
-    },
-  })
+  // The `invoice.receipts.some(...)` check above closes the common case, but
+  // has a race window between that read and this create; billing_receipts_
+  // invoice_payment_idx (a DB-level unique constraint on invoiceId+paymentId)
+  // is the actual backstop — catch it here rather than let it surface as a 500.
+  let receipt
+  try {
+    receipt = await prisma.billingReceipt.create({
+      data: {
+        receiptNumber,
+        invoiceId:    id,
+        paymentId:    paymentId || null,
+        amount,
+        vatAmount,
+        whtAmount,
+        totalAmount:  amount,
+        receiverName: receiverName || invoice.clientName,
+        issuedAt:     new Date(),
+        note:         note || null,
+        createdById:  session.user.id,
+      },
+      include: {
+        invoice:   { select: { invoiceNumber: true, clientName: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+    })
+  } catch (err) {
+    if ((err as { code?: string })?.code === 'P2002') {
+      return NextResponse.json({ error: 'ออกใบเสร็จสำหรับรายการชำระเงินนี้ไปแล้ว' }, { status: 409 })
+    }
+    throw err
+  }
 
   return NextResponse.json(receipt, { status: 201 })
 }

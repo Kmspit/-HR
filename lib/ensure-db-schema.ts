@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900008
+export const CURRENT_SCHEMA_VERSION = 900009
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -382,6 +382,26 @@ async function runEnsure(force = false): Promise<boolean> {
     CREATE UNIQUE INDEX IF NOT EXISTS warnings_auto_dedup_idx
     ON warnings (userId, month, year)
     WHERE isAuto = 1 AND status != 'REJECTED'
+  `)
+
+  // Prevent two receipts from ever being issued for the same payment — the
+  // app-level dedup check in app/api/invoices/[id]/receipt/route.ts has a race
+  // window between its read and its create. paymentId is nullable (whole-invoice
+  // receipts use null), and SQLite treats each NULL as distinct in a unique
+  // index, so this only blocks duplicate *per-payment* receipts, not
+  // whole-invoice ones (those are deduped separately via the paidAmount check).
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS billing_receipts_invoice_payment_idx
+    ON billing_receipts (invoice_id, payment_id)
+  `)
+
+  // Idempotency key for billing payments — the client generates one token per
+  // submit attempt; a double-click or network retry resubmits the same token
+  // and gets rejected at the DB level instead of creating a second real payment.
+  await addColumnIfMissing('billing_payments', 'idempotency_key', `ALTER TABLE billing_payments ADD COLUMN idempotency_key TEXT`)
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS billing_payments_idempotency_key_idx
+    ON billing_payments (idempotency_key)
   `)
 
   // Cloudinary image fields (req: image_public_id, image_url)

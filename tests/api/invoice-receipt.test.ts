@@ -86,6 +86,19 @@ describe('POST /api/invoices/[id]/receipt — per-payment amount, no duplicate/o
     expect(prisma.billingReceipt.create).not.toHaveBeenCalled()
   })
 
+  it('rejects with 409 (not a 500) when the DB-level unique constraint catches a race the app-level check missed', async () => {
+    // Simulates two concurrent requests both passing the app-level
+    // `invoice.receipts.some(...)` check before either has committed — the
+    // second one's create() hits billing_receipts_invoice_payment_idx.
+    vi.mocked(prisma.billingInvoice.findUnique).mockResolvedValue(baseInvoice as never)
+    const p2002 = new Error('Unique constraint failed on billing_receipts_invoice_payment_idx') as Error & { code: string }
+    p2002.code = 'P2002'
+    vi.mocked(prisma.billingReceipt.create).mockRejectedValue(p2002)
+
+    const res = await POST(makeReq({ paymentId: 'pmt-1' }), { params })
+    expect(res.status).toBe(409)
+  })
+
   it('rejects a cross-origin request with 403 (CSRF)', async () => {
     vi.mocked(prisma.billingInvoice.findUnique).mockResolvedValue(baseInvoice as never)
     const req = new NextRequest('http://localhost/api/invoices/inv-1/receipt', {

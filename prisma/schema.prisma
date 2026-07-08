@@ -2295,18 +2295,22 @@ model BillingInvoice {
 }
 
 model BillingPayment {
-  id            String   @id @default(cuid())
-  invoiceId     String   @map("invoice_id")
-  amount        Float
-  paidAt        DateTime @map("paid_at")
-  paymentMethod String   @map("payment_method")
-  bankAccount   String?  @map("bank_account")
-  slipUrl       String?  @map("slip_url")
-  slipPublicId  String?  @map("slip_public_id")
-  receivedById  String?  @map("received_by_id")
-  note          String?
-  createdById   String   @map("created_by_id")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id             String   @id @default(cuid())
+  invoiceId      String   @map("invoice_id")
+  amount         Float
+  paidAt         DateTime @map("paid_at")
+  paymentMethod  String   @map("payment_method")
+  bankAccount    String?  @map("bank_account")
+  slipUrl        String?  @map("slip_url")
+  slipPublicId   String?  @map("slip_public_id")
+  receivedById   String?  @map("received_by_id")
+  note           String?
+  // Client-generated token (one per submit attempt) — lets a double-click or
+  // network retry of the same submission be recognized and rejected at the DB
+  // level instead of creating a second real payment row.
+  idempotencyKey String?  @unique @map("idempotency_key")
+  createdById    String   @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   invoice    BillingInvoice @relation(fields: [invoiceId],    references: [id], onDelete: Cascade)
   receivedBy User?          @relation("BillingPaymentReceiver", fields: [receivedById], references: [id])
@@ -2336,6 +2340,7 @@ model BillingReceipt {
   payment   BillingPayment? @relation(fields: [paymentId], references: [id])
   createdBy User            @relation("BillingReceiptCreator", fields: [createdById], references: [id])
 
+  @@unique([invoiceId, paymentId])
   @@index([invoiceId])
   @@map("billing_receipts")
 }

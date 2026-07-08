@@ -54,14 +54,18 @@ export async function PATCH(
   }
 
   const body = await req.json()
-  const { debtAmount, collectedAmount, legalFee, courtFee, enforcementFee, otherFee } = body
+  // collectedAmount is intentionally NOT accepted here — it must only ever
+  // change via a CONFIRMED RecoveryPayment (see app/api/recovery/payments/[id]/route.ts),
+  // which increments both CaseFinancial.collectedAmount and Case.collectedAmount
+  // from a real payment record. Accepting it as a direct client value here would
+  // let it be set to an arbitrary number with no payment behind it.
+  const { debtAmount, legalFee, courtFee, enforcementFee, otherFee } = body
 
   const financial = await prisma.caseFinancial.upsert({
     where: { caseId: id },
     create: {
       caseId: id,
       debtAmount:      debtAmount      != null ? Number(debtAmount)      : 0,
-      collectedAmount: collectedAmount != null ? Number(collectedAmount) : 0,
       legalFee:        legalFee        != null ? Number(legalFee)        : 0,
       courtFee:        courtFee        != null ? Number(courtFee)        : 0,
       enforcementFee:  enforcementFee  != null ? Number(enforcementFee)  : 0,
@@ -70,7 +74,6 @@ export async function PATCH(
     },
     update: {
       ...(debtAmount      != null && { debtAmount:      Number(debtAmount) }),
-      ...(collectedAmount != null && { collectedAmount: Number(collectedAmount) }),
       ...(legalFee        != null && { legalFee:        Number(legalFee) }),
       ...(courtFee        != null && { courtFee:        Number(courtFee) }),
       ...(enforcementFee  != null && { enforcementFee:  Number(enforcementFee) }),
@@ -79,18 +82,13 @@ export async function PATCH(
     },
   })
 
-  // Mirror collectedAmount back to Case
-  if (collectedAmount != null) {
-    await prisma.case.update({ where: { id }, data: { collectedAmount: Number(collectedAmount) } })
-  }
-
   await prisma.caseTimeline.create({
     data: {
       caseId:      id,
       userId:      session.user.id,
       action:      'financial_updated',
       description: `${session.user.name} อัปเดตข้อมูลการเงิน`,
-      meta:        JSON.stringify({ collectedAmount, legalFee, courtFee, enforcementFee }),
+      meta:        JSON.stringify({ legalFee, courtFee, enforcementFee }),
     },
   })
 

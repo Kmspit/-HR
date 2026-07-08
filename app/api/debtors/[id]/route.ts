@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { requireCsrf } from '@/lib/api-guard'
 
 const CAN_DELETE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
+// Matches the scoping already established by GET/POST /api/debtors: company-wide
+// roles can act on any debtor, everyone else only on debtors assigned to them.
+const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 const userSel    = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -48,8 +51,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id }  = await params
+
+  const existingDebtor = await prisma.debtor.findUnique({ where: { id }, select: { assignedToId: true, paidAmount: true } })
+  if (!existingDebtor) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!CAN_MANAGE.includes(session.user.role) && existingDebtor.assignedToId !== session.user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const body    = await req.json()
 
   const allowed = [
@@ -70,8 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const total       = Number(body[key] ?? 0)
         data['totalDebt'] = total
         // recalculate remaining from current paidAmount
-        const existing    = await prisma.debtor.findUnique({ where: { id }, select: { paidAmount: true } })
-        data['remainingDebt'] = Math.max(0, total - (existing?.paidAmount ?? 0))
+        data['remainingDebt'] = Math.max(0, total - existingDebtor.paidAmount)
       } else {
         data[key] = body[key] === '' ? null : body[key]
       }

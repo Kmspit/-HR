@@ -634,15 +634,16 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
   const [saving,  setSaving]  = useState(false)
   const [form, setForm] = useState({
     debtAmount:      String(f?.debtAmount      ?? caseData.debtAmount ?? 0),
-    collectedAmount: String(f?.collectedAmount  ?? 0),
     legalFee:        String(f?.legalFee         ?? 0),
     courtFee:        String(f?.courtFee         ?? 0),
     enforcementFee:  String(f?.enforcementFee   ?? 0),
     otherFee:        String(f?.otherFee         ?? 0),
   })
 
+  // collectedAmount is not editable here — it only changes via a CONFIRMED
+  // recovery payment, so it's always shown from the server value, never form state.
+  const collected = f?.collectedAmount ?? 0
   const debt      = Number(form.debtAmount)
-  const collected = Number(form.collectedAmount)
   const totalFee  = Number(form.legalFee) + Number(form.courtFee) + Number(form.enforcementFee) + Number(form.otherFee)
   const remaining = Math.max(0, debt - collected)
   const recovery  = debt > 0 ? Math.round((collected / debt) * 100) : 0
@@ -652,7 +653,6 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
     if (f) {
       setForm({
         debtAmount:      String(f.debtAmount),
-        collectedAmount: String(f.collectedAmount),
         legalFee:        String(f.legalFee),
         courtFee:        String(f.courtFee),
         enforcementFee:  String(f.enforcementFee),
@@ -668,7 +668,6 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         debtAmount:      Number(form.debtAmount),
-        collectedAmount: Number(form.collectedAmount),
         legalFee:        Number(form.legalFee),
         courtFee:        Number(form.courtFee),
         enforcementFee:  Number(form.enforcementFee),
@@ -738,7 +737,13 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
         <form onSubmit={save} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             {field('debtAmount', 'มูลหนี้รวม (บาท)')}
-            {field('collectedAmount', 'เก็บได้แล้ว (บาท)')}
+            <div>
+              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เก็บได้แล้ว (บาท)</label>
+              <div className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-[14px] text-slate-500 dark:text-slate-400">
+                ฿{thb(collected)}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5">อัปเดตอัตโนมัติเมื่อมีการยืนยันรับชำระเงิน</p>
+            </div>
             {field('legalFee', 'ค่าทนาย (บาท)')}
             {field('courtFee', 'ค่าศาล (บาท)')}
             {field('enforcementFee', 'ค่าบังคับคดี (บาท)')}

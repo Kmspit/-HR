@@ -49,11 +49,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const fd            = await req.formData()
     const slipFile      = fd.get('slip') as File | null
     body = {
-      amount:        fd.get('amount')        as string,
-      paidAt:        fd.get('paidAt')        as string,
-      paymentMethod: fd.get('paymentMethod') as string,
-      bankAccount:   fd.get('bankAccount')   as string ?? '',
-      note:          fd.get('note')          as string ?? '',
+      amount:         fd.get('amount')         as string,
+      paidAt:         fd.get('paidAt')         as string,
+      paymentMethod:  fd.get('paymentMethod')  as string,
+      bankAccount:    fd.get('bankAccount')    as string ?? '',
+      note:           fd.get('note')           as string ?? '',
+      idempotencyKey: fd.get('idempotencyKey') as string ?? '',
     }
     if (slipFile && slipFile.size > 0) {
       configureCloudinary()
@@ -74,33 +75,57 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const amount = Number(body.amount ?? 0)
   if (amount <= 0) return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
 
-  const payment = await prisma.billingPayment.create({
-    data: {
-      invoiceId:     id,
-      amount,
-      paidAt:        body.paidAt ? new Date(body.paidAt) : new Date(),
-      paymentMethod: body.paymentMethod ?? 'Bank Transfer',
-      bankAccount:   body.bankAccount  || null,
-      slipUrl,
-      slipPublicId,
-      receivedById:  session.user.id,
-      note:          body.note         || null,
-      createdById:   session.user.id,
-    },
-  })
+  const idempotencyKey = body.idempotencyKey || null
+  if (idempotencyKey) {
+    const existingPayment = await prisma.billingPayment.findUnique({ where: { idempotencyKey } })
+    if (existingPayment) return NextResponse.json(existingPayment, { status: 200 })
+  }
 
-  // Update invoice paidAmount + remainingAmount + status
-  const newPaid      = invoice.paidAmount + amount
-  const newRemaining = Math.max(0, invoice.totalAmount - newPaid)
+  let payment
+  try {
+    payment = await prisma.billingPayment.create({
+      data: {
+        invoiceId:      id,
+        amount,
+        paidAt:         body.paidAt ? new Date(body.paidAt) : new Date(),
+        paymentMethod:  body.paymentMethod ?? 'Bank Transfer',
+        bankAccount:    body.bankAccount  || null,
+        slipUrl,
+        slipPublicId,
+        receivedById:   session.user.id,
+        note:           body.note         || null,
+        idempotencyKey,
+        createdById:    session.user.id,
+      },
+    })
+  } catch (err) {
+    // A concurrent request with the same idempotencyKey won the race — this is
+    // a resubmission of the same user action, not a new payment; return the
+    // row that already exists instead of erroring or double-recording it.
+    if ((err as { code?: string })?.code === 'P2002' && idempotencyKey) {
+      const existingPayment = await prisma.billingPayment.findUnique({ where: { idempotencyKey } })
+      if (existingPayment) return NextResponse.json(existingPayment, { status: 200 })
+    }
+    throw err
+  }
+
+  // Atomic increment — never read-then-add invoice.paidAmount in application
+  // code, since two concurrent payments would both compute from the same stale
+  // value and one payment's amount would be silently lost from the total.
+  const updatedInvoice = await prisma.billingInvoice.update({
+    where: { id },
+    data:  { paidAmount: { increment: amount } },
+  })
+  const newRemaining = Math.max(0, updatedInvoice.totalAmount - updatedInvoice.paidAmount)
   const newStatus    = newRemaining <= 0
     ? 'PAID'
-    : newPaid > 0
+    : updatedInvoice.paidAmount > 0
     ? 'PENDING_PAYMENT'
-    : invoice.status
+    : updatedInvoice.status
 
   await prisma.billingInvoice.update({
     where: { id },
-    data:  { paidAmount: newPaid, remainingAmount: newRemaining, status: newStatus },
+    data:  { remainingAmount: newRemaining, status: newStatus },
   })
 
   return NextResponse.json(payment, { status: 201 })

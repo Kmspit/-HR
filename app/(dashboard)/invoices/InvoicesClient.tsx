@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -358,14 +358,23 @@ function PaymentsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
   const [showForm, setShowForm] = useState(false)
   const [form,     setForm]     = useState({ amount: String(invoice.remainingAmount), paidAt: new Date().toISOString().slice(0, 10), paymentMethod: 'Bank Transfer', bankAccount: '', note: '' })
   const [saving,   setSaving]   = useState(false)
+  // One token per submit attempt — a retried/double-clicked submit reuses the
+  // same token so the server can recognize and reject the duplicate; opening
+  // the form fresh (openForm) gets a new token for the next real payment.
+  const idempotencyKeyRef = useRef(crypto.randomUUID())
+
+  const openForm = () => {
+    idempotencyKeyRef.current = crypto.randomUUID()
+    setShowForm(true)
+  }
 
   const save = async () => {
-    if (!form.amount) return
+    if (!form.amount || saving) return
     setSaving(true)
     try {
       await fetch(`/api/invoices/${invoice.id}/payments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: Number(form.amount) }),
+        body: JSON.stringify({ ...form, amount: Number(form.amount), idempotencyKey: idempotencyKeyRef.current }),
       })
       setShowForm(false); onRefresh()
     } catch (error) {
@@ -380,7 +389,7 @@ function PaymentsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
   return (
     <div className="space-y-3">
       {canManage && ['SENT', 'PENDING_PAYMENT', 'OVERDUE'].includes(invoice.status) && (
-        <button onClick={() => setShowForm(!showForm)} className="w-full py-2 border-2 border-dashed border-green-300 text-green-600 rounded-lg text-sm hover:bg-green-50">+ บันทึกการรับชำระ</button>
+        <button onClick={() => (showForm ? setShowForm(false) : openForm())} className="w-full py-2 border-2 border-dashed border-green-300 text-green-600 rounded-lg text-sm hover:bg-green-50">+ บันทึกการรับชำระ</button>
       )}
       {showForm && (
         <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
