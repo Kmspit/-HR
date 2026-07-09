@@ -117,6 +117,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'กรุณาเลือกพนักงานและระบุเหตุผล' }, { status: 400 })
     }
 
+    // Company-wide roles (HR/CEO/SUPER_ADMIN/ADMIN/MANAGER_HR) may warn anyone.
+    // Everyone else who reaches this point may only warn employees within their
+    // own scope: MANAGER/TEAM_LEADER via the usual org-hierarchy (direct
+    // reports) check also used by the GET handler above; ENFORCEMENT has no
+    // "direct reports" concept, so its scope is same-department instead.
+    if (!isCompanyWideApprover(issuerRole)) {
+      let inScope: boolean
+      if (issuerRole === 'ENFORCEMENT') {
+        const target = await prisma.user.findUnique({ where: { id: userId }, select: { department: true } })
+        inScope = !!session.user.department && session.user.department === target?.department
+      } else {
+        inScope = await canViewUserRecord(
+          prisma,
+          session.user.id,
+          issuerRole,
+          session.user.branchId,
+          userId,
+        )
+      }
+      if (!inScope) {
+        return NextResponse.json({ error: 'คุณไม่มีสิทธิ์ออกใบเตือนพนักงานคนนี้ (อยู่นอกสายบังคับบัญชา/แผนกของคุณ)' }, { status: 403 })
+      }
+    }
+
     if (pdfFile) {
       if (!isPdfFile(pdfFile)) {
         return NextResponse.json({ error: 'อนุญาตเฉพาะไฟล์ PDF' }, { status: 400 })

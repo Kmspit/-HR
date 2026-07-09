@@ -72,6 +72,64 @@ export async function PUT(req: NextRequest, { params }: Params) {
       })
     }
 
+    if (body.steps) {
+      // Steps are referenced by real leave/outside-work/weekly-plan/forgot-scan
+      // approval-step rows via a required chainStepId FK. A blind
+      // deleteMany+create here throws a foreign-key violation as soon as a
+      // chain has ever been used. Diff by stepOrder instead: update steps
+      // whose position still exists in place (preserves their id, so history
+      // stays intact), only delete positions being dropped, and refuse to
+      // drop a position that history still points to.
+      const incoming = body.steps
+      const result = await prisma.$transaction(async (tx) => {
+        const existingSteps = await tx.approvalChainStep.findMany({ where: { chainId: id } })
+        const existingByOrder = new Map(existingSteps.map((s) => [s.stepOrder, s]))
+        const incomingOrders = new Set(incoming.map((s) => s.stepOrder))
+        const toRemove = existingSteps.filter((s) => !incomingOrders.has(s.stepOrder))
+
+        const blockedNames: string[] = []
+        for (const s of toRemove) {
+          const dependentCount =
+            (await tx.leaveApprovalStep.count({ where: { chainStepId: s.id } })) +
+            (await tx.outsideWorkApprovalStep.count({ where: { chainStepId: s.id } })) +
+            (await tx.weeklyPlanApprovalStep.count({ where: { chainStepId: s.id } })) +
+            (await tx.forgotScanApprovalStep.count({ where: { chainStepId: s.id } }))
+          if (dependentCount > 0) blockedNames.push(s.stepName)
+        }
+        if (blockedNames.length > 0) {
+          return { blockedNames }
+        }
+
+        for (const s of toRemove) {
+          await tx.approvalChainStep.delete({ where: { id: s.id } })
+        }
+        for (const s of incoming) {
+          const data = {
+            stepName:     s.stepName.trim(),
+            approverRole: (s.approverRole as Role) || null,
+            approverId:   s.approverId || null,
+            canSkip:      s.canSkip ?? false,
+          }
+          const existingStep = existingByOrder.get(s.stepOrder)
+          if (existingStep) {
+            await tx.approvalChainStep.update({ where: { id: existingStep.id }, data })
+          } else {
+            await tx.approvalChainStep.create({ data: { chainId: id, stepOrder: s.stepOrder, ...data } })
+          }
+        }
+        return { blockedNames: [] as string[] }
+      })
+
+      if (result.blockedNames.length > 0) {
+        return NextResponse.json(
+          {
+            error: `ไม่สามารถลบขั้นตอน "${result.blockedNames.join(', ')}" ได้ เนื่องจากมีคำขอที่เคยใช้ขั้นตอนนี้แล้ว — หากต้องการเปลี่ยนโครงสร้างขั้นตอน กรุณาสร้าง chain ใหม่แทนการแก้ไข chain นี้`,
+          },
+          { status: 409 },
+        )
+      }
+    }
+
     const chain = await prisma.approvalChainConfig.update({
       where: { id },
       data: {
@@ -82,18 +140,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
           : {}),
         ...(body.isActive    !== undefined ? { isActive:    body.isActive }                 : {}),
         ...(body.isDefault   !== undefined ? { isDefault:   body.isDefault }                : {}),
-        ...(body.steps ? {
-          steps: {
-            deleteMany: {},   // replace all steps
-            create: body.steps.map((s) => ({
-              stepOrder:   s.stepOrder,
-              stepName:    s.stepName.trim(),
-              approverRole: (s.approverRole as Role) || null,
-              approverId:  s.approverId || null,
-              canSkip:     s.canSkip ?? false,
-            })),
-          },
-        } : {}),
       },
       include: { steps: { orderBy: { stepOrder: 'asc' } } },
     })

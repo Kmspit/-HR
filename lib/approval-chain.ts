@@ -26,6 +26,28 @@ export type ChainStepRow = {
   canSkip: boolean
 }
 
+// ── Data-consistency guard notification ───────────────────────────────────────
+
+/**
+ * Fired when a step-action call finds no PENDING step at the request's
+ * recorded currentStepOrder (e.g. a corrupted/stale pointer left over from a
+ * legacy migration). CEO/SUPER_ADMIN can still act via a fallback lookup —
+ * this just flags the inconsistency so it gets looked at.
+ */
+export async function notifyChainDataIssue(
+  entityLabel: string,
+  requestId: string,
+  link: string,
+): Promise<void> {
+  const { notifyRole } = await import('@/lib/notifications')
+  const title = `⚠️ พบข้อมูล approval chain ผิดปกติ — ${entityLabel}`
+  const message = `คำขอ #${requestId} มีขั้นตอนอนุมัติที่ข้อมูลไม่สอดคล้องกัน (currentStepOrder ไม่ตรงกับขั้นตอนที่รออนุมัติจริง) — CEO/SUPER_ADMIN ยังดำเนินการต่อได้ตามปกติ แต่ควรตรวจสอบข้อมูล`
+  await Promise.all([
+    notifyRole('CEO', 'SYSTEM', title, message, link),
+    notifyRole('SUPER_ADMIN', 'SYSTEM', title, message, link),
+  ])
+}
+
 // ── Org supervisor resolution (Outside Work step 1) ───────────────────────────
 
 export async function resolveOrgSupervisorId(
@@ -626,12 +648,25 @@ export async function executeLeaveStepAction(
     return { error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว', status: 400 }
   }
 
-  const currentStep = await prisma.leaveApprovalStep.findFirst({
+  let currentStep = await prisma.leaveApprovalStep.findFirst({
     where: { leaveRequestId: leaveId, stepOrder: leave.currentStepOrder, status: 'PENDING' },
   })
-  if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
 
   const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+
+  if (!currentStep) {
+    if (!ceoOverride) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    // currentStepOrder doesn't point at a PENDING step (e.g. stale/corrupted
+    // data from a legacy migration) — let CEO/SUPER_ADMIN fall back to the
+    // actual next PENDING step so the request isn't permanently stuck.
+    currentStep = await prisma.leaveApprovalStep.findFirst({
+      where: { leaveRequestId: leaveId, status: 'PENDING' },
+      orderBy: { stepOrder: 'asc' },
+    })
+    if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    await notifyChainDataIssue('การลา', leaveId, '/approval-center')
+  }
+
   if (!ceoOverride && !canUserActOnStep(currentStep, actorId, role)) {
     return { error: `คุณไม่มีสิทธิ์อนุมัติขั้นนี้`, status: 403 }
   }
@@ -643,7 +678,7 @@ export async function executeLeaveStepAction(
     where: {
       id: currentStep.id,
       leaveRequestId: leaveId,
-      stepOrder: leave.currentStepOrder,
+      stepOrder: currentStep.stepOrder,
       status: 'PENDING',
     },
     data: {
@@ -656,6 +691,15 @@ export async function executeLeaveStepAction(
   })
   if (claim.count === 0) {
     return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
+  if (currentStep.stepOrder !== leave.currentStepOrder) {
+    // Realign the request's pointer to the step we actually claimed (fallback
+    // path above) so advanceLeaveChain's "find next step" lookup is anchored
+    // correctly instead of using the stale currentStepOrder.
+    await prisma.leaveRequest.update({
+      where: { id: leaveId },
+      data: { currentStepOrder: currentStep.stepOrder },
+    })
   }
 
   if (action === 'APPROVE') {
@@ -686,12 +730,22 @@ export async function executeOutsideWorkStepAction(
     return { error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว', status: 400 }
   }
 
-  const currentStep = await prisma.outsideWorkApprovalStep.findFirst({
+  let currentStep = await prisma.outsideWorkApprovalStep.findFirst({
     where: { requestId, stepOrder: request.currentStepOrder, status: 'PENDING' },
   })
-  if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
 
   const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+
+  if (!currentStep) {
+    if (!ceoOverride) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    currentStep = await prisma.outsideWorkApprovalStep.findFirst({
+      where: { requestId, status: 'PENDING' },
+      orderBy: { stepOrder: 'asc' },
+    })
+    if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    await notifyChainDataIssue('ออกนอกสถานที่', requestId, '/approval-center')
+  }
+
   if (!ceoOverride && !canUserActOnStep(currentStep, actorId, role)) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติขั้นนี้', status: 403 }
   }
@@ -703,7 +757,7 @@ export async function executeOutsideWorkStepAction(
     where: {
       id: currentStep.id,
       requestId,
-      stepOrder: request.currentStepOrder,
+      stepOrder: currentStep.stepOrder,
       status: 'PENDING',
     },
     data: {
@@ -716,6 +770,12 @@ export async function executeOutsideWorkStepAction(
   })
   if (claim.count === 0) {
     return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
+  if (currentStep.stepOrder !== request.currentStepOrder) {
+    await prisma.outsideWorkRequest.update({
+      where: { id: requestId },
+      data: { currentStepOrder: currentStep.stepOrder },
+    })
   }
 
   if (action === 'APPROVE') {

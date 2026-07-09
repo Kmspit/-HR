@@ -5,7 +5,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { getDefaultChain, applyChainToLeave, applyChainToOutsideWork } from '@/lib/approval-chain'
 import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
-import { applyChainToForgotScan } from '@/lib/forgot-scan-chain'
+import { applyChainToForgotScan, applyToAttendance, APPLY_ATTENDANCE_FAILED_MSG } from '@/lib/forgot-scan-chain'
 
 export type ChainAttachResult = { leave: number; outside: number; weekly: number; forgotScan: number }
 
@@ -45,10 +45,21 @@ export async function attachAllPendingDefaultChains(
           data: { status: 'APPROVED', actedAt: new Date() },
         })
         const next = steps.find((s) => s.stepOrder > firstPending.stepOrder && s.status === 'PENDING')
-        await prisma.leaveRequest.update({
-          where: { id: row.id },
-          data: { currentStepOrder: next?.stepOrder ?? firstPending.stepOrder, status: 'PENDING' },
-        })
+        if (next) {
+          await prisma.leaveRequest.update({
+            where: { id: row.id },
+            data: { currentStepOrder: next.stepOrder, status: 'PENDING' },
+          })
+        } else {
+          // The auto-approved step was the last one — the request is actually
+          // fully approved. Finalize it instead of pointing currentStepOrder
+          // back at the step we just approved, which would leave the request
+          // stuck in a state no one (not even CEO/SUPER_ADMIN) could act on.
+          await prisma.leaveRequest.update({
+            where: { id: row.id },
+            data: { currentStepOrder: 0, status: 'APPROVED' },
+          })
+        }
       }
       leave += 1
     }
@@ -130,10 +141,25 @@ export async function attachAllPendingDefaultChains(
           data: { status: 'APPROVED', actedAt: new Date() },
         })
         const next = steps.find((s) => s.stepOrder > firstPending.stepOrder && s.status === 'PENDING')
-        await prisma.forgotScanRequest.update({
-          where: { id: row.id },
-          data: { currentStepOrder: next?.stepOrder ?? firstPending.stepOrder, status: 'PENDING' },
-        })
+        if (next) {
+          await prisma.forgotScanRequest.update({
+            where: { id: row.id },
+            data: { currentStepOrder: next.stepOrder, status: 'PENDING' },
+          })
+        } else {
+          // The auto-approved step was the last one — the request is actually
+          // fully approved. Finalize it (applying the corrected time, same as
+          // the no-steps-required path in applyChainToForgotScan) instead of
+          // pointing currentStepOrder back at the step we just approved, which
+          // would leave the request stuck in a state no one could act on.
+          const applied = await applyToAttendance(row.id, prisma)
+          await prisma.forgotScanRequest.update({
+            where: { id: row.id },
+            data: applied
+              ? { currentStepOrder: 0, status: 'APPROVED' }
+              : { currentStepOrder: 0, status: 'REJECTED', hrNote: APPLY_ATTENDANCE_FAILED_MSG },
+          })
+        }
       }
       forgotScan += 1
     }

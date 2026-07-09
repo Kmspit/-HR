@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
 import { checkDebtorAccess } from '@/lib/debtor-access'
+import { DOCUMENT_MIME_ALLOWLIST, DOCUMENT_ALLOWED_FORMATS, MAX_DOCUMENT_UPLOAD_BYTES } from '@/lib/document-upload'
 
 function configureCloudinary() {
   cloudinary.config({
@@ -46,13 +47,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const docType  = (formData.get('docType') as string) || 'OTHER'
 
   if (!file) return NextResponse.json({ error: 'file is required' }, { status: 400 })
+  if (!DOCUMENT_MIME_ALLOWLIST[file.type]) {
+    return NextResponse.json(
+      { error: 'ชนิดไฟล์ไม่รองรับ (รองรับ PDF, JPG, PNG, WebP, Word, Excel, Zip, Text)' },
+      { status: 400 },
+    )
+  }
+  if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+    return NextResponse.json({ error: 'ไฟล์ขนาดใหญ่เกิน 20MB' }, { status: 400 })
+  }
 
   configureCloudinary()
   const buf   = Buffer.from(await file.arrayBuffer())
   const b64   = `data:${file.type};base64,${buf.toString('base64')}`
   const result = await cloudinary.uploader.upload(b64, {
-    folder:        'hrflow/debt-docs',
-    resource_type: 'auto',
+    folder:          'hrflow/debt-docs',
+    resource_type:   'auto',
+    allowed_formats: DOCUMENT_ALLOWED_FORMATS,
   })
 
   const dbFile = await prisma.debtorFile.create({

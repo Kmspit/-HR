@@ -9,7 +9,7 @@ import {
   canUserActOnStep,
   isOrgSupervisorTemplateStep,
 } from '@/lib/approval-chain-shared'
-import { resolveOrgSupervisorId, type StepActionResult } from '@/lib/approval-chain'
+import { resolveOrgSupervisorId, notifyChainDataIssue, type StepActionResult } from '@/lib/approval-chain'
 
 export const APPLY_ATTENDANCE_FAILED_MSG =
   'ไม่สามารถ apply เวลาได้ — ไม่พบ attendance record ของวันนี้'
@@ -372,16 +372,26 @@ export async function executeForgotScanStepAction(
     return { error: 'คำขอนี้ดำเนินการเสร็จสิ้นแล้ว', status: 400 }
   }
 
-  const currentStep = await prisma.forgotScanApprovalStep.findFirst({
+  let currentStep = await prisma.forgotScanApprovalStep.findFirst({
     where: {
       forgotScanId: requestId,
       stepOrder: req.currentStepOrder,
       status: 'PENDING',
     },
   })
-  if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
 
   const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+
+  if (!currentStep) {
+    if (!ceoOverride) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    currentStep = await prisma.forgotScanApprovalStep.findFirst({
+      where: { forgotScanId: requestId, status: 'PENDING' },
+      orderBy: { stepOrder: 'asc' },
+    })
+    if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    await notifyChainDataIssue('แก้ไขเวลา', requestId, '/approval-center')
+  }
+
   if (!ceoOverride && !canUserActOnStep(currentStep, actorId, role)) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติขั้นนี้', status: 403 }
   }
@@ -393,7 +403,7 @@ export async function executeForgotScanStepAction(
     where: {
       id: currentStep.id,
       forgotScanId: requestId,
-      stepOrder: req.currentStepOrder,
+      stepOrder: currentStep.stepOrder,
       status: 'PENDING',
     },
     data: {
@@ -406,6 +416,12 @@ export async function executeForgotScanStepAction(
   })
   if (claim.count === 0) {
     return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
+  if (currentStep.stepOrder !== req.currentStepOrder) {
+    await prisma.forgotScanRequest.update({
+      where: { id: requestId },
+      data: { currentStepOrder: currentStep.stepOrder },
+    })
   }
 
   if (action === 'APPROVE') {
