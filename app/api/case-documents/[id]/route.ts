@@ -30,6 +30,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const canView = CAN_MANAGE.includes(session.user.role) || doc.uploadedById === session.user.id
+  if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   return NextResponse.json(doc)
 }
 

@@ -3,11 +3,14 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSignedUrl } from '@/lib/cloudinary-service'
 
+const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
+
 // GET /api/case-documents/[id]/preview-url?fileId=<fileId>
 // Returns a short-lived signed Cloudinary URL for inline preview.
-// Only authenticated users may call this; the URL itself carries a cryptographic
-// signature so it cannot be forged, but has no server-enforced expiry beyond
-// the session gate here.
+// Same access check as GET/PATCH/DELETE on the parent document
+// (app/api/case-documents/[id]/route.ts) — the signed URL itself can't be
+// forged, but minting one for a document the caller has no access to defeats
+// the point of checking access on the document routes at all.
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -18,6 +21,15 @@ export async function GET(
   const { id } = await params
   const fileId = req.nextUrl.searchParams.get('fileId')
   if (!fileId) return NextResponse.json({ error: 'fileId required' }, { status: 400 })
+
+  const doc = await prisma.caseDocument.findUnique({
+    where: { id },
+    select: { uploadedById: true },
+  })
+  if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const canView = CAN_MANAGE.includes(session.user.role) || doc.uploadedById === session.user.id
+  if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const file = await prisma.caseDocumentFile.findFirst({
     where: { id: fileId, documentId: id },

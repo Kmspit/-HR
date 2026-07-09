@@ -53,7 +53,19 @@ export async function resolveClientUserIdForPortal(
     where: { role: 'CLIENT', email, status: 'ACTIVE' },
     select: { id: true },
   })
-  if (byEmail) return byEmail.id
+  if (byEmail) {
+    // Cross-check that this legacy CLIENT user is actually linked to the
+    // caller's own company. User.email and ClientPortalUser.email are two
+    // independently-@unique columns in two separate tables — nothing stops
+    // the same email existing on a legacy User belonging to a DIFFERENT
+    // company, which would otherwise hand that other company's documents/
+    // messages to this portal session.
+    const linkedToCompany = await prisma.taskAssignment.findFirst({
+      where: { clientId: byEmail.id, clientCompanyId },
+      select: { id: true },
+    })
+    if (linkedToCompany) return byEmail.id
+  }
 
   const task = await prisma.taskAssignment.findFirst({
     where: { clientCompanyId, clientId: { not: null } },

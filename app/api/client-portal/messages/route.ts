@@ -88,6 +88,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบบัญชีลูกค้าในระบบ' }, { status: 403 })
     }
 
+    // Verify the task actually belongs to this client BEFORE creating the
+    // message row — previously this was only checked before notifying staff,
+    // so a taskId for a different company's case still got persisted on the
+    // message (no notification fired, but the row existed regardless).
+    let task: { assigneeId: string; assignedById: string; title: string; clientId: string | null } | null = null
+    if (taskId) {
+      task = await prisma.taskAssignment.findUnique({
+        where: { id: taskId },
+        select: { assigneeId: true, assignedById: true, title: true, clientId: true },
+      })
+      if (!task || task.clientId !== clientUserId) {
+        return NextResponse.json({ error: 'ไม่พบงานนี้ในบัญชีของคุณ' }, { status: 403 })
+      }
+    }
+
     const msg = await prisma.clientMessage.create({
       data: {
         clientId: clientUserId,
@@ -99,21 +114,15 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    if (taskId) {
-      const task = await prisma.taskAssignment.findUnique({
-        where: { id: taskId },
-        select: { assigneeId: true, assignedById: true, title: true, clientId: true },
-      })
-      if (task && task.clientId === clientUserId) {
-        for (const staffId of [task.assigneeId, task.assignedById]) {
-          await createNotification({
-            userId: staffId,
-            type: 'SYSTEM',
-            title: 'ข้อความจากลูกค้า',
-            message: `ลูกค้าส่งข้อความในคดี "${task.title}"`,
-            link: `/clients/${clientUserId}`,
-          })
-        }
+    if (task) {
+      for (const staffId of [task.assigneeId, task.assignedById]) {
+        await createNotification({
+          userId: staffId,
+          type: 'SYSTEM',
+          title: 'ข้อความจากลูกค้า',
+          message: `ลูกค้าส่งข้อความในคดี "${task.title}"`,
+          link: `/clients/${clientUserId}`,
+        })
       }
     }
 

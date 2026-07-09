@@ -5,6 +5,29 @@ import { NextRequest, NextResponse } from 'next/server'
 const CAN_SIGN = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
 const EXEC     = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
+// Same case-access pattern used across app/api/case-documents/upload/route.ts and
+// app/api/case-documents/[id]/files/route.ts — duplicated locally per existing
+// convention in this module rather than introducing a new shared helper.
+async function canAccessCase(caseId: string, userId: string, role: string, department?: string | null) {
+  if (EXEC.includes(role)) return true
+  const c = await prisma.case.findUnique({
+    where: { id: caseId },
+    select: { createdById: true, assignedEmployeeId: true, department: true },
+  })
+  if (!c) return false
+  if (role === 'MANAGER' && department && c.department === department) return true
+  return c.createdById === userId || c.assignedEmployeeId === userId
+}
+
+async function canAccessTask(taskId: string, userId: string) {
+  const t = await prisma.taskAssignment.findUnique({
+    where: { id: taskId },
+    select: { assigneeId: true, assignedById: true },
+  })
+  if (!t) return false
+  return t.assigneeId === userId || t.assignedById === userId
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,6 +42,20 @@ export async function GET(req: NextRequest) {
   const tab        = searchParams.get('tab') ?? 'all'           // all|mine|court|evidence|recent|archived
   const page       = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
   const limit      = 20
+
+  // A caseId/taskId filter used to bypass the "own + assigned" scoping below
+  // entirely for non-exec/non-manager roles, letting anyone list every
+  // document on any case just by supplying its id. Verify real access to that
+  // specific case/task instead of skipping scoping.
+  const isUnscopedRole = EXEC.includes(session.user.role) || session.user.role === 'MANAGER'
+  if (caseId && !isUnscopedRole) {
+    const allowed = await canAccessCase(caseId, session.user.id, session.user.role, session.user.department)
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (taskId && !isUnscopedRole) {
+    const allowed = await canAccessTask(taskId, session.user.id)
+    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const where: Record<string, unknown> = {}
 
