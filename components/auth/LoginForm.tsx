@@ -5,13 +5,13 @@ import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react'
 import { englishOnlyFieldError, ENGLISH_ONLY_ERROR, isEnglishOnly } from '@/lib/english-input'
 
+// Account-status failures (locked/pending/disabled/rejected) are intentionally
+// NOT distinguished here — the API always returns INVALID_CREDENTIALS for
+// them so an unauthenticated caller can't tell which emails have an account.
+// A user genuinely affected needs to contact HR directly to find out why.
 const ERROR_MESSAGES: Record<string, string> = {
   MISSING_FIELDS: 'กรุณากรอกอีเมลและรหัสผ่าน',
   INVALID_CREDENTIALS: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
-  ACCOUNT_LOCKED: 'บัญชีถูกล็อคชั่วคราว กรุณาลองใหม่ใน 15 นาที',
-  PENDING_APPROVAL: 'บัญชีของคุณรอการอนุมัติจาก HR — รหัสผ่านถูกต้องแล้ว',
-  ACCOUNT_DISABLED: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ HR',
-  ACCOUNT_REJECTED: 'คำขอสมัครถูกปฏิเสธ กรุณาติดต่อ HR',
   CredentialsSignin: 'อีเมล/รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง',
   SessionRequired: 'กรุณาเข้าสู่ระบบอีกครั้ง',
   SERVER_ERROR: 'ระบบขัดข้อง กรุณาลองใหม่ภายหลัง',

@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { triggerAutomation } from '@/lib/automation-engine'
 
 const CAN_CONFIRM = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+// Same company-wide visibility set as the sibling list endpoint
+// (app/api/recovery/payments/route.ts) — everyone else is scoped to payments
+// they personally collected.
+const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
 const LARGE_THRESHOLD = 50000
 
 const userSel = { id: true, name: true, department: true, role: true }
@@ -25,6 +29,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   })
   if (!payment) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!CAN_MANAGE.includes(session.user.role) && payment.collectorId !== session.user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   return NextResponse.json(payment)
 }
 

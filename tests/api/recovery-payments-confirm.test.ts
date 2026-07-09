@@ -25,7 +25,7 @@ vi.mock('@/lib/automation-engine', () => ({
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { PATCH } from '@/app/api/recovery/payments/[id]/route'
+import { GET, PATCH } from '@/app/api/recovery/payments/[id]/route'
 
 const params = Promise.resolve({ id: 'pmt-1' })
 const confirmSession = { user: { id: 'mgr-1', role: 'MANAGER_HR', name: 'Manager' } }
@@ -109,5 +109,51 @@ describe('PATCH /api/recovery/payments/[id] — confirming reliably upserts Case
     const res = await PATCH(makeReq({ status: 'CONFIRMED' }), { params })
     expect(res.status).toBe(200)
     expect(prisma.caseFinancial.upsert).not.toHaveBeenCalled()
+  })
+})
+
+function makeGetReq() {
+  return new NextRequest('http://localhost/api/recovery/payments/pmt-1')
+}
+
+describe('GET /api/recovery/payments/[id] — company-wide roles see everything, others only their own collections', () => {
+  const paymentWithCollector = { ...basePayment, collectorId: 'collector-1' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.recoveryPayment.findUnique).mockResolvedValue(paymentWithCollector as never)
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue(null as never)
+    const res = await GET(makeGetReq(), { params })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 for a nonexistent payment before checking scope', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'anyone', role: 'EMPLOYEE' } } as never)
+    vi.mocked(prisma.recoveryPayment.findUnique).mockResolvedValue(null as never)
+    const res = await GET(makeGetReq(), { params })
+    expect(res.status).toBe(404)
+  })
+
+  for (const role of ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']) {
+    it(`allows ${role} to view any payment (company-wide), even when not the collector`, async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { id: 'someone-else', role } } as never)
+      const res = await GET(makeGetReq(), { params })
+      expect(res.status).toBe(200)
+    })
+  }
+
+  it('allows a non-manage role to view their own collected payment', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'collector-1', role: 'EMPLOYEE' } } as never)
+    const res = await GET(makeGetReq(), { params })
+    expect(res.status).toBe(200)
+  })
+
+  it('forbids a non-manage role from viewing a payment collected by someone else', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'someone-else', role: 'EMPLOYEE' } } as never)
+    const res = await GET(makeGetReq(), { params })
+    expect(res.status).toBe(403)
   })
 })

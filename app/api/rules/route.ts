@@ -52,8 +52,18 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { id, ...data } = body
+    const { id, title, content, fileUrl, category, version } = body
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+    // Allowlist — mirrors the same field set POST accepts. A body spread here
+    // would let the client also overwrite createdById/publishedAt/updatedAt,
+    // forging who created the rule and when it was published.
+    const data: Record<string, unknown> = {}
+    if (title   !== undefined) data.title    = title
+    if (content !== undefined) data.content  = content || null
+    if (fileUrl !== undefined) data.fileUrl  = fileUrl  || null
+    if (category !== undefined) data.category = category
+    if (version !== undefined) data.version  = version || null
 
     const rule = await prisma.companyRule.update({ where: { id }, data })
     return NextResponse.json({ rule })

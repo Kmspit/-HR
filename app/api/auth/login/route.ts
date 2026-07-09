@@ -16,10 +16,6 @@ export const dynamic = 'force-dynamic'
 const ERROR_HTTP: Record<string, number> = {
   MISSING_FIELDS: 400,
   INVALID_CREDENTIALS: 401,
-  ACCOUNT_LOCKED: 429,
-  PENDING_APPROVAL: 403,
-  ACCOUNT_DISABLED: 403,
-  ACCOUNT_REJECTED: 403,
   AUTH_SECRET_MISSING: 500,
 }
 
@@ -80,18 +76,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Phase 15: brute-force check
+    // Phase 15: brute-force check. Same generic response as a wrong password
+    // below — a distinct error/status here would let an unauthenticated
+    // caller learn that this email has a locked account.
     const lockCheck = await checkLoginAllowedForIdentifier(email).catch(() => ({ allowed: true as const }))
     if (!lockCheck.allowed) {
-      return NextResponse.json(
-        { ok: false, error: 'ACCOUNT_LOCKED', message: 'บัญชีถูกล็อคชั่วคราว กรุณาลองใหม่ใน 15 นาที' },
-        { status: 429 },
-      )
+      return NextResponse.json({ ok: false, error: 'INVALID_CREDENTIALS' }, { status: 401 })
     }
 
     const verified = await verifyLoginCredentials(email, password)
     if (!verified.ok) {
-      await recordLoginAttempt(email, false, { ip, userAgent, reason: verified.error }).catch(() => {})
+      await recordLoginAttempt(email, false, { ip, userAgent, reason: verified.reason ?? verified.error }).catch(() => {})
       return NextResponse.json(
         { ok: false, error: verified.error },
         { status: ERROR_HTTP[verified.error] ?? 401 },

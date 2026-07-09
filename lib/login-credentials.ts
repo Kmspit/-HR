@@ -15,7 +15,11 @@ export type LoginResult =
         branchId: string | null
       }
     }
-  | { ok: false; error: string }
+  // `error` is what the client sees; `reason` (when present) is the real,
+  // more specific cause, kept only for internal logging (loginAttempt.reason)
+  // so support/HR can still tell these cases apart without exposing to an
+  // unauthenticated caller whether a given email/account exists at all.
+  | { ok: false; error: string; reason?: string }
 
 /** ตรวจสอบอีเมลหรือรหัสพนักงาน + รหัสผ่าน */
 export async function verifyLoginCredentials(
@@ -69,12 +73,17 @@ export async function verifyLoginCredentials(
   }
 
   if (!user) return { ok: false, error: 'INVALID_CREDENTIALS' }
+  // These all return the same generic error as unknown-email/wrong-password —
+  // a distinct code/status here (as this used to return) lets an unauthenticated
+  // caller enumerate which emails have an account, and PENDING_APPROVAL in
+  // particular used to confirm the password was correct. The real reason is
+  // still returned via `reason` for internal logging only.
   if (user.lockedUntil && user.lockedUntil > new Date()) {
-    return { ok: false, error: 'ACCOUNT_LOCKED' }
+    return { ok: false, error: 'INVALID_CREDENTIALS', reason: 'ACCOUNT_LOCKED' }
   }
-  if (user.status === 'PENDING') return { ok: false, error: 'PENDING_APPROVAL' }
-  if (user.status === 'DISABLED') return { ok: false, error: 'ACCOUNT_DISABLED' }
-  if (user.status === 'REJECTED') return { ok: false, error: 'ACCOUNT_REJECTED' }
+  if (user.status === 'PENDING') return { ok: false, error: 'INVALID_CREDENTIALS', reason: 'PENDING_APPROVAL' }
+  if (user.status === 'DISABLED') return { ok: false, error: 'INVALID_CREDENTIALS', reason: 'ACCOUNT_DISABLED' }
+  if (user.status === 'REJECTED') return { ok: false, error: 'INVALID_CREDENTIALS', reason: 'ACCOUNT_REJECTED' }
 
 
   if (!user.passwordHash?.startsWith('$2')) {

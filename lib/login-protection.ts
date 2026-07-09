@@ -63,9 +63,16 @@ export async function recordLoginAttempt(
   success: boolean,
   opts?: { ip?: string; userAgent?: string; userId?: string; reason?: string },
 ) {
+  // Normalize the same way checkLoginAllowed/verifyLoginCredentials already do
+  // — otherwise varying the email's case on each attempt splits the failure
+  // count across separate buckets (bypassing the lockout entirely), and the
+  // lock-application lookup below can silently miss the user row (stored
+  // emails are always lowercase), so the account never actually gets locked.
+  const normalized = email.trim().toLowerCase()
+
   await prisma.loginAttempt.create({
     data: {
-      email,
+      email: normalized,
       success,
       ip:        opts?.ip,
       userAgent: opts?.userAgent,
@@ -85,12 +92,12 @@ export async function recordLoginAttempt(
   // Count recent failures
   const since = new Date(Date.now() - WINDOW_MS)
   const failures = await prisma.loginAttempt.count({
-    where: { email, success: false, createdAt: { gte: since } },
+    where: { email: normalized, success: false, createdAt: { gte: since } },
   })
 
   if (failures >= MAX_ATTEMPTS) {
     const lockUntil = new Date(Date.now() + LOCK_MS)
-    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+    const user = await prisma.user.findUnique({ where: { email: normalized }, select: { id: true } })
     if (user) {
       await prisma.user.update({ where: { id: user.id }, data: { lockedUntil: lockUntil } })
       await prisma.securityEvent.create({

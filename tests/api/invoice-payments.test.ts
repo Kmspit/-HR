@@ -8,7 +8,7 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     billingInvoice: { findUnique: vi.fn(), update: vi.fn() },
-    billingPayment: { findUnique: vi.fn(), create: vi.fn() },
+    billingPayment: { findUnique: vi.fn(), create: vi.fn(), findMany: vi.fn() },
   },
 }))
 
@@ -20,7 +20,7 @@ vi.mock('cloudinary', () => ({
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { POST } from '@/app/api/invoices/[id]/payments/route'
+import { GET, POST } from '@/app/api/invoices/[id]/payments/route'
 
 const financeSession = { user: { id: 'hr-1', role: 'HR', name: 'HR' } }
 const params = Promise.resolve({ id: 'inv-1' })
@@ -32,6 +32,41 @@ function makeReq(body: Record<string, unknown>) {
     body: JSON.stringify(body),
   })
 }
+
+function makeGetReq() {
+  return new NextRequest('http://localhost/api/invoices/inv-1/payments')
+}
+
+describe('GET /api/invoices/[id]/payments — restricted to FINANCE_ROLES', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.billingPayment.findMany).mockResolvedValue([{ id: 'pay-1' }] as never)
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    vi.mocked(auth).mockResolvedValue(null as never)
+    const res = await GET(makeGetReq(), { params })
+    expect(res.status).toBe(401)
+  })
+
+  for (const role of ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']) {
+    it(`allows ${role} to view payments (bank account / slip)`, async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { id: 'u1', role } } as never)
+      const res = await GET(makeGetReq(), { params })
+      expect(res.status).toBe(200)
+      expect(prisma.billingPayment.findMany).toHaveBeenCalled()
+    })
+  }
+
+  for (const role of ['LAWYER', 'MANAGER', 'TEAM_LEADER', 'EMPLOYEE', 'CLIENT']) {
+    it(`forbids ${role} from viewing payment bank-account/slip detail`, async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { id: 'u1', role } } as never)
+      const res = await GET(makeGetReq(), { params })
+      expect(res.status).toBe(403)
+      expect(prisma.billingPayment.findMany).not.toHaveBeenCalled()
+    })
+  }
+})
 
 const baseInvoice = { id: 'inv-1', totalAmount: 10000, paidAmount: 0, remainingAmount: 10000, status: 'SENT' }
 
