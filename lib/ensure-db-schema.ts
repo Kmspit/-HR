@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900009
+export const CURRENT_SCHEMA_VERSION = 900010
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1099,6 +1099,15 @@ async function runEnsure(force = false): Promise<boolean> {
 
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_actor_created_idx ON audit_logs (actorId, createdAt)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_target_created_idx ON audit_logs (targetId, createdAt)`)
+
+  // ── Perf audit Phase A — task_assignments had zero indexes; notifications.userId unindexed ──
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_assignee_id        ON task_assignments (assignee_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_assigned_by_id      ON task_assignments (assigned_by_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_case_id             ON task_assignments (case_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_client_company_id   ON task_assignments (client_company_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_status              ON task_assignments (status)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_due_date             ON task_assignments (due_date)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notifications_userId                 ON notifications (userId)`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

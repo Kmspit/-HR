@@ -1014,6 +1014,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -1564,6 +1565,12 @@ model TaskAssignment {
   dependencies    TaskDependency[]  @relation("TaskDeps")
   dependents      TaskDependency[]  @relation("TaskBlockedBy")
 
+  @@index([assigneeId])
+  @@index([assignedById])
+  @@index([caseId])
+  @@index([clientCompanyId])
+  @@index([status])
+  @@index([dueDate])
   @@map("task_assignments")
 }
 

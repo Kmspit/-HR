@@ -2,7 +2,7 @@ import type { Attendance, AttendanceStatus, LeaveType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { toDateKey } from '@/lib/company-holidays'
-import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
+import { findApprovedLeaveOnDate, type ApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import { ATTENDANCE_COMPLETED_PATCH } from '@/lib/attendance-flow'
 import {
   formatDateBangkok,
@@ -182,14 +182,26 @@ export function attendanceToWorkLogRow(a: Attendance): AttendanceWorkLogRow {
   }
 }
 
-/** คำนวณและบันทึกฟิลด์ work log — ไม่ทับ check-in/out ที่มีอยู่ */
-export async function finalizeAttendanceRecord(attendanceId: string): Promise<Attendance> {
-  const att = await prisma.attendance.findUnique({ where: { id: attendanceId } })
-  if (!att) throw new Error('Attendance not found')
+/** ผลการคำนวณ field ที่ finalize (pure — ไม่แตะ DB) ใช้ร่วมกันทั้ง single-record
+ * path (finalizeAttendanceRecord) และ batched path (fetchAndFinalizeAttendanceForUsers)
+ * เพื่อไม่ให้ logic สองจุดนี้ drift ออกจากกัน */
+type FinalizedAttendanceFields = {
+  dayOfWeek: number
+  workMinutes: number
+  leaveType: LeaveType | null
+  status: AttendanceStatus
+  checkInLat?: number | null
+  checkInLng?: number | null
+  checkInAddress?: string | null
+  checkInWorkPlaceName?: string | null
+}
 
+function computeFinalizedFields(
+  att: Pick<Attendance, 'date' | 'checkIn' | 'checkOut' | 'lunchOut' | 'lunchIn' | 'leaveType' | 'status' | 'checkInLat' | 'lat' | 'lng' | 'address' | 'workPlaceName'>,
+  approvedLeave: ApprovedLeaveOnDate | null,
+): FinalizedAttendanceFields {
   const dayOfWeek = getDayOfWeekIndex(att.date)
   const workMinutes = computeWorkMinutes(att)
-  const approvedLeave = await findApprovedLeaveOnDate(att.userId, att.date)
 
   let leaveType = att.leaveType
   let status = att.status
@@ -203,24 +215,176 @@ export async function finalizeAttendanceRecord(attendanceId: string): Promise<At
     }
   }
 
+  return {
+    dayOfWeek,
+    workMinutes,
+    leaveType: leaveType ?? null,
+    status,
+    ...(att.checkInLat == null && att.lat != null
+      ? {
+          checkInLat: att.lat,
+          checkInLng: att.lng,
+          checkInAddress: att.address,
+          checkInWorkPlaceName: att.workPlaceName,
+        }
+      : {}),
+  }
+}
+
+/** true = ค่าที่คำนวณได้ต่างจากที่บันทึกไว้จริง (จึงต้อง write) — ใช้ข้าม write
+ * ที่เป็น no-op เมื่อ finalize ซ้ำข้อมูลเดิม (เช่น เปิดหน้าเดิมซ้ำ) */
+function finalizedFieldsDiffer(att: Attendance, f: FinalizedAttendanceFields): boolean {
+  if (att.approved !== true) return true
+  if (att.attendanceStatus !== 'completed') return true
+  if (att.dayOfWeek !== f.dayOfWeek) return true
+  if (att.workMinutes !== f.workMinutes) return true
+  if ((att.leaveType ?? null) !== f.leaveType) return true
+  if (att.status !== f.status) return true
+  if ('checkInLat' in f) {
+    if (att.checkInLat !== f.checkInLat) return true
+    if (att.checkInLng !== f.checkInLng) return true
+    if (att.checkInAddress !== f.checkInAddress) return true
+    if (att.checkInWorkPlaceName !== f.checkInWorkPlaceName) return true
+  }
+  return false
+}
+
+/** คำนวณและบันทึกฟิลด์ work log — ไม่ทับ check-in/out ที่มีอยู่ */
+export async function finalizeAttendanceRecord(attendanceId: string): Promise<Attendance> {
+  const att = await prisma.attendance.findUnique({ where: { id: attendanceId } })
+  if (!att) throw new Error('Attendance not found')
+
+  const approvedLeave = await findApprovedLeaveOnDate(att.userId, att.date)
+  const computed = computeFinalizedFields(att, approvedLeave)
+
   return prisma.attendance.update({
     where: { id: attendanceId },
-    data: {
-      ...ATTENDANCE_COMPLETED_PATCH,
-      dayOfWeek,
-      workMinutes,
-      leaveType: leaveType ?? null,
-      status,
-      ...(att.checkInLat == null && att.lat != null
-        ? {
-            checkInLat: att.lat,
-            checkInLng: att.lng,
-            checkInAddress: att.address,
-            checkInWorkPlaceName: att.workPlaceName,
-          }
-        : {}),
-    },
+    data: { ...ATTENDANCE_COMPLETED_PATCH, ...computed },
   })
+}
+
+/** เลือก approved leave ที่ครอบคลุมวันที่กำหนด จาก leave ที่ pre-fetch มาแล้ว —
+ * เทียบเท่า findApprovedLeaveOnDate (orderBy startDate desc, take first) แต่ไม่ query DB */
+function pickApprovedLeaveForDate(
+  leaves: ApprovedLeaveOnDate[],
+  date: Date,
+): ApprovedLeaveOnDate | null {
+  const dayStart = new Date(date)
+  dayStart.setHours(0, 0, 0, 0)
+  const dayEnd = new Date(date)
+  dayEnd.setHours(23, 59, 59, 999)
+
+  let best: ApprovedLeaveOnDate | null = null
+  for (const l of leaves) {
+    if (l.startDate <= dayEnd && l.endDate >= dayStart) {
+      if (!best || l.startDate > best.startDate) best = l
+    }
+  }
+  return best
+}
+
+/**
+ * Defensive ceiling on concurrent Attendance writes fired from the batched
+ * finalize path below. Turso's connection here is the stateless HTTP/Hrana
+ * remote client (`libsql://...` via @prisma/adapter-libsql) — there is no
+ * connection-pool setting to tune (Prisma's usual `connection_limit` applies
+ * to TCP-pooled databases, not this driver-adapter mode), and no published
+ * per-plan concurrent-request ceiling was available to check from this
+ * project. Rather than assume an unbounded burst (worst case: a never-
+ * before-viewed team/month, up to ~3,000 rows) is safe, cap it — batches of
+ * 20 concurrent writes are still a massive improvement over the old fully
+ * sequential per-record loop, just not "all at once."
+ */
+const ATTENDANCE_FINALIZE_WRITE_CONCURRENCY = 20
+
+/** Runs `fn` over `items` with at most `limit` in flight at a time. */
+async function mapWithConcurrencyLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  for (let i = 0; i < items.length; i += limit) {
+    const batch = items.slice(i, i + limit)
+    const batchResults = await Promise.all(batch.map(fn))
+    for (let j = 0; j < batchResults.length; j++) {
+      results[i + j] = batchResults[j]
+    }
+  }
+  return results
+}
+
+/**
+ * Batched equivalent of calling finalizeAttendanceRecord() once per record:
+ * one findMany for attendance + one findMany for leave requests (covering ALL
+ * given users), finalized-field computation done in memory, and a write only
+ * for rows whose computed value actually differs from what's stored — instead
+ * of N sequential (findUnique + findFirst + update) round trips. Writes that
+ * are actually needed go out in throttled batches (see
+ * ATTENDANCE_FINALIZE_WRITE_CONCURRENCY), not all at once.
+ */
+async function fetchAndFinalizeAttendanceForUsers(
+  userIds: string[],
+  startDate: Date,
+  endDate: Date,
+): Promise<Attendance[]> {
+  const [records, leaves] = await Promise.all([
+    prisma.attendance.findMany({
+      where: { userId: { in: userIds }, date: { gte: startDate, lte: endDate } },
+      orderBy: [{ date: 'asc' }, { sessionIndex: 'asc' }],
+    }),
+    prisma.leaveRequest.findMany({
+      where: {
+        userId: { in: userIds },
+        status: { in: [...APPROVED_LEAVE_STATUSES] },
+        startDate: { lte: endDate },
+        endDate: { gte: startDate },
+      },
+      select: { id: true, userId: true, type: true, days: true, startDate: true, endDate: true },
+    }),
+  ])
+
+  const leavesByUser = new Map<string, ApprovedLeaveOnDate[]>()
+  for (const l of leaves) {
+    const list = leavesByUser.get(l.userId) ?? []
+    list.push(l)
+    leavesByUser.set(l.userId, list)
+  }
+
+  const finalRecords: Attendance[] = new Array(records.length)
+  const pendingUpdates: { index: number; original: Attendance; data: FinalizedAttendanceFields }[] = []
+
+  records.forEach((r, index) => {
+    const approvedLeave = pickApprovedLeaveForDate(leavesByUser.get(r.userId) ?? [], r.date)
+    const computed = computeFinalizedFields(r, approvedLeave)
+    if (!finalizedFieldsDiffer(r, computed)) {
+      finalRecords[index] = r
+    } else {
+      pendingUpdates.push({ index, original: r, data: computed })
+    }
+  })
+
+  if (pendingUpdates.length > 0) {
+    const updateResults = await mapWithConcurrencyLimit(
+      pendingUpdates,
+      ATTENDANCE_FINALIZE_WRITE_CONCURRENCY,
+      async (u) => {
+        try {
+          return await prisma.attendance.update({
+            where: { id: u.original.id },
+            data: { ...ATTENDANCE_COMPLETED_PATCH, ...u.data },
+          })
+        } catch {
+          return u.original
+        }
+      },
+    )
+    updateResults.forEach((updated, i) => {
+      finalRecords[pendingUpdates[i].index] = updated
+    })
+  }
+
+  return finalRecords
 }
 
 /** สร้าง/อัปเดตแถวลาอนุมัติในช่วงเดือน (ไม่ลบแถวที่มีเช็คอินแล้ว) */
@@ -297,21 +461,9 @@ export async function buildMonthlyWorkLog(
 
   await syncApprovedLeaveAttendance(userId, startDate, endDate)
 
-  const records = await prisma.attendance.findMany({
-    where: { userId, date: { gte: startDate, lte: endDate } },
-    orderBy: [{ date: 'asc' }, { sessionIndex: 'asc' }],
-  })
+  const records = await fetchAndFinalizeAttendanceForUsers([userId], startDate, endDate)
 
-  for (const r of records) {
-    await finalizeAttendanceRecord(r.id).catch(() => {})
-  }
-
-  const refreshed = await prisma.attendance.findMany({
-    where: { userId, date: { gte: startDate, lte: endDate } },
-    orderBy: [{ date: 'asc' }, { sessionIndex: 'asc' }],
-  })
-
-  const rows = refreshed.map(attendanceToWorkLogRow)
+  const rows = records.map(attendanceToWorkLogRow)
   const summary = summarizeWorkLogRows(rows)
 
   return { month, year, userId, rows, summary }
@@ -377,21 +529,27 @@ export async function buildMonthlyWorkLogForTeam(
   summary: WorkLogSummary
   employeeCount: number
 }> {
-  const combined: AttendanceWorkLogRowWithEmployee[] = []
+  const startDate = new Date(year, month - 1, 1)
+  const endDate = new Date(year, month, 0, 23, 59, 59)
+  const userIds = users.map((u) => u.id)
 
-  for (const u of users) {
-    const report = await buildMonthlyWorkLog(u.id, month, year)
-    for (const row of report.rows) {
-      combined.push({
-        ...row,
-        id: `${u.id}-${row.id}`,
-        employeeUserId: u.id,
-        employeeName: u.name,
-        employeeCode: u.employeeId,
-        userStatus: u.status,
-      })
+  await Promise.all(userIds.map((id) => syncApprovedLeaveAttendance(id, startDate, endDate)))
+
+  const records = await fetchAndFinalizeAttendanceForUsers(userIds, startDate, endDate)
+
+  const byUser = new Map(users.map((u) => [u.id, u]))
+  const combined: AttendanceWorkLogRowWithEmployee[] = records.map((r) => {
+    const row = attendanceToWorkLogRow(r)
+    const u = byUser.get(r.userId)
+    return {
+      ...row,
+      id: `${r.userId}-${row.id}`,
+      employeeUserId: r.userId,
+      employeeName: u?.name ?? '',
+      employeeCode: u?.employeeId ?? null,
+      userStatus: u?.status,
     }
-  }
+  })
 
   combined.sort((a, b) => {
     const da = a.date.localeCompare(b.date)
