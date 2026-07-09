@@ -14,6 +14,11 @@ vi.mock('cloudinary', () => ({
   v2: { config: vi.fn(), uploader: { destroy: vi.fn() } },
 }))
 
+const logCaseDocumentAccess = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/document-access-log', () => ({
+  logCaseDocumentAccess: (...a: unknown[]) => logCaseDocumentAccess(...a),
+}))
+
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'
@@ -54,6 +59,26 @@ describe('GET /api/case-documents/[id] — requires the same access as PATCH/DEL
     vi.mocked(prisma.caseDocument.findUnique).mockResolvedValue({ id: 'doc-1', uploadedById: 'owner-1' } as never)
     const res = await GET(makeGetReq(), { params })
     expect(res.status).toBe(200)
+  })
+
+  it('logs a VIEW access-history entry once the document is successfully returned', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'owner-1', name: 'Owner', role: 'EMPLOYEE' } } as never)
+    vi.mocked(prisma.caseDocument.findUnique).mockResolvedValue({
+      id: 'doc-1', uploadedById: 'owner-1', caseId: 'case-1', title: 'สัญญาเช่า',
+    } as never)
+    await GET(makeGetReq(), { params })
+    expect(logCaseDocumentAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'owner-1', documentId: 'doc-1', caseId: 'case-1', action: 'VIEW',
+      }),
+    )
+  })
+
+  it('does not log anything when the caller is forbidden', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'stranger-1', role: 'EMPLOYEE' } } as never)
+    vi.mocked(prisma.caseDocument.findUnique).mockResolvedValue({ id: 'doc-1', uploadedById: 'owner-1' } as never)
+    await GET(makeGetReq(), { params })
+    expect(logCaseDocumentAccess).not.toHaveBeenCalled()
   })
 
   for (const role of ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']) {

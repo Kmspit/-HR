@@ -2,6 +2,11 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
+import { logCaseDocumentAccess } from '@/lib/document-access-log'
+
+function getIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 function configureCloudinary() {
   const name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
@@ -12,7 +17,7 @@ function configureCloudinary() {
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -33,6 +38,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const canView = CAN_MANAGE.includes(session.user.role) || doc.uploadedById === session.user.id
   if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  await logCaseDocumentAccess({
+    actorId:    session.user.id,
+    actorName:  session.user.name ?? '',
+    documentId: doc.id,
+    caseId:     doc.caseId,
+    action:     'VIEW',
+    detail:     `เปิดดูเอกสาร "${doc.title}"`,
+    ip:         getIp(req),
+    userAgent:  req.headers.get('user-agent'),
+  })
 
   return NextResponse.json(doc)
 }

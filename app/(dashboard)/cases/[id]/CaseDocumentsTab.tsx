@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FileText, Image as ImageIcon, File, Archive, Upload, X, Download, Eye,
-  Tag, Plus, Loader2, CheckCircle, FolderOpen,
+  Tag, Plus, Loader2, CheckCircle, FolderOpen, History,
 } from 'lucide-react'
 import { toast } from 'sonner'
+
+// Matches LOG_VIEWER_ROLES in app/api/activity-log/route.ts — the server is
+// the real gate (this endpoint 403s anyone else), this just hides the button
+// for roles that would only get a Forbidden anyway.
+const LOG_VIEWER_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 type DocFile = {
   id: string
@@ -160,6 +165,77 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
               >
                 <Download className="w-4 h-4" /> ดาวน์โหลด
               </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Access history modal ─────────────────────────────────────────────────────
+
+type AccessLogEntry = {
+  id: string
+  action: string
+  detail: string | null
+  createdAt: string
+  ip: string | null
+  actor: { id: string; name: string; role: string } | null
+}
+
+const ACCESS_ACTION_LABELS: Record<string, string> = { VIEW: 'เปิดดู', DOWNLOAD: 'ดาวน์โหลด' }
+
+function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+  const [entries, setEntries]   = useState<AccessLogEntry[]>([])
+  const [loading, setLoading]   = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/activity-log?docType=CaseDocument&docId=${doc.id}`)
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(d => { if (!cancelled) setEntries(d.items ?? []) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [doc.id])
+
+  return (
+    <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
+          <History className="w-4 h-4 text-white/40 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-medium truncate">ประวัติการเข้าถึง</p>
+            <p className="text-white/40 text-xs truncate">{doc.title}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-white/30" /></div>
+          ) : entries.length === 0 ? (
+            <p className="text-center text-white/30 text-sm py-10">ยังไม่มีประวัติการเข้าถึงเอกสารนี้</p>
+          ) : (
+            <div className="space-y-2">
+              {entries.map(e => (
+                <div key={e.id} className="flex items-start gap-3 bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5">
+                  <span className={`shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-semibold ${e.action === 'DOWNLOAD' ? 'bg-green-500/15 text-green-400' : 'bg-white/10 text-white/50'}`}>
+                    {ACCESS_ACTION_LABELS[e.action] ?? e.action}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm truncate">{e.actor?.name ?? 'ไม่ทราบผู้ใช้'}</p>
+                    <p className="text-white/40 text-[11px]">
+                      {new Date(e.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {e.ip ? ` · ${e.ip}` : ''}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -325,17 +401,21 @@ export default function CaseDocumentsTab({
   caseNumber,
   cloudName,
   canEdit,
+  role,
 }: {
   caseId: string
   caseNumber: string
   cloudName: string
   canEdit: boolean
+  role: string
 }) {
   const [docs, setDocs]             = useState<Doc[]>([])
   const [loading, setLoading]       = useState(true)
   const [previewDoc, setPreviewDoc] = useState<Doc | null>(null)
+  const [historyDoc, setHistoryDoc] = useState<Doc | null>(null)
   const [showUpload, setShowUpload] = useState(false)
   const [catFilter, setCatFilter]   = useState('')
+  const canViewHistory = LOG_VIEWER_ROLES.includes(role)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -430,6 +510,11 @@ export default function CaseDocumentsTab({
                       <Download className="w-4 h-4" />
                     </a>
                   )}
+                  {canViewHistory && (
+                    <button onClick={() => setHistoryDoc(doc)} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ประวัติการเข้าถึง">
+                      <History className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -438,6 +523,7 @@ export default function CaseDocumentsTab({
       )}
 
       {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
+      {historyDoc && <AccessHistoryModal doc={historyDoc} onClose={() => setHistoryDoc(null)} />}
       {showUpload && (
         <UploadMini
           caseId={caseId}

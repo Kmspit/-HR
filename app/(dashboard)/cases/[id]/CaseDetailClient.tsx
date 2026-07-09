@@ -388,6 +388,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
             caseNumber={c.caseNumber}
             cloudName={cloudName ?? ''}
             canEdit={canEdit}
+            role={role}
           />
         )}
 

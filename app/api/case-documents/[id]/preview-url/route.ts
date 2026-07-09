@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSignedUrl } from '@/lib/cloudinary-service'
+import { logCaseDocumentAccess } from '@/lib/document-access-log'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER', 'ADMIN']
 
@@ -24,12 +25,23 @@ export async function GET(
 
   const doc = await prisma.caseDocument.findUnique({
     where: { id },
-    select: { uploadedById: true },
+    select: { uploadedById: true, caseId: true, title: true },
   })
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const canView = CAN_MANAGE.includes(session.user.role) || doc.uploadedById === session.user.id
   if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  await logCaseDocumentAccess({
+    actorId:    session.user.id,
+    actorName:  session.user.name ?? '',
+    documentId: id,
+    caseId:     doc.caseId,
+    action:     'DOWNLOAD',
+    detail:     `ขอลิงก์ดาวน์โหลดไฟล์ของเอกสาร "${doc.title}"`,
+    ip:         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+    userAgent:  req.headers.get('user-agent'),
+  })
 
   const file = await prisma.caseDocumentFile.findFirst({
     where: { id: fileId, documentId: id },

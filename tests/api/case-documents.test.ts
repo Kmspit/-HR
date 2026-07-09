@@ -29,6 +29,11 @@ vi.mock('@/lib/cloudinary-service', () => ({
   getSignedUrl: vi.fn(),
 }))
 
+const logCaseDocumentAccess = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/document-access-log', () => ({
+  logCaseDocumentAccess: (...a: unknown[]) => logCaseDocumentAccess(...a),
+}))
+
 // ── Imports (after mocks) ──────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'
@@ -61,7 +66,26 @@ describe('GET /api/case-documents/[id]/preview-url', () => {
     // Default: caller is the document's uploader, so existing behavior tests
     // below reach the file lookup unless a test overrides this for the
     // access-control cases.
-    vi.mocked(prisma.caseDocument.findUnique).mockResolvedValue({ uploadedById: 'user-1' } as any)
+    vi.mocked(prisma.caseDocument.findUnique).mockResolvedValue(
+      { uploadedById: 'user-1', caseId: 'case-1', title: 'สัญญาเช่า' } as any,
+    )
+  })
+
+  it('logs a DOWNLOAD access-history entry once access is granted', async () => {
+    vi.mocked(auth).mockResolvedValue(userSession as any)
+    vi.mocked(prisma.caseDocumentFile.findFirst).mockResolvedValue(mockFile as any)
+    await previewGet(makePreviewReq('doc-1', 'file-1'), { params: Promise.resolve({ id: 'doc-1' }) })
+    expect(logCaseDocumentAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1', documentId: 'doc-1', caseId: 'case-1', action: 'DOWNLOAD',
+      }),
+    )
+  })
+
+  it('does not log anything when the caller is forbidden', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'stranger-1', role: 'EMPLOYEE' } } as any)
+    await previewGet(makePreviewReq('doc-1', 'file-1'), { params: Promise.resolve({ id: 'doc-1' }) })
+    expect(logCaseDocumentAccess).not.toHaveBeenCalled()
   })
 
   it('returns 401 when not authenticated', async () => {
