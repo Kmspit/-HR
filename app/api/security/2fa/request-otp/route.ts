@@ -58,7 +58,10 @@ export async function POST(req: NextRequest) {
   const { challenge, code } = await createOtp(user.id, 'TWO_FA_LOGIN', setup.channel)
 
   if (setup.channel === 'LINE' && user.lineUserId) {
-    await pushLineMessages(user.lineUserId, [
+    // Fire-and-forget — the response below is a fixed { challenge, sent: true }
+    // regardless of whether this push actually succeeds, so there's no reason
+    // to make the caller wait on it (this sits on the login critical path).
+    void pushLineMessages(user.lineUserId, [
       {
         type: 'text',
         text: `🔐 รหัส OTP ของคุณคือ: ${code}\n\nใช้ได้ภายใน 15 นาที\nอย่าแชร์รหัสนี้กับใคร`,

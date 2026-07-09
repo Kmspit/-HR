@@ -176,24 +176,25 @@ export async function POST(req: NextRequest) {
     }
     await applyChainToLeave(prisma, leave.id, defaultChain.id, session.user.id)
 
-    await runNotify(() =>
-      sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${days} วัน`),
-    )
+    // Fire-and-forget — the client's response doesn't depend on these LINE
+    // sends succeeding, so there's no reason to block on them one at a time.
+    // Both functions already catch and log their own errors internally
+    // (sendLineApprovalRequest logs via console.error; sendLineNotify does
+    // not log on failure — see the Phase B report for that pre-existing gap).
+    void sendLineNotify(`\n🔔 [เค เอ็ม เซอร์วิส พลัส] คำขอลาใหม่\nชื่อ: ${leave.user.name}\nจำนวน: ${days} วัน`)
     // Phase 14 — LINE approval card
-    await runNotify(() =>
-      sendLineApprovalRequest({
-        approvalType: 'LEAVE',
-        id: leave.id,
-        title: `ลา ${parsed.type} ${days} วัน`,
-        requesterName: leave.user.name,
-        details: [
-          { label: 'ประเภท', value: parsed.type },
-          { label: 'วันที่', value: `${parsed.startDate} — ${parsed.endDate}` },
-          { label: 'จำนวน', value: `${days} วัน` },
-          ...(parsed.reason ? [{ label: 'เหตุผล', value: parsed.reason.slice(0, 60) }] : []),
-        ],
-      }),
-    )
+    void sendLineApprovalRequest({
+      approvalType: 'LEAVE',
+      id: leave.id,
+      title: `ลา ${parsed.type} ${days} วัน`,
+      requesterName: leave.user.name,
+      details: [
+        { label: 'ประเภท', value: parsed.type },
+        { label: 'วันที่', value: `${parsed.startDate} — ${parsed.endDate}` },
+        { label: 'จำนวน', value: `${days} วัน` },
+        ...(parsed.reason ? [{ label: 'เหตุผล', value: parsed.reason.slice(0, 60) }] : []),
+      ],
+    })
 
     return NextResponse.json({ success: true, id: leave.id, chainApplied: true })
   } catch (err) {

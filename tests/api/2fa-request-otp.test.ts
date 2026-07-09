@@ -83,4 +83,16 @@ describe('POST /api/security/2fa/request-otp — per-account throttle in additio
     expect(res.status).toBe(401)
     expect(createOtp).not.toHaveBeenCalled()
   })
+
+  it('does not block the response on pushLineMessages resolving (fire-and-forget, not awaited)', async () => {
+    // Never resolves — if the route still awaited this, the test would hang/time out.
+    pushLineMessages.mockReturnValue(new Promise(() => {}))
+
+    const res = await POST(makeReq('token-1'))
+    const data = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(data).toEqual({ challenge: 'chal-1', sent: true })
+    expect(pushLineMessages).toHaveBeenCalledWith('line-1', expect.any(Array))
+  })
 })

@@ -129,6 +129,28 @@ describe('POST /api/leave', () => {
     expect(applyChainToLeave).toHaveBeenCalled()
   })
 
+  it('does not block the response on sendLineNotify/sendLineApprovalRequest resolving (fire-and-forget, not awaited)', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    const created = { id: 'leave-1', ...validLeave, userId: 'user-1', status: 'PENDING', user: { name: 'Employee' } }
+    vi.mocked(prisma.leaveRequest.create).mockResolvedValue(created as never)
+    vi.mocked(getDefaultChain).mockResolvedValue({ id: 'chain-1' } as never)
+
+    const { sendLineNotify } = await import('@/lib/notifications')
+    const { sendLineApprovalRequest } = await import('@/lib/line-notifications')
+    // Never-resolving promises — if the route still awaited these, this test
+    // would hang/time out instead of completing.
+    vi.mocked(sendLineNotify).mockReturnValue(new Promise(() => {}) as never)
+    vi.mocked(sendLineApprovalRequest).mockReturnValue(new Promise(() => {}) as never)
+
+    const res = await POST(makeJsonReq(validLeave))
+
+    expect(res.status).toBe(200)
+    expect(sendLineNotify).toHaveBeenCalledWith(expect.stringContaining('คำขอลาใหม่'))
+    expect(sendLineApprovalRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ approvalType: 'LEAVE', id: 'leave-1' }),
+    )
+  })
+
   it('ignores a forged client-supplied `days` and recomputes it from startDate/endDate', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
     const created = { id: 'leave-1', userId: 'user-1', status: 'PENDING', user: { name: 'Employee' } }
