@@ -1,14 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, LineChart, Line,
-} from 'recharts'
+import dynamic from 'next/dynamic'
 import {
   TrendingUp, TrendingDown, AlertCircle, Clock, CheckCircle,
   Building2, User2, Calendar, MapPin, Award, Target,
 } from 'lucide-react'
+
+const DepartmentBarChart = dynamic(
+  () => import('./PerformanceCharts').then((m) => m.DepartmentBarChart),
+  { ssr: false, loading: () => <ChartSkeleton /> },
+)
+const MonthlyTrendLineChart = dynamic(
+  () => import('./PerformanceCharts').then((m) => m.MonthlyTrendLineChart),
+  { ssr: false, loading: () => <ChartSkeleton /> },
+)
+
+function ChartSkeleton() {
+  return <div className="h-[220px] rounded-xl bg-slate-100 dark:bg-white/[0.03] animate-pulse" />
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -127,24 +137,6 @@ function SummaryCard({ label, value, icon, color, sub }: {
       <p className="text-2xl font-bold text-slate-900 dark:text-white">{value.toLocaleString()}</p>
       <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{label}</p>
       {sub && <p className="text-[12px] text-slate-400 dark:text-slate-600 mt-0.5">{sub}</p>}
-    </div>
-  )
-}
-
-// ── Custom Tooltip ─────────────────────────────────────────────────────────────
-
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 shadow-lg px-3 py-2.5 text-[12px]">
-      <p className="font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{label}</p>
-      {payload.map((p) => (
-        <div key={p.name} className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
-          <span className="text-slate-500 dark:text-slate-400">{p.name}:</span>
-          <span className="font-semibold text-slate-800 dark:text-slate-200">{p.value}</span>
-        </div>
-      ))}
     </div>
   )
 }
@@ -286,18 +278,7 @@ export default function PerformanceClient({
           {mounted && byDepartment.length > 0 && (
             <div className="px-5 pb-5">
               <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">กราฟเปรียบเทียบรายฝ่าย</p>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={byDepartment} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Bar dataKey="total"     name="ทั้งหมด"     fill="#64748b" radius={[4,4,0,0]} />
-                  <Bar dataKey="completed" name="เสร็จแล้ว"   fill="#22c55e" radius={[4,4,0,0]} />
-                  <Bar dataKey="overdue"   name="เกินกำหนด"   fill="#ef4444" radius={[4,4,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <DepartmentBarChart data={byDepartment} />
             </div>
           )}
         </div>
@@ -309,18 +290,7 @@ export default function PerformanceClient({
           <h2 className="text-[14px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2 mb-4">
             <TrendingUp className="w-4 h-4 text-green-500" />แนวโน้มรายเดือน (6 เดือนล่าสุด)
           </h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={monthlyTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-slate-800" />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
-              <Line type="monotone" dataKey="total"     name="งานทั้งหมด"  stroke="#64748b" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              <Line type="monotone" dataKey="completed" name="เสร็จแล้ว"   stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              <Line type="monotone" dataKey="overdue"   name="เกินกำหนด"   stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <MonthlyTrendLineChart data={monthlyTrend} />
         </div>
       )}
 
