@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 
-  const { allowed } = rateLimit(`forgot-pw-reset:${ip}`, 10, 60 * 60 * 1000)
+  const { allowed } = await rateLimit(`forgot-pw-reset:${ip}`, 10, 60 * 60 * 1000)
 
   if (!allowed) {
 

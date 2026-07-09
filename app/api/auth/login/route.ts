@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') ?? undefined
 
     const ipKey = ip?.split(',')[0]?.trim() || 'unknown'
-    const { allowed: ipAllowed } = rateLimit(`login:ip:${ipKey}`, 30, 15 * 60 * 1000)
+    const { allowed: ipAllowed } = await rateLimit(`login:ip:${ipKey}`, 30, 15 * 60 * 1000)
     if (!ipAllowed) {
       return NextResponse.json(
         { ok: false, error: 'RATE_LIMITED', message: 'ลองใหม่ภายหลัง' },

@@ -42,7 +42,7 @@ function emptyToNull(v?: string | null) {
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-    const { allowed } = rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)
+    const { allowed } = await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)
     if (!allowed) {
       return NextResponse.json(
         { error: 'คำขอมากเกินไป กรุณารอ 1 ชั่วโมงแล้วลองใหม่' },
@@ -68,20 +68,27 @@ export async function POST(req: NextRequest) {
 
     const nationalId = emptyToNull(data.nationalId)
 
+    // Generic on purpose — this endpoint is public/unauthenticated (anyone can
+    // reach it, no session at all), so a field-specific message here would let
+    // an outside caller enumerate which emails/phone numbers/national IDs
+    // already belong to an employee. Same generic message regardless of which
+    // field actually collided.
+    const DUPLICATE_MSG = 'ข้อมูลนี้มีอยู่ในระบบแล้ว'
+
     const existingEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } })
     if (existingEmail) {
-      return NextResponse.json({ error: 'อีเมลนี้มีการลงทะเบียนแล้ว' }, { status: 409 })
+      return NextResponse.json({ error: DUPLICATE_MSG }, { status: 409 })
     }
 
     const existingPhone = await prisma.user.findFirst({ where: { phone }, select: { id: true } })
     if (existingPhone) {
-      return NextResponse.json({ error: 'เบอร์โทรนี้มีการลงทะเบียนแล้ว' }, { status: 409 })
+      return NextResponse.json({ error: DUPLICATE_MSG }, { status: 409 })
     }
 
     if (nationalId) {
       const existingId = await prisma.user.findFirst({ where: { nationalId }, select: { id: true } })
       if (existingId) {
-        return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
+        return NextResponse.json({ error: DUPLICATE_MSG }, { status: 409 })
       }
     }
 
@@ -99,7 +106,10 @@ export async function POST(req: NextRequest) {
     }
     const lineUnique = await assertLineFieldsUnique(lineParsed)
     if (!lineUnique.ok) {
-      return NextResponse.json({ error: lineUnique.error }, { status: 409 })
+      // Same generic message here too — assertLineFieldsUnique's own message
+      // ("LINE ID นี้มีในระบบแล้ว") is fine for its other (authenticated)
+      // callers in profile/users routes, just not for this public endpoint.
+      return NextResponse.json({ error: DUPLICATE_MSG }, { status: 409 })
     }
 
     const passwordHash = await bcrypt.hash(data.password, 12)

@@ -13,7 +13,7 @@ import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const { allowed } = rateLimit(`2fa-otp:${ip}`, 10, 15 * 60 * 1000)
+  const { allowed } = await rateLimit(`2fa-otp:${ip}`, 10, 15 * 60 * 1000)
   if (!allowed) {
     return NextResponse.json({ error: 'คำขอมากเกินไป กรุณารอแล้วลองใหม่' }, { status: 429 })
   }
@@ -44,6 +44,15 @@ export async function POST(req: NextRequest) {
 
   if (!setup?.enabled) {
     return NextResponse.json({ error: '2FA not enabled' }, { status: 400 })
+  }
+
+  // Per-account throttle, in addition to the per-IP one above — a valid
+  // pendingToken already proves the caller knows this account's password, but
+  // without this an attacker who has it could still flood the account's LINE
+  // with OTP messages by spreading requests across IPs.
+  const { allowed: acctAllowed } = await rateLimit(`2fa-otp:acct:${user.id}`, 10, 15 * 60 * 1000)
+  if (!acctAllowed) {
+    return NextResponse.json({ error: 'คำขอมากเกินไป กรุณารอแล้วลองใหม่' }, { status: 429 })
   }
 
   const { challenge, code } = await createOtp(user.id, 'TWO_FA_LOGIN', setup.channel)

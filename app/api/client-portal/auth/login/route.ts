@@ -7,7 +7,7 @@ import { assertEnglishCredential } from '@/lib/english-input'
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const { allowed } = rateLimit(`cp-login:${ip}`, 10, 15 * 60 * 1000)
+  const { allowed } = await rateLimit(`cp-login:${ip}`, 10, 15 * 60 * 1000)
   if (!allowed) {
     return NextResponse.json({ error: 'ลองใหม่ภายหลัง' }, { status: 429 })
   }
