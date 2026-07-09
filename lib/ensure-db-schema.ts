@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900010
+export const CURRENT_SCHEMA_VERSION = 900011
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1108,6 +1108,44 @@ async function runEnsure(force = false): Promise<boolean> {
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_status              ON task_assignments (status)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_assignments_due_date             ON task_assignments (due_date)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notifications_userId                 ON notifications (userId)`)
+
+  // ── task_templates / task_dependencies — defined in schema.prisma and already
+  // consumed by app/api/tasks/templates + task dependency routes, but the tables
+  // were never added here, so every read/write against them 500'd in production ──
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS task_templates (
+      id TEXT NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT NOT NULL DEFAULT 'GENERAL',
+      task_type TEXT,
+      priority TEXT NOT NULL DEFAULT 'MEDIUM',
+      default_sla_hours INTEGER,
+      default_checklist TEXT NOT NULL DEFAULT '[]',
+      default_assignee_role TEXT,
+      department TEXT,
+      notes TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_by_id TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_templates_category  ON task_templates (category)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_templates_is_active ON task_templates (is_active)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS task_dependencies (
+      id TEXT NOT NULL PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      depends_on_id TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(task_id, depends_on_id)
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_dependencies_task_id       ON task_dependencies (task_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_dependencies_depends_on_id ON task_dependencies (depends_on_id)`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

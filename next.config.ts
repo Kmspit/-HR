@@ -12,6 +12,10 @@ const withPWA = require('next-pwa')({
     document: '/offline.html',
   },
   customWorkerDir: 'worker',
+  // app-build-manifest.json is an internal Next.js App Router build artifact —
+  // it isn't served publicly under /_next/*, so precaching it 404s on every
+  // deploy (its revision hash changes on every build) and fails SW install.
+  buildExcludes: [/app-build-manifest\.json$/],
 })
 
 const nextConfig: NextConfig = {
