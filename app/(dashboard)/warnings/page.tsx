@@ -41,7 +41,11 @@ export default async function WarningsPage({
   }
 
   let warnings: Awaited<ReturnType<typeof prisma.warning.findMany<{
-    include: {
+    select: {
+      id: true; userId: true; reason: true; description: true; fileUrl: true
+      sentToLine: true; lineDeliveryStatus: true; lineSentAt: true; lineUserId: true
+      lineErrorMessage: true; isAuto: true; month: true; year: true; lateCount: true
+      status: true; expiredAt: true; approvedAt: true; rejectedReason: true; createdAt: true
       user: { select: { name: true; employeeId: true; department: true; position: true } }
       approvedBy: { select: { id: true; name: true } }
       rejectedBy: { select: { id: true; name: true } }
@@ -55,7 +59,11 @@ export default async function WarningsPage({
         where: canManageWarnings
           ? (filterBranch ? { user: { branchId: filterBranch } } : {})
           : { userId: session.user.id, status: 'APPROVED' },
-        include: {
+        select: {
+          id: true, userId: true, reason: true, description: true, fileUrl: true,
+          sentToLine: true, lineDeliveryStatus: true, lineSentAt: true, lineUserId: true,
+          lineErrorMessage: true, isAuto: true, month: true, year: true, lateCount: true,
+          status: true, expiredAt: true, approvedAt: true, rejectedReason: true, createdAt: true,
           user:       { select: { name: true, employeeId: true, department: true, position: true } },
           approvedBy: { select: { id: true, name: true } },
           rejectedBy: { select: { id: true, name: true } },

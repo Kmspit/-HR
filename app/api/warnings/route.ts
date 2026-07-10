@@ -53,9 +53,12 @@ export async function GET(req: NextRequest) {
 
       const warnings = await prisma.warning.findMany({
         where,
-        include: {
+        select: {
+          id: true, userId: true, reason: true, description: true, fileUrl: true,
+          sentToLine: true, lineDeliveryStatus: true, lineSentAt: true, lineUserId: true,
+          lineErrorMessage: true, isAuto: true, month: true, year: true, lateCount: true,
+          status: true, expiredAt: true, approvedAt: true, rejectedReason: true, createdAt: true,
           user:       { select: { id: true, name: true, employeeId: true, department: true, position: true } },
-          issuedBy:   { select: { id: true, name: true } },
           approvedBy: { select: { id: true, name: true } },
           rejectedBy: { select: { id: true, name: true } },
         },
@@ -68,9 +71,12 @@ export async function GET(req: NextRequest) {
     // Employee: only their own APPROVED warnings
     const warnings = await prisma.warning.findMany({
       where: { userId: session.user.id, status: 'APPROVED' },
-      include: {
-        user:     { select: { id: true, name: true, employeeId: true, department: true } },
-        issuedBy: { select: { id: true, name: true } },
+      select: {
+        id: true, userId: true, reason: true, description: true, fileUrl: true,
+        sentToLine: true, lineDeliveryStatus: true, lineSentAt: true, lineUserId: true,
+        lineErrorMessage: true, isAuto: true, month: true, year: true, lateCount: true,
+        status: true, expiredAt: true, approvedAt: true, rejectedReason: true, createdAt: true,
+        user: { select: { id: true, name: true, employeeId: true, department: true } },
       },
       orderBy: { createdAt: 'desc' },
     })

@@ -33,6 +33,7 @@ export async function ensureWarningPdfStored(
 ): Promise<{ fileUrl: string } | null> {
   const warning = await prisma.warning.findUnique({
     where: { id: warningId },
+    omit: { pdfBase64: true },
     include: {
       user: {
         select: {
@@ -204,6 +205,7 @@ export async function deliverWarningToEmployee(
 
     const warning = await prisma.warning.findUnique({
       where: { id: warningId },
+      omit: { pdfBase64: true },
       include: {
         user: {
           select: { name: true, lineUserId: true },

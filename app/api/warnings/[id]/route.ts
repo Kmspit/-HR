@@ -23,6 +23,7 @@ export async function GET(
 
     const warning = await prisma.warning.findUnique({
       where: { id },
+      omit: { pdfBase64: true },
       include: {
         user:       { select: { id: true, name: true, employeeId: true, department: true, position: true } },
         issuedBy:   { select: { id: true, name: true } },
@@ -88,7 +89,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'action ต้องเป็น APPROVE | REJECT | ARCHIVE' }, { status: 400 })
     }
 
-    const warning = await prisma.warning.findUnique({ where: { id } })
+    const warning = await prisma.warning.findUnique({
+      where: { id },
+      select: { id: true, userId: true, level: true, reason: true, status: true },
+    })
     if (!warning) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const inScope =
@@ -150,6 +154,7 @@ export async function PATCH(
     const updated = await prisma.warning.update({
       where: { id },
       data: updateData,
+      omit: { pdfBase64: true },
       include: {
         user:       { select: { id: true, name: true } },
         approvedBy: { select: { id: true, name: true } },

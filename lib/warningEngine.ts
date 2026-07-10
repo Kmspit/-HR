@@ -55,6 +55,7 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
     // Check if already warned this month
     const existingWarning = await prisma.warning.findFirst({
       where: { userId: emp.id, month, year, isAuto: true },
+      select: { id: true },
     })
     if (existingWarning) continue
 

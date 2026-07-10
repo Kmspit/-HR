@@ -17,7 +17,11 @@ export default async function WarningDetailPage({
 
   const warning = await prisma.warning.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true, userId: true, level: true, reason: true, description: true, fileUrl: true,
+      isAuto: true, month: true, year: true, lateCount: true, status: true, expiredAt: true,
+      approvedAt: true, rejectedAt: true, archivedAt: true, rejectedReason: true,
+      approvalNote: true, createdAt: true,
       user:       { select: { id: true, name: true, employeeId: true, department: true, position: true } },
       issuedBy:   { select: { id: true, name: true } },
       approvedBy: { select: { id: true, name: true } },

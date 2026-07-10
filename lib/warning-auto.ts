@@ -26,6 +26,7 @@ export async function checkAndCreateAutoWarning(userId: string): Promise<boolean
   // Avoid duplicate warning in the same month (ignore REJECTED ones — user may get warned again next month)
   const existing = await prisma.warning.findFirst({
     where: { userId, isAuto: true, month, year, status: { not: 'REJECTED' } },
+    select: { id: true },
   })
   if (existing) return false
 
