@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900011
+export const CURRENT_SCHEMA_VERSION = 900013
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1141,11 +1141,172 @@ async function runEnsure(force = false): Promise<boolean> {
       task_id TEXT NOT NULL,
       depends_on_id TEXT NOT NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(task_id, depends_on_id)
+      UNIQUE(task_id, depends_on_id),
+      FOREIGN KEY (task_id)       REFERENCES task_assignments (id) ON DELETE CASCADE,
+      FOREIGN KEY (depends_on_id) REFERENCES task_assignments (id) ON DELETE CASCADE
     )
   `)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_dependencies_task_id       ON task_dependencies (task_id)`)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_dependencies_depends_on_id ON task_dependencies (depends_on_id)`)
+
+  // ── task_comments / task_checklists / task_timelines — same gap as above:
+  // defined in schema.prisma and read/written on every task GET/PATCH/create via
+  // fullTaskInclude (app/api/tasks/[id]/route.ts), but never provisioned here ──
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS task_comments (
+      id TEXT NOT NULL PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      parent_id TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (task_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+    )
+  `)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS task_checklists (
+      id TEXT NOT NULL PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      completed_by_id TEXT,
+      completed_at DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (task_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+    )
+  `)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS task_timelines (
+      id TEXT NOT NULL PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      description TEXT NOT NULL,
+      meta TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (task_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_timelines_task_id_created_at ON task_timelines (task_id, created_at)`)
+
+  // ── Retrofit ON DELETE CASCADE onto the 4 tables above for DBs that already
+  // had them created (without FK) by a prior deploy — SQLite can't ALTER TABLE
+  // to add a constraint, so this drops + recreates, guarded by a COUNT(*) = 0
+  // check per table. Deliberately NOT using runMigration() here: that helper
+  // swallows errors (log-and-continue) so markSchemaVersionApplied() below would
+  // still fire and this step would never retry. A thrown error here must escape
+  // runEnsure() uncaught so the version bump is skipped and cron retries it. ──
+  const mig3Applied = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+    `SELECT COUNT(*) AS cnt FROM schema_migrations WHERE version = 3`,
+  )
+  if (Number(mig3Applied[0]?.cnt ?? 0) === 0) {
+    const targets: { table: string; createSql: string; indexSqls: string[] }[] = [
+      {
+        table: 'task_dependencies',
+        createSql: `
+          CREATE TABLE task_dependencies (
+            id TEXT NOT NULL PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            depends_on_id TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(task_id, depends_on_id),
+            FOREIGN KEY (task_id)       REFERENCES task_assignments (id) ON DELETE CASCADE,
+            FOREIGN KEY (depends_on_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+          )
+        `,
+        indexSqls: [
+          `CREATE INDEX IF NOT EXISTS idx_task_dependencies_task_id       ON task_dependencies (task_id)`,
+          `CREATE INDEX IF NOT EXISTS idx_task_dependencies_depends_on_id ON task_dependencies (depends_on_id)`,
+        ],
+      },
+      {
+        table: 'task_comments',
+        createSql: `
+          CREATE TABLE task_comments (
+            id TEXT NOT NULL PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            parent_id TEXT,
+            createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+          )
+        `,
+        indexSqls: [],
+      },
+      {
+        table: 'task_checklists',
+        createSql: `
+          CREATE TABLE task_checklists (
+            id TEXT NOT NULL PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            is_completed INTEGER NOT NULL DEFAULT 0,
+            "order" INTEGER NOT NULL DEFAULT 0,
+            completed_by_id TEXT,
+            completed_at DATETIME,
+            createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+          )
+        `,
+        indexSqls: [],
+      },
+      {
+        table: 'task_timelines',
+        createSql: `
+          CREATE TABLE task_timelines (
+            id TEXT NOT NULL PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            description TEXT NOT NULL,
+            meta TEXT,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES task_assignments (id) ON DELETE CASCADE
+          )
+        `,
+        indexSqls: [
+          `CREATE INDEX IF NOT EXISTS idx_task_timelines_task_id_created_at ON task_timelines (task_id, created_at)`,
+        ],
+      },
+    ]
+
+    for (const t of targets) {
+      const fkRows = await prisma.$queryRawUnsafe<unknown[]>(`PRAGMA foreign_key_list(${t.table})`)
+      if (fkRows.length > 0) {
+        console.log(`[MIGRATION 3] ${t.table} already has FK constraints, skipping recreate`)
+        continue
+      }
+
+      const countRows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM ${t.table}`)
+      const count = Number(countRows[0]?.cnt ?? 0)
+      if (count > 0) {
+        throw new Error(
+          `[MIGRATION 3 ABORT] "${t.table}" has ${count} row(s) — refusing to DROP a non-empty table. ` +
+          `Manual migration required (backfill via a real ALTER-table-rebuild with data copy) before this can proceed.`,
+        )
+      }
+
+      await prisma.$executeRawUnsafe(`DROP TABLE ${t.table}`)
+      await prisma.$executeRawUnsafe(t.createSql)
+      for (const idxSql of t.indexSqls) {
+        await prisma.$executeRawUnsafe(idxSql)
+      }
+      console.log(`[MIGRATION 3] Recreated "${t.table}" with ON DELETE CASCADE FK + indexes`)
+    }
+
+    await prisma.$executeRawUnsafe(
+      `INSERT OR IGNORE INTO schema_migrations (id, version, name) VALUES ('mig_3', 3, 'task-tables-fk-cascade-recreate')`,
+    )
+    console.log('[MIGRATION APPLIED] 3 task-tables-fk-cascade-recreate')
+  }
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
