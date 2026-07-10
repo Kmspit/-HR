@@ -305,6 +305,11 @@ export function fmtDate(iso: string | null): string {
   })
 }
 
+export function toDateInputValue(iso: string | null): string {
+  if (!iso) return ''
+  return iso.slice(0, 10)
+}
+
 export function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('th-TH', {
     day: 'numeric', month: 'short', year: 'numeric',

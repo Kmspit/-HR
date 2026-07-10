@@ -8,7 +8,7 @@ import {
   FileText, Download, Trash2,
   Calendar, MapPin, User2,
   Square, CheckSquare, Send,
-  Ban, XCircle,
+  Ban, XCircle, Pencil, Save,
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
 import {
@@ -18,7 +18,7 @@ import {
   DEPT_OPTIONS, DEPT_LABEL, DEPT_COLOR, DEPT_TASK_OPTIONS,
   TYPE_LABEL, PRIORITY_LABEL, PRIORITY_TEXT,
   WORKLOAD_CLS, ACCEPTED_FILE_TYPES,
-  fmtDate, fmtDateTime, isOverdue, effectiveStatus,
+  fmtDate, fmtDateTime, toDateInputValue, isOverdue, effectiveStatus,
   parseLinks, parseNotes, isValidUrl, fmtFileSize, fileIcon,
   StatusBadge, DeptBadge, OverdueSeverityBadge, BlockedBadge,
   AttachmentItem, FileUploadZone,
@@ -354,6 +354,23 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
   const [comments, setComments] = useState<TaskCommentItem[]>(task.comments ?? [])
   const [loadedDetail, setLoadedDetail] = useState(false)
 
+  const [isEditing,            setIsEditing]            = useState(false)
+  const [editCaseNumber,       setEditCaseNumber]       = useState('')
+  const [editClientName,       setEditClientName]       = useState('')
+  const [editTaskDepartment,   setEditTaskDepartment]   = useState('')
+  const [editType,             setEditType]             = useState('')
+  const [editTitle,            setEditTitle]            = useState('')
+  const [editDescription,      setEditDescription]      = useState('')
+  const [editPriority,         setEditPriority]         = useState('')
+  const [editStartDate,        setEditStartDate]        = useState('')
+  const [editDueDate,          setEditDueDate]          = useState('')
+  const [editDueTime,          setEditDueTime]          = useState('')
+  const [editAppointmentDate,  setEditAppointmentDate]  = useState('')
+  const [editCourtDate,        setEditCourtDate]        = useState('')
+  const [editAppointmentPlace, setEditAppointmentPlace] = useState('')
+  const [editNotes,            setEditNotes]            = useState('')
+  const [editLinks,            setEditLinks]            = useState<TaskLink[]>([])
+
   useEffect(() => {
     if (loadedDetail) return
     setLoadedDetail(true)
@@ -376,6 +393,8 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
   const noteHist      = parseNotes(task.progressNotes)
   const eff           = effectiveStatus(task)
 
+  const editInputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-green-400/60'
+
   const isWorkable = !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(task.status)
   const canStart   = ['PENDING', 'NEW', 'ASSIGNED'].includes(task.status)
   const canWork    = ['IN_PROGRESS', 'REVISION', 'WAITING_DOC'].includes(task.status)
@@ -388,6 +407,68 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
       onUpdated(data.task)
+    })
+  }
+
+  const editTaskTypeOptions = DEPT_TASK_OPTIONS[editTaskDepartment] ?? DEPT_TASK_OPTIONS['']
+
+  function startEdit() {
+    setEditCaseNumber(task.caseNumber ?? '')
+    setEditClientName(task.clientName ?? '')
+    setEditTaskDepartment(task.taskDepartment ?? '')
+    setEditType(task.type)
+    setEditTitle(task.title)
+    setEditDescription(task.description ?? '')
+    setEditPriority(task.priority)
+    setEditStartDate(toDateInputValue(task.startDate))
+    setEditDueDate(toDateInputValue(task.dueDate))
+    setEditDueTime(task.dueTime ?? '')
+    setEditAppointmentDate(toDateInputValue(task.appointmentDate))
+    setEditCourtDate(toDateInputValue(task.courtDate))
+    setEditAppointmentPlace(task.appointmentPlace ?? '')
+    setEditNotes(task.notes ?? '')
+    setEditLinks(parseLinks(task.taskLinks))
+    setError(null)
+    setIsEditing(true)
+  }
+
+  function handleEditDeptChange(d: string) {
+    setEditTaskDepartment(d)
+    const opts = DEPT_TASK_OPTIONS[d] ?? DEPT_TASK_OPTIONS['']
+    setEditType(opts[0].value)
+  }
+
+  function saveEdit() {
+    if (!editTitle.trim()) { setError('กรุณาระบุชื่องาน'); return }
+    const cleanLinks = editLinks.filter((l) => l.url.trim())
+    for (const lk of cleanLinks) {
+      if (!isValidUrl(lk.url.trim())) { setError(`URL ไม่ถูกต้อง: ${lk.url}`); return }
+    }
+    setError(null)
+    startTransition(async () => {
+      const { ok, data } = await apiJson<{ task: Task; error?: string }>(`/api/tasks/${task.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caseNumber:       editCaseNumber.trim()       || null,
+          clientName:       editClientName.trim()       || null,
+          taskDepartment:   editTaskDepartment          || null,
+          type:             editType,
+          title:            editTitle.trim(),
+          description:      editDescription.trim()      || null,
+          priority:         editPriority,
+          startDate:        editStartDate               || null,
+          dueDate:          editDueDate                 || null,
+          dueTime:          editDueTime                 || null,
+          appointmentDate:  editAppointmentDate         || null,
+          courtDate:        editCourtDate               || null,
+          appointmentPlace: editAppointmentPlace.trim() || null,
+          notes:            editNotes.trim()            || null,
+          taskLinks:        cleanLinks.map(({ _key: _, ...rest }) => rest),
+        }),
+      })
+      if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
+      onUpdated(data.task)
+      setIsEditing(false)
     })
   }
 
@@ -445,10 +526,18 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                 </p>
               )}
             </div>
-            <button type="button" onClick={onClose}
-              className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex-shrink-0 flex items-center gap-1">
+              {(isAssigner || isFullAdmin) && isWorkable && !isEditing && (
+                <button type="button" onClick={startEdit} title="แก้ไขงาน"
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+              <button type="button" onClick={onClose}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div className="flex-shrink-0 flex gap-1 px-5 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
@@ -479,7 +568,143 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
               <TimelineSection taskId={task.id} />
             )}
 
-            {detailTab === 'info' && <>
+            {detailTab === 'info' && isEditing && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เลขคดี / รหัสงาน</label>
+                    <input type="text" value={editCaseNumber} onChange={(e) => setEditCaseNumber(e.target.value)} className={editInputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ชื่อลูกค้า</label>
+                    <input type="text" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} className={editInputCls} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ฝ่าย</label>
+                    <select value={editTaskDepartment} onChange={(e) => handleEditDeptChange(e.target.value)} className={editInputCls}>
+                      {DEPT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ประเภทงาน</label>
+                    <select value={editType} onChange={(e) => setEditType(e.target.value)} className={editInputCls}>
+                      {editTaskTypeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">
+                    ชื่องาน / รายละเอียดสั้น <span className="text-red-500">*</span>
+                  </label>
+                  <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={editInputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">รายละเอียดงาน</label>
+                  <textarea rows={3} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className={`${editInputCls} resize-none`} />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ความสำคัญ</label>
+                  <select value={editPriority} onChange={(e) => setEditPriority(e.target.value)} className={editInputCls}>
+                    <option value="LOW">⚪ ต่ำ</option>
+                    <option value="MEDIUM">🟡 ปานกลาง</option>
+                    <option value="HIGH">🟠 สูง</option>
+                    <option value="URGENT">🔴 เร่งด่วน</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">วันเริ่มงาน</label>
+                    <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className={editInputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">กำหนดเสร็จ</label>
+                    <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className={editInputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เวลากำหนดส่ง</label>
+                    <input type="time" value={editDueTime} onChange={(e) => setEditDueTime(e.target.value)} className={editInputCls} />
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-50/60 dark:bg-amber-500/[0.05] border border-amber-100 dark:border-amber-500/15 px-4 py-3 space-y-3">
+                  <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />วันนัดหมาย (ถ้ามี)
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดหมาย</label>
+                      <input type="date" value={editAppointmentDate} onChange={(e) => setEditAppointmentDate(e.target.value)} className={editInputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดศาล</label>
+                      <input type="date" value={editCourtDate} onChange={(e) => setEditCourtDate(e.target.value)} className={editInputCls} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">สถานที่นัด</label>
+                    <input type="text" value={editAppointmentPlace} onChange={(e) => setEditAppointmentPlace(e.target.value)} className={editInputCls} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">หมายเหตุ</label>
+                  <textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className={`${editInputCls} resize-none`} />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</label>
+                    <button type="button" onClick={() => setEditLinks((p) => [...p, { _key: String(Date.now()), label: '', url: '' }])}
+                      className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400 hover:text-green-700 font-medium">
+                      <Plus className="w-3.5 h-3.5" />เพิ่มลิงก์
+                    </button>
+                  </div>
+                  {editLinks.length > 0 && (
+                    <div className="space-y-2">
+                      {editLinks.map((lk, i) => (
+                        <div key={lk._key ?? String(i)} className="flex gap-2 items-start">
+                          <div className="flex-1 space-y-1.5">
+                            <input type="text" value={lk.label}
+                              onChange={(e) => setEditLinks((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
+                              placeholder="ชื่อลิงก์ (ไม่บังคับ)" className={editInputCls} />
+                            <input type="url" value={lk.url}
+                              onChange={(e) => setEditLinks((p) => p.map((x, idx) => idx === i ? { ...x, url: e.target.value } : x))}
+                              placeholder="https://..." className={editInputCls} />
+                          </div>
+                          <button type="button" onClick={() => setEditLinks((p) => p.filter((_, idx) => idx !== i))}
+                            className="flex-shrink-0 mt-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {error && <p className="rounded-xl text-[13px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2">{error}</p>}
+
+                <div className="flex gap-2 pt-1">
+                  <button type="button" disabled={isPending} onClick={() => setIsEditing(false)}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.10] transition-colors disabled:opacity-50">
+                    ยกเลิก
+                  </button>
+                  <button type="button" disabled={isPending} onClick={saveEdit}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50">
+                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    บันทึกการแก้ไข
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'info' && !isEditing && <>
 
             <div className="flex flex-wrap gap-2 items-center">
               <StatusBadge status={eff} />
