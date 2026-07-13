@@ -448,7 +448,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   // ── หน้าตรวจสอบรูปก่อนยืนยัน — เต็มจอ ──
   if (reviewCapture) {
     return (
-      <div className="fixed inset-0 z-[90] bg-black flex flex-col">
+      <div className="fixed inset-x-0 top-0 z-[90] h-[100dvh] bg-black flex flex-col">
         <div className="relative flex-1 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -456,7 +456,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
             alt="รูปที่ถ่ายได้ — ตรวจสอบก่อนยืนยัน"
             className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
           />
-          <div className="absolute top-4 left-0 right-0 flex justify-center px-4 pointer-events-none">
+          <div className="absolute top-[max(1rem,env(safe-area-inset-top))] left-0 right-0 flex justify-center px-4 pointer-events-none">
             <span className="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-black/70 text-cyan-200">
               ตรวจสอบรูปก่อนยืนยัน
             </span>
@@ -466,7 +466,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-50"
+              className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-50"
               aria-label="ยกเลิก"
             >
               <X className="w-5 h-5" />
@@ -510,7 +510,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
 
   // ── หน้ากล้องสแกน — เต็มจอ ──
   return (
-    <div className="fixed inset-0 z-[90] bg-black">
+    <div className="fixed inset-x-0 top-0 z-[90] h-[100dvh] bg-black">
       <CameraPreviewVideoWithRef
         videoRef={videoRef}
         stream={stream}
@@ -524,14 +524,14 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         <button
           type="button"
           onClick={onCancel}
-          className="absolute top-4 left-4 z-[91] flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"
+          className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 z-[91] flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"
           aria-label="ยกเลิก"
         >
           <X className="w-5 h-5" />
         </button>
       )}
 
-      <div className="absolute inset-x-0 top-4 z-[91] flex flex-col items-center gap-1.5 px-16 pointer-events-none">
+      <div className="absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-[91] flex flex-col items-center gap-1.5 px-16 pointer-events-none">
         <p className="max-w-sm rounded-full bg-black/70 px-4 py-2 text-center text-sm font-medium text-white">
           {busy ? (
             <span className="inline-flex items-center gap-2">

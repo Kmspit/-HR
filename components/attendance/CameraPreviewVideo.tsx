@@ -83,7 +83,7 @@ export default function CameraPreviewVideo({
         )}
       />
       {overlayLabel && (
-        <div className={cn('absolute left-0 right-0 text-center pointer-events-none z-10', fullscreen ? 'bottom-8' : 'bottom-3')}>
+        <div className={cn('absolute left-0 right-0 text-center pointer-events-none z-10', fullscreen ? 'bottom-[max(2rem,env(safe-area-inset-bottom))]' : 'bottom-3')}>
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-black/70 text-cyan-200">
             {overlayLabel}
           </span>
@@ -176,7 +176,7 @@ export function CameraPreviewVideoWithRef({
         )}
       />
       {overlayLabel && (
-        <div className={cn('absolute left-0 right-0 text-center pointer-events-none z-10', fullscreen ? 'bottom-8' : 'bottom-3')}>
+        <div className={cn('absolute left-0 right-0 text-center pointer-events-none z-10', fullscreen ? 'bottom-[max(2rem,env(safe-area-inset-bottom))]' : 'bottom-3')}>
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-black/70 text-cyan-200">
             {overlayLabel}
           </span>
