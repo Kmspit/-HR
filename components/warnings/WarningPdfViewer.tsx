@@ -89,7 +89,7 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
         ref={containerRef}
         className={`flex flex-col bg-slate-900 border border-white/10 shadow-2xl overflow-hidden transition-all duration-200 ${
           fullscreen
-            ? 'fixed inset-0 z-[90] rounded-none'
+            ? 'fixed inset-x-0 top-0 h-[100dvh] z-[90] rounded-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
             : 'w-full sm:max-w-4xl max-h-[100dvh] sm:max-h-[92dvh] rounded-t-2xl sm:rounded-2xl'
         }`}
         onClick={(e) => e.stopPropagation()}
