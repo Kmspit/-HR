@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, type FocusEvent } from 'react'
 import {
   Plus, X, Clock, CheckCircle, AlertCircle,
   RotateCcw, Eye, Loader2, ClipboardList,
@@ -23,6 +23,19 @@ import {
   StatusBadge, DeptBadge, OverdueSeverityBadge, BlockedBadge,
   AttachmentItem, FileUploadZone,
 } from './tasks-constants'
+
+// On iOS/Android the on-screen keyboard can cover a field that was already
+// scrolled into view before the keyboard opened — re-centering it once the
+// keyboard finishes animating in is more reliable than computing viewport
+// math by hand. Delegated on the scroll container so every field is covered
+// without wiring an onFocus handler per input.
+function scrollFocusedFieldIntoView(e: FocusEvent<HTMLElement>) {
+  const target = e.target
+  if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return
+  window.setTimeout(() => {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, 300)
+}
 
 // ── Checklist Section ────────────────────────────────────────────────────────
 
@@ -554,7 +567,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4 scroll-pb-24" onFocusCapture={scrollFocusedFieldIntoView}>
 
             {detailTab === 'checklist' && (
               <ChecklistSection taskId={task.id} initial={checklist} currentUserId={userId} />
@@ -1115,7 +1128,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain scroll-pb-24" onFocusCapture={scrollFocusedFieldIntoView}>
             <div className="px-5 py-4 space-y-4">
 
               {templates.length > 0 && (
