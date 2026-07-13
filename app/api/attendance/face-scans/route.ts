@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import {
   FACE_SCAN_TYPE_LABEL,
-  resolveScanListImageUrl,
   type FaceScanType,
 } from '@/lib/attendance-face-scan'
 import { branchUserWhere, buildBranchScope, parseBranchQueryParam } from '@/lib/branch-scope'
@@ -66,6 +65,16 @@ export async function GET(req: NextRequest) {
         ...(filterUserIds ? { userId: { in: filterUserIds } } : { userId: targetUserId }),
         scanTime: { gte: startDate, lte: endDate },
       },
+      // Explicit select — this had none before, so it silently pulled `imageData` (base64
+      // DB-fallback image bytes, up to ~1.4MB/row) for every row despite mapScan() never
+      // reading it. Same over-fetch shape as the warnings.pdfBase64 issue fixed in Phase D.
+      select: {
+        id: true, userId: true, scanType: true, scanTime: true,
+        confidenceScore: true, matchScore: true, livenessScore: true,
+        matched: true, faceMatched: true,
+        cloudinaryPublicId: true, secureUrl: true, storageProvider: true,
+        locationName: true, address: true, lat: true, lng: true, deviceInfo: true,
+      },
       take: limit,
     })
 
@@ -114,10 +123,7 @@ function mapScan(r: {
   matched: boolean
   faceMatched: boolean
   cloudinaryPublicId: string | null
-  objectKey: string | null
-  imageUrl: string | null
   secureUrl: string | null
-  format: string | null
   storageProvider: string
   locationName: string | null
   address: string | null
@@ -146,7 +152,6 @@ function mapScan(r: {
     lng: r.lng,
     deviceInfo: r.deviceInfo,
     imageApiUrl: `/api/attendance/scan-image/${r.id}`,
-    imageDisplayUrl: resolveScanListImageUrl(r),
     employee: r.user,
   }
 }

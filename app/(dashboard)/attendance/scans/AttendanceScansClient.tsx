@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import {
   Loader2,
   ScanFace,
@@ -13,6 +14,12 @@ import {
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
 import { formatDateTimeBangkok } from '@/lib/datetime-bangkok'
+
+/** Resized/compressed preview via the scan-image proxy's sharp resize (same pattern as
+ *  AttendancePhotos.tsx) — falls back to the full-resolution imageApiUrl on load error. */
+function thumbUrl(imageApiUrl: string): string {
+  return `${imageApiUrl}?w=640`
+}
 
 const THAI_MONTHS = [
   'มกราคม',
@@ -44,7 +51,6 @@ type ScanRow = {
   address: string | null
   deviceInfo: string | null
   imageApiUrl: string
-  imageDisplayUrl: string
   employee: Employee
 }
 
@@ -79,7 +85,7 @@ function scanTypeStyle(scanType: string): { badge: string; ring: string } {
 }
 
 function ScanPhoto({ scan }: { scan: ScanRow }) {
-  const [src, setSrc] = useState(scan.imageDisplayUrl || scan.imageApiUrl)
+  const [src, setSrc] = useState(thumbUrl(scan.imageApiUrl))
   const [failed, setFailed] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -100,14 +106,14 @@ function ScanPhoto({ scan }: { scan: ScanRow }) {
       className={`relative aspect-[4/5] overflow-hidden rounded-xl bg-slate-900 ring-1 ${style.ring}`}
     >
       {!failed ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={src}
           alt={`สแกน ${scan.employee.name}`}
-          className={`h-full w-full object-cover transition-opacity duration-300 ${
+          fill
+          unoptimized
+          className={`object-cover transition-opacity duration-300 ${
             loading ? 'opacity-0' : 'opacity-100'
           }`}
-          loading="lazy"
           onLoad={() => setLoading(false)}
           onError={onError}
         />
