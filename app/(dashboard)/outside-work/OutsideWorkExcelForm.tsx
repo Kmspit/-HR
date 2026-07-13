@@ -996,13 +996,13 @@ export default function OutsideWorkExcelForm({
                             ? <div className="flex flex-col items-center gap-0.5 py-0.5">
                                 <OutsideWorkStatusBadge slot={morn} />
                                 {canApproveSlotId(morn.id) && (
-                                  <div className="flex gap-0.5 mt-0.5">
+                                  <div className="flex flex-col gap-2 mt-1">
                                     <button onClick={() => handleApprove(morn.id!, 'approve')} disabled={approvingId === morn.id}
-                                      title="อนุมัติ" className="p-0.5 rounded hover:bg-green-100 text-green-800 transition disabled:opacity-40">
+                                      title="อนุมัติ" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-green-100 active:bg-green-200 text-green-800 transition disabled:opacity-40 touch-manipulation">
                                       {approvingId === morn.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                                     </button>
                                     <button onClick={() => handleApprove(morn.id!, 'reject')} disabled={approvingId === morn.id}
-                                      title="ปฏิเสธ" className="p-0.5 rounded hover:bg-red-100 text-red-800 transition disabled:opacity-40">
+                                      title="ปฏิเสธ" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-red-100 active:bg-red-200 text-red-800 transition disabled:opacity-40 touch-manipulation">
                                       <XCircle className="w-3 h-3" />
                                     </button>
                                   </div>
@@ -1022,14 +1022,14 @@ export default function OutsideWorkExcelForm({
                         {/* จัดการ — พิมพ์ / ลบ */}
                         <td className={`${TD} ${stripe} text-center print:hidden`}>
                           {morn.id && (
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex flex-col items-center justify-center gap-2">
                               <button type="button" onClick={() => window.open(`/outside-work/${morn.id}/print`, '_blank')}
-                                title="พิมพ์" className="p-1 rounded hover:bg-gray-200 text-gray-700 transition">
+                                title="พิมพ์" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition touch-manipulation">
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
                               {(morn.userId === userId || canApproveOutside) && isPendingSlot(morn) && (
                                 <button type="button" onClick={() => deleteSlot(morn.id!)} disabled={deletingId === morn.id}
-                                  title="ลบ" className="p-1 rounded hover:bg-red-100 text-red-700 transition disabled:opacity-40">
+                                  title="ลบ" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-red-100 active:bg-red-200 text-red-700 transition disabled:opacity-40 touch-manipulation">
                                   {deletingId === morn.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                                 </button>
                               )}
@@ -1122,13 +1122,13 @@ export default function OutsideWorkExcelForm({
                             ? <div className="flex flex-col items-center gap-0.5 py-0.5">
                                 <OutsideWorkStatusBadge slot={aftn} />
                                 {canApproveSlotId(aftn.id) && (
-                                  <div className="flex gap-0.5 mt-0.5">
+                                  <div className="flex flex-col gap-2 mt-1">
                                     <button onClick={() => handleApprove(aftn.id!, 'approve')} disabled={approvingId === aftn.id}
-                                      title="อนุมัติ" className="p-0.5 rounded hover:bg-green-100 text-green-800 transition disabled:opacity-40">
+                                      title="อนุมัติ" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-green-100 active:bg-green-200 text-green-800 transition disabled:opacity-40 touch-manipulation">
                                       {approvingId === aftn.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                                     </button>
                                     <button onClick={() => handleApprove(aftn.id!, 'reject')} disabled={approvingId === aftn.id}
-                                      title="ปฏิเสธ" className="p-0.5 rounded hover:bg-red-100 text-red-800 transition disabled:opacity-40">
+                                      title="ปฏิเสธ" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-red-100 active:bg-red-200 text-red-800 transition disabled:opacity-40 touch-manipulation">
                                       <XCircle className="w-3 h-3" />
                                     </button>
                                   </div>
@@ -1147,14 +1147,14 @@ export default function OutsideWorkExcelForm({
                         {/* จัดการ — พิมพ์ / ลบ */}
                         <td className={`${TD} ${stripe} text-center print:hidden`}>
                           {aftn.id && (
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex flex-col items-center justify-center gap-2">
                               <button type="button" onClick={() => window.open(`/outside-work/${aftn.id}/print`, '_blank')}
-                                title="พิมพ์" className="p-1 rounded hover:bg-gray-200 text-gray-700 transition">
+                                title="พิมพ์" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition touch-manipulation">
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
                               {(aftn.userId === userId || canApproveOutside) && isPendingSlot(aftn) && (
                                 <button type="button" onClick={() => deleteSlot(aftn.id!)} disabled={deletingId === aftn.id}
-                                  title="ลบ" className="p-1 rounded hover:bg-red-100 text-red-700 transition disabled:opacity-40">
+                                  title="ลบ" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-red-100 active:bg-red-200 text-red-700 transition disabled:opacity-40 touch-manipulation">
                                   {deletingId === aftn.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                                 </button>
                               )}

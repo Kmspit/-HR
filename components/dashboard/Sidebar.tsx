@@ -255,12 +255,13 @@ function SidebarContent({
         {!collapsed && !onToggleCollapsed && onClose && (
           <button
             onClick={onClose}
-            className="ml-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg
-              dark:text-slate-500 dark:hover:bg-white/[0.08] dark:hover:text-slate-300
-              text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="ml-1 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border transition-all
+              border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm
+              dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-400 dark:hover:bg-white/[0.1] dark:hover:text-white"
+            aria-label="ปิดเมนู"
             title="ปิดเมนู"
           >
-            <Icon d={ICONS.close} className="h-3.5 w-3.5" />
+            <Icon d={ICONS.close} className="h-4 w-4" />
           </button>
         )}
       </div>
