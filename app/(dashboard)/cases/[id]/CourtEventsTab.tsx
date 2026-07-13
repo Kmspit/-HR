@@ -298,7 +298,7 @@ function CourtEventModal({ caseId, editing, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+      <div className="w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06] sticky top-0 bg-white dark:bg-slate-900 z-10">
           <h2 className="font-bold text-slate-900 dark:text-white">{editing ? 'แก้ไขนัดศาล' : 'เพิ่มนัดศาล'}</h2>
           <button type="button" onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400">

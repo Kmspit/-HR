@@ -113,7 +113,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
           <FileTypeIcon mimeType={f.mimeType} format={f.format} resourceType={f.resourceType} />
@@ -203,7 +203,7 @@ function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void })
 
   return (
     <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
           <History className="w-4 h-4 text-white/40 shrink-0" />

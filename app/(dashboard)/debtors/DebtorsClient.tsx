@@ -279,7 +279,7 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
           {/* Mobile: show detail as overlay */}
           {selected && (
             <div className="md:hidden fixed inset-0 z-40 bg-black/50 flex flex-col justify-end">
-              <div className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[88vh] overflow-y-auto">
+              <div className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[88dvh] overflow-y-auto">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/10 sticky top-0 bg-white dark:bg-slate-900 z-10">
                   <span className="font-semibold text-sm text-gray-900 dark:text-white">{selected.firstName} {selected.lastName}</span>
                   <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1">✕</button>

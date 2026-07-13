@@ -624,7 +624,7 @@ export default function PayrollClient({
 
       {detailRow && detailRow.hasPayroll && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl max-h-[85dvh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-white font-semibold flex items-center gap-2">
