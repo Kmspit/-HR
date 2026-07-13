@@ -187,7 +187,10 @@ async function fetchUrlImageBuffer(url: string): Promise<{ buffer: Buffer; mime:
   }
 }
 
-export async function getFaceScanImageBuffer(scanId: string): Promise<{
+export async function getFaceScanImageBuffer(
+  scanId: string,
+  options?: { width?: number },
+): Promise<{
   buffer: Buffer
   mime: string
 } | null> {
@@ -208,7 +211,7 @@ export async function getFaceScanImageBuffer(scanId: string): Promise<{
 
   const publicId = row.cloudinaryPublicId ?? row.objectKey
   if (publicId) {
-    const fromCloud = await fetchImageBuffer(publicId)
+    const fromCloud = await fetchImageBuffer(publicId, options)
     if (fromCloud) return fromCloud
     const fresh = resolveScanListImageUrl({ id: scanId, ...row })
     if (fresh.startsWith('https://')) {

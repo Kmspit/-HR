@@ -1,7 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Camera, X } from 'lucide-react'
+import Image from 'next/image'
+import { Camera, X, Maximize2 } from 'lucide-react'
+
+/** Resized/compressed preview — same optimizeImage() Cloudinary transform used by the scans list,
+ *  applied server-side in the scan-image proxy route. Omit `?w=` entirely to get the full-resolution
+ *  original (used by the "ดูรูปเต็ม" link below). */
+function thumbUrl(url: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}w=640`
+}
 
 export type AttendancePhotoItem = {
   key: string
@@ -37,11 +45,12 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
               className="text-left rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 hover:border-cyan-400 dark:hover:border-cyan-500/40 transition group"
             >
               <div className="aspect-square bg-slate-100 dark:bg-black/40 relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.url!}
+                <Image
+                  src={thumbUrl(item.url!)}
                   alt={item.label}
-                  className="w-full h-full object-cover scale-x-[-1] group-hover:opacity-90"
+                  fill
+                  unoptimized
+                  className="object-cover scale-x-[-1] group-hover:opacity-90"
                 />
               </div>
               <div className="p-2 bg-slate-50 dark:bg-white/5">
@@ -79,12 +88,24 @@ export default function AttendancePhotos({ items, title = 'รูปที่บ
           </button>
           <div className="max-w-sm w-full space-y-3" onClick={(e) => e.stopPropagation()}>
             <p className="text-center text-sm font-semibold text-white">{lightbox.label}</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={lightbox.url}
-              alt={lightbox.label}
-              className="w-full rounded-2xl object-contain max-h-[70vh] scale-x-[-1] border border-white/20"
-            />
+            <div className="relative w-full h-[70vh] rounded-2xl overflow-hidden border border-white/20">
+              <Image
+                src={thumbUrl(lightbox.url)}
+                alt={lightbox.label}
+                fill
+                unoptimized
+                className="object-contain scale-x-[-1]"
+              />
+            </div>
+            <a
+              href={lightbox.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 text-[12px] text-white/70 hover:text-white transition-colors"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              ดูรูปเต็มความละเอียด
+            </a>
           </div>
         </div>
       )}

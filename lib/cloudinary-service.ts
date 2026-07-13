@@ -20,6 +20,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { v2 as cloudinary } from 'cloudinary'
+import sharp from 'sharp'
 import { prisma } from '@/lib/prisma'
 
 const ROOT = (process.env.CLOUDINARY_ROOT_FOLDER ?? 'hr-system').replace(/^\/|\/$/g, '')
@@ -330,7 +331,17 @@ export function optimizeImage(
   }
 }
 
-export async function fetchImageBuffer(publicId: string): Promise<{
+/**
+ * Fetches the original asset via getSignedUrl() (the admin download API — properly
+ * time-limited via expires_at, unlike optimizeImage()'s auth_token delivery, which
+ * 401s for this account until "Strict Transformations" is enabled in the Cloudinary
+ * dashboard). When `width` is given, resizes/compresses with sharp after downloading
+ * rather than depending on that broken Cloudinary delivery path.
+ */
+export async function fetchImageBuffer(
+  publicId: string,
+  options?: { width?: number },
+): Promise<{
   buffer: Buffer
   mime: string
 } | null> {
@@ -339,10 +350,22 @@ export async function fetchImageBuffer(publicId: string): Promise<{
   try {
     const res = await fetch(url)
     if (!res.ok) return null
-    return {
-      buffer: Buffer.from(await res.arrayBuffer()),
-      mime: res.headers.get('content-type') ?? 'image/jpeg',
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const mime = res.headers.get('content-type') ?? 'image/jpeg'
+
+    if (options?.width) {
+      try {
+        const resized = await sharp(buffer)
+          .resize({ width: options.width, withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toBuffer()
+        return { buffer: resized, mime: 'image/jpeg' }
+      } catch (err) {
+        console.error('[cloudinary] sharp resize failed — falling back to original', err)
+      }
     }
+
+    return { buffer, mime }
   } catch (err) {
     console.error('[cloudinary] fetch', err)
     return null

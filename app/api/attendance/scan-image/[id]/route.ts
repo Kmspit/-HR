@@ -33,7 +33,13 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const img = await getFaceScanImageBuffer(id)
+  // ?w= requests a resized/compressed thumbnail (e.g. grid/lightbox previews) instead of the
+  // full-resolution original — clamp to a sane range so the param can't be abused to force huge
+  // Cloudinary transforms. Omit ?w= entirely to get the original bytes (e.g. "ดูรูปเต็ม").
+  const wParam = new URL(req.url).searchParams.get('w')
+  const width = wParam ? Math.min(Math.max(parseInt(wParam, 10) || 0, 100), 1200) : undefined
+
+  const img = await getFaceScanImageBuffer(id, width ? { width } : undefined)
   if (!img) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
