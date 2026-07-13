@@ -12,6 +12,9 @@ type Props = {
   overlayLabel?: string
   className?: string
   mirror?: boolean
+  /** Fills the nearest positioned ancestor (absolute inset-0, no rounding/border) instead of
+   *  the default small centered box — pair with a `fixed inset-0` wrapper for a true page takeover. */
+  fullscreen?: boolean
 }
 
 export default function CameraPreviewVideo({
@@ -21,6 +24,7 @@ export default function CameraPreviewVideo({
   overlayLabel,
   className,
   mirror = true,
+  fullscreen = false,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoLive, setVideoLive] = useState(false)
@@ -60,7 +64,9 @@ export default function CameraPreviewVideo({
   return (
     <div
       className={cn(
-        'relative mx-auto w-full max-w-[min(100%,320px)] aspect-[4/3] rounded-2xl overflow-hidden bg-black border dark:border-white/10 light:border-slate-200',
+        fullscreen
+          ? 'absolute inset-0 overflow-hidden bg-black'
+          : 'relative mx-auto w-full max-w-[min(100%,320px)] aspect-[4/3] rounded-2xl overflow-hidden bg-black border dark:border-white/10 light:border-slate-200',
         className,
       )}
     >
@@ -77,13 +83,13 @@ export default function CameraPreviewVideo({
         )}
       />
       {overlayLabel && (
-        <div className="absolute bottom-3 left-0 right-0 text-center pointer-events-none z-10">
+        <div className={cn('absolute left-0 right-0 text-center pointer-events-none z-10', fullscreen ? 'bottom-8' : 'bottom-3')}>
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-black/70 text-cyan-200">
             {overlayLabel}
           </span>
         </div>
       )}
-      <div className="absolute inset-6 border-2 border-dashed border-cyan-400/50 rounded-2xl pointer-events-none z-10" />
+      <div className={cn('absolute border-2 border-dashed border-cyan-400/50 pointer-events-none z-10', fullscreen ? 'inset-10 sm:inset-20 rounded-3xl' : 'inset-6 rounded-2xl')} />
       {showSpinner && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-20">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
@@ -117,6 +123,7 @@ export function CameraPreviewVideoWithRef({
   overlayLabel,
   className,
   mirror = true,
+  fullscreen = false,
 }: CameraPreviewWithRefProps) {
   const [videoLive, setVideoLive] = useState(false)
 
@@ -150,7 +157,9 @@ export function CameraPreviewVideoWithRef({
   return (
     <div
       className={cn(
-        'relative mx-auto w-full max-w-[min(100%,320px)] aspect-[4/3] rounded-2xl overflow-hidden bg-black border dark:border-white/10 light:border-slate-200',
+        fullscreen
+          ? 'absolute inset-0 overflow-hidden bg-black'
+          : 'relative mx-auto w-full max-w-[min(100%,320px)] aspect-[4/3] rounded-2xl overflow-hidden bg-black border dark:border-white/10 light:border-slate-200',
         className,
       )}
     >
@@ -167,13 +176,13 @@ export function CameraPreviewVideoWithRef({
         )}
       />
       {overlayLabel && (
-        <div className="absolute bottom-3 left-0 right-0 text-center pointer-events-none z-10">
+        <div className={cn('absolute left-0 right-0 text-center pointer-events-none z-10', fullscreen ? 'bottom-8' : 'bottom-3')}>
           <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-black/70 text-cyan-200">
             {overlayLabel}
           </span>
         </div>
       )}
-      <div className="absolute inset-6 border-2 border-dashed border-cyan-400/50 rounded-2xl pointer-events-none z-10" />
+      <div className={cn('absolute border-2 border-dashed border-cyan-400/50 pointer-events-none z-10', fullscreen ? 'inset-10 sm:inset-20 rounded-3xl' : 'inset-6 rounded-2xl')} />
       {showSpinner && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-20">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />

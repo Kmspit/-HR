@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, Loader2, ScanFace, RefreshCw } from 'lucide-react'
+import { AlertCircle, Loader2, ScanFace, RefreshCw, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
@@ -36,12 +36,23 @@ type Props = {
   onCancel?: () => void
 }
 
+/** จับภาพ + liveness ไว้รอ user ยืนยัน — ยังไม่ POST ไป /api/face/verify จนกว่าจะกด "ยืนยัน" */
+type PendingCapture = {
+  imageDataUrl: string
+  descriptor: number[]
+  score: number
+  liveness: LivenessChallengeResult
+}
+
 // ใบหน้าต้องชัดพอ (detector score) และมองตรงกล้อง ต่อเนื่องเท่านี้ก่อน capture
 const ALIGN_SCORE = 0.5   // ลดจาก 0.6 — ตรวจจับง่ายขึ้น ลด false-reject
 const STABLE_MS = 1600    // เพิ่มจาก 900 → 1600 ms: ~8 samples, โอกาสกะพริบตาสูงขึ้น
 
 const MAX_RETRIES = 3
 const COOLDOWN_MS = 30_000
+// รอ user กด "ยืนยัน"/"ถ่ายใหม่" ได้นานสุดเท่านี้ก่อน auto-reset กลับไปสแกนใหม่ —
+// liveness data ผูกกับช่วงเวลาที่ตรวจจับ ห้ามปล่อยให้ verify ด้วยข้อมูลที่ค้างนานเกินไป
+const REVIEW_TIMEOUT_MS = 12_000
 const MULTI_FACE_INTERVAL_MS = 3_000
 const MIN_LUMINANCE = 35    // ต่ำกว่านี้ = มืดเกิน
 const MIN_FACE_SIZE_PCT = 10 // ต่ำกว่านี้ = ไกลเกิน
@@ -59,6 +70,8 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   const [retryCount, setRetryCount] = useState(0)
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
   const [cooldownSecs, setCooldownSecs] = useState(0)
+  const [reviewCapture, setReviewCapture] = useState<PendingCapture | null>(null)
+  const [reviewSecsLeft, setReviewSecsLeft] = useState(0)
 
   const doneRef = useRef(false)
   const verifyingRef = useRef(false)
@@ -100,8 +113,13 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   })
 
   const verifyNow = useCallback(
-    async (descriptor: number[], score: number, liveness: LivenessChallengeResult) => {
-      if (verifyingRef.current || doneRef.current) return
+    async (
+      descriptor: number[],
+      score: number,
+      liveness: LivenessChallengeResult,
+      capturedImageDataUrl?: string,
+    ): Promise<boolean> => {
+      if (verifyingRef.current || doneRef.current) return false
       verifyingRef.current = true
       setBusy(true)
       setHint('กำลังยืนยันตัวตน...')
@@ -152,7 +170,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
             }
             return next
           })
-          return
+          return false
         }
 
         const logId = (data as { logId?: string }).logId
@@ -161,12 +179,13 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           alignedSinceRef.current = null
           verifyingRef.current = false
           setBusy(false)
-          return
+          return false
         }
 
-        const captureImageDataUrl = videoRef.current
+        // ใช้รูปที่ user เห็นตอนตรวจสอบ/ยืนยันจริง — ไม่ capture ใหม่ (เฟรมอาจเปลี่ยนไปแล้ว)
+        const captureImageDataUrl = capturedImageDataUrl ?? (videoRef.current
           ? captureJpegFromVideo(videoRef.current) ?? undefined
-          : undefined
+          : undefined)
         const distance = (data as { distance?: number }).distance
         const confidence = (data as { confidence?: number }).confidence
 
@@ -185,6 +204,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           faceMatchScore: typeof distance === 'number' ? distance : undefined,
           faceConfidence: typeof confidence === 'number' ? confidence : undefined,
         })
+        return true
       } catch (err) {
         console.error('[face-scan]', err)
         toast.error('สแกนใบหน้าไม่สำเร็จ')
@@ -192,14 +212,59 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         alignedSinceRef.current = null
         verifyingRef.current = false
         setBusy(false)
+        return false
       }
     },
     [action, onVerified],
   )
 
-  // ลูปอัตโนมัติ: เปิดกล้อง → ตรวจจับใบหน้า → ตรงกล้อง+ชัด → capture อัตโนมัติ → เปรียบเทียบ
+  const handleConfirmCapture = useCallback(async () => {
+    if (!reviewCapture || verifyingRef.current) return
+    const ok = await verifyNow(
+      reviewCapture.descriptor,
+      reviewCapture.score,
+      reviewCapture.liveness,
+      reviewCapture.imageDataUrl,
+    )
+    // สำเร็จ → doneRef/setDone(true) ทำให้ UI สลับไปหน้าสำเร็จเองอยู่แล้ว (ไม่ต้อง clear ตรงนี้)
+    // ไม่สำเร็จ → กลับไปที่กล้องสด (reset liveness accumulators ทำไปแล้วใน verifyNow)
+    if (!ok) setReviewCapture(null)
+  }, [reviewCapture, verifyNow])
+
+  const handleRetake = useCallback(() => {
+    setReviewCapture(null)
+    alignedSinceRef.current = null
+    earSamplesRef.current = []
+    nosePosRef.current = []
+    lumSamplesRef.current = []
+    setHint(PROMPT_DEFAULT)
+  }, [])
+
+  // Auto-reset ถ้า user ไม่กด "ยืนยัน"/"ถ่ายใหม่" ทันเวลา — ป้องกัน verify ด้วย liveness ที่ค้างนานเกินไป
   useEffect(() => {
-    if (!ready || done || cameraError) return
+    if (!reviewCapture) {
+      setReviewSecsLeft(0)
+      return
+    }
+    const deadline = Date.now() + REVIEW_TIMEOUT_MS
+    setReviewSecsLeft(Math.ceil(REVIEW_TIMEOUT_MS / 1000))
+    const interval = setInterval(() => {
+      if (verifyingRef.current) return // กำลังส่งไปยืนยันจริงอยู่ — อย่า auto-reset ทับกลางคัน
+      const left = Math.ceil((deadline - Date.now()) / 1000)
+      if (left <= 0) {
+        clearInterval(interval)
+        handleRetake()
+      } else {
+        setReviewSecsLeft(left)
+      }
+    }, 300)
+    return () => clearInterval(interval)
+  }, [reviewCapture, handleRetake])
+
+  // ลูปอัตโนมัติ: เปิดกล้อง → ตรวจจับใบหน้า → ตรงกล้อง+ชัด → capture อัตโนมัติ → รอตรวจสอบ/ยืนยัน
+  // reviewCapture ไม่ null = capture ไปแล้ว รอ user กด "ยืนยัน"/"ถ่ายใหม่" — หยุด loop นี้ไว้ก่อน
+  useEffect(() => {
+    if (!ready || done || cameraError || reviewCapture) return
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout>
@@ -290,7 +355,23 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
               luminanceSamples: lumSamplesRef.current,
               flags: [],
             })
-            void verifyNow(scan.descriptor as number[], scan.score, liveness)
+            const jpeg = captureJpegFromVideo(video)
+            if (!jpeg) {
+              // capture ล้มเหลว (rare) — รีเซ็ตแล้วสแกนต่อ ไม่ค้าง state ผิดจังหวะ
+              alignedSinceRef.current = null
+              earSamplesRef.current = []
+              nosePosRef.current = []
+              lumSamplesRef.current = []
+              timer = setTimeout(() => void tick(), 400)
+              return
+            }
+            // capture แล้วหยุดรอตรวจสอบ — ยังไม่ POST ไป /api/face/verify จนกว่าจะกด "ยืนยัน"
+            setReviewCapture({
+              imageDataUrl: jpeg,
+              descriptor: scan.descriptor as number[],
+              score: scan.score,
+              liveness,
+            })
             return
           }
           const pct = Math.min(100, Math.round((held / STABLE_MS) * 100))
@@ -316,16 +397,16 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [ready, done, cameraError, verifyNow])
+  }, [ready, done, cameraError, reviewCapture])
 
-  return (
-    <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 space-y-3">
-      <p className="text-xs text-green-300 flex items-center gap-1.5 font-medium">
-        <ScanFace className="w-4 h-4" />
-        ยืนยันตัวตนด้วยใบหน้า (ต้องเป็นคนเดียวกับที่ลงทะเบียน)
-      </p>
-
-      {done ? (
+  // ── หน้าสำเร็จ / หน้ากล้องเปิดไม่ได้ — การ์ดเล็กแบบเดิม ไม่เต็มจอ ──
+  if (done) {
+    return (
+      <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 space-y-3">
+        <p className="text-xs text-green-300 flex items-center gap-1.5 font-medium">
+          <ScanFace className="w-4 h-4" />
+          ยืนยันตัวตนด้วยใบหน้า (ต้องเป็นคนเดียวกับที่ลงทะเบียน)
+        </p>
         <div className="flex flex-col items-center justify-center gap-2 py-6">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/15">
             <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -335,42 +416,17 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           <p className="text-sm font-semibold text-green-400">ยืนยันใบหน้าสำเร็จ</p>
           <p className="text-xs text-slate-500">กำลังบันทึกลงเวลา...</p>
         </div>
-      ) : (
-        <CameraPreviewVideoWithRef
-          videoRef={videoRef}
-          stream={stream}
-          ready={ready}
-          loading={!ready && !cameraError}
-          overlayLabel="สแกนใบหน้า"
-          className="max-w-[220px] aspect-square mx-auto"
-        />
-      )}
+      </div>
+    )
+  }
 
-      {!done && (
-        <div className="space-y-1">
-          <p className="text-center text-xs text-slate-400 min-h-[2rem]">
-            {busy ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                {hint}
-              </span>
-            ) : cooldownUntil ? (
-              <span className="text-amber-400 font-medium">
-                รอ {cooldownSecs} วินาทีก่อนลองใหม่...
-              </span>
-            ) : (
-              hint
-            )}
-          </p>
-          {retryCount > 0 && !cooldownUntil && (
-            <p className="text-center text-[12px] text-red-400">
-              ลองใหม่ได้อีก {MAX_RETRIES - retryCount} ครั้ง
-            </p>
-          )}
-        </div>
-      )}
-
-      {cameraError && (
+  if (cameraError) {
+    return (
+      <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-3 space-y-3">
+        <p className="text-xs text-green-300 flex items-center gap-1.5 font-medium">
+          <ScanFace className="w-4 h-4" />
+          ยืนยันตัวตนด้วยใบหน้า (ต้องเป็นคนเดียวกับที่ลงทะเบียน)
+        </p>
         <div className="space-y-2">
           <p className="text-xs text-red-400 text-center flex items-center justify-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" /> {cameraError}
@@ -380,14 +436,119 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
             ลองเปิดกล้องอีกครั้ง
           </button>
         </div>
-      )}
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="btn-secondary w-full py-2 text-xs">
+            ยกเลิก
+          </button>
+        )}
+      </div>
+    )
+  }
 
-      {!done && onCancel && (
-        <button type="button" onClick={onCancel} disabled={busy} className="btn-secondary w-full py-2 text-xs">
-          ยกเลิก
+  // ── หน้าตรวจสอบรูปก่อนยืนยัน — เต็มจอ ──
+  if (reviewCapture) {
+    return (
+      <div className="fixed inset-0 z-[90] bg-black flex flex-col">
+        <div className="relative flex-1 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={reviewCapture.imageDataUrl}
+            alt="รูปที่ถ่ายได้ — ตรวจสอบก่อนยืนยัน"
+            className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+          />
+          <div className="absolute top-4 left-0 right-0 flex justify-center px-4 pointer-events-none">
+            <span className="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-black/70 text-cyan-200">
+              ตรวจสอบรูปก่อนยืนยัน
+            </span>
+          </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-50"
+              aria-label="ยกเลิก"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+        <div className="flex-shrink-0 bg-black px-4 pt-4 space-y-3" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+          <p className="text-center text-xs text-slate-400 min-h-[1.25rem]">
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {hint}
+              </span>
+            ) : (
+              `ใช่คุณหรือไม่? ระบบจะกลับไปสแกนใหม่อัตโนมัติใน ${reviewSecsLeft} วินาที`
+            )}
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleRetake}
+              disabled={busy}
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white bg-white/10 border border-white/20 disabled:opacity-50 active:scale-[0.98] transition-transform"
+            >
+              <RefreshCw className="w-5 h-5" />
+              ถ่ายใหม่
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmCapture}
+              disabled={busy}
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white bg-green-500 disabled:opacity-60 active:scale-[0.98] transition-transform"
+            >
+              {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+              ยืนยัน
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── หน้ากล้องสแกน — เต็มจอ ──
+  return (
+    <div className="fixed inset-0 z-[90] bg-black">
+      <CameraPreviewVideoWithRef
+        videoRef={videoRef}
+        stream={stream}
+        ready={ready}
+        loading={!ready}
+        overlayLabel="สแกนใบหน้า"
+        fullscreen
+      />
+
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute top-4 left-4 z-[91] flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"
+          aria-label="ยกเลิก"
+        >
+          <X className="w-5 h-5" />
         </button>
       )}
 
+      <div className="absolute inset-x-0 top-4 z-[91] flex flex-col items-center gap-1.5 px-16 pointer-events-none">
+        <p className="max-w-sm rounded-full bg-black/70 px-4 py-2 text-center text-sm font-medium text-white">
+          {busy ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> {hint}
+            </span>
+          ) : cooldownUntil ? (
+            <span className="text-amber-300 font-semibold">รอ {cooldownSecs} วินาทีก่อนลองใหม่...</span>
+          ) : (
+            hint
+          )}
+        </p>
+        {retryCount > 0 && !cooldownUntil && (
+          <p className="rounded-full bg-red-500/80 px-3 py-1 text-[12px] font-medium text-white">
+            ลองใหม่ได้อีก {MAX_RETRIES - retryCount} ครั้ง
+          </p>
+        )}
+      </div>
     </div>
   )
 }
