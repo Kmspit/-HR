@@ -1071,7 +1071,8 @@ export default function CourtCalendarClient({ userId, userName, role, department
       {canEdit && (
         <button
           onClick={() => setShowAdd(true)}
-          className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 shadow-xl flex items-center justify-center z-30 transition"
+          className="md:hidden fixed right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 shadow-xl flex items-center justify-center z-30 transition"
+          style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}
         >
           <Plus className="w-6 h-6 text-white" />
         </button>

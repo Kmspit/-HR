@@ -872,7 +872,8 @@ export default function CaseDocumentsClient({ userId, userName, role, department
       {/* Upload FAB (mobile) */}
       <button
         onClick={() => setShowUpload(true)}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 shadow-lg flex items-center justify-center z-40 transition"
+        className="md:hidden fixed right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 shadow-lg flex items-center justify-center z-40 transition"
+        style={{ bottom: 'calc(58px + env(safe-area-inset-bottom) + 16px)' }}
       >
         <Plus className="w-6 h-6 text-white" />
       </button>
