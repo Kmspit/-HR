@@ -19,6 +19,11 @@ vi.mock('cloudinary', () => ({
   v2: { config: vi.fn(), uploader: { destroy: (...a: unknown[]) => cloudinaryDestroy(...a) } },
 }))
 
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>()
+  return { ...actual, after: vi.fn() }
+})
+
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'

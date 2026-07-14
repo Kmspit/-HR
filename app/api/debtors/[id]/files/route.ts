@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
@@ -100,7 +100,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   if (file.publicId) {
     configureCloudinary()
-    await cloudinary.uploader.destroy(file.publicId, { resource_type: 'auto' }).catch(() => {})
+    after(() => { cloudinary.uploader.destroy(file.publicId, { resource_type: 'auto' }).catch(() => {}) })
   }
 
   await prisma.debtorFile.delete({ where: { id: fileId } })

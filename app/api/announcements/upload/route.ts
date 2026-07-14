@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
 import { apiError } from '@/lib/api-handler'
@@ -86,9 +86,12 @@ export async function DELETE(req: NextRequest) {
     if (!publicId) return NextResponse.json({ error: 'publicId required' }, { status: 400 })
 
     configureCloudinary()
-    await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType === 'image' ? 'image' : 'raw',
-      type: 'upload',
+    // Best-effort — don't block the response on Cloudinary's round-trip.
+    after(() => {
+      cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType === 'image' ? 'image' : 'raw',
+        type: 'upload',
+      }).catch(() => {})
     })
 
     return NextResponse.json({ success: true })

@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 import { logCaseDocumentAccess } from '@/lib/document-access-log'
 
@@ -130,13 +130,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const canDelete = CAN_MANAGE.includes(session.user.role) || doc.uploadedById === session.user.id
   if (!canDelete) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Delete Cloudinary files
+  // Delete Cloudinary files — best-effort, don't block the response on them.
   configureCloudinary()
-  for (const f of doc.files) {
-    try {
-      await cloudinary.uploader.destroy(f.publicId)
-    } catch { /* best-effort */ }
-  }
+  after(() => {
+    for (const f of doc.files) {
+      cloudinary.uploader.destroy(f.publicId).catch(() => {})
+    }
+  })
 
   await prisma.caseDocument.delete({ where: { id } })
   return NextResponse.json({ ok: true })

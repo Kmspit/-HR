@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
@@ -37,9 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     resource_type: 'auto',
   })
 
-  // Delete old proof if exists
+  // Delete old proof if exists — best-effort, don't block the response on it.
   if (payment.proofPublicId) {
-    await cloudinary.uploader.destroy(payment.proofPublicId, { resource_type: 'auto' }).catch(() => {})
+    const oldPublicId = payment.proofPublicId
+    after(() => { cloudinary.uploader.destroy(oldPublicId, { resource_type: 'auto' }).catch(() => {}) })
   }
 
   const updated = await prisma.recoveryPayment.update({

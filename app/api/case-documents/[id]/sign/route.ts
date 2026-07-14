@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 
 function configureCloudinary() {
@@ -112,10 +112,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   if (sig.signatureUrl && sig.signatureType === 'DRAWN') {
     configureCloudinary()
-    try {
-      const publicId = sig.signatureUrl.split('/upload/')[1]?.replace(/\.[^.]+$/, '')
-      if (publicId) await cloudinary.uploader.destroy(publicId)
-    } catch { /* best-effort */ }
+    const publicId = sig.signatureUrl.split('/upload/')[1]?.replace(/\.[^.]+$/, '')
+    if (publicId) {
+      after(() => {
+        cloudinary.uploader.destroy(publicId).catch(() => {})
+      })
+    }
   }
 
   await prisma.caseDocumentSignature.delete({ where: { id: signatureId } })

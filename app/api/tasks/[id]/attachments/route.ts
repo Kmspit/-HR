@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
@@ -133,9 +133,13 @@ export async function DELETE(
 
     configureCloudinary()
     const isImage = attachment.fileType.startsWith('image/')
-    await cloudinary.uploader.destroy(attachment.publicId, {
-      resource_type: isImage ? 'image' : 'raw',
-      type: 'upload',
+    // Best-effort — matches the other Cloudinary-delete routes, don't fail the
+    // whole attachment removal (or block the response) on a Cloudinary hiccup.
+    after(() => {
+      cloudinary.uploader.destroy(attachment.publicId, {
+        resource_type: isImage ? 'image' : 'raw',
+        type: 'upload',
+      }).catch(() => {})
     })
 
     await prisma.taskAttachment.delete({ where: { id: attachmentId } })

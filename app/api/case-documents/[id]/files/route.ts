@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 
 function configureCloudinary() {
@@ -112,7 +112,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   configureCloudinary()
-  try { await cloudinary.uploader.destroy(file.publicId) } catch { /* best-effort */ }
+  after(() => { cloudinary.uploader.destroy(file.publicId).catch(() => {}) })
   await prisma.caseDocumentFile.delete({ where: { id: fileId } })
 
   return NextResponse.json({ ok: true })

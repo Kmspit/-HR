@@ -21,6 +21,10 @@ vi.mock('@/lib/notifications', () => ({ createNotification: vi.fn().mockResolved
 vi.mock('@/lib/automation-engine', () => ({ triggerAutomation: vi.fn().mockReturnValue({ catch: () => undefined }) }))
 vi.mock('cloudinary', () => ({ v2: { config: vi.fn(), uploader: { upload: vi.fn(), destroy: vi.fn() } } }))
 vi.mock('@/lib/api-guard', () => ({ requireCsrf: vi.fn().mockReturnValue(null) }))
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>()
+  return { ...actual, after: vi.fn() }
+})
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
