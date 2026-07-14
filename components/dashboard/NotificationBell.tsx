@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { Bell, CheckCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -38,7 +38,33 @@ export default function NotificationBell({ initialCount }: Props) {
   const [loaded, setLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const bellRef = useRef<HTMLButtonElement>(null)
   const router = useRouter()
+
+  // Anchor the dropdown to the bell's real screen position (fixed, viewport-relative)
+  // instead of the bell's own positioned ancestor — a static right-0/max-w guess can't
+  // know how much header content (theme toggle, avatar) sits to the bell's right, so it
+  // can't reliably keep the panel on-screen. Falls back to hugging the bell exactly when
+  // there's room, and only shifts left enough to clear the viewport edge when there isn't.
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number; width: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const compute = () => {
+      const btn = bellRef.current
+      if (!btn) return
+      const rect = btn.getBoundingClientRect()
+      const margin = 16
+      const width = Math.min(320, window.innerWidth - margin * 2)
+      const idealRight = window.innerWidth - rect.right
+      const maxRight = window.innerWidth - width - margin
+      const right = Math.max(margin, Math.min(idealRight, maxRight))
+      setDropdownPos({ top: rect.bottom + 8, right, width })
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [open])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -107,22 +133,25 @@ export default function NotificationBell({ initialCount }: Props) {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={bellRef}
         onClick={toggle}
-        className="relative flex h-8 w-8 items-center justify-center rounded-xl border transition-all
+        className="flex h-11 w-11 items-center justify-center rounded-xl border transition-all
           dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:bg-white/[0.07] dark:hover:text-slate-200
           light:border-slate-200 light:bg-white light:text-slate-500 light:shadow-sm light:hover:text-slate-700"
         aria-label="การแจ้งเตือน"
         aria-expanded={open}
       >
-        <Bell size={15} />
-        {count > 0 && (
-          <span
-            className="absolute -right-0.5 -top-0.5 flex min-h-[14px] min-w-[14px] items-center justify-center
-              rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white leading-none"
-          >
-            {count > 99 ? '99+' : count}
-          </span>
-        )}
+        <span className="relative flex items-center justify-center">
+          <Bell size={15} />
+          {count > 0 && (
+            <span
+              className="absolute -right-1.5 -top-1.5 flex min-h-[14px] min-w-[14px] items-center justify-center
+                rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white leading-none"
+            >
+              {count > 99 ? '99+' : count}
+            </span>
+          )}
+        </span>
       </button>
 
       {open && (
@@ -130,7 +159,8 @@ export default function NotificationBell({ initialCount }: Props) {
           <div className="fixed inset-0 z-40 md:hidden" onClick={() => setOpen(false)} />
 
           <div
-            className="absolute right-0 top-full mt-2 w-80 z-50 overflow-hidden rounded-2xl
+            style={dropdownPos ? { top: dropdownPos.top, right: dropdownPos.right, width: dropdownPos.width } : { top: 64, right: 16, width: 320 }}
+            className="fixed z-50 overflow-hidden rounded-2xl
               border dark:border-white/10 light:border-slate-200
               dark:bg-slate-900 light:bg-white
               shadow-2xl"
