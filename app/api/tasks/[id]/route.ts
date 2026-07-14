@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 
 const CAN_MANAGE_ALL = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
@@ -243,47 +243,54 @@ export async function PATCH(
         data.reviewedById = userId
         data.reviewedAt   = new Date()
         data.reviewNote   = body.reviewNote ?? null
-        await createNotification({
-          userId: task.assigneeId,
-          type: 'TASK_APPROVED',
-          title: '✅ งานได้รับการอนุมัติ',
-          message: `งาน "${task.title}" ได้รับการอนุมัติเรียบร้อยแล้ว`,
-          link: '/tasks',
+        // Notification + LINE push don't gate the response — fire after the
+        // task update (and its timeline entry) below has actually committed.
+        after(() => {
+          createNotification({
+            userId: task.assigneeId,
+            type: 'TASK_APPROVED',
+            title: '✅ งานได้รับการอนุมัติ',
+            message: `งาน "${task.title}" ได้รับการอนุมัติเรียบร้อยแล้ว`,
+            link: '/tasks',
+          })
+          sendLineMessage(
+            task.assigneeId,
+            `✅ งานของคุณได้รับการอนุมัติ\n\n"${task.title}"\nอนุมัติโดย: ${userName}`,
+          ).catch(() => {})
         })
-        // LINE OA
-        await sendLineMessage(
-          task.assigneeId,
-          `✅ งานของคุณได้รับการอนุมัติ\n\n"${task.title}"\nอนุมัติโดย: ${userName}`,
-        ).catch(() => {})
       }
       if (body.status === 'REVISION') {
         data.reviewNote = body.reviewNote ?? null
-        await createNotification({
-          userId: task.assigneeId,
-          type: 'TASK_REVISION',
-          title: '🔄 งานต้องแก้ไข',
-          message: `งาน "${task.title}" ต้องการการแก้ไข${body.reviewNote ? `: ${body.reviewNote}` : ''}`,
-          link: '/tasks',
+        after(() => {
+          createNotification({
+            userId: task.assigneeId,
+            type: 'TASK_REVISION',
+            title: '🔄 งานต้องแก้ไข',
+            message: `งาน "${task.title}" ต้องการการแก้ไข${body.reviewNote ? `: ${body.reviewNote}` : ''}`,
+            link: '/tasks',
+          })
+          sendLineMessage(
+            task.assigneeId,
+            `🔄 งานของคุณต้องการการแก้ไข\n\n"${task.title}"${body.reviewNote ? `\nหมายเหตุ: ${body.reviewNote}` : ''}`,
+          ).catch(() => {})
         })
-        await sendLineMessage(
-          task.assigneeId,
-          `🔄 งานของคุณต้องการการแก้ไข\n\n"${task.title}"${body.reviewNote ? `\nหมายเหตุ: ${body.reviewNote}` : ''}`,
-        ).catch(() => {})
       }
       if (body.status === 'REJECTED') {
         data.reviewNote    = body.reviewNote ?? null
         data.rejectedCount = (task.rejectedCount ?? 0) + 1
-        await createNotification({
-          userId: task.assigneeId,
-          type: 'TASK_REVISION',
-          title: '❌ งานถูกปฏิเสธ',
-          message: `งาน "${task.title}" ถูกปฏิเสธ${body.reviewNote ? `: ${body.reviewNote}` : ''}`,
-          link: '/tasks',
+        after(() => {
+          createNotification({
+            userId: task.assigneeId,
+            type: 'TASK_REVISION',
+            title: '❌ งานถูกปฏิเสธ',
+            message: `งาน "${task.title}" ถูกปฏิเสธ${body.reviewNote ? `: ${body.reviewNote}` : ''}`,
+            link: '/tasks',
+          })
+          sendLineMessage(
+            task.assigneeId,
+            `❌ งานถูกปฏิเสธ\n\n"${task.title}"${body.reviewNote ? `\nเหตุผล: ${body.reviewNote}` : ''}`,
+          ).catch(() => {})
         })
-        await sendLineMessage(
-          task.assigneeId,
-          `❌ งานถูกปฏิเสธ\n\n"${task.title}"${body.reviewNote ? `\nเหตุผล: ${body.reviewNote}` : ''}`,
-        ).catch(() => {})
         // Automation rule: 3+ rejections → notify CEO
         if ((task.rejectedCount ?? 0) + 1 >= 3) {
           const ceo = await prisma.user.findFirst({
@@ -291,17 +298,21 @@ export async function PATCH(
             select: { id: true },
           })
           if (ceo) {
-            await createNotification({
-              userId:  ceo.id,
-              type:    'TASK_AUTOMATION_TRIGGERED' as never,
-              title:   '⚠️ งานถูกปฏิเสธซ้ำ 3+ ครั้ง',
-              message: `งาน "${task.title}" ถูกปฏิเสธแล้ว ${(task.rejectedCount ?? 0) + 1} ครั้ง`,
-              link:    '/tasks',
+            const ceoId = ceo.id
+            const rejectedCount = (task.rejectedCount ?? 0) + 1
+            after(() => {
+              createNotification({
+                userId:  ceoId,
+                type:    'TASK_AUTOMATION_TRIGGERED' as never,
+                title:   '⚠️ งานถูกปฏิเสธซ้ำ 3+ ครั้ง',
+                message: `งาน "${task.title}" ถูกปฏิเสธแล้ว ${rejectedCount} ครั้ง`,
+                link:    '/tasks',
+              })
+              sendLineMessage(
+                ceoId,
+                `⚠️ แจ้งเตือน: งานถูกปฏิเสธซ้ำ\n\n"${task.title}"\nถูกปฏิเสธแล้ว ${rejectedCount} ครั้ง\n\nต้องการการแก้ไขเร่งด่วน`,
+              ).catch(() => {})
             })
-            await sendLineMessage(
-              ceo.id,
-              `⚠️ แจ้งเตือน: งานถูกปฏิเสธซ้ำ\n\n"${task.title}"\nถูกปฏิเสธแล้ว ${(task.rejectedCount ?? 0) + 1} ครั้ง\n\nต้องการการแก้ไขเร่งด่วน`,
-            ).catch(() => {})
           }
           // Log to timeline
           timelineEntries.push({
