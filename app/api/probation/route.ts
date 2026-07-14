@@ -6,6 +6,7 @@ import { buildBranchScope, branchUserWhere, isUserInBranchScope } from '@/lib/br
 import { HR_ROLES } from '@/lib/access-control'
 import { canApproverActOnRequester } from '@/lib/org-scope'
 import type { Role } from '@prisma/client'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 function isProbationComplete(startDate: Date | null, probationMonths: number): boolean {
   if (!startDate) return false
@@ -29,10 +30,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId')
 
-    const settings = await prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { probationMonths: true },
-    })
+    const settings = await getCachedCompanySettings()
     const probationMonths = (settings as unknown as { probationMonths?: number })?.probationMonths ?? 3
 
     if (!isHr) {

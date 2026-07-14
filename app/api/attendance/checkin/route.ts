@@ -27,6 +27,7 @@ import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
 import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
 import { findApprovedWeeklyPlanDayForDate, WEEKLY_PLAN_LOCATION_TOLERANCE_METERS } from '@/lib/weekly-plan-attendance'
 import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
+import { getCachedCompanySettings, clearCompanySettingsCache } from '@/lib/company-settings-cache'
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,12 +68,23 @@ export async function POST(req: NextRequest) {
     const settingsSelect = {
       lateGraceMin: true, geofenceLat: true, geofenceLng: true, geofenceRadius: true, workStartTime: true,
     } as const
-    let settings = await prisma.companySettings.findUnique({ where: { id: 'singleton' }, select: settingsSelect })
+    const cachedSettings = await getCachedCompanySettings()
+    let settings = cachedSettings
+      ? {
+          lateGraceMin: cachedSettings.lateGraceMin,
+          geofenceLat: cachedSettings.geofenceLat,
+          geofenceLng: cachedSettings.geofenceLng,
+          geofenceRadius: cachedSettings.geofenceRadius,
+          workStartTime: cachedSettings.workStartTime,
+        }
+      : null
     if (!settings) {
       settings = await prisma.companySettings.create({ data: { id: 'singleton', lateGraceMin: 5 }, select: settingsSelect })
+      clearCompanySettingsCache()
     } else if (settings.lateGraceMin === 15) {
       // Migrate old unused default (15) to correct grace period (5 min = 08:35 threshold)
       settings = await prisma.companySettings.update({ where: { id: 'singleton' }, data: { lateGraceMin: 5 }, select: settingsSelect })
+      clearCompanySettingsCache()
     }
 
     // โหลด branch ของ user สำหรับ geofence แบบ per-branch

@@ -5,16 +5,14 @@ import { canManageUsers } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import LeavePolicyManager from '@/components/leave/LeavePolicyManager'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 export default async function LeavePoliciesPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
   if (!canManageUsers(session.user.role as Role)) redirect('/dashboard')
   const [policies, settings] = await Promise.all([
     prisma.leavePolicy.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }),
-    prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { sickDaysYear: true, vacationDaysYear: true, personalDaysYear: true, probationMonths: true },
-    }),
+    getCachedCompanySettings(),
   ])
 
   return (

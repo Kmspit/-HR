@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import { clearCompanySettingsCache } from '@/lib/company-settings-cache'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ function makeFormReq(url: string, fields: Record<string, string> = {}) {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('POST /api/attendance/checkin', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => { vi.clearAllMocks(); clearCompanySettingsCache() })
 
   it('returns 401 when unauthenticated', async () => {
     vi.mocked(auth).mockResolvedValue(null as never)
@@ -160,7 +161,7 @@ describe('POST /api/attendance/checkin', () => {
 })
 
 describe('POST /api/attendance/checkout', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => { vi.clearAllMocks(); clearCompanySettingsCache() })
 
   it('returns 401 when unauthenticated', async () => {
     vi.mocked(auth).mockResolvedValue(null as never)

@@ -20,6 +20,7 @@ import {
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
 import { findActiveAttendanceSession } from '@/lib/attendance-session'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -60,10 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ยังไม่ได้เช็คอินวันนี้' }, { status: 400 })
     }
 
-    const settings = await prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { workEndTime: true },
-    })
+    const settings = await getCachedCompanySettings()
     let earlyLeaveMinutes = 0
     let status = attendance.status
     if (settings?.workEndTime) {

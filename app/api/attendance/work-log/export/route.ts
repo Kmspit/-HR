@@ -18,6 +18,7 @@ import {
   ALL_EMPLOYEES_USER_ID,
   listAttendanceTeamUsers,
 } from '@/lib/attendance-team-users'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 import { canListCompanyWideRecords, canViewUserRecord } from '@/lib/org-scope'
 
 const MONTH_NAMES = [
@@ -70,10 +71,7 @@ export async function GET(req: NextRequest) {
     }
 
     const scope = buildBranchScope(session.user, { branchId: branchParam })
-    const settings = await prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { companyName: true },
-    })
+    const settings = await getCachedCompanySettings()
 
     let meta: WorkLogExportMeta
     let rows: Awaited<ReturnType<typeof buildMonthlyWorkLog>>['rows']

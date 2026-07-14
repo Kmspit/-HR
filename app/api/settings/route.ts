@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { clearLineCredentialsCache } from '@/lib/line-credentials'
+import { clearCompanySettingsCache } from '@/lib/company-settings-cache'
 import { maskSettingsSecrets } from '@/lib/settings-api'
 import { requireRoles, isGuardResponse } from '@/lib/api-guard'
 import { SETTINGS_EDIT_ROLES } from '@/lib/access-control'
@@ -79,6 +80,7 @@ export async function PATCH(req: NextRequest) {
     if ('lineChannelSecret' in data || 'lineAccessToken' in data) {
       clearLineCredentialsCache()
     }
+    clearCompanySettingsCache()
 
     // Keep /settings and any page reading CompanySettings (e.g. /outside-work header) in sync
     // immediately, regardless of which UI triggered the save (Settings form or inline edit).

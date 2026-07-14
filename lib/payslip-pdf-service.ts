@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
 import { parseTaxDetail } from '@/lib/payroll-tax'
 import { payslipPdfFilename } from '@/lib/payslip-cloudinary-path'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 const DEFAULT_COMPANY = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
 
@@ -31,10 +32,7 @@ export async function buildPayrollSlipPdfBuffer(payroll: NonNullable<PayrollSlip
   buffer: Buffer
   filename: string
 }> {
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: 'singleton' },
-    select: { companyName: true },
-  })
+  const settings = await getCachedCompanySettings()
   const companyName = settings?.companyName?.trim() || DEFAULT_COMPANY
   const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
 

@@ -19,6 +19,7 @@ import {
   validateAttendanceFlow,
 } from '@/lib/attendance-flow'
 import { findActiveAttendanceSession } from '@/lib/attendance-session'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -107,10 +108,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, attendance: finalized })
     }
 
-    const settings = await prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { lunchReturnTime: true },
-    })
+    const settings = await getCachedCompanySettings()
     const lunchReturnTime = settings?.lunchReturnTime ?? '13:00'
     const dateKey = bangkokDateKey(now)
     const lunchReturn = new Date(`${dateKey}T${lunchReturnTime}:00+07:00`)

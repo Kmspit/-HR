@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 import { KM_COMPANY } from '@/lib/company-defaults'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 export const metadata = { title: 'พิมพ์ใบขออนุมัติออกนอกสถานที่' }
 
@@ -58,10 +59,7 @@ export default async function PrintOutsideWorkPage({
   })
   if (!request) notFound()
 
-  const companySettings = await prisma.companySettings.findUnique({
-    where: { id: 'singleton' },
-    select: { companyName: true },
-  }).catch(() => null)
+  const companySettings = await getCachedCompanySettings().catch(() => null)
   const companyName = companySettings?.companyName || KM_COMPANY.companyName
 
   const canView =

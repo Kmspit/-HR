@@ -12,6 +12,7 @@ import {
 import { getAttendanceProgress } from '@/lib/attendance-progress'
 import { startOfTodayBangkok } from '@/lib/datetime-bangkok'
 import { Suspense } from 'react'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 export default async function AttendancePage({
   searchParams,
@@ -27,10 +28,7 @@ export default async function AttendancePage({
   const today = startOfTodayBangkok()
 
   const [companySettings, profile] = await Promise.all([
-    prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { companyName: true, geofenceLat: true, geofenceLng: true, geofenceRadius: true },
-    }),
+    getCachedCompanySettings(),
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {

@@ -8,6 +8,7 @@ import { buildBranchScope, branchNestedUserWhere, parseBranchQueryParam } from '
 import { Suspense } from 'react'
 import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 export default async function OutsideWorkPage({
   searchParams,
 }: {
@@ -22,10 +23,7 @@ export default async function OutsideWorkPage({
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
-  const companySettings = await prisma.companySettings.findUnique({
-    where: { id: 'singleton' },
-    select: { companyName: true, outsideWorkPlanTitle: true },
-  }).catch(() => null)
+  const companySettings = await getCachedCompanySettings().catch(() => null)
   const pageShell = (requests: Parameters<typeof OutsideWorkClient>[0]['requests']) => (
     <div className="flex flex-col">
       <Topbar

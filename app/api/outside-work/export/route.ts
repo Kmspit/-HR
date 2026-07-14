@@ -6,6 +6,7 @@ import { REQUEST_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 import { OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
 import { buildBranchScope, branchNestedUserWhere } from '@/lib/branch-scope'
 import type { Role } from '@prisma/client'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 // Matches app/(dashboard)/outside-work/page.tsx's own canViewAll check — the
 // export must derive this from the caller's real role, never trust a
@@ -396,10 +397,7 @@ export async function POST(req: NextRequest) {
     assignees:         r.assignees.map((a) => ({ id: a.user.id, name: a.user.name })),
   }))
 
-  const companySettings = await prisma.companySettings.findUnique({
-    where: { id: 'singleton' },
-    select: { companyName: true, outsideWorkPlanTitle: true },
-  }).catch(() => null)
+  const companySettings = await getCachedCompanySettings().catch(() => null)
   const companyName = companySettings?.companyName || COMPANY_NAME_FALLBACK
   const planTitle    = companySettings?.outsideWorkPlanTitle || OUTSIDE_WORK_PLAN_TITLE_DEFAULT
 

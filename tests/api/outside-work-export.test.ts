@@ -17,6 +17,7 @@ vi.mock('@/lib/prisma', () => ({
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { POST } from '@/app/api/outside-work/export/route'
+import { clearCompanySettingsCache } from '@/lib/company-settings-cache'
 
 function makeReq(body: Record<string, unknown>) {
   return new NextRequest('http://localhost/api/outside-work/export', {
@@ -40,6 +41,7 @@ const realRow = {
 describe('POST /api/outside-work/export — never trusts client-supplied request data', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearCompanySettingsCache()
     vi.mocked(prisma.outsideWorkRequest.findMany).mockResolvedValue([realRow] as never)
   })
 

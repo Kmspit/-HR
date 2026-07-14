@@ -22,6 +22,7 @@
 import { v2 as cloudinary } from 'cloudinary'
 import sharp from 'sharp'
 import { prisma } from '@/lib/prisma'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 const ROOT = (process.env.CLOUDINARY_ROOT_FOLDER ?? 'hr-system').replace(/^\/|\/$/g, '')
 const DEFAULT_RETENTION_DAYS = parseInt(process.env.CLOUDINARY_RETENTION_DAYS ?? '90', 10)
@@ -374,10 +375,7 @@ export async function fetchImageBuffer(
 
 export async function getImageRetentionDays(): Promise<number> {
   try {
-    const s = await prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { imageRetentionDays: true },
-    })
+    const s = await getCachedCompanySettings()
     if (s?.imageRetentionDays && s.imageRetentionDays > 0) return s.imageRetentionDays
   } catch {
     /* column may not exist yet */

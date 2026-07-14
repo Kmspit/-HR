@@ -5,6 +5,7 @@ import { apiError } from '@/lib/api-handler'
 import { createLineLinkCode, ensureLineLinkTable, unlinkLineUser } from '@/lib/line-link'
 import { getLineWebhookUrl, isLineOaConfigured } from '@/lib/line-config'
 import { getLineOaBasicId, getLineOaChatUrl, getLineOaChatUrlWithText, normalizeLineOaBasicId } from '@/lib/line-oa-url'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 function resolveLineOaBasicId(lineChannelId: string | null | undefined): string {
   return normalizeLineOaBasicId(lineChannelId) ?? getLineOaBasicId()
@@ -22,10 +23,7 @@ export async function GET() {
         where: { id: session.user.id },
         select: { lineUserId: true, lineDisplayName: true, lineId: true },
       }),
-      prisma.companySettings.findUnique({
-        where: { id: 'singleton' },
-        select: { lineChannelId: true },
-      }),
+      getCachedCompanySettings(),
     ])
     if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -64,10 +62,7 @@ export async function POST(_req: NextRequest) {
     const { code, expiresAt } = await createLineLinkCode(session.user.id)
     const command = `ลิงก์ ${code}`
 
-    const settings = await prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { lineChannelId: true },
-    })
+    const settings = await getCachedCompanySettings()
     const lineOaBasicId = resolveLineOaBasicId(settings?.lineChannelId)
 
     return NextResponse.json({

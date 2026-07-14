@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import type { LeaveBalance } from '@prisma/client'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 /** ตรวจสอบว่าอยู่ในช่วงทดลองงานหรือไม่ */
 export function isOnProbation(startDate: Date | null | undefined, probationMonths: number): boolean {
@@ -74,10 +75,7 @@ export async function ensureLeaveBalance(
   // Load user + settings in parallel
   const [user, settings] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { role: true, startDate: true } }),
-    prisma.companySettings.findUnique({
-      where: { id: 'singleton' },
-      select: { probationMonths: true, sickDaysYear: true, vacationDaysYear: true, personalDaysYear: true },
-    }),
+    getCachedCompanySettings(),
   ])
 
   const probationMonths = settings?.probationMonths ?? 3
@@ -110,7 +108,7 @@ export async function getLeaveBalanceStats(
     ensureLeaveBalance(userId, year),
     getLeaveUsedByYear(userId, year),
     prisma.user.findUnique({ where: { id: userId }, select: { startDate: true } }),
-    prisma.companySettings.findUnique({ where: { id: 'singleton' }, select: { probationMonths: true } }),
+    getCachedCompanySettings(),
   ])
 
   const probationMonths = settings?.probationMonths ?? 3

@@ -8,6 +8,7 @@ import {
   warningPdfSignedUrl,
 } from '@/lib/warning-pdf-access'
 import { validateAppBaseUrl } from '@/lib/payslip-pdf-access'
+import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 
 export type LineDeliveryStatus = 'pending' | 'sent' | 'failed'
 
@@ -58,10 +59,7 @@ export async function ensureWarningPdfStored(
     },
   })
 
-  const settings = await prisma.companySettings.findUnique({
-    where: { id: 'singleton' },
-    select: { companyName: true },
-  })
+  const settings = await getCachedCompanySettings()
   const companyName = settings?.companyName ?? 'บริษัท'
 
   const buffer = await generateWarningPdfBuffer({
