@@ -850,7 +850,8 @@ export default function OutsideWorkExcelForm({
           </div>
 
           {/* ── Weekly table ─────────────────────────────────────────── */}
-          <div className="overflow-x-auto">
+          <div className="px-4">
+            <div className="table-scroll">
             <table className="w-full border-collapse text-gray-900" style={{ minWidth: 920 }}>
               <thead>
                 <tr>
@@ -1168,6 +1169,7 @@ export default function OutsideWorkExcelForm({
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Footer note */}
