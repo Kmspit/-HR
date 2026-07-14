@@ -480,7 +480,120 @@ export default function PayrollClient({
         พนักงานที่ยังไม่ได้เชื่อม LINE OA ให้แอดบอท LINE แล้วส่งรหัส 6 หลัก
       </p>
 
-      <div className="glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {loading && (
+          <div className="rounded-2xl glass-card p-6 text-center text-sm text-slate-400 dark:text-white/40">กำลังโหลด...</div>
+        )}
+        {!loading && payrolls.length === 0 && (
+          <div className="rounded-2xl glass-card p-6 text-center text-sm text-slate-400 dark:text-white/40">
+            ยังไม่มีข้อมูล กด &quot;คำนวณ&quot; เพื่อสร้าง payroll
+          </div>
+        )}
+        {!loading && payrolls.map((p) => {
+          const hasDeductions = p.hasPayroll && (p.lateDeduction > 0 || p.absentDeduction > 0 || p.ssDeduction > 0)
+          const statusLabel =
+            p.status === 'APPROVED' ? 'อนุมัติ' :
+            p.status === 'SENT'     ? 'ส่งแล้ว' :
+            p.status === 'PENDING'  ? 'รอคำนวณ' : 'ร่าง'
+          const statusCls =
+            p.status === 'APPROVED' || p.status === 'SENT' ? 'bg-green-500/20 text-green-400' :
+            p.status === 'PENDING'  ? 'bg-amber-500/20 text-amber-400' :
+            'bg-white/10 text-slate-400 dark:text-white/40'
+          const showApprove = canApprove && p.hasPayroll && p.status === 'DRAFT'
+          const showSendLine = p.hasPayroll && p.status === 'APPROVED'
+
+          return (
+            <div key={p.id} className={`glass-card rounded-2xl p-4 space-y-3 ${!p.hasPayroll ? 'opacity-70' : ''}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-slate-900 dark:text-white font-medium truncate">{p.name}</p>
+                  <p className="text-slate-400 dark:text-white/40 text-xs truncate">{p.department} · {p.position}</p>
+                  {!p.hasPayroll && (
+                    <p className="text-[12px] text-amber-400 mt-0.5">ยังไม่คำนวณ — กดปุ่มคำนวณ</p>
+                  )}
+                </div>
+                {!showApprove && (
+                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs ${statusCls}`}>{statusLabel}</span>
+                )}
+              </div>
+
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <p className="text-[11px] text-slate-400 dark:text-white/40">ฐาน</p>
+                  <p className="text-slate-700 dark:text-white/70 text-sm">
+                    {p.hasPayroll ? `฿${p.baseSalary.toLocaleString()}` : '—'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] text-slate-400 dark:text-white/40">สุทธิ</p>
+                  <p className="font-bold text-green-400 text-lg">
+                    {p.hasPayroll
+                      ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}`
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {hasDeductions && (
+                <p className="text-xs flex flex-wrap gap-x-3 gap-y-1">
+                  {p.lateDeduction > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setDetailRow(p)}
+                      className="text-red-400 hover:text-red-300 underline underline-offset-2"
+                    >
+                      หักสาย -฿{p.lateDeduction.toFixed(2)}
+                      {(p.lateBillableMinutes ?? 0) > 0 && ` (${p.lateBillableMinutes} น.)`}
+                    </button>
+                  )}
+                  {p.absentDeduction > 0 && (
+                    <span className="text-red-400">หักขาด -฿{p.absentDeduction.toFixed(0)}</span>
+                  )}
+                  {p.ssDeduction > 0 && (
+                    <span className="text-orange-400">SS -฿{p.ssDeduction.toFixed(0)}</span>
+                  )}
+                </p>
+              )}
+
+              <p className="text-xs text-slate-400 dark:text-white/40">
+                สาย {p.lateDays} วัน · ขาด {p.absentDays} วัน
+              </p>
+
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                {renderLineStatus(p)}
+                {renderPayslipSendStatus(p)}
+              </div>
+
+              {showApprove && (
+                <button
+                  type="button"
+                  onClick={() => approvePayroll(p)}
+                  disabled={approvingId === p.id || approvingBatch}
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl text-sm font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition"
+                >
+                  {approvingId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  อนุมัติ payroll
+                </button>
+              )}
+              {showSendLine && (
+                <button
+                  type="button"
+                  onClick={() => sendSlipLine(p)}
+                  disabled={sendingId === p.id || sendingBatch || !p.lineLinked}
+                  title={!p.lineLinked ? 'พนักงานยังไม่ได้เชื่อม LINE OA' : undefined}
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl text-sm font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50 transition"
+                >
+                  {sendingId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                  ส่ง LINE สลิปเงินเดือน
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="hidden md:block glass-card card-hover rounded-2xl overflow-hidden smooth-transition">
         <div className="table-scroll">
           <table className="w-full text-sm min-w-[1150px]">
             <thead>
