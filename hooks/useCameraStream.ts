@@ -13,10 +13,17 @@ async function requestUserMedia(): Promise<MediaStream> {
     throw new Error('เบราว์เซอร์ไม่รองรับกล้อง — ใช้ Chrome/Safari/Edge บน HTTPS')
   }
 
-  const videoConstraints: MediaTrackConstraints = {
+  // resizeMode ยังไม่อยู่ใน TS lib.dom's MediaTrackConstraints (แต่เป็น property จริงตาม
+  // WebRTC spec ที่ browser รองรับ) — ประกาศ type เสริมเฉพาะจุดแทนการ cast เป็น any ทั้งก้อน
+  const videoConstraints: MediaTrackConstraints & { resizeMode?: 'none' | 'crop-and-scale' } = {
     facingMode: 'user',
-    width: { ideal: 1280, max: 1920 },
-    height: { ideal: 720, max: 1080 },
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    aspectRatio: { ideal: 16 / 9 },
+    // ไม่ให้ OS/กล้อง crop-and-scale เฟรมเองก่อนส่งมาถึงเรา (ค่า default ของ resizeMode
+    // คือ 'crop-and-scale' ซึ่งทำให้บางครั้งได้ภาพที่ถูกซูม/ครอบตัดมาแล้วแบบสุ่ม
+    // ขึ้นกับการเจรจากล้องของ iOS ในเซสชันนั้นๆ)
+    resizeMode: 'none',
   }
 
   try {
@@ -25,6 +32,9 @@ async function requestUserMedia(): Promise<MediaStream> {
       audio: false,
     })
   } catch {
+    // ตัด max ออกจาก constraint หลักแล้วเพื่อลดโอกาสมาถึง fallback นี้ (ideal อย่างเดียว
+    // ไม่ throw OverconstrainedError) — แต่ถ้ามาถึงจริง เก็บ log ไว้เทียบกับรายงานอาการซูมผิดปกติ
+    console.warn('[camera] falling back to unconstrained getUserMedia — primary constraints rejected')
     return await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: false,
