@@ -74,43 +74,70 @@ export async function POST(req: NextRequest) {
     const skippedApproved = employees.filter((e) => approvedUserIds.has(e.id))
     const pendingEmployees = employees.filter((e) => !approvedUserIds.has(e.id))
 
+    // Batch-fetch once for all pending employees instead of 3 queries per
+    // employee — grouped into per-user buckets below so the per-employee
+    // computation loop reads unchanged (same shape as the old per-user
+    // findMany results, just sourced from a Map instead of a fresh query).
+    const pendingIds = pendingEmployees.map((e) => e.id)
+
+    const [allAttendances, allApprovedLeaves, allUnpaidLeaves] = await Promise.all([
+      prisma.attendance.findMany({
+        where: { userId: { in: pendingIds }, date: { gte: startDate, lte: endDate } },
+        select: {
+          userId: true,
+          date: true,
+          lateMinutes: true,
+          status: true,
+          earlyLeaveMinutes: true,
+          workMinutes: true,
+          leaveType: true,
+          checkIn: true,
+        },
+      }),
+      prisma.leaveRequest.findMany({
+        where: {
+          userId: { in: pendingIds },
+          status: { in: ['APPROVED', 'ADMIN_APPROVED'] },
+          startDate: { lte: endDate },
+          endDate: { gte: startDate },
+        },
+        select: { userId: true, startDate: true, endDate: true, status: true },
+      }),
+      prisma.leaveRequest.findMany({
+        where: {
+          userId: { in: pendingIds },
+          type: 'UNPAID',
+          status: { in: ['APPROVED', 'ADMIN_APPROVED'] },
+          startDate: { lte: endDate },
+          endDate: { gte: startDate },
+        },
+        select: { userId: true, days: true },
+      }),
+    ])
+
+    const attendancesByUser = new Map<string, typeof allAttendances>()
+    for (const a of allAttendances) {
+      const list = attendancesByUser.get(a.userId)
+      if (list) list.push(a); else attendancesByUser.set(a.userId, [a])
+    }
+    const approvedLeavesByUser = new Map<string, typeof allApprovedLeaves>()
+    for (const l of allApprovedLeaves) {
+      const list = approvedLeavesByUser.get(l.userId)
+      if (list) list.push(l); else approvedLeavesByUser.set(l.userId, [l])
+    }
+    const unpaidLeavesByUser = new Map<string, typeof allUnpaidLeaves>()
+    for (const l of allUnpaidLeaves) {
+      const list = unpaidLeavesByUser.get(l.userId)
+      if (list) list.push(l); else unpaidLeavesByUser.set(l.userId, [l])
+    }
+
     const results = await Promise.all(
       pendingEmployees.map(async (emp) => {
         const baseSalary = emp.baseSalary ?? 0
 
-        const [attendances, approvedLeaves, unpaidLeaves] = await Promise.all([
-          prisma.attendance.findMany({
-            where: { userId: emp.id, date: { gte: startDate, lte: endDate } },
-            select: {
-              date: true,
-              lateMinutes: true,
-              status: true,
-              earlyLeaveMinutes: true,
-              workMinutes: true,
-              leaveType: true,
-              checkIn: true,
-            },
-          }),
-          prisma.leaveRequest.findMany({
-            where: {
-              userId: emp.id,
-              status: { in: ['APPROVED', 'ADMIN_APPROVED'] },
-              startDate: { lte: endDate },
-              endDate: { gte: startDate },
-            },
-            select: { startDate: true, endDate: true, status: true },
-          }),
-          prisma.leaveRequest.findMany({
-            where: {
-              userId: emp.id,
-              type: 'UNPAID',
-              status: { in: ['APPROVED', 'ADMIN_APPROVED'] },
-              startDate: { lte: endDate },
-              endDate: { gte: startDate },
-            },
-            select: { days: true },
-          }),
-        ])
+        const attendances = attendancesByUser.get(emp.id) ?? []
+        const approvedLeaves = approvedLeavesByUser.get(emp.id) ?? []
+        const unpaidLeaves = unpaidLeavesByUser.get(emp.id) ?? []
 
         const leaveDateKeys = buildApprovedLeaveDateSet(approvedLeaves, startDate, endDate)
 
