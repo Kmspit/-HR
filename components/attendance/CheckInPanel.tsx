@@ -648,7 +648,12 @@ export default function CheckInPanel({
       )}
 
       {step === 'face-scan' && faceRequired && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
+          {/* space-y-2 would apply margin-top to FaceAttendanceScan below (its
+              position:fixed fullscreen root is still a normal-flow sibling for
+              margin purposes) — that margin then offsets its `top-0`, leaving a
+              gap that reveals the app header underneath. gap doesn't apply to
+              out-of-flow children at all, so it can't leak the same way. */}
           <p className="text-center text-xs text-slate-400">
             สแกนสำเร็จ → บันทึกในเครื่อง + เซิร์ฟเวอร์อัตโนมัติ
           </p>
