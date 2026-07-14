@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Suspense } from 'react'
-import { Noto_Sans_Thai, Plus_Jakarta_Sans } from 'next/font/google'
+import { Noto_Sans_Thai } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { SessionProvider } from 'next-auth/react'
@@ -15,13 +15,6 @@ const notoSansThai = Noto_Sans_Thai({
   weight: ['400', '500', '600', '700'],
   display: 'swap',
   variable: '--font-thai',
-})
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  weight: ['400', '500', '600', '700', '800'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-jakarta',
 })
 
 export const metadata: Metadata = {
@@ -70,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-title" content="KM HR" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
-      <body className={`${notoSansThai.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
+      <body className={`${notoSansThai.variable} font-sans antialiased`}>
         <PWARegister />
         <ThemeProvider>
           <SessionProvider session={session}>

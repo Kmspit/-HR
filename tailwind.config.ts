@@ -16,7 +16,7 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-thai)', 'var(--font-jakarta)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-thai)', 'system-ui', 'sans-serif'],
         thai: ['var(--font-thai)', 'system-ui', 'sans-serif'],
       },
       spacing: {
