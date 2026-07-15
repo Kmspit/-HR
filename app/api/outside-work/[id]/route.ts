@@ -9,6 +9,7 @@ import {
   isCompanyWideApprover,
 } from '@/lib/org-scope'
 import type { Role, Prisma } from '@prisma/client'
+import { parseNonNegativeNumber } from '@/lib/utils'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -114,6 +115,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (body.place !== undefined && !body.place?.trim()) {
       return NextResponse.json({ error: 'กรุณาระบุสถานที่' }, { status: 400 })
+    }
+    // caseCount/distance/distanceLimit: 0 is valid ("none yet"), negative is not.
+    if (body.caseCount && parseNonNegativeNumber(body.caseCount) == null) {
+      return NextResponse.json({ error: 'จำนวนคดีต้องไม่ติดลบ' }, { status: 400 })
+    }
+    if (body.distance && parseNonNegativeNumber(body.distance) == null) {
+      return NextResponse.json({ error: 'ระยะทางต้องไม่ติดลบ' }, { status: 400 })
+    }
+    if (body.distanceLimit && parseNonNegativeNumber(body.distanceLimit) == null) {
+      return NextResponse.json({ error: 'ระยะทางจำกัดต้องไม่ติดลบ' }, { status: 400 })
     }
 
     if (!isHR && (body.approvalStatus !== undefined || body.status !== undefined)) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parseNonNegativeNumber } from '@/lib/utils'
 
 const userSel = { id: true, name: true, role: true, department: true }
 const FINANCE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
@@ -53,8 +54,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data[key] = JSON.stringify(body[key])
     } else if (['issueDate', 'dueDate'].includes(key)) {
       data[key] = body[key] ? new Date(body[key]) : null
-    } else if (['subtotal', 'vatRate', 'whtRate'].includes(key)) {
-      data[key] = Number(body[key])
+    } else if (key === 'subtotal') {
+      const n = parseNonNegativeNumber(body[key])
+      if (n == null) return NextResponse.json({ error: 'ยอดก่อนภาษีต้องไม่ติดลบ' }, { status: 400 })
+      data[key] = n
+    } else if (['vatRate', 'whtRate'].includes(key)) {
+      const n = parseNonNegativeNumber(body[key])
+      if (n == null || n > 1) {
+        return NextResponse.json({ error: 'อัตราภาษีต้องอยู่ระหว่าง 0-1 (เช่น 0.07 = 7%)' }, { status: 400 })
+      }
+      data[key] = n
     } else {
       data[key] = body[key] === '' ? null : body[key]
     }
@@ -70,7 +79,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.vatAmount  = Math.round(sub * vatR * 100) / 100
     data.whtAmount  = Math.round(sub * whtR * 100) / 100
     data.totalAmount = sub + (data.vatAmount as number) - (data.whtAmount as number)
-    data.remainingAmount = (data.totalAmount as number) - existing.paidAmount
+    // Floor at 0 — same guard the sibling payments-POST route already applies,
+    // this PATCH path was missing it, letting a bad edit push AR-aging negative.
+    data.remainingAmount = Math.max(0, (data.totalAmount as number) - existing.paidAmount)
   }
 
   // Approve action

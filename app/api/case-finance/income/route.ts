@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
+import { parsePositiveAmount } from '@/lib/utils'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 const CAN_VIEW   = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
@@ -61,6 +62,10 @@ export async function POST(req: NextRequest) {
   if (!incomeType || !amount || !date) {
     return NextResponse.json({ error: 'incomeType, amount, date required' }, { status: 400 })
   }
+  const validAmount = parsePositiveAmount(amount)
+  if (validAmount == null) {
+    return NextResponse.json({ error: 'จำนวนเงินต้องมากกว่า 0' }, { status: 400 })
+  }
 
   const income = await prisma.caseIncome.create({
     data: {
@@ -68,7 +73,7 @@ export async function POST(req: NextRequest) {
       caseNumber:  caseNumber || null,
       clientName:  clientName || null,
       incomeType,
-      amount:      Number(amount),
+      amount:      validAmount,
       date:        new Date(date),
       note:        note || null,
       department:  department || null,
@@ -81,7 +86,7 @@ export async function POST(req: NextRequest) {
     userId:  session.user.id,
     type:    'SYSTEM',
     title:   'บันทึกรายรับคดีแล้ว',
-    message: `${incomeType} — ${Number(amount).toLocaleString('th-TH')} บาท${caseNumber ? ` (คดี ${caseNumber})` : ''}`,
+    message: `${incomeType} — ${validAmount.toLocaleString('th-TH')} บาท${caseNumber ? ` (คดี ${caseNumber})` : ''}`,
   })
 
   return NextResponse.json(income, { status: 201 })

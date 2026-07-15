@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parsePositiveAmount } from '@/lib/utils'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 const CAN_VIEW   = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
@@ -64,13 +65,17 @@ export async function POST(req: NextRequest) {
   if (!expenseType || !amount || !date || !employeeId) {
     return NextResponse.json({ error: 'expenseType, amount, date, employeeId required' }, { status: 400 })
   }
+  const validAmount = parsePositiveAmount(amount)
+  if (validAmount == null) {
+    return NextResponse.json({ error: 'จำนวนเงินต้องมากกว่า 0' }, { status: 400 })
+  }
 
   const expense = await prisma.caseExpense.create({
     data: {
       taskId:      taskId || null,
       caseNumber:  caseNumber || null,
       expenseType,
-      amount:      Number(amount),
+      amount:      validAmount,
       date:        new Date(date),
       employeeId,
       note:        note || null,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
+import { parseNonNegativeNumber } from '@/lib/utils'
 
 const userSel = { id: true, name: true, role: true, department: true }
 
@@ -89,6 +90,15 @@ export async function POST(req: NextRequest) {
   if (!clientName || !serviceType || !issueDate || !dueDate) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+  const sub = parseNonNegativeNumber(subtotal ?? 0)
+  if (sub == null) {
+    return NextResponse.json({ error: 'ยอดก่อนภาษีต้องไม่ติดลบ' }, { status: 400 })
+  }
+  const vatR = parseNonNegativeNumber(vatRate)
+  const whtR = parseNonNegativeNumber(whtRate)
+  if (vatR == null || vatR > 1 || whtR == null || whtR > 1) {
+    return NextResponse.json({ error: 'อัตราภาษีต้องอยู่ระหว่าง 0-1 (เช่น 0.07 = 7%)' }, { status: 400 })
+  }
 
   // Auto-generate invoice number: INV-YYYY-NNNN
   const year  = new Date().getFullYear()
@@ -97,9 +107,8 @@ export async function POST(req: NextRequest) {
   })
   const invoiceNumber = `INV-${year}-${String(count + 1).padStart(4, '0')}`
 
-  const sub      = Number(subtotal ?? 0)
-  const vatAmt   = Math.round(sub * Number(vatRate) * 100) / 100
-  const whtAmt   = Math.round(sub * Number(whtRate) * 100) / 100
+  const vatAmt   = Math.round(sub * vatR * 100) / 100
+  const whtAmt   = Math.round(sub * whtR * 100) / 100
   const total    = sub + vatAmt - whtAmt
 
   const invoice = await prisma.billingInvoice.create({
@@ -113,9 +122,9 @@ export async function POST(req: NextRequest) {
       serviceType,
       lineItems:      JSON.stringify(lineItems ?? []),
       subtotal:       sub,
-      vatRate:        Number(vatRate),
+      vatRate:        vatR,
       vatAmount:      vatAmt,
-      whtRate:        Number(whtRate),
+      whtRate:        whtR,
       whtAmount:      whtAmt,
       totalAmount:    total,
       remainingAmount: total,

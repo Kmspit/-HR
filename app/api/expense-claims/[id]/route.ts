@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parsePositiveAmount } from '@/lib/utils'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 const sel = { id: true, name: true, department: true, role: true }
@@ -44,12 +45,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json()
   const { title, expenseType, amount, date, note, caseNumber, taskId } = body
 
+  let validAmount: number | undefined
+  if (amount !== undefined) {
+    const parsed = parsePositiveAmount(amount)
+    if (parsed == null) {
+      return NextResponse.json({ error: 'จำนวนเงินต้องมากกว่า 0' }, { status: 400 })
+    }
+    validAmount = parsed
+  }
+
   const updated = await prisma.expenseClaim.update({
     where: { id },
     data: {
       ...(title       !== undefined && { title }),
       ...(expenseType !== undefined && { expenseType }),
-      ...(amount      !== undefined && { amount: Number(amount) }),
+      ...(validAmount !== undefined && { amount: validAmount }),
       ...(date        !== undefined && { date: new Date(date) }),
       ...(note        !== undefined && { note }),
       ...(caseNumber  !== undefined && { caseNumber }),

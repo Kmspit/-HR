@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { sendLineApprovalRequest } from '@/lib/line-notifications'
+import { parsePositiveAmount } from '@/lib/utils'
 
 const CAN_APPROVE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
 const userSel = { id: true, name: true, department: true, role: true }
@@ -69,6 +70,10 @@ export async function POST(req: NextRequest) {
   if (!title || !expenseType || !amount || !date) {
     return NextResponse.json({ error: 'title, expenseType, amount, date required' }, { status: 400 })
   }
+  const validAmount = parsePositiveAmount(amount)
+  if (validAmount == null) {
+    return NextResponse.json({ error: 'จำนวนเงินต้องมากกว่า 0' }, { status: 400 })
+  }
 
   const claim = await prisma.expenseClaim.create({
     data: {
@@ -76,7 +81,7 @@ export async function POST(req: NextRequest) {
       taskId:        taskId || null,
       caseNumber:    caseNumber || null,
       expenseType,
-      amount:        Number(amount),
+      amount:        validAmount,
       date:          new Date(date),
       note:          note || null,
       status:        'PENDING',
@@ -95,18 +100,18 @@ export async function POST(req: NextRequest) {
       userId:  a.id,
       type:    'EXPENSE_CLAIM_SUBMITTED',
       title:   'มีการยื่นเบิกค่าใช้จ่ายใหม่',
-      message: `${claim.submittedBy.name} ยื่นเบิก ${title} — ${Number(amount).toLocaleString('th-TH')} บาท`,
+      message: `${claim.submittedBy.name} ยื่นเบิก ${title} — ${validAmount.toLocaleString('th-TH')} บาท`,
     })
   }
   // Phase 14 — LINE approval card
   void sendLineApprovalRequest({
     approvalType: 'EXPENSE',
     id: claim.id,
-    title: `${title} — ฿${Number(amount).toLocaleString('th-TH')}`,
+    title: `${title} — ฿${validAmount.toLocaleString('th-TH')}`,
     requesterName: claim.submittedBy.name,
     details: [
       { label: 'ประเภท', value: String(expenseType) },
-      { label: 'จำนวน', value: `฿${Number(amount).toLocaleString('th-TH')} บาท` },
+      { label: 'จำนวน', value: `฿${validAmount.toLocaleString('th-TH')} บาท` },
       ...(caseNumber ? [{ label: 'เลขคดี', value: String(caseNumber) }] : []),
       ...(note ? [{ label: 'หมายเหตุ', value: String(note).slice(0, 60) }] : []),
     ],

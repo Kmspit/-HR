@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { checkDebtorAccess } from '@/lib/debtor-access'
+import { parsePositiveAmount } from '@/lib/utils'
 
 const userSel = { id: true, name: true, department: true, role: true }
 
@@ -42,11 +43,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!amount || !paidAt || !channel) {
     return NextResponse.json({ error: 'amount, paidAt, channel are required' }, { status: 400 })
   }
+  const validAmount = parsePositiveAmount(amount)
+  if (validAmount == null) {
+    return NextResponse.json({ error: 'จำนวนเงินต้องมากกว่า 0' }, { status: 400 })
+  }
 
   const debtor = await prisma.debtor.findUnique({ where: { id } })
   if (!debtor) return NextResponse.json({ error: 'Debtor not found' }, { status: 404 })
 
-  const newPaidAmount    = debtor.paidAmount + Number(amount)
+  const newPaidAmount    = debtor.paidAmount + validAmount
   const newRemainingDebt = Math.max(0, debtor.totalDebt - newPaidAmount)
   const newStatus = newRemainingDebt <= 0 ? 'PAID' : 'PARTIAL_PAYMENT'
 
@@ -54,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     prisma.debtPayment.create({
       data: {
         debtorId:    id,
-        amount:      Number(amount),
+        amount:      validAmount,
         paidAt:      new Date(paidAt),
         channel,
         receivedById: receivedById || null,
@@ -78,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       userId:  debtor.assignedToId,
       type:    'DEBT_PAYMENT_RECEIVED',
       title:   'ได้รับชำระหนี้',
-      message: `${debtor.firstName} ${debtor.lastName} ชำระ ฿${Number(amount).toLocaleString('th-TH')} — คงเหลือ ฿${newRemainingDebt.toLocaleString('th-TH')}`,
+      message: `${debtor.firstName} ${debtor.lastName} ชำระ ฿${validAmount.toLocaleString('th-TH')} — คงเหลือ ฿${newRemainingDebt.toLocaleString('th-TH')}`,
     })
   }
 

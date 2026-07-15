@@ -41,12 +41,10 @@ export default function WarningPdfViewer({ warningId, title, open, onClose }: Pr
     }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
-    console.log('[SCROLL LOCK] WarningPdfViewer')
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
-      console.log('[SCROLL UNLOCK] WarningPdfViewer')
     }
   }, [open, onClose, fullscreen])
 

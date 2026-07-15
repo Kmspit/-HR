@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
+import { parsePositiveAmount } from '@/lib/utils'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
 const LARGE_PAYMENT_THRESHOLD = 50000
@@ -71,6 +72,10 @@ export async function POST(req: NextRequest) {
   if (!debtorId || !paymentType || !amount || !paymentDate || !paymentMethod) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+  const validAmount = parsePositiveAmount(amount)
+  if (validAmount == null) {
+    return NextResponse.json({ error: 'จำนวนเงินต้องมากกว่า 0' }, { status: 400 })
+  }
 
   const payment = await prisma.recoveryPayment.create({
     data: {
@@ -80,7 +85,7 @@ export async function POST(req: NextRequest) {
       clientId:        clientId       || null,
       promiseId:       promiseId      || null,
       paymentType,
-      amount:          Number(amount),
+      amount:          validAmount,
       paymentDate:     new Date(paymentDate),
       paymentMethod,
       referenceNumber: referenceNumber || null,

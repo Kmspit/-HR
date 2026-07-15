@@ -61,6 +61,25 @@ export function parseCoord(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** Parses a client-supplied money/quantity value, rejecting anything that isn't a
+ *  finite number strictly greater than zero (NaN, negative, zero, Infinity, or a
+ *  non-numeric string all return null) — a "payment"/"expense"/"case count" of ≤0
+ *  has no valid business meaning and must be rejected at the boundary, not stored. */
+export function parsePositiveAmount(value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : parseFloat(String(value))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Same as parsePositiveAmount, but 0 is valid (case counts, distances — "none yet"
+ *  is a real value, unlike a payment/expense amount) — only rejects negatives, NaN,
+ *  and non-finite values. */
+export function parseNonNegativeNumber(value: unknown): number | null {
+  if (value == null || value === '') return null
+  const n = typeof value === 'number' ? value : parseFloat(String(value))
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
 export function generateEmployeeId(): string {
   const year = new Date().getFullYear().toString().slice(-2)
   const rand = Math.floor(Math.random() * 9000) + 1000

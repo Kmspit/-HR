@@ -10,6 +10,7 @@ import {
   userIdFilterFromScope,
 } from '@/lib/org-scope'
 import type { Role } from '@prisma/client'
+import { parseNonNegativeNumber } from '@/lib/utils'
 
 export async function GET(req: NextRequest) {
   try {
@@ -103,6 +104,17 @@ export async function POST(req: NextRequest) {
 
     if (!date || !place || !purpose) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 })
+    }
+    // caseCount/distance/distanceLimit: 0 is valid ("none yet"), negative is not —
+    // reject explicitly rather than silently coercing a typo'd negative into null.
+    if (caseCount && parseNonNegativeNumber(caseCount) == null) {
+      return NextResponse.json({ error: 'จำนวนคดีต้องไม่ติดลบ' }, { status: 400 })
+    }
+    if (distance && parseNonNegativeNumber(distance) == null) {
+      return NextResponse.json({ error: 'ระยะทางต้องไม่ติดลบ' }, { status: 400 })
+    }
+    if (distanceLimit && parseNonNegativeNumber(distanceLimit) == null) {
+      return NextResponse.json({ error: 'ระยะทางจำกัดต้องไม่ติดลบ' }, { status: 400 })
     }
 
     const year = new Date().getFullYear() + 543
