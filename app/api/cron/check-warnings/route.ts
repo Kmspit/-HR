@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, warned: results.length, results })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[cron/check-warnings]', message, err)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

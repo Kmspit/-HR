@@ -4,11 +4,13 @@ import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { sendLineApprovalRequest } from '@/lib/line-notifications'
 import { parsePositiveAmount } from '@/lib/utils'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_APPROVE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
 const userSel = { id: true, name: true, department: true, role: true }
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -57,9 +59,13 @@ export async function GET(req: NextRequest) {
   ])
 
   return NextResponse.json({ items, total, page, pages: Math.ceil(total / limit) })
+ } catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -118,4 +124,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json(claim, { status: 201 })
+ } catch (err) {
+  return apiError(err)
+ }
 }

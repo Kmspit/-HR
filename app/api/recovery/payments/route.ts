@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { parsePositiveAmount } from '@/lib/utils'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
 const LARGE_PAYMENT_THRESHOLD = 50000
@@ -10,6 +11,7 @@ const LARGE_PAYMENT_THRESHOLD = 50000
 const userSel = { id: true, name: true, department: true, role: true }
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -55,9 +57,13 @@ export async function GET(req: NextRequest) {
   ])
 
   return NextResponse.json({ items, total, page, pages: Math.ceil(total / limit) })
+ } catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -101,4 +107,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json(payment, { status: 201 })
+ } catch (err) {
+  return apiError(err)
+ }
 }

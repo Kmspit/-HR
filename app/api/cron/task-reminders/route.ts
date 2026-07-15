@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
             : undefined,
         })
         stats.deadline++
-      } catch { stats.errors++ }
+      } catch (err) { console.error('[task-reminders] deadline reminder failed', t.id, err); stats.errors++ }
     }
   }
 
@@ -237,7 +237,7 @@ export async function GET(req: NextRequest) {
           },
         }).catch(() => {})
       }
-    } catch { stats.errors++ }
+    } catch (err) { console.error('[task-reminders] overdue task failed', t.id, err); stats.errors++ }
   }
 
   // ── 3. Court date reminders (7d / 3d / 1d before courtDate) ───────────
@@ -267,7 +267,7 @@ export async function GET(req: NextRequest) {
             : undefined,
         })
         stats.court++
-      } catch { stats.errors++ }
+      } catch (err) { console.error('[task-reminders] court reminder failed', t.id, err); stats.errors++ }
     }
   }
 
@@ -299,7 +299,7 @@ export async function GET(req: NextRequest) {
             : undefined,
         })
         stats.appointment++
-      } catch { stats.errors++ }
+      } catch (err) { console.error('[task-reminders] appointment reminder failed', t.id, err); stats.errors++ }
     }
   }
 
@@ -326,7 +326,7 @@ export async function GET(req: NextRequest) {
         link:    '/tasks',
       })
       stats.waitingDoc++
-    } catch { stats.errors++ }
+    } catch (err) { console.error('[task-reminders] waiting-doc reminder failed', t.id, err); stats.errors++ }
   }
 
   // ── 6. Automation rules (from DB) ────────────────────────────────────────
@@ -370,7 +370,7 @@ export async function GET(req: NextRequest) {
                 : undefined,
             })
             stats.escalated++
-          } catch { stats.errors++ }
+          } catch (err) { console.error('[task-reminders] automation OVERDUE rule failed', rule.id, t.id, err); stats.errors++ }
         }
       }
 
@@ -398,11 +398,11 @@ export async function GET(req: NextRequest) {
               link:    '/tasks',
             })
             stats.escalated++
-          } catch { stats.errors++ }
+          } catch (err) { console.error('[task-reminders] automation REJECTED_COUNT rule failed', rule.id, t.id, err); stats.errors++ }
         }
       }
     }
-  } catch { stats.errors++ }
+  } catch (err) { console.error('[task-reminders] automation rules failed', err); stats.errors++ }
 
   // ── 7. Dependency unblock notifications ────────────────────────────────────
   try {
@@ -441,7 +441,7 @@ export async function GET(req: NextRequest) {
         })
       }
     }
-  } catch { stats.errors++ }
+  } catch (err) { console.error('[task-reminders] dependency-unblock notifications failed', err); stats.errors++ }
 
   // ── 8. Case court reminders (7d / 3d / 1d / same-day) ────────────────────
   const caseCourtStats = { reminded: 0, missed: 0, errors: 0 }
@@ -559,7 +559,7 @@ export async function GET(req: NextRequest) {
       }
       caseCourtStats.missed++
     }
-  } catch { caseCourtStats.errors++ }
+  } catch (err) { console.error('[task-reminders] case-court reminders failed', err); caseCourtStats.errors++ }
 
   // ── 9. Case debtor no-contact 7d automation ───────────────────────────────
   try {
@@ -624,7 +624,7 @@ export async function GET(req: NextRequest) {
         },
       }).catch(() => {})
     }
-  } catch { stats.errors++ }
+  } catch (err) { console.error('[task-reminders] debtor no-contact automation failed', err); stats.errors++ }
 
   // ── 10. Case SLA overdue check ────────────────────────────────────────────
   try {
@@ -661,7 +661,7 @@ export async function GET(req: NextRequest) {
         link:    `/cases/${c.id}`,
       })
     }
-  } catch { stats.errors++ }
+  } catch (err) { console.error('[task-reminders] SLA overdue check failed', err); stats.errors++ }
 
   console.log('[task-reminders]', stats, '[case-reminders]', caseCourtStats)
   return NextResponse.json({ ok: true, stats, caseCourtStats })

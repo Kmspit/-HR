@@ -3,12 +3,14 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { parseNonNegativeNumber } from '@/lib/utils'
+import { apiError } from '@/lib/api-handler'
 
 const userSel = { id: true, name: true, role: true, department: true }
 
 const FINANCE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -70,9 +72,13 @@ export async function GET(req: NextRequest) {
   ])
 
   return NextResponse.json({ items, total, page, pages: Math.ceil(total / limit) })
+ } catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!FINANCE_ROLES.includes(session.user.role)) {
@@ -157,4 +163,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(invoice, { status: 201 })
+ } catch (err) {
+  return apiError(err)
+ }
 }

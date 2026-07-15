@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { canViewUserRecord, isCompanyWideApprover } from '@/lib/org-scope'
+import { apiError } from '@/lib/api-handler'
 import type { Role } from '@prisma/client'
 
 async function canActOnExpenseClaim(
@@ -22,6 +23,7 @@ async function canActOnExpenseClaim(
 
 // action: supervisor_approve | ceo_approve | reject | mark_paid
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -117,4 +119,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json(updated)
+ } catch (err) {
+  return apiError(err)
+ }
 }

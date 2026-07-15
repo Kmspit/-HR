@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseNonNegativeNumber } from '@/lib/utils'
+import { apiError } from '@/lib/api-handler'
 
 const userSel = { id: true, name: true, role: true, department: true }
 const FINANCE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -31,9 +33,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(invoice)
+ } catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!FINANCE_ROLES.includes(session.user.role)) {
@@ -101,9 +107,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   })
 
   return NextResponse.json(invoice)
+ } catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!['SUPER_ADMIN', 'CEO', 'MANAGER_HR'].includes(session.user.role)) {
@@ -113,4 +123,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id } = await params
   await prisma.billingInvoice.delete({ where: { id } })
   return NextResponse.json({ ok: true })
+ } catch (err) {
+  return apiError(err)
+ }
 }

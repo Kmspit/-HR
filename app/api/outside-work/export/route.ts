@@ -7,6 +7,7 @@ import { OUTSIDE_WORK_PLAN_TITLE_DEFAULT } from '@/lib/company-defaults'
 import { buildBranchScope, branchNestedUserWhere } from '@/lib/branch-scope'
 import type { Role } from '@prisma/client'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
+import { apiError } from '@/lib/api-handler'
 
 // Matches app/(dashboard)/outside-work/page.tsx's own canViewAll check — the
 // export must derive this from the caller's real role, never trust a
@@ -320,6 +321,7 @@ function buildEmployeeSheet(
 
 // ── POST /api/outside-work/export ────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -436,4 +438,7 @@ export async function POST(req: NextRequest) {
       'Content-Disposition': `attachment; filename="outside-work-${dateTag}.xlsx"`,
     },
   })
+ } catch (err) {
+  return apiError(err)
+ }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { triggerAutomation } from '@/lib/automation-engine'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_CONFIRM = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 // Same company-wide visibility set as the sibling list endpoint
@@ -13,6 +14,7 @@ const LARGE_THRESHOLD = 50000
 const userSel = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -33,9 +35,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return NextResponse.json(payment)
+ } catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -190,4 +196,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   return NextResponse.json(updated)
+ } catch (err) {
+  return apiError(err)
+ }
 }

@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
       maxFileSize: MAX_FILE_SIZE_BYTES,
     })
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    console.error('[upload/sign]', err)
+    return NextResponse.json({ error: 'Failed to sign upload' }, { status: 500 })
   }
 }

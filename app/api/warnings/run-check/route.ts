@@ -73,6 +73,8 @@ export async function POST(_req: NextRequest) {
 
     const message = err instanceof Error ? err.message : 'Unknown error'
 
+    console.error('[warnings/run-check]', message, err)
+
     return NextResponse.json({ error: message }, { status: 500 })
 
   }
