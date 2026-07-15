@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { createNotification } from '@/lib/notifications'
 import { requireActivePortalSession } from '@/lib/portal-session-guard'
+import { apiError } from '@/lib/api-handler'
 import {
   isStaffMessageRole,
   resolveClientUserIdForPortal,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/client-message-access'
 
 export async function GET(req: NextRequest) {
+ try {
   const portal = await requireActivePortalSession(req)
   if (portal.ok) {
     const clientUserId = await resolveClientUserIdForPortal(
@@ -70,9 +72,13 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const body = await req.json()
   const { content, taskId, clientId: targetClientId } = body
 
@@ -197,4 +203,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+} catch (err) {
+  return apiError(err)
+ }
 }

@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
@@ -22,6 +23,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -36,12 +38,16 @@ export async function GET(
     orderBy: { createdAt: 'desc' },
   })
   return NextResponse.json({ activities })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -93,4 +99,7 @@ export async function POST(
   })
 
   return NextResponse.json({ activity }, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

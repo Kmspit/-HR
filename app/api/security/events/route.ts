@@ -4,10 +4,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { apiError } from '@/lib/api-handler'
 
 const ALLOWED_ROLES = ['CEO', 'SUPER_ADMIN', 'HR', 'MANAGER_HR'] as const
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!ALLOWED_ROLES.includes(session.user.role as typeof ALLOWED_ROLES[number])) {
@@ -26,4 +28,7 @@ export async function GET(req: NextRequest) {
   })
 
   return NextResponse.json({ events })
+} catch (err) {
+  return apiError(err)
+ }
 }

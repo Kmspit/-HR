@@ -10,8 +10,10 @@ import { createOtp } from '@/lib/otp'
 import { pushLineMessages } from '@/lib/line-api'
 import { verify2FAPendingToken } from '@/lib/two-fa-pending'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-handler'
 
 export async function POST(req: NextRequest) {
+ try {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   const { allowed } = await rateLimit(`2fa-otp:${ip}`, 10, 15 * 60 * 1000)
   if (!allowed) {
@@ -70,4 +72,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ challenge, sent: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

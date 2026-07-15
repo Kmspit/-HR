@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 import { triggerAutomation } from '@/lib/automation-engine'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const CAN_CREATE  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
@@ -16,6 +17,7 @@ function buildWhere(user: { id: string; role: string; department?: string | null
 }
 
 export async function GET(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -62,9 +64,13 @@ export async function GET(req: Request) {
   })
 
   return NextResponse.json({ cases })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!CAN_CREATE.includes(session.user.role)) {
@@ -254,4 +260,7 @@ export async function POST(req: Request) {
   }, session.user.id).catch(() => undefined)
 
   return NextResponse.json({ case: newCase }, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

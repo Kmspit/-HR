@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { rejectUnauthorizedCron } from '@/lib/cron-secret'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(req: NextRequest) {
+ try {
   const denied = rejectUnauthorizedCron(req)
   if (denied) return denied
 
@@ -69,4 +71,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, sent })
+} catch (err) {
+  return apiError(err)
+ }
 }

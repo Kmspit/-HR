@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
@@ -16,6 +17,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -30,12 +32,16 @@ export async function GET(
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   })
   return NextResponse.json({ checklists })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -83,12 +89,16 @@ export async function POST(
     },
   })
   return NextResponse.json({ item }, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
@@ -103,4 +113,7 @@ export async function DELETE(
 
   await prisma.caseChecklist.deleteMany({ where: { id: checklistId, caseId: id } })
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

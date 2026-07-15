@@ -8,8 +8,10 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logSecurityEvent } from '@/lib/security-events'
 import { assertEnglishCredential } from '@/lib/english-input'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET() {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -20,9 +22,13 @@ export async function GET() {
     channel:  setup?.channel ?? 'LINE',
     enabledAt: setup?.enabledAt ?? null,
   })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -59,4 +65,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({ enabled: setup.enabled, channel: setup.channel })
+} catch (err) {
+  return apiError(err)
+ }
 }

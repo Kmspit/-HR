@@ -1,8 +1,10 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET() {
+ try {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -70,4 +72,7 @@ export async function GET() {
       estimatedMinutesSaved: taskActionsCreated * 5 + notificationsSent * 2,
     },
   })
+} catch (err) {
+  return apiError(err)
+ }
 }

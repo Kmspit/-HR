@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_MANAGE_ALL = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
 
@@ -8,6 +9,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ depId: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -27,4 +29,7 @@ export async function DELETE(
 
   await prisma.taskDependency.delete({ where: { id: depId } })
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

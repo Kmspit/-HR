@@ -3,11 +3,13 @@ import { auth } from '@/lib/auth'
 import { verifyScanImageAccessToken } from '@/lib/attendance-scan-access'
 import { getFaceScanImageBuffer } from '@/lib/attendance-face-scan'
 import { prisma } from '@/lib/prisma'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+ try {
   const { id } = await params
   const access = new URL(req.url).searchParams.get('access')
 
@@ -50,4 +52,7 @@ export async function GET(
       'Cache-Control': access ? 'private, max-age=3600' : 'private, no-store, max-age=0',
     },
   })
+} catch (err) {
+  return apiError(err)
+ }
 }

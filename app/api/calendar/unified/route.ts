@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { apiError } from '@/lib/api-handler'
 
 // Color map for event types
 const EVENT_TYPE_META: Record<string, { label: string; color: string }> = {
@@ -14,6 +15,7 @@ const EVENT_TYPE_META: Record<string, { label: string; color: string }> = {
 }
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -202,4 +204,7 @@ export async function GET(req: NextRequest) {
   unified.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
 
   return NextResponse.json({ items: unified, meta: EVENT_TYPE_META })
+} catch (err) {
+  return apiError(err)
+ }
 }

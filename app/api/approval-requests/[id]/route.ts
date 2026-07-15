@@ -8,8 +8,10 @@ import {
   canViewApprovalRequest,
 } from '@/lib/approval-request-access'
 import type { Role } from '@prisma/client'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -49,9 +51,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json({ ...request, activity, signatures })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -201,4 +207,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   })
 
   return NextResponse.json({ success: true, status: finalStatus })
+} catch (err) {
+  return apiError(err)
+ }
 }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
 import { checkDebtorAccess } from '@/lib/debtor-access'
 import { DOCUMENT_MIME_ALLOWLIST, DOCUMENT_ALLOWED_FORMATS, MAX_DOCUMENT_UPLOAD_BYTES } from '@/lib/document-upload'
+import { apiError } from '@/lib/api-handler'
 
 function configureCloudinary() {
   cloudinary.config({
@@ -16,6 +17,7 @@ function configureCloudinary() {
 const userSel = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -30,9 +32,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { createdAt: 'desc' },
   })
   return NextResponse.json(files)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -81,9 +87,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json(dbFile, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -105,4 +115,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   await prisma.debtorFile.delete({ where: { id: fileId } })
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

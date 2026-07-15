@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 
@@ -8,6 +9,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; courtId: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id, courtId } = await params
@@ -40,12 +42,16 @@ export async function PATCH(
 
   const updated = await prisma.caseCourt.update({ where: { id: courtId }, data })
   return NextResponse.json({ court: updated })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; courtId: string }> },
 ) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id, courtId } = await params
@@ -73,4 +79,7 @@ export async function DELETE(
     },
   })
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

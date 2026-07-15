@@ -3,8 +3,10 @@ import { auth } from '@/lib/auth'
 import { buildMonthlyWorkLog } from '@/lib/attendance-work-log'
 import { prisma } from '@/lib/prisma'
 import { canViewUserRecord } from '@/lib/org-scope'
+import { apiError } from '@/lib/api-handler'
 /** รายงานรายเดือน (legacy) — คืนค่า work log รูปแบบเดียวกับ /api/attendance/work-log */
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { searchParams } = new URL(req.url)
@@ -39,4 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ records, rows: records, summary })
+} catch (err) {
+  return apiError(err)
+ }
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 import { calcSlaDeadline } from '@/lib/task-sla'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_ASSIGN  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 const CAN_SEE_ALL = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
@@ -16,6 +17,7 @@ const userSelect = {
 } as const
 
 export async function GET(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -129,9 +131,13 @@ export async function GET(req: Request) {
 
   const tasksWithBlocked = tasks.map((t) => ({ ...t, isBlocked: blockedIds.has(t.id) }))
   return NextResponse.json({ tasks: tasksWithBlocked, total, page, pages: Math.ceil(total / limit) })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -295,4 +301,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ task }, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

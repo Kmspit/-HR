@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { WORKLOAD_STATUS_LABEL as STATUS_LABEL_TH } from '@/lib/status-labels'
+import { apiError } from '@/lib/api-handler'
 
 const ACTIVE_STATUSES = [
   'PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS',
@@ -17,6 +18,7 @@ function calcWorkloadStatus(score: number): 'LOW' | 'NORMAL' | 'HIGH' | 'OVERLOA
 
 
 export async function GET(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -103,4 +105,7 @@ export async function GET(req: Request) {
   workloadByUser.sort((a, b) => b.score - a.score)
 
   return NextResponse.json({ workload: workloadByUser })
+} catch (err) {
+  return apiError(err)
+ }
 }

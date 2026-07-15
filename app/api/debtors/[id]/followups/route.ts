@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkDebtorAccess } from '@/lib/debtor-access'
+import { apiError } from '@/lib/api-handler'
 
 const userSel = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -20,9 +22,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { followedAt: 'desc' },
   })
   return NextResponse.json(items)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -59,4 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json(followUp, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

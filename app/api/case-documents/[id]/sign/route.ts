@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse, after } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
+import { apiError } from '@/lib/api-handler'
 
 function configureCloudinary() {
   const name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
@@ -13,6 +14,7 @@ function configureCloudinary() {
 const CAN_SIGN = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -91,9 +93,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await prisma.caseDocument.update({ where: { id: documentId }, data: { updatedAt: new Date() } })
 
   return NextResponse.json(sig, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -122,4 +128,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   await prisma.caseDocumentSignature.delete({ where: { id: signatureId } })
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

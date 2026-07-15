@@ -12,8 +12,10 @@ import { logSecurityEvent } from '@/lib/security-events'
 import { resolvePostLoginPath } from '@/lib/post-login-path'
 import { verify2FAPendingToken } from '@/lib/two-fa-pending'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-handler'
 
 export async function POST(req: NextRequest) {
+ try {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   const { allowed } = await rateLimit(`2fa-verify:${ip}`, 20, 15 * 60 * 1000)
   if (!allowed) {
@@ -92,4 +94,7 @@ export async function POST(req: NextRequest) {
   })
 
   return response
+} catch (err) {
+  return apiError(err)
+ }
 }

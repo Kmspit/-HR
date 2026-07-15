@@ -10,6 +10,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
 import { padToMinDuration } from '@/lib/timing-safety'
 import { setForgotPasswordChallengeCookie, FP_CHALLENGE_COOKIE, clearForgotPasswordChallengeCookie } from '@/lib/forgot-password-cookie'
+import { apiError } from '@/lib/api-handler'
 
 // Both branches below (account exists vs. doesn't) are padded to at least
 // this long before responding, so measuring response time can't be used to
@@ -20,6 +21,7 @@ import { setForgotPasswordChallengeCookie, FP_CHALLENGE_COOKIE, clearForgotPassw
 const MIN_RESPONSE_MS = 400
 
 export async function POST(req: NextRequest) {
+ try {
   const startedAt = Date.now()
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   const { allowed } = await rateLimit(`forgot-pw:${ip}`, 5, 60 * 60 * 1000)
@@ -80,4 +82,7 @@ export async function POST(req: NextRequest) {
   setForgotPasswordChallengeCookie(uniform, challenge)
   await padToMinDuration(startedAt, MIN_RESPONSE_MS)
   return uniform
+} catch (err) {
+  return apiError(err)
+ }
 }

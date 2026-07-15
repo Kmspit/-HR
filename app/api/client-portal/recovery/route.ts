@@ -1,8 +1,10 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActivePortalSession } from '@/lib/portal-session-guard'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(req: NextRequest) {
+ try {
   const portal = await requireActivePortalSession(req)
   if (!portal.ok) {
     return NextResponse.json({ error: portal.error }, { status: portal.status })
@@ -81,4 +83,7 @@ export async function GET(req: NextRequest) {
     page,
     pages: Math.ceil(total / limit),
   })
+} catch (err) {
+  return apiError(err)
+ }
 }

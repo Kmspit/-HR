@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { calcKpiScore } from '@/lib/kpi'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_SEE_ALL  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
 const CAN_SEE_TEAM = ['MANAGER', 'TEAM_LEADER', 'ADMIN']
@@ -14,6 +15,7 @@ const DEPT_LABELS: Record<string, string> = {
 }
 
 export async function GET() {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -169,4 +171,7 @@ export async function GET() {
     canSeeAll:  CAN_SEE_ALL.includes(role),
     canSeeTeam: CAN_SEE_TEAM.includes(role),
   })
+} catch (err) {
+  return apiError(err)
+ }
 }

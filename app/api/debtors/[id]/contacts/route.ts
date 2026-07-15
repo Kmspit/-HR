@@ -3,10 +3,12 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { checkDebtorAccess } from '@/lib/debtor-access'
+import { apiError } from '@/lib/api-handler'
 
 const LEGAL_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -22,9 +24,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     take: 50,
   })
   return NextResponse.json(contacts)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -63,4 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json(contact, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

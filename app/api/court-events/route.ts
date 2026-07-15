@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { triggerAutomation } from '@/lib/automation-engine'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const LEGAL_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
@@ -20,6 +21,7 @@ function buildAccessWhere(role: string, userId: string, department: string | nul
 }
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -68,9 +70,13 @@ export async function GET(req: NextRequest) {
   ])
 
   return NextResponse.json({ events, total, page, pages: Math.ceil(total / limit) })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -127,4 +133,7 @@ export async function POST(req: NextRequest) {
   }, session.user.id).catch(() => undefined)
 
   return NextResponse.json(event, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { createNotification, notifyRole, sendLineMessage } from '@/lib/notifications'
 import { triggerAutomation } from '@/lib/automation-engine'
 import { rejectUnauthorizedCron } from '@/lib/cron-secret'
+import { apiError } from '@/lib/api-handler'
 
 // Court calendar event types handled by THIS cron only.
 // The existing /api/cron/calendar-reminders handles: COURT / CLIENT / DEBTOR / INTERNAL
@@ -30,6 +31,7 @@ const REMINDER_OFFSETS_DAYS = [7, 3, 1, 0]
 const MISS_GRACE_MINUTES = 60
 
 export async function GET(req: NextRequest) {
+ try {
   const denied = rejectUnauthorizedCron(req)
   if (denied) return denied
 
@@ -308,4 +310,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, sent, missed })
+} catch (err) {
+  return apiError(err)
+ }
 }

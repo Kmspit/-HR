@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { v2 as cloudinary } from 'cloudinary'
 import { headers } from 'next/headers'
+import { apiError } from '@/lib/api-handler'
 
 function configureCloudinary() {
   cloudinary.config({
@@ -13,6 +14,7 @@ function configureCloudinary() {
 }
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -28,9 +30,13 @@ export async function GET(req: NextRequest) {
     orderBy: { signedAt: 'asc' },
   })
   return NextResponse.json(signatures)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -112,4 +118,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json(sig, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

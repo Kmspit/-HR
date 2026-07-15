@@ -2,11 +2,13 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import type { CaseStatus } from '@prisma/client'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES    = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const MANAGER_ROLES = [...EXEC_ROLES, 'MANAGER', 'TEAM_LEADER']
 
 export async function GET() {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!MANAGER_ROLES.includes(session.user.role)) {
@@ -70,4 +72,7 @@ export async function GET() {
     myCases,
     workload,
   })
+} catch (err) {
+  return apiError(err)
+ }
 }

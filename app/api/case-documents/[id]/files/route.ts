@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse, after } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
+import { apiError } from '@/lib/api-handler'
 
 function configureCloudinary() {
   const name = process.env.CLOUDINARY_CLOUD_NAME?.trim()
@@ -27,6 +28,7 @@ async function canAccessCase(caseId: string, userId: string, role: string, depar
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -88,9 +90,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await prisma.caseDocument.update({ where: { id: documentId }, data: { updatedAt: new Date() } })
 
   return NextResponse.json(file, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -116,4 +122,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   await prisma.caseDocumentFile.delete({ where: { id: fileId } })
 
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

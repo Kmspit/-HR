@@ -2,8 +2,10 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActivePortalSession } from '@/lib/portal-session-guard'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(req: NextRequest) {
+ try {
   // --- Portal JWT auth (new) ---
   const portalSession = await requireActivePortalSession(req)
   if (portalSession.ok) {
@@ -52,6 +54,9 @@ export async function GET(req: NextRequest) {
   }).length
 
   return NextResponse.json({ tasks, summary: { total, active, completed, upcoming } })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 async function handlePortalRequest(

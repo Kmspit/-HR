@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { apiError } from '@/lib/api-handler'
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR', 'MANAGER_HR']
 
@@ -13,6 +14,7 @@ async function guard() {
 }
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await guard()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -44,9 +46,13 @@ export async function GET(req: NextRequest) {
   ])
 
   return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit) })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await guard()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -80,9 +86,13 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({ user }, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function PATCH(req: NextRequest) {
+ try {
   const session = await guard()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -108,9 +118,13 @@ export async function PATCH(req: NextRequest) {
   })
 
   return NextResponse.json({ user })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(req: NextRequest) {
+ try {
   const session = await guard()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -120,4 +134,7 @@ export async function DELETE(req: NextRequest) {
 
   await prisma.clientPortalUser.delete({ where: { id } })
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

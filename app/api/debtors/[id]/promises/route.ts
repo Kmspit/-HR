@@ -4,10 +4,12 @@ import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { triggerAutomation } from '@/lib/automation-engine'
 import { checkDebtorAccess } from '@/lib/debtor-access'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -22,9 +24,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     orderBy: { promisedDate: 'desc' },
   })
   return NextResponse.json(promises)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!CAN_MANAGE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -61,9 +67,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }, session.user.id).catch(() => undefined)
 
   return NextResponse.json(promise, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!CAN_MANAGE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -91,4 +101,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   return NextResponse.json(updated)
+} catch (err) {
+  return apiError(err)
+ }
 }

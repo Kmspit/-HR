@@ -1,10 +1,12 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
 export async function GET(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -23,9 +25,13 @@ export async function GET(req: Request) {
   })
 
   return NextResponse.json({ templates })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function POST(req: Request) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!CAN_MANAGE.includes(session.user.role))
@@ -63,4 +69,7 @@ export async function POST(req: Request) {
   })
 
   return NextResponse.json({ template }, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

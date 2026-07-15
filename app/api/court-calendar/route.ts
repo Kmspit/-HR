@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-handler'
 
 const EXEC_ROLES    = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const LEGAL_ROLES   = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
@@ -94,6 +95,7 @@ function mapTaskCourt(task: {
 
 // ── GET — aggregated events ────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) {
@@ -288,10 +290,14 @@ export async function GET(req: NextRequest) {
   all.sort((a, b) => new Date(a!.startAt).getTime() - new Date(b!.startAt).getTime())
 
   return NextResponse.json({ events: all })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 // ── POST — create CalendarEvent ────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!LEGAL_ROLES.includes(session.user.role)) {
@@ -341,4 +347,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json(event, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

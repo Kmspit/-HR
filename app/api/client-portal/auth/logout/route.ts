@@ -1,8 +1,10 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPortalSession, clearPortalCookie } from '@/lib/portal-auth'
+import { apiError } from '@/lib/api-handler'
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await getPortalSession(req)
 
   if (session) {
@@ -20,4 +22,7 @@ export async function POST(req: NextRequest) {
   const clear = clearPortalCookie()
   res.cookies.set(clear.name, clear.value, { maxAge: 0, path: clear.path, httpOnly: clear.httpOnly })
   return res
+} catch (err) {
+  return apiError(err)
+ }
 }

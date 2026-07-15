@@ -9,8 +9,10 @@ import {
   resolveOrgListScope,
 } from '@/lib/org-scope'
 import type { Prisma, Role } from '@prisma/client'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -77,6 +79,9 @@ export async function GET(req: NextRequest) {
   ])
 
   return NextResponse.json({ items, total, page, pages: Math.ceil(total / take) })
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 type StepInput = {
@@ -87,6 +92,7 @@ type StepInput = {
 }
 
 export async function POST(req: NextRequest) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -171,4 +177,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(approvalRequest, { status: 201 })
+} catch (err) {
+  return apiError(err)
+ }
 }

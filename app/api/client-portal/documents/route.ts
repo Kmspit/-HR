@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireActivePortalSession } from '@/lib/portal-session-guard'
 import { resolveClientUserIdForPortal } from '@/lib/client-message-access'
+import { apiError } from '@/lib/api-handler'
 
 export async function GET(req: NextRequest) {
+ try {
   const portal = await requireActivePortalSession(req)
   if (!portal.ok) {
     return NextResponse.json({ error: portal.error }, { status: portal.status })
@@ -25,4 +27,7 @@ export async function GET(req: NextRequest) {
   })
 
   return NextResponse.json(docs)
+} catch (err) {
+  return apiError(err)
+ }
 }

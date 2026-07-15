@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireActivePortalSession } from '@/lib/portal-session-guard'
+import { apiError } from '@/lib/api-handler'
 
 const ACTIVE_STATUSES = [
   'NEW', 'ASSIGNED', 'INVESTIGATING', 'NEGOTIATING',
@@ -10,6 +11,7 @@ const ACTIVE_STATUSES = [
 const COMPLETED_STATUSES = ['SETTLED', 'COMPLETED'] as const
 
 export async function GET(req: NextRequest) {
+ try {
   const portal = await requireActivePortalSession(req)
   if (!portal.ok) {
     return NextResponse.json({ error: portal.error }, { status: portal.status })
@@ -110,4 +112,7 @@ export async function GET(req: NextRequest) {
     })),
     highRiskDebtors,
   })
+} catch (err) {
+  return apiError(err)
+ }
 }

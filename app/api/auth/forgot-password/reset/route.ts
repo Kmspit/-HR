@@ -27,10 +27,12 @@ import { rateLimit } from '@/lib/rate-limit'
 import { FP_CHALLENGE_COOKIE, clearForgotPasswordChallengeCookie } from '@/lib/forgot-password-cookie'
 
 import { bumpSessionEpoch } from '@/lib/session-epoch'
+import { apiError } from '@/lib/api-handler'
 
 
 
 export async function POST(req: NextRequest) {
+ try {
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 
@@ -164,6 +166,9 @@ export async function POST(req: NextRequest) {
 
   return res
 
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 

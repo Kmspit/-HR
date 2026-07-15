@@ -2,10 +2,12 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { apiError } from '@/lib/api-handler'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!CAN_MANAGE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -29,9 +31,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(client)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!CAN_MANAGE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -76,9 +82,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   })
 
   return NextResponse.json(updated)
+} catch (err) {
+  return apiError(err)
+ }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR'].includes(session.user.role)) {
@@ -95,4 +105,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await prisma.user.delete({ where: { id } })
 
   return NextResponse.json({ ok: true })
+} catch (err) {
+  return apiError(err)
+ }
 }

@@ -4,8 +4,10 @@ import bcrypt from 'bcryptjs'
 import { signPortalToken, portalCookieOptions } from '@/lib/portal-auth'
 import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
+import { apiError } from '@/lib/api-handler'
 
 export async function POST(req: NextRequest) {
+ try {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   const { allowed } = await rateLimit(`cp-login:${ip}`, 10, 15 * 60 * 1000)
   if (!allowed) {
@@ -75,4 +77,7 @@ export async function POST(req: NextRequest) {
   const { name, ...cookieOpts } = portalCookieOptions()
   res.cookies.set(name, token, cookieOpts)
   return res
+} catch (err) {
+  return apiError(err)
+ }
 }
