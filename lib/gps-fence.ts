@@ -53,3 +53,49 @@ export function detectGpsSpoofFlags(opts: {
 
   return flags
 }
+
+export type GeolocationPositionLike = {
+  coords: { latitude: number; longitude: number; accuracy: number }
+}
+
+export type GetCurrentPositionFn = (
+  onSuccess: (pos: GeolocationPositionLike) => void,
+  onError: (err: unknown) => void,
+  options?: { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number },
+) => void
+
+/**
+ * Wraps a getCurrentPosition-shaped function with a hard timeout, resolving `null` on
+ * failure/timeout instead of rejecting — the point is to let a caller fall back to a
+ * stale-but-known-good reading rather than block indefinitely on a slow/flaky GPS chip.
+ * `maximumAge:0` forces an actual fresh read, not a cached position.
+ */
+export function refreshGpsWithTimeout(
+  getCurrentPosition: GetCurrentPositionFn,
+  timeoutMs: number,
+): Promise<{ lat: number; lng: number; accuracy?: number } | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      resolve(null)
+    }, timeoutMs)
+
+    getCurrentPosition(
+      (pos) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy })
+      },
+      () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(null)
+      },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
+    )
+  })
+}

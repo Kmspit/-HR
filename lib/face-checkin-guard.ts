@@ -126,7 +126,7 @@ export async function guardAttendanceFace(
         distance: 'distance' in result ? result.distance : undefined,
         confidence: 'confidence' in result ? result.confidence : undefined,
       },
-      { status: 403 },
+      { status: result.code === 'RATE_LIMITED' ? 429 : 403 },
     )
   }
 

@@ -10,6 +10,20 @@ import {
 } from '@/lib/face-match'
 import { countRecentFaceMismatches, notifyFaceSecurityAlert } from '@/lib/face-security'
 import { hasCriticalSpoofFlags, parseSpoofFlags } from '@/lib/face-liveness'
+import { rateLimit } from '@/lib/rate-limit'
+
+/** Rolling-window throttle against rapid/scripted verify attempts — independent of
+ *  the client-side MAX_RETRIES/COOLDOWN_MS, which only lives in React state and is
+ *  trivially bypassed by calling this endpoint directly. */
+const VERIFY_RATE_MAX = 10
+const VERIFY_RATE_WINDOW_MS = 5 * 60 * 1000
+
+/** Hard lock once repeated *genuine* face mismatches occur — reuses the same
+ *  countRecentFaceMismatches() the HR-notification path already calls, so it's
+ *  DB-backed (correct across all serverless instances even without Upstash
+ *  configured) and self-expires as old mismatches age out of the window. */
+const MISMATCH_LOCK_THRESHOLD = 5
+const MISMATCH_LOCK_WINDOW_HOURS = 1
 
 /** Minimum liveness score required for attendance actions (0–1 scale).
  *  Lowered from 0.45 → 0.25: the 900–1600ms stable window rarely yields blink/movement
@@ -145,6 +159,25 @@ export async function registerFaceProfile(
   return profile
 }
 
+/** low_motion + no_blink together are each individually normal for a real user in a
+ *  short accumulation window (see hasCriticalSpoofFlags comment) — but a REAL person
+ *  is very unlikely to land on that exact same weak pattern twice in a row within a
+ *  few seconds, while a static photo/looped video will reproduce it every attempt.
+ *  Hard-block only on the second consecutive occurrence, not the first. */
+const WEAK_LIVENESS_REPEAT_WINDOW_MS = 60_000
+
+async function hadConsecutiveWeakLivenessFlags(userId: string): Promise<boolean> {
+  const since = new Date(Date.now() - WEAK_LIVENESS_REPEAT_WINDOW_MS)
+  const last = await prisma.attendanceFaceLog.findFirst({
+    where: { userId, method: 'face', createdAt: { gte: since } },
+    orderBy: { createdAt: 'desc' },
+    select: { spoofFlags: true },
+  })
+  if (!last?.spoofFlags) return false
+  const { flags } = parseSpoofFlags(last.spoofFlags)
+  return flags.includes('low_motion') && flags.includes('no_blink')
+}
+
 async function handleSecurityFailure(params: {
   userId: string
   action: string
@@ -224,6 +257,53 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
     return { ok: true as const, logId: log.id, distance: null, manual: true, confidence: null }
   }
 
+  // ── Rate limit / lockout gate — checked before any DB/descriptor work ──────
+  const recentMismatches = await countRecentFaceMismatches(userId, MISMATCH_LOCK_WINDOW_HOURS)
+  if (recentMismatches >= MISMATCH_LOCK_THRESHOLD) {
+    const log = await logFaceEvent({
+      userId,
+      action,
+      method: 'face',
+      matched: false,
+      matchScore: null,
+      confidenceScore: detectionScore,
+      livenessScore,
+      spoofFlags: spoofFlags ?? null,
+      failureReason: 'rate_limited',
+      attendanceId: attendanceId ?? null,
+      securityEvent: true,
+    })
+    return {
+      ok: false as const,
+      logId: log.id,
+      error: `ยืนยันใบหน้าไม่สำเร็จซ้ำหลายครั้ง — ระบบล็อกชั่วคราว กรุณาลองใหม่ภายใน ${MISMATCH_LOCK_WINDOW_HOURS} ชั่วโมง หรือติดต่อ HR`,
+      code: 'RATE_LIMITED',
+    }
+  }
+
+  const rl = await rateLimit(`face-verify:${userId}`, VERIFY_RATE_MAX, VERIFY_RATE_WINDOW_MS)
+  if (!rl.allowed) {
+    const log = await logFaceEvent({
+      userId,
+      action,
+      method: 'face',
+      matched: false,
+      matchScore: null,
+      confidenceScore: detectionScore,
+      livenessScore,
+      spoofFlags: spoofFlags ?? null,
+      failureReason: 'rate_limited',
+      attendanceId: attendanceId ?? null,
+      securityEvent: true,
+    })
+    return {
+      ok: false as const,
+      logId: log.id,
+      error: 'พยายามยืนยันใบหน้าถี่เกินไป — กรุณารอสักครู่แล้วลองใหม่',
+      code: 'RATE_LIMITED',
+    }
+  }
+
   if (!liveDescriptor.length) {
     const log = await logFaceEvent({
       userId,
@@ -271,7 +351,12 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
   // ── Spoof flag gate ──────────────────────────────────────────────────────
   if (spoofFlags) {
     const { flags } = parseSpoofFlags(spoofFlags)
-    if (hasCriticalSpoofFlags(flags)) {
+    const weakLivenessRepeat =
+      flags.includes('low_motion') &&
+      flags.includes('no_blink') &&
+      (await hadConsecutiveWeakLivenessFlags(userId))
+
+    if (hasCriticalSpoofFlags(flags) || weakLivenessRepeat) {
       const log = await logFaceEvent({
         userId,
         action,
@@ -289,7 +374,7 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
       return {
         ok: false as const,
         logId: log.id,
-        error: 'ตรวจพบความผิดปกติ — กรุณาใช้กล้องสดและกระพริบตา',
+        error: 'ตรวจพบความผิดปกติ — กรุณาใช้กล้องสดและกระพริบตาหรือขยับศีรษะเล็กน้อย',
         code: 'SPOOF',
       }
     }

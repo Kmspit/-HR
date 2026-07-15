@@ -69,17 +69,25 @@ export async function POST(req: NextRequest) {
         : {}
 
     if (action === 'lunch-out') {
-      const updated = await prisma.attendance.update({
-        where: { id: attendance.id },
+      // Same atomic-conditional-update pattern as checkout / recovery-payments confirm —
+      // where-guard on current status closes the read-then-write race window.
+      const result = await prisma.attendance.updateMany({
+        where: { id: attendance.id, lunchOut: null },
         data: { ...ATTENDANCE_COMPLETED_PATCH, lunchOut: now, ...geoPatch },
       })
+      if (result.count === 0) {
+        return NextResponse.json(
+          { error: attendanceFlowErrorMessage('ALREADY_LUNCH_OUT'), code: 'ALREADY_LUNCH_OUT' },
+          { status: 409 },
+        )
+      }
       const faceLogId = (formData.get('faceLogId') as string) || null
       if (faceLogId) {
         await prisma.attendanceFaceLog
-          .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
+          .update({ where: { id: faceLogId }, data: { attendanceId: attendance.id } })
           .catch(() => {})
       }
-      const finalized = await finalizeAttendanceRecord(updated.id)
+      const finalized = await finalizeAttendanceRecord(attendance.id)
       const preReadImage = await imageBufferFromForm(formData).catch(() => null)
       after(async () => {
         try {
@@ -116,17 +124,23 @@ export async function POST(req: NextRequest) {
       ? Math.floor((now.getTime() - lunchReturn.getTime()) / 60000)
       : 0
 
-    const updated = await prisma.attendance.update({
-      where: { id: attendance.id },
+    const result = await prisma.attendance.updateMany({
+      where: { id: attendance.id, lunchIn: null },
       data: { ...ATTENDANCE_COMPLETED_PATCH, lunchIn: now, lunchOverMinutes, ...geoPatch },
     })
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: attendanceFlowErrorMessage('ALREADY_LUNCH_IN'), code: 'ALREADY_LUNCH_IN' },
+        { status: 409 },
+      )
+    }
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
       await prisma.attendanceFaceLog
-        .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
+        .update({ where: { id: faceLogId }, data: { attendanceId: attendance.id } })
         .catch(() => {})
     }
-    const finalized = await finalizeAttendanceRecord(updated.id)
+    const finalized = await finalizeAttendanceRecord(attendance.id)
     const preReadImage = await imageBufferFromForm(formData).catch(() => null)
     after(async () => {
       try {

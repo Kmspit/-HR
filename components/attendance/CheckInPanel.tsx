@@ -15,7 +15,11 @@ import {
   saveAttendanceToLocalDevice,
   type LocalAttendanceEvent,
 } from '@/lib/attendance-local-log'
-import { haversineDistanceMeters } from '@/lib/gps-fence'
+import { haversineDistanceMeters, refreshGpsWithTimeout } from '@/lib/gps-fence'
+
+/** Cap on the submit-time GPS refresh — never let this block/delay the actual
+ *  check-in/out longer than this, even on slow/flaky GPS. */
+const GPS_REFRESH_TIMEOUT_MS = 5000
 
 type SavedPlace = { id: string; name: string }
 
@@ -328,6 +332,33 @@ export default function CheckInPanel({
     }
   }
 
+  const refreshLocationAtSubmit = useCallback(async (): Promise<
+    { lat: number; lng: number; address: string; accuracy?: number } | null
+  > => {
+    if (!navigator.geolocation) return null
+    // Closes the gap between the earlier 'gps' step and this exact moment — someone
+    // could pass the geofence check standing in the office, then walk out during the
+    // face-align/review steps before the real submit fires. Never blocks on this: falls
+    // back to the stale reading (handled by the caller) if GPS is slow/unavailable.
+    const fresh = await refreshGpsWithTimeout(
+      navigator.geolocation.getCurrentPosition.bind(navigator.geolocation),
+      GPS_REFRESH_TIMEOUT_MS,
+    )
+    if (!fresh) return null
+
+    let address = `${fresh.lat.toFixed(5)}, ${fresh.lng.toFixed(5)}`
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${fresh.lat}&lon=${fresh.lng}&format=json`,
+      )
+      const data = await res.json()
+      address = data.display_name ?? address
+    } catch (error) {
+      console.warn('[CheckIn] reverse geocode failed at submit-time refresh:', error)
+    }
+    return { ...fresh, address }
+  }, [])
+
   const submitAttendance = useCallback(
     async (payloadOverride?: FaceVerifyPayload | null, photoOverride?: string | null) => {
       const activePayload = payloadOverride ?? facePayload
@@ -341,6 +372,13 @@ export default function CheckInPanel({
       if (submittingRef.current) return
       submittingRef.current = true
       setIsLoading(true)
+
+      // Re-read GPS right here, right before the real submit — never block on it (falls
+      // back to the earlier 'gps'-step reading if the device is slow/offline) since a
+      // stricter behavior would make the feature worse for people with flaky signal.
+      const freshLocation = await refreshLocationAtSubmit()
+      const effectiveLocation = freshLocation ?? location
+      if (freshLocation) setLocation(freshLocation)
 
       try {
         const formData = new FormData()
@@ -369,10 +407,10 @@ export default function CheckInPanel({
 
         if (isLunch) {
           formData.append('action', type)
-          if (location) {
-            formData.append('lat', String(location.lat))
-            formData.append('lng', String(location.lng))
-            formData.append('address', location.address)
+          if (effectiveLocation) {
+            formData.append('lat', String(effectiveLocation.lat))
+            formData.append('lng', String(effectiveLocation.lng))
+            formData.append('address', effectiveLocation.address)
           }
           const { ok, data, status } = await apiJson<{
             lineNotify?: { sent?: number; failed?: number }
@@ -397,14 +435,14 @@ export default function CheckInPanel({
           )
           toastLineNotifyResult(data.lineNotify)
         } else if (type === 'checkin') {
-          if (!location) return
-          formData.append('lat', String(location.lat))
-          formData.append('lng', String(location.lng))
-          formData.append('address', location.address)
+          if (!effectiveLocation) return
+          formData.append('lat', String(effectiveLocation.lat))
+          formData.append('lng', String(effectiveLocation.lng))
+          formData.append('address', effectiveLocation.address)
           formData.append('workPlaceName', workPlaceName.trim())
           formData.append('locationType', locationType)
-          if (location.accuracy != null) {
-            formData.append('gpsAccuracy', String(location.accuracy))
+          if (effectiveLocation.accuracy != null) {
+            formData.append('gpsAccuracy', String(effectiveLocation.accuracy))
           }
           try {
             const deviceInfo = JSON.stringify({
@@ -446,15 +484,15 @@ export default function CheckInPanel({
           }
           toastLineNotifyResult(data.lineNotify)
         } else {
-          if (!location) {
+          if (!effectiveLocation) {
             toast.error('กรุณาระบุตำแหน่ง GPS ก่อนเช็คเอาท์')
             submittingRef.current = false
             setIsLoading(false)
             return
           }
-          formData.append('lat', String(location.lat))
-          formData.append('lng', String(location.lng))
-          formData.append('address', location.address)
+          formData.append('lat', String(effectiveLocation.lat))
+          formData.append('lng', String(effectiveLocation.lng))
+          formData.append('address', effectiveLocation.address)
           formData.append('workPlaceName', workPlaceName.trim())
           const { ok, data, status } = await apiJson<{
             lineNotify?: { sent?: number; failed?: number }
@@ -502,6 +540,7 @@ export default function CheckInPanel({
       companyOffice,
       workPlaceName,
       triggerSuccess,
+      refreshLocationAtSubmit,
     ],
   )
 

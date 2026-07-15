@@ -157,6 +157,19 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           lumSamplesRef.current = []
           verifyingRef.current = false
           setBusy(false)
+
+          // Server-side rate limit/lockout — reflect the real reason instead of the
+          // generic "face doesn't match" retry-counter path (this isn't a mismatch,
+          // repeated local retries would just keep hitting the same server-side block).
+          if ((data as { code?: string }).code === 'RATE_LIMITED') {
+            const until = Date.now() + COOLDOWN_MS
+            setCooldownUntil(until)
+            cooldownUntilRef.current = until
+            setCooldownSecs(Math.ceil(COOLDOWN_MS / 1000))
+            setHint('พยายามยืนยันถี่เกินไป — กรุณารอสักครู่')
+            return false
+          }
+
           setRetryCount((prev) => {
             const next = prev + 1
             if (next >= MAX_RETRIES) {

@@ -76,8 +76,13 @@ export async function POST(req: NextRequest) {
 
     const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
 
-    const updated = await prisma.attendance.update({
-      where: { id: attendance.id },
+    // updateMany + where-guard on current status — same atomic-conditional-update pattern
+    // as recovery/payments confirm: a plain update({where:{id}}) has a read-then-write gap
+    // where two concurrent checkout requests can both pass validateAttendanceFlow's read
+    // and both write, the second silently overwriting the first's time/GPS/photo with no
+    // error. updateMany's WHERE clause is enforced atomically by the DB itself.
+    const result = await prisma.attendance.updateMany({
+      where: { id: attendance.id, checkOut: null },
       data: {
         ...ATTENDANCE_COMPLETED_PATCH,
         checkOut: now,
@@ -90,13 +95,19 @@ export async function POST(req: NextRequest) {
         ...(approvedLeave?.type ? { leaveType: approvedLeave.type } : {}),
       },
     })
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: attendanceFlowErrorMessage('ALREADY_CHECKOUT'), code: 'ALREADY_CHECKOUT' },
+        { status: 409 },
+      )
+    }
 
-    const finalized = await finalizeAttendanceRecord(updated.id)
+    const finalized = await finalizeAttendanceRecord(attendance.id)
 
     const faceLogId = (formData.get('faceLogId') as string) || null
     if (faceLogId) {
       await prisma.attendanceFaceLog
-        .update({ where: { id: faceLogId }, data: { attendanceId: updated.id } })
+        .update({ where: { id: faceLogId }, data: { attendanceId: attendance.id } })
         .catch(() => {})
     }
 

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json(
         { error: result.error, code: result.code, logId: result.logId, distance: result.distance },
-        { status: 403 },
+        { status: result.code === 'RATE_LIMITED' ? 429 : 403 },
       )
     }
 

@@ -105,10 +105,14 @@ export function scoreLivenessSamples(params: {
 }
 
 export function hasCriticalSpoofFlags(flags: string[]): boolean {
-  // Only block on definitively-no-live-camera signals.
-  // no_blink / low_motion / static_frame / insufficient_samples can all occur for real
-  // users in short (~900–1600ms) accumulation windows and must NOT hard-block.
-  return flags.some((f) => ['no_face', 'camera_not_ready'].includes(f))
+  // no_blink / low_motion / insufficient_samples can all occur for real users in short
+  // (~900–1600ms) accumulation windows (screen-staring measurably suppresses blink rate,
+  // and "hold still to align" instructions suppress movement) — those alone must NOT
+  // hard-block. static_frame is different: it's luminance variance across the WHOLE
+  // frame, not landmark tracking — a live camera always has some sensor noise/lighting
+  // flicker/breathing-induced shift, so near-zero variance is a reliable static-image
+  // signature, safe to hard-block on a single occurrence.
+  return flags.some((f) => ['no_face', 'camera_not_ready', 'static_frame'].includes(f))
 }
 
 export function serializeSpoofFlags(flags: string[], extra?: Record<string, unknown>): string {
