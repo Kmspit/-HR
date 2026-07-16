@@ -5,11 +5,40 @@ import { seedDefaultOutsideWorkChain } from '@/lib/seed-outside-work-chain'
 import { seedDefaultLeaveChain } from '@/lib/seed-default-leave-chain'
 import { seedDefaultWeeklyPlanChain } from '@/lib/seed-default-weekly-plan-chain'
 import { seedDefaultForgotScanChain } from '@/lib/seed-default-forgot-scan-chain'
-import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema } from '@/lib/migrations/core'
+import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSchema, validateAllTablesExist } from '@/lib/migrations/core'
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900013
+export const CURRENT_SCHEMA_VERSION = 900015
+
+/** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
+ *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
+ *  it's guarding against. Update this list whenever a model gains/loses an @@map. */
+export const ALL_MAPPED_TABLES = [
+  'company_branches', 'company_holidays', 'divisions', 'departments', 'sections', 'users',
+  'user_face_profiles', 'attendance_face_logs', 'attendance_line_notify_logs', 'attendance_face_scans',
+  'saved_work_places', 'user_devices', 'attendances', 'leave_requests', 'leave_balances',
+  'outside_work_requests', 'outside_work_assignees', 'weekly_lawyer_plans', 'weekly_plan_days',
+  'approval_histories', 'notifications', 'audit_logs', 'warnings', 'warning_rules', 'payrolls',
+  'salary_slips', 'tax_history', 'probation_evaluations', 'document_requests', 'company_rules',
+  'announcements', 'approval_chain_configs', 'approval_chain_steps', 'leave_approval_steps',
+  'outside_work_approval_steps', 'weekly_plan_approval_steps', 'forgot_scan_approval_steps',
+  'company_settings', 'leave_policies', 'forgot_scan_requests', 'task_assignments', 'task_attachments',
+  'task_comments', 'task_checklists', 'task_timelines', 'task_templates', 'task_dependencies',
+  'task_automation_rules', 'case_documents', 'case_document_files', 'case_document_signatures',
+  'case_document_versions', 'case_status_history', 'client_messages', 'case_incomes', 'case_expenses',
+  'expense_claims', 'expense_claim_files', 'debtors', 'debt_follow_ups', 'debt_payments',
+  'payment_appointments', 'debtor_files', 'debtor_contacts', 'promises_to_pay', 'client_companies',
+  'client_portal_users', 'client_portal_logs', 'client_contracts', 'client_sla_records',
+  'client_company_files', 'billing_invoices', 'billing_payments', 'billing_receipts',
+  'approval_requests', 'approval_request_steps', 'digital_signatures', 'activity_logs',
+  'knowledge_articles', 'sop_documents', 'sop_versions', 'training_modules', 'training_enrollments',
+  'quiz_questions', 'quiz_attempts', 'calendar_events', 'login_attempts', 'security_events',
+  'device_sessions', 'otp_codes', 'two_factor_setups', 'backup_records', 'case_number_seqs', 'cases',
+  'case_clients', 'case_debtors', 'case_courts', 'case_timelines', 'case_templates', 'case_checklists',
+  'case_debtor_activities', 'automation_rules', 'automation_execution_logs', 'recovery_payments',
+  'case_financials', 'court_events', 'schema_migrations',
+] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
 let ensurePromise: Promise<boolean> | null = null
@@ -1308,8 +1337,250 @@ async function runEnsure(force = false): Promise<boolean> {
     console.log('[MIGRATION APPLIED] 3 task-tables-fk-cascade-recreate')
   }
 
+  // ── task_automation_rules / knowledge_articles / sop_documents / sop_versions /
+  // training_modules / training_enrollments / quiz_questions / quiz_attempts /
+  // approval_requests / approval_request_steps / digital_signatures / activity_logs
+  // — same gap as task_templates/task_dependencies above: all defined in
+  // schema.prisma and already consumed by their respective API routes + client
+  // pages (Training/Knowledge/SOP/Approval Center/document e-signatures/activity
+  // log), but the CREATE TABLE for these 12 was never written here, so every
+  // request against them has been 500ing (or, for activity_logs writes guarded by
+  // a try/catch — see lib/document-access-log.ts — silently no-op-ing) in
+  // production. Found via a read-only production usage audit — verified via
+  // schema_migrations that no migration for these was ever registered (i.e.
+  // nothing "failed silently"; this DDL simply never existed until now).
+  //
+  // activity_logs specifically backs the case-documents VIEW/DOWNLOAD access
+  // trail (lib/document-access-log.ts) — since that table never existed, every
+  // access-log write since the feature was built has silently failed. There is no
+  // historical access-log data to recover; none was ever successfully written. ──
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS task_automation_rules (
+      id TEXT NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      trigger_on TEXT NOT NULL,
+      conditions TEXT NOT NULL DEFAULT '{}',
+      action TEXT NOT NULL,
+      action_data TEXT NOT NULL DEFAULT '{}',
+      department TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_by_id TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_task_automation_rules_is_active ON task_automation_rules (is_active)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS knowledge_articles (
+      id TEXT NOT NULL PRIMARY KEY,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      content TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'GENERAL',
+      department TEXT,
+      tags TEXT,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      view_count INTEGER NOT NULL DEFAULT 0,
+      created_by_id TEXT NOT NULL,
+      approved_by_id TEXT,
+      approved_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_knowledge_articles_status   ON knowledge_articles (status)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_knowledge_articles_category ON knowledge_articles (category)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS sop_documents (
+      id TEXT NOT NULL PRIMARY KEY,
+      sop_code TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      department TEXT NOT NULL,
+      description TEXT,
+      steps TEXT NOT NULL DEFAULT '[]',
+      checklist TEXT NOT NULL DEFAULT '[]',
+      related_docs TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      version INTEGER NOT NULL DEFAULT 1,
+      note TEXT,
+      created_by_id TEXT NOT NULL,
+      approved_by_id TEXT,
+      approved_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_sop_documents_status     ON sop_documents (status)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_sop_documents_department ON sop_documents (department)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS sop_versions (
+      id TEXT NOT NULL PRIMARY KEY,
+      sop_id TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      change_note TEXT,
+      snapshot TEXT,
+      changed_by_id TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sop_id) REFERENCES sop_documents (id) ON DELETE CASCADE
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_sop_versions_sop_id ON sop_versions (sop_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS training_modules (
+      id TEXT NOT NULL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      department TEXT,
+      content_type TEXT NOT NULL DEFAULT 'DOCUMENT',
+      content_url TEXT,
+      cover_url TEXT,
+      target_roles TEXT NOT NULL DEFAULT '[]',
+      estimated_minutes INTEGER NOT NULL DEFAULT 30,
+      passing_score INTEGER NOT NULL DEFAULT 70,
+      is_required INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      created_by_id TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_training_modules_status ON training_modules (status)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS training_enrollments (
+      id TEXT NOT NULL PRIMARY KEY,
+      module_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'NOT_STARTED',
+      score INTEGER,
+      time_spent_minutes INTEGER NOT NULL DEFAULT 0,
+      started_at DATETIME,
+      completed_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(module_id, user_id),
+      FOREIGN KEY (module_id) REFERENCES training_modules (id) ON DELETE CASCADE
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_training_enrollments_user_id ON training_enrollments (user_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS quiz_questions (
+      id TEXT NOT NULL PRIMARY KEY,
+      module_id TEXT NOT NULL,
+      question TEXT NOT NULL,
+      options TEXT NOT NULL DEFAULT '[]',
+      question_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (module_id) REFERENCES training_modules (id) ON DELETE CASCADE
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_quiz_questions_module_id ON quiz_questions (module_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS quiz_attempts (
+      id TEXT NOT NULL PRIMARY KEY,
+      module_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      answers TEXT NOT NULL DEFAULT '[]',
+      score INTEGER NOT NULL,
+      passed INTEGER NOT NULL,
+      attempt INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (module_id) REFERENCES training_modules (id) ON DELETE CASCADE
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_quiz_attempts_module_user ON quiz_attempts (module_id, user_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS approval_requests (
+      id TEXT NOT NULL PRIMARY KEY,
+      doc_type TEXT NOT NULL,
+      doc_id TEXT NOT NULL,
+      doc_ref TEXT,
+      title TEXT NOT NULL,
+      requested_by_id TEXT NOT NULL,
+      amount REAL,
+      current_step INTEGER NOT NULL DEFAULT 1,
+      total_steps INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      priority TEXT NOT NULL DEFAULT 'NORMAL',
+      note TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_approval_requests_status       ON approval_requests (status)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_approval_requests_doc_type_id  ON approval_requests (doc_type, doc_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS approval_request_steps (
+      id TEXT NOT NULL PRIMARY KEY,
+      request_id TEXT NOT NULL,
+      step_order INTEGER NOT NULL,
+      step_name TEXT NOT NULL,
+      approver_role TEXT,
+      approver_id TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      actor_id TEXT,
+      comment TEXT,
+      ip TEXT,
+      acted_at DATETIME,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (request_id) REFERENCES approval_requests (id) ON DELETE CASCADE
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_approval_request_steps_request_id ON approval_request_steps (request_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS digital_signatures (
+      id TEXT NOT NULL PRIMARY KEY,
+      signed_by_id TEXT NOT NULL,
+      signer_name TEXT NOT NULL,
+      signer_position TEXT,
+      signer_role TEXT NOT NULL,
+      signature_type TEXT NOT NULL DEFAULT 'TYPED',
+      signature_data TEXT,
+      signature_url TEXT,
+      typed_name TEXT,
+      doc_type TEXT NOT NULL,
+      doc_id TEXT NOT NULL,
+      ip TEXT,
+      userAgent TEXT,
+      signed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_digital_signatures_doc_type_id ON digital_signatures (doc_type, doc_id)`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id TEXT NOT NULL PRIMARY KEY,
+      actor_id TEXT NOT NULL,
+      actor_name TEXT NOT NULL,
+      doc_type TEXT NOT NULL,
+      doc_id TEXT NOT NULL,
+      doc_ref TEXT,
+      action TEXT NOT NULL,
+      detail TEXT,
+      before_value TEXT,
+      after_value TEXT,
+      ip TEXT,
+      userAgent TEXT,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_activity_logs_doc_type_id ON activity_logs (doc_type, doc_id)`)
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_activity_logs_actor_id    ON activity_logs (actor_id)`)
+
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
+  await validateAllTablesExist([...ALL_MAPPED_TABLES])
 
   await markSchemaVersionApplied()
   console.log(`[ENSURE COMPLETE] v${CURRENT_SCHEMA_VERSION}`)
