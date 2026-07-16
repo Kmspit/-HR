@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
 import { ManualButton } from '@/components/ui/ManualButton'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 type PayrollRow = {
   id: string
@@ -82,6 +83,7 @@ export default function PayrollClient({
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [detailRow, setDetailRow] = useState<PayrollRow | null>(null)
+  const detailPanelRef = useModalA11y(!!(detailRow && detailRow.hasPayroll))
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [sendingBatch, setSendingBatch] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
@@ -737,7 +739,7 @@ export default function PayrollClient({
 
       {detailRow && detailRow.hasPayroll && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl max-h-[85dvh] overflow-y-auto">
+          <div ref={detailPanelRef} role="dialog" aria-modal aria-label={`รายละเอียดหักมาสาย: ${detailRow.name}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-200 dark:border-white/10 p-5 shadow-2xl max-h-[85dvh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-white font-semibold flex items-center gap-2">
@@ -749,6 +751,7 @@ export default function PayrollClient({
               <button
                 type="button"
                 onClick={() => setDetailRow(null)}
+                aria-label="ปิด"
                 className="p-2 rounded-lg hover:bg-white/10 text-slate-500 dark:text-white/50"
               >
                 <X className="w-4 h-4" />

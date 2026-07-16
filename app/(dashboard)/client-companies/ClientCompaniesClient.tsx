@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -441,17 +442,17 @@ function ContractsTab({ company, userId, onRefresh }: { company: ClientCompany; 
               { key: 'endDate',     label: 'วันหมดอายุ *', placeholder: '', type: 'date' },
             ].map(f => (
               <div key={f.key}>
-                <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
-                <input type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => setForm(p => ({...p, [f.key]: e.target.value}))} placeholder={f.placeholder} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                <label htmlFor={`contract-field-${f.key}`} className="text-xs text-gray-500 mb-1 block">{f.label}</label>
+                <input id={`contract-field-${f.key}`} type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => setForm(p => ({...p, [f.key]: e.target.value}))} placeholder={f.placeholder} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
             ))}
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">ข้อตกลง SLA</label>
-              <input value={form.slaAgreement} onChange={e => setForm(p => ({...p, slaAgreement: e.target.value}))} placeholder="เช่น ตอบกลับใน 24 ชั่วโมง" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-1" className="text-xs text-gray-500 mb-1 block">ข้อตกลง SLA</label>
+              <input id="field-1" value={form.slaAgreement} onChange={e => setForm(p => ({...p, slaAgreement: e.target.value}))} placeholder="เช่น ตอบกลับใน 24 ชั่วโมง" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">เงื่อนไขการชำระ</label>
-              <input value={form.paymentTerms} onChange={e => setForm(p => ({...p, paymentTerms: e.target.value}))} placeholder="เช่น ชำระรายเดือน Net 30" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-2" className="text-xs text-gray-500 mb-1 block">เงื่อนไขการชำระ</label>
+              <input id="field-2" value={form.paymentTerms} onChange={e => setForm(p => ({...p, paymentTerms: e.target.value}))} placeholder="เช่น ชำระรายเดือน Net 30" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -540,30 +541,30 @@ function SlaTab({ company, userId, onRefresh }: { company: ClientCompany; userId
         <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl p-4 space-y-3 border border-purple-200 dark:border-purple-800">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">ประเภท SLA</label>
-              <select value={form.slaType} onChange={e => setForm(p => ({...p, slaType: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-3" className="text-xs text-gray-500 mb-1 block">ประเภท SLA</label>
+              <select id="field-3" value={form.slaType} onChange={e => setForm(p => ({...p, slaType: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 {SLA_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">เป้าหมาย (ชั่วโมง)</label>
-              <input type="number" value={form.targetHours} onChange={e => setForm(p => ({...p, targetHours: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-4" className="text-xs text-gray-500 mb-1 block">เป้าหมาย (ชั่วโมง)</label>
+              <input id="field-4" type="number" value={form.targetHours} onChange={e => setForm(p => ({...p, targetHours: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">เวลาจริง (ชั่วโมง)</label>
-              <input type="number" value={form.actualHours} onChange={e => setForm(p => ({...p, actualHours: e.target.value}))} placeholder="(ถ้ามี)" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-5" className="text-xs text-gray-500 mb-1 block">เวลาจริง (ชั่วโมง)</label>
+              <input id="field-5" type="number" value={form.actualHours} onChange={e => setForm(p => ({...p, actualHours: e.target.value}))} placeholder="(ถ้ามี)" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ผล</label>
-              <select value={form.met} onChange={e => setForm(p => ({...p, met: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-6" className="text-xs text-gray-500 mb-1 block">ผล</label>
+              <select id="field-6" value={form.met} onChange={e => setForm(p => ({...p, met: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 <option value="">— ยังไม่ทราบ —</option>
                 <option value="true">✅ ผ่าน</option>
                 <option value="false">❌ ไม่ผ่าน</option>
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-              <input value={form.note} onChange={e => setForm(p => ({...p, note: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-7" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+              <input id="field-7" value={form.note} onChange={e => setForm(p => ({...p, note: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -721,6 +722,7 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
   mode: 'create'|'edit'; company?: ClientCompany; userId: string
   onClose: () => void; onSave: () => void
 }) {
+  const panelRef = useModalA11y(true)
   const [form, setForm] = useState({
     companyName: company?.companyName ?? '', contactName: company?.contactName ?? '',
     phone:       company?.phone       ?? '', email:       company?.email       ?? '',
@@ -768,32 +770,32 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
   return (
     <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl">
+        <div ref={panelRef} role="dialog" aria-modal aria-label={mode === 'create' ? 'เพิ่มลูกค้าใหม่' : 'แก้ไขข้อมูลลูกค้า'} tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{mode === 'create' ? 'เพิ่มลูกค้าใหม่' : 'แก้ไขข้อมูลลูกค้า'}</h2>
           </div>
           <div className="p-6 grid grid-cols-2 gap-4">
             {fields.map(f => (
               <div key={f.key} className={f.half ? '' : 'col-span-2'}>
-                <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
-                <input type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
+                <label htmlFor={`company-field-${f.key}`} className="text-xs text-gray-500 mb-1 block">{f.label}</label>
+                <input id={`company-field-${f.key}`} type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
               </div>
             ))}
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ประเภทลูกค้า</label>
-              <select value={form.clientType} onChange={e => set('clientType', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-8" className="text-xs text-gray-500 mb-1 block">ประเภทลูกค้า</label>
+              <select id="field-8" value={form.clientType} onChange={e => set('clientType', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 {CLIENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">สถานะ</label>
-              <select value={form.status} onChange={e => set('status', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-9" className="text-xs text-gray-500 mb-1 block">สถานะ</label>
+              <select id="field-9" value={form.status} onChange={e => set('status', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 {CLIENT_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-              <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="หมายเหตุ…" />
+              <label htmlFor="field-10" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+              <textarea id="field-10" value={form.note} onChange={e => set('note', e.target.value)} rows={2} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="หมายเหตุ…" />
             </div>
           </div>
           <div className="p-6 pt-0 flex gap-3 justify-end">

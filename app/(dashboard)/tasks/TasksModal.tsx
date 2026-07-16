@@ -11,6 +11,7 @@ import {
   Ban, XCircle, Pencil, Save,
 } from 'lucide-react'
 import { apiJson } from '@/lib/client-api'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import {
   type Task, type TaskAttachment, type TaskLink, type ProgressNote,
   type TaskCommentItem, type CommentReply, type ChecklistItem, type TaskTimelineEntry,
@@ -112,7 +113,7 @@ function ChecklistSection({ taskId, initial, currentUserId }: { taskId: string; 
                 {item.completedBy && (
                   <span className="text-[12px] text-slate-400 truncate max-w-[80px]">{item.completedBy.name}</span>
                 )}
-                <button type="button" onClick={() => deleteItem(item.id)} disabled={loading === item.id}
+                <button type="button" onClick={() => deleteItem(item.id)} disabled={loading === item.id} aria-label={`ลบ: ${item.title}`}
                   className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40">
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -350,6 +351,7 @@ type DetailModalProps = {
 }
 
 export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: DetailModalProps) {
+  const panelRef = useModalA11y(true)
   const [resultNote,    setResultNote]   = useState(task.resultNote ?? '')
   const [reviewNote,    setReviewNote]   = useState('')
   const [progressInput, setProgress]     = useState('')
@@ -514,8 +516,8 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
   return (
     <>
       <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-modal className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
-        <div className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[90vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
+      <div role="dialog" aria-modal aria-label={task.title} className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
+        <div ref={panelRef} tabIndex={-1} className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[90vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
           onClick={(e) => e.stopPropagation()}>
 
           <div className="flex-shrink-0 flex justify-center pt-3 pb-1 md:hidden">
@@ -541,12 +543,12 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
             </div>
             <div className="flex-shrink-0 flex items-center gap-1">
               {(isAssigner || isFullAdmin) && isWorkable && !isEditing && (
-                <button type="button" onClick={startEdit} title="แก้ไขงาน"
+                <button type="button" onClick={startEdit} title="แก้ไขงาน" aria-label="แก้ไขงาน"
                   className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
                   <Pencil className="w-4 h-4" />
                 </button>
               )}
-              <button type="button" onClick={onClose}
+              <button type="button" onClick={onClose} aria-label="ปิด"
                 className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
                 <X className="w-4 h-4" />
               </button>
@@ -585,45 +587,45 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เลขคดี / รหัสงาน</label>
-                    <input type="text" value={editCaseNumber} onChange={(e) => setEditCaseNumber(e.target.value)} className={editInputCls} />
+                    <label htmlFor="field-1" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เลขคดี / รหัสงาน</label>
+                    <input id="field-1" type="text" value={editCaseNumber} onChange={(e) => setEditCaseNumber(e.target.value)} className={editInputCls} />
                   </div>
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ชื่อลูกค้า</label>
-                    <input type="text" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} className={editInputCls} />
+                    <label htmlFor="field-2" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ชื่อลูกค้า</label>
+                    <input id="field-2" type="text" value={editClientName} onChange={(e) => setEditClientName(e.target.value)} className={editInputCls} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ฝ่าย</label>
-                    <select value={editTaskDepartment} onChange={(e) => handleEditDeptChange(e.target.value)} className={editInputCls}>
+                    <label htmlFor="field-3" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ฝ่าย</label>
+                    <select id="field-3" value={editTaskDepartment} onChange={(e) => handleEditDeptChange(e.target.value)} className={editInputCls}>
                       {DEPT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ประเภทงาน</label>
-                    <select value={editType} onChange={(e) => setEditType(e.target.value)} className={editInputCls}>
+                    <label htmlFor="field-4" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ประเภทงาน</label>
+                    <select id="field-4" value={editType} onChange={(e) => setEditType(e.target.value)} className={editInputCls}>
                       {editTaskTypeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">
+                  <label htmlFor="field-5" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">
                     ชื่องาน / รายละเอียดสั้น <span className="text-red-500">*</span>
                   </label>
-                  <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={editInputCls} />
+                  <input id="field-5" type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={editInputCls} />
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">รายละเอียดงาน</label>
-                  <textarea rows={3} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className={`${editInputCls} resize-none`} />
+                  <label htmlFor="field-6" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">รายละเอียดงาน</label>
+                  <textarea id="field-6" rows={3} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className={`${editInputCls} resize-none`} />
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ความสำคัญ</label>
-                  <select value={editPriority} onChange={(e) => setEditPriority(e.target.value)} className={editInputCls}>
+                  <label htmlFor="field-7" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ความสำคัญ</label>
+                  <select id="field-7" value={editPriority} onChange={(e) => setEditPriority(e.target.value)} className={editInputCls}>
                     <option value="LOW">⚪ ต่ำ</option>
                     <option value="MEDIUM">🟡 ปานกลาง</option>
                     <option value="HIGH">🟠 สูง</option>
@@ -633,16 +635,16 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">วันเริ่มงาน</label>
-                    <input type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className={editInputCls} />
+                    <label htmlFor="field-8" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">วันเริ่มงาน</label>
+                    <input id="field-8" type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className={editInputCls} />
                   </div>
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">กำหนดเสร็จ</label>
-                    <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className={editInputCls} />
+                    <label htmlFor="field-9" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">กำหนดเสร็จ</label>
+                    <input id="field-9" type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className={editInputCls} />
                   </div>
                   <div>
-                    <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เวลากำหนดส่ง</label>
-                    <input type="time" value={editDueTime} onChange={(e) => setEditDueTime(e.target.value)} className={editInputCls} />
+                    <label htmlFor="field-10" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เวลากำหนดส่ง</label>
+                    <input id="field-10" type="time" value={editDueTime} onChange={(e) => setEditDueTime(e.target.value)} className={editInputCls} />
                   </div>
                 </div>
 
@@ -652,28 +654,28 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดหมาย</label>
-                      <input type="date" value={editAppointmentDate} onChange={(e) => setEditAppointmentDate(e.target.value)} className={editInputCls} />
+                      <label htmlFor="field-11" className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดหมาย</label>
+                      <input id="field-11" type="date" value={editAppointmentDate} onChange={(e) => setEditAppointmentDate(e.target.value)} className={editInputCls} />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดศาล</label>
-                      <input type="date" value={editCourtDate} onChange={(e) => setEditCourtDate(e.target.value)} className={editInputCls} />
+                      <label htmlFor="field-12" className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดศาล</label>
+                      <input id="field-12" type="date" value={editCourtDate} onChange={(e) => setEditCourtDate(e.target.value)} className={editInputCls} />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">สถานที่นัด</label>
-                    <input type="text" value={editAppointmentPlace} onChange={(e) => setEditAppointmentPlace(e.target.value)} className={editInputCls} />
+                    <label htmlFor="field-13" className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">สถานที่นัด</label>
+                    <input id="field-13" type="text" value={editAppointmentPlace} onChange={(e) => setEditAppointmentPlace(e.target.value)} className={editInputCls} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">หมายเหตุ</label>
-                  <textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className={`${editInputCls} resize-none`} />
+                  <label htmlFor="field-14" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">หมายเหตุ</label>
+                  <textarea id="field-14" rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className={`${editInputCls} resize-none`} />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</label>
+                    <span className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</span>
                     <button type="button" onClick={() => setEditLinks((p) => [...p, { _key: String(Date.now()), label: '', url: '' }])}
                       className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400 hover:text-green-700 font-medium">
                       <Plus className="w-3.5 h-3.5" />เพิ่มลิงก์
@@ -691,7 +693,7 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
                               onChange={(e) => setEditLinks((p) => p.map((x, idx) => idx === i ? { ...x, url: e.target.value } : x))}
                               placeholder="https://..." className={editInputCls} />
                           </div>
-                          <button type="button" onClick={() => setEditLinks((p) => p.filter((_, idx) => idx !== i))}
+                          <button type="button" onClick={() => setEditLinks((p) => p.filter((_, idx) => idx !== i))} aria-label="ลบลิงก์"
                             className="flex-shrink-0 mt-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -1001,6 +1003,7 @@ type CreateModalProps = {
 }
 
 export function CreateTaskModal({ employees, assignerName, onClose, onCreated, templates = [], workloadMap = {} }: CreateModalProps) {
+  const panelRef = useModalA11y(true)
   const [isPending, startTransition] = useTransition()
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
@@ -1113,8 +1116,8 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
   return (
     <>
       <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-modal className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
-        <div className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[92vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
+      <div role="dialog" aria-modal aria-label="สร้างงาน / รับเรื่อง" className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
+        <div ref={panelRef} tabIndex={-1} className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[92vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
           onClick={(e) => e.stopPropagation()}>
 
           <div className="flex-shrink-0 flex justify-center pt-3 pb-1 md:hidden">
@@ -1122,7 +1125,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
           </div>
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-white/[0.06]">
             <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">สร้างงาน / รับเรื่อง</h2>
-            <button type="button" onClick={onClose}
+            <button type="button" onClick={onClose} aria-label="ปิด"
               className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.07]">
               <X className="w-4 h-4" />
             </button>
@@ -1167,46 +1170,46 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เลขคดี / รหัสงาน</label>
-                  <input type="text" value={caseNumber} onChange={(e) => setCaseNumber(e.target.value)} placeholder="เช่น KM-2024-001" className={inputCls} />
+                  <label htmlFor="field-15" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เลขคดี / รหัสงาน</label>
+                  <input id="field-15" type="text" value={caseNumber} onChange={(e) => setCaseNumber(e.target.value)} placeholder="เช่น KM-2024-001" className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ชื่อลูกค้า</label>
-                  <input type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="ชื่อลูกค้า / เจ้าหนี้" className={inputCls} />
+                  <label htmlFor="field-16" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ชื่อลูกค้า</label>
+                  <input id="field-16" type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="ชื่อลูกค้า / เจ้าหนี้" className={inputCls} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ฝ่าย <span className="text-red-500">*</span></label>
-                  <select value={taskDepartment} onChange={(e) => handleDeptChange(e.target.value)} className={inputCls}>
+                  <label htmlFor="field-17" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ฝ่าย <span className="text-red-500">*</span></label>
+                  <select id="field-17" value={taskDepartment} onChange={(e) => handleDeptChange(e.target.value)} className={inputCls}>
                     {DEPT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ประเภทงาน <span className="text-red-500">*</span></label>
-                  <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
+                  <label htmlFor="field-18" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ประเภทงาน <span className="text-red-500">*</span></label>
+                  <select id="field-18" value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
                     {taskTypeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">
+                <label htmlFor="field-19" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">
                   ชื่องาน / รายละเอียดสั้น <span className="text-red-500">*</span>
                 </label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ระบุชื่องาน..." className={inputCls} />
+                <input id="field-19" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ระบุชื่องาน..." className={inputCls} />
               </div>
 
               <div>
-                <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">รายละเอียดงาน</label>
-                <textarea rows={3} value={description} onChange={(e) => setDesc(e.target.value)} placeholder="อธิบายรายละเอียดงาน..." className={`${inputCls} resize-none`} />
+                <label htmlFor="field-20" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">รายละเอียดงาน</label>
+                <textarea id="field-20" rows={3} value={description} onChange={(e) => setDesc(e.target.value)} placeholder="อธิบายรายละเอียดงาน..." className={`${inputCls} resize-none`} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ผู้รับผิดชอบ <span className="text-red-500">*</span></label>
-                  <select value={assigneeId} onChange={(e) => setAssignee(e.target.value)} className={inputCls}>
+                  <label htmlFor="field-21" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ผู้รับผิดชอบ <span className="text-red-500">*</span></label>
+                  <select id="field-21" value={assigneeId} onChange={(e) => setAssignee(e.target.value)} className={inputCls}>
                     <option value="">เลือกพนักงาน...</option>
                     {employees.map((emp) => {
                       const wl = workloadMap[emp.id]
@@ -1228,8 +1231,8 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                   })()}
                 </div>
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ความสำคัญ</label>
-                  <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputCls}>
+                  <label htmlFor="field-22" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ความสำคัญ</label>
+                  <select id="field-22" value={priority} onChange={(e) => setPriority(e.target.value)} className={inputCls}>
                     <option value="LOW">⚪ ต่ำ</option>
                     <option value="MEDIUM">🟡 ปานกลาง</option>
                     <option value="HIGH">🟠 สูง</option>
@@ -1239,22 +1242,22 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
               </div>
 
               <div>
-                <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ผู้มอบหมาย</label>
+                <span className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">ผู้มอบหมาย</span>
                 <div className={`${inputCls} text-slate-400 dark:text-slate-500 cursor-not-allowed`}>{assignerName}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">วันเริ่มงาน</label>
-                  <input type="date" value={startDate} onChange={(e) => setStart(e.target.value)} className={inputCls} />
+                  <label htmlFor="field-23" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">วันเริ่มงาน</label>
+                  <input id="field-23" type="date" value={startDate} onChange={(e) => setStart(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">กำหนดเสร็จ <span className="text-red-500">*</span></label>
-                  <input type="date" value={dueDate} onChange={(e) => setDue(e.target.value)} className={inputCls} />
+                  <label htmlFor="field-24" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">กำหนดเสร็จ <span className="text-red-500">*</span></label>
+                  <input id="field-24" type="date" value={dueDate} onChange={(e) => setDue(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เวลากำหนดส่ง</label>
-                  <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className={inputCls} />
+                  <label htmlFor="field-25" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">เวลากำหนดส่ง</label>
+                  <input id="field-25" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className={inputCls} />
                 </div>
               </div>
 
@@ -1264,29 +1267,29 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดหมาย</label>
-                    <input type="date" value={appointmentDate} onChange={(e) => setApptDate(e.target.value)} className={inputCls} />
+                    <label htmlFor="field-26" className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดหมาย</label>
+                    <input id="field-26" type="date" value={appointmentDate} onChange={(e) => setApptDate(e.target.value)} className={inputCls} />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดศาล</label>
-                    <input type="date" value={courtDate} onChange={(e) => setCourtDate(e.target.value)} className={inputCls} />
+                    <label htmlFor="field-27" className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">วันนัดศาล</label>
+                    <input id="field-27" type="date" value={courtDate} onChange={(e) => setCourtDate(e.target.value)} className={inputCls} />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">สถานที่นัด</label>
-                  <input type="text" value={appointmentPlace} onChange={(e) => setApptPlace(e.target.value)}
+                  <label htmlFor="field-28" className="block text-[11px] text-amber-600 dark:text-amber-400 mb-1">สถานที่นัด</label>
+                  <input id="field-28" type="text" value={appointmentPlace} onChange={(e) => setApptPlace(e.target.value)}
                     placeholder="สถานที่ / ศาล / สำนักงาน..." className={inputCls} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">หมายเหตุ</label>
-                <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="หมายเหตุเพิ่มเติม..." className={`${inputCls} resize-none`} />
+                <label htmlFor="field-29" className="block text-[12px] text-slate-500 dark:text-slate-400 mb-1.5">หมายเหตุ</label>
+                <textarea id="field-29" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="หมายเหตุเพิ่มเติม..." className={`${inputCls} resize-none`} />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</label>
+                  <span className="text-[12px] text-slate-500 dark:text-slate-400">แนบลิงก์งาน</span>
                   <button type="button" onClick={() => setLinks((p) => [...p, { _key: String(Date.now()), label: '', url: '' }])}
                     className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400 hover:text-green-700 font-medium">
                     <Plus className="w-3.5 h-3.5" />เพิ่มลิงก์
@@ -1304,7 +1307,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                             onChange={(e) => setLinks((p) => p.map((x, idx) => idx === i ? { ...x, url: e.target.value } : x))}
                             placeholder="https://..." className={inputCls} />
                         </div>
-                        <button type="button" onClick={() => setLinks((p) => p.filter((_, idx) => idx !== i))}
+                        <button type="button" onClick={() => setLinks((p) => p.filter((_, idx) => idx !== i))} aria-label="ลบลิงก์"
                           className="flex-shrink-0 mt-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -1316,9 +1319,9 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[12px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <span className="text-[12px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <CheckSquare className="w-3.5 h-3.5" />รายการตรวจสอบ (ไม่บังคับ)
-                  </label>
+                  </span>
                   <button type="button" onClick={() => setChecklistItems((p) => [...p, { _key: String(Date.now()), value: '' }])}
                     className="flex items-center gap-1 text-[12px] text-green-600 dark:text-green-400 hover:text-green-700 font-medium">
                     <Plus className="w-3.5 h-3.5" />เพิ่ม
@@ -1332,7 +1335,7 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
                         <input type="text" value={item.value}
                           onChange={(e) => setChecklistItems((p) => p.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))}
                           placeholder={`รายการที่ ${i + 1}...`} className={`flex-1 ${inputCls}`} />
-                        <button type="button" onClick={() => setChecklistItems((p) => p.filter((_, idx) => idx !== i))}
+                        <button type="button" onClick={() => setChecklistItems((p) => p.filter((_, idx) => idx !== i))} aria-label="ลบรายการ"
                           className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-red-500 transition-colors">
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -1343,9 +1346,9 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
               </div>
 
               <div>
-                <label className="block text-[12px] text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                <span className="block text-[12px] text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
                   <Paperclip className="w-3.5 h-3.5" />แนบไฟล์งาน
-                </label>
+                </span>
                 <FileUploadZone pendingFiles={pendingFiles}
                   onFilesAdded={(f) => setPendingFiles((p) => [...p, ...f])}
                   onRemove={(i) => setPendingFiles((p) => p.filter((_, idx) => idx !== i))}

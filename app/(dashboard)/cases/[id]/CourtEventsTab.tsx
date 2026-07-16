@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 type CourtType       = 'CIVIL' | 'CRIMINAL' | 'BANKRUPTCY' | 'EXECUTION' | 'LABOR' | 'ADMINISTRATIVE' | 'OTHER'
 type AppointmentType = 'HEARING' | 'MEDIATION' | 'FILING' | 'WITNESS' | 'JUDGEMENT' | 'ENFORCEMENT' | 'NEGOTIATION' | 'OTHER'
@@ -246,6 +247,7 @@ function CourtEventModal({ caseId, editing, onClose, onSaved }: {
   onClose: () => void
   onSaved: () => void
 }) {
+  const panelRef = useModalA11y(true)
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState('')
   const [form,   setForm]   = useState(() => editing ? {
@@ -298,45 +300,45 @@ function CourtEventModal({ caseId, editing, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
+      <div ref={panelRef} role="dialog" aria-modal aria-label={editing ? 'แก้ไขนัดศาล' : 'เพิ่มนัดศาล'} tabIndex={-1} className="w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06] sticky top-0 bg-white dark:bg-slate-900 z-10">
           <h2 className="font-bold text-slate-900 dark:text-white">{editing ? 'แก้ไขนัดศาล' : 'เพิ่มนัดศาล'}</h2>
-          <button type="button" onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400">
+          <button type="button" onClick={onClose} aria-label="ปิด" className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
         <form onSubmit={submit} className="p-5 space-y-3">
           <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อศาล <span className="text-red-500">*</span></label>
-            <input value={form.courtName} onChange={e => set('courtName', e.target.value)} required className={inputCls} placeholder="เช่น ศาลแพ่งกรุงเทพใต้" />
+            <label htmlFor="field-1" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อศาล <span className="text-red-500">*</span></label>
+            <input id="field-1" value={form.courtName} onChange={e => set('courtName', e.target.value)} required className={inputCls} placeholder="เช่น ศาลแพ่งกรุงเทพใต้" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทศาล</label>
-              <select value={form.courtType} onChange={e => set('courtType', e.target.value as CourtType)} className={inputCls}>
+              <label htmlFor="field-2" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทศาล</label>
+              <select id="field-2" value={form.courtType} onChange={e => set('courtType', e.target.value as CourtType)} className={inputCls}>
                 {(Object.entries(COURT_TYPE_LABELS) as [CourtType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทนัด</label>
-              <select value={form.appointmentType} onChange={e => set('appointmentType', e.target.value as AppointmentType)} className={inputCls}>
+              <label htmlFor="field-3" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทนัด</label>
+              <select id="field-3" value={form.appointmentType} onChange={e => set('appointmentType', e.target.value as AppointmentType)} className={inputCls}>
                 {(Object.entries(APPT_TYPE_LABELS) as [AppointmentType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันนัด <span className="text-red-500">*</span></label>
-              <input type="date" value={form.appointmentDate} onChange={e => set('appointmentDate', e.target.value)} required className={inputCls} />
+              <label htmlFor="field-4" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันนัด <span className="text-red-500">*</span></label>
+              <input id="field-4" type="date" value={form.appointmentDate} onChange={e => set('appointmentDate', e.target.value)} required className={inputCls} />
             </div>
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เวลา</label>
-              <input type="time" value={form.appointmentTime} onChange={e => set('appointmentTime', e.target.value)} className={inputCls} />
+              <label htmlFor="field-5" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เวลา</label>
+              <input id="field-5" type="time" value={form.appointmentTime} onChange={e => set('appointmentTime', e.target.value)} className={inputCls} />
             </div>
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ความสำคัญ</label>
-            <select value={form.priority} onChange={e => set('priority', e.target.value as CourtPriority)} className={inputCls}>
+            <label htmlFor="field-6" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ความสำคัญ</label>
+            <select id="field-6" value={form.priority} onChange={e => set('priority', e.target.value as CourtPriority)} className={inputCls}>
               <option value="LOW">ต่ำ</option>
               <option value="NORMAL">ปกติ</option>
               <option value="HIGH">สูง</option>
@@ -344,26 +346,26 @@ function CourtEventModal({ caseId, editing, onClose, onSaved }: {
             </select>
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">สถานที่</label>
-            <input value={form.location} onChange={e => set('location', e.target.value)} className={inputCls} placeholder="ที่อยู่หรือ Google Maps" />
+            <label htmlFor="field-7" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">สถานที่</label>
+            <input id="field-7" value={form.location} onChange={e => set('location', e.target.value)} className={inputCls} placeholder="ที่อยู่หรือ Google Maps" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ห้องพิจารณา</label>
-              <input value={form.roomNumber} onChange={e => set('roomNumber', e.target.value)} className={inputCls} placeholder="เช่น 803" />
+              <label htmlFor="field-8" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ห้องพิจารณา</label>
+              <input id="field-8" value={form.roomNumber} onChange={e => set('roomNumber', e.target.value)} className={inputCls} placeholder="เช่น 803" />
             </div>
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">หมายเลขนัด</label>
-              <input value={form.appointmentNumber} onChange={e => set('appointmentNumber', e.target.value)} className={inputCls} placeholder="เช่น 15/2567" />
+              <label htmlFor="field-9" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">หมายเลขนัด</label>
+              <input id="field-9" value={form.appointmentNumber} onChange={e => set('appointmentNumber', e.target.value)} className={inputCls} placeholder="เช่น 15/2567" />
             </div>
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้พิพากษา</label>
-            <input value={form.judgeName} onChange={e => set('judgeName', e.target.value)} className={inputCls} />
+            <label htmlFor="field-10" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้พิพากษา</label>
+            <input id="field-10" value={form.judgeName} onChange={e => set('judgeName', e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">หมายเหตุ</label>
-            <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2} className={`${inputCls} resize-none`} />
+            <label htmlFor="field-11" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">หมายเหตุ</label>
+            <textarea id="field-11" value={form.note} onChange={e => set('note', e.target.value)} rows={2} className={`${inputCls} resize-none`} />
           </div>
           {error && <p className="text-[13px] text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex gap-3">

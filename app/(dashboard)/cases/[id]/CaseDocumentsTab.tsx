@@ -6,6 +6,7 @@ import {
   Tag, Plus, Loader2, CheckCircle, FolderOpen, History,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // Matches LOG_VIEWER_ROLES in app/api/activity-log/route.ts — the server is
 // the real gate (this endpoint 403s anyone else), this just hides the button
@@ -84,6 +85,7 @@ function formatDate(iso: string) {
 // ── Preview modal ────────────────────────────────────────────────────────────
 
 function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+  const panelRef = useModalA11y(true)
   const f = doc.files[0]
   const [signedUrl, setSignedUrl]   = useState<string | null>(null)
   const [loadingUrl, setLoadingUrl] = useState(!!f)
@@ -113,7 +115,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl"
+      <div ref={panelRef} role="dialog" aria-modal aria-label={doc.title} tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
           <FileTypeIcon mimeType={f.mimeType} format={f.format} resourceType={f.resourceType} />
@@ -121,11 +123,11 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
             <p className="text-white text-sm font-medium truncate">{doc.title}</p>
             <p className="text-white/40 text-xs">{f.fileName} · {formatBytes(f.fileSize)}</p>
           </div>
-          <a href={url} download={f.fileName} target="_blank" rel="noopener noreferrer"
+          <a href={url} download={f.fileName} target="_blank" rel="noopener noreferrer" aria-label="ดาวน์โหลด"
             className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <Download className="w-4 h-4" />
           </a>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -187,6 +189,7 @@ type AccessLogEntry = {
 const ACCESS_ACTION_LABELS: Record<string, string> = { VIEW: 'เปิดดู', DOWNLOAD: 'ดาวน์โหลด' }
 
 function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+  const panelRef = useModalA11y(true)
   const [entries, setEntries]   = useState<AccessLogEntry[]>([])
   const [loading, setLoading]   = useState(true)
 
@@ -203,7 +206,7 @@ function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void })
 
   return (
     <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80dvh] flex flex-col overflow-hidden shadow-2xl"
+      <div ref={panelRef} role="dialog" aria-modal aria-label="ประวัติการเข้าถึง" tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80dvh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
           <History className="w-4 h-4 text-white/40 shrink-0" />
@@ -211,7 +214,7 @@ function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void })
             <p className="text-white text-sm font-medium truncate">ประวัติการเข้าถึง</p>
             <p className="text-white/40 text-xs truncate">{doc.title}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -253,6 +256,7 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
   onClose: () => void
   onSuccess: () => void
 }) {
+  const panelRef = useModalA11y(true)
   const [title, setTitle]         = useState('')
   const [category, setCategory]   = useState('OTHER')
   const [file, setFile]           = useState<File | null>(null)
@@ -325,11 +329,11 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
 
   return (
     <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-sm shadow-2xl"
+      <div ref={panelRef} role="dialog" aria-modal aria-label="อัปโหลดเอกสาร" tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-sm shadow-2xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-white/[0.07] flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">อัปโหลดเอกสาร</h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -501,17 +505,17 @@ export default function CaseDocumentsTab({
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => setPreviewDoc(doc)} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ดูตัวอย่าง">
+                  <button onClick={() => setPreviewDoc(doc)} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ดูตัวอย่าง" aria-label="ดูตัวอย่าง">
                     <Eye className="w-4 h-4" />
                   </button>
                   {f && (
                     <a href={f.secureUrl ?? f.fileUrl} download={f.fileName} target="_blank" rel="noopener noreferrer"
-                      className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ดาวน์โหลด">
+                      className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ดาวน์โหลด" aria-label="ดาวน์โหลด">
                       <Download className="w-4 h-4" />
                     </a>
                   )}
                   {canViewHistory && (
-                    <button onClick={() => setHistoryDoc(doc)} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ประวัติการเข้าถึง">
+                    <button onClick={() => setHistoryDoc(doc)} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition" title="ประวัติการเข้าถึง" aria-label="ประวัติการเข้าถึง">
                       <History className="w-4 h-4" />
                     </button>
                   )}

@@ -7,6 +7,7 @@ import {
   Plus, Loader2, FolderOpen, AlertCircle, CheckCircle, Clock, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -143,6 +144,7 @@ function formatDateTime(iso: string) {
 // ── Preview Modal ──────────────────────────────────────────────────────────────
 
 function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+  const panelRef = useModalA11y(true)
   const latestFile = doc.files[0]
   const [signedUrl, setSignedUrl]   = useState<string | null>(null)
   const [loadingUrl, setLoadingUrl] = useState(!!latestFile)
@@ -227,6 +229,11 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal
+        aria-label={doc.title}
+        tabIndex={-1}
         className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -254,11 +261,12 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
                 rel="noopener noreferrer"
                 className="p-2 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition"
                 title="ดาวน์โหลด"
+                aria-label="ดาวน์โหลด"
               >
                 <Download className="w-4 h-4" />
               </a>
             )}
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition">
+            <button onClick={onClose} aria-label="ปิด" className="p-2 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -323,6 +331,7 @@ function UploadModal({
   defaultCaseId?: string | null
   defaultCaseNumber?: string | null
 }) {
+  const panelRef = useModalA11y(true)
   const [title, setTitle]         = useState('')
   const [category, setCategory]   = useState('OTHER')
   const [description, setDesc]    = useState('')
@@ -422,12 +431,17 @@ function UploadModal({
   return (
     <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal
+        aria-label="อัปโหลดเอกสาร"
+        tabIndex={-1}
         className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[92dvh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">
           <h3 className="text-white font-semibold">อัปโหลดเอกสาร</h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -464,6 +478,7 @@ function UploadModal({
                 <button
                   className="ml-auto p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white"
                   onClick={(e) => { e.stopPropagation(); setFile(null) }}
+                  aria-label="ลบไฟล์ที่เลือก"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -488,8 +503,8 @@ function UploadModal({
 
           {/* Title */}
           <div>
-            <label className="text-white/50 text-xs mb-1.5 block">ชื่อเอกสาร *</label>
-            <input
+            <label htmlFor="field-1" className="text-white/50 text-xs mb-1.5 block">ชื่อเอกสาร *</label>
+            <input id="field-1"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="เช่น คำฟ้อง-ชื่อลูกหนี้"
@@ -499,8 +514,8 @@ function UploadModal({
 
           {/* Category */}
           <div>
-            <label className="text-white/50 text-xs mb-1.5 block">ประเภทเอกสาร</label>
-            <select
+            <label htmlFor="field-2" className="text-white/50 text-xs mb-1.5 block">ประเภทเอกสาร</label>
+            <select id="field-2"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className={`w-full ${SELECT_TRIGGER}`}
@@ -513,8 +528,8 @@ function UploadModal({
 
           {/* Case number */}
           <div>
-            <label className="text-white/50 text-xs mb-1.5 block">หมายเลขคดี (ไม่บังคับ)</label>
-            <input
+            <label htmlFor="field-3" className="text-white/50 text-xs mb-1.5 block">หมายเลขคดี (ไม่บังคับ)</label>
+            <input id="field-3"
               value={caseNumber}
               onChange={(e) => setCaseNum(e.target.value)}
               placeholder="เช่น CS-2024-001"
@@ -524,8 +539,8 @@ function UploadModal({
 
           {/* Description */}
           <div>
-            <label className="text-white/50 text-xs mb-1.5 block">คำอธิบาย (ไม่บังคับ)</label>
-            <textarea
+            <label htmlFor="field-4" className="text-white/50 text-xs mb-1.5 block">คำอธิบาย (ไม่บังคับ)</label>
+            <textarea id="field-4"
               value={description}
               onChange={(e) => setDesc(e.target.value)}
               rows={2}
@@ -536,8 +551,8 @@ function UploadModal({
 
           {/* Tags */}
           <div>
-            <label className="text-white/50 text-xs mb-1.5 block">แท็ก (คั่นด้วยจุลภาค)</label>
-            <input
+            <label htmlFor="field-5" className="text-white/50 text-xs mb-1.5 block">แท็ก (คั่นด้วยจุลภาค)</label>
+            <input id="field-5"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="เช่น court, urgent, evidence"
@@ -646,6 +661,7 @@ function DocCard({ doc, onPreview, onArchive, userId, role }: {
             onClick={onPreview}
             className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition"
             title="ดูตัวอย่าง"
+            aria-label="ดูตัวอย่าง"
           >
             <Eye className="w-4 h-4" />
           </button>
@@ -657,6 +673,7 @@ function DocCard({ doc, onPreview, onArchive, userId, role }: {
               rel="noopener noreferrer"
               className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition"
               title="ดาวน์โหลด"
+              aria-label="ดาวน์โหลด"
             >
               <Download className="w-4 h-4" />
             </a>
@@ -797,6 +814,7 @@ export default function CaseDocumentsClient({ userId, userName, role, department
 
         <button
           onClick={() => void load()}
+          aria-label="โหลดใหม่"
           className="p-2.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition"
         >
           <RefreshCw className="w-4 h-4" />

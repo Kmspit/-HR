@@ -74,13 +74,13 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
   }
 
   return (
-    <MotionModal open={true} onClose={onClose} panelClassName="max-w-md p-5 border-white/10">
+    <MotionModal open={true} onClose={onClose} panelClassName="max-w-md p-5 border-white/10" ariaLabel="กำหนดโครงสร้างองค์กร">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Layers className="w-5 h-5 text-green-400" />
           <h3 className="font-bold text-white">กำหนดโครงสร้างองค์กร</h3>
         </div>
-        <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-white btn-press"><X className="w-5 h-5" /></button>
+        <button type="button" onClick={onClose} aria-label="ปิด" className="p-1 text-slate-400 hover:text-white btn-press"><X className="w-5 h-5" /></button>
       </div>
       <p className="text-sm text-slate-400 mb-4">{userName}</p>
       {loading ? (
@@ -90,24 +90,24 @@ export default function OrgAssignModal({ userId, userName, branchId, onClose }: 
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-slate-500">ฝ่าย *</label>
-            <select value={divisionId} onChange={(e) => { setDivisionId(e.target.value); setDepartmentId(''); setSectionId('') }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white">
+            <label htmlFor="field-1" className="text-xs text-slate-500">ฝ่าย *</label>
+            <select id="field-1" value={divisionId} onChange={(e) => { setDivisionId(e.target.value); setDepartmentId(''); setSectionId('') }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white">
               <option value="">— เลือกฝ่าย —</option>
               {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-slate-500">แผนก *</label>
-            <select value={departmentId} onChange={(e) => { setDepartmentId(e.target.value); setSectionId('') }} disabled={!divisionId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
+            <label htmlFor="field-2" className="text-xs text-slate-500">แผนก *</label>
+            <select id="field-2" value={departmentId} onChange={(e) => { setDepartmentId(e.target.value); setSectionId('') }} disabled={!divisionId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
               <option value="">— เลือกแผนก —</option>
               {filteredDepts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-slate-500">
+            <label htmlFor="field-3" className="text-xs text-slate-500">
               ส่วนงาน <span className="text-slate-600">(ไม่บังคับ)</span>
             </label>
-            <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!departmentId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
+            <select id="field-3" value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!departmentId} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white disabled:opacity-50">
               <option value="">— ไม่ระบุส่วนงาน —</option>
               {filteredSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>

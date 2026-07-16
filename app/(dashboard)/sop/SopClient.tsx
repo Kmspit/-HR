@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { modalFieldInput } from '@/lib/theme-classes'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 type SopStep  = { order: number; title: string; detail: string }
 type CheckItem = { text: string; required: boolean }
@@ -80,6 +81,7 @@ export default function SopClient({
   const [searchQ, setSearchQ]       = useState('')
   const [loading, setLoading]       = useState(true)
   const [showCreate, setCreate]     = useState(false)
+  const createPanelRef = useModalA11y(showCreate)
   const [editing, setEditing]       = useState(false)
   const [activeTab, setActiveTab]   = useState<'detail' | 'versions'>('detail')
   const [form, setForm] = useState(EMPTY_FORM)
@@ -425,24 +427,24 @@ export default function SopClient({
       {/* ── Create/Edit Modal ── */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
+          <div ref={createPanelRef} role="dialog" aria-modal aria-label={editing ? 'แก้ไข SOP' : 'สร้าง SOP ใหม่'} tabIndex={-1} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {editing ? '✏️ แก้ไข SOP' : '+ สร้าง SOP ใหม่'}
               </h2>
-              <button type="button" onClick={() => { setCreate(false); setEditing(false) }} className="text-gray-400 text-xl">✕</button>
+              <button type="button" onClick={() => { setCreate(false); setEditing(false) }} aria-label="ปิด" className="text-gray-400 text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อ SOP *</label>
-                  <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  <label htmlFor="field-1" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อ SOP *</label>
+                  <input id="field-1" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     className={modalFieldInput}
                     placeholder="ชื่อขั้นตอน" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย *</label>
-                  <select value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
+                  <label htmlFor="field-2" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย *</label>
+                  <select id="field-2" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
                     className={modalFieldInput}>
                     {DEPARTMENTS.filter((d) => d.value !== 'ALL').map((d) => (
                       <option key={d.value} value={d.value}>{d.label}</option>
@@ -451,8 +453,8 @@ export default function SopClient({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำอธิบาย</label>
-                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                <label htmlFor="field-3" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำอธิบาย</label>
+                <textarea id="field-3" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   rows={2} className={`${modalFieldInput} resize-none`}
                   placeholder="อธิบายขั้นตอนโดยย่อ" />
               </div>
@@ -460,7 +462,7 @@ export default function SopClient({
               {/* Steps */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">ขั้นตอน</label>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">ขั้นตอน</span>
                   <button type="button" onClick={addStep} className="text-xs text-indigo-600 hover:text-indigo-700">+ เพิ่มขั้นตอน</button>
                 </div>
                 <div className="space-y-2">
@@ -475,7 +477,7 @@ export default function SopClient({
                           className={`${modalFieldInput} text-xs`}
                           placeholder="รายละเอียด (ถ้ามี)" />
                       </div>
-                      <button type="button" onClick={() => removeStep(i)} className="text-red-400 text-xs mt-2">✕</button>
+                      <button type="button" onClick={() => removeStep(i)} aria-label="ลบขั้นตอน" className="text-red-400 text-xs mt-2">✕</button>
                     </div>
                   ))}
                 </div>
@@ -484,7 +486,7 @@ export default function SopClient({
               {/* Checklist */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Checklist</label>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Checklist</span>
                   <button type="button" onClick={addCheckItem} className="text-xs text-indigo-600 hover:text-indigo-700">+ เพิ่มรายการ</button>
                 </div>
                 <div className="space-y-1">

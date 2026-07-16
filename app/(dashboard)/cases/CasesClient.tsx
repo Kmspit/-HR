@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { CASE_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type CaseType     = 'DEBT_COLLECTION' | 'LEGAL' | 'COURT' | 'ASSET_INVESTIGATION' | 'ENFORCEMENT' | 'INTERNAL_LEGAL'
@@ -404,6 +405,7 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
   onCreated: () => void
   userName: string
 }) {
+  const panelRef = useModalA11y(true)
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState('')
   const [tab,      setTab]      = useState<'basic' | 'client' | 'debtor'>('basic')
@@ -440,11 +442,11 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
 
   return (
     <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="dashboard-dialog-panel w-full md:max-w-2xl md:max-h-[90dvh] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div ref={panelRef} role="dialog" aria-modal aria-label="สร้างคดีใหม่" tabIndex={-1} className="dashboard-dialog-panel w-full md:max-w-2xl md:max-h-[90dvh] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06]">
           <h2 className="font-bold text-slate-900 dark:text-white text-[16px]">สร้างคดีใหม่</h2>
-          <button type="button" onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400">
+          <button type="button" onClick={onClose} aria-label="ปิด" className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
@@ -463,43 +465,43 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
             {tab === 'basic' && (
               <>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อคดี <span className="text-red-500">*</span></label>
-                  <input value={form.caseTitle} onChange={e => set('caseTitle', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ระบุชื่อคดี" />
+                  <label htmlFor="field-1" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อคดี <span className="text-red-500">*</span></label>
+                  <input id="field-1" value={form.caseTitle} onChange={e => set('caseTitle', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ระบุชื่อคดี" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทคดี <span className="text-red-500">*</span></label>
-                    <select value={form.caseType} onChange={e => set('caseType', e.target.value as CaseType)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label htmlFor="field-2" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทคดี <span className="text-red-500">*</span></label>
+                    <select id="field-2" value={form.caseType} onChange={e => set('caseType', e.target.value as CaseType)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                       {(Object.entries(TYPE_LABELS) as [CaseType, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ความเร่งด่วน</label>
-                    <select value={form.priority} onChange={e => set('priority', e.target.value as CasePriority)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label htmlFor="field-3" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ความเร่งด่วน</label>
+                    <select id="field-3" value={form.priority} onChange={e => set('priority', e.target.value as CasePriority)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                       {(Object.entries(PRIORITY_LABELS) as [CasePriority, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">มูลหนี้ (บาท)</label>
-                    <input type="number" value={form.debtAmount} onChange={e => set('debtAmount', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="0.00" min="0" step="0.01" />
+                    <label htmlFor="field-4" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">มูลหนี้ (บาท)</label>
+                    <input id="field-4" type="number" value={form.debtAmount} onChange={e => set('debtAmount', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="0.00" min="0" step="0.01" />
                   </div>
                   <div>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันครบกำหนด</label>
-                    <input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <label htmlFor="field-5" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันครบกำหนด</label>
+                    <input id="field-5" type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้รับผิดชอบ</label>
-                  <select value={form.assignedEmployeeId} onChange={e => set('assignedEmployeeId', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <label htmlFor="field-6" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ผู้รับผิดชอบ</label>
+                  <select id="field-6" value={form.assignedEmployeeId} onChange={e => set('assignedEmployeeId', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">— ไม่ระบุ —</option>
                     {employees.map(u => <option key={u.id} value={u.id}>{u.name} {u.department ? `(${u.department})` : ''}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">รายละเอียด</label>
-                  <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="รายละเอียดคดี..." />
+                  <label htmlFor="field-7" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">รายละเอียด</label>
+                  <textarea id="field-7" value={form.description} onChange={e => set('description', e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="รายละเอียดคดี..." />
                 </div>
               </>
             )}
@@ -509,15 +511,15 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                 <p className="text-[12px] text-slate-400 mb-2">ข้อมูลลูกค้า (ผู้ว่าจ้าง)</p>
                 {(['clientName', 'companyName', 'taxId', 'phone', 'email', 'contactPerson'] as const).map(k => (
                   <div key={k}>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    <label htmlFor={`client-field-${k}`} className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       {k === 'clientName' ? 'ชื่อลูกค้า' : k === 'companyName' ? 'ชื่อบริษัท' : k === 'taxId' ? 'เลขประจำตัวผู้เสียภาษี' : k === 'phone' ? 'โทรศัพท์' : k === 'email' ? 'อีเมล' : 'ผู้ติดต่อ'}
                     </label>
-                    <input value={client[k]} onChange={e => setClient(p => ({ ...p, [k]: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <input id={`client-field-${k}`} value={client[k]} onChange={e => setClient(p => ({ ...p, [k]: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 ))}
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ที่อยู่</label>
-                  <textarea value={client.address} onChange={e => setClient(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                  <label htmlFor="field-8" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ที่อยู่</label>
+                  <textarea id="field-8" value={client.address} onChange={e => setClient(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
                 </div>
               </>
             )}
@@ -526,22 +528,22 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
               <>
                 <p className="text-[12px] text-slate-400 mb-2">ข้อมูลลูกหนี้/ผู้ถูกฟ้อง</p>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อ-นามสกุล</label>
-                  <input value={debtor.fullName} onChange={e => setDebtor(p => ({ ...p, fullName: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ชื่อ-นามสกุลลูกหนี้" />
+                  <label htmlFor="field-9" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อ-นามสกุล</label>
+                  <input id="field-9" value={debtor.fullName} onChange={e => setDebtor(p => ({ ...p, fullName: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ชื่อ-นามสกุลลูกหนี้" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เลขบัตรประชาชน</label>
-                    <input value={debtor.idCard} onChange={e => setDebtor(p => ({ ...p, idCard: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <label htmlFor="field-10" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เลขบัตรประชาชน</label>
+                    <input id="field-10" value={debtor.idCard} onChange={e => setDebtor(p => ({ ...p, idCard: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                   <div>
-                    <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">โทรศัพท์</label>
-                    <input value={debtor.phone} onChange={e => setDebtor(p => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <label htmlFor="field-11" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">โทรศัพท์</label>
+                    <input id="field-11" value={debtor.phone} onChange={e => setDebtor(p => ({ ...p, phone: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ระดับความเสี่ยง</label>
-                  <select value={debtor.riskLevel} onChange={e => setDebtor(p => ({ ...p, riskLevel: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <label htmlFor="field-12" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ระดับความเสี่ยง</label>
+                  <select id="field-12" value={debtor.riskLevel} onChange={e => setDebtor(p => ({ ...p, riskLevel: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="LOW">ต่ำ</option>
                     <option value="MEDIUM">ปานกลาง</option>
                     <option value="HIGH">สูง</option>
@@ -549,16 +551,16 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">สถานที่ทำงาน</label>
-                  <input value={debtor.workplace} onChange={e => setDebtor(p => ({ ...p, workplace: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label htmlFor="field-13" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">สถานที่ทำงาน</label>
+                  <input id="field-13" value={debtor.workplace} onChange={e => setDebtor(p => ({ ...p, workplace: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ที่อยู่</label>
-                  <textarea value={debtor.address} onChange={e => setDebtor(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                  <label htmlFor="field-14" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ที่อยู่</label>
+                  <textarea id="field-14" value={debtor.address} onChange={e => setDebtor(p => ({ ...p, address: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ข้อมูลทรัพย์สิน</label>
-                  <textarea value={debtor.assetInfo} onChange={e => setDebtor(p => ({ ...p, assetInfo: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="บ้าน / ที่ดิน / รถยนต์ ฯลฯ" />
+                  <label htmlFor="field-15" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ข้อมูลทรัพย์สิน</label>
+                  <textarea id="field-15" value={debtor.assetInfo} onChange={e => setDebtor(p => ({ ...p, assetInfo: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="บ้าน / ที่ดิน / รถยนต์ ฯลฯ" />
                 </div>
               </>
             )}

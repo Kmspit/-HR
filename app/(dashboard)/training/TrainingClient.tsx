@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ export default function TrainingClient({
   const [tab, setTab]               = useState<'all' | 'my' | 'dashboard'>('all')
   const [searchQ, setSearchQ]       = useState('')
   const [showCreate, setCreate]     = useState(false)
+  const createPanelRef = useModalA11y(showCreate)
   const [saving, setSaving]         = useState(false)
   const [dashboard, setDashboard]   = useState<DashboardData | null>(null)
 
@@ -471,27 +473,27 @@ export default function TrainingClient({
       {/* ── Create Modal ── */}
       {showCreate && isEditor && (
         <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
+          <div ref={createPanelRef} role="dialog" aria-modal aria-label="สร้างหลักสูตร" tabIndex={-1} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">+ สร้างหลักสูตร</h2>
-              <button type="button" onClick={() => setCreate(false)} className="text-gray-400 text-xl">✕</button>
+              <button type="button" onClick={() => setCreate(false)} aria-label="ปิด" className="text-gray-400 text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อหลักสูตร *</label>
-                <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                <label htmlFor="field-1" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อหลักสูตร *</label>
+                <input id="field-1" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
                   placeholder="ชื่อหลักสูตร" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำอธิบาย</label>
-                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                <label htmlFor="field-2" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คำอธิบาย</label>
+                <textarea id="field-2" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   rows={2} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm resize-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ประเภทเนื้อหา</label>
-                  <select value={form.contentType} onChange={(e) => setForm((f) => ({ ...f, contentType: e.target.value }))}
+                  <label htmlFor="field-3" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ประเภทเนื้อหา</label>
+                  <select id="field-3" value={form.contentType} onChange={(e) => setForm((f) => ({ ...f, contentType: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm">
                     {['VIDEO', 'PDF', 'DOCUMENT', 'IMAGE', 'MIXED'].map((t) => (
                       <option key={t} value={t}>{CONTENT_TYPE_ICONS[t]} {t}</option>
@@ -499,27 +501,27 @@ export default function TrainingClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย</label>
-                  <input value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
+                  <label htmlFor="field-4" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย</label>
+                  <input id="field-4" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
                     placeholder="เช่น LAW, HR" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL เนื้อหา</label>
-                <input value={form.contentUrl} onChange={(e) => setForm((f) => ({ ...f, contentUrl: e.target.value }))}
+                <label htmlFor="field-5" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL เนื้อหา</label>
+                <input id="field-5" value={form.contentUrl} onChange={(e) => setForm((f) => ({ ...f, contentUrl: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
                   placeholder="https://..." />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เวลาโดยประมาณ (นาที)</label>
-                  <input type="number" value={form.estimatedMinutes} onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: +e.target.value }))}
+                  <label htmlFor="field-6" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เวลาโดยประมาณ (นาที)</label>
+                  <input id="field-6" type="number" value={form.estimatedMinutes} onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: +e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" min={5} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คะแนนผ่าน (%)</label>
-                  <input type="number" value={form.passingScore} onChange={(e) => setForm((f) => ({ ...f, passingScore: +e.target.value }))}
+                  <label htmlFor="field-7" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">คะแนนผ่าน (%)</label>
+                  <input id="field-7" type="number" value={form.passingScore} onChange={(e) => setForm((f) => ({ ...f, passingScore: +e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" min={0} max={100} />
                 </div>
               </div>
@@ -531,8 +533,8 @@ export default function TrainingClient({
                 </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานะ</label>
-                <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                <label htmlFor="field-8" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานะ</label>
+                <select id="field-8" value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm">
                   <option value="DRAFT">ร่าง</option>
                   <option value="PUBLISHED">เผยแพร่</option>

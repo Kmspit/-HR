@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -395,26 +396,26 @@ function PaymentsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
         <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">จำนวนเงิน (บาท) *</label>
-              <input type="number" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-1" className="text-xs text-gray-500 mb-1 block">จำนวนเงิน (บาท) *</label>
+              <input id="field-1" type="number" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">วันที่รับชำระ *</label>
-              <input type="date" value={form.paidAt} onChange={e => setForm(f => ({...f, paidAt: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-2" className="text-xs text-gray-500 mb-1 block">วันที่รับชำระ *</label>
+              <input id="field-2" type="date" value={form.paidAt} onChange={e => setForm(f => ({...f, paidAt: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ช่องทางชำระ</label>
-              <select value={form.paymentMethod} onChange={e => setForm(f => ({...f, paymentMethod: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-3" className="text-xs text-gray-500 mb-1 block">ช่องทางชำระ</label>
+              <select id="field-3" value={form.paymentMethod} onChange={e => setForm(f => ({...f, paymentMethod: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ธนาคาร / เลขบัญชี</label>
-              <input value={form.bankAccount} onChange={e => setForm(f => ({...f, bankAccount: e.target.value}))} placeholder="กรุงไทย xxx-x-xxxxx-x" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-4" className="text-xs text-gray-500 mb-1 block">ธนาคาร / เลขบัญชี</label>
+              <input id="field-4" value={form.bankAccount} onChange={e => setForm(f => ({...f, bankAccount: e.target.value}))} placeholder="กรุงไทย xxx-x-xxxxx-x" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-              <input value={form.note} onChange={e => setForm(f => ({...f, note: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-5" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+              <input id="field-5" value={form.note} onChange={e => setForm(f => ({...f, note: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -493,6 +494,7 @@ function ReceiptsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
 interface LineItemForm { _key: string; description: string; qty: string; unitPrice: string }
 
 function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: () => void; onSave: () => void }) {
+  const panelRef = useModalA11y(true)
   const [form, setForm] = useState({
     clientName: '', clientTaxId: '', clientAddress: '',
     serviceType: '', issueDate: new Date().toISOString().slice(0, 10),
@@ -561,15 +563,15 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
   return (
     <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-3xl">
+        <div ref={panelRef} role="dialog" aria-modal aria-label="สร้างใบแจ้งหนี้ใหม่" tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-3xl">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">สร้างใบแจ้งหนี้ใหม่</h2>
           </div>
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             {/* Company picker */}
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">เลือกลูกค้าในระบบ (ถ้ามี)</label>
-              <select value={form.clientCompanyId} onChange={e => selectCompany(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-6" className="text-xs text-gray-500 mb-1 block">เลือกลูกค้าในระบบ (ถ้ามี)</label>
+              <select id="field-6" value={form.clientCompanyId} onChange={e => selectCompany(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 <option value="">— ไม่ระบุ / กรอกเอง —</option>
                 {companies.map(c => <option key={c.id} value={c.id}>{c.companyName} ({c.clientCode})</option>)}
               </select>
@@ -583,13 +585,13 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
                 { key: 'dueDate',       label: 'วันครบกำหนด *',           placeholder: '', type: 'date' },
               ].map(f => (
                 <div key={f.key}>
-                  <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
-                  <input type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
+                  <label htmlFor={`invoice-field-${f.key}`} className="text-xs text-gray-500 mb-1 block">{f.label}</label>
+                  <input id={`invoice-field-${f.key}`} type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
                 </div>
               ))}
               <div className="col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">ที่อยู่ลูกค้า</label>
-                <input value={form.clientAddress} onChange={e => set('clientAddress', e.target.value)} placeholder="เลขที่ ถนน แขวง เขต กรุงเทพฯ" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
+                <label htmlFor="field-7" className="text-xs text-gray-500 mb-1 block">ที่อยู่ลูกค้า</label>
+                <input id="field-7" value={form.clientAddress} onChange={e => set('clientAddress', e.target.value)} placeholder="เลขที่ ถนน แขวง เขต กรุงเทพฯ" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
               </div>
             </div>
 
@@ -605,7 +607,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
                     <input value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} placeholder="รายการ" className="col-span-6 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                     <input type="number" value={l.qty} onChange={e => updateLine(i, 'qty', e.target.value)} placeholder="จำนวน" className="col-span-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                     <input type="number" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} placeholder="ราคา" className="col-span-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                    <button onClick={() => removeLine(i)} disabled={lineItems.length === 1} className="col-span-1 text-red-400 hover:text-red-600 text-lg disabled:opacity-30">×</button>
+                    <button onClick={() => removeLine(i)} disabled={lineItems.length === 1} aria-label="ลบรายการ" className="col-span-1 text-red-400 hover:text-red-600 text-lg disabled:opacity-30">×</button>
                   </div>
                 ))}
               </div>
@@ -613,17 +615,17 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
 
             {/* Tax */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div><label className="text-xs text-gray-500 mb-1 block">ยอดก่อนภาษี</label><p className="text-sm font-semibold p-2">฿{fmt(subtotal)}</p></div>
+              <div><span className="text-xs text-gray-500 mb-1 block">ยอดก่อนภาษี</span><p className="text-sm font-semibold p-2">฿{fmt(subtotal)}</p></div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">VAT (%)</label>
-                <select value={form.vatRate} onChange={e => set('vatRate', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <label htmlFor="field-8" className="text-xs text-gray-500 mb-1 block">VAT (%)</label>
+                <select id="field-8" value={form.vatRate} onChange={e => set('vatRate', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="0">0%</option>
                   <option value="0.07">7%</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">หัก ณ ที่จ่าย (%)</label>
-                <select value={form.whtRate} onChange={e => set('whtRate', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <label htmlFor="field-9" className="text-xs text-gray-500 mb-1 block">หัก ณ ที่จ่าย (%)</label>
+                <select id="field-9" value={form.whtRate} onChange={e => set('whtRate', e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="0">0%</option>
                   <option value="0.01">1%</option>
                   <option value="0.015">1.5%</option>
@@ -642,8 +644,8 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-              <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" />
+              <label htmlFor="field-10" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+              <textarea id="field-10" value={form.note} onChange={e => set('note', e.target.value)} rows={2} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" />
             </div>
           </div>
           <div className="p-6 pt-0 flex gap-3 justify-end border-t border-gray-200 dark:border-gray-700 mt-4">

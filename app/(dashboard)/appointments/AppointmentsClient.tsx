@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type UnifiedEvent = {
@@ -78,6 +79,7 @@ export default function AppointmentsClient({
   const [loading, setLoading]     = useState(true)
   const [summary, setSummary]     = useState<SummaryData | null>(null)
   const [showForm, setShowForm]   = useState(false)
+  const formPanelRef = useModalA11y(showForm)
   const [saving, setSaving]       = useState(false)
   const [view, setView]           = useState<'calendar' | 'agenda'>('calendar')
 
@@ -433,14 +435,14 @@ export default function AppointmentsClient({
       {/* ── Create Modal ── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
+          <div ref={formPanelRef} role="dialog" aria-modal aria-label="เพิ่มนัดหมาย" tabIndex={-1} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">📅 เพิ่มนัดหมาย</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 text-xl">✕</button>
+              <button onClick={() => setShowForm(false)} aria-label="ปิด" className="text-gray-400 text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ประเภท</label>
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ประเภท</span>
                 <div className="flex gap-2 flex-wrap">
                   {EVENT_TYPES.filter((t) => t.value !== 'ALL').map((t) => (
                     <button key={t.value} onClick={() => setForm((f) => ({ ...f, eventType: t.value }))}
@@ -452,20 +454,20 @@ export default function AppointmentsClient({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">หัวข้อ *</label>
-                <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                <label htmlFor="field-1" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">หัวข้อ *</label>
+                <input id="field-1" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
                   placeholder="หัวข้อนัดหมาย" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">วันเวลาเริ่ม *</label>
-                  <input type="datetime-local" value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))}
+                  <label htmlFor="field-2" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">วันเวลาเริ่ม *</label>
+                  <input id="field-2" type="datetime-local" value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สิ้นสุด</label>
-                  <input type="datetime-local" value={form.endAt} onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))}
+                  <label htmlFor="field-3" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สิ้นสุด</label>
+                  <input id="field-3" type="datetime-local" value={form.endAt} onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
                 </div>
               </div>
@@ -474,49 +476,49 @@ export default function AppointmentsClient({
               {form.eventType === 'COURT' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เลขคดี</label>
-                    <input value={form.caseNumber} onChange={(e) => setForm((f) => ({ ...f, caseNumber: e.target.value }))}
+                    <label htmlFor="field-4" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เลขคดี</label>
+                    <input id="field-4" value={form.caseNumber} onChange={(e) => setForm((f) => ({ ...f, caseNumber: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" placeholder="1234/2567" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ศาล</label>
-                    <input value={form.courtName} onChange={(e) => setForm((f) => ({ ...f, courtName: e.target.value }))}
+                    <label htmlFor="field-5" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ศาล</label>
+                    <input id="field-5" value={form.courtName} onChange={(e) => setForm((f) => ({ ...f, courtName: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" placeholder="ศาลแพ่ง" />
                   </div>
                 </div>
               )}
               {form.eventType === 'CLIENT' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อลูกค้า</label>
-                  <input value={form.clientName} onChange={(e) => setForm((f) => ({ ...f, clientName: e.target.value }))}
+                  <label htmlFor="field-6" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อลูกค้า</label>
+                  <input id="field-6" value={form.clientName} onChange={(e) => setForm((f) => ({ ...f, clientName: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
                 </div>
               )}
               {form.eventType === 'DEBTOR' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อลูกหนี้</label>
-                    <input value={form.debtorName} onChange={(e) => setForm((f) => ({ ...f, debtorName: e.target.value }))}
+                    <label htmlFor="field-7" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อลูกหนี้</label>
+                    <input id="field-7" value={form.debtorName} onChange={(e) => setForm((f) => ({ ...f, debtorName: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ยอดหนี้</label>
-                    <input type="number" value={form.debtAmount} onChange={(e) => setForm((f) => ({ ...f, debtAmount: e.target.value }))}
+                    <label htmlFor="field-8" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ยอดหนี้</label>
+                    <input id="field-8" type="number" value={form.debtAmount} onChange={(e) => setForm((f) => ({ ...f, debtAmount: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานที่</label>
-                <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                <label htmlFor="field-9" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานที่</label>
+                <input id="field-9" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm"
                   placeholder="สถานที่นัดหมาย" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ความสำคัญ</label>
-                  <select value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                  <label htmlFor="field-10" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ความสำคัญ</label>
+                  <select id="field-10" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm">
                     <option value="LOW">ต่ำ</option>
                     <option value="NORMAL">ปกติ</option>
@@ -525,14 +527,14 @@ export default function AppointmentsClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย</label>
-                  <input value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
+                  <label htmlFor="field-11" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย</label>
+                  <input id="field-11" value={form.department} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" placeholder="LAW" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">หมายเหตุ</label>
-                <textarea value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                <label htmlFor="field-12" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">หมายเหตุ</label>
+                <textarea id="field-12" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
                   rows={2} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm resize-none" />
               </div>
             </div>

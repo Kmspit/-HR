@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 interface User { id: string; name: string; department: string | null; role: string }
 
@@ -37,6 +38,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
   const [method,    setMethod]    = useState('')
   const [loading,   setLoading]   = useState(true)
   const [showForm,  setShowForm]  = useState(false)
+  const formPanelRef = useModalA11y(showForm)
   const [debtors,   setDebtors]   = useState<DebtorOption[]>([])
   const [searchDeb, setSearchDeb] = useState('')
   const [selDebtor, setSelDebtor] = useState<DebtorOption | null>(null)
@@ -171,14 +173,14 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg">
+            <div ref={formPanelRef} role="dialog" aria-modal aria-label="บันทึกการติดตามหนี้" tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg">
               <div className="p-5 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">บันทึกการติดตามหนี้</h2>
               </div>
               <div className="p-5 space-y-4">
                 {/* Debtor search */}
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">เลือกลูกหนี้ *</label>
+                  <span className="text-xs text-gray-500 mb-1 block">เลือกลูกหนี้ *</span>
                   {selDebtor ? (
                     <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                       <span className="text-sm font-medium">{selDebtor.firstName} {selDebtor.lastName} <span className="text-xs text-gray-400 font-mono">({selDebtor.debtorNumber})</span></span>
@@ -202,30 +204,30 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
-                    <select value={fMethod} onChange={e => setFMethod(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <label htmlFor="field-1" className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
+                    <select id="field-1" value={fMethod} onChange={e => setFMethod(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                       {FOLLOW_METHODS.map(m => <option key={m}>{m}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">วันเวลา</label>
-                    <input type="datetime-local" value={fAt} onChange={e => setFAt(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    <label htmlFor="field-2" className="text-xs text-gray-500 mb-1 block">วันเวลา</label>
+                    <input id="field-2" type="datetime-local" value={fAt} onChange={e => setFAt(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">ผลการติดตาม *</label>
-                  <textarea value={fResult} onChange={e => setFResult(e.target.value)} rows={3} placeholder="เช่น โทรแล้วรับสาย รับปากจะชำระวันที่..." className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" />
+                  <label htmlFor="field-3" className="text-xs text-gray-500 mb-1 block">ผลการติดตาม *</label>
+                  <textarea id="field-3" value={fResult} onChange={e => setFResult(e.target.value)} rows={3} placeholder="เช่น โทรแล้วรับสาย รับปากจะชำระวันที่..." className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-                    <input value={fNote} onChange={e => setFNote(e.target.value)} placeholder="เพิ่มเติม…" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    <label htmlFor="field-4" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+                    <input id="field-4" value={fNote} onChange={e => setFNote(e.target.value)} placeholder="เพิ่มเติม…" className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">นัดติดตามครั้งถัดไป</label>
-                    <input type="datetime-local" value={fNextFU} onChange={e => setFNextFU(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    <label htmlFor="field-5" className="text-xs text-gray-500 mb-1 block">นัดติดตามครั้งถัดไป</label>
+                    <input id="field-5" type="datetime-local" value={fNextFU} onChange={e => setFNextFU(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                   </div>
                 </div>
               </div>

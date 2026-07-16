@@ -19,6 +19,7 @@ export default function ApprovalDetailDrawer({ item, onClose }: Props) {
       onClose={onClose}
       panelClassName="max-w-lg p-0 border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900"
       zIndex="z-[70]"
+      ariaLabel={item ? `รายละเอียดคำขอ: ${item.employeeName}` : undefined}
     >
       {item && (
         <>
@@ -30,7 +31,7 @@ export default function ApprovalDetailDrawer({ item, onClose }: Props) {
               <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-white">{item.employeeName}</h3>
               <p className="text-[13px] text-slate-500">{item.requestTypeLabel} · {item.summary}</p>
             </div>
-            <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 btn-press">
+            <button type="button" onClick={onClose} aria-label="ปิด" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 btn-press">
               <X className="h-5 w-5" />
             </button>
           </div>

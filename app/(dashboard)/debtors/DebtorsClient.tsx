@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { DEBTOR_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
   const [filterSt, setFilterSt]     = useState('')
   const [loading,  setLoading]      = useState(true)
   const [selected, setSelected]     = useState<Debtor | null>(null)
+  const mobileDetailPanelRef = useModalA11y(!!selected)
   const [detailTab, setDetailTab]   = useState<'info' | 'crm' | 'contact' | 'promises' | 'followup' | 'payment' | 'appt' | 'files'>('info')
   const [summary,  setSummary]      = useState<Summary | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -279,10 +281,10 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
           {/* Mobile: show detail as overlay */}
           {selected && (
             <div className="md:hidden fixed inset-0 z-40 bg-black/50 flex flex-col justify-end">
-              <div className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[88dvh] overflow-y-auto">
+              <div ref={mobileDetailPanelRef} role="dialog" aria-modal aria-label={`${selected.firstName} ${selected.lastName}`} tabIndex={-1} className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[88dvh] overflow-y-auto">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/10 sticky top-0 bg-white dark:bg-slate-900 z-10">
                   <span className="font-semibold text-sm text-gray-900 dark:text-white">{selected.firstName} {selected.lastName}</span>
-                  <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1">✕</button>
+                  <button onClick={() => setSelected(null)} aria-label="ปิด" className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1">✕</button>
                 </div>
                 <DetailPanel
                   debtor={selected}
@@ -636,51 +638,51 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
         <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">ช่องทาง</label>
-              <select value={channel} onChange={e => setChannel(e.target.value)}
+              <label htmlFor="field-1" className="text-xs text-slate-500 mb-1 block">ช่องทาง</label>
+              <select id="field-1" value={channel} onChange={e => setChannel(e.target.value)}
                 className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
                 {CONTACT_CHANNELS.map(c => <option key={c} value={c}>{CHANNEL_LABELS[c]}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">ทิศทาง</label>
-              <select value={direction} onChange={e => setDirection(e.target.value)}
+              <label htmlFor="field-2" className="text-xs text-slate-500 mb-1 block">ทิศทาง</label>
+              <select id="field-2" value={direction} onChange={e => setDirection(e.target.value)}
                 className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
                 <option value="OUTBOUND">โทรออก</option>
                 <option value="INBOUND">โทรเข้า</option>
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">ผล</label>
-              <select value={result} onChange={e => setResult(e.target.value)}
+              <label htmlFor="field-3" className="text-xs text-slate-500 mb-1 block">ผล</label>
+              <select id="field-3" value={result} onChange={e => setResult(e.target.value)}
                 className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
                 {CONTACT_RESULTS.map(r => <option key={r} value={r}>{RESULT_LABELS[r]}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">บันทึก</label>
-            <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+            <label htmlFor="field-4" className="text-xs text-slate-500 mb-1 block">บันทึก</label>
+            <textarea id="field-4" value={note} onChange={e => setNote(e.target.value)} rows={2}
               className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white resize-none"
               placeholder="รายละเอียดการสนทนา…" />
           </div>
           {result === 'REACHED' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">สัญญาชำระวันที่</label>
-                <input type="datetime-local" value={promisedAt} onChange={e => setPromisedAt(e.target.value)}
+                <label htmlFor="field-5" className="text-xs text-slate-500 mb-1 block">สัญญาชำระวันที่</label>
+                <input id="field-5" type="datetime-local" value={promisedAt} onChange={e => setPromisedAt(e.target.value)}
                   className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">ยอดสัญญา (บาท)</label>
-                <input type="number" value={promisedAmount} onChange={e => setPromisedAmt(e.target.value)}
+                <label htmlFor="field-6" className="text-xs text-slate-500 mb-1 block">ยอดสัญญา (บาท)</label>
+                <input id="field-6" type="number" value={promisedAmount} onChange={e => setPromisedAmt(e.target.value)}
                   className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="0" />
               </div>
             </div>
           )}
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">ติดต่อครั้งถัดไป</label>
-            <input type="datetime-local" value={nextContactAt} onChange={e => setNextContact(e.target.value)}
+            <label htmlFor="field-7" className="text-xs text-slate-500 mb-1 block">ติดต่อครั้งถัดไป</label>
+            <input id="field-7" type="datetime-local" value={nextContactAt} onChange={e => setNextContact(e.target.value)}
               className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
           </div>
           <div className="flex gap-2 justify-end">
@@ -785,19 +787,19 @@ function PromisesTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
         <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-4 space-y-3 border border-amber-200 dark:border-amber-800">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">ยอดที่ตกลง (บาท) *</label>
-              <input type="number" value={promisedAmount} onChange={e => setAmount(e.target.value)}
+              <label htmlFor="field-8" className="text-xs text-slate-500 mb-1 block">ยอดที่ตกลง (บาท) *</label>
+              <input id="field-8" type="number" value={promisedAmount} onChange={e => setAmount(e.target.value)}
                 className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="0" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">วันที่สัญญา *</label>
-              <input type="date" value={promisedDate} onChange={e => setDate(e.target.value)}
+              <label htmlFor="field-9" className="text-xs text-slate-500 mb-1 block">วันที่สัญญา *</label>
+              <input id="field-9" type="date" value={promisedDate} onChange={e => setDate(e.target.value)}
                 className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">หมายเหตุ</label>
-            <input value={note} onChange={e => setNote(e.target.value)}
+            <label htmlFor="field-10" className="text-xs text-slate-500 mb-1 block">หมายเหตุ</label>
+            <input id="field-10" value={note} onChange={e => setNote(e.target.value)}
               className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="…" />
           </div>
           <div className="flex gap-2 justify-end">
@@ -882,28 +884,28 @@ function FollowUpTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
         <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
-              <select value={method} onChange={e => setMethod(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-11" className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
+              <select id="field-11" value={method} onChange={e => setMethod(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 {FOLLOW_METHODS.map(m => <option key={m}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">วันเวลา</label>
-              <input type="datetime-local" value={followedAt} onChange={e => setAt(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-12" className="text-xs text-gray-500 mb-1 block">วันเวลา</label>
+              <input id="field-12" type="datetime-local" value={followedAt} onChange={e => setAt(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">ผลการติดตาม *</label>
-            <textarea value={result} onChange={e => setResult(e.target.value)} rows={2} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="เช่น โทรแล้วรับสาย รับปากจะชำระ..." />
+            <label htmlFor="field-13" className="text-xs text-gray-500 mb-1 block">ผลการติดตาม *</label>
+            <textarea id="field-13" value={result} onChange={e => setResult(e.target.value)} rows={2} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="เช่น โทรแล้วรับสาย รับปากจะชำระ..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-              <input value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="เพิ่มเติม…" />
+              <label htmlFor="field-14" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+              <input id="field-14" value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="เพิ่มเติม…" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">นัดติดตามครั้งถัดไป</label>
-              <input type="datetime-local" value={nextFU} onChange={e => setNextFU(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-15" className="text-xs text-gray-500 mb-1 block">นัดติดตามครั้งถัดไป</label>
+              <input id="field-15" type="datetime-local" value={nextFU} onChange={e => setNextFU(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -966,23 +968,23 @@ function PaymentTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
         <div className="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 space-y-3 border border-green-200 dark:border-green-800">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ยอดชำระ (บาท) *</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />
+              <label htmlFor="field-16" className="text-xs text-gray-500 mb-1 block">ยอดชำระ (บาท) *</label>
+              <input id="field-16" type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">วันที่</label>
-              <input type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-17" className="text-xs text-gray-500 mb-1 block">วันที่</label>
+              <input id="field-17" type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
-              <select value={channel} onChange={e => setChannel(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <label htmlFor="field-18" className="text-xs text-gray-500 mb-1 block">ช่องทาง</label>
+              <select id="field-18" value={channel} onChange={e => setChannel(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                 {['โอนเงิน', 'เงินสด', 'เช็ค', 'อื่นๆ'].map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-            <input value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="หมายเลขอ้างอิง…" />
+            <label htmlFor="field-19" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+            <input id="field-19" value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="หมายเลขอ้างอิง…" />
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
@@ -1052,20 +1054,20 @@ function ApptTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: string
         <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-xl p-4 space-y-3 border border-yellow-200 dark:border-yellow-800">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">วันเวลานัด *</label>
-              <input type="datetime-local" value={appointDate} onChange={e => setApptDate(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <label htmlFor="field-20" className="text-xs text-gray-500 mb-1 block">วันเวลานัด *</label>
+              <input id="field-20" type="datetime-local" value={appointDate} onChange={e => setApptDate(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">ยอดตกลงชำระ (บาท)</label>
-              <input type="number" value={agreedAmount} onChange={e => setAgreed(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />
+              <label htmlFor="field-21" className="text-xs text-gray-500 mb-1 block">ยอดตกลงชำระ (บาท)</label>
+              <input id="field-21" type="number" value={agreedAmount} onChange={e => setAgreed(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">สถานที่</label>
-              <input value={location} onChange={e => setLocation(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="สาขา / ออนไลน์…" />
+              <label htmlFor="field-22" className="text-xs text-gray-500 mb-1 block">สถานที่</label>
+              <input id="field-22" value={location} onChange={e => setLocation(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="สาขา / ออนไลน์…" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-              <input value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="…" />
+              <label htmlFor="field-23" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+              <input id="field-23" value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="…" />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -1169,6 +1171,7 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
   mode: 'create' | 'edit'; debtor?: Debtor; employees: User[]
   userId: string; onClose: () => void; onSave: () => void
 }) {
+  const panelRef = useModalA11y(true)
   const [activeSection, setActiveSection] = useState<'basic'|'crm'>('basic')
   const [form, setForm] = useState({
     firstName:   debtor?.firstName   ?? '',
@@ -1240,7 +1243,7 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
   return (
     <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl">
+        <div ref={panelRef} role="dialog" aria-modal aria-label={mode === 'create' ? 'เพิ่มลูกหนี้ใหม่' : 'แก้ไขข้อมูลลูกหนี้'} tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{mode === 'create' ? 'เพิ่มลูกหนี้ใหม่' : 'แก้ไขข้อมูลลูกหนี้'}</h2>
           </div>
@@ -1272,29 +1275,29 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
                 { key: 'startDate',  label: 'วันที่เริ่ม',      placeholder: '',             half: true, type: 'date' as const },
               ].map(f => (
                 <div key={f.key} className={f.half ? '' : 'col-span-2'}>
-                  <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
-                  <input type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder}
+                  <label htmlFor={`debtor-field-${f.key}`} className="text-xs text-gray-500 mb-1 block">{f.label}</label>
+                  <input id={`debtor-field-${f.key}`} type={f.type ?? 'text'} value={form[f.key as keyof typeof form]} onChange={e => set(f.key, e.target.value)} placeholder={f.placeholder}
                     className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400" />
                 </div>
               ))}
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">สถานะ</label>
-                <select value={form.status} onChange={e => set('status', e.target.value)}
+                <label htmlFor="field-24" className="text-xs text-gray-500 mb-1 block">สถานะ</label>
+                <select id="field-24" value={form.status} onChange={e => set('status', e.target.value)}
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">ผู้รับผิดชอบ</label>
-                <select value={form.assignedToId} onChange={e => set('assignedToId', e.target.value)}
+                <label htmlFor="field-25" className="text-xs text-gray-500 mb-1 block">ผู้รับผิดชอบ</label>
+                <select id="field-25" value={form.assignedToId} onChange={e => set('assignedToId', e.target.value)}
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="">— ยังไม่กำหนด —</option>
                   {employees.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
-                <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2}
+                <label htmlFor="field-26" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+                <textarea id="field-26" value={form.note} onChange={e => set('note', e.target.value)} rows={2}
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="หมายเหตุ…" />
               </div>
             </div>
@@ -1303,43 +1306,43 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
           {activeSection === 'crm' && (
             <div className="p-6 grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">ระดับความเสี่ยง</label>
-                <select value={form.riskLevel} onChange={e => set('riskLevel', e.target.value)}
+                <label htmlFor="field-27" className="text-xs text-gray-500 mb-1 block">ระดับความเสี่ยง</label>
+                <select id="field-27" value={form.riskLevel} onChange={e => set('riskLevel', e.target.value)}
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   {RISK_LEVELS.map(r => <option key={r} value={r}>{RISK_LABELS[r]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">วิธีติดต่อที่ต้องการ</label>
-                <select value={form.contactPreference} onChange={e => set('contactPreference', e.target.value)}
+                <label htmlFor="field-28" className="text-xs text-gray-500 mb-1 block">วิธีติดต่อที่ต้องการ</label>
+                <select id="field-28" value={form.contactPreference} onChange={e => set('contactPreference', e.target.value)}
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="">— ไม่ระบุ —</option>
                   {CONTACT_CHANNELS.map(c => <option key={c} value={c}>{CHANNEL_LABELS[c]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">อาชีพ</label>
-                <input value={form.occupation} onChange={e => set('occupation', e.target.value)} placeholder="เช่น พนักงาน / ค้าขาย"
+                <label htmlFor="field-29" className="text-xs text-gray-500 mb-1 block">อาชีพ</label>
+                <input id="field-29" value={form.occupation} onChange={e => set('occupation', e.target.value)} placeholder="เช่น พนักงาน / ค้าขาย"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">รายได้ประมาณ (บาท/เดือน)</label>
-                <input type="number" value={form.incomeEstimate} onChange={e => set('incomeEstimate', e.target.value)} placeholder="0"
+                <label htmlFor="field-30" className="text-xs text-gray-500 mb-1 block">รายได้ประมาณ (บาท/เดือน)</label>
+                <input id="field-30" type="number" value={form.incomeEstimate} onChange={e => set('incomeEstimate', e.target.value)} placeholder="0"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">สถานที่ทำงาน</label>
-                <input value={form.workplace} onChange={e => set('workplace', e.target.value)} placeholder="บริษัท / สถานที่"
+                <label htmlFor="field-31" className="text-xs text-gray-500 mb-1 block">สถานที่ทำงาน</label>
+                <input id="field-31" value={form.workplace} onChange={e => set('workplace', e.target.value)} placeholder="บริษัท / สถานที่"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Facebook</label>
-                <input value={form.facebook} onChange={e => set('facebook', e.target.value)} placeholder="ชื่อ FB หรือลิงก์"
+                <label htmlFor="field-32" className="text-xs text-gray-500 mb-1 block">Facebook</label>
+                <input id="field-32" value={form.facebook} onChange={e => set('facebook', e.target.value)} placeholder="ชื่อ FB หรือลิงก์"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">ช่วงเวลาติดต่อ</label>
-                <select value={form.preferredContactTime} onChange={e => set('preferredContactTime', e.target.value)}
+                <label htmlFor="field-33" className="text-xs text-gray-500 mb-1 block">ช่วงเวลาติดต่อ</label>
+                <select id="field-33" value={form.preferredContactTime} onChange={e => set('preferredContactTime', e.target.value)}
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                   <option value="">— ไม่ระบุ —</option>
                   <option value="MORNING">เช้า (08:00-12:00)</option>
@@ -1349,23 +1352,23 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Tags (คั่นด้วยคอมมา)</label>
-                <input value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="เช่น VIP, ผ่อนชำระ, ติดต่อยาก"
+                <label htmlFor="field-34" className="text-xs text-gray-500 mb-1 block">Tags (คั่นด้วยคอมมา)</label>
+                <input id="field-34" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="เช่น VIP, ผ่อนชำระ, ติดต่อยาก"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">ที่อยู่ทำงาน</label>
-                <input value={form.workplaceAddress} onChange={e => set('workplaceAddress', e.target.value)} placeholder="ที่อยู่สถานที่ทำงาน"
+                <label htmlFor="field-35" className="text-xs text-gray-500 mb-1 block">ที่อยู่ทำงาน</label>
+                <input id="field-35" value={form.workplaceAddress} onChange={e => set('workplaceAddress', e.target.value)} placeholder="ที่อยู่สถานที่ทำงาน"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">ที่อยู่ตามทะเบียนบ้าน</label>
-                <input value={form.registeredAddress} onChange={e => set('registeredAddress', e.target.value)} placeholder="ที่อยู่ตามทะเบียน"
+                <label htmlFor="field-36" className="text-xs text-gray-500 mb-1 block">ที่อยู่ตามทะเบียนบ้าน</label>
+                <input id="field-36" value={form.registeredAddress} onChange={e => set('registeredAddress', e.target.value)} placeholder="ที่อยู่ตามทะเบียน"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-gray-500 mb-1 block">ที่อยู่ทรัพย์สิน</label>
-                <input value={form.assetAddress} onChange={e => set('assetAddress', e.target.value)} placeholder="บ้าน / ที่ดิน / ยานพาหนะ"
+                <label htmlFor="field-37" className="text-xs text-gray-500 mb-1 block">ที่อยู่ทรัพย์สิน</label>
+                <input id="field-37" value={form.assetAddress} onChange={e => set('assetAddress', e.target.value)} placeholder="บ้าน / ที่ดิน / ยานพาหนะ"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
             </div>

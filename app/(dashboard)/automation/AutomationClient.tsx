@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,10 +118,13 @@ function fmt(n: number) { return n.toLocaleString('th-TH') }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${checked ? 'bg-green-600' : 'bg-gray-300'}`}
     >
@@ -144,6 +148,7 @@ function RuleModal({
   onClose: () => void
   onSave: () => void
 }) {
+  const panelRef = useModalA11y(true)
   const [name, setName]             = useState(rule?.name ?? '')
   const [description, setDesc]      = useState(rule?.description ?? '')
   const [trigger, setTrigger]       = useState(rule?.trigger ?? TRIGGERS[0].value)
@@ -217,11 +222,11 @@ function RuleModal({
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <div ref={panelRef} role="dialog" aria-modal aria-label={rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'} tabIndex={-1} className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'}</h2>
-          <button type="button" onClick={onClose} className="rounded p-1 text-gray-500 hover:bg-gray-100">✕</button>
+          <button type="button" onClick={onClose} aria-label="ปิด" className="rounded p-1 text-gray-500 hover:bg-gray-100">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
@@ -230,19 +235,19 @@ function RuleModal({
           {/* Basic info */}
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">ชื่อ Rule *</label>
-              <input value={name} onChange={e => setName(e.target.value)} className="hr-input w-full" placeholder="เช่น ชำระเงินสูง → แจ้งผู้จัดการ" />
+              <label htmlFor="field-1" className="mb-1 block text-sm font-medium text-gray-700">ชื่อ Rule *</label>
+              <input id="field-1" value={name} onChange={e => setName(e.target.value)} className="hr-input w-full" placeholder="เช่น ชำระเงินสูง → แจ้งผู้จัดการ" />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">คำอธิบาย</label>
-              <input value={description} onChange={e => setDesc(e.target.value)} className="hr-input w-full" placeholder="รายละเอียดเพิ่มเติม..." />
+              <label htmlFor="field-2" className="mb-1 block text-sm font-medium text-gray-700">คำอธิบาย</label>
+              <input id="field-2" value={description} onChange={e => setDesc(e.target.value)} className="hr-input w-full" placeholder="รายละเอียดเพิ่มเติม..." />
             </div>
           </div>
 
           {/* Trigger */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">เมื่อเกิด (Trigger)</label>
-            <select value={trigger} onChange={e => setTrigger(e.target.value)} className="hr-input w-full">
+            <label htmlFor="field-3" className="mb-1 block text-sm font-medium text-gray-700">เมื่อเกิด (Trigger)</label>
+            <select id="field-3" value={trigger} onChange={e => setTrigger(e.target.value)} className="hr-input w-full">
               {TRIGGERS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
@@ -250,7 +255,7 @@ function RuleModal({
           {/* Conditions */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">เงื่อนไข (Conditions) — ทุกเงื่อนไขต้องผ่าน</label>
+              <span className="text-sm font-medium text-gray-700">เงื่อนไข (Conditions) — ทุกเงื่อนไขต้องผ่าน</span>
               <button onClick={addCondition} className="rounded-lg bg-green-50 px-3 py-1 text-xs text-green-700 hover:bg-green-100">+ เพิ่มเงื่อนไข</button>
             </div>
             {conditions.length === 0 && <p className="text-xs text-gray-400 italic">ไม่มีเงื่อนไข — rule จะทำงานทุกครั้งที่ trigger เกิดขึ้น</p>}
@@ -273,7 +278,7 @@ function RuleModal({
           {/* Actions */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">การกระทำ (Actions)</label>
+              <span className="text-sm font-medium text-gray-700">การกระทำ (Actions)</span>
               <button onClick={addAction} className="rounded-lg bg-green-50 px-3 py-1 text-xs text-green-700 hover:bg-green-100">+ เพิ่มการกระทำ</button>
             </div>
             {actions.length === 0 && <p className="text-xs text-gray-400 italic">ยังไม่มีการกระทำ</p>}
@@ -307,11 +312,11 @@ function RuleModal({
           {/* Settings */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Priority (สูง = ทำงานก่อน)</label>
-              <input type="number" value={priority} onChange={e => setPriority(Number(e.target.value))} className="hr-input w-full" min={0} max={100} />
+              <label htmlFor="field-4" className="mb-1 block text-sm font-medium text-gray-700">Priority (สูง = ทำงานก่อน)</label>
+              <input id="field-4" type="number" value={priority} onChange={e => setPriority(Number(e.target.value))} className="hr-input w-full" min={0} max={100} />
             </div>
             <div className="flex items-center gap-3 pt-6">
-              <Toggle checked={testMode} onChange={setTestMode} />
+              <Toggle checked={testMode} onChange={setTestMode} label="Test Mode (ไม่ execute จริง)" />
               <span className="text-sm text-gray-600">Test Mode (ไม่ execute จริง)</span>
             </div>
           </div>
@@ -458,9 +463,9 @@ export default function AutomationClient({
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                <Toggle checked={rule.isActive} onChange={() => toggleActive(rule)} />
-                <button onClick={() => openEdit(rule)} className="rounded p-1 text-gray-400 hover:text-green-600 hover:bg-green-50">✏️</button>
-                <button onClick={() => deleteRule(rule.id)} className="rounded p-1 text-gray-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                <Toggle checked={rule.isActive} onChange={() => toggleActive(rule)} label={`เปิด/ปิดการทำงาน: ${rule.name}`} />
+                <button onClick={() => openEdit(rule)} aria-label={`แก้ไข: ${rule.name}`} className="rounded p-1 text-gray-400 hover:text-green-600 hover:bg-green-50">✏️</button>
+                <button onClick={() => deleteRule(rule.id)} aria-label={`ลบ: ${rule.name}`} className="rounded p-1 text-gray-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
               </div>
             </div>
 

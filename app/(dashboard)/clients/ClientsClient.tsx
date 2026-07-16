@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CLIENT_TASK_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 import { modalFieldInput, dashboardDialogPanel } from '@/lib/theme-classes'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 interface ClientUser {
   id: string
@@ -50,16 +51,19 @@ export default function ClientsClient({ userRole }: Props) {
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false)
+  const createPanelRef = useModalA11y(showCreate)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', companyName: '' })
   const [creating, setCreating] = useState(false)
 
   // Status history modal
   const [showHistory, setShowHistory] = useState<{ taskId: string; taskTitle: string } | null>(null)
+  const historyPanelRef = useModalA11y(!!showHistory)
   const [historyForm, setHistoryForm] = useState({ status: '', note: '' })
   const [addingHistory, setAddingHistory] = useState(false)
 
   // Link task modal
   const [showLinkTask, setShowLinkTask] = useState(false)
+  const linkTaskPanelRef = useModalA11y(showLinkTask)
   const [availableTasks, setAvailableTasks] = useState<Task[]>([])
   const [taskSearchQ, setTaskSearchQ] = useState('')
 
@@ -288,7 +292,7 @@ export default function ClientsClient({ userRole }: Props) {
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-          <div className={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4`}>
+          <div ref={createPanelRef} role="dialog" aria-modal aria-label="เพิ่มบัญชีลูกค้า" tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4`}>
             <h2 className="font-semibold text-white">เพิ่มบัญชีลูกค้า</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
               {[
@@ -299,8 +303,8 @@ export default function ClientsClient({ userRole }: Props) {
                 { label: 'รหัสผ่านเริ่มต้น *', key: 'password', type: 'password', req: true },
               ].map(({ label, key, type, req }) => (
                 <div key={key} className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-300">{label}</label>
-                  <input required={req} type={type}
+                  <label htmlFor={`client-create-${key}`} className="text-xs font-medium text-gray-300">{label}</label>
+                  <input id={`client-create-${key}`} required={req} type={type}
                     value={form[key as keyof typeof form]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                     className={modalFieldInput} />
@@ -324,13 +328,13 @@ export default function ClientsClient({ userRole }: Props) {
       {showHistory && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-          <div className={`${dashboardDialogPanel} w-full max-w-sm p-6 flex flex-col gap-4`}>
+          <div ref={historyPanelRef} role="dialog" aria-modal aria-label="อัพเดทสถานะคดี" tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-sm p-6 flex flex-col gap-4`}>
             <h2 className="font-semibold text-white text-sm">อัพเดทสถานะคดี (ลูกค้าจะเห็น)</h2>
             <div className="text-xs text-gray-400">{showHistory.taskTitle}</div>
             <form onSubmit={addStatusHistory} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-300">สถานะ *</label>
-                <select required value={historyForm.status}
+                <label htmlFor="field-1" className="text-xs font-medium text-gray-300">สถานะ *</label>
+                <select id="field-1" required value={historyForm.status}
                   onChange={(e) => setHistoryForm({ ...historyForm, status: e.target.value })}
                   className={modalFieldInput}>
                   <option value="">-- เลือกสถานะ --</option>
@@ -338,8 +342,8 @@ export default function ClientsClient({ userRole }: Props) {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-300">หมายเหตุ</label>
-                <textarea rows={2} value={historyForm.note}
+                <label htmlFor="field-2" className="text-xs font-medium text-gray-300">หมายเหตุ</label>
+                <textarea id="field-2" rows={2} value={historyForm.note}
                   onChange={(e) => setHistoryForm({ ...historyForm, note: e.target.value })}
                   className={`${modalFieldInput} resize-none`}
                   placeholder="รายละเอียดเพิ่มเติม..." />
@@ -362,7 +366,7 @@ export default function ClientsClient({ userRole }: Props) {
       {showLinkTask && (
         <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
-          <div className={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]`}>
+          <div ref={linkTaskPanelRef} role="dialog" aria-modal aria-label="เลือกคดีที่จะเชื่อม" tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]`}>
             <h2 className="font-semibold text-white">เลือกคดีที่จะเชื่อม</h2>
             <div className="flex gap-2">
               <input value={taskSearchQ} onChange={(e) => setTaskSearchQ(e.target.value)}

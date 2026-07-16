@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { RECOVERY_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export default function RecoveryClient({ userId, userRole, userName }: {
   const [dashboard,   setDashboard]  = useState<DashboardData | null>(null)
   const [showCreate,  setShowCreate] = useState(false)
   const [selected,    setSelected]   = useState<RecoveryPayment | null>(null)
+  const mobileDetailPanelRef = useModalA11y(!!selected)
   const [employees,   setEmployees]  = useState<Employee[]>([])
   const [debtors,     setDebtors]    = useState<Debtor[]>([])
   const [uploading,   setUploading]  = useState(false)
@@ -247,10 +249,10 @@ export default function RecoveryClient({ userId, userRole, userName }: {
           {/* Mobile overlay */}
           {selected && (
             <div className="md:hidden fixed inset-0 z-40 bg-black/50 flex flex-col justify-end">
-              <div className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[90dvh] overflow-y-auto">
+              <div ref={mobileDetailPanelRef} role="dialog" aria-modal aria-label="รายละเอียดการชำระ" tabIndex={-1} className="bg-white dark:bg-slate-900 rounded-t-2xl max-h-[90dvh] overflow-y-auto">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10 sticky top-0 bg-white dark:bg-slate-900 z-10">
                   <span className="font-semibold text-sm">รายละเอียดการชำระ</span>
-                  <button type="button" onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
+                  <button type="button" onClick={() => setSelected(null)} aria-label="ปิด" className="text-slate-400 hover:text-slate-600 p-1">✕</button>
                 </div>
                 <PaymentDetail
                   payment={selected}
@@ -601,6 +603,7 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
   userId: string; userRole: string; employees: Employee[]; debtors: Debtor[]
   canConfirm: boolean; onClose: () => void; onSave: () => void
 }) {
+  const panelRef = useModalA11y(true)
   const [form, setForm] = useState({
     debtorId:       '',
     paymentType:    'FULL_PAYMENT',
@@ -643,17 +646,17 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
   return (
     <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
       <div className="flex min-h-full items-end md:items-center justify-center p-0 md:p-4">
-        <div className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-xl">
+        <div ref={panelRef} role="dialog" aria-modal aria-label="บันทึกการชำระเงิน" tabIndex={-1} className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-xl">
           <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-200 dark:border-white/[0.06]">
             <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">บันทึกการชำระเงิน</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">✕</button>
+            <button onClick={onClose} aria-label="ปิด" className="text-slate-400 hover:text-slate-600 p-1">✕</button>
           </div>
 
           <div className="p-4 md:p-5 space-y-4">
             {/* Debtor select */}
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">ลูกหนี้ *</label>
-              <select value={form.debtorId} onChange={e => set('debtorId', e.target.value)}
+              <label htmlFor="field-1" className="text-xs text-slate-500 mb-1 block">ลูกหนี้ *</label>
+              <select id="field-1" value={form.debtorId} onChange={e => set('debtorId', e.target.value)}
                 className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
                 <option value="">— เลือกลูกหนี้ —</option>
                 {debtors.map(d => <option key={d.id} value={d.id}>[{d.debtorNumber}] {d.firstName} {d.lastName}</option>)}
@@ -665,41 +668,41 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">ประเภทการชำระ</label>
-                <select value={form.paymentType} onChange={e => set('paymentType', e.target.value)}
+                <label htmlFor="field-2" className="text-xs text-slate-500 mb-1 block">ประเภทการชำระ</label>
+                <select id="field-2" value={form.paymentType} onChange={e => set('paymentType', e.target.value)}
                   className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none">
                   {PAYMENT_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">ช่องทาง</label>
-                <select value={form.paymentMethod} onChange={e => set('paymentMethod', e.target.value)}
+                <label htmlFor="field-3" className="text-xs text-slate-500 mb-1 block">ช่องทาง</label>
+                <select id="field-3" value={form.paymentMethod} onChange={e => set('paymentMethod', e.target.value)}
                   className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none">
                   {PAYMENT_METHODS.map(m => <option key={m} value={m}>{METHOD_LABELS[m]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">จำนวน (บาท) *</label>
-                <input type="number" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0"
+                <label htmlFor="field-4" className="text-xs text-slate-500 mb-1 block">จำนวน (บาท) *</label>
+                <input id="field-4" type="number" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0"
                   className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">วันที่ชำระ</label>
-                <input type="date" value={form.paymentDate} onChange={e => set('paymentDate', e.target.value)}
+                <label htmlFor="field-5" className="text-xs text-slate-500 mb-1 block">วันที่ชำระ</label>
+                <input id="field-5" type="date" value={form.paymentDate} onChange={e => set('paymentDate', e.target.value)}
                   className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none" />
               </div>
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">เลขอ้างอิง / สลิป</label>
-              <input value={form.referenceNumber} onChange={e => set('referenceNumber', e.target.value)} placeholder="เลขที่รายการ…"
+              <label htmlFor="field-6" className="text-xs text-slate-500 mb-1 block">เลขอ้างอิง / สลิป</label>
+              <input id="field-6" value={form.referenceNumber} onChange={e => set('referenceNumber', e.target.value)} placeholder="เลขที่รายการ…"
                 className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none" />
             </div>
 
             {canConfirm && (
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">ผู้รับชำระ</label>
-                <select value={form.collectorId} onChange={e => set('collectorId', e.target.value)}
+                <label htmlFor="field-7" className="text-xs text-slate-500 mb-1 block">ผู้รับชำระ</label>
+                <select id="field-7" value={form.collectorId} onChange={e => set('collectorId', e.target.value)}
                   className="w-full h-10 text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white focus:outline-none">
                   <option value={userId}>ตัวเอง</option>
                   {employees.filter(e => e.id !== userId).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -709,7 +712,7 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
 
             {/* Proof upload */}
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">หลักฐานการชำระ (ไม่บังคับ)</label>
+              <span className="text-xs text-slate-500 mb-1 block">หลักฐานการชำระ (ไม่บังคับ)</span>
               <div className="flex items-center gap-2">
                 <label className="flex-1 h-10 flex items-center justify-center text-sm border-2 border-dashed border-slate-200 dark:border-white/[0.1] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.03] text-slate-500 transition">
                   {proofFile ? proofFile.name : '📎 เลือกไฟล์'}
@@ -720,8 +723,8 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">หมายเหตุ</label>
-              <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2}
+              <label htmlFor="field-8" className="text-xs text-slate-500 mb-1 block">หมายเหตุ</label>
+              <textarea id="field-8" value={form.note} onChange={e => set('note', e.target.value)} rows={2}
                 className="w-full text-sm border border-slate-200 dark:border-white/[0.1] rounded-xl px-3 py-2 bg-white dark:bg-white/[0.05] text-slate-900 dark:text-white resize-none focus:outline-none"
                 placeholder="รายละเอียดเพิ่มเติม…" />
             </div>

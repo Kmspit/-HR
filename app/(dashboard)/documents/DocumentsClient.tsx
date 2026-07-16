@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { FileText, Plus, Loader2, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import { DOCUMENT_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 type DocumentRequest = {
@@ -45,6 +46,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
   const [newPurpose, setNewPurpose] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [hrAction, setHrAction] = useState<{ id: string; status: string; notes: string } | null>(null)
+  const hrActionPanelRef = useModalA11y(!!hrAction)
   const [actioning, setActioning] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -132,6 +134,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
         )}
         <button
           onClick={() => load()}
+          aria-label="โหลดใหม่"
           className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition ml-auto"
         >
           <RefreshCw className="w-4 h-4" />
@@ -143,8 +146,8 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
           <h3 className="text-white font-semibold text-sm">ยื่นคำขอเอกสาร</h3>
           <div>
-            <label className="text-white/50 text-xs mb-1 block">ประเภทเอกสาร *</label>
-            <select
+            <label htmlFor="field-1" className="text-white/50 text-xs mb-1 block">ประเภทเอกสาร *</label>
+            <select id="field-1"
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50"
@@ -156,8 +159,8 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
             </select>
           </div>
           <div>
-            <label className="text-white/50 text-xs mb-1 block">วัตถุประสงค์ (ไม่บังคับ)</label>
-            <input
+            <label htmlFor="field-2" className="text-white/50 text-xs mb-1 block">วัตถุประสงค์ (ไม่บังคับ)</label>
+            <input id="field-2"
               value={newPurpose}
               onChange={(e) => setNewPurpose(e.target.value)}
               placeholder="เช่น ยื่นธนาคาร, ขอสินเชื่อ"
@@ -186,7 +189,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
       {/* HR action modal */}
       {hrAction && (
         <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3">
+          <div ref={hrActionPanelRef} role="dialog" aria-modal aria-label="อัปเดตสถานะ" tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3">
             <h3 className="text-white font-semibold">อัปเดตสถานะ</h3>
             <div className="flex gap-2">
               {(['PROCESSING', 'READY', 'REJECTED'] as const).map((s) => (

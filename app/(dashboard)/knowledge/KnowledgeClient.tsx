@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { modalFieldInput } from '@/lib/theme-classes'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 type Article = {
   id: string
@@ -60,6 +61,7 @@ export default function KnowledgeClient({
   const [searchRes, setSearchRes] = useState<SearchResult | null>(null)
   const [loading, setLoading]     = useState(true)
   const [showCreate, setCreate]   = useState(false)
+  const createPanelRef = useModalA11y(showCreate)
   const [editing, setEditing]     = useState(false)
 
   // Form state
@@ -318,17 +320,17 @@ export default function KnowledgeClient({
       {/* ── Create/Edit Modal ── */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
+          <div ref={createPanelRef} role="dialog" aria-modal aria-label={editing ? 'แก้ไขบทความ' : 'สร้างบทความใหม่'} tabIndex={-1} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {editing ? '✏️ แก้ไขบทความ' : '+ สร้างบทความใหม่'}
               </h2>
-              <button onClick={() => { setCreate(false); setEditing(false) }} className="text-gray-400 text-xl">✕</button>
+              <button onClick={() => { setCreate(false); setEditing(false) }} aria-label="ปิด" className="text-gray-400 text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อบทความ *</label>
-                <input
+                <label htmlFor="field-1" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ชื่อบทความ *</label>
+                <input id="field-1"
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   className={modalFieldInput}
@@ -337,8 +339,8 @@ export default function KnowledgeClient({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">หมวดหมู่</label>
-                  <select
+                  <label htmlFor="field-2" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">หมวดหมู่</label>
+                  <select id="field-2"
                     value={form.category}
                     onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                     className={modalFieldInput}
@@ -349,8 +351,8 @@ export default function KnowledgeClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย</label>
-                  <input
+                  <label htmlFor="field-3" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ฝ่าย</label>
+                  <input id="field-3"
                     value={form.department}
                     onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
                     className={modalFieldInput}
@@ -359,8 +361,8 @@ export default function KnowledgeClient({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">แท็ก</label>
-                <input
+                <label htmlFor="field-4" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">แท็ก</label>
+                <input id="field-4"
                   value={form.tags}
                   onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                   className={modalFieldInput}
@@ -368,8 +370,8 @@ export default function KnowledgeClient({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เนื้อหา *</label>
-                <textarea
+                <label htmlFor="field-5" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">เนื้อหา *</label>
+                <textarea id="field-5"
                   value={form.content}
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                   rows={10}
@@ -378,8 +380,8 @@ export default function KnowledgeClient({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานะ</label>
-                <select
+                <label htmlFor="field-6" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สถานะ</label>
+                <select id="field-6"
                   value={form.status}
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
                   className={modalFieldInput}

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAnnouncementStream } from '@/hooks/useAnnouncementStream'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import {
   Plus, Trash2, Archive, ArchiveRestore, Loader2, ChevronDown, X,
   Calendar, Users, Paperclip, Download, FileText, Image as ImageIcon,
@@ -114,6 +115,7 @@ export default function AnnouncementsClient({
 
   // ── Archive
   const [showArchive, setShowArchive] = useState(false)
+  const archivePanelRef = useModalA11y(showArchive)
   const [archive, setArchive] = useState<Announcement[]>([])
   const [archiveLoading, setArchiveLoading] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState('')
@@ -419,7 +421,7 @@ export default function AnnouncementsClient({
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
                 {editingId ? 'แก้ไขประกาศ' : 'สร้างประกาศใหม่'}
               </h3>
-              <button onClick={cancelForm} className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 hover:dark:text-white">
+              <button onClick={cancelForm} aria-label="ยกเลิก" className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 hover:dark:text-white">
                 <X size={16} />
               </button>
             </div>
@@ -427,16 +429,16 @@ export default function AnnouncementsClient({
             <div className="space-y-3">
               {/* Title */}
               <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">หัวเรื่อง *</label>
-                <input value={form.title} onChange={(e) => setField('title', e.target.value)}
+                <label htmlFor="field-1" className="text-xs text-slate-500 dark:text-slate-400 block mb-1">หัวเรื่อง *</label>
+                <input id="field-1" value={form.title} onChange={(e) => setField('title', e.target.value)}
                   placeholder="หัวเรื่องประกาศ..."
                   className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500" />
               </div>
 
               {/* Body */}
               <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">เนื้อหา *</label>
-                <textarea value={form.body} onChange={(e) => setField('body', e.target.value)}
+                <label htmlFor="field-2" className="text-xs text-slate-500 dark:text-slate-400 block mb-1">เนื้อหา *</label>
+                <textarea id="field-2" value={form.body} onChange={(e) => setField('body', e.target.value)}
                   rows={4} placeholder="รายละเอียดประกาศ..."
                   className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500 resize-none" />
               </div>
@@ -444,8 +446,8 @@ export default function AnnouncementsClient({
               {/* Type + Target row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">ประเภท</label>
-                  <select value={form.type} onChange={(e) => setField('type', e.target.value)}
+                  <label htmlFor="field-3" className="text-xs text-slate-500 dark:text-slate-400 block mb-1">ประเภท</label>
+                  <select id="field-3" value={form.type} onChange={(e) => setField('type', e.target.value)}
                     className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500">
                     {Object.entries(TYPE_CONFIG).map(([k, v]) => (
                       <option key={k} value={k}>{v.icon} {v.label}</option>
@@ -453,8 +455,8 @@ export default function AnnouncementsClient({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">กลุ่มเป้าหมาย</label>
-                  <select value={form.targetType}
+                  <label htmlFor="field-4" className="text-xs text-slate-500 dark:text-slate-400 block mb-1">กลุ่มเป้าหมาย</label>
+                  <select id="field-4" value={form.targetType}
                     onChange={(e) => { setField('targetType', e.target.value); setField('targetIds', []); setEmpSearch('') }}
                     className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500">
                     {TARGET_ORDER.map((k) => (
@@ -529,25 +531,25 @@ export default function AnnouncementsClient({
 
               {/* Publish time */}
               <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1">
+                <label htmlFor="field-5" className="text-xs text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1">
                   <Calendar size={11} /> กำหนดเวลาเผยแพร่
                   <span className="opacity-50">(ว่างไว้ = เผยแพร่ทันที)</span>
                 </label>
-                <input type="datetime-local" value={form.publishAt} min={nowISO}
+                <input id="field-5" type="datetime-local" value={form.publishAt} min={nowISO}
                   onChange={(e) => setField('publishAt', e.target.value)}
                   className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-green-500" />
               </div>
 
               {/* File attachment */}
               <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 block mb-1 flex items-center gap-1">
                   <Paperclip size={11} /> แนบไฟล์ <span className="opacity-50">(PDF, Word, Excel, PNG, JPG, ZIP — สูงสุด 20 MB)</span>
-                </label>
+                </span>
                 {uploadedAtt ? (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5">
                     <span className="flex-shrink-0">{fileIcon(uploadedAtt.type)}</span>
                     <span className="text-xs text-slate-700 dark:text-slate-300 truncate flex-1">{uploadedAtt.name}</span>
-                    <button onClick={removeAttachment} className="flex-shrink-0 p-1 rounded text-slate-400 dark:text-slate-500 hover:text-red-400 transition-colors">
+                    <button onClick={removeAttachment} aria-label="ลบไฟล์แนบ" className="flex-shrink-0 p-1 rounded text-slate-400 dark:text-slate-500 hover:text-red-400 transition-colors">
                       <X size={13} />
                     </button>
                   </div>
@@ -555,6 +557,7 @@ export default function AnnouncementsClient({
                   <div className="relative">
                     <input ref={fileInputRef} type="file" onChange={handleFileChange} disabled={uploading}
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
+                      aria-label="แนบไฟล์"
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-dashed transition-colors cursor-pointer
                       ${uploading ? 'border-green-500/50 dark:bg-green-500/5' : 'border-slate-300 dark:border-white/10 hover:border-slate-400 hover:dark:border-white/20'}`}>
@@ -719,7 +722,7 @@ export default function AnnouncementsClient({
       {showArchive && (
         <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
           onClick={() => setShowArchive(false)}>
-          <div className="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col"
+          <div ref={archivePanelRef} role="dialog" aria-modal aria-label="ประกาศ Archive" tabIndex={-1} className="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
@@ -732,7 +735,7 @@ export default function AnnouncementsClient({
                   className="px-3 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-semibold transition-colors">
                   ค้นหา
                 </button>
-                <button onClick={() => setShowArchive(false)} className="p-1 rounded-lg text-slate-500 dark:text-slate-400">
+                <button onClick={() => setShowArchive(false)} aria-label="ปิด" className="p-1 rounded-lg text-slate-500 dark:text-slate-400">
                   <X size={16} />
                 </button>
               </div>
@@ -807,9 +810,10 @@ function AttachmentView({ name, url, type, onPreview }: {
 function FileViewer({ attachment, onClose }: { attachment: Attachment; onClose: () => void }) {
   const isPdfFile = isPdf(attachment.type)
   const isImageFile = isImage(attachment.type)
+  const panelRef = useModalA11y(true)
 
   return (
-    <div className="fixed inset-0 z-60 flex flex-col bg-black/90 backdrop-blur-sm" onClick={onClose}>
+    <div ref={panelRef} role="dialog" aria-modal aria-label={attachment.name} tabIndex={-1} className="fixed inset-0 z-60 flex flex-col bg-black/90 backdrop-blur-sm" onClick={onClose}>
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-black/40" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 min-w-0">
@@ -822,7 +826,7 @@ function FileViewer({ attachment, onClose }: { attachment: Attachment; onClose: 
             onClick={(e) => e.stopPropagation()}>
             <Download size={13} /> ดาวน์โหลด
           </a>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
             <X size={18} />
           </button>
         </div>

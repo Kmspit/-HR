@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { canUserActOnStep, type ApprovalStepRow } from '@/lib/approval-chain-shared'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import type { Role } from '@prisma/client'
 import dynamic from 'next/dynamic'
 import OutsideWorkStatusBadge from './OutsideWorkStatusBadge'
@@ -208,6 +209,7 @@ function ProductWorkCell({
   onChange: (category: string, type: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const panelRef = useModalA11y(open)
   const [draftCategory, setDraftCategory] = useState(category)
   const [draftType, setDraftType] = useState(type)
 
@@ -250,13 +252,18 @@ function ProductWorkCell({
           onClick={() => setOpen(false)}
         >
           <div
+            ref={panelRef}
+            role="dialog"
+            aria-modal
+            aria-label="เลือกงานโปรดักส์"
+            tabIndex={-1}
             className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-sm font-bold text-gray-900 mb-3">เลือกงานโปรดักส์</h3>
 
-            <label className="block text-xs font-medium text-gray-700 mb-1">หมวดหมู่หลัก</label>
-            <select
+            <label htmlFor="field-1" className="block text-xs font-medium text-gray-700 mb-1">หมวดหมู่หลัก</label>
+            <select id="field-1"
               value={draftCategory}
               onChange={(e) => { setDraftCategory(e.target.value); setDraftType('') }}
               className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-3 text-gray-900"
@@ -267,9 +274,10 @@ function ProductWorkCell({
               ))}
             </select>
 
-            <label className="block text-xs font-medium text-gray-700 mb-1">ประเภทย่อย</label>
+            <label htmlFor="product-subtype-field" className="block text-xs font-medium text-gray-700 mb-1">ประเภทย่อย</label>
             {isOther ? (
               <input
+                id="product-subtype-field"
                 value={draftType}
                 onChange={(e) => setDraftType(e.target.value)}
                 placeholder="ระบุประเภท..."
@@ -277,6 +285,7 @@ function ProductWorkCell({
               />
             ) : (
               <select
+                id="product-subtype-field"
                 value={draftType}
                 onChange={(e) => setDraftType(e.target.value)}
                 disabled={!draftCategory}
@@ -323,6 +332,7 @@ function AssigneeCell({
   onChange: (ids: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
+  const panelRef = useModalA11y(open)
   const [draft, setDraft] = useState<string[]>(value)
 
   const openPopover = () => {
@@ -369,6 +379,11 @@ function AssigneeCell({
           onClick={() => setOpen(false)}
         >
           <div
+            ref={panelRef}
+            role="dialog"
+            aria-modal
+            aria-label="เลือกพนักงานที่รับผิดชอบ"
+            tabIndex={-1}
             className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >

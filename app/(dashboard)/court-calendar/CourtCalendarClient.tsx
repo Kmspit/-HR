@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { COURT_EVENT_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -153,9 +154,18 @@ function priorityDot(priority: string) {
 
 // ── Event Dot (for month view) ─────────────────────────────────────────────────
 function EventDot({ e }: { e: CalEvent }) {
+  // COMPLETED (green) vs MISSED (red) is the classic colorblind confusion
+  // pair — differentiate by shape too (circle vs diamond), not color alone.
+  const isMissed = e.status === 'MISSED'
   return (
     <span
-      className={`inline-block w-2 h-2 rounded-full shrink-0 ${e.status === 'COMPLETED' ? 'bg-green-400' : e.status === 'MISSED' ? 'bg-red-600' : (TYPE_COLOR[e.eventType] ?? 'bg-slate-400')}`}
+      role="img"
+      aria-label={`${e.title} — ${e.status === 'COMPLETED' ? 'เสร็จสิ้น' : isMissed ? 'พลาดนัด' : e.eventType}`}
+      className={`inline-block w-2 h-2 shrink-0 ${
+        isMissed
+          ? 'rotate-45 bg-red-600'
+          : `rounded-full ${e.status === 'COMPLETED' ? 'bg-green-400' : (TYPE_COLOR[e.eventType] ?? 'bg-slate-400')}`
+      }`}
       title={e.title}
     />
   )
@@ -493,7 +503,7 @@ function EventDetail({ event, onClose, onStatusChange, canEdit }: {
             </span>
           )}
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition shrink-0">
+        <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition shrink-0">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -616,6 +626,7 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
   onSuccess: () => void
   editEvent?: CalEvent | null
 }) {
+  const panelRef = useModalA11y(true)
   const [form, setForm] = useState<FormData>({
     title:           editEvent?.title ?? '',
     eventType:       editEvent?.eventType ?? 'COURT_APPOINTMENT',
@@ -677,11 +688,11 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
 
   return (
     <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[95dvh]"
+      <div ref={panelRef} role="dialog" aria-modal aria-label={editEvent ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมาย'} tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[95dvh]"
         onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">{editEvent ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมาย'}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -690,21 +701,21 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
           {/* Title + type row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-white/50 text-xs mb-1 block">ชื่อนัดหมาย *</label>
-              <input value={form.title} onChange={e => set('title', e.target.value)}
+              <label htmlFor="field-1" className="text-white/50 text-xs mb-1 block">ชื่อนัดหมาย *</label>
+              <input id="field-1" value={form.title} onChange={e => set('title', e.target.value)}
                 placeholder="เช่น นัดสืบพยาน คดีนาย..."
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
-              <label className="text-white/50 text-xs mb-1 block">ประเภท</label>
-              <select value={form.eventType} onChange={e => set('eventType', e.target.value)}
+              <label htmlFor="field-2" className="text-white/50 text-xs mb-1 block">ประเภท</label>
+              <select id="field-2" value={form.eventType} onChange={e => set('eventType', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50">
                 {Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-white/50 text-xs mb-1 block">ความสำคัญ</label>
-              <select value={form.priority} onChange={e => set('priority', e.target.value)}
+              <label htmlFor="field-3" className="text-white/50 text-xs mb-1 block">ความสำคัญ</label>
+              <select id="field-3" value={form.priority} onChange={e => set('priority', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50">
                 <option value="LOW">ต่ำ</option>
                 <option value="MEDIUM">ปานกลาง</option>
@@ -717,18 +728,18 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
           {/* Date + time row */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-3 md:col-span-1">
-              <label className="text-white/50 text-xs mb-1 block">วันที่ *</label>
-              <input type="date" value={form.startAt} onChange={e => set('startAt', e.target.value)}
+              <label htmlFor="field-4" className="text-white/50 text-xs mb-1 block">วันที่ *</label>
+              <input id="field-4" type="date" value={form.startAt} onChange={e => set('startAt', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
-              <label className="text-white/50 text-xs mb-1 block">เวลาเริ่ม</label>
-              <input type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)}
+              <label htmlFor="field-5" className="text-white/50 text-xs mb-1 block">เวลาเริ่ม</label>
+              <input id="field-5" type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
-              <label className="text-white/50 text-xs mb-1 block">เวลาสิ้นสุด</label>
-              <input type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)}
+              <label htmlFor="field-6" className="text-white/50 text-xs mb-1 block">เวลาสิ้นสุด</label>
+              <input id="field-6" type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
           </div>
@@ -790,6 +801,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
   const [summary, setSummary]         = useState<Summary | null>(null)
   const [loading, setLoading]         = useState(true)
   const [selectedEvent, setSelectedEvent] = useState<CalEvent | null>(null)
+  const mobileDetailPanelRef = useModalA11y(!!selectedEvent)
   const [showAdd, setShowAdd]         = useState(false)
   const [editEvent, setEditEvent]     = useState<CalEvent | null>(null)
   const [searchQ, setSearchQ]         = useState('')
@@ -964,7 +976,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
             ))}
           </div>
 
-          <button onClick={() => void loadEvents()} className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
+          <button onClick={() => void loadEvents()} aria-label="โหลดใหม่" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
 
@@ -1056,7 +1068,7 @@ export default function CourtCalendarClient({ userId, userName, role, department
       {/* Mobile event detail modal */}
       {selectedEvent && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/60 flex items-end justify-center p-0">
-          <div className="bg-slate-900 border-t border-white/10 rounded-t-3xl w-full max-h-[80dvh] overflow-y-auto p-4">
+          <div ref={mobileDetailPanelRef} role="dialog" aria-modal aria-label={selectedEvent.title} tabIndex={-1} className="bg-slate-900 border-t border-white/10 rounded-t-3xl w-full max-h-[80dvh] overflow-y-auto p-4">
             <EventDetail
               event={selectedEvent}
               onClose={() => setSelectedEvent(null)}

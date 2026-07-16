@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { fadeIn, modalPanel } from '@/lib/motion-presets'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 type Props = {
   open: boolean
@@ -14,6 +15,8 @@ type Props = {
   /** Backdrop click closes modal when true (default) */
   dismissOnBackdrop?: boolean
   zIndex?: string
+  /** Accessible name for the dialog, announced by screen readers on open */
+  ariaLabel?: string
 }
 
 export default function MotionModal({
@@ -24,8 +27,15 @@ export default function MotionModal({
   panelClassName,
   dismissOnBackdrop = true,
   zIndex = 'z-50',
+  ariaLabel,
 }: Props) {
   const reduced = useReducedMotion()
+  // Focus trap (Tab/Shift+Tab stay within the dialog) + focus return (the
+  // element that had focus before opening gets it back on close), matching
+  // standard dialog behavior — previously the modal had neither, so keyboard
+  // and screen-reader users could tab straight through to page content
+  // hidden behind the backdrop, and lost their place entirely on close.
+  const panelRef = useModalA11y(open)
 
   useEffect(() => {
     if (!open) return
@@ -65,6 +75,11 @@ export default function MotionModal({
           onClick={dismissOnBackdrop ? onClose : undefined}
         >
           <motion.div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={ariaLabel}
+            tabIndex={-1}
             {...panel}
             className={cn(
               'w-full max-h-[90dvh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 shadow-xl',
