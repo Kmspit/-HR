@@ -57,8 +57,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const debtor = await prisma.debtor.findUnique({ where: { id } })
   if (!debtor) return NextResponse.json({ error: 'Debtor not found' }, { status: 404 })
 
-  const newPaidAmount    = debtor.paidAmount + validAmount
-  const newRemainingDebt = Math.max(0, debtor.totalDebt - newPaidAmount)
+  // paidAmount/remainingDebt must be atomic increments, not a read-then-write of
+  // absolute values — two concurrent payments computed from the same stale read
+  // would otherwise silently lose one payment's effect on the running balance
+  // (both DebtPayment rows still get created, so the loss is invisible in the
+  // payment history and only shows up as a wrong balance).
+  const balanceUpdate = await prisma.debtor.update({
+    where: { id },
+    data: {
+      paidAmount:    { increment: validAmount },
+      remainingDebt: { decrement: validAmount },
+    },
+  })
+  const newRemainingDebt = Math.max(0, balanceUpdate.remainingDebt)
   const newStatus = newRemainingDebt <= 0 ? 'PAID' : 'PARTIAL_PAYMENT'
 
   const [payment] = await prisma.$transaction([
@@ -79,7 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }),
     prisma.debtor.update({
       where: { id },
-      data:  { paidAmount: newPaidAmount, remainingDebt: newRemainingDebt, status: newStatus },
+      data:  { remainingDebt: newRemainingDebt, status: newStatus },
     }),
   ])
 

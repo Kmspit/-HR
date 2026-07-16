@@ -126,8 +126,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ? 'PENDING_PAYMENT'
     : updatedInvoice.status
 
-  await prisma.billingInvoice.update({
-    where: { id },
+  // Guard the derived-fields write on paidAmount still matching the value this
+  // request just observed. Without this, a slower request's remainingAmount/
+  // status write (computed from its own, now-stale, post-increment paidAmount)
+  // can land after a faster concurrent payment's write and revert the derived
+  // fields backward (e.g. status flipping from PAID back to PENDING_PAYMENT)
+  // even though paidAmount itself stays correct throughout. If this update is
+  // skipped, whichever payment observes the final paidAmount value will be the
+  // one whose write actually matches and commits the correct derived state.
+  await prisma.billingInvoice.updateMany({
+    where: { id, paidAmount: updatedInvoice.paidAmount },
     data:  { remainingAmount: newRemaining, status: newStatus },
   })
 

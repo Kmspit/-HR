@@ -31,10 +31,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const newStatus = body.action === 'APPROVE' ? 'ACTIVE' : 'REJECTED'
 
-    await prisma.user.update({
-      where: { id },
+    // Compare-and-swap on status: a plain update() here let two approvers acting
+    // near-simultaneously (one APPROVE, one REJECT) both pass the stale
+    // `user.status !== 'PENDING'` check above and both write — whichever commits
+    // last wins the actual status, but both audit logs + notifications still
+    // fire, leaving a contradictory trail. Only the request that actually flips
+    // status away from PENDING should proceed past this point.
+    const result = await prisma.user.updateMany({
+      where: { id, status: 'PENDING' },
       data: { status: newStatus, approvedById: session.user.id, approvedAt: new Date() },
     })
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'บัญชีนี้ถูกดำเนินการไปแล้ว' }, { status: 409 })
+    }
 
     // Audit log is a compliance record and must be guaranteed to have actually
     // been written before responding — a serverless function invocation can

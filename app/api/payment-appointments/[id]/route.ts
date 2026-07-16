@@ -25,9 +25,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   })
   if (!appt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Only touch `note` when the caller actually sent one — falling back to the
+  // just-read `appt.note` here would overwrite the field with a stale value on
+  // every status-only update, silently reverting a concurrently-saved note.
+  const updateData: Record<string, unknown> = { status }
+  if (note) updateData.note = note
+
   const updated = await prisma.paymentAppointment.update({
     where: { id },
-    data:  { status, note: note || appt.note },
+    data:  updateData,
     include: {
       debtor:    { select: { id: true, debtorNumber: true, firstName: true, lastName: true, assignedToId: true } },
       createdBy: { select: userSel },

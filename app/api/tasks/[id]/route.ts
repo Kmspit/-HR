@@ -283,7 +283,14 @@ export async function PATCH(
       }
       if (body.status === 'REJECTED') {
         data.reviewNote    = body.reviewNote ?? null
-        data.rejectedCount = (task.rejectedCount ?? 0) + 1
+        // Atomic increment, not a read-then-write of a JS-computed absolute
+        // value — two near-simultaneous rejections previously could both read
+        // the same starting rejectedCount and both write the same "+1" result,
+        // permanently losing one from the counter (and potentially missing the
+        // ≥3 CEO-escalation threshold below even though the task really was
+        // rejected 3+ times). The escalation check itself is deferred until
+        // after the update, below, so it reads the real post-increment count.
+        data.rejectedCount = { increment: 1 }
         after(() => {
           createNotification({
             userId: task.assigneeId,
@@ -297,36 +304,6 @@ export async function PATCH(
             `❌ งานถูกปฏิเสธ\n\n"${task.title}"${body.reviewNote ? `\nเหตุผล: ${body.reviewNote}` : ''}`,
           ).catch(() => {})
         })
-        // Automation rule: 3+ rejections → notify CEO
-        if ((task.rejectedCount ?? 0) + 1 >= 3) {
-          const ceo = await prisma.user.findFirst({
-            where: { role: 'CEO', status: 'ACTIVE' },
-            select: { id: true },
-          })
-          if (ceo) {
-            const ceoId = ceo.id
-            const rejectedCount = (task.rejectedCount ?? 0) + 1
-            after(() => {
-              createNotification({
-                userId:  ceoId,
-                type:    'TASK_AUTOMATION_TRIGGERED' as never,
-                title:   '⚠️ งานถูกปฏิเสธซ้ำ 3+ ครั้ง',
-                message: `งาน "${task.title}" ถูกปฏิเสธแล้ว ${rejectedCount} ครั้ง`,
-                link:    '/tasks',
-              })
-              sendLineMessage(
-                ceoId,
-                `⚠️ แจ้งเตือน: งานถูกปฏิเสธซ้ำ\n\n"${task.title}"\nถูกปฏิเสธแล้ว ${rejectedCount} ครั้ง\n\nต้องการการแก้ไขเร่งด่วน`,
-              ).catch(() => {})
-            })
-          }
-          // Log to timeline
-          timelineEntries.push({
-            action:      'escalated',
-            description: `ระบบแจ้งเตือน CEO: งานถูกปฏิเสธ ${(task.rejectedCount ?? 0) + 1} ครั้ง`,
-            meta:        JSON.stringify({ rejectedCount: (task.rejectedCount ?? 0) + 1, escalatedTo: 'ceo' }),
-          })
-        }
       }
       if (body.status === 'CANCELLED') {
         await createNotification({
@@ -345,6 +322,38 @@ export async function PATCH(
     data,
     include: fullTaskInclude,
   })
+
+  // Automation rule: 3+ rejections → notify CEO. Checked against the real
+  // post-increment rejectedCount (not a JS-predicted value) so this can't be
+  // skipped by the same race that used to affect the stored counter.
+  if (body.status === 'REJECTED' && updated.rejectedCount >= 3) {
+    const ceo = await prisma.user.findFirst({
+      where: { role: 'CEO', status: 'ACTIVE' },
+      select: { id: true },
+    })
+    if (ceo) {
+      const ceoId = ceo.id
+      const rejectedCount = updated.rejectedCount
+      after(() => {
+        createNotification({
+          userId:  ceoId,
+          type:    'TASK_AUTOMATION_TRIGGERED' as never,
+          title:   '⚠️ งานถูกปฏิเสธซ้ำ 3+ ครั้ง',
+          message: `งาน "${task.title}" ถูกปฏิเสธแล้ว ${rejectedCount} ครั้ง`,
+          link:    '/tasks',
+        })
+        sendLineMessage(
+          ceoId,
+          `⚠️ แจ้งเตือน: งานถูกปฏิเสธซ้ำ\n\n"${task.title}"\nถูกปฏิเสธแล้ว ${rejectedCount} ครั้ง\n\nต้องการการแก้ไขเร่งด่วน`,
+        ).catch(() => {})
+      })
+    }
+    timelineEntries.push({
+      action:      'escalated',
+      description: `ระบบแจ้งเตือน CEO: งานถูกปฏิเสธ ${updated.rejectedCount} ครั้ง`,
+      meta:        JSON.stringify({ rejectedCount: updated.rejectedCount, escalatedTo: 'ceo' }),
+    })
+  }
 
   // Write all timeline entries
   if (timelineEntries.length > 0) {

@@ -12,6 +12,7 @@ vi.mock('@/lib/prisma', () => ({
       findMany:   vi.fn().mockResolvedValue([]),
       findUnique: vi.fn(),
       update:     vi.fn(),
+      updateMany: vi.fn(),
       count:      vi.fn().mockResolvedValue(0),
     },
   },
@@ -225,21 +226,30 @@ describe('DELETE /api/outside-work/[id] (soft-delete)', () => {
     expect(res.status).toBe(404)
   })
 
-  it('owner soft-deletes their PENDING request via update(), never delete()', async () => {
+  it('owner soft-deletes their PENDING request via a guarded updateMany(), never delete()', async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as never)
     vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue(pendingReq as never)
-    vi.mocked(prisma.outsideWorkRequest.update).mockResolvedValue({ id: 'req-1' } as never)
+    vi.mocked(prisma.outsideWorkRequest.updateMany).mockResolvedValue({ count: 1 } as never)
 
     const res = await DELETE(makeDeleteReq('req-1'), { params })
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
-    expect(prisma.outsideWorkRequest.update).toHaveBeenCalledWith(
+    expect(prisma.outsideWorkRequest.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'req-1' },
+        where: expect.objectContaining({ id: 'req-1', deletedAt: null }),
         data: expect.objectContaining({ deletedAt: expect.any(Date), deletedById: 'user-1' }),
       }),
     )
+  })
+
+  it('rejects the loser of a delete racing a just-completed approval with 409', async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as never)
+    vi.mocked(prisma.outsideWorkRequest.findUnique).mockResolvedValue(pendingReq as never)
+    vi.mocked(prisma.outsideWorkRequest.updateMany).mockResolvedValue({ count: 0 } as never)
+
+    const res = await DELETE(makeDeleteReq('req-1'), { params })
+    expect(res.status).toBe(409)
   })
 
   it('rejects deleting an already soft-deleted request with a clear message', async () => {
@@ -252,7 +262,7 @@ describe('DELETE /api/outside-work/[id] (soft-delete)', () => {
     expect(res.status).toBe(400)
     const data = await res.json()
     expect(data.error).toBe('รายการนี้ถูกลบไปแล้ว')
-    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
+    expect(prisma.outsideWorkRequest.updateMany).not.toHaveBeenCalled()
   })
 
   it('refuses to delete a request that is no longer PENDING', async () => {
@@ -263,7 +273,7 @@ describe('DELETE /api/outside-work/[id] (soft-delete)', () => {
 
     const res = await DELETE(makeDeleteReq('req-1'), { params })
     expect(res.status).toBe(400)
-    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
+    expect(prisma.outsideWorkRequest.updateMany).not.toHaveBeenCalled()
   })
 
   it('forbids non-owner non-HR from deleting', async () => {
@@ -273,6 +283,6 @@ describe('DELETE /api/outside-work/[id] (soft-delete)', () => {
 
     const res = await DELETE(makeDeleteReq('req-1'), { params })
     expect(res.status).toBe(403)
-    expect(prisma.outsideWorkRequest.update).not.toHaveBeenCalled()
+    expect(prisma.outsideWorkRequest.updateMany).not.toHaveBeenCalled()
   })
 })

@@ -250,12 +250,27 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
-    // Soft-delete only — งานคดีความอาจต้องตรวจสอบย้อนหลัง ห้าม hard delete
-    await prisma.outsideWorkRequest.update({
-      where: { id },
+    // Soft-delete only — งานคดีความอาจต้องตรวจสอบย้อนหลัง ห้าม hard delete.
+    // The isPending check above reads a stale snapshot — a concurrent
+    // approval-chain step-approve (which itself uses an atomic compare-and-swap)
+    // could flip this request out of pending between that read and this write.
+    // Re-assert the same pending condition directly in the write's where-clause
+    // so a request that just got approved can't be soft-deleted out from under it.
+    const result = await prisma.outsideWorkRequest.updateMany({
+      where: {
+        id,
+        deletedAt: null,
+        OR: [
+          { status: 'PENDING' },
+          { approvalStatus: 'pending_ceo' },
+          { approvalStatus: 'pending_chain' },
+        ],
+      },
       data: { deletedAt: new Date(), deletedById: session.user.id },
-      select: { id: true },
     })
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'รายการนี้ถูกดำเนินการไปแล้ว ไม่สามารถลบได้' }, { status: 409 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

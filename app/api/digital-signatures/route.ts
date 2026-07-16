@@ -39,6 +39,13 @@ export async function POST(req: NextRequest) {
  try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Minimal gate: signing is an internal formal action, not something a
+  // client-portal account should ever be able to trigger. This does not yet
+  // verify the caller has any actual relationship to the target docType/docId
+  // (see note below) — that needs a per-docType access rule, and there is
+  // currently no live caller of this endpoint (SignaturePad.tsx exists but is
+  // not wired into any page) to derive that rule from.
+  if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const hdrs      = await headers()
   const ip        = hdrs.get('x-forwarded-for') ?? 'unknown'

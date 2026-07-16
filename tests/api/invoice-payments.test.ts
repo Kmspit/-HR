@@ -7,7 +7,7 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    billingInvoice: { findUnique: vi.fn(), update: vi.fn() },
+    billingInvoice: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     billingPayment: { findUnique: vi.fn(), create: vi.fn(), findMany: vi.fn() },
   },
 }))
@@ -84,22 +84,25 @@ describe('POST /api/invoices/[id]/payments — atomic increment + idempotency ke
     const res = await POST(makeReq({ amount: 4000, idempotencyKey: 'key-1' }), { params })
     expect(res.status).toBe(201)
 
-    expect(prisma.billingInvoice.update).toHaveBeenNthCalledWith(1,
+    expect(prisma.billingInvoice.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'inv-1' }, data: { paidAmount: { increment: 4000 } } }),
     )
-    // Status/remaining recomputed from the increment's own fresh return value (4000), not the stale initial read (0).
-    expect(prisma.billingInvoice.update).toHaveBeenNthCalledWith(2,
-      expect.objectContaining({ data: { remainingAmount: 6000, status: 'PENDING_PAYMENT' } }),
-    )
+    // Status/remaining recomputed from the increment's own fresh return value (4000), not the stale initial
+    // read (0), and guarded on paidAmount still matching that fresh value at write time.
+    expect(prisma.billingInvoice.updateMany).toHaveBeenCalledWith({
+      where: { id: 'inv-1', paidAmount: 4000 },
+      data:  { remainingAmount: 6000, status: 'PENDING_PAYMENT' },
+    })
   })
 
   it('marks the invoice PAID once the atomic increment reaches the total', async () => {
     vi.mocked(prisma.billingInvoice.update).mockResolvedValueOnce({ ...baseInvoice, paidAmount: 10000 } as never)
     const res = await POST(makeReq({ amount: 10000, idempotencyKey: 'key-2' }), { params })
     expect(res.status).toBe(201)
-    expect(prisma.billingInvoice.update).toHaveBeenNthCalledWith(2,
-      expect.objectContaining({ data: { remainingAmount: 0, status: 'PAID' } }),
-    )
+    expect(prisma.billingInvoice.updateMany).toHaveBeenCalledWith({
+      where: { id: 'inv-1', paidAmount: 10000 },
+      data:  { remainingAmount: 0, status: 'PAID' },
+    })
   })
 
   it('returns the existing payment (200, not a new 201) when the idempotency key was already used', async () => {

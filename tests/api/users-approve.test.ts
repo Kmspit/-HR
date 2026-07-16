@@ -7,7 +7,7 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    user: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+    user: { findUnique: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
   },
 }))
 
@@ -55,7 +55,7 @@ describe('POST /api/users/[id]/approve — audit log is awaited, notification/LI
     vi.mocked(auth).mockResolvedValue(hrSession as never)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(pendingUser as never)
     vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'pending-1' } as never)
-    vi.mocked(prisma.user.update).mockResolvedValue({ ...pendingUser, status: 'ACTIVE' } as never)
+    vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 1 } as never)
   })
 
   it('approves the account and returns success', async () => {
@@ -98,8 +98,6 @@ describe('POST /api/users/[id]/approve — audit log is awaited, notification/LI
   })
 
   it('rejects the account with REJECTED status and a rejection notification', async () => {
-    vi.mocked(prisma.user.update).mockResolvedValue({ ...pendingUser, status: 'REJECTED' } as never)
-
     const res = await POST(makeReq({ action: 'REJECT', reason: 'เอกสารไม่ครบ' }), { params })
     const data = await res.json()
 
@@ -115,7 +113,7 @@ describe('POST /api/users/[id]/approve — audit log is awaited, notification/LI
     vi.mocked(canApproveAccounts).mockReturnValue(false)
     const res = await POST(makeReq({ action: 'APPROVE' }), { params })
     expect(res.status).toBe(403)
-    expect(prisma.user.update).not.toHaveBeenCalled()
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
   })
 
   it('returns 400 when the target user is not PENDING', async () => {
@@ -128,6 +126,33 @@ describe('POST /api/users/[id]/approve — audit log is awaited, notification/LI
     vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never)
     const res = await POST(makeReq({ action: 'APPROVE' }), { params })
     expect(res.status).toBe(403)
-    expect(prisma.user.update).not.toHaveBeenCalled()
+    expect(prisma.user.updateMany).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/users/[id]/approve — atomic race guard (Phase B)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(canApproveAccounts).mockReturnValue(true)
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(pendingUser as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'pending-1' } as never)
+  })
+
+  it('writes via updateMany with a where-guard on status: PENDING', async () => {
+    vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 1 } as never)
+    await POST(makeReq({ action: 'APPROVE' }), { params })
+    expect(prisma.user.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'pending-1', status: 'PENDING' }) }),
+    )
+  })
+
+  it('rejects the loser of a concurrent approve/reject race with 409, and skips audit log + notifications', async () => {
+    vi.mocked(prisma.user.updateMany).mockResolvedValue({ count: 0 } as never)
+    const res = await POST(makeReq({ action: 'APPROVE' }), { params })
+    expect(res.status).toBe(409)
+    expect(createAuditLog).not.toHaveBeenCalled()
+    expect(createNotification).not.toHaveBeenCalled()
+    expect(sendLineNotify).not.toHaveBeenCalled()
   })
 })

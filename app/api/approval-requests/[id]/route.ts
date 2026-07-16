@@ -128,12 +128,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  const isLastStep = activeStep.stepOrder >= request.totalSteps
+  const finalStatus = action === 'APPROVE' && !isLastStep
+    ? 'IN_REVIEW'
+    : newRequestStatus
+  const nextCurrentStep = action === 'APPROVE' && !isLastStep
+    ? activeStep.stepOrder + 1
+    : activeStep.stepOrder
+
+  // Compare-and-swap on the request's status+currentStep: two actions landing
+  // near-simultaneously (a REJECT on one step racing an APPROVE on another, or
+  // a double-click of the same action) previously could both pass the stale
+  // preconditions checked above and both write every table below — whichever
+  // approvalRequest.update committed last silently won, even reverting an
+  // already-rejected request back to an approved-looking state. Gate the whole
+  // side-effect block on the request still being in the exact status and
+  // currentStep this request observed when it started.
+  const cas = await prisma.approvalRequest.updateMany({
+    where: { id, status: request.status, currentStep: request.currentStep },
+    data:  { status: finalStatus, currentStep: nextCurrentStep },
+  })
+  if (cas.count === 0) {
+    return NextResponse.json({ error: 'คำขอนี้ถูกดำเนินการไปแล้วโดยคำขออื่น' }, { status: 409 })
+  }
+
   await prisma.approvalRequestStep.update({
     where: { id: activeStep.id },
     data:  { status: newStepStatus, actorId: userId, comment: comment ?? null, ip, actedAt: new Date() },
   })
 
-  const isLastStep = activeStep.stepOrder >= request.totalSteps
   if (action === 'APPROVE' && !isLastStep) {
     const nextStep = request.steps.find((s) => s.stepOrder === activeStep.stepOrder + 1)
     if (nextStep) {
@@ -168,20 +191,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
   }
-
-  const finalStatus = action === 'APPROVE' && !isLastStep
-    ? 'IN_REVIEW'
-    : newRequestStatus
-
-  await prisma.approvalRequest.update({
-    where: { id },
-    data:  {
-      status:      finalStatus,
-      currentStep: action === 'APPROVE' && !isLastStep
-        ? activeStep.stepOrder + 1
-        : activeStep.stepOrder,
-    },
-  })
 
   await prisma.activityLog.create({
     data: {

@@ -4,6 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 
 const CAN_DELETE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
+// Same set the sibling POST /api/client-companies (create) and the UI's แก้ไข
+// button already gate on — PATCH here was the one outlier with no role check
+// at all, letting any authenticated user edit credit limit/status via a direct
+// API call even though the UI hides the button.
+const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 const userSel    = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -75,6 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
  try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!CAN_MANAGE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id }  = await params
   const body    = await req.json()

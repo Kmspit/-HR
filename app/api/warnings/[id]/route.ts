@@ -110,11 +110,13 @@ export async function PATCH(
     const now = new Date()
     const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
     let updateData: Record<string, unknown> = {}
+    let expectedStatusWhere: Record<string, unknown> = {}
 
     if (body.action === 'APPROVE') {
       if (warning.status !== 'PENDING_APPROVAL') {
         return NextResponse.json({ error: 'สถานะไม่ถูกต้องสำหรับการอนุมัติ' }, { status: 400 })
       }
+      expectedStatusWhere = { status: 'PENDING_APPROVAL' }
       const expiredAt = new Date(now)
       expiredAt.setMonth(expiredAt.getMonth() + 12)
       updateData = {
@@ -137,6 +139,7 @@ export async function PATCH(
       if (warning.status !== 'PENDING_APPROVAL') {
         return NextResponse.json({ error: 'สถานะไม่ถูกต้องสำหรับการปฏิเสธ' }, { status: 400 })
       }
+      expectedStatusWhere = { status: 'PENDING_APPROVAL' }
       updateData = {
         status: 'REJECTED',
         rejectedById: session.user.id,
@@ -148,12 +151,27 @@ export async function PATCH(
       if (!['APPROVED', 'REJECTED'].includes(warning.status)) {
         return NextResponse.json({ error: 'สามารถ archive ได้เฉพาะใบเตือนที่ APPROVED หรือ REJECTED' }, { status: 400 })
       }
+      expectedStatusWhere = { status: { in: ['APPROVED', 'REJECTED'] } }
       updateData = { status: 'ARCHIVED', archivedAt: now }
     }
 
-    const updated = await prisma.warning.update({
-      where: { id },
+    // Compare-and-swap on status: APPROVE and REJECT racing on the same warning
+    // (or a double-click of the same action) previously both passed the stale
+    // `warning.status !== 'PENDING_APPROVAL'` check above and both wrote —
+    // whichever update landed second won, leaving fields from both branches
+    // (e.g. an expiredAt from APPROVE alongside a REJECTED status) on the same
+    // row. Guard the write itself on the precondition status actually still
+    // holding at write time.
+    const result = await prisma.warning.updateMany({
+      where: { id, ...expectedStatusWhere },
       data: updateData,
+    })
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'สถานะใบเตือนถูกเปลี่ยนไปแล้วโดยคำขออื่น' }, { status: 409 })
+    }
+
+    const updated = await prisma.warning.findUniqueOrThrow({
+      where: { id },
       omit: { pdfBase64: true },
       include: {
         user:       { select: { id: true, name: true } },
