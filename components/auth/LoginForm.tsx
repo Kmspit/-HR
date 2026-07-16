@@ -173,7 +173,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="field-1" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <label htmlFor="field-1" className="block text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">
             รหัส OTP
           </label>
           <input id="field-1"
@@ -215,7 +215,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <label htmlFor="field-2" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <label htmlFor="field-2" className="block text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">
           อีเมล / รหัสพนักงาน
         </label>
         <input id="field-2"
@@ -231,7 +231,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="login-password-field" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <label htmlFor="login-password-field" className="block text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">
           รหัสผ่าน
         </label>
         <div className="relative">

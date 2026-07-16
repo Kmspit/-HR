@@ -143,7 +143,7 @@
 }
 
 /* ── Light mode: fix legacy dark-only text utilities inside cards ── */
-.light .glass-card :is(h1, h2, h3, h4, p, span, label, td, th, div).text-white:not(
+.light :is(.glass, .glass-card) :is(h1, h2, h3, h4, p, span, label, td, th, div).text-white:not(
     :is(button, a, .btn-primary, [class*='bg-green-'], [class*='bg-red-'], [class*='bg-green-'], [class*='bg-amber-'])
   ) {
   color: rgb(15 23 42) !important;

@@ -218,7 +218,7 @@ export default function RegisterForm() {
   }
 
   const inputClass = (key: keyof FormData) =>
-    `w-full rounded-xl border bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-2 focus:ring-green-500/50 ${errors[key] ? 'border-red-500/50' : 'border-white/10 focus:border-green-500/50'}`
+    `w-full rounded-xl border bg-slate-900/95 px-4 py-3 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-2 focus:ring-green-500/50 ${errors[key] ? 'border-red-500/50' : 'border-white/10 focus:border-green-500/50'}`
 
   return (
     <form onSubmit={handleSubmit}>
@@ -239,7 +239,7 @@ export default function RegisterForm() {
       {step === 0 && (
         <div className="space-y-4 animate-fade-in">
           <fieldset className="space-y-2 border-0 p-0 m-0">
-            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600 flex items-center gap-1.5">
               <Building2 size={14} className="text-green-400" />
               เลือกสาขาที่สังกัด *
             </legend>
@@ -277,13 +277,13 @@ export default function RegisterForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5 min-w-0">
-              <label htmlFor="field-1" className="text-xs font-semibold uppercase tracking-wider text-slate-400">คำนำหน้า</label>
+              <label htmlFor="field-1" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">คำนำหน้า</label>
               <select id="field-1" value={form.prefix} onChange={(e) => set('prefix', e.target.value)} className={inputClass('prefix')}>
                 {['นาย', 'นาง', 'นางสาว', 'ดร.', 'อื่นๆ'].map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div className="sm:col-span-2 space-y-1.5 min-w-0">
-              <label htmlFor="field-2" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อจริง *</label>
+              <label htmlFor="field-2" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ชื่อจริง *</label>
               <input id="field-2" type="text" placeholder="ชื่อจริง" className={inputClass('firstName')} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} />
               {errors.firstName && <p className="text-xs text-red-400">{errors.firstName}</p>}
             </div>
@@ -291,24 +291,24 @@ export default function RegisterForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5 min-w-0">
-              <label htmlFor="field-3" className="text-xs font-semibold uppercase tracking-wider text-slate-400">นามสกุล *</label>
+              <label htmlFor="field-3" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">นามสกุล *</label>
               <input id="field-3" type="text" placeholder="นามสกุล" className={inputClass('lastName')} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} />
               {errors.lastName && <p className="text-xs text-red-400">{errors.lastName}</p>}
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="field-4" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อเล่น</label>
+              <label htmlFor="field-4" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ชื่อเล่น</label>
               <input id="field-4" type="text" placeholder="ชื่อเล่น" className={inputClass('nickname')} value={form.nickname} onChange={(e) => set('nickname', e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="field-5" className="text-xs font-semibold uppercase tracking-wider text-slate-400">อีเมล *</label>
+              <label htmlFor="field-5" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">อีเมล *</label>
               <input id="field-5" type="email" placeholder="name@company.com" className={inputClass('email')} value={form.email} onChange={(e) => setEnglishField('email', e.target.value)} />
               {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="field-6" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เบอร์โทร *</label>
+              <label htmlFor="field-6" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เบอร์โทร *</label>
               <input id="field-6"
                 type="tel"
                 placeholder="0812345678"
@@ -321,7 +321,7 @@ export default function RegisterForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="field-7" className="text-xs font-semibold uppercase tracking-wider text-slate-400">LINE ID *</label>
+            <label htmlFor="field-7" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">LINE ID *</label>
             <input id="field-7"
               type="text"
               placeholder="@username"
@@ -336,17 +336,17 @@ export default function RegisterForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="field-8" className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันเกิด</label>
+              <label htmlFor="field-8" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">วันเกิด</label>
               <input id="field-8" type="date" className={inputClass('birthDate')} value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="field-9" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เลขบัตรประชาชน</label>
+              <label htmlFor="field-9" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เลขบัตรประชาชน</label>
               <input id="field-9" type="text" placeholder="1234567890123 (optional)" className={inputClass('nationalId')} value={form.nationalId} onChange={(e) => set('nationalId', e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="field-10" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ที่อยู่</label>
+            <label htmlFor="field-10" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ที่อยู่</label>
             <textarea id="field-10" placeholder="ที่อยู่ปัจจุบัน..." rows={2} className={`${inputClass('address')} resize-none py-2.5`} value={form.address} onChange={(e) => set('address', e.target.value)} />
           </div>
         </div>
@@ -360,14 +360,14 @@ export default function RegisterForm() {
           </div>
 
           <fieldset className="space-y-2 border-0 p-0 m-0">
-            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400">ตำแหน่ง / Role *</legend>
+            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ตำแหน่ง / Role *</legend>
             <div className="grid gap-2">
               {ROLES.map((r) => (
                 <label key={r.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all ${form.role === r.value ? 'border-green-500/50 bg-green-500/10' : 'border-white/10 hover:border-white/20'}`}>
                   <input type="radio" name="role" value={r.value} checked={form.role === r.value} onChange={(e) => set('role', e.target.value)} className="accent-green-500" />
                   <div>
                     <p className="text-sm font-semibold text-white">{r.label}</p>
-                    <p className="text-xs text-slate-400">{r.desc}</p>
+                    <p className="text-xs text-slate-400 light:text-slate-600">{r.desc}</p>
                   </div>
                 </label>
               ))}
@@ -376,21 +376,21 @@ export default function RegisterForm() {
           </fieldset>
 
           <div className="space-y-1.5">
-            <label htmlFor="field-11" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินเดือนพื้นฐาน (ถ้ามี)</label>
+            <label htmlFor="field-11" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เงินเดือนพื้นฐาน (ถ้ามี)</label>
             <input id="field-11" type="number" placeholder="25000" className={inputClass('baseSalary')} value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="field-12" className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันที่เริ่มงาน *</label>
+            <label htmlFor="field-12" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">วันที่เริ่มงาน *</label>
             <input id="field-12" type="date" className={inputClass('startDate')} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
             {errors.startDate && <p className="text-xs text-red-400">{errors.startDate}</p>}
           </div>
 
           <fieldset className="space-y-1.5 border-0 p-0 m-0">
-            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400">สถานะประกันสังคม</legend>
+            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">สถานะประกันสังคม</legend>
             <div className="flex flex-col sm:flex-row gap-3">
               {[{ val: true, label: '✅ อยู่ในประกันสังคม' }, { val: false, label: '❌ ไม่อยู่ในประกันสังคม' }].map(({ val, label }) => (
-                <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all min-h-[44px] ${form.socialSecurity === val ? 'border-green-500/50 bg-green-500/10 text-white' : 'border-white/10 text-slate-400 hover:border-white/20'}`}>
+                <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all min-h-[44px] ${form.socialSecurity === val ? 'border-green-500/50 bg-green-500/10 text-white light:text-slate-900' : 'border-white/10 text-slate-400 light:text-slate-600 hover:border-white/20'}`}>
                   <input type="radio" name="ss" checked={form.socialSecurity === val} onChange={() => set('socialSecurity', val)} className="accent-green-500" />
                   {label}
                 </label>
@@ -412,7 +412,7 @@ export default function RegisterForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="password-field" className="text-xs font-semibold uppercase tracking-wider text-slate-400">รหัสผ่าน *</label>
+            <label htmlFor="password-field" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">รหัสผ่าน *</label>
             <div className="relative">
               <input
                 id="password-field"
@@ -433,13 +433,13 @@ export default function RegisterForm() {
                 {[8, 12, 16].map((len, i) => (
                   <div key={i} className={`h-1 flex-1 rounded-full transition-all ${form.password.length >= len ? ['bg-red-500', 'bg-yellow-500', 'bg-green-500'][i] : 'bg-slate-700'}`} />
                 ))}
-                <span className="ml-1 text-[12px] text-slate-400">{form.password.length < 8 ? 'อ่อนแอ' : form.password.length < 12 ? 'ปานกลาง' : 'แข็งแกร่ง'}</span>
+                <span className="ml-1 text-[12px] text-slate-400 light:text-slate-600">{form.password.length < 8 ? 'อ่อนแอ' : form.password.length < 12 ? 'ปานกลาง' : 'แข็งแกร่ง'}</span>
               </div>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="confirm-password-field" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ยืนยันรหัสผ่าน *</label>
+            <label htmlFor="confirm-password-field" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ยืนยันรหัสผ่าน *</label>
             <div className="relative">
               <input
                 id="confirm-password-field"
@@ -456,7 +456,7 @@ export default function RegisterForm() {
             {errors.confirmPassword && <p className="text-xs text-red-400">{errors.confirmPassword}</p>}
           </div>
 
-          <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-3 text-xs text-slate-400">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-3 text-xs text-slate-400 light:text-slate-600">
             <p>✅ หลังสมัคร บัญชีจะอยู่ในสถานะ <strong className="text-yellow-400">รอการอนุมัติ</strong></p>
             <p className="mt-1">✅ HR / Manager จะตรวจสอบและแจ้งผลทาง LINE หรืออีเมล</p>
           </div>
@@ -466,7 +466,7 @@ export default function RegisterForm() {
       {/* Navigation buttons */}
       <div className="mt-6 flex gap-3">
         {step > 0 && (
-          <button type="button" onClick={back} className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-all">
+          <button type="button" onClick={back} className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white light:text-slate-900 hover:bg-white/10 transition-all">
             <ChevronLeft size={16} /> ย้อนกลับ
           </button>
         )}
