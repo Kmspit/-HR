@@ -12,12 +12,21 @@ import { createNotification, notifyRole } from '@/lib/notifications'
 const mockPrisma = {
   leaveRequest: { findMany: vi.fn() },
   outsideWorkRequest: { findMany: vi.fn() },
+  weeklyLawyerPlan: { findMany: vi.fn() },
+  forgotScanRequest: { findMany: vi.fn() },
   user: { findMany: vi.fn() },
   notification: { findFirst: vi.fn() },
 }
 
 describe('runApprovalEscalation', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(mockPrisma.leaveRequest.findMany).mockResolvedValue([] as never)
+    vi.mocked(mockPrisma.outsideWorkRequest.findMany).mockResolvedValue([] as never)
+    vi.mocked(mockPrisma.weeklyLawyerPlan.findMany).mockResolvedValue([] as never)
+    vi.mocked(mockPrisma.forgotScanRequest.findMany).mockResolvedValue([] as never)
+    vi.mocked(mockPrisma.notification.findFirst).mockResolvedValue(null as never)
+  })
 
   it('reminds leave approver after 48h', async () => {
     const old = new Date(Date.now() - 50 * 60 * 60 * 1000)
@@ -36,13 +45,79 @@ describe('runApprovalEscalation', () => {
         }],
       },
     ] as never)
-    vi.mocked(mockPrisma.outsideWorkRequest.findMany).mockResolvedValue([] as never)
-    vi.mocked(mockPrisma.notification.findFirst).mockResolvedValue(null as never)
 
     const result = await runApprovalEscalation(mockPrisma as never)
 
     expect(result.leaveReminded).toBe(1)
     expect(createNotification).toHaveBeenCalled()
     expect(notifyRole).not.toHaveBeenCalled()
+  })
+
+  it('reminds weekly-plan approver after 48h (Phase D — previously had no rescue at all)', async () => {
+    const old = new Date(Date.now() - 50 * 60 * 60 * 1000)
+    vi.mocked(mockPrisma.weeklyLawyerPlan.findMany).mockResolvedValue([
+      {
+        id: 'plan-1',
+        currentStepOrder: 1,
+        updatedAt: old,
+        lawyer: { name: 'Lawyer A' },
+        stepLogs: [{
+          stepOrder: 1, status: 'PENDING', stepName: 'หัวหน้าทีม',
+          approverId: 'tl-1', approverRole: null,
+        }],
+      },
+    ] as never)
+
+    const result = await runApprovalEscalation(mockPrisma as never)
+
+    expect(result.weeklyPlanReminded).toBe(1)
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'tl-1' }),
+    )
+  })
+
+  it('hard-escalates a weekly-plan stuck past 72h to CEO + MANAGER_HR', async () => {
+    const veryOld = new Date(Date.now() - 80 * 60 * 60 * 1000)
+    vi.mocked(mockPrisma.weeklyLawyerPlan.findMany).mockResolvedValue([
+      {
+        id: 'plan-2',
+        currentStepOrder: 1,
+        updatedAt: veryOld,
+        lawyer: { name: 'Lawyer B' },
+        stepLogs: [{
+          stepOrder: 1, status: 'PENDING', stepName: 'หัวหน้าทีม',
+          approverId: 'tl-1', approverRole: null,
+        }],
+      },
+    ] as never)
+
+    const result = await runApprovalEscalation(mockPrisma as never)
+
+    expect(result.hardEscalated).toBe(1)
+    expect(notifyRole).toHaveBeenCalledWith('CEO', 'SYSTEM', expect.any(String), expect.any(String), expect.any(String))
+    expect(notifyRole).toHaveBeenCalledWith('MANAGER_HR', 'SYSTEM', expect.any(String), expect.any(String), expect.any(String))
+  })
+
+  it('reminds forgot-scan approver after 48h (Phase D — previously had no rescue at all)', async () => {
+    const old = new Date(Date.now() - 50 * 60 * 60 * 1000)
+    vi.mocked(mockPrisma.forgotScanRequest.findMany).mockResolvedValue([
+      {
+        id: 'fs-1',
+        currentStepOrder: 1,
+        updatedAt: old,
+        user: { name: 'Employee A' },
+        stepLogs: [{
+          stepOrder: 1, status: 'PENDING', stepName: 'หัวหน้างาน',
+          approverId: 'tl-2', approverRole: null,
+        }],
+      },
+    ] as never)
+
+    const result = await runApprovalEscalation(mockPrisma as never)
+
+    expect(result.forgotScanReminded).toBe(1)
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'tl-2' }),
+    )
   })
 })

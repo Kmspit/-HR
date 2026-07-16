@@ -56,10 +56,20 @@ export async function resolveOrgSupervisorId(
 ): Promise<string | null> {
   const requester = await prisma.user.findUnique({
     where: { id: requesterId },
-    select: { teamLeaderId: true, managerId: true },
+    select: {
+      teamLeader: { select: { id: true, status: true } },
+      manager:    { select: { id: true, status: true } },
+    },
   })
   if (!requester) return null
-  return requester.teamLeaderId ?? requester.managerId ?? null
+  // An inactive teamLeader/manager can never act on the step it would be
+  // assigned to, permanently stranding the request — unlike getDirectReportUserIds
+  // elsewhere, this previously returned the id with no active-status check at
+  // all. Fall back to the next supervisor in the chain (or null, which the
+  // caller treats as "skip this step") instead of assigning a dead end.
+  if (requester.teamLeader?.status === 'ACTIVE') return requester.teamLeader.id
+  if (requester.manager?.status === 'ACTIVE') return requester.manager.id
+  return null
 }
 
 /** @deprecated use ApprovalStepRow */

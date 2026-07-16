@@ -8,6 +8,8 @@ const REMIND_COOLDOWN_MS = 24 * 60 * 60 * 1000
 type EscalationResult = {
   leaveReminded: number
   outsideReminded: number
+  weeklyPlanReminded: number
+  forgotScanReminded: number
   hardEscalated: number
 }
 
@@ -74,6 +76,8 @@ export async function runApprovalEscalation(prisma: PrismaClient): Promise<Escal
 
   let leaveReminded = 0
   let outsideReminded = 0
+  let weeklyPlanReminded = 0
+  let forgotScanReminded = 0
   let hardEscalated = 0
 
   const leaves = await prisma.leaveRequest.findMany({
@@ -175,11 +179,111 @@ export async function runApprovalEscalation(prisma: PrismaClient): Promise<Escal
     }
   }
 
-  if (leaveReminded + outsideReminded + hardEscalated > 0) {
+  // Weekly lawyer plan — same stuck-approver reminder/escalation leave and
+  // outside-work already get. Previously this chain had no rescue at all: an
+  // approver going on leave or being deactivated left the plan PENDING forever
+  // with zero automated visibility.
+  const weeklyPlans = await prisma.weeklyLawyerPlan.findMany({
+    where: {
+      chainConfigId: { not: null },
+      status: { notIn: ['APPROVED', 'REJECTED'] },
+      approvalStatus: 'pending_chain',
+      updatedAt: { lte: softCutoff },
+    },
+    include: {
+      lawyer: { select: { name: true } },
+      stepLogs: true,
+    },
+  })
+
+  for (const plan of weeklyPlans) {
+    const step = plan.stepLogs.find(
+      (s) => s.stepOrder === plan.currentStepOrder && s.status === 'PENDING',
+    )
+    if (!step) continue
+
+    const dedupeKey = `weekly-plan-esc:${plan.id}`
+    const approverIds = await resolveApproverIds(prisma, step.approverId, step.approverRole)
+    weeklyPlanReminded += await remindApprovers(
+      prisma,
+      approverIds,
+      dedupeKey,
+      '⏰ แผนงานทนายรออนุมัติเกิน 48 ชม.',
+      `${plan.lawyer.name} — ขั้น "${step.stepName}" ค้างอนุมัติ (${dedupeKey})`,
+    )
+
+    if (plan.updatedAt <= hardCutoff) {
+      await notifyRole(
+        'CEO',
+        'SYSTEM',
+        '🔺 Escalation: แผนงานทนายค้างเกิน 72 ชม.',
+        `${plan.lawyer.name} — ${step.stepName}`,
+        '/approval-center',
+      )
+      await notifyRole(
+        'MANAGER_HR',
+        'SYSTEM',
+        '🔺 Escalation: แผนงานทนายค้างเกิน 72 ชม.',
+        `${plan.lawyer.name} — ${step.stepName}`,
+        '/approval-center',
+      )
+      hardEscalated += 1
+    }
+  }
+
+  // Forgot-scan (แก้เวลา) — same rescue.
+  const forgotScans = await prisma.forgotScanRequest.findMany({
+    where: {
+      chainConfigId: { not: null },
+      status: { notIn: ['APPROVED', 'REJECTED'] },
+      updatedAt: { lte: softCutoff },
+    },
+    include: {
+      user: { select: { name: true } },
+      stepLogs: true,
+    },
+  })
+
+  for (const req of forgotScans) {
+    const step = req.stepLogs.find(
+      (s) => s.stepOrder === req.currentStepOrder && s.status === 'PENDING',
+    )
+    if (!step) continue
+
+    const dedupeKey = `forgot-scan-esc:${req.id}`
+    const approverIds = await resolveApproverIds(prisma, step.approverId, step.approverRole)
+    forgotScanReminded += await remindApprovers(
+      prisma,
+      approverIds,
+      dedupeKey,
+      '⏰ คำขอแก้ไขเวลารออนุมัติเกิน 48 ชม.',
+      `${req.user.name} — ขั้น "${step.stepName}" ค้างอนุมัติ (${dedupeKey})`,
+    )
+
+    if (req.updatedAt <= hardCutoff) {
+      await notifyRole(
+        'CEO',
+        'SYSTEM',
+        '🔺 Escalation: คำขอแก้ไขเวลาค้างเกิน 72 ชม.',
+        `${req.user.name} — ${step.stepName}`,
+        '/approval-center',
+      )
+      await notifyRole(
+        'MANAGER_HR',
+        'SYSTEM',
+        '🔺 Escalation: คำขอแก้ไขเวลาค้างเกิน 72 ชม.',
+        `${req.user.name} — ${step.stepName}`,
+        '/approval-center',
+      )
+      hardEscalated += 1
+    }
+  }
+
+  if (leaveReminded + outsideReminded + weeklyPlanReminded + forgotScanReminded + hardEscalated > 0) {
     await sendLineNotify(
-      `\n⏰ [HRFlow] Approval escalation\nลา: ${leaveReminded} · ออกนอก: ${outsideReminded} · hard: ${hardEscalated}`,
+      `\n⏰ [HRFlow] Approval escalation\nลา: ${leaveReminded} · ออกนอก: ${outsideReminded} · แผนงาน: ${weeklyPlanReminded} · แก้เวลา: ${forgotScanReminded} · hard: ${hardEscalated}`,
     ).catch(() => {})
   }
 
-  return { leaveReminded, outsideReminded, hardEscalated }
+  return { leaveReminded, outsideReminded, weeklyPlanReminded, forgotScanReminded, hardEscalated }
 }

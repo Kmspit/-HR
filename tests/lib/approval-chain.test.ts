@@ -9,7 +9,48 @@ import {
   canUserActOnStep,
   applyChainToLeave,
   isOrgSupervisorTemplateStep,
+  resolveOrgSupervisorId,
 } from '@/lib/approval-chain'
+
+describe('resolveOrgSupervisorId (Phase B — inactive supervisors must not be assigned)', () => {
+  const mockPrisma = { user: { findUnique: vi.fn() } }
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns the active team leader', async () => {
+    vi.mocked(mockPrisma.user.findUnique).mockResolvedValue({
+      teamLeader: { id: 'tl-1', status: 'ACTIVE' },
+      manager:    { id: 'mgr-1', status: 'ACTIVE' },
+    } as never)
+    const id = await resolveOrgSupervisorId(mockPrisma as never, 'emp-1')
+    expect(id).toBe('tl-1')
+  })
+
+  it('falls back to the active manager when the team leader is inactive', async () => {
+    vi.mocked(mockPrisma.user.findUnique).mockResolvedValue({
+      teamLeader: { id: 'tl-1', status: 'INACTIVE' },
+      manager:    { id: 'mgr-1', status: 'ACTIVE' },
+    } as never)
+    const id = await resolveOrgSupervisorId(mockPrisma as never, 'emp-1')
+    expect(id).toBe('mgr-1')
+  })
+
+  it('returns null (not an inactive user) when both team leader and manager are inactive', async () => {
+    vi.mocked(mockPrisma.user.findUnique).mockResolvedValue({
+      teamLeader: { id: 'tl-1', status: 'INACTIVE' },
+      manager:    { id: 'mgr-1', status: 'INACTIVE' },
+    } as never)
+    const id = await resolveOrgSupervisorId(mockPrisma as never, 'emp-1')
+    expect(id).toBeNull()
+  })
+
+  it('returns null when neither is set', async () => {
+    vi.mocked(mockPrisma.user.findUnique).mockResolvedValue({
+      teamLeader: null, manager: null,
+    } as never)
+    const id = await resolveOrgSupervisorId(mockPrisma as never, 'emp-1')
+    expect(id).toBeNull()
+  })
+})
 
 describe('canUserActOnStep', () => {
   const base = {
@@ -93,7 +134,10 @@ describe('applyChainToLeave', () => {
   it('resolves org supervisor on step 1 and notifies them', async () => {
     vi.mocked(mockPrisma.user.findUnique)
       .mockResolvedValueOnce({ role: 'EMPLOYEE' } as never)
-      .mockResolvedValueOnce({ teamLeaderId: 'tl-1', managerId: null } as never)
+      .mockResolvedValueOnce({
+        teamLeader: { id: 'tl-1', status: 'ACTIVE' },
+        manager:    null,
+      } as never)
     vi.mocked(mockPrisma.approvalChainConfig.findUnique).mockResolvedValue({
       id: 'chain-1',
       isActive: true,

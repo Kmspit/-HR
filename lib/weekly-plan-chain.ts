@@ -10,7 +10,7 @@ import {
   isOrgSupervisorTemplateStep,
   type ApprovalStepRow,
 } from '@/lib/approval-chain-shared'
-import { resolveOrgSupervisorId, type StepActionResult } from '@/lib/approval-chain'
+import { resolveOrgSupervisorId, notifyChainDataIssue, type StepActionResult } from '@/lib/approval-chain'
 
 export async function applyChainToWeeklyPlan(
   prisma: PrismaClient,
@@ -230,16 +230,30 @@ export async function executeWeeklyPlanStepAction(
     return { error: 'แผนงานนี้ดำเนินการเสร็จสิ้นแล้ว', status: 400 }
   }
 
-  const currentStep = await prisma.weeklyPlanApprovalStep.findFirst({
+  let currentStep = await prisma.weeklyPlanApprovalStep.findFirst({
     where: {
       weeklyPlanId: planId,
       stepOrder: plan.currentStepOrder,
       status: 'PENDING',
     },
   })
-  if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
 
   const ceoOverride = role === 'CEO' || role === 'SUPER_ADMIN'
+
+  if (!currentStep) {
+    if (!ceoOverride) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    // currentStepOrder doesn't point at a PENDING step (e.g. stale/corrupted
+    // data from a legacy migration) — let CEO/SUPER_ADMIN fall back to the
+    // actual next PENDING step, same rescue leave/outside-work/forgot-scan
+    // already have, so the plan isn't permanently stuck.
+    currentStep = await prisma.weeklyPlanApprovalStep.findFirst({
+      where: { weeklyPlanId: planId, status: 'PENDING' },
+      orderBy: { stepOrder: 'asc' },
+    })
+    if (!currentStep) return { error: 'ไม่พบขั้นตอนที่รออนุมัติ', status: 400 }
+    await notifyChainDataIssue('แผนงานทนาย', planId, '/approval-center')
+  }
+
   if (!ceoOverride && !canUserActOnStep(currentStep, actorId, role)) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติขั้นนี้', status: 403 }
   }
@@ -251,7 +265,7 @@ export async function executeWeeklyPlanStepAction(
     where: {
       id: currentStep.id,
       weeklyPlanId: planId,
-      stepOrder: plan.currentStepOrder,
+      stepOrder: currentStep.stepOrder,
       status: 'PENDING',
     },
     data: {
@@ -264,6 +278,15 @@ export async function executeWeeklyPlanStepAction(
   })
   if (claim.count === 0) {
     return { error: 'ขั้นตอนนี้ถูกดำเนินการแล้ว กรุณารีเฟรช', status: 409 }
+  }
+  if (currentStep.stepOrder !== plan.currentStepOrder) {
+    // Realign the plan's pointer to the step we actually claimed (fallback
+    // path above) so advanceWeeklyPlanChain's "find next step" lookup is
+    // anchored correctly instead of using the stale currentStepOrder.
+    await prisma.weeklyLawyerPlan.update({
+      where: { id: planId },
+      data: { currentStepOrder: currentStep.stepOrder },
+    })
   }
 
   if (action === 'APPROVE') {
