@@ -71,8 +71,8 @@ export default function PortalLoginPage() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
-              <input
+              <label htmlFor="field-1" className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
+              <input id="field-1"
                 type="email"
                 value={email}
                 onChange={(e) => onEmailChange(e.target.value)}
@@ -85,8 +85,8 @@ export default function PortalLoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
-              <input
+              <label htmlFor="field-2" className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
+              <input id="field-2"
                 type="password"
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}

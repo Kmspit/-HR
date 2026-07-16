@@ -375,8 +375,8 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
           <div className="grid grid-cols-2 gap-3">
             {/* Date */}
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs text-slate-400 mb-1">วันที่ลืมสแกน</label>
-              <input
+              <label htmlFor="field-1" className="block text-xs text-slate-400 mb-1">วันที่ลืมสแกน</label>
+              <input id="field-1"
                 type="date"
                 required
                 value={date}
@@ -388,8 +388,8 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
 
             {/* Correct time */}
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs text-slate-400 mb-1">เวลาที่ถูกต้อง</label>
-              <input
+              <label htmlFor="field-2" className="block text-xs text-slate-400 mb-1">เวลาที่ถูกต้อง</label>
+              <input id="field-2"
                 type="time"
                 required
                 value={correctTime}
@@ -401,7 +401,7 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
 
           {/* Scan type */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">ประเภทที่ลืมสแกน</label>
+            <span className="block text-xs text-slate-400 mb-1.5">ประเภทที่ลืมสแกน</span>
             <div className="grid grid-cols-2 gap-2">
               {SCAN_TYPES.map((t) => (
                 <button
@@ -423,8 +423,8 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
 
           {/* Reason */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">เหตุผล <span className="text-red-400">*</span></label>
-            <textarea
+            <label htmlFor="field-3" className="block text-xs text-slate-400 mb-1">เหตุผล <span className="text-red-400">*</span></label>
+            <textarea id="field-3"
               rows={3}
               required
               value={reason}
@@ -436,8 +436,8 @@ export default function ForgotScanClient({ userId, userName, isSupervisor, isHR 
 
           {/* Evidence */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">แนบหลักฐาน (ไม่บังคับ)</label>
-            <input
+            <label htmlFor="field-4" className="block text-xs text-slate-400 mb-1">แนบหลักฐาน (ไม่บังคับ)</label>
+            <input id="field-4"
               type="file"
               accept="image/*,.pdf"
               onChange={(e) => setEvidence(e.target.files?.[0] ?? null)}

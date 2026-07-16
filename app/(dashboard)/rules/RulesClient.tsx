@@ -142,7 +142,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
         <div className="dark:bg-white/5 light:bg-slate-50 border dark:border-white/10 light:border-slate-200 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold dark:text-white light:text-slate-800">เพิ่มกฎระเบียบใหม่</h3>
-            <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}
+            <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }} aria-label="ยกเลิก"
               className="p-1.5 rounded-lg dark:text-slate-400 light:text-slate-500 dark:hover:text-white light:hover:text-slate-800">
               <X className="w-4 h-4" />
             </button>
@@ -150,13 +150,13 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">ชื่อเรื่อง *</label>
-              <input value={form.title} onChange={(e) => set('title', e.target.value)}
+              <label htmlFor="field-1" className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">ชื่อเรื่อง *</label>
+              <input id="field-1" value={form.title} onChange={(e) => set('title', e.target.value)}
                 className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500" />
             </div>
             <div>
-              <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">หมวดหมู่</label>
-              <select value={form.category} onChange={(e) => set('category', e.target.value)}
+              <label htmlFor="field-2" className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">หมวดหมู่</label>
+              <select id="field-2" value={form.category} onChange={(e) => set('category', e.target.value)}
                 className="w-full dark:bg-slate-800 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500">
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
@@ -164,22 +164,22 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
           </div>
 
           <div>
-            <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">เนื้อหา</label>
-            <textarea value={form.content} onChange={(e) => set('content', e.target.value)}
+            <label htmlFor="field-3" className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">เนื้อหา</label>
+            <textarea id="field-3" value={form.content} onChange={(e) => set('content', e.target.value)}
               rows={4} placeholder="พิมพ์เนื้อหากฎระเบียบ..."
               className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500 resize-none" />
           </div>
 
           {/* File upload */}
           <div>
-            <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">
+            <span className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">
               ไฟล์แนบ <span className="opacity-60">(PDF, DOCX, Image — สูงสุด 20 MB)</span>
-            </label>
+            </span>
             {form.fileUrl ? (
               <div className="flex items-center gap-2 p-3 rounded-xl border dark:border-white/10 light:border-slate-200 dark:bg-white/[0.03] light:bg-white">
                 <span className="text-base">{FILE_EXT_ICON[fileExt(form.fileUrl)] ?? '📎'}</span>
                 <span className="flex-1 text-xs dark:text-slate-300 light:text-slate-600 truncate">{form.fileUrl.split('/').pop()}</span>
-                <button onClick={() => set('fileUrl', '')}
+                <button onClick={() => set('fileUrl', '')} aria-label="ลบไฟล์แนบ"
                   className="text-slate-500 hover:text-red-400 transition-colors">
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -212,18 +212,18 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
           {/* URL fallback */}
           {!form.fileUrl && (
             <div>
-              <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">
+              <label htmlFor="field-4" className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">
                 หรือระบุ URL ไฟล์
               </label>
-              <input value={form.fileUrl} onChange={(e) => set('fileUrl', e.target.value)}
+              <input id="field-4" value={form.fileUrl} onChange={(e) => set('fileUrl', e.target.value)}
                 placeholder="https://..."
                 className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500" />
             </div>
           )}
 
           <div>
-            <label className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">เวอร์ชัน</label>
-            <input value={form.version} onChange={(e) => set('version', e.target.value)}
+            <label htmlFor="field-5" className="text-xs dark:text-white/50 light:text-slate-500 block mb-1">เวอร์ชัน</label>
+            <input id="field-5" value={form.version} onChange={(e) => set('version', e.target.value)}
               placeholder="เช่น v1.0, v2024.05"
               className="w-full dark:bg-white/5 light:bg-white border dark:border-white/10 light:border-slate-200 rounded-xl px-3 py-2.5 dark:text-white light:text-slate-800 text-sm focus:outline-none focus:border-green-500" />
           </div>
@@ -274,7 +274,7 @@ export default function RulesClient({ isManager, rules: init }: { isManager: boo
                   </div>
                 </div>
                 {isManager && (
-                  <button onClick={(e) => { e.stopPropagation(); deleteRule(r.id) }}
+                  <button onClick={(e) => { e.stopPropagation(); deleteRule(r.id) }} aria-label="ลบ"
                     className="dark:text-white/20 light:text-slate-300 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

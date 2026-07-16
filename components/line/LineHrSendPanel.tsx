@@ -188,8 +188,8 @@ export default function LineHrSendPanel({
 
       {targetMode === 'one' && (
         <div>
-          <label className="block text-xs dark:text-slate-400 mb-1.5">เลือกพนักงาน</label>
-          <select
+          <label htmlFor="field-1" className="block text-xs dark:text-slate-400 mb-1.5">เลือกพนักงาน</label>
+          <select id="field-1"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             className="w-full rounded-xl dark:bg-white/5 light:bg-slate-50 border dark:border-white/10 light:border-slate-200 px-3 py-2.5 text-sm dark:text-white light:text-slate-900"
@@ -212,8 +212,8 @@ export default function LineHrSendPanel({
       )}
 
       <div>
-        <label className="block text-xs dark:text-slate-400 mb-1.5">ข้อความ</label>
-        <textarea
+        <label htmlFor="field-2" className="block text-xs dark:text-slate-400 mb-1.5">ข้อความ</label>
+        <textarea id="field-2"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={compact ? 3 : 4}

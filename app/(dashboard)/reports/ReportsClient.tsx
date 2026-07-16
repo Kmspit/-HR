@@ -152,9 +152,9 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
         <div>
 
-          <label className="text-xs text-slate-400">เดือน</label>
+          <label htmlFor="field-1" className="text-xs text-slate-400">เดือน</label>
 
-          <select
+          <select id="field-1"
 
             value={month}
 
@@ -176,9 +176,9 @@ export default function ReportsClient({ defaultMonth, defaultYear }: Props) {
 
         <div>
 
-          <label className="text-xs text-slate-400">ปี</label>
+          <label htmlFor="field-2" className="text-xs text-slate-400">ปี</label>
 
-          <input
+          <input id="field-2"
 
             type="number"
 

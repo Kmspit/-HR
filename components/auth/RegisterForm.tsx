@@ -238,11 +238,11 @@ export default function RegisterForm() {
       {/* STEP 0: Personal Info */}
       {step === 0 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <fieldset className="space-y-2 border-0 p-0 m-0">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <Building2 size={14} className="text-green-400" />
               เลือกสาขาที่สังกัด *
-            </label>
+            </legend>
             {loadingBranches ? (
               <p className="text-sm text-slate-500 py-2">กำลังโหลดรายการสาขา...</p>
             ) : (
@@ -273,43 +273,43 @@ export default function RegisterForm() {
               </div>
             )}
             {errors.branchId && <p className="text-xs text-red-400">{errors.branchId}</p>}
-          </div>
+          </fieldset>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5 min-w-0">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">คำนำหน้า</label>
-              <select value={form.prefix} onChange={(e) => set('prefix', e.target.value)} className={inputClass('prefix')}>
+              <label htmlFor="field-1" className="text-xs font-semibold uppercase tracking-wider text-slate-400">คำนำหน้า</label>
+              <select id="field-1" value={form.prefix} onChange={(e) => set('prefix', e.target.value)} className={inputClass('prefix')}>
                 {['นาย', 'นาง', 'นางสาว', 'ดร.', 'อื่นๆ'].map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div className="sm:col-span-2 space-y-1.5 min-w-0">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อจริง *</label>
-              <input type="text" placeholder="ชื่อจริง" className={inputClass('firstName')} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} />
+              <label htmlFor="field-2" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อจริง *</label>
+              <input id="field-2" type="text" placeholder="ชื่อจริง" className={inputClass('firstName')} value={form.firstName} onChange={(e) => set('firstName', e.target.value)} />
               {errors.firstName && <p className="text-xs text-red-400">{errors.firstName}</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5 min-w-0">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">นามสกุล *</label>
-              <input type="text" placeholder="นามสกุล" className={inputClass('lastName')} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} />
+              <label htmlFor="field-3" className="text-xs font-semibold uppercase tracking-wider text-slate-400">นามสกุล *</label>
+              <input id="field-3" type="text" placeholder="นามสกุล" className={inputClass('lastName')} value={form.lastName} onChange={(e) => set('lastName', e.target.value)} />
               {errors.lastName && <p className="text-xs text-red-400">{errors.lastName}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อเล่น</label>
-              <input type="text" placeholder="ชื่อเล่น" className={inputClass('nickname')} value={form.nickname} onChange={(e) => set('nickname', e.target.value)} />
+              <label htmlFor="field-4" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ชื่อเล่น</label>
+              <input id="field-4" type="text" placeholder="ชื่อเล่น" className={inputClass('nickname')} value={form.nickname} onChange={(e) => set('nickname', e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">อีเมล *</label>
-              <input type="email" placeholder="name@company.com" className={inputClass('email')} value={form.email} onChange={(e) => setEnglishField('email', e.target.value)} />
+              <label htmlFor="field-5" className="text-xs font-semibold uppercase tracking-wider text-slate-400">อีเมล *</label>
+              <input id="field-5" type="email" placeholder="name@company.com" className={inputClass('email')} value={form.email} onChange={(e) => setEnglishField('email', e.target.value)} />
               {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เบอร์โทร *</label>
-              <input
+              <label htmlFor="field-6" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เบอร์โทร *</label>
+              <input id="field-6"
                 type="tel"
                 placeholder="0812345678"
                 className={inputClass('phone')}
@@ -321,8 +321,8 @@ export default function RegisterForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">LINE ID *</label>
-            <input
+            <label htmlFor="field-7" className="text-xs font-semibold uppercase tracking-wider text-slate-400">LINE ID *</label>
+            <input id="field-7"
               type="text"
               placeholder="@username"
               className={inputClass('lineId')}
@@ -336,18 +336,18 @@ export default function RegisterForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันเกิด</label>
-              <input type="date" className={inputClass('birthDate')} value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
+              <label htmlFor="field-8" className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันเกิด</label>
+              <input id="field-8" type="date" className={inputClass('birthDate')} value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เลขบัตรประชาชน</label>
-              <input type="text" placeholder="1234567890123 (optional)" className={inputClass('nationalId')} value={form.nationalId} onChange={(e) => set('nationalId', e.target.value)} />
+              <label htmlFor="field-9" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เลขบัตรประชาชน</label>
+              <input id="field-9" type="text" placeholder="1234567890123 (optional)" className={inputClass('nationalId')} value={form.nationalId} onChange={(e) => set('nationalId', e.target.value)} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ที่อยู่</label>
-            <textarea placeholder="ที่อยู่ปัจจุบัน..." rows={2} className={`${inputClass('address')} resize-none py-2.5`} value={form.address} onChange={(e) => set('address', e.target.value)} />
+            <label htmlFor="field-10" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ที่อยู่</label>
+            <textarea id="field-10" placeholder="ที่อยู่ปัจจุบัน..." rows={2} className={`${inputClass('address')} resize-none py-2.5`} value={form.address} onChange={(e) => set('address', e.target.value)} />
           </div>
         </div>
       )}
@@ -359,8 +359,8 @@ export default function RegisterForm() {
             สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'} — ฝ่าย/แผนก/ส่วนงาน HR จะกำหนดหลังอนุมัติบัญชี
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ตำแหน่ง / Role *</label>
+          <fieldset className="space-y-2 border-0 p-0 m-0">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400">ตำแหน่ง / Role *</legend>
             <div className="grid gap-2">
               {ROLES.map((r) => (
                 <label key={r.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all ${form.role === r.value ? 'border-green-500/50 bg-green-500/10' : 'border-white/10 hover:border-white/20'}`}>
@@ -373,21 +373,21 @@ export default function RegisterForm() {
               ))}
             </div>
             {errors.role && <p className="text-xs text-red-400">{errors.role}</p>}
+          </fieldset>
+
+          <div className="space-y-1.5">
+            <label htmlFor="field-11" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินเดือนพื้นฐาน (ถ้ามี)</label>
+            <input id="field-11" type="number" placeholder="25000" className={inputClass('baseSalary')} value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เงินเดือนพื้นฐาน (ถ้ามี)</label>
-            <input type="number" placeholder="25000" className={inputClass('baseSalary')} value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันที่เริ่มงาน *</label>
-            <input type="date" className={inputClass('startDate')} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
+            <label htmlFor="field-12" className="text-xs font-semibold uppercase tracking-wider text-slate-400">วันที่เริ่มงาน *</label>
+            <input id="field-12" type="date" className={inputClass('startDate')} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
             {errors.startDate && <p className="text-xs text-red-400">{errors.startDate}</p>}
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">สถานะประกันสังคม</label>
+          <fieldset className="space-y-1.5 border-0 p-0 m-0">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400">สถานะประกันสังคม</legend>
             <div className="flex flex-col sm:flex-row gap-3">
               {[{ val: true, label: '✅ อยู่ในประกันสังคม' }, { val: false, label: '❌ ไม่อยู่ในประกันสังคม' }].map(({ val, label }) => (
                 <label key={String(val)} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-all min-h-[44px] ${form.socialSecurity === val ? 'border-green-500/50 bg-green-500/10 text-white' : 'border-white/10 text-slate-400 hover:border-white/20'}`}>
@@ -396,7 +396,7 @@ export default function RegisterForm() {
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
         </div>
       )}
 
@@ -412,16 +412,17 @@ export default function RegisterForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">รหัสผ่าน *</label>
+            <label htmlFor="password-field" className="text-xs font-semibold uppercase tracking-wider text-slate-400">รหัสผ่าน *</label>
             <div className="relative">
               <input
+                id="password-field"
                 type={showPw ? 'text' : 'password'}
                 placeholder="อย่างน้อย 8 ตัวอักษร"
                 className={`${inputClass('password')} pr-11`}
                 value={form.password}
                 onChange={(e) => setEnglishField('password', e.target.value)}
               />
-              <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+              <button type="button" onClick={() => setShowPw(v => !v)} aria-label={showPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -438,16 +439,17 @@ export default function RegisterForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ยืนยันรหัสผ่าน *</label>
+            <label htmlFor="confirm-password-field" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ยืนยันรหัสผ่าน *</label>
             <div className="relative">
               <input
+                id="confirm-password-field"
                 type={showCPw ? 'text' : 'password'}
                 placeholder="••••••••"
                 className={`${inputClass('confirmPassword')} pr-11`}
                 value={form.confirmPassword}
                 onChange={(e) => setEnglishField('confirmPassword', e.target.value)}
               />
-              <button type="button" onClick={() => setShowCPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+              <button type="button" onClick={() => setShowCPw(v => !v)} aria-label={showCPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                 {showCPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>

@@ -493,7 +493,7 @@ export default function MonthlyAttendanceClient({
 
           <div className="min-w-[240px]">
 
-            <label className="text-xs text-slate-400 flex items-center gap-1">
+            <label htmlFor="field-1" className="text-xs text-slate-400 flex items-center gap-1">
 
               พนักงาน
 
@@ -501,7 +501,7 @@ export default function MonthlyAttendanceClient({
 
             </label>
 
-            <select
+            <select id="field-1"
 
               value={userId}
 
@@ -535,9 +535,9 @@ export default function MonthlyAttendanceClient({
 
         <div>
 
-          <label className="text-xs text-slate-400">เดือน</label>
+          <label htmlFor="field-2" className="text-xs text-slate-400">เดือน</label>
 
-          <select
+          <select id="field-2"
 
             value={month}
 
@@ -563,9 +563,9 @@ export default function MonthlyAttendanceClient({
 
         <div>
 
-          <label className="text-xs text-slate-400">ปี</label>
+          <label htmlFor="field-3" className="text-xs text-slate-400">ปี</label>
 
-          <input
+          <input id="field-3"
 
             type="number"
 

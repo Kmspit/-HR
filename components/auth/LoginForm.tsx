@@ -173,10 +173,10 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <label htmlFor="field-1" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
             รหัส OTP
           </label>
-          <input
+          <input id="field-1"
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -215,10 +215,10 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <label htmlFor="field-2" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
           อีเมล / รหัสพนักงาน
         </label>
-        <input
+        <input id="field-2"
           type="text"
           autoComplete="username"
           placeholder="name@company.com หรือรหัสพนักงาน"
@@ -231,11 +231,12 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
       </div>
 
       <div className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <label htmlFor="login-password-field" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
           รหัสผ่าน
         </label>
         <div className="relative">
           <input
+            id="login-password-field"
             type={showPw ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder="••••••••"
@@ -247,6 +248,7 @@ export default function LoginForm({ initialError }: { initialError?: string | nu
           <button
             type="button"
             onClick={() => setShowPw((v) => !v)}
+            aria-label={showPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
           >
             {showPw ? <EyeOff size={15} /> : <Eye size={15} />}

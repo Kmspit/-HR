@@ -164,24 +164,24 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           {showOrgFilter && (
             <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200 dark:border-white/5 pt-3">
               <div>
-                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ฝ่าย</label>
-                <select value={sel('divisionId') || 'all'} onChange={(e) => setOrgFilter('divisionId', e.target.value)}
+                <label htmlFor="field-1" className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ฝ่าย</label>
+                <select id="field-1" value={sel('divisionId') || 'all'} onChange={(e) => setOrgFilter('divisionId', e.target.value)}
                   className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-green-500">
                   <option value="all">ทุกฝ่าย</option>
                   {orgFilterOptions.divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">แผนก</label>
-                <select value={sel('departmentId') || 'all'} onChange={(e) => setOrgFilter('departmentId', e.target.value)}
+                <label htmlFor="field-2" className="text-[12px] font-medium text-slate-600 dark:text-slate-400">แผนก</label>
+                <select id="field-2" value={sel('departmentId') || 'all'} onChange={(e) => setOrgFilter('departmentId', e.target.value)}
                   className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-green-500">
                   <option value="all">ทุกแผนก</option>
                   {orgFilterOptions.departments.filter((d) => !sel('divisionId') || d.divisionId === sel('divisionId')).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ส่วนงาน</label>
-                <select value={sel('sectionId') || 'all'} onChange={(e) => setOrgFilter('sectionId', e.target.value)}
+                <label htmlFor="field-3" className="text-[12px] font-medium text-slate-600 dark:text-slate-400">ส่วนงาน</label>
+                <select id="field-3" value={sel('sectionId') || 'all'} onChange={(e) => setOrgFilter('sectionId', e.target.value)}
                   className="mt-1 w-full rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2.5 text-[13px] text-slate-900 dark:text-white focus:outline-none focus:border-green-500">
                   <option value="all">ทุกส่วนงาน</option>
                   {orgFilterOptions.sections.filter((s) => !sel('departmentId') || s.departmentId === sel('departmentId')).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

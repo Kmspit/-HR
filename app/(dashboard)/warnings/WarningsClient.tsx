@@ -717,13 +717,14 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
           <h3 className="font-semibold text-white">ออกใบเตือนด้วยตนเอง</h3>
 
           <div>
-            <label className="text-sm text-white/50 block mb-1.5">เลือกพนักงาน</label>
+            <label htmlFor="employee-search-field" className="text-sm text-white/50 block mb-1.5">เลือกพนักงาน</label>
             <div
               ref={empPickerRef}
               className="relative rounded-xl border border-white/15 bg-slate-900/80 focus-within:border-green-500/50 transition-colors"
             >
               <div className="flex items-center gap-1 pr-1">
                 <input
+                  id="employee-search-field"
                   type="text"
                   value={empSearch}
                   onChange={(e) => {
@@ -813,8 +814,8 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
           )}
 
           <div>
-            <label className="text-sm text-white/50 block mb-1">เหตุผล *</label>
-            <input
+            <label htmlFor="field-1" className="text-sm text-white/50 block mb-1">เหตุผล *</label>
+            <input id="field-1"
               value={form.reason}
               onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
@@ -822,8 +823,8 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
             />
           </div>
           <div>
-            <label className="text-sm text-white/50 block mb-1">รายละเอียดเพิ่มเติม</label>
-            <textarea
+            <label htmlFor="field-2" className="text-sm text-white/50 block mb-1">รายละเอียดเพิ่มเติม</label>
+            <textarea id="field-2"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
@@ -832,8 +833,8 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
           </div>
 
           <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 space-y-3">
-            <label className="text-sm font-semibold text-white block">ไฟล์ใบเตือน (PDF)</label>
-            <input
+            <label htmlFor="field-3" className="text-sm font-semibold text-white block">ไฟล์ใบเตือน (PDF)</label>
+            <input id="field-3"
               ref={pdfInputRef}
               type="file"
               accept="application/pdf,.pdf"

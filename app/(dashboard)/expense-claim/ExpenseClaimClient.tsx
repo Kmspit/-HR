@@ -316,42 +316,42 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
             <h2 className="font-semibold text-gray-800 mb-4">ยื่นเบิกค่าใช้จ่าย</h2>
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">หัวข้อการเบิก *</label>
-                <input required value={form.title} onChange={e => setForm({...form,title:e.target.value})}
+                <label htmlFor="field-1" className="text-xs font-medium text-gray-700">หัวข้อการเบิก *</label>
+                <input id="field-1" required value={form.title} onChange={e => setForm({...form,title:e.target.value})}
                   className={modalFieldInput} placeholder="เช่น ค่าเดินทางไปศาล อาทิตย์ที่ 2 มิ.ย." />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">ประเภทค่าใช้จ่าย *</label>
-                  <select required value={form.expenseType} onChange={e => setForm({...form,expenseType:e.target.value})} className={modalFieldInput}>
+                  <label htmlFor="field-2" className="text-xs font-medium text-gray-700">ประเภทค่าใช้จ่าย *</label>
+                  <select id="field-2" required value={form.expenseType} onChange={e => setForm({...form,expenseType:e.target.value})} className={modalFieldInput}>
                     {EXPENSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">จำนวนเงิน (บาท) *</label>
-                  <input required type="number" min="0" step="0.01" value={form.amount}
+                  <label htmlFor="field-3" className="text-xs font-medium text-gray-700">จำนวนเงิน (บาท) *</label>
+                  <input id="field-3" required type="number" min="0" step="0.01" value={form.amount}
                     onChange={e => setForm({...form,amount:e.target.value})} className={modalFieldInput} placeholder="0.00" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">วันที่ *</label>
-                  <input required type="date" value={form.date} onChange={e => setForm({...form,date:e.target.value})} className={modalFieldInput} />
+                  <label htmlFor="field-4" className="text-xs font-medium text-gray-700">วันที่ *</label>
+                  <input id="field-4" required type="date" value={form.date} onChange={e => setForm({...form,date:e.target.value})} className={modalFieldInput} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">เลขคดี</label>
-                  <input value={form.caseNumber} onChange={e => setForm({...form,caseNumber:e.target.value})} className={modalFieldInput} placeholder="เลขคดี (ถ้ามี)" />
+                  <label htmlFor="field-5" className="text-xs font-medium text-gray-700">เลขคดี</label>
+                  <input id="field-5" value={form.caseNumber} onChange={e => setForm({...form,caseNumber:e.target.value})} className={modalFieldInput} placeholder="เลขคดี (ถ้ามี)" />
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">หมายเหตุ</label>
-                <textarea rows={2} value={form.note} onChange={e => setForm({...form,note:e.target.value})}
+                <label htmlFor="field-6" className="text-xs font-medium text-gray-700">หมายเหตุ</label>
+                <textarea id="field-6" rows={2} value={form.note} onChange={e => setForm({...form,note:e.target.value})}
                   className={`${modalFieldInput} resize-none`} placeholder="รายละเอียดเพิ่มเติม..." />
               </div>
 
               {/* File attachments */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-700">แนบใบเสร็จ / เอกสาร</label>
+                <label htmlFor="claim-files" className="text-xs font-medium text-gray-700">แนบใบเสร็จ / เอกสาร</label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-green-400 transition-colors"
                   onClick={() => document.getElementById('claim-files')?.click()}>
                   <input id="claim-files" type="file" multiple accept="image/*,.pdf,.zip" className="hidden"

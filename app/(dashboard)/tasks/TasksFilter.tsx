@@ -92,16 +92,16 @@ export function TasksFilter({
         <div className="rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/[0.06] px-4 py-3 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             <div>
-              <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">ฝ่าย</label>
-              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
+              <label htmlFor="field-1" className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">ฝ่าย</label>
+              <select id="field-1" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
                 className="w-full rounded-lg px-2 py-1.5 text-[12px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-300 focus:outline-none">
                 <option value="all">ทุกฝ่าย</option>
                 {DEPT_OPTIONS.filter(o => o.value).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">ความสำคัญ</label>
-              <select value={filter.priority} onChange={(e) => setFilter({ ...filter, priority: e.target.value })}
+              <label htmlFor="field-2" className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">ความสำคัญ</label>
+              <select id="field-2" value={filter.priority} onChange={(e) => setFilter({ ...filter, priority: e.target.value })}
                 className="w-full rounded-lg px-2 py-1.5 text-[12px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-300 focus:outline-none">
                 <option value="all">ทั้งหมด</option>
                 <option value="URGENT">เร่งด่วน</option>
@@ -111,15 +111,15 @@ export function TasksFilter({
               </select>
             </div>
             <div>
-              <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">สถานะ</label>
-              <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+              <label htmlFor="field-3" className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">สถานะ</label>
+              <select id="field-3" value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}
                 className="w-full rounded-lg px-2 py-1.5 text-[12px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-300 focus:outline-none">
                 <option value="all">ทั้งหมด</option>
                 {STATUS_TABS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">กรอง</label>
+              <span className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">กรอง</span>
               <label className="flex items-center gap-2 cursor-pointer mt-1.5">
                 <input type="checkbox" checked={filter.overdue}
                   onChange={(e) => setFilter({ ...filter, overdue: e.target.checked })}

@@ -113,8 +113,8 @@ function PolicyRow({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
-          <select
+          <label htmlFor="field-1" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
+          <select id="field-1"
             value={form.role ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value || null }))}
             className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none"
@@ -123,16 +123,16 @@ function PolicyRow({
           </select>
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย (วัน/ปี)</label>
-          <input type="number" min="0" max="365" value={form.sickDays} onChange={(e) => setNum('sickDays', e.target.value)} className={inputCls} />
+          <label htmlFor="field-2" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย (วัน/ปี)</label>
+          <input id="field-2" type="number" min="0" max="365" value={form.sickDays} onChange={(e) => setNum('sickDays', e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน (วัน/ปี)</label>
-          <input type="number" min="0" max="365" value={form.vacationDays} onChange={(e) => setNum('vacationDays', e.target.value)} className={inputCls} />
+          <label htmlFor="field-3" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน (วัน/ปี)</label>
+          <input id="field-3" type="number" min="0" max="365" value={form.vacationDays} onChange={(e) => setNum('vacationDays', e.target.value)} className={inputCls} />
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ (วัน/ปี)</label>
-          <input type="number" min="0" max="365" value={form.personalDays} onChange={(e) => setNum('personalDays', e.target.value)} className={inputCls} />
+          <label htmlFor="field-4" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ (วัน/ปี)</label>
+          <input id="field-4" type="number" min="0" max="365" value={form.personalDays} onChange={(e) => setNum('personalDays', e.target.value)} className={inputCls} />
         </div>
       </div>
 
@@ -219,26 +219,26 @@ export default function LeavePolicyManager({ initialPolicies, defaults }: Props)
         <h3 className="text-sm font-semibold text-white">+ สร้าง Policy ใหม่</h3>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1">
-            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ชื่อ Policy *</label>
-            <input value={newForm.name} onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="เช่น มาตรฐาน, ผู้จัดการ" />
+            <label htmlFor="field-5" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ชื่อ Policy *</label>
+            <input id="field-5" value={newForm.name} onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="เช่น มาตรฐาน, ผู้จัดการ" />
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
-            <select value={newForm.role} onChange={(e) => setNewForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none">
+            <label htmlFor="field-6" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">Role</label>
+            <select id="field-6" value={newForm.role} onChange={(e) => setNewForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none">
               {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย</label>
-            <input type="number" min="0" max="365" value={newForm.sickDays} onChange={(e) => setNewForm((f) => ({ ...f, sickDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
+            <label htmlFor="field-7" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลาป่วย</label>
+            <input id="field-7" type="number" min="0" max="365" value={newForm.sickDays} onChange={(e) => setNewForm((f) => ({ ...f, sickDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน</label>
-            <input type="number" min="0" max="365" value={newForm.vacationDays} onChange={(e) => setNewForm((f) => ({ ...f, vacationDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
+            <label htmlFor="field-8" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">พักร้อน</label>
+            <input id="field-8" type="number" min="0" max="365" value={newForm.vacationDays} onChange={(e) => setNewForm((f) => ({ ...f, vacationDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ</label>
-            <input type="number" min="0" max="365" value={newForm.personalDays} onChange={(e) => setNewForm((f) => ({ ...f, personalDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
+            <label htmlFor="field-9" className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider">ลากิจ</label>
+            <input id="field-9" type="number" min="0" max="365" value={newForm.personalDays} onChange={(e) => setNewForm((f) => ({ ...f, personalDays: parseInt(e.target.value) || 0 }))} className={inputCls} />
           </div>
           <div className="flex items-end">
             <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-400">

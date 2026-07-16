@@ -159,8 +159,8 @@ function SettingsTab() {
         {settings.muteAfterHours && (
           <div className="flex items-center gap-3 ml-7">
             <div>
-              <label className="text-xs dark:text-slate-400">เริ่ม</label>
-              <input
+              <label htmlFor="field-1" className="text-xs dark:text-slate-400">เริ่ม</label>
+              <input id="field-1"
                 type="time"
                 value={settings.muteStart}
                 onChange={e => setSettings(s => ({ ...s, muteStart: e.target.value }))}
@@ -168,8 +168,8 @@ function SettingsTab() {
               />
             </div>
             <div>
-              <label className="text-xs dark:text-slate-400">สิ้นสุด</label>
-              <input
+              <label htmlFor="field-2" className="text-xs dark:text-slate-400">สิ้นสุด</label>
+              <input id="field-2"
                 type="time"
                 value={settings.muteEnd}
                 onChange={e => setSettings(s => ({ ...s, muteEnd: e.target.value }))}

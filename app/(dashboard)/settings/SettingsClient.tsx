@@ -85,8 +85,8 @@ export default function SettingsClient({ settings }: { settings: Settings | null
 
   const Input = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
     <div className="min-w-0">
-      <label className="block text-sm text-slate-500 dark:text-white/50 mb-1">{label}</label>
-      <input
+      <label htmlFor="field-1" className="block text-sm text-slate-500 dark:text-white/50 mb-1">{label}</label>
+      <input id="field-1"
         type={type}
         value={value ?? ''}
         onChange={(e) => onChange(type === 'number' ? parseFloat(e.target.value) : e.target.value)}

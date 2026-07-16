@@ -173,8 +173,8 @@ export default function OrganizationClient({
         </div>
       )}
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 space-y-3">
-        <label className="text-xs text-slate-500 block mb-1">สาขา</label>
-        <select
+        <label htmlFor="field-1" className="text-xs text-slate-500 block mb-1">สาขา</label>
+        <select id="field-1"
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
           className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white"
@@ -284,8 +284,8 @@ export default function OrganizationClient({
               </p>
             </div>
             <div className="flex gap-1">
-              <button type="button" onClick={() => openEdit(row)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"><Pencil className="w-4 h-4" /></button>
-              <button type="button" onClick={() => remove(String(row.id))} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></button>
+              <button type="button" onClick={() => openEdit(row)} aria-label="แก้ไข" className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"><Pencil className="w-4 h-4" /></button>
+              <button type="button" onClick={() => remove(String(row.id))} aria-label="ลบ" className="p-2 rounded-lg text-red-400 hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></button>
             </div>
           </div>
         ))}

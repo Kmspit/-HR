@@ -96,8 +96,8 @@ function StepRow({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
-            <label className="text-[12px] font-semibold text-slate-500 uppercase">Role ที่อนุมัติ</label>
-            <select
+            <label htmlFor="field-1" className="text-[12px] font-semibold text-slate-500 uppercase">Role ที่อนุมัติ</label>
+            <select id="field-1"
               className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-green-500/50"
               value={step.approverRole}
               onChange={(e) => onChange({ ...step, approverRole: e.target.value, approverId: '' })}
@@ -109,8 +109,8 @@ function StepRow({
             </select>
           </div>
           <div>
-            <label className="text-[12px] font-semibold text-slate-500 uppercase">หรือระบุคน</label>
-            <select
+            <label htmlFor="field-2" className="text-[12px] font-semibold text-slate-500 uppercase">หรือระบุคน</label>
+            <select id="field-2"
               className="mt-0.5 w-full rounded-lg border border-white/10 bg-slate-900/60 px-2 py-1.5 text-xs text-white outline-none focus:border-green-500/50"
               value={step.approverId}
               onChange={(e) => onChange({ ...step, approverId: e.target.value, approverRole: e.target.value ? '' : step.approverRole })}
@@ -128,7 +128,7 @@ function StepRow({
         </label>
       </div>
 
-      <button type="button" onClick={onRemove} className="mt-0.5 flex-shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors">
+      <button type="button" onClick={onRemove} aria-label="ลบขั้นตอน" className="mt-0.5 flex-shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors">
         <Trash2 size={14} />
       </button>
     </div>
@@ -211,17 +211,17 @@ function ChainForm({
     <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-white">{initial ? 'แก้ไข Chain' : 'สร้าง Approval Chain ใหม่'}</h3>
-        <button type="button" onClick={onCancel} className="rounded-lg p-1.5 text-slate-500 hover:text-white"><X size={16}/></button>
+        <button type="button" onClick={onCancel} aria-label="ยกเลิก" className="rounded-lg p-1.5 text-slate-500 hover:text-white"><X size={16}/></button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-400 uppercase">ชื่อ Chain *</label>
-          <input className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50" placeholder="เช่น Standard Leave Approval" value={name} onChange={(e) => setName(e.target.value)} />
+          <label htmlFor="field-3" className="text-xs font-semibold text-slate-400 uppercase">ชื่อ Chain *</label>
+          <input id="field-3" className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50" placeholder="เช่น Standard Leave Approval" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-400 uppercase">คำอธิบาย</label>
-          <input className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50" placeholder="optional" value={desc} onChange={(e) => setDesc(e.target.value)} />
+          <label htmlFor="field-4" className="text-xs font-semibold text-slate-400 uppercase">คำอธิบาย</label>
+          <input id="field-4" className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-green-500/50" placeholder="optional" value={desc} onChange={(e) => setDesc(e.target.value)} />
         </div>
       </div>
 

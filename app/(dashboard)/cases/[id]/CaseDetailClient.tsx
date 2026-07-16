@@ -572,24 +572,24 @@ function DebtorTab({ caseId, debtor, activities, canEdit, onRefresh }: {
         {showForm && (
           <form onSubmit={submitActivity} className="rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 mb-3 space-y-3">
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทการติดต่อ</label>
-              <select value={form.activityType} onChange={e => setForm(p => ({ ...p, activityType: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500">
+              <label htmlFor="field-1" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ประเภทการติดต่อ</label>
+              <select id="field-1" value={form.activityType} onChange={e => setForm(p => ({ ...p, activityType: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500">
                 {Object.entries(ACTIVITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">บันทึก</label>
-              <textarea value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="รายละเอียดการติดต่อ..." />
+              <label htmlFor="field-2" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">บันทึก</label>
+              <textarea id="field-2" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} rows={2} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" placeholder="รายละเอียดการติดต่อ..." />
             </div>
             {['payment_promise'].includes(form.activityType) && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันที่นัดชำระ</label>
-                  <input type="date" value={form.promisedDate} onChange={e => setForm(p => ({ ...p, promisedDate: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label htmlFor="field-3" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">วันที่นัดชำระ</label>
+                  <input id="field-3" type="date" value={form.promisedDate} onChange={e => setForm(p => ({ ...p, promisedDate: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">จำนวนเงิน (บาท)</label>
-                  <input type="number" value={form.promisedAmount} onChange={e => setForm(p => ({ ...p, promisedAmount: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500" min="0" />
+                  <label htmlFor="field-4" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">จำนวนเงิน (บาท)</label>
+                  <input id="field-4" type="number" value={form.promisedAmount} onChange={e => setForm(p => ({ ...p, promisedAmount: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500" min="0" />
                 </div>
               </div>
             )}
@@ -683,8 +683,8 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
   function field(k: keyof typeof form, label: string) {
     return (
       <div key={k}>
-        <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</label>
-        <input
+        <label htmlFor="field-5" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">{label}</label>
+        <input id="field-5"
           type="number" min="0" step="0.01"
           value={form[k]}
           onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
@@ -739,7 +739,7 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
           <div className="grid grid-cols-2 gap-3">
             {field('debtAmount', 'มูลหนี้รวม (บาท)')}
             <div>
-              <label className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เก็บได้แล้ว (บาท)</label>
+              <span className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">เก็บได้แล้ว (บาท)</span>
               <div className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-[14px] text-slate-500 dark:text-slate-400">
                 ฿{thb(collected)}
               </div>

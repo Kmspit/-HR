@@ -205,8 +205,8 @@ export default function WarningDetailClient({
           <p className="text-sm font-semibold text-amber-400">รออนุมัติจากคุณ</p>
 
           <div>
-            <label className="text-xs text-slate-500 font-semibold">หมายเหตุ (ไม่บังคับ)</label>
-            <textarea
+            <label htmlFor="field-1" className="text-xs text-slate-500 font-semibold">หมายเหตุ (ไม่บังคับ)</label>
+            <textarea id="field-1"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
@@ -238,8 +238,8 @@ export default function WarningDetailClient({
 
           {showRejectForm && (
             <div className="space-y-2 border-t border-white/5 pt-4">
-              <label className="text-xs text-slate-400">เหตุผลที่ปฏิเสธ (ไม่บังคับ)</label>
-              <input
+              <label htmlFor="field-2" className="text-xs text-slate-400">เหตุผลที่ปฏิเสธ (ไม่บังคับ)</label>
+              <input id="field-2"
                 value={rejectedReason}
                 onChange={(e) => setRejectedReason(e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-white outline-none focus:border-red-500/50"

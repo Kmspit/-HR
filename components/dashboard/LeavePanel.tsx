@@ -234,7 +234,7 @@ export default function LeavePanel({
 
         <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 md:p-6 space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ประเภทการลา</label>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">ประเภทการลา</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {LEAVE_TYPE_OPTIONS.map((t) => {
                 const isVacation = t.value === 'VACATION'
@@ -286,12 +286,12 @@ export default function LeavePanel({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="min-w-0 space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">จากวันที่ *</label>
-              <input type="date" className={`${inputCls} min-w-0 max-w-full`} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required />
+              <label htmlFor="field-1" className="text-xs font-semibold uppercase tracking-wider text-slate-400">จากวันที่ *</label>
+              <input id="field-1" type="date" className={`${inputCls} min-w-0 max-w-full`} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required />
             </div>
             <div className="min-w-0 space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">ถึงวันที่ *</label>
-              <input type="date" className={`${inputCls} min-w-0 max-w-full`} value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required />
+              <label htmlFor="field-2" className="text-xs font-semibold uppercase tracking-wider text-slate-400">ถึงวันที่ *</label>
+              <input id="field-2" type="date" className={`${inputCls} min-w-0 max-w-full`} value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required />
             </div>
           </div>
 
@@ -316,12 +316,12 @@ export default function LeavePanel({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">เหตุผลการลา *</label>
-            <textarea rows={3} placeholder="ระบุเหตุผล..." className={`${inputCls} resize-none py-2.5`} value={form.reason} onChange={(e) => set('reason', e.target.value)} required />
+            <label htmlFor="field-3" className="text-xs font-semibold uppercase tracking-wider text-slate-400">เหตุผลการลา *</label>
+            <textarea id="field-3" rows={3} placeholder="ระบุเหตุผล..." className={`${inputCls} resize-none py-2.5`} value={form.reason} onChange={(e) => set('reason', e.target.value)} required />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">แนบเอกสาร (ใบรับรองแพทย์ ฯลฯ)</label>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">แนบเอกสาร (ใบรับรองแพทย์ ฯลฯ)</span>
             <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-dashed border-white/15 px-4 py-3 text-sm text-slate-400 hover:border-green-500/40">
               <Paperclip className="w-4 h-4" />
               {attachment ? attachment.name : 'เลือกไฟล์ PDF / รูปภาพ'}

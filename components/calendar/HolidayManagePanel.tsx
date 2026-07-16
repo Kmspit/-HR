@@ -193,8 +193,8 @@ export default function HolidayManagePanel({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-xs dark:text-slate-500 light:text-slate-500 block mb-1">กรองสาขา</label>
-          <select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} className={inputCls}>
+          <label htmlFor="field-1" className="text-xs dark:text-slate-500 light:text-slate-500 block mb-1">กรองสาขา</label>
+          <select id="field-1" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} className={inputCls}>
             <option value="all">ทุกสาขา</option>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
@@ -204,8 +204,8 @@ export default function HolidayManagePanel({
           </select>
         </div>
         <div>
-          <label className="text-xs dark:text-slate-500 light:text-slate-500 block mb-1">ประเภท</label>
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={inputCls}>
+          <label htmlFor="field-2" className="text-xs dark:text-slate-500 light:text-slate-500 block mb-1">ประเภท</label>
+          <select id="field-2" value={filterType} onChange={(e) => setFilterType(e.target.value)} className={inputCls}>
             <option value="all">ทุกประเภท</option>
             {HOLIDAY_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>
@@ -223,8 +223,8 @@ export default function HolidayManagePanel({
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className="text-xs dark:text-slate-500 block mb-1">ชื่อวันหยุด *</label>
-              <input
+              <label htmlFor="field-3" className="text-xs dark:text-slate-500 block mb-1">ชื่อวันหยุด *</label>
+              <input id="field-3"
                 value={form.holidayName}
                 onChange={(e) => setForm((f) => ({ ...f, holidayName: e.target.value }))}
                 className={inputCls}
@@ -232,8 +232,8 @@ export default function HolidayManagePanel({
               />
             </div>
             <div>
-              <label className="text-xs dark:text-slate-500 block mb-1">วันที่อ้างอิง *</label>
-              <input
+              <label htmlFor="field-4" className="text-xs dark:text-slate-500 block mb-1">วันที่อ้างอิง *</label>
+              <input id="field-4"
                 type="date"
                 value={form.holidayDate}
                 onChange={(e) => setForm((f) => ({ ...f, holidayDate: e.target.value }))}
@@ -241,8 +241,8 @@ export default function HolidayManagePanel({
               />
             </div>
             <div>
-              <label className="text-xs dark:text-slate-500 block mb-1">ประเภท *</label>
-              <select
+              <label htmlFor="field-5" className="text-xs dark:text-slate-500 block mb-1">ประเภท *</label>
+              <select id="field-5"
                 value={form.holidayType}
                 onChange={(e) => setForm((f) => ({ ...f, holidayType: e.target.value as HolidayType }))}
                 className={inputCls}
@@ -255,8 +255,8 @@ export default function HolidayManagePanel({
               </select>
             </div>
             <div>
-              <label className="text-xs dark:text-slate-500 block mb-1">สาขา</label>
-              <select
+              <label htmlFor="field-6" className="text-xs dark:text-slate-500 block mb-1">สาขา</label>
+              <select id="field-6"
                 value={form.branchId}
                 onChange={(e) => setForm((f) => ({ ...f, branchId: e.target.value }))}
                 className={inputCls}

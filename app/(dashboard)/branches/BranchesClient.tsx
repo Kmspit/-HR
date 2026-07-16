@@ -163,8 +163,8 @@ export default function BranchesClient({ initial }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-white/50 block mb-1">รหัสสาขา *</label>
-              <input
+              <label htmlFor="field-1" className="text-xs text-white/50 block mb-1">รหัสสาขา *</label>
+              <input id="field-1"
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm"
@@ -172,8 +172,8 @@ export default function BranchesClient({ initial }: Props) {
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 block mb-1">ชื่อสาขา (ไทย) *</label>
-              <input
+              <label htmlFor="field-2" className="text-xs text-white/50 block mb-1">ชื่อสาขา (ไทย) *</label>
+              <input id="field-2"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm"
@@ -181,16 +181,16 @@ export default function BranchesClient({ initial }: Props) {
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 block mb-1">ชื่อ (อังกฤษ)</label>
-              <input
+              <label htmlFor="field-3" className="text-xs text-white/50 block mb-1">ชื่อ (อังกฤษ)</label>
+              <input id="field-3"
                 value={form.nameEn}
                 onChange={(e) => setForm((f) => ({ ...f, nameEn: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm"
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 block mb-1">เบอร์โทร</label>
-              <input
+              <label htmlFor="field-4" className="text-xs text-white/50 block mb-1">เบอร์โทร</label>
+              <input id="field-4"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm"
@@ -199,8 +199,8 @@ export default function BranchesClient({ initial }: Props) {
           </div>
 
           <div>
-            <label className="text-xs text-white/50 block mb-1">ที่อยู่</label>
-            <textarea
+            <label htmlFor="field-5" className="text-xs text-white/50 block mb-1">ที่อยู่</label>
+            <textarea id="field-5"
               value={form.address}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               rows={2}
@@ -248,8 +248,8 @@ export default function BranchesClient({ initial }: Props) {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
               <div>
-                <label className="text-[12px] text-white/40 block mb-1">Latitude</label>
-                <input
+                <label htmlFor="field-6" className="text-[12px] text-white/40 block mb-1">Latitude</label>
+                <input id="field-6"
                   type="number"
                   step="any"
                   value={form.lat}
@@ -259,8 +259,8 @@ export default function BranchesClient({ initial }: Props) {
                 />
               </div>
               <div>
-                <label className="text-[12px] text-white/40 block mb-1">Longitude</label>
-                <input
+                <label htmlFor="field-7" className="text-[12px] text-white/40 block mb-1">Longitude</label>
+                <input id="field-7"
                   type="number"
                   step="any"
                   value={form.lng}
@@ -270,8 +270,8 @@ export default function BranchesClient({ initial }: Props) {
                 />
               </div>
               <div>
-                <label className="text-[12px] text-white/40 block mb-1">รัศมี (เมตร)</label>
-                <input
+                <label htmlFor="field-8" className="text-[12px] text-white/40 block mb-1">รัศมี (เมตร)</label>
+                <input id="field-8"
                   type="number"
                   min={10}
                   max={10000}

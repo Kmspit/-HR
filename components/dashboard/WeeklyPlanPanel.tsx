@@ -201,12 +201,12 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
                   <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[12px] text-slate-500">ไม่บังคับ</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                  <div><label className="block text-[12px] text-slate-500 mb-1">เวลา</label>
-                    <div className="flex items-center gap-1"><input type="time" className={inputCls} value={d.startTime} onChange={(e) => setDay(day.id, 'startTime', e.target.value)} /><span className="text-slate-500 text-xs">—</span><input type="time" className={inputCls} value={d.endTime} onChange={(e) => setDay(day.id, 'endTime', e.target.value)} /></div>
+                  <div><span className="block text-[12px] text-slate-500 mb-1">เวลา</span>
+                    <div className="flex items-center gap-1"><input type="time" aria-label="เวลาเริ่ม" className={inputCls} value={d.startTime} onChange={(e) => setDay(day.id, 'startTime', e.target.value)} /><span className="text-slate-500 text-xs">—</span><input type="time" aria-label="เวลาสิ้นสุด" className={inputCls} value={d.endTime} onChange={(e) => setDay(day.id, 'endTime', e.target.value)} /></div>
                   </div>
-                  <div><label className="block text-[12px] text-slate-500 mb-1">สถานที่</label><input type="text" placeholder="สถานที่..." className={inputCls} value={d.place} onChange={(e) => setDay(day.id, 'place', e.target.value)} /></div>
-                  <div><label className="block text-[12px] text-slate-500 mb-1">วัตถุประสงค์</label><input type="text" placeholder="วัตถุประสงค์..." className={inputCls} value={d.purpose} onChange={(e) => setDay(day.id, 'purpose', e.target.value)} /></div>
-                  <div><label className="block text-[12px] text-slate-500 mb-1">ลูกค้า/หน่วยงาน</label><input type="text" placeholder="ชื่อลูกค้า..." className={inputCls} value={d.client} onChange={(e) => setDay(day.id, 'client', e.target.value)} /></div>
+                  <div><label htmlFor={`plan-place-${day.id}`} className="block text-[12px] text-slate-500 mb-1">สถานที่</label><input id={`plan-place-${day.id}`} type="text" placeholder="สถานที่..." className={inputCls} value={d.place} onChange={(e) => setDay(day.id, 'place', e.target.value)} /></div>
+                  <div><label htmlFor={`plan-purpose-${day.id}`} className="block text-[12px] text-slate-500 mb-1">วัตถุประสงค์</label><input id={`plan-purpose-${day.id}`} type="text" placeholder="วัตถุประสงค์..." className={inputCls} value={d.purpose} onChange={(e) => setDay(day.id, 'purpose', e.target.value)} /></div>
+                  <div><label htmlFor={`plan-client-${day.id}`} className="block text-[12px] text-slate-500 mb-1">ลูกค้า/หน่วยงาน</label><input id={`plan-client-${day.id}`} type="text" placeholder="ชื่อลูกค้า..." className={inputCls} value={d.client} onChange={(e) => setDay(day.id, 'client', e.target.value)} /></div>
                 </div>
 
                 {/* GPS capture */}
@@ -244,8 +244,8 @@ export default function WeeklyPlanPanel({ plans, nextWeek, deadline, isLawyer }:
           })}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">หมายเหตุเพิ่มเติม</label>
-            <textarea
+            <label htmlFor="field-1" className="text-xs font-semibold uppercase tracking-wider text-slate-400">หมายเหตุเพิ่มเติม</label>
+            <textarea id="field-1"
               rows={2}
               placeholder="เช่น อยู่ออฟฟิศทั้งสัปดาห์ / ไม่มีนัดนอกสถานที่..."
               className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none resize-none focus:border-green-500/50"
