@@ -248,6 +248,7 @@ function SidebarContent({
               dark:text-slate-500 dark:hover:bg-white/[0.08] dark:hover:text-slate-300
               text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
             title="ย่อ sidebar"
+            aria-label="ย่อ sidebar"
           >
             <Icon d={ICONS.chevronLeft} className="h-3.5 w-3.5" />
           </button>
@@ -366,6 +367,7 @@ function SidebarContent({
               dark:text-slate-500 dark:hover:bg-white/[0.08] dark:hover:text-slate-300
               text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
             title="ขยาย sidebar"
+            aria-label="ขยาย sidebar"
           >
             <Icon d={ICONS.chevronRight} className="h-3.5 w-3.5" />
           </button>

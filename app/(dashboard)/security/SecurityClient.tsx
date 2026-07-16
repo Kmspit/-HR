@@ -292,6 +292,7 @@ export default function SecurityClient() {
                             onClick={() => void downloadBackup(b)}
                             className="p-1 rounded hover:bg-green-500/20 text-green-400"
                             title="ดาวน์โหลด"
+                            aria-label="ดาวน์โหลด"
                           >
                             <Download size={13} />
                           </button>
@@ -300,6 +301,7 @@ export default function SecurityClient() {
                             onClick={() => void deleteBackup(b.id)}
                             className="p-1 rounded hover:bg-red-500/20 text-red-400"
                             title="ลบ"
+                            aria-label="ลบ"
                           >
                             <Trash2 size={13} />
                           </button>

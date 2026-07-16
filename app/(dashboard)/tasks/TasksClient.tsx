@@ -222,7 +222,7 @@ export default function TasksClient({
           placeholder="ค้นหางาน, เลขคดี, ลูกค้า, พนักงาน..."
           className="w-full pl-9 pr-4 py-2.5 rounded-xl text-[13px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-green-400/60" />
         {search && (
-          <button type="button" onClick={() => setSearch('')}
+          <button type="button" onClick={() => setSearch('')} aria-label="ล้างคำค้นหา"
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
             <X className="w-3.5 h-3.5" />
           </button>

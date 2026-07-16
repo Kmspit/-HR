@@ -481,7 +481,7 @@ export function FileUploadZone({
               <div className="flex-shrink-0">{fileIcon(f.type)}</div>
               <span className="flex-1 text-[13px] text-slate-700 dark:text-slate-300 truncate">{f.name}</span>
               <span className="text-[11px] text-slate-400 flex-shrink-0">{fmtFileSize(f.size)}</span>
-              <button type="button" disabled={uploading} onClick={() => onRemove(i)}
+              <button type="button" disabled={uploading} onClick={() => onRemove(i)} aria-label={`ลบไฟล์: ${f.name}`}
                 className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:text-red-500 disabled:opacity-40">
                 <X className="w-3.5 h-3.5" />
               </button>

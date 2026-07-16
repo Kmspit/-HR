@@ -143,6 +143,7 @@ export default function SystemLogsClient() {
         </select>
         <button
           onClick={load}
+          aria-label="โหลดใหม่"
           className="p-2 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
         >
           <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
