@@ -17,6 +17,7 @@ export type SecurityEventType =
   | 'NEW_DEVICE'
   | 'SESSION_REVOKED'
   | 'BACKUP_CREATED'
+  | 'BACKUP_RESTORED'
   | 'DOCUMENT_EXPORTED'
 
 export type SecuritySeverity = 'INFO' | 'WARNING' | 'CRITICAL'

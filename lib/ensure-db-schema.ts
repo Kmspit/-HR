@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900015
+export const CURRENT_SCHEMA_VERSION = 900016
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -992,6 +992,12 @@ async function runEnsure(force = false): Promise<boolean> {
     )
   `)
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS backup_records_created_idx ON backup_records (createdAt)`)
+  // Backup-system rebuild: durable Cloudinary storage reference + real per-table
+  // error tracking (previously: table-name/accessor mismatch made every table
+  // resolve to `undefined`, silently swallowed into `[]` — 96 consecutive empty
+  // backups went unnoticed because `status` was hardcoded 'COMPLETED' regardless).
+  await addColumnIfMissing('backup_records', 'storage_public_id', `ALTER TABLE backup_records ADD COLUMN storage_public_id TEXT`)
+  await addColumnIfMissing('backup_records', 'error_detail',      `ALTER TABLE backup_records ADD COLUMN error_detail TEXT`)
 
   // ── Client Portal Phase 1 tables ─────────────────────────────────────────
   await prisma.$executeRawUnsafe(`

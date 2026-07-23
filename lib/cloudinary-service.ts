@@ -151,6 +151,10 @@ export function payslipFolder(ctx: UserImageContext, payrollId: string): string 
   return `${ROOT}/payslips/${employeeFolderKey(ctx)}/${payrollId}`
 }
 
+export function backupFolder(): string {
+  return `${ROOT}/backups`
+}
+
 /** อัปโหลดรูป — type authenticated (ไม่ public) */
 export async function uploadImage(
   buffer: Buffer,
@@ -261,6 +265,63 @@ export async function fetchRawPdfBuffer(publicId: string): Promise<Buffer | null
     return Buffer.from(await res.arrayBuffer())
   } catch (err) {
     console.error('[cloudinary] fetchRawPdf', err)
+    return null
+  }
+}
+
+const MAX_BACKUP_BYTES = 50 * 1024 * 1024
+
+/** Uploads a DB backup JSON payload as an authenticated raw file — same pattern as
+ *  uploadAuthenticatedPdf, so the durable copy lives in Cloudinary, not recomputed
+ *  on every download/restore. */
+export async function uploadBackupJson(
+  buffer: Buffer,
+  options: { folder: string; filename: string },
+): Promise<{ publicId: string; secureUrl: string }> {
+  requireCloudinary()
+  if (buffer.length > MAX_BACKUP_BYTES) {
+    throw new Error(`Backup size ${(buffer.length / 1024 / 1024).toFixed(1)} MB exceeds ${MAX_BACKUP_BYTES / 1024 / 1024} MB limit.`)
+  }
+
+  const dataUri = `data:application/json;base64,${buffer.toString('base64')}`
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder: options.folder,
+    public_id: options.filename.replace(/\.json$/, ''),
+    resource_type: 'raw',
+    type: 'authenticated',
+    overwrite: true,
+    format: 'json',
+  })
+
+  return { publicId: result.public_id, secureUrl: result.secure_url }
+}
+
+/** Signed download URL for a stored backup JSON (authenticated raw). */
+function getSignedBackupUrl(publicId: string, expiresInSec = 300): string | null {
+  if (!publicId || !isCloudinaryConfigured()) return null
+  ensureCloudinaryConfig()
+  try {
+    return cloudinary.utils.private_download_url(publicId, 'json', {
+      resource_type: 'raw',
+      type: 'authenticated',
+      expires_at: Math.floor(Date.now() / 1000) + expiresInSec,
+    })
+  } catch (err) {
+    console.error('[cloudinary] getSignedBackupUrl', err)
+    return null
+  }
+}
+
+/** Fetches a stored backup JSON payload back verbatim — never recomputed. */
+export async function fetchBackupJson(publicId: string): Promise<Buffer | null> {
+  const url = getSignedBackupUrl(publicId)
+  if (!url) return null
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    return Buffer.from(await res.arrayBuffer())
+  } catch (err) {
+    console.error('[cloudinary] fetchBackupJson', err)
     return null
   }
 }

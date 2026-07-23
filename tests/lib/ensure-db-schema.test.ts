@@ -7,7 +7,7 @@ const schema = readFileSync('prisma/schema.prisma', 'utf8')
 
 describe('Perf audit Phase A — TaskAssignment and Notification.userId indexes', () => {
   it('bumps CURRENT_SCHEMA_VERSION so the cron/schema-migrate run picks up the new indexes', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(900015)
+    expect(CURRENT_SCHEMA_VERSION).toBe(900016)
   })
 
   it('ensure-db-schema.ts creates all 6 TaskAssignment indexes idempotently (IF NOT EXISTS)', () => {

@@ -6,8 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { createBackupData } from '@/lib/backup'
-import type { BackupTableName } from '@/lib/backup'
+import { loadBackupPayload } from '@/lib/backup'
 
 const ALLOWED_ROLES = ['CEO', 'SUPER_ADMIN'] as const
 
@@ -31,9 +30,16 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       return NextResponse.json({ record })
     }
 
-    const tables = record.tables.split(',') as BackupTableName[]
-    const data   = await createBackupData(tables)
-    const json   = JSON.stringify(data, null, 2)
+    if (!record.storagePublicId) {
+      // Pre-rebuild backup record — no stored payload exists, nothing to download.
+      return NextResponse.json({ error: 'ไม่มีข้อมูล backup จริงสำหรับรายการนี้ (สร้างก่อนระบบ backup ถูกแก้ไข)' }, { status: 410 })
+    }
+
+    const data = await loadBackupPayload(record.storagePublicId)
+    if (!data) {
+      return NextResponse.json({ error: 'ไม่พบไฟล์ backup ใน storage — อาจถูกลบหรือ Cloudinary ไม่พร้อมใช้งาน' }, { status: 404 })
+    }
+    const json = JSON.stringify(data, null, 2)
 
     return new NextResponse(json, {
       headers: {

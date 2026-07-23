@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Shield, Activity, HardDrive, Users, AlertTriangle, CheckCircle, Download, Trash2, RefreshCw, Loader2 } from 'lucide-react'
+import { Shield, Activity, HardDrive, Users, AlertTriangle, CheckCircle, Download, Trash2, RefreshCw, Loader2, RotateCcw, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 type DashboardStats = {
   failedLogins24h: number
@@ -28,9 +29,14 @@ type BackupRecord = {
   filename: string
   sizeBytes: number
   status: string
+  tables: string
+  storagePublicId: string | null
   createdAt: string
   note: string | null
 }
+
+type DryRunResult = { totalInBackup: number; alreadyExists: number; wouldInsert: number }
+type RestoreResult = { inserted: number; skipped: number; failed: number; errors: { id: unknown; message: string }[] }
 
 type TwoFactorStatus = {
   enabled: boolean
@@ -44,6 +50,12 @@ const SEVERITY_COLOR: Record<string, string> = {
   INFO:     'text-green-400 bg-green-500/10',
   WARNING:  'text-yellow-400 bg-yellow-500/10',
   CRITICAL: 'text-red-400 bg-red-500/10',
+}
+
+const BACKUP_STATUS_COLOR: Record<string, string> = {
+  COMPLETED: 'text-green-400 bg-green-500/10',
+  PARTIAL:   'text-yellow-400 bg-yellow-500/10',
+  FAILED:    'text-red-400 bg-red-500/10',
 }
 
 function fmtBytes(b: number) {
@@ -64,6 +76,15 @@ export default function SecurityClient() {
   const [backups, setBackups] = useState<BackupRecord[]>([])
   const [twofa, setTwofa]   = useState<TwoFactorStatus | null>(null)
   const [creating, setCreating] = useState(false)
+
+  const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null)
+  const [restoreTable, setRestoreTable]   = useState('')
+  const [dryRun, setDryRun]               = useState<DryRunResult | null>(null)
+  const [confirmInput, setConfirmInput]   = useState('')
+  const [restoring, setRestoring]         = useState(false)
+  const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null)
+  const restoreModalOpen = restoreTarget !== null
+  const restorePanelRef = useModalA11y(restoreModalOpen)
 
   const loadStats = useCallback(async () => {
     const r = await fetch('/api/security/dashboard').catch(() => null)
@@ -122,6 +143,57 @@ export default function SecurityClient() {
     const r = await fetch(`/api/backup/${id}`, { method: 'DELETE' })
     if (r.ok) { toast.success('ลบแล้ว'); void loadBackups() }
     else toast.error('ลบไม่สำเร็จ')
+  }
+
+  const openRestore = (record: BackupRecord) => {
+    setRestoreTarget(record)
+    setRestoreTable('')
+    setDryRun(null)
+    setConfirmInput('')
+    setRestoreResult(null)
+  }
+
+  const closeRestore = () => {
+    setRestoreTarget(null)
+    setRestoreTable('')
+    setDryRun(null)
+    setConfirmInput('')
+    setRestoreResult(null)
+  }
+
+  const runDryRun = async () => {
+    if (!restoreTarget || !restoreTable) return
+    setRestoring(true)
+    setDryRun(null)
+    setConfirmInput('')
+    try {
+      const r = await fetch(`/api/backup/${restoreTarget.id}/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: restoreTable, dryRun: true }),
+      })
+      const d = await r.json()
+      if (!r.ok) { toast.error(d.error ?? 'ตรวจสอบไม่สำเร็จ'); return }
+      setDryRun(d as DryRunResult)
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setRestoring(false) }
+  }
+
+  const runRestore = async () => {
+    if (!restoreTarget || !restoreTable || confirmInput !== restoreTable) return
+    setRestoring(true)
+    try {
+      const r = await fetch(`/api/backup/${restoreTarget.id}/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: restoreTable, dryRun: false, confirmText: confirmInput }),
+      })
+      const d = await r.json()
+      if (!r.ok) { toast.error(d.error ?? 'Restore ไม่สำเร็จ'); return }
+      setRestoreResult(d as RestoreResult)
+      toast.success(`Restore เสร็จ — เพิ่ม ${d.inserted} แถว, ข้าม ${d.skipped} แถว (มีอยู่แล้ว)${d.failed ? `, ล้มเหลว ${d.failed} แถว` : ''}`)
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setRestoring(false) }
   }
 
   const toggle2fa = async () => {
@@ -269,6 +341,7 @@ export default function SecurityClient() {
                 <thead>
                   <tr className="border-b dark:border-white/10 dark:text-slate-400">
                     <th className="px-3 py-2 text-left">ชื่อไฟล์</th>
+                    <th className="px-3 py-2 text-left">สถานะ</th>
                     <th className="px-3 py-2 text-left">ขนาด</th>
                     <th className="px-3 py-2 text-left">วันที่</th>
                     <th className="px-3 py-2 text-left">หมายเหตุ</th>
@@ -277,11 +350,16 @@ export default function SecurityClient() {
                 </thead>
                 <tbody>
                   {backups.length === 0 && (
-                    <tr><td colSpan={5} className="text-center py-6 dark:text-slate-500">ยังไม่มี backup</td></tr>
+                    <tr><td colSpan={6} className="text-center py-6 dark:text-slate-500">ยังไม่มี backup</td></tr>
                   )}
                   {backups.map(b => (
                     <tr key={b.id} className="border-b dark:border-white/5 dark:hover:bg-white/5">
                       <td className="px-3 py-2 dark:text-slate-300 font-mono">{b.filename}</td>
+                      <td className="px-3 py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${BACKUP_STATUS_COLOR[b.status] ?? 'text-slate-400'}`}>
+                          {b.status}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 dark:text-slate-400">{fmtBytes(b.sizeBytes)}</td>
                       <td className="px-3 py-2 dark:text-slate-400 whitespace-nowrap">{fmtDate(b.createdAt)}</td>
                       <td className="px-3 py-2 dark:text-slate-500">{b.note ?? '-'}</td>
@@ -295,6 +373,16 @@ export default function SecurityClient() {
                             aria-label="ดาวน์โหลด"
                           >
                             <Download size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openRestore(b)}
+                            disabled={!b.storagePublicId}
+                            className="p-1 rounded hover:bg-amber-500/20 text-amber-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={b.storagePublicId ? 'กู้คืนข้อมูล' : 'backup นี้ไม่มีข้อมูลจริงเก็บไว้ (สร้างก่อนระบบถูกแก้ไข)'}
+                            aria-label="กู้คืนข้อมูล"
+                          >
+                            <RotateCcw size={13} />
                           </button>
                           <button
                             type="button"
@@ -357,6 +445,134 @@ export default function SecurityClient() {
           >
             {twofa.enabled ? 'ปิดการใช้งาน 2FA' : 'เปิดใช้งาน 2FA ผ่าน LINE'}
           </button>
+        </div>
+      )}
+
+      {/* Restore modal */}
+      {restoreModalOpen && restoreTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div
+            ref={restorePanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="กู้คืนข้อมูลจาก backup"
+            tabIndex={-1}
+            className="glass-card w-full max-w-lg rounded-2xl border dark:border-white/10 p-5 space-y-4 max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold dark:text-white flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-amber-400" /> กู้คืนข้อมูล
+                </p>
+                <p className="text-xs dark:text-slate-400 mt-1 font-mono">{restoreTarget.filename}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeRestore}
+                className="p-1 rounded hover:bg-white/10 dark:text-slate-400"
+                aria-label="ปิด"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs dark:text-amber-200">
+              การกู้คืนจะ<strong>เพิ่มแถวที่ยังไม่มีอยู่จริง</strong>เท่านั้น (insert-only) —
+              จะไม่แก้ไขหรือเขียนทับข้อมูลที่มีอยู่แล้ว ปลอดภัยจากการกู้คืนซ้ำหลายครั้ง
+              แต่ไม่สามารถ &quot;ย้อนกลับ&quot; แถวที่ถูกแก้ไข (ไม่ใช่ถูกลบ) หลังจาก backup นี้ได้
+            </div>
+
+            {!restoreResult && (
+              <>
+                <div className="space-y-1.5">
+                  <label htmlFor="restore-table-select" className="text-xs font-semibold uppercase tracking-wider dark:text-slate-400">
+                    เลือกตารางที่จะกู้คืน
+                  </label>
+                  <select
+                    id="restore-table-select"
+                    value={restoreTable}
+                    onChange={(e) => { setRestoreTable(e.target.value); setDryRun(null); setConfirmInput('') }}
+                    className="w-full rounded-xl border dark:border-white/10 dark:bg-slate-800/60 px-3 py-2 text-sm dark:text-white"
+                  >
+                    <option value="">— เลือกตาราง —</option>
+                    {restoreTarget.tables.split(',').map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void runDryRun()}
+                  disabled={!restoreTable || restoring}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold dark:text-white border dark:border-white/10 hover:bg-white/5 disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {restoring ? <Loader2 size={14} className="animate-spin" /> : null}
+                  ตรวจสอบก่อน (Dry Run) — ไม่เขียนข้อมูลใดๆ
+                </button>
+
+                {dryRun && (
+                  <div className="rounded-xl border dark:border-white/10 p-3 space-y-1.5 text-xs dark:text-slate-300">
+                    <p>ทั้งหมดใน backup: <strong className="dark:text-white">{dryRun.totalInBackup}</strong> แถว</p>
+                    <p>มีอยู่แล้วในระบบ (จะข้าม): <strong className="dark:text-white">{dryRun.alreadyExists}</strong> แถว</p>
+                    <p className="text-amber-400">จะถูกเพิ่มใหม่จริง: <strong>{dryRun.wouldInsert}</strong> แถว</p>
+
+                    {dryRun.wouldInsert > 0 ? (
+                      <div className="pt-2 space-y-2">
+                        <label htmlFor="restore-confirm-text" className="text-xs font-semibold uppercase tracking-wider dark:text-slate-400 block">
+                          พิมพ์ชื่อตาราง <span className="font-mono text-amber-400">{restoreTable}</span> เพื่อยืนยัน
+                        </label>
+                        <input
+                          id="restore-confirm-text"
+                          type="text"
+                          value={confirmInput}
+                          onChange={(e) => setConfirmInput(e.target.value)}
+                          placeholder={restoreTable}
+                          className="w-full rounded-xl border dark:border-white/10 dark:bg-slate-800/60 px-3 py-2 text-sm font-mono dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void runRestore()}
+                          disabled={confirmInput !== restoreTable || restoring}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 flex items-center justify-center gap-2"
+                        >
+                          {restoring ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                          ยืนยันกู้คืน {dryRun.wouldInsert} แถว
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="pt-1 dark:text-slate-500">ไม่มีแถวที่ต้องกู้คืน — ข้อมูลในตารางนี้ครบถ้วนอยู่แล้ว</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {restoreResult && (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm dark:text-green-200">
+                  <p className="flex items-center gap-2 font-semibold"><CheckCircle size={15} /> กู้คืนเสร็จสิ้น</p>
+                  <p className="text-xs mt-2">เพิ่มแล้ว: {restoreResult.inserted} แถว</p>
+                  <p className="text-xs">ข้าม (มีอยู่แล้ว): {restoreResult.skipped} แถว</p>
+                  {restoreResult.failed > 0 && <p className="text-xs text-red-300">ล้มเหลว: {restoreResult.failed} แถว</p>}
+                </div>
+                {restoreResult.errors.length > 0 && (
+                  <div className="rounded-xl border dark:border-white/10 p-3 text-xs dark:text-slate-400 max-h-32 overflow-y-auto space-y-1">
+                    {restoreResult.errors.map((e, i) => (
+                      <p key={i} className="font-mono">{String(e.id)}: {e.message}</p>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={closeRestore}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold dark:text-white border dark:border-white/10 hover:bg-white/5"
+                >
+                  ปิด
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

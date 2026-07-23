@@ -1818,7 +1818,7 @@ model CaseStatusHistory {
   note          String?
   changedById   String?  @map("changed_by_id")
   changedByName String   @default("") @map("changed_by_name")
-  createdAt     DateTime @default(now())
+  createdAt     DateTime @default(now()) @map("created_at")
 
   task      TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
   changedBy User?          @relation("StatusHistoryChanger", fields: [changedById], references: [id])
@@ -1835,7 +1835,7 @@ model ClientMessage {
   isFromClient Boolean   @default(true) @map("is_from_client")
   content      String
   readAt       DateTime? @map("read_at")
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   client User            @relation("ClientMessages", fields: [clientId], references: [id])
   sender User?           @relation("MessageSender",  fields: [senderId],  references: [id])
@@ -1857,8 +1857,8 @@ model CaseIncome {
   note        String?
   department  String?
   createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   task      TaskAssignment? @relation(fields: [taskId],      references: [id])
   createdBy User            @relation("CaseIncomeCreator",   fields: [createdById], references: [id])
@@ -1878,8 +1878,8 @@ model CaseExpense {
   receiptUrl  String?  @map("receipt_url")
   department  String?
   createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   task      TaskAssignment? @relation(fields: [taskId],        references: [id])
   employee  User            @relation("CaseExpenseEmployee",   fields: [employeeId],  references: [id])
@@ -1903,8 +1903,8 @@ model ExpenseClaim {
   ceoNote        String?   @map("ceo_note")
   rejectedNote   String?   @map("rejected_note")
   paidAt         DateTime? @map("paid_at")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   task        TaskAssignment?   @relation(fields: [taskId],        references: [id])
   submittedBy User              @relation("ClaimSubmitter",        fields: [submittedById], references: [id])
@@ -1921,7 +1921,7 @@ model ExpenseClaimFile {
   filename  String
   fileType  String   @map("file_type")
   size      Int      @default(0)
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   claim ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
@@ -1952,8 +1952,8 @@ model Debtor {
   startDate     DateTime? @map("start_date")
   note          String?
   createdById   String    @map("created_by_id")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // CRM Phase 1 extensions
   phone3               String?   @map("phone3")
@@ -1996,7 +1996,7 @@ model DebtFollowUp {
   note          String?
   nextFollowUp  DateTime? @map("next_follow_up")
   performedById String    @map("performed_by_id")
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime  @default(now()) @map("created_at")
 
   debtor      Debtor @relation(fields: [debtorId],      references: [id], onDelete: Cascade)
   performedBy User   @relation("FollowUpPerformer",     fields: [performedById], references: [id])
@@ -2017,7 +2017,7 @@ model DebtPayment {
   slipPublicId String?  @map("slip_public_id")
   note         String?
   createdById  String   @map("created_by_id")
-  createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
 
   debtor     Debtor @relation(fields: [debtorId],    references: [id], onDelete: Cascade)
   receivedBy User?  @relation("PaymentReceiver",     fields: [receivedById], references: [id])
@@ -2036,8 +2036,8 @@ model PaymentAppointment {
   note         String?
   status       String   @default("PENDING")
   createdById  String   @map("created_by_id")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   debtor    Debtor @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
   createdBy User   @relation("AppointmentCreator", fields: [createdById], references: [id])
@@ -2057,7 +2057,7 @@ model DebtorFile {
   size        Int      @default(0)
   docType     String   @default("OTHER") @map("doc_type")
   createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   debtor    Debtor @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
   createdBy User   @relation("DebtorFileCreator",  fields: [createdById], references: [id])
@@ -2248,7 +2248,7 @@ model ClientCompanyFile {
   size            Int      @default(0)
   docType         String   @default("OTHER") @map("doc_type")
   createdById     String   @map("created_by_id")
-  createdAt       DateTime @default(now())
+  createdAt       DateTime @default(now()) @map("created_at")
 
   clientCompany ClientCompany   @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
   contract      ClientContract? @relation(fields: [contractId],      references: [id])
@@ -2738,14 +2738,16 @@ model TwoFactorSetup {
 }
 
 model BackupRecord {
-  id          String   @id @default(cuid())
-  filename    String
-  sizeBytes   Int      @default(0) @map("size_bytes")
-  tables      String
-  status      String   @default("COMPLETED")
-  createdById String?  @map("created_by_id")
-  createdAt   DateTime @default(now())
-  note        String?
+  id              String   @id @default(cuid())
+  filename        String
+  sizeBytes       Int      @default(0) @map("size_bytes")
+  tables          String
+  status          String   @default("COMPLETED")
+  storagePublicId String?  @map("storage_public_id") // Cloudinary raw-resource public_id holding the actual JSON payload
+  errorDetail     String?  @map("error_detail")       // table:reason pairs for any table that failed during creation
+  createdById     String?  @map("created_by_id")
+  createdAt       DateTime @default(now())
+  note            String?
 
   @@index([createdAt])
   @@map("backup_records")
