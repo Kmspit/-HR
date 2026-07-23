@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { COURT_EVENT_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import { bangkokLocalInputToIso, bangkokDateKey } from '@/lib/datetime-bangkok'
+import TimeSelect24h from '@/components/ui/TimeSelect24h'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -751,14 +752,12 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
             </div>
             <div>
-              <label htmlFor="field-5" className="text-white/50 text-xs mb-1 block">เวลาเริ่ม</label>
-              <input id="field-5" type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
+              <span className="text-white/50 text-xs mb-1 block">เวลาเริ่ม</span>
+              <TimeSelect24h value={form.startTime} onChange={v => set('startTime', v)} aria-label="เวลาเริ่ม" />
             </div>
             <div>
-              <label htmlFor="field-6" className="text-white/50 text-xs mb-1 block">เวลาสิ้นสุด</label>
-              <input id="field-6" type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500/50" />
+              <span className="text-white/50 text-xs mb-1 block">เวลาสิ้นสุด</span>
+              <TimeSelect24h value={form.endTime} onChange={v => set('endTime', v)} aria-label="เวลาสิ้นสุด" />
             </div>
           </div>
 

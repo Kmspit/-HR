@@ -4,6 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import { bangkokLocalInputToIso } from '@/lib/datetime-bangkok'
+import TimeSelect24h from '@/components/ui/TimeSelect24h'
+
+/** Splits a naive "YYYY-MM-DDTHH:MM" form value into its date and time parts. */
+function splitNaiveDateTime(v: string): [string, string] {
+  const [date, time] = v.split('T')
+  return [date ?? '', time ?? '']
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type UnifiedEvent = {
@@ -476,14 +483,34 @@ export default function AppointmentsClient({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="field-2" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">วันเวลาเริ่ม *</label>
-                  <input id="field-2" type="datetime-local" value={form.startAt} onChange={(e) => setForm((f) => ({ ...f, startAt: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">วันเวลาเริ่ม *</span>
+                  <div className="flex gap-2">
+                    <input
+                      id="field-2" type="date"
+                      value={splitNaiveDateTime(form.startAt)[0]}
+                      onChange={(e) => setForm((f) => ({ ...f, startAt: `${e.target.value}T${splitNaiveDateTime(f.startAt)[1] || '00:00'}` }))}
+                      className="flex-1 min-w-0 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
+                    <TimeSelect24h
+                      value={splitNaiveDateTime(form.startAt)[1]}
+                      onChange={(v) => setForm((f) => ({ ...f, startAt: `${splitNaiveDateTime(f.startAt)[0]}T${v}` }))}
+                      aria-label="เวลาเริ่ม"
+                      selectClassName="px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm dark:text-white" />
+                  </div>
                 </div>
                 <div>
-                  <label htmlFor="field-3" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สิ้นสุด</label>
-                  <input id="field-3" type="datetime-local" value={form.endAt} onChange={(e) => setForm((f) => ({ ...f, endAt: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">สิ้นสุด</span>
+                  <div className="flex gap-2">
+                    <input
+                      id="field-3" type="date"
+                      value={splitNaiveDateTime(form.endAt)[0]}
+                      onChange={(e) => setForm((f) => ({ ...f, endAt: `${e.target.value}T${splitNaiveDateTime(f.endAt)[1] || '00:00'}` }))}
+                      className="flex-1 min-w-0 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm" />
+                    <TimeSelect24h
+                      value={splitNaiveDateTime(form.endAt)[1]}
+                      onChange={(v) => setForm((f) => ({ ...f, endAt: `${splitNaiveDateTime(f.endAt)[0]}T${v}` }))}
+                      aria-label="เวลาสิ้นสุด"
+                      selectClassName="px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm dark:text-white" />
+                  </div>
                 </div>
               </div>
 
