@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { bangkokDayRange, bangkokDateKey } from '@/lib/datetime-bangkok'
 
 export async function GET() {
  try {
@@ -9,10 +10,10 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const now        = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+  const { start: todayStart, end: todayEnd } = bangkokDayRange(0)
   const in7        = new Date(now.getTime() + 7  * 86400_000)
   const in30       = new Date(now.getTime() + 30 * 86400_000)
+  const monthStart = new Date(`${bangkokDateKey(now).slice(0, 7)}-01T00:00:00+07:00`)
 
   const role   = session.user.role as string
   const userId = session.user.id
@@ -62,7 +63,7 @@ export async function GET() {
       by: ['eventType'],
       where: {
         ...ownerFilter,
-        startAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+        startAt: { gte: monthStart },
         status: { not: 'CANCELLED' },
       },
       _count: { id: true },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { findCalendarEventOverlaps } from '@/lib/calendar-overlap'
 
 const WRITE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT', 'EMPLOYEE']
 
@@ -61,11 +62,21 @@ export async function POST(req: NextRequest) {
   if (!title || !startAt) return NextResponse.json({ error: 'title and startAt required' }, { status: 400 })
 
   try {
+    const parsedStartAt = new Date(startAt)
+    const parsedEndAt = endAt ? new Date(endAt) : null
+
+    // Soft double-booking check — warns, never blocks (see lib/calendar-overlap.ts).
+    const warnings = await findCalendarEventOverlaps({
+      startAt: parsedStartAt,
+      endAt: parsedEndAt,
+      createdById: session.user.id,
+    })
+
     const event = await prisma.calendarEvent.create({
       data: {
         title, eventType,
-        startAt: new Date(startAt),
-        endAt: endAt ? new Date(endAt) : null,
+        startAt: parsedStartAt,
+        endAt: parsedEndAt,
         allDay, location, locationLat, locationLng, description,
         courtName, caseNumber, clientName, debtorName, debtAmount,
         status, priority, department,
@@ -75,7 +86,7 @@ export async function POST(req: NextRequest) {
       },
       include: { createdBy: { select: { name: true } } },
     })
-    return NextResponse.json(event, { status: 201 })
+    return NextResponse.json({ ...event, warnings }, { status: 201 })
   } catch (error) {
     console.error('[calendar-events POST]', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

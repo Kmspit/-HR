@@ -3,21 +3,19 @@ import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 import { apiError } from '@/lib/api-handler'
+import { bangkokDayRange } from '@/lib/datetime-bangkok'
 
 export async function GET(req: NextRequest) {
  try {
   const denied = rejectUnauthorizedCron(req)
   if (denied) return denied
 
-  const now = new Date()
-
   // Find events whose startAt falls exactly 7, 3, 1 days from now, or today
   const checkOffsets = [0, 1, 3, 7]
   let sent = 0
 
   for (const daysAhead of checkOffsets) {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead)
-    const dayEnd   = new Date(dayStart.getTime() + 86400_000 - 1)
+    const { start: dayStart, end: dayEnd } = bangkokDayRange(daysAhead)
 
     const events = await prisma.calendarEvent.findMany({
       where: {
@@ -49,8 +47,7 @@ export async function GET(req: NextRequest) {
 
   // Also check court dates from TaskAssignment
   for (const daysAhead of checkOffsets) {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead)
-    const dayEnd   = new Date(dayStart.getTime() + 86400_000 - 1)
+    const { start: dayStart, end: dayEnd } = bangkokDayRange(daysAhead)
 
     const tasks = await prisma.taskAssignment.findMany({
       where: { courtDate: { gte: dayStart, lte: dayEnd }, status: { notIn: ['COMPLETED'] } },

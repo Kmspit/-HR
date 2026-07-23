@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
 import { useModalA11y } from '@/hooks/useModalA11y'
 
 type CourtType       = 'CIVIL' | 'CRIMINAL' | 'BANKRUPTCY' | 'EXECUTION' | 'LABOR' | 'ADMINISTRATIVE' | 'OTHER'
@@ -293,6 +294,11 @@ function CourtEventModal({ caseId, editing, onClose, onSaved }: {
     const res    = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     const d      = await res.json()
     if (!res.ok) { setError(d.error ?? 'เกิดข้อผิดพลาด'); setSaving(false); return }
+    const warnings = d.warnings as { courtName: string; appointmentTime: string | null; caseNumber: string | null }[] | undefined
+    if (warnings?.length) {
+      const list = warnings.map((w) => `${w.courtName}${w.appointmentTime ? ` เวลา ${w.appointmentTime}` : ''}${w.caseNumber ? ` [${w.caseNumber}]` : ''}`).join(', ')
+      toast.warning(`⚠️ วันนี้ชนกับนัดอื่น ${warnings.length} รายการ: ${list}`, { duration: 8000 })
+    }
     onSaved()
   }
 

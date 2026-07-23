@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { COURT_EVENT_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import { bangkokLocalInputToIso, bangkokDateKey } from '@/lib/datetime-bangkok'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -113,7 +114,11 @@ const THAI_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','�
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function isoDate(d: Date) { return d.toISOString().slice(0, 10) }
+// NOT d.toISOString().slice(0, 10) — that normalizes to UTC, which for Bangkok
+// (UTC+7, no DST) silently rolls local-midnight-constructed dates back a day and
+// mis-buckets early-morning server instants into the previous day. bangkokDateKey
+// reads the date as seen from Asia/Bangkok regardless of how the Date was built.
+function isoDate(d: Date) { return bangkokDateKey(d) }
 
 function startOfWeek(d: Date) {
   const r = new Date(d)
@@ -630,7 +635,10 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
   const [form, setForm] = useState<FormData>({
     title:           editEvent?.title ?? '',
     eventType:       editEvent?.eventType ?? 'COURT_APPOINTMENT',
-    startAt:         editEvent ? editEvent.startAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    // Extract the calendar date in Bangkok terms, not by naively slicing the UTC
+    // ISO string — for an event stored near Bangkok midnight, the UTC date and
+    // Bangkok date can differ by a day.
+    startAt:         editEvent ? bangkokDateKey(new Date(editEvent.startAt)) : bangkokDateKey(),
     startTime:       editEvent?.startTime ?? '',
     endTime:         editEvent?.endTime ?? '',
     courtName:       editEvent?.courtName ?? '',
@@ -658,7 +666,10 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
       const body = {
         title:          form.title.trim(),
         eventType:      form.eventType,
-        startAt:        `${form.startAt}T${form.startTime || '00:00'}:00`,
+        // form.startAt/startTime are naive (no timezone) — convert to a real UTC
+        // instant assuming Bangkok local time before sending, so the server's
+        // `new Date(startAt)` can't misinterpret it under Vercel's default UTC.
+        startAt:        bangkokLocalInputToIso(`${form.startAt}T${form.startTime || '00:00'}`),
         startTime:      form.startTime || null,
         endTime:        form.endTime || null,
         courtName:      form.courtName || null,
@@ -676,7 +687,14 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
       const method = editEvent ? 'PATCH' : 'POST'
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       if (!res.ok) throw new Error('Save failed')
+      const saved = await res.json().catch(() => null) as { warnings?: { title: string; startAt: string }[] } | null
       toast.success(editEvent ? 'แก้ไขนัดสำเร็จ' : 'เพิ่มนัดสำเร็จ')
+      if (saved?.warnings?.length) {
+        const list = saved.warnings
+          .map((w) => `${w.title} (${formatThaiDate(w.startAt)} ${new Date(w.startAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })})`)
+          .join(', ')
+        toast.warning(`⚠️ เวลานี้ชนกับนัดอื่น ${saved.warnings.length} รายการ: ${list}`, { duration: 8000 })
+      }
       onSuccess()
       onClose()
     } catch {

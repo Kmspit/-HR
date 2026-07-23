@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { triggerAutomation } from '@/lib/automation-engine'
 import { apiError } from '@/lib/api-handler'
+import { findCourtEventOverlaps } from '@/lib/calendar-overlap'
 
 const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
 const LEGAL_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'LAWYER', 'ENFORCEMENT', 'TEAM_LEADER']
@@ -93,6 +94,14 @@ export async function POST(req: NextRequest) {
   if (!courtName?.trim()) return NextResponse.json({ error: 'courtName required' }, { status: 400 })
   if (!appointmentDate) return NextResponse.json({ error: 'appointmentDate required' }, { status: 400 })
 
+  // Soft double-booking check — warns, never blocks (see lib/calendar-overlap.ts).
+  const warnings = await findCourtEventOverlaps({
+    appointmentDate: new Date(appointmentDate),
+    courtName:        courtName.trim(),
+    roomNumber:       roomNumber ?? null,
+    assignedLawyerId: assignedLawyerId ?? null,
+  })
+
   const event = await prisma.courtEvent.create({
     data: {
       caseId,
@@ -132,7 +141,7 @@ export async function POST(req: NextRequest) {
     assignedLawyerId: event.assignedLawyerId,
   }, session.user.id).catch(() => undefined)
 
-  return NextResponse.json(event, { status: 201 })
+  return NextResponse.json({ ...event, warnings }, { status: 201 })
 } catch (err) {
   return apiError(err)
  }

@@ -4,6 +4,7 @@ import { createNotification, notifyRole, sendLineMessage } from '@/lib/notificat
 import { triggerAutomation } from '@/lib/automation-engine'
 import { rejectUnauthorizedCron } from '@/lib/cron-secret'
 import { apiError } from '@/lib/api-handler'
+import { bangkokDayRange } from '@/lib/datetime-bangkok'
 
 // Court calendar event types handled by THIS cron only.
 // The existing /api/cron/calendar-reminders handles: COURT / CLIENT / DEBTOR / INTERNAL
@@ -42,8 +43,7 @@ export async function GET(req: NextRequest) {
   // ── 1. Reminder notifications ─────────────────────────────────────────────
 
   for (const daysAhead of REMINDER_OFFSETS_DAYS) {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead)
-    const dayEnd   = new Date(dayStart.getTime() + 86_400_000 - 1)
+    const { start: dayStart, end: dayEnd } = bangkokDayRange(daysAhead)
 
     const events = await prisma.calendarEvent.findMany({
       where: {
@@ -194,8 +194,7 @@ export async function GET(req: NextRequest) {
   // ── 4. CourtEvent reminders ───────────────────────────────────────────────
 
   for (const daysAhead of REMINDER_OFFSETS_DAYS) {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead)
-    const dayEnd   = new Date(dayStart.getTime() + 86_400_000 - 1)
+    const { start: dayStart, end: dayEnd } = bangkokDayRange(daysAhead)
 
     const courtEvs = await prisma.courtEvent.findMany({
       where: {

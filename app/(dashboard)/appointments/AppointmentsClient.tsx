@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { toast } from 'sonner'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import { bangkokLocalInputToIso } from '@/lib/datetime-bangkok'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type UnifiedEvent = {
@@ -132,6 +134,11 @@ export default function AppointmentsClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
+        // datetime-local inputs give a naive string with no timezone — convert to a
+        // real UTC instant here (assuming Bangkok local time) before it leaves the
+        // client, so the server's `new Date(startAt)` can't misinterpret it under UTC.
+        startAt:     bangkokLocalInputToIso(form.startAt),
+        endAt:       form.endAt ? bangkokLocalInputToIso(form.endAt) : null,
         locationLat: form.locationLat ? parseFloat(form.locationLat) : undefined,
         locationLng: form.locationLng ? parseFloat(form.locationLng) : undefined,
         debtAmount:  form.debtAmount  ? parseFloat(form.debtAmount)  : undefined,
@@ -139,6 +146,14 @@ export default function AppointmentsClient({
     })
     setSaving(false)
     if (r.ok) {
+      const created = await r.json().catch(() => null) as { warnings?: { title: string; startAt: string }[] } | null
+      if (created?.warnings?.length) {
+        toast.warning(
+          `⚠️ เวลานี้ชนกับนัดอื่น ${created.warnings.length} รายการ: ` +
+          created.warnings.map((w) => `${w.title} (${fmtDate(w.startAt)} ${fmtTime(w.startAt)})`).join(', '),
+          { duration: 8000 },
+        )
+      }
       setShowForm(false)
       setForm({ title:'', eventType:'CLIENT', startAt:'', endAt:'', location:'', locationLat:'', locationLng:'', courtName:'', caseNumber:'', clientName:'', debtorName:'', debtAmount:'', priority:'NORMAL', department:'', note:'' })
       await loadEvents()
