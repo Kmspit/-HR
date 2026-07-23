@@ -14,6 +14,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id }  = await params
   const body    = await req.json()
 
+  const existing = await prisma.clientContract.findUnique({ where: { id }, select: { status: true } })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const allowed = ['serviceType', 'startDate', 'endDate', 'value', 'slaAgreement', 'paymentTerms', 'status', 'note']
   const data: Record<string, unknown> = {}
   for (const key of allowed) {
@@ -28,9 +31,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  const contract = await prisma.clientContract.update({
-    where: { id },
+  // Compare-and-swap on status: a plain update({where:{id}}) has a read-then-write
+  // gap where two concurrent PATCH requests (e.g. terminate + renew) can both read
+  // the same prior status and both write, the second silently overwriting the
+  // first with no error. Guard the write itself on the status still holding at
+  // write time — same pattern as warnings/expense-claims/outside-work/attendance.
+  const result = await prisma.clientContract.updateMany({
+    where: { id, status: existing.status },
     data,
+  })
+  if (result.count === 0) {
+    return NextResponse.json({ error: 'สถานะสัญญาถูกเปลี่ยนไปแล้วโดยคำขออื่น กรุณาโหลดข้อมูลใหม่' }, { status: 409 })
+  }
+
+  const contract = await prisma.clientContract.findUniqueOrThrow({
+    where: { id },
     include: {
       clientCompany: { select: { id: true, clientCode: true, companyName: true } },
       createdBy:     { select: userSel },
