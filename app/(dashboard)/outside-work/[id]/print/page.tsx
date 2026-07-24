@@ -5,6 +5,7 @@ import { hasPermission } from '@/lib/access-control'
 import type { Role } from '@prisma/client'
 import { KM_COMPANY } from '@/lib/company-defaults'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
+import { REQUEST_STATUS_LABEL } from '@/lib/status-labels'
 
 export const metadata = { title: 'พิมพ์ใบขออนุมัติออกนอกสถานที่' }
 
@@ -20,12 +21,6 @@ function fmtDateLong(d: Date | string): string {
 function fmtDateShort(d: Date | string): string {
   const dt = new Date(d)
   return `${dt.getUTCDate()}/${dt.getUTCMonth() + 1}/${dt.getUTCFullYear() + 543}`
-}
-
-const STATUS_TH: Record<string, string> = {
-  PENDING: 'รออนุมัติ', pending_ceo: 'รออนุมัติ',
-  APPROVED: 'อนุมัติแล้ว', approved_by_ceo: 'อนุมัติแล้ว',
-  REJECTED: 'ไม่อนุมัติ', rejected_by_ceo: 'ไม่อนุมัติ',
 }
 
 export default async function PrintOutsideWorkPage({
@@ -68,8 +63,12 @@ export default async function PrintOutsideWorkPage({
   if (!canView) redirect('/')
 
   const effectiveStatus = request.approvalStatus ?? request.status
-  const isApproved = ['APPROVED', 'approved_by_ceo'].includes(effectiveStatus)
-  const isRejected = ['REJECTED', 'rejected_by_ceo'].includes(effectiveStatus)
+  // Cover every status code the approval-chain engine actually writes
+  // (lowercase approved/rejected/pending_chain) alongside the legacy
+  // CEO-only codes (uppercase APPROVED/REJECTED, approved_by_ceo/rejected_by_ceo)
+  // — same set OutsideWorkStatusBadge.tsx and the Excel export already use.
+  const isApproved = ['APPROVED', 'approved_by_ceo', 'approved'].includes(effectiveStatus)
+  const isRejected = ['REJECTED', 'rejected_by_ceo', 'rejected'].includes(effectiveStatus)
   const approver   = request.approvals[request.approvals.length - 1]
 
   return (
@@ -265,7 +264,7 @@ export default async function PrintOutsideWorkPage({
               </div>
               <div>
                 <span className={`status-badge ${isApproved ? 'status-approved' : isRejected ? 'status-rejected' : 'status-pending'}`}>
-                  {STATUS_TH[effectiveStatus] ?? effectiveStatus}
+                  {REQUEST_STATUS_LABEL[effectiveStatus] ?? effectiveStatus}
                 </span>
               </div>
             </div>

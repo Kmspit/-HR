@@ -88,12 +88,18 @@ function thinBorder(argb = 'FFB0C4DE') {
 // Columns whose data cells are centre-aligned (indices match COLS order above)
 const CENTRE_COLS = new Set([1, 2, 3, 7, 8, 9, 12, 13, 14, 15, 16])
 
-function applyStatusColour(cell: ExcelJS.Cell, label: string) {
-  if (!label) return
-  if (label === STATUS_LABEL['approved_by_ceo'] || label === STATUS_LABEL['APPROVED']) {
+// Compares the raw status code, never the translated label — the chain
+// engine's lowercase 'approved'/'rejected' translate to different Thai
+// strings than the legacy 'APPROVED'/'approved_by_ceo' codes did
+// ('อนุมัติแล้ว' vs 'อนุมัติ'), so a label-string comparison silently missed
+// chain-approved rows and painted them yellow/pending. Same code set as
+// isApproved/isRejected in the outside-work print page.
+function applyStatusColour(cell: ExcelJS.Cell, statusCode: string) {
+  if (!statusCode) return
+  if (['APPROVED', 'approved_by_ceo', 'approved'].includes(statusCode)) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
     cell.font = { color: { argb: 'FF065F46' }, bold: true, size: 10, name: 'TH SarabunPSK' }
-  } else if (label === STATUS_LABEL['rejected_by_ceo'] || label === STATUS_LABEL['REJECTED']) {
+  } else if (['REJECTED', 'rejected_by_ceo', 'rejected'].includes(statusCode)) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }
     cell.font = { color: { argb: 'FF991B1B' }, bold: true, size: 10, name: 'TH SarabunPSK' }
   } else {
@@ -254,7 +260,7 @@ function buildEmployeeSheet(
     rMorn.height = 20
     rAftn.height = 20
 
-    ;[rMorn, rAftn].forEach(row => {
+    ;([[rMorn, morningReq], [rAftn, afternoonReq]] as const).forEach(([row, req]) => {
       row.eachCell((cell, col) => {
         cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } }
         cell.border    = thinBorder()
@@ -265,9 +271,9 @@ function buildEmployeeSheet(
           wrapText:   col >= 4,
         }
       })
-      // Status column (16) colour
-      const statusCell  = row.getCell(16)
-      applyStatusColour(statusCell, statusCell.value as string)
+      // Status column (16) colour — driven by the raw status code, not the label text
+      const statusCell = row.getCell(16)
+      applyStatusColour(statusCell, req ? (req.approvalStatus ?? req.status) : '')
     })
 
     // Merge วัน (col 1) and ว/ด/ปี (col 2) across the 2 slot rows

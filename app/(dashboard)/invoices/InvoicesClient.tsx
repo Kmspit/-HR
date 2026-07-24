@@ -481,7 +481,7 @@ function ReceiptsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
               <p className="text-xs text-gray-500">ผู้รับ: {r.receiverName}</p>
               <p className="text-xs text-gray-400">{fmtDate(r.issuedAt)} · ออกโดย {r.createdBy.name}</p>
             </div>
-            <Link href={`/invoices/${invoice.id}/print`} target="_blank" className="text-xs text-green-600 hover:underline">🖨️ พิมพ์</Link>
+            <Link href={`/invoices/${invoice.id}/print?receiptId=${r.id}`} target="_blank" className="text-xs text-green-600 hover:underline">🖨️ พิมพ์</Link>
           </div>
         </div>
       ))}

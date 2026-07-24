@@ -15,16 +15,23 @@ const STATUS_TH: Record<string, string> = {
   PAID: 'ชำระแล้ว', OVERDUE: 'เกินกำหนด', CANCELLED: 'ยกเลิก',
 }
 
-export default async function PrintInvoicePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PrintInvoicePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ receiptId?: string }>
+}) {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const { id } = await params
+  const { id }        = await params
+  const { receiptId } = await searchParams
   const invoice = await prisma.billingInvoice.findUnique({
     where: { id },
     include: {
       clientCompany: true,
-      receipts:      { orderBy: { issuedAt: 'asc' }, take: 1 },
+      receipts:      { orderBy: { issuedAt: 'asc' } },
       createdBy:     { select: { name: true } },
     },
   })
@@ -33,8 +40,15 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   let lineItems: LineItem[] = []
   try { lineItems = JSON.parse(invoice.lineItems) } catch {}
 
-  const isReceipt = invoice.receipts.length > 0
-  const receipt   = invoice.receipts[0]
+  // A receiptId in the URL must resolve to a real receipt on THIS invoice — each
+  // receipt (partial-payment or full) prints its own amount, never the invoice
+  // total. With no receiptId, only the unambiguous single-receipt case falls
+  // back to it automatically; multiple receipts require picking one explicitly.
+  let receipt = receiptId ? invoice.receipts.find(r => r.id === receiptId) : undefined
+  if (receiptId && !receipt) notFound()
+  if (!receiptId && invoice.receipts.length === 1) receipt = invoice.receipts[0]
+
+  const isReceipt = !!receipt
   const docTitle  = isReceipt ? 'ใบเสร็จรับเงิน / ใบกำกับภาษี' : 'ใบแจ้งหนี้'
 
   return (
@@ -84,7 +98,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
         `}</style>
       </head>
       <body>
-        <button className="print-btn no-print" onClick={() => {}} id="printBtn">🖨️ พิมพ์ / บันทึก PDF</button>
+        <button className="print-btn no-print" id="printBtn">🖨️ พิมพ์ / บันทึก PDF</button>
         <script dangerouslySetInnerHTML={{ __html: `document.getElementById('printBtn').onclick=()=>window.print()` }} />
 
         <div className="page">
@@ -160,12 +174,23 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           {/* Totals */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
             <div className="totals">
-              <div className="totals-row"><span>ยอดก่อนภาษี</span><span>฿{fmt(invoice.subtotal)}</span></div>
-              <div className="totals-row"><span>VAT {(invoice.vatRate * 100).toFixed(0)}%</span><span>฿{fmt(invoice.vatAmount)}</span></div>
-              {invoice.whtAmount > 0 && <div className="totals-row"><span>หัก ณ ที่จ่าย {(invoice.whtRate * 100).toFixed(0)}%</span><span>-฿{fmt(invoice.whtAmount)}</span></div>}
-              <div className="totals-row grand-total divider"><span>ยอดสุทธิ</span><span>฿{fmt(invoice.totalAmount)}</span></div>
-              {invoice.paidAmount > 0 && <div className="totals-row paid-row"><span>ชำระแล้ว</span><span>฿{fmt(invoice.paidAmount)}</span></div>}
-              {invoice.remainingAmount > 0 && <div className="totals-row due-row"><span>คงค้าง</span><span>฿{fmt(invoice.remainingAmount)}</span></div>}
+              {isReceipt && receipt ? (
+                <>
+                  <div className="totals-row"><span>ยอดชำระ (รวม VAT)</span><span>฿{fmt(receipt.amount)}</span></div>
+                  <div className="totals-row"><span>ในนั้นเป็น VAT {(invoice.vatRate * 100).toFixed(0)}%</span><span>฿{fmt(receipt.vatAmount)}</span></div>
+                  {receipt.whtAmount > 0 && <div className="totals-row"><span>หัก ณ ที่จ่าย {(invoice.whtRate * 100).toFixed(0)}%</span><span>-฿{fmt(receipt.whtAmount)}</span></div>}
+                  <div className="totals-row grand-total divider"><span>ยอดสุทธิใบเสร็จนี้</span><span>฿{fmt(receipt.totalAmount)}</span></div>
+                </>
+              ) : (
+                <>
+                  <div className="totals-row"><span>ยอดก่อนภาษี</span><span>฿{fmt(invoice.subtotal)}</span></div>
+                  <div className="totals-row"><span>VAT {(invoice.vatRate * 100).toFixed(0)}%</span><span>฿{fmt(invoice.vatAmount)}</span></div>
+                  {invoice.whtAmount > 0 && <div className="totals-row"><span>หัก ณ ที่จ่าย {(invoice.whtRate * 100).toFixed(0)}%</span><span>-฿{fmt(invoice.whtAmount)}</span></div>}
+                  <div className="totals-row grand-total divider"><span>ยอดสุทธิ</span><span>฿{fmt(invoice.totalAmount)}</span></div>
+                  {invoice.paidAmount > 0 && <div className="totals-row paid-row"><span>ชำระแล้ว</span><span>฿{fmt(invoice.paidAmount)}</span></div>}
+                  {invoice.remainingAmount > 0 && <div className="totals-row due-row"><span>คงค้าง</span><span>฿{fmt(invoice.remainingAmount)}</span></div>}
+                </>
+              )}
             </div>
           </div>
 
