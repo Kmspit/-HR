@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CLIENT_TASK_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 import { modalFieldInput, dashboardDialogPanel } from '@/lib/theme-classes'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 interface ClientUser {
   id: string
@@ -51,19 +51,16 @@ export default function ClientsClient({ userRole }: Props) {
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false)
-  const createPanelRef = useModalA11y(showCreate)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', companyName: '' })
   const [creating, setCreating] = useState(false)
 
   // Status history modal
   const [showHistory, setShowHistory] = useState<{ taskId: string; taskTitle: string } | null>(null)
-  const historyPanelRef = useModalA11y(!!showHistory)
   const [historyForm, setHistoryForm] = useState({ status: '', note: '' })
   const [addingHistory, setAddingHistory] = useState(false)
 
   // Link task modal
   const [showLinkTask, setShowLinkTask] = useState(false)
-  const linkTaskPanelRef = useModalA11y(showLinkTask)
   const [availableTasks, setAvailableTasks] = useState<Task[]>([])
   const [taskSearchQ, setTaskSearchQ] = useState('')
 
@@ -290,9 +287,7 @@ export default function ClientsClient({ userRole }: Props) {
 
       {/* ── Create Modal ── */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div ref={createPanelRef} role="dialog" aria-modal aria-label="เพิ่มบัญชีลูกค้า" tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4`}>
+        <PortalModal onClose={() => setShowCreate(false)} ariaLabel="เพิ่มบัญชีลูกค้า" panelClassName={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4`}>
             <h2 className="font-semibold text-white">เพิ่มบัญชีลูกค้า</h2>
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
               {[
@@ -319,16 +314,12 @@ export default function ClientsClient({ userRole }: Props) {
                 </button>
               </div>
             </form>
-          </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
 
       {/* ── Status History Modal ── */}
       {showHistory && (
-        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div ref={historyPanelRef} role="dialog" aria-modal aria-label="อัพเดทสถานะคดี" tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-sm p-6 flex flex-col gap-4`}>
+        <PortalModal onClose={() => setShowHistory(null)} ariaLabel="อัพเดทสถานะคดี" panelClassName={`${dashboardDialogPanel} w-full max-w-sm p-6 flex flex-col gap-4`}>
             <h2 className="font-semibold text-white text-sm">อัพเดทสถานะคดี (ลูกค้าจะเห็น)</h2>
             <div className="text-xs text-gray-400">{showHistory.taskTitle}</div>
             <form onSubmit={addStatusHistory} className="flex flex-col gap-3">
@@ -357,16 +348,12 @@ export default function ClientsClient({ userRole }: Props) {
                 </button>
               </div>
             </form>
-          </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
 
       {/* ── Link Task Modal ── */}
       {showLinkTask && (
-        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div ref={linkTaskPanelRef} role="dialog" aria-modal aria-label="เลือกคดีที่จะเชื่อม" tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]`}>
+        <PortalModal onClose={() => setShowLinkTask(false)} ariaLabel="เลือกคดีที่จะเชื่อม" panelClassName={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]`}>
             <h2 className="font-semibold text-white">เลือกคดีที่จะเชื่อม</h2>
             <div className="flex gap-2">
               <input value={taskSearchQ} onChange={(e) => setTaskSearchQ(e.target.value)}
@@ -387,9 +374,7 @@ export default function ClientsClient({ userRole }: Props) {
               {availableTasks.length === 0 && <div className="text-center text-gray-400 text-sm py-4">ค้นหาคดีก่อน</div>}
             </div>
             <button onClick={() => setShowLinkTask(false)} className="px-4 py-2 rounded border border-gray-300 text-sm text-gray-600">ปิด</button>
-          </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )

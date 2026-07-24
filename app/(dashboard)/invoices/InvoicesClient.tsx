@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -494,7 +494,6 @@ function ReceiptsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
 interface LineItemForm { _key: string; description: string; qty: string; unitPrice: string }
 
 function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: () => void; onSave: () => void }) {
-  const panelRef = useModalA11y(true)
   const [form, setForm] = useState({
     clientName: '', clientTaxId: '', clientAddress: '',
     serviceType: '', issueDate: new Date().toISOString().slice(0, 10),
@@ -561,9 +560,7 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div ref={panelRef} role="dialog" aria-modal aria-label="สร้างใบแจ้งหนี้ใหม่" tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-3xl">
+    <PortalModal onClose={onClose} ariaLabel="สร้างใบแจ้งหนี้ใหม่" panelClassName="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-3xl">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">สร้างใบแจ้งหนี้ใหม่</h2>
           </div>
@@ -652,8 +649,6 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
             <button onClick={onClose} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm">ยกเลิก</button>
             <button onClick={save} disabled={saving || !form.clientName || !form.serviceType || !form.issueDate || !form.dueDate} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'สร้างใบแจ้งหนี้'}</button>
           </div>
-        </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
