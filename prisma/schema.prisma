@@ -561,13 +561,10 @@ model User {
   approvalRequestsMade      ApprovalRequest[]      @relation("ApprovalRequester")
   approvalStepsAssigned     ApprovalRequestStep[]  @relation("StepApprover")
   approvalStepActions       ApprovalRequestStep[]  @relation("StepActor")
-  // Phase 12 — SOP & Training
+  // Phase 12 — SOP
   sopDocumentsCreated       SopDocument[]          @relation("SopCreator")
   sopDocumentsApproved      SopDocument[]          @relation("SopApprover")
   sopVersionsCreated        SopVersion[]           @relation("SopVersionCreator")
-  trainingModulesCreated    TrainingModule[]       @relation("TrainingCreator")
-  trainingEnrollments       TrainingEnrollment[]   @relation("TrainingEnrollee")
-  quizAttempts              QuizAttempt[]          @relation("QuizAttemptUser")
   // Phase 13 — Calendar
   calendarEvents            CalendarEvent[]        @relation("CalendarEventCreator")
   // Phase 15 — Security
@@ -2446,7 +2443,7 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-// ── PHASE 12 — SOP & TRAINING ─────────────────────────────────────────────────
+// ── PHASE 12 — SOP ────────────────────────────────────────────────────────────
 
 model SopDocument {
   id           String    @id @default(cuid())
@@ -2489,83 +2486,6 @@ model SopVersion {
 
   @@index([sopId])
   @@map("sop_versions")
-}
-
-model TrainingModule {
-  id               String   @id @default(cuid())
-  title            String
-  description      String?
-  department       String?
-  contentType      String   @default("DOCUMENT") @map("content_type")
-  contentUrl       String?  @map("content_url")
-  coverUrl         String?  @map("cover_url")
-  targetRoles      String   @default("[]") @map("target_roles")
-  estimatedMinutes Int      @default(30) @map("estimated_minutes")
-  passingScore     Int      @default(70) @map("passing_score")
-  isRequired       Boolean  @default(false) @map("is_required")
-  status           String   @default("DRAFT")
-  createdById      String   @map("created_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-
-  createdBy   User                 @relation("TrainingCreator", fields: [createdById], references: [id])
-  enrollments TrainingEnrollment[]
-  questions   QuizQuestion[]
-  attempts    QuizAttempt[]
-
-  @@index([status])
-  @@map("training_modules")
-}
-
-model TrainingEnrollment {
-  id               String    @id @default(cuid())
-  moduleId         String    @map("module_id")
-  userId           String    @map("user_id")
-  status           String    @default("NOT_STARTED")
-  score            Int?
-  timeSpentMinutes Int       @default(0) @map("time_spent_minutes")
-  startedAt        DateTime? @map("started_at")
-  completedAt      DateTime? @map("completed_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  module TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  user   User           @relation("TrainingEnrollee", fields: [userId], references: [id])
-
-  @@unique([moduleId, userId])
-  @@index([userId])
-  @@map("training_enrollments")
-}
-
-model QuizQuestion {
-  id            String   @id @default(cuid())
-  moduleId      String   @map("module_id")
-  question      String
-  options       String   @default("[]")
-  questionOrder Int      @default(0) @map("question_order")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  module TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-  @@index([moduleId])
-  @@map("quiz_questions")
-}
-
-model QuizAttempt {
-  id        String   @id @default(cuid())
-  moduleId  String   @map("module_id")
-  userId    String   @map("user_id")
-  answers   String   @default("[]")
-  score     Int
-  passed    Boolean
-  attempt   Int      @default(1)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  module TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  user   User           @relation("QuizAttemptUser", fields: [userId], references: [id])
-
-  @@index([moduleId, userId])
-  @@map("quiz_attempts")
 }
 
 // ── PHASE 13 — CALENDAR & APPOINTMENTS ────────────────────────────────────────

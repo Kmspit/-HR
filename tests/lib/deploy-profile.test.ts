@@ -31,7 +31,7 @@ describe('deploy-profile', () => {
     expect(isPathHiddenByDeployProfile('/cases')).toBe(true)
     expect(isPathHiddenByDeployProfile('/billing')).toBe(true)
     expect(isPathHiddenByDeployProfile('/tasks')).toBe(true)
-    expect(isPathHiddenByDeployProfile('/training')).toBe(true)
+    expect(isPathHiddenByDeployProfile('/sop')).toBe(true)
     expect(isPathHiddenByDeployProfile('/payroll')).toBe(false)
     expect(isPathHiddenByDeployProfile('/attendance')).toBe(false)
     expect(isPathHiddenByDeployProfile('/api/cases')).toBe(true)
@@ -54,9 +54,9 @@ describe('deploy-profile', () => {
   })
 
   it('frozen modules hide additional paths', () => {
-    process.env.NEXT_PUBLIC_FROZEN_MODULES = '/training,/automation'
+    process.env.NEXT_PUBLIC_FROZEN_MODULES = '/sop,/automation'
     resetDeployProfileCache()
-    expect(isPathHiddenByDeployProfile('/training')).toBe(true)
+    expect(isPathHiddenByDeployProfile('/sop')).toBe(true)
     expect(isPathHiddenByDeployProfile('/automation')).toBe(true)
   })
 })
