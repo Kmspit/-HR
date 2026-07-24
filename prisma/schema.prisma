@@ -561,9 +561,7 @@ model User {
   approvalRequestsMade      ApprovalRequest[]      @relation("ApprovalRequester")
   approvalStepsAssigned     ApprovalRequestStep[]  @relation("StepApprover")
   approvalStepActions       ApprovalRequestStep[]  @relation("StepActor")
-  // Phase 12 — Knowledge Base
-  knowledgeArticlesCreated  KnowledgeArticle[]     @relation("KnowledgeCreator")
-  knowledgeArticlesApproved KnowledgeArticle[]     @relation("KnowledgeApprover")
+  // Phase 12 — SOP & Training
   sopDocumentsCreated       SopDocument[]          @relation("SopCreator")
   sopDocumentsApproved      SopDocument[]          @relation("SopApprover")
   sopVersionsCreated        SopVersion[]           @relation("SopVersionCreator")
@@ -2448,31 +2446,7 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-// ── PHASE 12 — KNOWLEDGE BASE, SOP & TRAINING ────────────────────────────────
-
-model KnowledgeArticle {
-  id           String    @id @default(cuid())
-  title        String
-  slug         String    @unique
-  content      String
-  category     String    @default("GENERAL")
-  department   String?
-  tags         String?
-  status       String    @default("DRAFT")
-  viewCount    Int       @default(0)  @map("view_count")
-  createdById  String    @map("created_by_id")
-  approvedById String?   @map("approved_by_id")
-  approvedAt   DateTime? @map("approved_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  createdBy  User  @relation("KnowledgeCreator",  fields: [createdById],  references: [id])
-  approvedBy User? @relation("KnowledgeApprover", fields: [approvedById], references: [id])
-
-  @@index([status])
-  @@index([category])
-  @@map("knowledge_articles")
-}
+// ── PHASE 12 — SOP & TRAINING ─────────────────────────────────────────────────
 
 model SopDocument {
   id           String    @id @default(cuid())

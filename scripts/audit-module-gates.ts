@@ -60,7 +60,7 @@ const SIDEBAR_PATHS = [
 
   '/forgot-scan', '/weekly-plan', '/attendance/scans',
 
-  '/tasks', '/performance', '/knowledge', '/sop', '/training',
+  '/tasks', '/performance', '/sop', '/training',
 
   '/cases', '/case-documents', '/clients', '/debtors', '/debt-followup',
 

@@ -256,7 +256,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/documents':          ALL_ROLES,
   '/tasks':              WORK_MODULE,
   '/performance':        WORK_MODULE,
-  '/knowledge':          WORK_MODULE,
   '/sop':                WORK_MODULE,
   '/training':           WORK_MODULE,
   '/cases':              LEGAL_MODULE,

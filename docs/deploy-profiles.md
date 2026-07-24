@@ -60,7 +60,7 @@ Single codebase — หลาย Vercel project ได้โดยตั้ง e
 
 - Legal: `/cases`, `/case-documents`, `/clients`, `/debtors`, `/debt-followup`, `/payment-appointments`, `/court-calendar`, `/appointments`, `/client-companies`, `/contracts`, `/client-history`, `/recovery`
 - Finance: `/case-finance`, `/expense-claim`, `/billing`, `/invoices`, `/receipts`
-- Work: `/tasks`, `/performance`, `/knowledge`, `/sop`, `/training`
+- Work: `/tasks`, `/performance`, `/sop`, `/training`
 
 **เห็น:** ลงเวลา, ลา, payroll, พนักงาน, อนุมัติ, ประกาศ, สลิป
 
@@ -78,7 +78,7 @@ Single codebase — หลาย Vercel project ได้โดยตั้ง e
 เมื่อทีมตอบว่าโมดูลไหนไม่ใช้ — เพิ่มบน production เดิม:
 
 ```
-NEXT_PUBLIC_FROZEN_MODULES=/training,/knowledge,/automation
+NEXT_PUBLIC_FROZEN_MODULES=/training,/sop,/automation
 ```
 
 Redeploy → เมนูหาย + URL redirect `/unauthorized` (code ยังอยู่)

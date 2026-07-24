@@ -131,8 +131,7 @@ export const BACKUP_TABLE_SPECS: BackupTableSpec[] = [
   // ── Signatures ───────────────────────────────────────────────────────────
   { table: 'digital_signatures', accessor: 'digitalSignature' },
 
-  // ── Knowledge / SOP / training / automation (config, currently near-empty) ──
-  { table: 'knowledge_articles',       accessor: 'knowledgeArticle' },
+  // ── SOP / training / automation (config, currently near-empty) ──────────────
   { table: 'sop_documents',            accessor: 'sopDocument' },
   { table: 'sop_versions',             accessor: 'sopVersion' },
   { table: 'training_modules',         accessor: 'trainingModule' },

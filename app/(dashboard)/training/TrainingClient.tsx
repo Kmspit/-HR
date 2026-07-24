@@ -42,7 +42,6 @@ type DashboardData = {
   publishedModules: number
   totalEnrollments: number
   completionRate: number
-  byDept: { department: string | null; _count: { id: number } }[]
   failedEnrollments: { module: { title: string }; user: { name: string }; score: number | null }[]
   recentModules: TrainingModule[]
 }
@@ -116,7 +115,7 @@ export default function TrainingClient({
 
   useEffect(() => {
     if (tab === 'dashboard' && isCeo) {
-      fetch('/api/knowledge/dashboard')
+      fetch('/api/training/dashboard')
         .then((r) => r.json())
         .then(setDashboard)
     }

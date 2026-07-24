@@ -1,6 +1,6 @@
 # Phase 2 — ตั้ง NEXT_PUBLIC_FROZEN_MODULES บน production หลังทีมตอบแบบสำรวจ
 
-# ตัวอย่าง: .\scripts\phase-2-apply-frozen.ps1 -Modules "/training,/knowledge,/automation"
+# ตัวอย่าง: .\scripts\phase-2-apply-frozen.ps1 -Modules "/training,/sop,/automation"
 
 
 
