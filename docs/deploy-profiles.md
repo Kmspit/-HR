@@ -17,7 +17,7 @@ Single codebase — หลาย Vercel project ได้โดยตั้ง e
 | Variable | Values | Default |
 |----------|--------|---------|
 | `NEXT_PUBLIC_DEPLOY_PROFILE` | `full` · `hr` · `legal` | `full` |
-| `NEXT_PUBLIC_FROZEN_MODULES` | comma paths เช.g. `/sop,/automation` | (empty) |
+| `NEXT_PUBLIC_FROZEN_MODULES` | comma paths เช.g. `/automation` | (empty) |
 
 > ใช้ `NEXT_PUBLIC_*` เพื่อให้ sidebar (client) และ middleware sync กัน
 
@@ -60,7 +60,7 @@ Single codebase — หลาย Vercel project ได้โดยตั้ง e
 
 - Legal: `/cases`, `/case-documents`, `/clients`, `/debtors`, `/debt-followup`, `/payment-appointments`, `/court-calendar`, `/appointments`, `/client-companies`, `/contracts`, `/client-history`, `/recovery`
 - Finance: `/case-finance`, `/expense-claim`, `/billing`, `/invoices`, `/receipts`
-- Work: `/tasks`, `/performance`, `/sop`
+- Work: `/tasks`, `/performance`
 
 **เห็น:** ลงเวลา, ลา, payroll, พนักงาน, อนุมัติ, ประกาศ, สลิป
 
@@ -78,7 +78,7 @@ Single codebase — หลาย Vercel project ได้โดยตั้ง e
 เมื่อทีมตอบว่าโมดูลไหนไม่ใช้ — เพิ่มบน production เดิม:
 
 ```
-NEXT_PUBLIC_FROZEN_MODULES=/sop,/automation
+NEXT_PUBLIC_FROZEN_MODULES=/automation
 ```
 
 Redeploy → เมนูหาย + URL redirect `/unauthorized` (code ยังอยู่)

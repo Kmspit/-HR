@@ -57,7 +57,6 @@
 |---|--------|----------|---------|----------|
 | C1 | มอบหมายงาน (`/tasks`) | ☐ ใช่ ☐ ไม่ | | |
 | C2 | KPI / ผลงาน (`/performance`) | ☐ ใช่ ☐ ไม่ | | |
-| C4 | SOP ขั้นตอนงาน (`/sop`) | ☐ ใช่ ☐ ไม่ | | |
 | C6 | Automation Rules (`/automation`) | ☐ ใช่ ☐ ไม่ | | |
 | C7 | AI Assistant (ซ่อนอยู่แล้ว) | ☐ ใช่ ☐ ไม่ | | |
 
@@ -68,7 +67,7 @@
 หลังรวบรวมคำตอบ:
 
 1. โมดูลที่ **ไม่เคยใช้** → เพิ่มใน Vercel env `NEXT_PUBLIC_FROZEN_MODULES` (comma paths)  
-   ตัวอย่าง: `NEXT_PUBLIC_FROZEN_MODULES=/automation,/sop`
+   ตัวอย่าง: `NEXT_PUBLIC_FROZEN_MODULES=/automation`
 2. โมดูลที่ **ใช้เฉพาะ role** → ปรับ `LEGAL_MODULE` / `FINANCE_MODULE` / `WORK_MODULE` ใน `lib/module-gates.ts`
 3. ถ้า HR กับ Legal **ไม่ overlap** → สร้าง Vercel project แยก + ตั้ง `NEXT_PUBLIC_DEPLOY_PROFILE=hr` หรือ `legal` (ดู `docs/deploy-profiles.md`)
 

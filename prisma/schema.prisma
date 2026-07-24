@@ -561,10 +561,6 @@ model User {
   approvalRequestsMade      ApprovalRequest[]      @relation("ApprovalRequester")
   approvalStepsAssigned     ApprovalRequestStep[]  @relation("StepApprover")
   approvalStepActions       ApprovalRequestStep[]  @relation("StepActor")
-  // Phase 12 — SOP
-  sopDocumentsCreated       SopDocument[]          @relation("SopCreator")
-  sopDocumentsApproved      SopDocument[]          @relation("SopApprover")
-  sopVersionsCreated        SopVersion[]           @relation("SopVersionCreator")
   // Phase 13 — Calendar
   calendarEvents            CalendarEvent[]        @relation("CalendarEventCreator")
   // Phase 15 — Security
@@ -2441,51 +2437,6 @@ model ActivityLog {
   @@index([docType, docId])
   @@index([actorId])
   @@map("activity_logs")
-}
-
-// ── PHASE 12 — SOP ────────────────────────────────────────────────────────────
-
-model SopDocument {
-  id           String    @id @default(cuid())
-  sopCode      String    @unique @map("sop_code")
-  title        String
-  department   String
-  description  String?
-  steps        String    @default("[]")
-  checklist    String    @default("[]")
-  relatedDocs  String    @default("[]") @map("related_docs")
-  status       String    @default("DRAFT")
-  version      Int       @default(1)
-  note         String?
-  createdById  String    @map("created_by_id")
-  approvedById String?   @map("approved_by_id")
-  approvedAt   DateTime? @map("approved_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  createdBy  User         @relation("SopCreator",  fields: [createdById],  references: [id])
-  approvedBy User?        @relation("SopApprover", fields: [approvedById], references: [id])
-  versions   SopVersion[]
-
-  @@index([status])
-  @@index([department])
-  @@map("sop_documents")
-}
-
-model SopVersion {
-  id          String   @id @default(cuid())
-  sopId       String   @map("sop_id")
-  version     Int
-  changeNote  String?  @map("change_note")
-  snapshot    String?
-  changedById String   @map("changed_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  sop       SopDocument @relation(fields: [sopId],         references: [id], onDelete: Cascade)
-  changedBy User        @relation("SopVersionCreator",     fields: [changedById], references: [id])
-
-  @@index([sopId])
-  @@map("sop_versions")
 }
 
 // ── PHASE 13 — CALENDAR & APPOINTMENTS ────────────────────────────────────────
