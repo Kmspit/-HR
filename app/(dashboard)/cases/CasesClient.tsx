@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { CASE_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type CaseType     = 'DEBT_COLLECTION' | 'LEGAL' | 'COURT' | 'ASSET_INVESTIGATION' | 'ENFORCEMENT' | 'INTERNAL_LEGAL'
@@ -405,7 +405,6 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
   onCreated: () => void
   userName: string
 }) {
-  const panelRef = useModalA11y(true)
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState('')
   const [tab,      setTab]      = useState<'basic' | 'client' | 'debtor'>('basic')
@@ -441,8 +440,9 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
   }
 
   return (
-    <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={panelRef} role="dialog" aria-modal aria-label="สร้างคดีใหม่" tabIndex={-1} className="dashboard-dialog-panel w-full md:max-w-2xl md:max-h-[90dvh] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <PortalModal onClose={onClose} ariaLabel="สร้างคดีใหม่" dismissOnBackdrop
+      backdropClassName="bg-black/50 backdrop-blur-sm" wrapperClassName="flex min-h-full items-end md:items-center justify-center p-0 md:p-4"
+      panelClassName="dashboard-dialog-panel w-full md:max-w-2xl md:max-h-[90dvh] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/[0.06]">
           <h2 className="font-bold text-slate-900 dark:text-white text-[16px]">สร้างคดีใหม่</h2>
@@ -577,7 +577,6 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </PortalModal>
   )
 }

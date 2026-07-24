@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Shield, Activity, HardDrive, Users, AlertTriangle, CheckCircle, Download, Trash2, RefreshCw, Loader2, RotateCcw, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 type DashboardStats = {
   failedLogins24h: number
@@ -84,7 +84,6 @@ export default function SecurityClient() {
   const [restoring, setRestoring]         = useState(false)
   const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null)
   const restoreModalOpen = restoreTarget !== null
-  const restorePanelRef = useModalA11y(restoreModalOpen)
 
   const loadStats = useCallback(async () => {
     const r = await fetch('/api/security/dashboard').catch(() => null)
@@ -450,15 +449,8 @@ export default function SecurityClient() {
 
       {/* Restore modal */}
       {restoreModalOpen && restoreTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div
-            ref={restorePanelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="กู้คืนข้อมูลจาก backup"
-            tabIndex={-1}
-            className="glass-card w-full max-w-lg rounded-2xl border dark:border-white/10 p-5 space-y-4 max-h-[85vh] overflow-y-auto"
-          >
+        <PortalModal onClose={closeRestore} ariaLabel="กู้คืนข้อมูลจาก backup" backdropClassName="bg-black/60"
+          panelClassName="glass-card w-full max-w-lg rounded-2xl border dark:border-white/10 p-5 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold dark:text-white flex items-center gap-2">
@@ -572,8 +564,7 @@ export default function SecurityClient() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )

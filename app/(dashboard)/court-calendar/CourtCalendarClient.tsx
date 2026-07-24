@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner'
 import { COURT_EVENT_STATUS_LABEL as STATUS_LABEL } from '@/lib/status-labels'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 import { bangkokLocalInputToIso, bangkokDateKey } from '@/lib/datetime-bangkok'
 import TimeSelect24h from '@/components/ui/TimeSelect24h'
 
@@ -632,7 +633,6 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
   onSuccess: () => void
   editEvent?: CalEvent | null
 }) {
-  const panelRef = useModalA11y(true)
   const [form, setForm] = useState<FormData>({
     title:           editEvent?.title ?? '',
     eventType:       editEvent?.eventType ?? 'COURT_APPOINTMENT',
@@ -706,9 +706,9 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
   }
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
-      <div ref={panelRef} role="dialog" aria-modal aria-label={editEvent ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมาย'} tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[95dvh]"
-        onClick={e => e.stopPropagation()}>
+    <PortalModal onClose={onClose} ariaLabel={editEvent ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมาย'} dismissOnBackdrop
+      backdropClassName="bg-black/60" wrapperClassName="flex min-h-full items-end md:items-center justify-center p-0 md:p-4"
+      panelClassName="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[95dvh]">
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">{editEvent ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมาย'}</h3>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
@@ -804,8 +804,7 @@ function AddEventModal({ onClose, onSuccess, editEvent }: {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 

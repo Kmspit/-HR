@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { RECOVERY_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -603,7 +604,6 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
   userId: string; userRole: string; employees: Employee[]; debtors: Debtor[]
   canConfirm: boolean; onClose: () => void; onSave: () => void
 }) {
-  const panelRef = useModalA11y(true)
   const [form, setForm] = useState({
     debtorId:       '',
     paymentType:    'FULL_PAYMENT',
@@ -644,9 +644,7 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
   const selectedDebtor = debtors.find(d => d.id === form.debtorId)
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-      <div className="flex min-h-full items-end md:items-center justify-center p-0 md:p-4">
-        <div ref={panelRef} role="dialog" aria-modal aria-label="บันทึกการชำระเงิน" tabIndex={-1} className="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-xl">
+    <PortalModal onClose={onClose} ariaLabel="บันทึกการชำระเงิน" wrapperClassName="flex min-h-full items-end md:items-center justify-center p-0 md:p-4" panelClassName="bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-xl">
           <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-200 dark:border-white/[0.06]">
             <h2 className="text-[15px] font-bold text-slate-900 dark:text-white">บันทึกการชำระเงิน</h2>
             <button onClick={onClose} aria-label="ปิด" className="text-slate-400 hover:text-slate-600 p-1">✕</button>
@@ -739,8 +737,6 @@ function CreatePaymentModal({ userId, userRole, employees, debtors, canConfirm, 
               {saving ? 'กำลังบันทึก…' : 'บันทึก'}
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }

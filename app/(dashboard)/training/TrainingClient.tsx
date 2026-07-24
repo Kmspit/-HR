@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,7 +82,6 @@ export default function TrainingClient({
   const [tab, setTab]               = useState<'all' | 'my' | 'dashboard'>('all')
   const [searchQ, setSearchQ]       = useState('')
   const [showCreate, setCreate]     = useState(false)
-  const createPanelRef = useModalA11y(showCreate)
   const [saving, setSaving]         = useState(false)
   const [dashboard, setDashboard]   = useState<DashboardData | null>(null)
 
@@ -472,8 +471,7 @@ export default function TrainingClient({
 
       {/* ── Create Modal ── */}
       {showCreate && isEditor && (
-        <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
-          <div ref={createPanelRef} role="dialog" aria-modal aria-label="สร้างหลักสูตร" tabIndex={-1} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
+        <PortalModal onClose={() => setCreate(false)} ariaLabel="สร้างหลักสูตร" backdropClassName="bg-black/50" panelClassName="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">+ สร้างหลักสูตร</h2>
               <button type="button" onClick={() => setCreate(false)} aria-label="ปิด" className="text-gray-400 text-xl">✕</button>
@@ -549,8 +547,7 @@ export default function TrainingClient({
                 {saving ? 'กำลังบันทึก…' : 'สร้าง'}
               </button>
             </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )

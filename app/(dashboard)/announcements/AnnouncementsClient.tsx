@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAnnouncementStream } from '@/hooks/useAnnouncementStream'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 import {
   Plus, Trash2, Archive, ArchiveRestore, Loader2, ChevronDown, X,
   Calendar, Users, Paperclip, Download, FileText, Image as ImageIcon,
@@ -115,7 +116,6 @@ export default function AnnouncementsClient({
 
   // ── Archive
   const [showArchive, setShowArchive] = useState(false)
-  const archivePanelRef = useModalA11y(showArchive)
   const [archive, setArchive] = useState<Announcement[]>([])
   const [archiveLoading, setArchiveLoading] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState('')
@@ -720,10 +720,9 @@ export default function AnnouncementsClient({
 
       {/* ── Archive Modal ── */}
       {showArchive && (
-        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowArchive(false)}>
-          <div ref={archivePanelRef} role="dialog" aria-modal aria-label="ประกาศ Archive" tabIndex={-1} className="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}>
+        <PortalModal onClose={() => setShowArchive(false)} ariaLabel="ประกาศ Archive" dismissOnBackdrop
+          backdropClassName="bg-black/60 backdrop-blur-sm" wrapperClassName="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4"
+          panelClassName="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
                 <Archive size={15} /> ประกาศ Archive
@@ -772,8 +771,7 @@ export default function AnnouncementsClient({
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )

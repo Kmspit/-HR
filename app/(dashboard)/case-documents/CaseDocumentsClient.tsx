@@ -7,7 +7,7 @@ import {
   Plus, Loader2, FolderOpen, AlertCircle, CheckCircle, Clock, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -144,7 +144,6 @@ function formatDateTime(iso: string) {
 // ── Preview Modal ──────────────────────────────────────────────────────────────
 
 function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
-  const panelRef = useModalA11y(true)
   const latestFile = doc.files[0]
   const [signedUrl, setSignedUrl]   = useState<string | null>(null)
   const [loadingUrl, setLoadingUrl] = useState(!!latestFile)
@@ -227,16 +226,8 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal
-        aria-label={doc.title}
-        tabIndex={-1}
-        className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <PortalModal onClose={onClose} ariaLabel={doc.title} dismissOnBackdrop
+      backdropClassName="bg-black/70" panelClassName="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.07]">
           {latestFile && (
@@ -309,8 +300,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
             <p className="text-white/50 text-xs bg-white/5 rounded-xl px-3 py-2">{doc.description}</p>
           )}
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 
@@ -331,7 +321,6 @@ function UploadModal({
   defaultCaseId?: string | null
   defaultCaseNumber?: string | null
 }) {
-  const panelRef = useModalA11y(true)
   const [title, setTitle]         = useState('')
   const [category, setCategory]   = useState('OTHER')
   const [description, setDesc]    = useState('')
@@ -429,16 +418,9 @@ function UploadModal({
   }
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal
-        aria-label="อัปโหลดเอกสาร"
-        tabIndex={-1}
-        className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[92dvh]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <PortalModal onClose={onClose} ariaLabel="อัปโหลดเอกสาร" dismissOnBackdrop
+      backdropClassName="bg-black/60" wrapperClassName="flex min-h-full items-end md:items-center justify-center p-0 md:p-4"
+      panelClassName="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg shadow-2xl overflow-y-auto max-h-[92dvh]">
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between">
           <h3 className="text-white font-semibold">อัปโหลดเอกสาร</h3>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
@@ -578,8 +560,7 @@ function UploadModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 

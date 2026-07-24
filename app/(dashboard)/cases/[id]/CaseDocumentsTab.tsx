@@ -6,7 +6,7 @@ import {
   Tag, Plus, Loader2, CheckCircle, FolderOpen, History,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // Matches LOG_VIEWER_ROLES in app/api/activity-log/route.ts — the server is
 // the real gate (this endpoint 403s anyone else), this just hides the button
@@ -85,7 +85,6 @@ function formatDate(iso: string) {
 // ── Preview modal ────────────────────────────────────────────────────────────
 
 function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
-  const panelRef = useModalA11y(true)
   const f = doc.files[0]
   const [signedUrl, setSignedUrl]   = useState<string | null>(null)
   const [loadingUrl, setLoadingUrl] = useState(!!f)
@@ -114,9 +113,8 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
     mime.includes('powerpoint') || mime.includes('presentation')
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div ref={panelRef} role="dialog" aria-modal aria-label={doc.title} tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}>
+    <PortalModal onClose={onClose} ariaLabel={doc.title} dismissOnBackdrop
+      backdropClassName="bg-black/70" panelClassName="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden shadow-2xl">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
           <FileTypeIcon mimeType={f.mimeType} format={f.format} resourceType={f.resourceType} />
           <div className="flex-1 min-w-0">
@@ -170,8 +168,7 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 
@@ -189,7 +186,6 @@ type AccessLogEntry = {
 const ACCESS_ACTION_LABELS: Record<string, string> = { VIEW: 'เปิดดู', DOWNLOAD: 'ดาวน์โหลด' }
 
 function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
-  const panelRef = useModalA11y(true)
   const [entries, setEntries]   = useState<AccessLogEntry[]>([])
   const [loading, setLoading]   = useState(true)
 
@@ -205,9 +201,8 @@ function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void })
   }, [doc.id])
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div ref={panelRef} role="dialog" aria-modal aria-label="ประวัติการเข้าถึง" tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80dvh] flex flex-col overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}>
+    <PortalModal onClose={onClose} ariaLabel="ประวัติการเข้าถึง" dismissOnBackdrop
+      backdropClassName="bg-black/70" panelClassName="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[80dvh] flex flex-col overflow-hidden shadow-2xl">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.07]">
           <History className="w-4 h-4 text-white/40 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -242,8 +237,7 @@ function AccessHistoryModal({ doc, onClose }: { doc: Doc; onClose: () => void })
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 
@@ -256,7 +250,6 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
   onClose: () => void
   onSuccess: () => void
 }) {
-  const panelRef = useModalA11y(true)
   const [title, setTitle]         = useState('')
   const [category, setCategory]   = useState('OTHER')
   const [file, setFile]           = useState<File | null>(null)
@@ -328,9 +321,9 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
   }
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
-      <div ref={panelRef} role="dialog" aria-modal aria-label="อัปโหลดเอกสาร" tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-sm shadow-2xl"
-        onClick={(e) => e.stopPropagation()}>
+    <PortalModal onClose={onClose} ariaLabel="อัปโหลดเอกสาร" dismissOnBackdrop
+      backdropClassName="bg-black/60" wrapperClassName="flex min-h-full items-end md:items-center justify-center p-0 md:p-4"
+      panelClassName="bg-slate-900 border border-white/10 rounded-t-3xl md:rounded-2xl w-full md:max-w-sm shadow-2xl">
         <div className="px-4 py-3 border-b border-white/[0.07] flex items-center justify-between">
           <h3 className="text-white font-semibold text-sm">อัปโหลดเอกสาร</h3>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white transition">
@@ -393,8 +386,7 @@ function UploadMini({ caseId, caseNumber, cloudName, onClose, onSuccess }: {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 

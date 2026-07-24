@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { modalFieldInput, dashboardDialogPanel } from '@/lib/theme-classes'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 const MonthlyFinanceBarChart = dynamic(
   () => import('./CaseFinanceCharts').then((m) => m.MonthlyFinanceBarChart),
@@ -63,7 +63,6 @@ export default function CaseFinanceClient({ userRole }: Props) {
   const [employees,  setEmployees]  = useState<{id:string;name:string}[]>([])
   const [loading,    setLoading]    = useState(false)
   const [showModal,  setShowModal]  = useState<'income'|'expense'|null>(null)
-  const modalPanelRef = useModalA11y(!!showModal)
   const [editItem,   setEditItem]   = useState<CaseIncome | CaseExpense | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [iq, setIq] = useState('')
@@ -388,9 +387,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
 
       {/* ── INCOME MODAL ─────────────────────────────────────────────────── */}
       {showModal === 'income' && (
-        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div ref={modalPanelRef} role="dialog" aria-modal aria-label={editItem ? 'แก้ไขรายรับ' : 'เพิ่มรายรับคดี'} tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-lg p-6`}>
+        <PortalModal onClose={() => { setShowModal(null); setEditItem(null) }} ariaLabel={editItem ? 'แก้ไขรายรับ' : 'เพิ่มรายรับคดี'} panelClassName={`${dashboardDialogPanel} w-full max-w-lg p-6`}>
               <h2 className="font-semibold text-gray-800 text-lg mb-4">{editItem ? 'แก้ไขรายรับ' : 'เพิ่มรายรับคดี'}</h2>
               <form onSubmit={saveIncome} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -439,16 +436,12 @@ export default function CaseFinanceClient({ userRole }: Props) {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
 
       {/* ── EXPENSE MODAL ────────────────────────────────────────────────── */}
       {showModal === 'expense' && (
-        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div ref={modalPanelRef} role="dialog" aria-modal aria-label={editItem ? 'แก้ไขค่าใช้จ่าย' : 'เพิ่มค่าใช้จ่ายคดี'} tabIndex={-1} className={`${dashboardDialogPanel} w-full max-w-lg p-6`}>
+        <PortalModal onClose={() => { setShowModal(null); setEditItem(null) }} ariaLabel={editItem ? 'แก้ไขค่าใช้จ่าย' : 'เพิ่มค่าใช้จ่ายคดี'} panelClassName={`${dashboardDialogPanel} w-full max-w-lg p-6`}>
               <h2 className="font-semibold text-gray-800 text-lg mb-4">{editItem ? 'แก้ไขค่าใช้จ่าย' : 'เพิ่มค่าใช้จ่ายคดี'}</h2>
               <form onSubmit={saveExpense} className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -500,9 +493,7 @@ export default function CaseFinanceClient({ userRole }: Props) {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )

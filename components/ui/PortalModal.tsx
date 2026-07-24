@@ -11,7 +11,13 @@ type Props = {
   children: React.ReactNode
   /** Backdrop wrapper classes — defaults to the app's existing dark-overlay convention */
   backdropClassName?: string
+  /** Centering-wrapper classes (the flex container between backdrop and panel) — override to
+   *  preserve a page's own responsive layout, e.g. a mobile bottom-sheet via `items-end md:items-center` */
+  wrapperClassName?: string
   panelClassName?: string
+  /** Clicking the backdrop (outside the panel) closes the modal — off by default to match
+   *  each page's prior behavior; pass true only for modals that already dismissed on backdrop click */
+  dismissOnBackdrop?: boolean
 }
 
 /**
@@ -25,7 +31,9 @@ type Props = {
  * document.body removes the element from that ancestor chain entirely, so
  * it can't inherit a broken containing block regardless of the exact cause.
  */
-export default function PortalModal({ onClose, ariaLabel, children, backdropClassName, panelClassName }: Props) {
+export default function PortalModal({
+  onClose, ariaLabel, children, backdropClassName, wrapperClassName, panelClassName, dismissOnBackdrop = false,
+}: Props) {
   const panelRef = useModalA11y(true)
 
   useEffect(() => {
@@ -38,7 +46,10 @@ export default function PortalModal({ onClose, ariaLabel, children, backdropClas
 
   return createPortal(
     <div className={cn('fixed inset-0 bg-black/40 z-60 overflow-y-auto', backdropClassName)}>
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div
+        className={cn('flex min-h-full items-center justify-center p-4', wrapperClassName)}
+        onClick={dismissOnBackdrop ? (e) => { if (e.target === e.currentTarget) onClose() } : undefined}
+      >
         <div
           ref={panelRef}
           role="dialog"

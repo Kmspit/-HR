@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,7 +148,6 @@ function RuleModal({
   onClose: () => void
   onSave: () => void
 }) {
-  const panelRef = useModalA11y(true)
   const [name, setName]             = useState(rule?.name ?? '')
   const [description, setDesc]      = useState(rule?.description ?? '')
   const [trigger, setTrigger]       = useState(rule?.trigger ?? TRIGGERS[0].value)
@@ -221,8 +220,7 @@ function RuleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
-      <div ref={panelRef} role="dialog" aria-modal aria-label={rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'} tabIndex={-1} className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+    <PortalModal onClose={onClose} ariaLabel={rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'} backdropClassName="bg-black/50" panelClassName="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{rule ? 'แก้ไข Rule' : 'สร้าง Rule ใหม่'}</h2>
@@ -329,8 +327,7 @@ function RuleModal({
             {saving ? 'กำลังบันทึก...' : 'บันทึก Rule'}
           </button>
         </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }
 

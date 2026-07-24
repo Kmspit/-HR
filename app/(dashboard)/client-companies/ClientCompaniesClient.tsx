@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -722,7 +722,6 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
   mode: 'create'|'edit'; company?: ClientCompany; userId: string
   onClose: () => void; onSave: () => void
 }) {
-  const panelRef = useModalA11y(true)
   const [form, setForm] = useState({
     companyName: company?.companyName ?? '', contactName: company?.contactName ?? '',
     phone:       company?.phone       ?? '', email:       company?.email       ?? '',
@@ -768,9 +767,7 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div ref={panelRef} role="dialog" aria-modal aria-label={mode === 'create' ? 'เพิ่มลูกค้าใหม่' : 'แก้ไขข้อมูลลูกค้า'} tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl">
+    <PortalModal onClose={onClose} ariaLabel={mode === 'create' ? 'เพิ่มลูกค้าใหม่' : 'แก้ไขข้อมูลลูกค้า'} panelClassName="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{mode === 'create' ? 'เพิ่มลูกค้าใหม่' : 'แก้ไขข้อมูลลูกค้า'}</h2>
           </div>
@@ -802,8 +799,6 @@ function CompanyModal({ mode, company, userId, onClose, onSave }: {
             <button onClick={onClose} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm">ยกเลิก</button>
             <button onClick={save} disabled={saving || !form.companyName} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : mode === 'create' ? 'เพิ่มลูกค้า' : 'บันทึก'}</button>
           </div>
-        </div>
-      </div>
-    </div>
+    </PortalModal>
   )
 }

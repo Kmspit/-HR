@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { FileText, Plus, Loader2, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 import { DOCUMENT_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 type DocumentRequest = {
@@ -46,7 +46,6 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
   const [newPurpose, setNewPurpose] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [hrAction, setHrAction] = useState<{ id: string; status: string; notes: string } | null>(null)
-  const hrActionPanelRef = useModalA11y(!!hrAction)
   const [actioning, setActioning] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -188,8 +187,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
 
       {/* HR action modal */}
       {hrAction && (
-        <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4">
-          <div ref={hrActionPanelRef} role="dialog" aria-modal aria-label="อัปเดตสถานะ" tabIndex={-1} className="bg-slate-900 border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3">
+        <PortalModal onClose={() => setHrAction(null)} ariaLabel="อัปเดตสถานะ" backdropClassName="bg-black/60" panelClassName="bg-slate-900 border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-3">
             <h3 className="text-white font-semibold">อัปเดตสถานะ</h3>
             <div className="flex gap-2">
               {(['PROCESSING', 'READY', 'REJECTED'] as const).map((s) => (
@@ -229,8 +227,7 @@ export default function DocumentsClient({ isHr }: { isHr: boolean }) {
                 ยกเลิก
               </button>
             </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
 
       {/* List */}

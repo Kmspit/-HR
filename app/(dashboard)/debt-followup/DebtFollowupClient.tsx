@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 interface User { id: string; name: string; department: string | null; role: string }
 
@@ -38,7 +38,6 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
   const [method,    setMethod]    = useState('')
   const [loading,   setLoading]   = useState(true)
   const [showForm,  setShowForm]  = useState(false)
-  const formPanelRef = useModalA11y(showForm)
   const [debtors,   setDebtors]   = useState<DebtorOption[]>([])
   const [searchDeb, setSearchDeb] = useState('')
   const [selDebtor, setSelDebtor] = useState<DebtorOption | null>(null)
@@ -171,9 +170,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
 
       {/* Add follow-up modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div ref={formPanelRef} role="dialog" aria-modal aria-label="บันทึกการติดตามหนี้" tabIndex={-1} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg">
+        <PortalModal onClose={() => setShowForm(false)} ariaLabel="บันทึกการติดตามหนี้" panelClassName="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg">
               <div className="p-5 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">บันทึกการติดตามหนี้</h2>
               </div>
@@ -236,9 +233,7 @@ export default function DebtFollowupClient({ userId, userRole }: { userId: strin
                 <button onClick={() => setShowForm(false)} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
                 <button onClick={save} disabled={saving || !selDebtor || !fResult} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
               </div>
-            </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )

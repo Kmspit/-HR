@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { modalFieldInput } from '@/lib/theme-classes'
-import { useModalA11y } from '@/hooks/useModalA11y'
+import PortalModal from '@/components/ui/PortalModal'
 
 type SopStep  = { order: number; title: string; detail: string }
 type CheckItem = { text: string; required: boolean }
@@ -81,7 +81,6 @@ export default function SopClient({
   const [searchQ, setSearchQ]       = useState('')
   const [loading, setLoading]       = useState(true)
   const [showCreate, setCreate]     = useState(false)
-  const createPanelRef = useModalA11y(showCreate)
   const [editing, setEditing]       = useState(false)
   const [activeTab, setActiveTab]   = useState<'detail' | 'versions'>('detail')
   const [form, setForm] = useState(EMPTY_FORM)
@@ -426,8 +425,7 @@ export default function SopClient({
 
       {/* ── Create/Edit Modal ── */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
-          <div ref={createPanelRef} role="dialog" aria-modal aria-label={editing ? 'แก้ไข SOP' : 'สร้าง SOP ใหม่'} tabIndex={-1} className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
+        <PortalModal onClose={() => { setCreate(false); setEditing(false) }} ariaLabel={editing ? 'แก้ไข SOP' : 'สร้าง SOP ใหม่'} backdropClassName="bg-black/50" panelClassName="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {editing ? '✏️ แก้ไข SOP' : '+ สร้าง SOP ใหม่'}
@@ -512,8 +510,7 @@ export default function SopClient({
                 {saving ? 'กำลังบันทึก…' : editing ? 'บันทึก' : 'สร้าง'}
               </button>
             </div>
-          </div>
-        </div>
+        </PortalModal>
       )}
     </div>
   )
