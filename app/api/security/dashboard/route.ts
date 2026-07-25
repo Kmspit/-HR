@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isLineOaConfiguredAsync } from '@/lib/line-config'
 
 const ALLOWED_ROLES = ['CEO', 'SUPER_ADMIN', 'HR', 'MANAGER_HR'] as const
 
@@ -25,6 +26,8 @@ export async function GET() {
       lockedAccounts,
       recentBackup,
       totalBackups,
+      lineOaConfigured,
+      hrLineRecipientCount,
     ] = await Promise.all([
       prisma.loginAttempt.count({ where: { success: false, createdAt: { gte: since24h } } }),
       prisma.securityEvent.count({ where: { severity: 'CRITICAL', createdAt: { gte: since7d } } }),
@@ -32,6 +35,8 @@ export async function GET() {
       prisma.user.count({ where: { lockedUntil: { gt: new Date() } } }),
       prisma.backupRecord.findFirst({ where: { status: 'COMPLETED' }, orderBy: { createdAt: 'desc' } }),
       prisma.backupRecord.count(),
+      isLineOaConfiguredAsync(),
+      prisma.user.count({ where: { status: 'ACTIVE', role: { in: ['MANAGER_HR', 'ADMIN'] }, lineUserId: { not: null } } }),
     ])
 
     return NextResponse.json({
@@ -41,6 +46,8 @@ export async function GET() {
       lockedAccounts,
       lastBackupAt: recentBackup?.createdAt ?? null,
       totalBackups,
+      lineOaConfigured,
+      hrLineRecipientCount,
     })
   } catch (error) {
     console.error('[security/dashboard GET]', error)

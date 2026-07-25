@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { Shield, Activity, HardDrive, Users, AlertTriangle, CheckCircle, Download, Trash2, RefreshCw, Loader2, RotateCcw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import PortalModal from '@/components/ui/PortalModal'
@@ -12,6 +13,8 @@ type DashboardStats = {
   lockedAccounts: number
   lastBackupAt: string | null
   totalBackups: number
+  lineOaConfigured: boolean
+  hrLineRecipientCount: number
 }
 
 type SecurityEvent = {
@@ -260,6 +263,16 @@ export default function SecurityClient() {
                 { label: 'บัญชีถูกล็อค',           value: stats.lockedAccounts,   icon: <Shield size={18} className="text-yellow-400" />,       danger: stats.lockedAccounts > 0 },
                 { label: 'Backup ทั้งหมด',          value: stats.totalBackups,     icon: <HardDrive size={18} className="text-green-400" />,     danger: false },
                 { label: 'Backup ล่าสุด',           value: fmtDate(stats.lastBackupAt), icon: <CheckCircle size={18} className="text-green-400" />, danger: false },
+                {
+                  label: 'LINE OA แจ้งเตือน',
+                  value: !stats.lineOaConfigured
+                    ? 'ยังไม่ตั้งค่า'
+                    : stats.hrLineRecipientCount === 0
+                      ? 'ไม่มีผู้รับ'
+                      : `พร้อมใช้งาน (${stats.hrLineRecipientCount})`,
+                  icon: <AlertTriangle size={18} className={!stats.lineOaConfigured || stats.hrLineRecipientCount === 0 ? 'text-red-400' : 'text-green-400'} />,
+                  danger: !stats.lineOaConfigured || stats.hrLineRecipientCount === 0,
+                },
               ].map(s => (
                 <div
                   key={s.label}
@@ -272,6 +285,20 @@ export default function SecurityClient() {
             </div>
           ) : (
             <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" /></div>
+          )}
+
+          {stats && (!stats.lineOaConfigured || stats.hrLineRecipientCount === 0) && (
+            <div className="glass-card rounded-xl p-4 border border-red-500/30 flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs dark:text-slate-300 space-y-1">
+                <p className="font-semibold dark:text-white">
+                  {!stats.lineOaConfigured
+                    ? 'ยังไม่ได้ตั้งค่า LINE OA — พนักงานลงเวลาแล้ว HR จะไม่ได้รับแจ้งเตือนทาง LINE เลย'
+                    : 'ไม่มี HR/Admin คนใดผูก LINE OA ไว้ — พนักงานลงเวลาแล้ว HR จะไม่ได้รับแจ้งเตือนทาง LINE เลย'}
+                </p>
+                <Link href="/line-oa" className="text-green-400 hover:underline font-medium">ไปตั้งค่า LINE OA →</Link>
+              </div>
+            </div>
           )}
 
           <button

@@ -19,7 +19,12 @@ export type AttendanceLineEvent =
   | 'lunch-in'
   | 'face_mismatch'
 
-export type LineNotifyStatus = 'pending' | 'sent' | 'failed'
+export type LineNotifyStatus = 'pending' | 'sent' | 'failed' | 'not_configured' | 'no_recipient'
+
+/** ใช้แทนค่า hrLineUserId (field required) เมื่อไม่มีผู้รับจริงให้บันทึก — แยกจาก
+ *  LINE user id จริงอย่างชัดเจน, สถานะ not_configured/no_recipient จะไม่ถูกหยิบไป
+ *  retry เพราะ cron/UI retry กรองเฉพาะ status='failed' เท่านั้น */
+const NO_RECIPIENT_SENTINEL = '(none)'
 
 const LINE_RETRY = 3
 const RETRY_DELAY_MS = 1200
@@ -352,13 +357,6 @@ export async function notifyHrAttendanceOnLine(params: {
   lat?: number | null
   lng?: number | null
 }): Promise<{ sent: number; failed: number }> {
-  if (!(await isLineOaConfiguredAsync())) {
-    console.warn('[attendance-line-notify] LINE OA not configured — skip push')
-    return { sent: 0, failed: 1 }
-  }
-
-  const hrUsers = await getHrLineRecipients()
-
   const employee = await loadEmployeeContext(params.employeeUserId)
   if (!employee) {
     console.warn('[attendance-line-notify] employee not found', { userId: params.employeeUserId })
@@ -382,6 +380,28 @@ export async function notifyHrAttendanceOnLine(params: {
     lat: params.lat,
     lng: params.lng,
   })
+
+  if (!(await isLineOaConfiguredAsync())) {
+    console.warn('[attendance-line-notify] LINE OA not configured — skip push')
+    await prisma.attendanceLineNotifyLog.create({
+      data: {
+        employeeUserId: params.employeeUserId,
+        employeeId: employee.employeeId ?? undefined,
+        hrLineUserId: NO_RECIPIENT_SENTINEL,
+        eventType: params.event,
+        scanType: params.event,
+        attendanceId: params.attendanceId ?? undefined,
+        faceLogId: params.faceLogId ?? undefined,
+        faceScanId: params.faceScanId ?? undefined,
+        messageText,
+        status: 'not_configured',
+        failedReason: 'LINE OA channel access token/secret ยังไม่ได้ตั้งค่า',
+      },
+    })
+    return { sent: 0, failed: 1 }
+  }
+
+  const hrUsers = await getHrLineRecipients()
 
   const imageUrl = await resolveLineImageUrl({
     faceScanId: params.faceScanId,
@@ -476,6 +496,22 @@ export async function notifyHrAttendanceOnLine(params: {
       employeeUserId: params.employeeUserId,
       event: params.event,
     })
+    await prisma.attendanceLineNotifyLog.create({
+      data: {
+        employeeUserId: params.employeeUserId,
+        employeeId: employee.employeeId ?? undefined,
+        hrLineUserId: NO_RECIPIENT_SENTINEL,
+        eventType: params.event,
+        scanType: params.event,
+        attendanceId: params.attendanceId ?? undefined,
+        faceLogId: params.faceLogId ?? undefined,
+        faceScanId: params.faceScanId ?? undefined,
+        messageText,
+        status: 'no_recipient',
+        failedReason: 'ไม่มี HR/Admin คนใดผูก LINE OA ไว้ (lineUserId)',
+      },
+    })
+    failed = 1
   } else if (sent === 0 && failed > 0) {
     console.error('[attendance-line-notify] all HR LINE pushes failed', {
       employeeUserId: params.employeeUserId,
