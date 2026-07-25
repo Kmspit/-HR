@@ -582,6 +582,41 @@ export async function retryFailedAttendanceLineNotify(logId: string): Promise<{
   return { ok: false, error: updated?.failedReason ?? 'ส่งไม่สำเร็จ' }
 }
 
+/** เกิน 5 รอบ cron รายวัน (LINE_RETRY sub-retry ต่อรอบ) ถือว่า LINE API มีปัญหาระยะยาว
+ *  — cron หยุด retry อัตโนมัติเพื่อกัน retry ไม่จบไม่สิ้น แต่แถวยังโชว์ status='failed'
+ *  ให้ HR เห็นและกด "Retry ทั้งหมดตอนนี้" เองได้เสมอ (ปุ่มนั้นไม่เช็ค cap นี้) */
+export const MAX_CRON_RETRY_COUNT = LINE_RETRY * 5
+
+/** Retry เป็นชุด — ใช้ทั้งจาก cron รายวัน (จำกัด retryCount กัน retry ไม่จบไม่สิ้น)
+ *  และปุ่ม "Retry ทั้งหมดตอนนี้" ใน security dashboard (ไม่จำกัด retryCount เพราะ
+ *  เป็น action ที่ HR กดเองรู้ตัวอยู่แล้ว) */
+export async function retryAllFailedAttendanceLineNotify(options?: {
+  /** ถ้าระบุ — retry เฉพาะแถวที่ retryCount ต่ำกว่าค่านี้ (ใช้กับ cron อัตโนมัติ) */
+  maxRetryCount?: number
+  /** จำนวนแถวสูงสุดต่อการเรียกครั้งเดียว กัน request ทำงานนานเกินไป */
+  limit?: number
+}): Promise<{ attempted: number; succeeded: number; stillFailed: number }> {
+  const limit = options?.limit ?? 50
+
+  const rows = await prisma.attendanceLineNotifyLog.findMany({
+    where: {
+      status: 'failed',
+      ...(options?.maxRetryCount != null ? { retryCount: { lt: options.maxRetryCount } } : {}),
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+    take: limit,
+  })
+
+  let succeeded = 0
+  for (const row of rows) {
+    const result = await retryFailedAttendanceLineNotify(row.id)
+    if (result.ok) succeeded++
+  }
+
+  return { attempted: rows.length, succeeded, stillFailed: rows.length - succeeded }
+}
+
 /** Helper หลังบันทึก attendance สำเร็จ */
 export function scheduleHrAttendanceLineNotify(params: {
   event: AttendanceLineEvent

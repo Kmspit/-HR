@@ -15,6 +15,7 @@ type DashboardStats = {
   totalBackups: number
   lineOaConfigured: boolean
   hrLineRecipientCount: number
+  lineNotifyFailedCount: number
 }
 
 type SecurityEvent = {
@@ -87,11 +88,24 @@ export default function SecurityClient() {
   const [restoring, setRestoring]         = useState(false)
   const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null)
   const restoreModalOpen = restoreTarget !== null
+  const [retryingLineNotify, setRetryingLineNotify] = useState(false)
 
   const loadStats = useCallback(async () => {
     const r = await fetch('/api/security/dashboard').catch(() => null)
     if (r?.ok) setStats(await r.json())
   }, [])
+
+  const retryLineNotifyAll = async () => {
+    setRetryingLineNotify(true)
+    try {
+      const r = await fetch('/api/attendance/line-notify/retry-all', { method: 'POST' })
+      const d = await r.json()
+      if (!r.ok) { toast.error(d.error ?? 'Retry ไม่สำเร็จ'); return }
+      toast.success(`Retry แล้ว ${d.attempted} รายการ — สำเร็จ ${d.succeeded}, ยังไม่สำเร็จ ${d.stillFailed}${d.attempted >= 50 ? ' (อาจมีค้างเพิ่ม กดอีกครั้งได้)' : ''}`)
+      void loadStats()
+    } catch { toast.error('เกิดข้อผิดพลาด') }
+    finally { setRetryingLineNotify(false) }
+  }
 
   const loadEvents = useCallback(async () => {
     const r = await fetch('/api/security/events?take=30').catch(() => null)
@@ -298,6 +312,24 @@ export default function SecurityClient() {
                 </p>
                 <Link href="/line-oa" className="text-green-400 hover:underline font-medium">ไปตั้งค่า LINE OA →</Link>
               </div>
+            </div>
+          )}
+
+          {stats && stats.lineNotifyFailedCount > 0 && (
+            <div className="glass-card rounded-xl p-4 border border-yellow-500/30 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-xs dark:text-slate-300">
+                <RotateCcw size={16} className="text-yellow-400 flex-shrink-0" />
+                <span>แจ้งเตือน LINE ที่ส่งไม่สำเร็จค้างอยู่ <span className="font-bold dark:text-white">{stats.lineNotifyFailedCount}</span> รายการ (ระบบจะ retry อัตโนมัติทุกวัน)</span>
+              </div>
+              <button
+                type="button"
+                onClick={retryLineNotifyAll}
+                disabled={retryingLineNotify}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold disabled:opacity-50"
+              >
+                {retryingLineNotify ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                Retry ทั้งหมดตอนนี้
+              </button>
             </div>
           )}
 

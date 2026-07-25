@@ -28,6 +28,7 @@ export async function GET() {
       totalBackups,
       lineOaConfigured,
       hrLineRecipientCount,
+      lineNotifyFailedCount,
     ] = await Promise.all([
       prisma.loginAttempt.count({ where: { success: false, createdAt: { gte: since24h } } }),
       prisma.securityEvent.count({ where: { severity: 'CRITICAL', createdAt: { gte: since7d } } }),
@@ -37,6 +38,7 @@ export async function GET() {
       prisma.backupRecord.count(),
       isLineOaConfiguredAsync(),
       prisma.user.count({ where: { status: 'ACTIVE', role: { in: ['MANAGER_HR', 'ADMIN'] }, lineUserId: { not: null } } }),
+      prisma.attendanceLineNotifyLog.count({ where: { status: 'failed' } }),
     ])
 
     return NextResponse.json({
@@ -48,6 +50,7 @@ export async function GET() {
       totalBackups,
       lineOaConfigured,
       hrLineRecipientCount,
+      lineNotifyFailedCount,
     })
   } catch (error) {
     console.error('[security/dashboard GET]', error)
