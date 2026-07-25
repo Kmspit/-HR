@@ -3,7 +3,7 @@
  *
  * Set on Vercel per project:
  *   NEXT_PUBLIC_DEPLOY_PROFILE=full|hr|legal   (default: full)
- *   NEXT_PUBLIC_FROZEN_MODULES=/automation   (Phase 2 — comma paths)
+ *   NEXT_PUBLIC_FROZEN_MODULES=/reports   (Phase 2 — comma paths)
  */
 export type DeployProfile = 'full' | 'hr' | 'legal'
 
@@ -20,7 +20,7 @@ export const FINANCE_PATHS = [
 /** HR admin modules hidden on legal-only deploy */
 export const HR_ADMIN_PATHS = [
   '/payroll', '/employees', '/probation', '/branches', '/organization',
-  '/line-oa', '/automation', '/reports',
+  '/line-oa', '/reports',
 ] as const
 
 /** Work modules hidden on hr-only deploy */

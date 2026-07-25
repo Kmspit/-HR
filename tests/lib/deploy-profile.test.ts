@@ -54,9 +54,9 @@ describe('deploy-profile', () => {
   })
 
   it('frozen modules hide additional paths', () => {
-    process.env.NEXT_PUBLIC_FROZEN_MODULES = '/performance,/automation'
+    process.env.NEXT_PUBLIC_FROZEN_MODULES = '/performance,/reports'
     resetDeployProfileCache()
     expect(isPathHiddenByDeployProfile('/performance')).toBe(true)
-    expect(isPathHiddenByDeployProfile('/automation')).toBe(true)
+    expect(isPathHiddenByDeployProfile('/reports')).toBe(true)
   })
 })

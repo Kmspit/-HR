@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, type FocusEvent } from 'react'
 import {
   Plus, X, Clock, CheckCircle, AlertCircle,
-  RotateCcw, Eye, Loader2, ClipboardList,
+  RotateCcw, Eye, Loader2,
   ExternalLink, MessageSquare, Paperclip, Upload,
   FileText, Download, Trash2,
   Calendar, MapPin, User2,
@@ -15,8 +15,8 @@ import { useModalA11y } from '@/hooks/useModalA11y'
 import {
   type Task, type TaskAttachment, type TaskLink, type ProgressNote,
   type TaskCommentItem, type CommentReply, type ChecklistItem, type TaskTimelineEntry,
-  type TaskTemplate, type WorkloadInfo, type UserSnip,
-  DEPT_OPTIONS, DEPT_LABEL, DEPT_COLOR, DEPT_TASK_OPTIONS,
+  type WorkloadInfo, type UserSnip,
+  DEPT_OPTIONS, DEPT_LABEL, DEPT_TASK_OPTIONS,
   TYPE_LABEL, PRIORITY_LABEL, PRIORITY_TEXT,
   WORKLOAD_CLS, ACCEPTED_FILE_TYPES,
   fmtDate, fmtDateTime, toDateInputValue, isOverdue, effectiveStatus,
@@ -998,15 +998,12 @@ type CreateModalProps = {
   assignerName: string
   onClose: () => void
   onCreated: (t: Task) => void
-  templates?: TaskTemplate[]
   workloadMap?: Record<string, WorkloadInfo>
 }
 
-export function CreateTaskModal({ employees, assignerName, onClose, onCreated, templates = [], workloadMap = {} }: CreateModalProps) {
+export function CreateTaskModal({ employees, assignerName, onClose, onCreated, workloadMap = {} }: CreateModalProps) {
   const panelRef = useModalA11y(true)
   const [isPending, startTransition] = useTransition()
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [caseNumber,       setCaseNumber]  = useState('')
   const [clientName,       setClientName]  = useState('')
   const [taskDepartment,   setDept]        = useState('')
@@ -1031,20 +1028,6 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
   const inputCls = 'w-full rounded-xl px-3 py-2.5 text-[13px] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-green-400/60'
 
   const taskTypeOptions = DEPT_TASK_OPTIONS[taskDepartment] ?? DEPT_TASK_OPTIONS['']
-
-  function applyTemplate(tpl: TaskTemplate) {
-    if (tpl.description)    setDesc(tpl.description)
-    if (tpl.taskType)       setType(tpl.taskType)
-    if (tpl.priority)       setPriority(tpl.priority)
-    if (tpl.department)     { setDept(tpl.department); setType(tpl.taskType ?? (DEPT_TASK_OPTIONS[tpl.department]?.[0]?.value ?? 'OFFICE')) }
-    if (tpl.notes)          setNotes(tpl.notes)
-    try {
-      const items: { title: string }[] = JSON.parse(tpl.defaultChecklist)
-      if (items.length > 0) setChecklistItems(items.map((item, i) => ({ _key: String(Date.now() + i), value: item.title })))
-    } catch { /* ignore */ }
-    setSelectedTemplateId(tpl.id)
-    setShowTemplatePicker(false)
-  }
 
   function handleDeptChange(d: string) {
     setDept(d)
@@ -1094,7 +1077,6 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
           taskLinks:        cleanLinks.length > 0 ? cleanLinks.map(({ _key: _, ...rest }) => rest) : undefined,
           checklist:        checklistItems.filter(c => c.value.trim()).map(c => ({ title: c.value.trim() })),
           dueTime:          dueTime || null,
-          templateId:       selectedTemplateId || null,
         }),
       })
       if (!ok || data.error) { setError(data.error ?? 'เกิดข้อผิดพลาด'); return }
@@ -1133,40 +1115,6 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, t
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain scroll-pb-24" onFocusCapture={scrollFocusedFieldIntoView}>
             <div className="px-5 py-4 space-y-4">
-
-              {templates.length > 0 && (
-                <div className="rounded-xl border border-dashed border-green-300 dark:border-green-500/30 bg-green-50/50 dark:bg-green-500/[0.04] px-3 py-2.5">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[12px] font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5">
-                      <ClipboardList className="w-3.5 h-3.5" />
-                      {selectedTemplateId ? `เทมเพลต: ${templates.find(t => t.id === selectedTemplateId)?.name ?? ''}` : 'สร้างจากเทมเพลต (ไม่บังคับ)'}
-                    </p>
-                    <button type="button" onClick={() => setShowTemplatePicker(v => !v)}
-                      className="text-[11px] text-green-600 dark:text-green-400 font-medium hover:underline">
-                      {showTemplatePicker ? 'ซ่อน' : selectedTemplateId ? 'เปลี่ยน' : 'เลือก'}
-                    </button>
-                  </div>
-                  {showTemplatePicker && (
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                      {templates.map((tpl) => (
-                        <button key={tpl.id} type="button" onClick={() => applyTemplate(tpl)}
-                          className="w-full text-left rounded-lg px-3 py-2 text-[12px] hover:bg-green-100 dark:hover:bg-green-500/15 transition-colors border border-transparent hover:border-green-200 dark:hover:border-green-500/30">
-                          <p className="font-semibold text-slate-800 dark:text-slate-200">{tpl.name}</p>
-                          {tpl.description && <p className="text-slate-500 dark:text-slate-400 truncate text-[11px]">{tpl.description}</p>}
-                          <div className="flex gap-1.5 mt-1 flex-wrap">
-                            {tpl.department && <span className={`text-[12px] font-semibold rounded-full px-1.5 py-0.5 border ${DEPT_COLOR[tpl.department] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>{DEPT_LABEL[tpl.department] ?? tpl.department}</span>}
-                            <span className="text-[12px] text-slate-400">{PRIORITY_LABEL[tpl.priority]}</span>
-                            {tpl.defaultSlaHours && <span className="text-[12px] text-slate-400">SLA {tpl.defaultSlaHours}h</span>}
-                            {tpl.defaultChecklist !== '[]' && (() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })() > 0 && (
-                              <span className="text-[12px] text-slate-400">✓ {(() => { try { return JSON.parse(tpl.defaultChecklist).length } catch { return 0 } })()} รายการ</span>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

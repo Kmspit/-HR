@@ -99,21 +99,6 @@ export type TaskTimelineEntry = {
   user: { id: string; name: string; role: string }
 }
 
-export type TaskTemplate = {
-  id: string
-  name: string
-  description: string | null
-  category: string
-  taskType: string | null
-  priority: string
-  defaultSlaHours: number | null
-  defaultChecklist: string
-  defaultAssigneeRole: string | null
-  department: string | null
-  notes: string | null
-  createdBy: { id: string; name: string }
-}
-
 export type WorkloadInfo = {
   userId: string
   activeCount: number

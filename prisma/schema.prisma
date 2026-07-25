@@ -511,7 +511,6 @@ model User {
   taskComments              TaskComment[]          @relation("TaskCommentAuthor")
   completedChecklistItems   TaskChecklist[]        @relation("TaskChecklistCompleter")
   taskTimelines             TaskTimeline[]         @relation("TaskTimelineActor")
-  taskTemplatesCreated      TaskTemplate[]         @relation("TemplateCreator")
   // Phase 4 — Case Document Center
   caseDocsUploaded          CaseDocument[]         @relation("CaseDocUploader")
   caseDocsAssigned          CaseDocument[]         @relation("CaseDocAssignee")
@@ -574,7 +573,6 @@ model User {
   casesAssigned             Case[]               @relation("CaseAssignee")
   caseCourtItems            CaseCourt[]          @relation("CaseCourtCreator")
   caseTimelines             CaseTimeline[]       @relation("CaseTimelineActor")
-  caseTemplates             CaseTemplate[]       @relation("CaseTemplateCreator")
   caseChecklistDone         CaseChecklist[]      @relation("CaseChecklistDoneBy")
   caseDebtorActivities      CaseDebtorActivity[] @relation("CaseDebtorActivityActor")
   caseFinancialUpdates      CaseFinancial[]      @relation("CaseFinancialUpdater")
@@ -1524,7 +1522,7 @@ model TaskAssignment {
   slaDeadline  DateTime? @map("sla_deadline")  // computed: createdAt + slaHours
 
   // Phase 3 — Template, Case Relation & Automation
-  templateId    String? @map("template_id")    // which template generated this task
+  templateId    String? @map("template_id")    // historical: which task_templates row generated this task (template feature removed, plain ref, no FK constraint)
   debtorId      String? @map("debtor_id")      // primary debtor link (plain ref, no FK constraint)
   rejectedCount Int     @default(0) @map("rejected_count") // times rejected — triggers CEO alert at 3+
 
@@ -1539,7 +1537,6 @@ model TaskAssignment {
   reviewedBy      User?             @relation("TaskReviewer", fields: [reviewedById], references: [id])
   client          User?             @relation("TaskClient",   fields: [clientId],     references: [id])
   clientCompany   ClientCompany?    @relation(fields: [clientCompanyId], references: [id])
-  template        TaskTemplate?     @relation(fields: [templateId], references: [id])
   case            Case?             @relation(fields: [caseId],     references: [id])
   attachments     TaskAttachment[]
   statusHistories CaseStatusHistory[]
@@ -1640,34 +1637,6 @@ model TaskTimeline {
   @@map("task_timelines")
 }
 
-// ── TASK TEMPLATES (Phase 3) ────────────────────────────────────────────────
-
-model TaskTemplate {
-  id                  String   @id @default(cuid())
-  name                String
-  description         String?
-  category            String   @default("GENERAL")
-  taskType            String?  @map("task_type")
-  priority            String   @default("MEDIUM")
-  defaultSlaHours     Int?     @map("default_sla_hours")
-  defaultChecklist    String   @default("[]") @map("default_checklist")
-  defaultAssigneeRole String?  @map("default_assignee_role")
-  department          String?
-  notes               String?
-  isActive            Boolean  @default(true) @map("is_active")
-  sortOrder           Int      @default(0) @map("sort_order")
-  createdById         String   @map("created_by_id")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-
-  createdBy User             @relation("TemplateCreator", fields: [createdById], references: [id])
-  tasks     TaskAssignment[]
-
-  @@index([category])
-  @@index([isActive])
-  @@map("task_templates")
-}
-
 // ── TASK DEPENDENCIES (Phase 3) ─────────────────────────────────────────────
 
 model TaskDependency {
@@ -1683,26 +1652,6 @@ model TaskDependency {
   @@index([taskId])
   @@index([dependsOnId])
   @@map("task_dependencies")
-}
-
-// ── TASK AUTOMATION RULES (Phase 3) ─────────────────────────────────────────
-
-model TaskAutomationRule {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  triggerOn   String   @map("trigger_on")
-  conditions  String   @default("{}")
-  action      String
-  actionData  String   @default("{}") @map("action_data")
-  department  String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@index([isActive])
-  @@map("task_automation_rules")
 }
 
 // ── CASE DOCUMENT CENTER (Phase 4) ──────────────────
@@ -2628,7 +2577,7 @@ model Case {
   // Phase 2 fields
   riskLevel        String    @default("MEDIUM") @map("risk_level")
   slaDeadline      DateTime? @map("sla_deadline")
-  templateId       String?   @map("template_id")
+  templateId       String?   @map("template_id")    // historical: which case_templates row generated this case (template feature removed, plain ref, no FK constraint)
   collectedAmount  Float     @default(0) @map("collected_amount")
   legalFee         Float     @default(0) @map("legal_fee")
   courtFee         Float     @default(0) @map("court_fee")
@@ -2636,7 +2585,6 @@ model Case {
 
   assignedEmployee User?          @relation("CaseAssignee",  fields: [assignedEmployeeId], references: [id])
   createdBy        User           @relation("CaseCreator",   fields: [createdById],        references: [id])
-  template         CaseTemplate?  @relation(fields: [templateId], references: [id])
   client           CaseClient?
   debtor           CaseDebtor?
   courts           CaseCourt[]
@@ -2738,29 +2686,6 @@ model CaseTimeline {
 }
 
 // ── CASE MANAGEMENT PHASE 2 ──────────────────────────────────────────────────
-
-model CaseTemplate {
-  id            String   @id @default(cuid())
-  name          String
-  description   String?
-  caseType      CaseType @map("case_type")
-  department    String?
-  slaHours      Int      @default(720)  @map("sla_hours")
-  checklistJson String   @default("[]") @map("checklist_json")
-  taskJson      String   @default("[]") @map("task_json")
-  approvalFlow  String?  @map("approval_flow")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdById   String   @map("created_by_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  createdBy User   @relation("CaseTemplateCreator", fields: [createdById], references: [id])
-  cases     Case[]
-
-  @@index([caseType])
-  @@index([isActive])
-  @@map("case_templates")
-}
 
 model CaseChecklist {
   id        String    @id @default(cuid())

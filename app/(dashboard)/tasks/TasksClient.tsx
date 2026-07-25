@@ -7,7 +7,7 @@ import {
   LayoutGrid, List, ChevronDown, User2,
 } from 'lucide-react'
 import {
-  type Task, type TaskTemplate, type WorkloadInfo, type TabId, type UserSnip,
+  type Task, type WorkloadInfo, type TabId, type UserSnip,
   ACTIVE_STATUSES, DEPT_LABEL, DEPT_OPTIONS,
   isOverdue, effectiveStatus,
   StatusBadge, DeptBadge, OverdueSeverityBadge,
@@ -57,14 +57,10 @@ export default function TasksClient({
   const [allList,        setAll]          = useState<Task[]>(initAll)
   const [showCreate,     setCreate]       = useState(false)
   const [selected,       setSelected]     = useState<Task | null>(null)
-  const [templates,      setTemplates]    = useState<TaskTemplate[]>([])
   const [workloadMap,    setWorkloadMap]  = useState<Record<string, WorkloadInfo>>({})
 
   useEffect(() => {
     if (!canAssign) return
-    fetch('/api/tasks/templates').then(r => r.json()).then((d: { templates?: TaskTemplate[] }) => {
-      if (d.templates) setTemplates(d.templates)
-    }).catch(() => {})
     fetch('/api/tasks/workload').then(r => r.json()).then((d: { workload?: WorkloadInfo[] }) => {
       if (d.workload) {
         const map: Record<string, WorkloadInfo> = {}
@@ -361,7 +357,7 @@ export default function TasksClient({
       {showCreate && (
         <CreateTaskModal employees={employees} assignerName={userName}
           onClose={() => setCreate(false)} onCreated={handleCreated}
-          templates={templates} workloadMap={workloadMap} />
+          workloadMap={workloadMap} />
       )}
 
       {/* Mobile FAB */}

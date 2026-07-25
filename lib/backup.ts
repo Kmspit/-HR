@@ -69,7 +69,6 @@ export const BACKUP_TABLE_SPECS: BackupTableSpec[] = [
   { table: 'task_comments',      accessor: 'taskComment' },
   { table: 'task_checklists',    accessor: 'taskChecklist' },
   { table: 'task_timelines',     accessor: 'taskTimeline' },
-  { table: 'task_templates',     accessor: 'taskTemplate' },
   { table: 'task_dependencies',  accessor: 'taskDependency' },
 
   // ── HR records ──────────────────────────────────────────────────────────
@@ -89,7 +88,6 @@ export const BACKUP_TABLE_SPECS: BackupTableSpec[] = [
   { table: 'case_debtors',             accessor: 'caseDebtor' },
   { table: 'case_courts',              accessor: 'caseCourt' },
   { table: 'case_timelines',           accessor: 'caseTimeline' },
-  { table: 'case_templates',           accessor: 'caseTemplate' },
   { table: 'case_checklists',          accessor: 'caseChecklist' },
   { table: 'case_debtor_activities',   accessor: 'caseDebtorActivity' },
   { table: 'case_documents',           accessor: 'caseDocument' },
@@ -133,7 +131,6 @@ export const BACKUP_TABLE_SPECS: BackupTableSpec[] = [
 
   // ── Automation (config, currently near-empty) ─────────────────────────────
   { table: 'automation_rules',         accessor: 'automationRule' },
-  { table: 'task_automation_rules',    accessor: 'taskAutomationRule' },
 ]
 
 export const BACKUP_TABLE_NAMES: string[] = BACKUP_TABLE_SPECS.map((s) => s.table)

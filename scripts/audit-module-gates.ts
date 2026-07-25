@@ -74,7 +74,7 @@ const SIDEBAR_PATHS = [
 
   '/documents', '/warnings', '/rules', '/branches', '/organization',
 
-  '/automation', '/settings', '/security', '/announcements', '/line-oa', '/notifications',
+  '/settings', '/security', '/announcements', '/line-oa', '/notifications',
 
 ] as const
 

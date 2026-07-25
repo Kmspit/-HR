@@ -273,7 +273,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/billing':            FINANCE_MODULE,
   '/invoices':           FINANCE_MODULE,
   '/receipts':           FINANCE_MODULE,
-  '/automation':         HR_ADMIN,
   '/security':           [...EXEC_ONLY, 'MANAGER_HR', 'HR'],
   '/manual':             ALL_ROLES,
   '/system-logs':        HR_ADMIN,
