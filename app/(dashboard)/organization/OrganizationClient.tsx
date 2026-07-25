@@ -15,6 +15,13 @@ const TABS: { id: Tab; label: string; icon: typeof Layers }[] = [
   { id: 'sections', label: 'ส่วนงาน', icon: Grid3X3 },
 ]
 
+const HIERARCHY_GAP_LABEL: Record<string, string> = {
+  teamLeader:         'ไม่มีหัวหน้า',
+  manager:            'ไม่มีผู้จัดการ',
+  teamLeaderInactive: 'หัวหน้าถูกปิดใช้งาน',
+  managerInactive:    'ผู้จัดการถูกปิดใช้งาน',
+}
+
 export default function OrganizationClient({
   branches,
   hierarchyGaps = [],
@@ -154,16 +161,16 @@ export default function OrganizationClient({
       {hierarchyGapCount > 0 && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
           <p className="text-sm font-semibold text-amber-200">
-            ⚠️ พนักงาน {hierarchyGapCount} / {hierarchyTotalActive} คน ยังไม่มีหัวหน้า/ผู้จัดการครบ
+            ⚠️ พนักงาน {hierarchyGapCount} / {hierarchyTotalActive} คน มีปัญหาสายบังคับบัญชา (ไม่มีหัวหน้า/ผู้จัดการ หรือหัวหน้า/ผู้จัดการถูกปิดใช้งานแล้ว)
           </p>
           <p className="text-xs text-amber-100/80">
-            ขั้นอนุมัติ org-based (Outside Work / Leave) จะ skip หรือส่งผิดคนถ้าไม่ assign — แก้ที่{' '}
+            ขั้นอนุมัติ org-based (Outside Work / Leave) จะ skip หรือส่งผิดคนถ้าไม่ assign หรือ assign ไปคนที่ปิดใช้งานแล้ว — แก้ที่{' '}
             <Link href="/employees" className="underline font-medium">พนักงาน</Link>
           </p>
           <ul className="text-xs text-amber-100/90 space-y-1 max-h-32 overflow-y-auto">
             {hierarchyGaps.map((g) => (
               <li key={g.id}>
-                {g.name} — ขาด: {g.missing.map((m) => (m === 'teamLeader' ? 'หัวหน้า' : 'ผู้จัดการ')).join(', ')}
+                {g.name} — {g.missing.map((m) => HIERARCHY_GAP_LABEL[m] ?? m).join(', ')}
               </li>
             ))}
             {hierarchyGapCount > hierarchyGaps.length && (

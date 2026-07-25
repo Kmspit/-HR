@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 import { getOverdueInfo, getEscalationLevel } from '@/lib/task-sla'
 import { rejectUnauthorizedCron } from '@/lib/cron-secret'
+import { resolveOrgSupervisorId } from '@/lib/approval-chain'
 import type { TaskStatus } from '@prisma/client'
 
 // Tasks in these statuses are considered "active" (not finished)
@@ -47,6 +48,16 @@ async function alreadySent(userId: string, taskId: string, type: string): Promis
     select: { id: true },
   })
   return !!existing
+}
+
+/** Last-resort escalation target when nobody active is left in the assignee's
+ *  supervisor chain — mirrors the CEO/SUPER_ADMIN override backstop used
+ *  elsewhere in the approval-chain system. */
+async function activeCeoFallback(): Promise<string | null> {
+  const ceo = await prisma.user.findFirst({ where: { role: 'CEO', status: 'ACTIVE' }, select: { id: true } })
+  if (ceo) return ceo.id
+  const superAdmin = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN', status: 'ACTIVE' }, select: { id: true } })
+  return superAdmin?.id ?? null
 }
 
 /** Send both in-app and LINE OA notification */
@@ -124,6 +135,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true, name: true,
           teamLeaderId: true, managerId: true,
+          manager: { select: { id: true, status: true } },
           lineUserId: true,
         },
       },
@@ -172,11 +184,15 @@ export async function GET(req: NextRequest) {
       const escLevel = getEscalationLevel(daysLate)
       const assignee = t.assignee
 
-      if (escLevel === 'team_leader' && assignee?.teamLeaderId) {
-        const tlId = assignee.teamLeaderId
-        if (!(await alreadySent(tlId, t.id, 'TASK_OVERDUE'))) {
+      if (escLevel === 'team_leader' && assignee) {
+        // resolveOrgSupervisorId already prefers an active teamLeader, falling
+        // back to an active manager if the teamLeader is missing/inactive —
+        // same rule the approval-chain org-supervisor step uses. Falls further
+        // to CEO/SUPER_ADMIN if nobody active is left in the chain at all.
+        const recipientId = (await resolveOrgSupervisorId(prisma, assignee.id)) ?? await activeCeoFallback()
+        if (recipientId && !(await alreadySent(recipientId, t.id, 'TASK_OVERDUE'))) {
           await notifyUser({
-            userId:  tlId,
+            userId:  recipientId,
             taskId:  t.id,
             type:    'TASK_OVERDUE',
             title:   '⚠️ [Escalate] งานในทีมเกินกำหนด 1 วัน',
@@ -188,11 +204,15 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      if (escLevel === 'manager' && assignee?.managerId) {
-        const mgId = assignee.managerId
-        if (!(await alreadySent(mgId, t.id, 'TASK_OVERDUE'))) {
+      if (escLevel === 'manager' && assignee) {
+        // Manager stage escalates to a higher authority than team_leader —
+        // if the manager is missing/inactive, go straight to CEO/SUPER_ADMIN
+        // rather than falling back to the team leader already notified a
+        // stage earlier.
+        const recipientId = assignee.manager?.status === 'ACTIVE' ? assignee.manager.id : await activeCeoFallback()
+        if (recipientId && !(await alreadySent(recipientId, t.id, 'TASK_OVERDUE'))) {
           await notifyUser({
-            userId:  mgId,
+            userId:  recipientId,
             taskId:  t.id,
             type:    'TASK_OVERDUE',
             title:   '🚨 [Escalate] งานเกินกำหนด 3 วัน',
