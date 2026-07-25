@@ -66,6 +66,24 @@ describe('POST /api/expense-claims/[id]/approve — no self-approval, atomic sta
     expect(prisma.expenseClaim.updateMany).not.toHaveBeenCalled()
   })
 
+  it('forbids the requester from rejecting their own claim, even with management role', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: submitterId, role: 'MANAGER_HR', branchId: null } } as never)
+    const res = await POST(makeReq({ action: 'reject' }), { params })
+    expect(res.status).toBe(403)
+    expect(prisma.expenseClaim.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('allows a different company-wide approver to reject the claim', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'hr-1', role: 'MANAGER_HR', branchId: null } } as never)
+    const res = await POST(makeReq({ action: 'reject', note: 'ใบเสร็จไม่ครบ' }), { params })
+    expect(res.status).toBe(200)
+    expect(prisma.expenseClaim.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'claim-1', status: { in: ['PENDING', 'SUPERVISOR_APPROVED', 'CEO_APPROVED'] } },
+      }),
+    )
+  })
+
   it('allows a different company-wide approver to approve the same claim', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'hr-1', role: 'MANAGER_HR', branchId: null } } as never)
     vi.mocked(prisma.expenseClaim.findUnique)

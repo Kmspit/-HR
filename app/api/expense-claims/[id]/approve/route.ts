@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     notifTitle = 'ใบเบิกได้รับการอนุมัติจาก CEO'
     notifMsg = `${claim.title} — รอการจ่ายเงิน`
   } else if (action === 'reject') {
-    if (!inScope) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!inScope || isSelfClaim) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     statusPrecondition = ['PENDING', 'SUPERVISOR_APPROVED', 'CEO_APPROVED']
     data = { status: 'REJECTED', rejectedNote: note || null }
     notifType = 'EXPENSE_CLAIM_REJECTED'

@@ -139,6 +139,11 @@ export async function POST(req: NextRequest) {
       if (list) list.push(l); else unpaidLeavesByUser.set(l.userId, [l])
     }
 
+    // Employees whose payroll got APPROVED by someone else between the
+    // `existingApproved` read above and this employee's write below — caught
+    // by the fresh in-transaction status re-check just before the upsert.
+    const raceSkippedNames: string[] = []
+
     const results = await Promise.all(
       pendingEmployees.map(async (emp) => {
         const baseSalary = emp.baseSalary ?? 0
@@ -181,26 +186,29 @@ export async function POST(req: NextRequest) {
 
         const dailyRate = baseSalary / 26
         const lateDeduction = late.lateDeduction
-        const absentDeduction = absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0)
-        const unpaidLeaveDeduction = unpaidDays * dailyRate
-        const earlyLeaveDeduction = earlyLeaveDays * dailyRate * 0.5
+        const absentDeduction = roundMoney(
+          absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0),
+        )
+        const unpaidLeaveDeduction = roundMoney(unpaidDays * dailyRate)
+        const earlyLeaveDeduction = roundMoney(earlyLeaveDays * dailyRate * 0.5)
 
         let ssDeduction = 0
         if (emp.socialSecurity && baseSalary > 0) {
-          ssDeduction = Math.min(baseSalary * SS_RATE, SS_MAX)
+          ssDeduction = roundMoney(Math.min(baseSalary * SS_RATE, SS_MAX))
         }
 
         const taxResult = computeMonthlyTax(baseSalary)
         const taxDeduction = taxResult.monthlyWithholding
 
-        const netSalary =
+        const netSalary = roundMoney(
           periodBaseSalary -
           lateDeduction -
           absentDeduction -
           unpaidLeaveDeduction -
           earlyLeaveDeduction -
           ssDeduction -
-          taxDeduction
+          taxDeduction,
+        )
 
         const payload = {
           baseSalary: periodBaseSalary,
@@ -220,20 +228,38 @@ export async function POST(req: NextRequest) {
           ...(prorationNote ? { note: prorationNote } : {}),
         }
 
-        return prisma.payroll.upsert({
-          where: { userId_month_year: { userId: emp.id, month, year } },
-          update: payload,
-          create: { userId: emp.id, month, year, ...payload },
+        // Re-check status inside the transaction, right before writing — closes
+        // the window where someone approves this employee's payroll between the
+        // `existingApproved` read at the top of this request and this write.
+        return prisma.$transaction(async (tx) => {
+          const current = await tx.payroll.findUnique({
+            where: { userId_month_year: { userId: emp.id, month, year } },
+            select: { status: true },
+          })
+          if (current?.status === 'APPROVED') {
+            raceSkippedNames.push(emp.name)
+            return null
+          }
+          return tx.payroll.upsert({
+            where: { userId_month_year: { userId: emp.id, month, year } },
+            update: payload,
+            create: { userId: emp.id, month, year, ...payload },
+          })
         })
       }),
     )
+
+    const allSkippedNames = [
+      ...skippedApproved.map((e) => e.name),
+      ...raceSkippedNames,
+    ]
 
     return NextResponse.json({
       success: true,
       count: results.filter(Boolean).length,
       skippedApproved: skippedApproved.map((e) => ({ userId: e.id, name: e.name })),
-      ...(skippedApproved.length > 0 && {
-        message: `ข้าม ${skippedApproved.length} รายการที่อนุมัติแล้ว (ไม่คำนวณทับ): ${skippedApproved.map((e) => e.name).join(', ')}`,
+      ...(allSkippedNames.length > 0 && {
+        message: `ข้าม ${allSkippedNames.length} รายการที่อนุมัติแล้ว (ไม่คำนวณทับ): ${allSkippedNames.join(', ')}`,
       }),
     })
   } catch (err) {

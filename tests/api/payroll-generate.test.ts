@@ -5,16 +5,18 @@ import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const prisma: any = {
     companySettings: { findUnique: vi.fn().mockResolvedValue({ absentDeductRate: 0 }) },
     companyHoliday:  { findMany: vi.fn().mockResolvedValue([]) },
     user:            { findMany: vi.fn() },
     attendance:      { findMany: vi.fn().mockResolvedValue([]) },
     leaveRequest:    { findMany: vi.fn().mockResolvedValue([]) },
-    payroll:         { findMany: vi.fn(), upsert: vi.fn() },
-  },
-}))
+    payroll:         { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
+    $transaction:    vi.fn((cb: any) => cb(prisma)),
+  }
+  return { prisma }
+})
 
 vi.mock('@/lib/api-handler', () => ({
   apiError: (err: unknown) => new Response(JSON.stringify({ error: String(err) }), { status: 500 }),
@@ -37,6 +39,7 @@ vi.mock('@/lib/payroll-late-deduction', () => ({
   buildApprovedLeaveDateSet:    vi.fn().mockReturnValue(new Set()),
   computeLateDeduction:         vi.fn().mockReturnValue({ lateDeduction: 0, lateDays: 0, billableLateMinutes: 0, lines: [] }),
   serializeLateDeductionDetail: vi.fn().mockReturnValue('[]'),
+  roundMoney:                   (n: number) => Math.round(n * 100) / 100,
 }))
 
 vi.mock('@/lib/payroll-tax', () => ({
@@ -72,6 +75,7 @@ describe('POST /api/payroll/generate — does not overwrite APPROVED payroll', (
     vi.mocked(auth).mockResolvedValue(hrSession as any)
     vi.mocked(prisma.user.findMany).mockResolvedValue(employees as any)
     vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
   })
 
   it('skips the employee whose payroll is already APPROVED, upserts only the rest', async () => {
@@ -121,5 +125,28 @@ describe('POST /api/payroll/generate — does not overwrite APPROVED payroll', (
         }),
       }),
     )
+  })
+
+  it('skips an employee approved mid-request even though the top-level check missed it (TOCTOU race)', async () => {
+    // Nobody is APPROVED yet at the top-level `existingApproved` read...
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    // ...but by the time this employee's transaction re-checks status
+    // right before writing, someone else has approved it concurrently.
+    vi.mocked(prisma.payroll.findUnique).mockImplementation(({ where }: any) => {
+      const status = where.userId_month_year.userId === 'emp-1' ? 'APPROVED' : 'DRAFT'
+      return Promise.resolve({ status }) as any
+    })
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.count).toBe(1) // only emp-2 actually written
+    expect(data.skippedApproved).toEqual([]) // top-level check didn't catch it
+    expect(data.message).toContain('พนักงาน หนึ่ง') // but the race-skip did
+
+    const upsertCalls = vi.mocked(prisma.payroll.upsert).mock.calls
+    expect(upsertCalls).toHaveLength(1)
+    expect(upsertCalls[0][0].where).toEqual({ userId_month_year: { userId: 'emp-2', month: 1, year: 2025 } })
   })
 })
