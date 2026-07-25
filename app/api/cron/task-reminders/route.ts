@@ -364,8 +364,10 @@ export async function GET(req: NextRequest) {
         where: { dependsOnId: { in: completedIds } },
         include: {
           task: {
-            select: { id: true, title: true, assigneeId: true, status: true },
-            include: { dependencies: { include: { dependsOn: { select: { status: true } } } } },
+            select: {
+              id: true, title: true, assigneeId: true, status: true,
+              dependencies: { select: { dependsOn: { select: { status: true } } } },
+            },
           },
         },
       })

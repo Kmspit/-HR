@@ -78,6 +78,7 @@ export default function SecurityClient() {
   const [stats, setStats]   = useState<DashboardStats | null>(null)
   const [events, setEvents] = useState<SecurityEvent[]>([])
   const [backups, setBackups] = useState<BackupRecord[]>([])
+  const [backupsForbidden, setBackupsForbidden] = useState(false)
   const [twofa, setTwofa]   = useState<TwoFactorStatus | null>(null)
   const [creating, setCreating] = useState(false)
 
@@ -114,7 +115,10 @@ export default function SecurityClient() {
 
   const loadBackups = useCallback(async () => {
     const r = await fetch('/api/backup').catch(() => null)
-    if (r?.ok) { const d = await r.json() as { records: BackupRecord[] }; setBackups(d.records ?? []) }
+    if (!r) return
+    if (r.status === 403) { setBackupsForbidden(true); setBackups([]); return }
+    setBackupsForbidden(false)
+    if (r.ok) { const d = await r.json() as { records: BackupRecord[] }; setBackups(d.records ?? []) }
   }, [])
 
   const load2fa = useCallback(async () => {
@@ -136,6 +140,7 @@ export default function SecurityClient() {
     setCreating(true)
     try {
       const r = await fetch('/api/backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      if (r.status === 403) { toast.error('ไม่มีสิทธิ์สร้าง backup — เฉพาะ CEO/SUPER_ADMIN เท่านั้น'); return }
       if (!r.ok) { toast.error('สร้าง backup ไม่สำเร็จ'); return }
       toast.success('สร้าง backup สำเร็จ')
       void loadBackups()
@@ -383,16 +388,27 @@ export default function SecurityClient() {
       {/* Backups tab */}
       {tab === 'backups' && (
         <div className="space-y-4">
+          {backupsForbidden && (
+            <div className="glass-card rounded-xl p-4 border border-red-500/30 flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs dark:text-slate-300">
+                <span className="font-semibold dark:text-white">คุณไม่มีสิทธิ์จัดการข้อมูลสำรอง</span>
+                <br />
+                การสร้าง ดู และกู้คืน backup จำกัดเฉพาะ CEO และ SUPER_ADMIN เท่านั้น — ติดต่อผู้ดูแลระบบหากต้องการเข้าถึง
+              </p>
+            </div>
+          )}
           <button
             type="button"
             onClick={createBackup}
-            disabled={creating}
+            disabled={creating || backupsForbidden}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold disabled:opacity-50"
           >
             {creating ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
             สร้าง Backup ทันที
           </button>
 
+          {!backupsForbidden && (
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -459,6 +475,7 @@ export default function SecurityClient() {
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
 

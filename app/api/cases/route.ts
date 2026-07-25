@@ -170,7 +170,7 @@ export async function POST(req: Request) {
     LEGAL: [
       { title: 'ตรวจสอบเอกสารคดี', priority: 'HIGH', dayOffset: 1 },
       { title: 'เตรียมคำฟ้อง', priority: 'HIGH', dayOffset: 7 },
-      { title: 'ยื่นศาล', priority: 'CRITICAL', dayOffset: 14 },
+      { title: 'ยื่นศาล', priority: 'URGENT', dayOffset: 14 },
       { title: 'นัดพิจารณาคดี', priority: 'HIGH', dayOffset: 21 },
     ],
     COURT: [
@@ -185,7 +185,7 @@ export async function POST(req: Request) {
     await prisma.taskAssignment.createMany({
       data: autoTaskDefs.map(t => ({
         title:        t.title,
-        type:         'CASE_TASK' as never,
+        type:         'OFFICE' as never,
         status:       'PENDING',
         priority:     (t.priority ?? 'MEDIUM') as never,
         assigneeId:   taskAssigneeId,
@@ -194,7 +194,7 @@ export async function POST(req: Request) {
         caseNumber:   caseNumber,
         dueDate:      new Date(caseDate.getTime() + (t.dayOffset ?? 7) * 86400000),
       })),
-    }).catch(() => {})
+    }).catch((err) => console.error('[cases] auto-task creation failed', newCase.id, err))
 
     await prisma.caseTimeline.create({
       data: {
