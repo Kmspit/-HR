@@ -5,6 +5,8 @@ import { createNotification } from '@/lib/notifications'
 import { sendLineApprovalRequest } from '@/lib/line-notifications'
 import { parsePositiveAmount } from '@/lib/utils'
 import { apiError } from '@/lib/api-handler'
+import { getDirectReportUserIds } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const CAN_APPROVE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'MANAGER', 'TEAM_LEADER']
 const userSel = { id: true, name: true, department: true, role: true }
@@ -30,11 +32,9 @@ export async function GET(req: NextRequest) {
     // Employee: see only own claims
     where.submittedById = userId
   } else if (['TEAM_LEADER', 'MANAGER'].includes(role)) {
-    // Supervisor: see claims they need to approve (PENDING) or already acted on
-    where.OR = [
-      { submittedById: userId },
-      { status: { in: ['PENDING', 'SUPERVISOR_APPROVED', 'CEO_APPROVED', 'REJECTED', 'PAID'] } },
-    ]
+    // Supervisor: see own claims + direct reports' claims only — not company-wide
+    const reportIds = await getDirectReportUserIds(prisma, userId, role as Role)
+    where.submittedById = { in: [userId, ...reportIds] }
   }
   // HR/CEO/SUPER_ADMIN: see all
 

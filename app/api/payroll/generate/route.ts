@@ -8,6 +8,7 @@ import {
   buildApprovedLeaveDateSet,
   computeLateDeduction,
   serializeLateDeductionDetail,
+  roundMoney,
 } from '@/lib/payroll-late-deduction'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
 import type { HolidayRecord } from '@/lib/company-holidays'
@@ -18,6 +19,13 @@ const SS_RATE = 0.05
 const SS_MAX = 750
 
 const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN', 'HR'] as const
+
+/** Inclusive calendar-day count between two dates, ignoring time-of-day. */
+function daysBetweenInclusive(from: Date, to: Date): number {
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate())
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     const employees = await prisma.user.findMany({
       where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } }),
-      select: { id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true },
+      select: { id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true, startDate: true },
     })
 
     // Never silently recalculate over a payroll HR has already approved — that
@@ -135,6 +143,21 @@ export async function POST(req: NextRequest) {
       pendingEmployees.map(async (emp) => {
         const baseSalary = emp.baseSalary ?? 0
 
+        // Proration for employees hired partway through this period. Deduction
+        // sub-calculations below (late/absent/unpaid/SS/tax) deliberately keep
+        // using the full nominal `baseSalary` unchanged — attendance/leave rows
+        // simply don't exist before the hire date, so they're naturally unaffected,
+        // and SS/tax already aren't adjusted for partial months even for absences
+        // today. Only the starting base-salary figure is prorated.
+        let periodBaseSalary = baseSalary
+        let prorationNote: string | undefined
+        if (emp.startDate && emp.startDate > startDate && emp.startDate <= endDate) {
+          const totalDays = daysBetweenInclusive(startDate, endDate)
+          const workedDays = daysBetweenInclusive(emp.startDate, endDate)
+          periodBaseSalary = roundMoney(baseSalary * workedDays / totalDays)
+          prorationNote = `Prorated: เริ่มงาน ${emp.startDate.toLocaleDateString('th-TH')} — ทำงาน ${workedDays}/${totalDays} วันของเดือนนี้`
+        }
+
         const attendances = attendancesByUser.get(emp.id) ?? []
         const approvedLeaves = approvedLeavesByUser.get(emp.id) ?? []
         const unpaidLeaves = unpaidLeavesByUser.get(emp.id) ?? []
@@ -171,7 +194,7 @@ export async function POST(req: NextRequest) {
         const taxDeduction = taxResult.monthlyWithholding
 
         const netSalary =
-          baseSalary -
+          periodBaseSalary -
           lateDeduction -
           absentDeduction -
           unpaidLeaveDeduction -
@@ -180,7 +203,7 @@ export async function POST(req: NextRequest) {
           taxDeduction
 
         const payload = {
-          baseSalary,
+          baseSalary: periodBaseSalary,
           lateDeduction,
           absentDeduction,
           unpaidLeave: unpaidLeaveDeduction,
@@ -194,6 +217,7 @@ export async function POST(req: NextRequest) {
           lateBillableMinutes: late.billableLateMinutes,
           lateDeductionDetail: serializeLateDeductionDetail(late.lines),
           status: 'DRAFT',
+          ...(prorationNote ? { note: prorationNote } : {}),
         }
 
         return prisma.payroll.upsert({
