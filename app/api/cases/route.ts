@@ -79,7 +79,7 @@ export async function POST(req: Request) {
 
   const body = await req.json()
   const {
-    caseTitle, caseType, priority, description, debtAmount,
+    caseTitle, caseType, priority, mainCourt, description, debtAmount,
     department, assignedEmployeeId, dueDate,
     client, debtor,
   } = body
@@ -104,6 +104,7 @@ export async function POST(req: Request) {
       caseTitle:          caseTitle.trim(),
       caseType,
       priority:           priority    ?? 'MEDIUM',
+      mainCourt:          mainCourt?.trim() || null,
       description:        description?.trim() ?? null,
       debtAmount:         debtAmount  ? Number(debtAmount) : null,
       department:         department  ?? null,

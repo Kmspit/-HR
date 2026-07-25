@@ -82,7 +82,7 @@ export async function PATCH(
 
   const body = await req.json()
   const {
-    caseTitle, caseType, status, priority, description, debtAmount,
+    caseTitle, caseType, status, priority, mainCourt, description, debtAmount,
     department, assignedEmployeeId, dueDate, closedAt,
     client, debtor,
   } = body
@@ -93,6 +93,7 @@ export async function PATCH(
   if (caseType      !== undefined) data.caseType      = caseType
   if (status        !== undefined) data.status        = status
   if (priority      !== undefined) data.priority      = priority
+  if (mainCourt     !== undefined) data.mainCourt     = mainCourt?.trim() || null
   if (description   !== undefined) data.description   = description?.trim() ?? null
   if (debtAmount    !== undefined) data.debtAmount    = debtAmount != null ? Number(debtAmount) : null
   if (department    !== undefined) data.department    = department ?? null

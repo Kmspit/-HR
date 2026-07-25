@@ -2566,6 +2566,7 @@ model Case {
   description        String?
   debtAmount         Float?       @map("debt_amount")
   department         String?
+  mainCourt          String?      @map("main_court")  // ศาลหลักที่คดีขึ้นอยู่ (เช่น "ศาลแพ่งกรุงเทพงานเหนือ") — ไม่ใช่นัดศาล, ดู CaseCourt/CourtEvent สำหรับนัดแต่ละครั้ง
   assignedEmployeeId String?      @map("assigned_employee_id")
   createdById        String       @map("created_by_id")
   openedAt           DateTime     @default(now()) @map("opened_at")

@@ -411,7 +411,7 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
 
   const [form, setForm] = useState({
     caseTitle: '', caseType: 'DEBT_COLLECTION' as CaseType, priority: 'MEDIUM' as CasePriority,
-    description: '', debtAmount: '', department: '', assignedEmployeeId: '', dueDate: '',
+    mainCourt: '', description: '', debtAmount: '', department: '', assignedEmployeeId: '', dueDate: '',
   })
   const [client, setClient] = useState({ clientName: '', companyName: '', taxId: '', phone: '', email: '', address: '', contactPerson: '', note: '' })
   const [debtor, setDebtor] = useState({ fullName: '', idCard: '', phone: '', email: '', address: '', workplace: '', riskLevel: 'MEDIUM', assetInfo: '', note: '' })
@@ -467,6 +467,10 @@ function CreateCaseModal({ employees, onClose, onCreated, userName }: {
                 <div>
                   <label htmlFor="field-1" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ชื่อคดี <span className="text-red-500">*</span></label>
                   <input id="field-1" value={form.caseTitle} onChange={e => set('caseTitle', e.target.value)} required className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ระบุชื่อคดี" />
+                </div>
+                <div>
+                  <label htmlFor="field-court" className="block text-[12px] font-medium text-slate-600 dark:text-slate-400 mb-1">ศาล</label>
+                  <input id="field-court" value={form.mainCourt} onChange={e => set('mainCourt', e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="เช่น ศาลแพ่งกรุงเทพงานเหนือ" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>

@@ -15,6 +15,7 @@ interface CaseData {
   id: string; caseNumber: string; caseTitle: string; caseType: CaseType
   status: CaseStatus; priority: CasePriority; description: string | null
   debtAmount: number | null; department: string | null; dueDate: string | null
+  mainCourt: string | null
   openedAt: string; closedAt: string | null; createdAt: string; updatedAt: string
   riskLevel: string; slaDeadline: string | null
   collectedAmount: number; legalFee: number; courtFee: number; enforcementFee: number
@@ -235,6 +236,7 @@ export default function CaseDetailClient({ initialCase, role, userId, canEdit, c
                 {c.slaDeadline && <Info label="SLA Deadline" value={fmtDate(c.slaDeadline)} />}
                 {c.closedAt && <Info label="วันปิดคดี" value={fmtDate(c.closedAt)} />}
               </div>
+              <MainCourtBlock caseId={c.id} mainCourt={c.mainCourt} canEdit={canEdit} onRefresh={refetch} />
               {c.description && (
                 <div>
                   <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">รายละเอียด</p>
@@ -770,6 +772,55 @@ function FinanceTab({ caseId, caseData, canEdit, onRefresh }: {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
+
+// ศาลหลักของคดี — field เดี่ยว ไม่เกี่ยวกับ CaseCourt/CourtEvent (ระบบนัดศาล)
+function MainCourtBlock({ caseId, mainCourt, canEdit, onRefresh }: {
+  caseId: string; mainCourt: string | null; canEdit: boolean; onRefresh: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [value,   setValue]   = useState(mainCourt ?? '')
+
+  useEffect(() => { setValue(mainCourt ?? '') }, [mainCourt])
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch(`/api/cases/${caseId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mainCourt: value.trim() || null }),
+    })
+    setSaving(false)
+    setEditing(false)
+    onRefresh()
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[11px] text-slate-400 uppercase tracking-wide">ศาล</p>
+        {canEdit && !editing && (
+          <button type="button" onClick={() => setEditing(true)} className="text-[11px] text-green-600 hover:underline">แก้ไข</button>
+        )}
+      </div>
+      {editing ? (
+        <form onSubmit={save} className="flex items-center gap-2">
+          <input
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder="เช่น ศาลแพ่งกรุงเทพงานเหนือ"
+            className="flex-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <button type="submit" disabled={saving} className="text-[12px] font-semibold text-green-600 disabled:opacity-60 flex-shrink-0">{saving ? '...' : 'บันทึก'}</button>
+          <button type="button" onClick={() => { setEditing(false); setValue(mainCourt ?? '') }} className="text-[12px] text-slate-400 flex-shrink-0">ยกเลิก</button>
+        </form>
+      ) : (
+        <p className="text-[13px] text-slate-800 dark:text-slate-200">{mainCourt || '-'}</p>
+      )}
+    </div>
+  )
+}
+
 function Info({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
