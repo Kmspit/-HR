@@ -5,17 +5,19 @@ import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const prisma: any = {
     debtor:              { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     paymentAppointment:   { findMany: vi.fn(), create: vi.fn() },
     debtorFile:           { findMany: vi.fn(), create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
     debtFollowUp:         { findMany: vi.fn(), create: vi.fn() },
-    debtPayment:          { findMany: vi.fn() },
+    debtPayment:          { findMany: vi.fn(), create: vi.fn() },
     debtorContact:        { findMany: vi.fn(), create: vi.fn() },
     promiseToPay:         { findMany: vi.fn(), create: vi.fn() },
-  },
-}))
+    $transaction:         vi.fn((cb: any) => cb(prisma)),
+  }
+  return { prisma }
+})
 
 vi.mock('@/lib/notifications', () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/automation-engine', () => ({ triggerAutomation: vi.fn().mockReturnValue({ catch: () => undefined }) }))
@@ -169,6 +171,55 @@ describe('debtors/[id] sub-resources — ownership check (CAN_MANAGE || assigned
       vi.mocked(auth).mockResolvedValue(strangerSession as never)
       const res = await paymentPost(makePostReq({ amount: 100, paidAt: '2026-08-01', channel: 'CASH' }), { params })
       expect(res.status).toBe(403)
+    })
+
+    describe('payments POST — balance write is atomic, never a stale absolute overwrite', () => {
+      beforeEach(() => {
+        vi.mocked(auth).mockResolvedValue(collectorSession as never)
+        vi.mocked(prisma.debtPayment.create).mockResolvedValue({ id: 'pay-1' } as never)
+      })
+
+      it('increments/decrements atomically and only writes status (not remainingDebt) when the balance stays non-negative', async () => {
+        // Simulates the atomic decrement itself already reflecting a concurrent
+        // payment's effect (e.g. balance was 1000, this payment is 300, but
+        // another payment already took it to 700 before this one's atomic
+        // decrement runs — Prisma's own atomic increment/decrement guarantees
+        // the DB-level arithmetic is correct regardless; what matters here is
+        // that our code branches on the value it just wrote, not a stale one).
+        vi.mocked(prisma.debtor.update).mockResolvedValueOnce({ remainingDebt: 400, paidAmount: 600 } as never)
+
+        const res = await paymentPost(makePostReq({ amount: 300, paidAt: '2026-08-01', channel: 'CASH' }), { params })
+        expect(res.status).toBe(201)
+
+        const updateCalls = vi.mocked(prisma.debtor.update).mock.calls
+        expect(updateCalls).toHaveLength(2)
+        // First call: the atomic increment/decrement only.
+        expect(updateCalls[0][0].data).toEqual({
+          paidAmount:    { increment: 300 },
+          remainingDebt: { decrement: 300 },
+        })
+        // Second call: status only — remainingDebt must NOT be re-asserted
+        // here, since that's exactly the stale-overwrite bug being fixed.
+        expect(updateCalls[1][0].data).toEqual({ status: 'PARTIAL_PAYMENT' })
+      })
+
+      it('marks PAID and floor-clamps remainingDebt to 0 only when the atomic decrement actually went negative', async () => {
+        vi.mocked(prisma.debtor.update).mockResolvedValueOnce({ remainingDebt: -200, paidAmount: 1200 } as never)
+
+        const res = await paymentPost(makePostReq({ amount: 1200, paidAt: '2026-08-01', channel: 'CASH' }), { params })
+        expect(res.status).toBe(201)
+
+        const updateCalls = vi.mocked(prisma.debtor.update).mock.calls
+        expect(updateCalls[1][0].data).toEqual({ remainingDebt: 0, status: 'PAID' })
+      })
+
+      it('creates the DebtPayment record with the submitted amount', async () => {
+        vi.mocked(prisma.debtor.update).mockResolvedValueOnce({ remainingDebt: 700, paidAmount: 300 } as never)
+        await paymentPost(makePostReq({ amount: 300, paidAt: '2026-08-01', channel: 'CASH' }), { params })
+        expect(prisma.debtPayment.create).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ amount: 300, debtorId: 'debtor-1' }) }),
+        )
+      })
     })
 
     it('files DELETE forbids a stranger', async () => {

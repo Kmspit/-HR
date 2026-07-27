@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { parsePositiveAmount } from '@/lib/utils'
 import { apiError } from '@/lib/api-handler'
+import { resolveOrgListScope, userIdFilterFromScope } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 const CAN_VIEW   = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
@@ -14,6 +16,13 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!CAN_VIEW.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+    // CaseIncome has no per-employee owner field — the closest analog is
+    // who recorded it. TEAM_LEADER/MANAGER see their own + their direct
+    // reports' entries, same org-scope pattern as case-expenses/expense-claims.
+    const scope = await resolveOrgListScope(prisma, session.user.id, session.user.role as Role)
+    const scopeFilter = userIdFilterFromScope(scope)
+    const createdByFilter = 'userId' in scopeFilter ? { createdById: scopeFilter.userId } : {}
+
     const { searchParams } = new URL(req.url)
     const q          = searchParams.get('q') ?? ''
     const department = searchParams.get('department') ?? ''
@@ -22,7 +31,7 @@ export async function GET(req: NextRequest) {
     const page       = Math.max(1, Number(searchParams.get('page') ?? 1))
     const limit      = 50
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { ...createdByFilter }
     if (q) {
       where.OR = [
         { caseNumber:  { contains: q } },

@@ -57,23 +57,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const debtor = await prisma.debtor.findUnique({ where: { id } })
   if (!debtor) return NextResponse.json({ error: 'Debtor not found' }, { status: 404 })
 
-  // paidAmount/remainingDebt must be atomic increments, not a read-then-write of
-  // absolute values — two concurrent payments computed from the same stale read
-  // would otherwise silently lose one payment's effect on the running balance
-  // (both DebtPayment rows still get created, so the loss is invisible in the
-  // payment history and only shows up as a wrong balance).
-  const balanceUpdate = await prisma.debtor.update({
-    where: { id },
-    data: {
-      paidAmount:    { increment: validAmount },
-      remainingDebt: { decrement: validAmount },
-    },
-  })
-  const newRemainingDebt = Math.max(0, balanceUpdate.remainingDebt)
-  const newStatus = newRemainingDebt <= 0 ? 'PAID' : 'PARTIAL_PAYMENT'
+  // paidAmount/remainingDebt must only ever be touched via atomic increment/
+  // decrement, never captured into a variable and written back as an
+  // absolute value later — two concurrent payments would otherwise race:
+  // both atomic decrements land correctly, but a later absolute write from
+  // one request's stale locally-captured balance can silently overwrite the
+  // other's effect (both DebtPayment rows still get created, so the loss is
+  // invisible in the payment history and only shows up as a wrong balance).
+  // Everything that depends on the post-decrement balance (the floor clamp,
+  // the derived status, the payment record) happens inside this one
+  // transaction, reading back the value just written in the same
+  // transaction rather than a value read outside it that could go stale.
+  const { payment, newRemainingDebt } = await prisma.$transaction(async (tx) => {
+    const balanceUpdate = await tx.debtor.update({
+      where: { id },
+      data: {
+        paidAmount:    { increment: validAmount },
+        remainingDebt: { decrement: validAmount },
+      },
+    })
 
-  const [payment] = await prisma.$transaction([
-    prisma.debtPayment.create({
+    const newRemainingDebt = Math.max(0, balanceUpdate.remainingDebt)
+    const newStatus = newRemainingDebt <= 0 ? 'PAID' : 'PARTIAL_PAYMENT'
+
+    await tx.debtor.update({
+      where: { id },
+      data: {
+        // Only clamp when the atomic decrement actually went negative —
+        // never re-assert the non-negative case, since that value could
+        // already be stale relative to a concurrent payment's own decrement
+        // by the time this second write runs.
+        ...(balanceUpdate.remainingDebt < 0 ? { remainingDebt: 0 } : {}),
+        status: newStatus,
+      },
+    })
+
+    const payment = await tx.debtPayment.create({
       data: {
         debtorId:    id,
         amount:      validAmount,
@@ -87,12 +106,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         receivedBy: { select: userSel },
         createdBy:  { select: userSel },
       },
-    }),
-    prisma.debtor.update({
-      where: { id },
-      data:  { remainingDebt: newRemainingDebt, status: newStatus },
-    }),
-  ])
+    })
+
+    return { payment, newRemainingDebt }
+  })
 
   // Notify assignee
   if (debtor.assignedToId && debtor.assignedToId !== session.user.id) {

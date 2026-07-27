@@ -27,8 +27,8 @@ vi.mock('next/server', async (importOriginal) => {
 
 vi.mock('cloudinary', () => ({ v2: { config: vi.fn(), uploader: { upload_stream: vi.fn() } } }))
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const prisma: any = {
     debtor:              { findUnique: vi.fn(), update: vi.fn() },
     debtPayment:          { create: vi.fn() },
     warning:              { findUnique: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
@@ -46,9 +46,19 @@ vi.mock('@/lib/prisma', () => ({
     billingInvoice:       { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     billingPayment:       { create: vi.fn(), findUnique: vi.fn() },
     clientCompany:        { update: vi.fn() },
-    $transaction: vi.fn(async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[])),
-  },
-}))
+  }
+  // Supports both the array form (`$transaction([...])`) and the interactive
+  // callback form (`$transaction(async (tx) => {...})`, where `tx` is just
+  // `prisma` itself here) — the debtor-payments route uses the callback form
+  // so it can branch on the atomic update's own result within the same
+  // transaction; other routes below still use the array form.
+  prisma.$transaction = vi.fn((arg: unknown) =>
+    typeof arg === 'function'
+      ? (arg as (tx: unknown) => unknown)(prisma)
+      : Promise.all(arg as Promise<unknown>[]),
+  )
+  return { prisma }
+})
 
 vi.mock('@/lib/debtor-access', () => ({
   checkDebtorAccess: vi.fn().mockResolvedValue({ status: 'ok' }),

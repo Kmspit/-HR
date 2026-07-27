@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parsePositiveAmount } from '@/lib/utils'
 import { apiError } from '@/lib/api-handler'
+import { resolveOrgListScope, userIdFilterFromScope } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER']
 const CAN_VIEW   = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
@@ -15,6 +17,13 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!CAN_VIEW.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+    // TEAM_LEADER/MANAGER are not company-wide approvers — scope the list to
+    // their own direct reports' reimbursements (matching the org-scope
+    // pattern used by expense-claims), instead of every employee's.
+    const scope = await resolveOrgListScope(prisma, session.user.id, session.user.role as Role)
+    const scopeFilter = userIdFilterFromScope(scope)
+    const employeeIdFilter = 'userId' in scopeFilter ? { employeeId: scopeFilter.userId } : {}
+
     const { searchParams } = new URL(req.url)
     const q          = searchParams.get('q') ?? ''
     const department = searchParams.get('department') ?? ''
@@ -23,7 +32,7 @@ export async function GET(req: NextRequest) {
     const page       = Math.max(1, Number(searchParams.get('page') ?? 1))
     const limit      = 50
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { ...employeeIdFilter }
     if (q) {
       where.OR = [
         { caseNumber:  { contains: q } },
