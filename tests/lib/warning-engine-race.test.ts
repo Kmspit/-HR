@@ -12,10 +12,6 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-vi.mock('@/lib/warning-delivery', () => ({
-  deliverWarningToEmployee: vi.fn().mockResolvedValue(undefined),
-}))
-
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { prisma } from '@/lib/prisma'
@@ -57,5 +53,13 @@ describe('runWarningCheck — race with the checkin-triggered auto-warning path'
     const issued = await runWarningCheck({ userIds: ['user-1'] })
     expect(issued).toHaveLength(1)
     expect(issued[0].userId).toBe('user-1')
+  })
+
+  it('always creates the warning as PENDING_APPROVAL — never auto-approved, matching warning-auto.ts', async () => {
+    vi.mocked(prisma.warning.create).mockResolvedValue({ id: 'w-1', createdAt: new Date() } as never)
+    await runWarningCheck({ userIds: ['user-1'] })
+    expect(prisma.warning.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING_APPROVAL' }) }),
+    )
   })
 })

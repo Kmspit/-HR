@@ -114,18 +114,20 @@ describe('GET /api/warnings/employees org-scope', () => {
   })
 })
 
-describe('POST /api/warnings/run-check org-scope', () => {
+describe('POST /api/warnings/run-check — company-wide roles only', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('passes scoped userIds for MANAGER', async () => {
+  // A team-scoped MANAGER also holds approve_warning (lib/access-control), so
+  // letting them trigger auto-check too would let one person single-handedly
+  // propose AND approve a warning for their own reports with no independent
+  // review — the auto-check button is restricted to company-wide roles only.
+  it('forbids MANAGER (team-scoped, not company-wide)', async () => {
     vi.mocked(auth).mockResolvedValue(mgrSession as never)
-    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'rep-1' }] as never)
 
     const req = new NextRequest('http://localhost/api/warnings/run-check', { method: 'POST' })
     const res = await runCheckPost(req)
-    expect(res.status).toBe(200)
-
-    expect(runWarningCheck).toHaveBeenCalledWith({ userIds: ['rep-1'] })
+    expect(res.status).toBe(403)
+    expect(runWarningCheck).not.toHaveBeenCalled()
   })
 
   it('runs company-wide for HR', async () => {

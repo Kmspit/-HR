@@ -123,6 +123,7 @@ function formatEmployeeLabel(e: Employee) {
 type Props = {
   isManager: boolean
   canApprove: boolean
+  canRunAutoCheck: boolean
   warnings: Warning[]
   employees: Employee[]
 }
@@ -173,7 +174,7 @@ async function loadEmployeesFromApi(): Promise<Employee[] | null> {
   return null
 }
 
-export default function WarningsClient({ isManager, canApprove, warnings, employees }: Props) {
+export default function WarningsClient({ isManager, canApprove, canRunAutoCheck, warnings, employees }: Props) {
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ userId: '', reason: '', description: '' })
@@ -692,15 +693,17 @@ export default function WarningsClient({ isManager, canApprove, warnings, employ
       <div className="flex items-center justify-end flex-wrap gap-3">
         {isManager && (
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={runCron}
-              disabled={runningCron}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 text-sm transition"
-            >
-              <Zap className="w-4 h-4" />
-              {runningCron ? 'กำลังตรวจ...' : 'รัน Auto-Check'}
-            </button>
+            {canRunAutoCheck && (
+              <button
+                type="button"
+                onClick={runCron}
+                disabled={runningCron}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:bg-white/5 text-sm transition"
+              >
+                <Zap className="w-4 h-4" />
+                {runningCron ? 'กำลังตรวจ...' : 'รัน Auto-Check'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowForm(true)}

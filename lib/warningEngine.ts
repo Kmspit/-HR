@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { deliverWarningToEmployee } from '@/lib/warning-delivery'
 
 type WarningCheckResult = {
   userId: string
@@ -93,6 +92,7 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
           isAuto: true,
           month,
           year,
+          status: 'PENDING_APPROVAL',
           lineDeliveryStatus: 'pending',
         },
       })
@@ -104,15 +104,12 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
       throw err
     }
 
-    const warningNumber = await prisma.warning.count({
-      where: { userId: emp.id, createdAt: { lte: warning.createdAt } },
-    })
-
-    try {
-      await deliverWarningToEmployee(warning.id, { warningNumber })
-    } catch (e) {
-      console.error('[warningEngine-line]', emp.id, e)
-    }
+    // Do NOT deliver to the employee here — the warning is PENDING_APPROVAL,
+    // matching warning-auto.ts's checkin-triggered path. Delivering the LINE
+    // notice + PDF now (before HR/CEO review) would give the warning effect
+    // ahead of approval, which is exactly the bug this status fix closes.
+    // The employee is notified via app/api/warnings/[id]/route.ts's APPROVE
+    // action once a human actually approves it.
 
     issued.push({
       userId: emp.id,
@@ -135,7 +132,7 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
         data: {
           userId: mgr.id,
           type: 'WARNING_ISSUED',
-          title: `ระบบออกใบเตือนอัตโนมัติ ${issued.length} คน`,
+          title: `ระบบเสนอใบเตือนอัตโนมัติ ${issued.length} คน — รออนุมัติ`,
           message: issued.map((i) => `${i.name} (ระดับ ${i.level})`).join(', '),
           link: '/warnings',
         },

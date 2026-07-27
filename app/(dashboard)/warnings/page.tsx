@@ -12,6 +12,7 @@ import {
   parseBranchQueryParam,
 } from '@/lib/branch-scope'
 import { canApproveWarning, canManageUsers } from '@/lib/access-control'
+import { isCompanyWideApprover } from '@/lib/org-scope'
 import { archiveExpiredWarnings } from '@/lib/warning-auto'
 import { Suspense } from 'react'
 import type { Role } from '@prisma/client'
@@ -30,6 +31,10 @@ export default async function WarningsPage({
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const canManageWarnings = canApproveWarning(session.user.role as Role) || canManageUsers(session.user.role as Role)
   const canApprove = canApproveWarning(session.user.role as Role)
+  // Matches ALLOWED_ROLES in app/api/warnings/run-check/route.ts — a team-scoped
+  // MANAGER also holds approve_warning, so letting them trigger auto-check too
+  // would let one person propose and approve their own team's warning alone.
+  const canRunAutoCheck = isCompanyWideApprover(session.user.role as Role)
   const filterBranch = resolveFilterBranchId(scope)
 
   type EmployeeRow = {
@@ -115,6 +120,7 @@ export default async function WarningsPage({
       <WarningsClient
         isManager={canManageWarnings}
         canApprove={canApprove}
+        canRunAutoCheck={canRunAutoCheck}
         warnings={warnings.map((w) => ({
           id: w.id,
           userId: w.userId,
