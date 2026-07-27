@@ -51,12 +51,15 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
     const lateCount = attendances.filter((a) => a.status === 'LATE').length
     const absentCount = attendances.filter((a) => a.status === 'ABSENT').length
 
-    // Check if already warned this month
+    // Check if already warned this month (either path — warning-auto.ts's
+    // checkin-triggered path always issues level 1 off late-count alone, for
+    // fast real-time feedback; this cron re-evaluates against the full
+    // WarningRule table below, so a same-month row here isn't necessarily
+    // final — see the upgrade step further down).
     const existingWarning = await prisma.warning.findFirst({
       where: { userId: emp.id, month, year, isAuto: true },
-      select: { id: true },
+      select: { id: true, level: true, status: true },
     })
-    if (existingWarning) continue
 
     // Find highest triggered rule
     let triggeredRule = null
@@ -80,6 +83,41 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
     }
     const reason = reasons.join(' และ ')
 
+    if (existingWarning) {
+      // Only upgrade a warning that's still awaiting review — an already
+      // APPROVED/REJECTED/ARCHIVED row has taken effect (or been decided)
+      // and must not be silently rewritten under it. Only upgrade, never
+      // downgrade, so a later re-run with fewer counted days can't undo an
+      // already-higher level someone is reviewing.
+      const canUpgrade =
+        existingWarning.status === 'PENDING_APPROVAL' && triggeredRule.level > existingWarning.level
+      if (!canUpgrade) continue
+
+      // Compare-and-swap on status: a human could approve/reject this exact
+      // row between the read above and this write (same guard pattern as the
+      // APPROVE/REJECT actions in app/api/warnings/[id]/route.ts). If it's no
+      // longer PENDING_APPROVAL by the time we write, leave it alone.
+      const result = await prisma.warning.updateMany({
+        where: { id: existingWarning.id, status: 'PENDING_APPROVAL' },
+        data: {
+          level: triggeredRule.level,
+          reason,
+          description: `ออกโดยระบบอัตโนมัติ เดือน ${month}/${year} (ปรับระดับจาก ${existingWarning.level} เป็น ${triggeredRule.level})`,
+        },
+      })
+      if (result.count === 0) continue
+
+      issued.push({
+        userId: emp.id,
+        name: emp.name,
+        level: triggeredRule.level,
+        reason,
+        lateCount,
+        absentCount,
+      })
+      continue
+    }
+
     let warning: Awaited<ReturnType<typeof prisma.warning.create>>
     try {
       warning = await prisma.warning.create({
@@ -97,9 +135,11 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
         },
       })
     } catch (err) {
-      // Racing against warning-auto.ts's checkin-triggered path for the same
-      // user/month — the DB-level dedup index (warnings_auto_dedup_idx) rejected
-      // this insert because the other path already won. Skip this employee.
+      // Racing against warning-auto.ts's checkin-triggered path (or another
+      // concurrent cron invocation) for the same user/month — the DB-level
+      // dedup index (warnings_auto_dedup_idx) rejected this insert because
+      // another path already won. Skip this employee; the upgrade path above
+      // will pick it up on the next run if it still qualifies for a higher level.
       if ((err as { code?: string })?.code === 'P2002') continue
       throw err
     }
