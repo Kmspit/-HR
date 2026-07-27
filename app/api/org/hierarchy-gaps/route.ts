@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canManageOrg } from '@/lib/org-permissions'
-import { getOrgHierarchyGaps } from '@/lib/org-hierarchy-audit'
+import { getOrgHierarchyGaps, getInactiveAssigneeGaps } from '@/lib/org-hierarchy-audit'
 import type { Role } from '@prisma/client'
 
 export async function GET() {
@@ -14,8 +14,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const report = await getOrgHierarchyGaps(prisma)
-    return NextResponse.json(report)
+    const [report, inactiveAssignees] = await Promise.all([
+      getOrgHierarchyGaps(prisma),
+      getInactiveAssigneeGaps(prisma),
+    ])
+    return NextResponse.json({ ...report, inactiveAssignees })
   } catch (err) {
     return apiError(err)
   }

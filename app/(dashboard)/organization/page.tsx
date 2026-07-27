@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import OrganizationClient from './OrganizationClient'
 import { canManageOrg } from '@/lib/org-permissions'
-import { getOrgHierarchyGaps } from '@/lib/org-hierarchy-audit'
+import { getOrgHierarchyGaps, getInactiveAssigneeGaps } from '@/lib/org-hierarchy-audit'
 
 export default async function OrganizationPage() {
   const session = await auth()
@@ -16,7 +16,10 @@ export default async function OrganizationPage() {
     orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
   })
 
-  const hierarchy = await getOrgHierarchyGaps(prisma)
+  const [hierarchy, inactiveAssignees] = await Promise.all([
+    getOrgHierarchyGaps(prisma),
+    getInactiveAssigneeGaps(prisma),
+  ])
 
   return (
     <div className="flex flex-col">
@@ -29,6 +32,8 @@ export default async function OrganizationPage() {
         hierarchyGaps={JSON.parse(JSON.stringify(hierarchy.gaps.slice(0, 20)))}
         hierarchyGapCount={hierarchy.gapCount}
         hierarchyTotalActive={hierarchy.totalActive}
+        inactiveAssigneeGaps={JSON.parse(JSON.stringify(inactiveAssignees.gaps.slice(0, 20)))}
+        inactiveAssigneeGapCount={inactiveAssignees.gapCount}
       />
     </div>
   )

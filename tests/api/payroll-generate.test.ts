@@ -28,7 +28,7 @@ vi.mock('@/lib/utils', () => ({
 
 vi.mock('@/lib/branch-scope', () => ({
   buildBranchScope: vi.fn().mockReturnValue({}),
-  branchUserWhere:  vi.fn().mockReturnValue({}),
+  branchUserWhere:  vi.fn((_scope: unknown, extra: unknown) => extra ?? {}),
 }))
 
 vi.mock('@/lib/api-guard', () => ({
@@ -148,5 +148,62 @@ describe('POST /api/payroll/generate — does not overwrite APPROVED payroll', (
     const upsertCalls = vi.mocked(prisma.payroll.upsert).mock.calls
     expect(upsertCalls).toHaveLength(1)
     expect(upsertCalls[0][0].where).toEqual({ userId_month_year: { userId: 'emp-2', month: 1, year: 2025 } })
+  })
+})
+
+describe('POST /api/payroll/generate — includes employees deactivated this month', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+  })
+
+  it('queries with an OR of ACTIVE and (DISABLED + updatedAt in this month)', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
+    await POST(makeReq({ month: 1, year: 2025 }))
+
+    const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
+    expect(call.where.OR).toEqual([
+      { status: 'ACTIVE' },
+      { status: 'DISABLED', updatedAt: { gte: new Date('2025-01-01'), lte: new Date('2025-01-31') } },
+    ])
+  })
+
+  it('includes a DISABLED employee at full nominal salary with a review-me note, and reports it back', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-3', name: 'พนักงาน สาม', baseSalary: 20000, socialSecurity: true, branchId: 'b1',
+        status: 'DISABLED', updatedAt: new Date('2025-01-20'),
+      },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.count).toBe(1)
+    expect(data.disabledIncluded).toEqual([{ userId: 'emp-3', name: 'พนักงาน สาม' }])
+    expect(data.disabledWarning).toContain('พนักงาน สาม')
+
+    const upsertCalls = vi.mocked(prisma.payroll.upsert).mock.calls
+    expect(upsertCalls).toHaveLength(1)
+    const payload = upsertCalls[0][0].update
+    expect(payload.baseSalary).toBe(20000) // full nominal amount, not shrunk
+    expect(payload.note).toContain('ปิดใช้งานในเดือนนี้')
+    expect(payload.note).toContain('ตรวจสอบและปรับยอดก่อนอนุมัติ')
+  })
+
+  it('does not flag or warn about a normal ACTIVE employee', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, socialSecurity: true, branchId: 'b1', status: 'ACTIVE' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const data = await res.json()
+
+    expect(data.disabledIncluded).toEqual([])
+    expect(data.disabledWarning).toBeUndefined()
   })
 })

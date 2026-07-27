@@ -63,9 +63,27 @@ export async function POST(req: NextRequest) {
       branchId: h.branchId,
     }))
 
+    // Also include employees deactivated during this exact month, so an
+    // employee whose account HR disables on their last working day still gets
+    // a payroll row generated automatically instead of silently falling out
+    // of every future run once their status leaves ACTIVE. User has no
+    // dedicated "deactivatedAt" field (confirmed — no route ever writes one,
+    // and PATCH /api/users/[id] doesn't audit-log status changes either), so
+    // `updatedAt` is used only to decide WHICH disabled employees are
+    // plausibly relevant to this month — not to prorate their pay (see the
+    // per-employee note below for why).
     const employees = await prisma.user.findMany({
-      where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } }),
-      select: { id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true, startDate: true },
+      where: branchUserWhere(scope, {
+        role: { in: [...PAYROLL_ROLES] },
+        OR: [
+          { status: 'ACTIVE' },
+          { status: 'DISABLED', updatedAt: { gte: startDate, lte: endDate } },
+        ],
+      }),
+      select: {
+        id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true,
+        startDate: true, status: true, updatedAt: true,
+      },
     })
 
     // Never silently recalculate over a payroll HR has already approved — that
@@ -163,6 +181,18 @@ export async function POST(req: NextRequest) {
           prorationNote = `Prorated: เริ่มงาน ${emp.startDate.toLocaleDateString('th-TH')} — ทำงาน ${workedDays}/${totalDays} วันของเดือนนี้`
         }
 
+        // Deactivated this month (see the query comment above for why there's
+        // no reliable last-working-day to prorate against) — include at the
+        // FULL nominal amount rather than guess, and flag loudly so HR checks
+        // and adjusts the number down before approving instead of it silently
+        // paying out a full month for a partial one.
+        if (emp.status === 'DISABLED') {
+          const disabledNote =
+            `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) ` +
+            `— ระบบไม่ทราบวันทำงานสุดท้ายที่แน่นอน จึงคำนวณเป็นเงินเดือนเต็มจำนวน กรุณาตรวจสอบและปรับยอดก่อนอนุมัติ`
+          prorationNote = prorationNote ? `${prorationNote} | ${disabledNote}` : disabledNote
+        }
+
         const attendances = attendancesByUser.get(emp.id) ?? []
         const approvedLeaves = approvedLeavesByUser.get(emp.id) ?? []
         const unpaidLeaves = unpaidLeavesByUser.get(emp.id) ?? []
@@ -254,12 +284,20 @@ export async function POST(req: NextRequest) {
       ...raceSkippedNames,
     ]
 
+    const disabledIncluded = pendingEmployees.filter((e) => e.status === 'DISABLED')
+
     return NextResponse.json({
       success: true,
       count: results.filter(Boolean).length,
       skippedApproved: skippedApproved.map((e) => ({ userId: e.id, name: e.name })),
+      disabledIncluded: disabledIncluded.map((e) => ({ userId: e.id, name: e.name })),
       ...(allSkippedNames.length > 0 && {
         message: `ข้าม ${allSkippedNames.length} รายการที่อนุมัติแล้ว (ไม่คำนวณทับ): ${allSkippedNames.join(', ')}`,
+      }),
+      ...(disabledIncluded.length > 0 && {
+        disabledWarning:
+          `⚠️ รวม ${disabledIncluded.length} พนักงานที่ปิดบัญชีเดือนนี้ด้วยยอดเต็มเดือน (ยังไม่ prorate ให้อัตโนมัติ) ` +
+          `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledIncluded.map((e) => e.name).join(', ')}`,
       }),
     })
   } catch (err) {

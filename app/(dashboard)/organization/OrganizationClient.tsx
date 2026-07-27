@@ -22,16 +22,28 @@ const HIERARCHY_GAP_LABEL: Record<string, string> = {
   managerInactive:    'ผู้จัดการถูกปิดใช้งาน',
 }
 
+type InactiveAssigneeGap = {
+  employeeId: string
+  employeeName: string
+  employeeStatus: string
+  cases: { id: string; caseNumber: string; caseTitle: string; status: string }[]
+  tasks: { id: string; title: string; status: string }[]
+}
+
 export default function OrganizationClient({
   branches,
   hierarchyGaps = [],
   hierarchyGapCount = 0,
   hierarchyTotalActive = 0,
+  inactiveAssigneeGaps = [],
+  inactiveAssigneeGapCount = 0,
 }: {
   branches: Branch[]
   hierarchyGaps?: Array<{ id: string; name: string; email: string; missing: string[] }>
   hierarchyGapCount?: number
   hierarchyTotalActive?: number
+  inactiveAssigneeGaps?: InactiveAssigneeGap[]
+  inactiveAssigneeGapCount?: number
 }) {
   const [branchId, setBranchId] = useState(branches.find((b) => b.code === 'HQ')?.id ?? branches[0]?.id ?? '')
   const [tab, setTab] = useState<Tab>('divisions')
@@ -175,6 +187,35 @@ export default function OrganizationClient({
             ))}
             {hierarchyGapCount > hierarchyGaps.length && (
               <li className="text-amber-200/70">… และอีก {hierarchyGapCount - hierarchyGaps.length} คน</li>
+            )}
+          </ul>
+        </div>
+      )}
+      {inactiveAssigneeGapCount > 0 && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 space-y-2">
+          <p className="text-sm font-semibold text-red-200">
+            ⚠️ พนักงาน {inactiveAssigneeGapCount} คนที่ปิดใช้งานแล้ว ยังมีคดี/งานที่ยัง active ผูกอยู่
+          </p>
+          <p className="text-xs text-red-100/80">
+            ไม่มีใครติดตามคดี/งานเหล่านี้ต่อ — แก้ที่{' '}
+            <Link href="/employees" className="underline font-medium">พนักงาน</Link>{' '}
+            หรือ reassign คดี/งานให้คนที่ยัง active
+          </p>
+          <ul className="text-xs text-red-100/90 space-y-1.5 max-h-40 overflow-y-auto">
+            {inactiveAssigneeGaps.map((g) => (
+              <li key={g.employeeId}>
+                <span className="font-medium">{g.employeeName}</span>
+                <span className="text-red-200/60"> ({g.employeeStatus})</span>
+                {g.cases.length > 0 && (
+                  <> — คดี {g.cases.length} รายการ: {g.cases.map((c) => c.caseNumber).join(', ')}</>
+                )}
+                {g.tasks.length > 0 && (
+                  <> — งาน {g.tasks.length} รายการ: {g.tasks.map((t) => t.title).join(', ')}</>
+                )}
+              </li>
+            ))}
+            {inactiveAssigneeGapCount > inactiveAssigneeGaps.length && (
+              <li className="text-red-200/70">… และอีก {inactiveAssigneeGapCount - inactiveAssigneeGaps.length} คน</li>
             )}
           </ul>
         </div>
