@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { DEBTOR_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -939,20 +940,40 @@ function PaymentTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
   const [channel, setChannel]   = useState('โอนเงิน')
   const [note, setNote]         = useState('')
   const [saving, setSaving]     = useState(false)
+  const [error, setError]       = useState<string | null>(null)
+  // Set only when the backend rejects for exceeding remainingDebt — shows a
+  // dedicated "ยืนยันบันทึกยอดเกิน" step instead of just an error message,
+  // since the amount may genuinely be intentional (overpayment needs an
+  // explicit confirmOverpayment: true, not just a bigger number).
+  const [overpayRemaining, setOverpayRemaining] = useState<number | null>(null)
 
-  const save = async () => {
+  const save = async (confirmOverpayment = false) => {
     if (!amount) return
     setSaving(true)
+    setError(null)
     try {
-      const r = await fetch(`/api/debtors/${debtor.id}/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(amount), paidAt, channel, note: note || null, receivedById: userId }),
-      })
-      if (r.ok) { setShowForm(false); setAmount(''); setNote(''); onRefresh() }
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      const { ok, status, data } = await apiJson<{ error?: string; message?: string; remainingDebt?: number }>(
+        `/api/debtors/${debtor.id}/payments`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: Number(amount), paidAt, channel, note: note || null, receivedById: userId,
+            ...(confirmOverpayment ? { confirmOverpayment: true } : {}),
+          }),
+        },
+      )
+      if (ok) {
+        setShowForm(false); setAmount(''); setNote(''); setOverpayRemaining(null); onRefresh()
+        return
+      }
+      if (data.error === 'AMOUNT_EXCEEDS_REMAINING_DEBT') {
+        setOverpayRemaining(data.remainingDebt ?? 0)
+        setError(data.message ?? apiErrorMessage(data, 'จำนวนเงินเกินยอดหนี้คงเหลือ', status))
+      } else {
+        setOverpayRemaining(null)
+        setError(apiErrorMessage(data, 'บันทึกการชำระไม่สำเร็จ', status))
+      }
     } finally {
       setSaving(false)
     }
@@ -969,7 +990,7 @@ function PaymentTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label htmlFor="field-16" className="text-xs text-gray-500 mb-1 block">ยอดชำระ (บาท) *</label>
-              <input id="field-16" type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />
+              <input id="field-16" type="number" value={amount} onChange={e => { setAmount(e.target.value); setError(null); setOverpayRemaining(null) }} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" />
             </div>
             <div>
               <label htmlFor="field-17" className="text-xs text-gray-500 mb-1 block">วันที่</label>
@@ -986,10 +1007,22 @@ function PaymentTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
             <label htmlFor="field-19" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
             <input id="field-19" value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="หมายเลขอ้างอิง…" />
           </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !amount} className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึกการชำระ'}</button>
-          </div>
+          {error && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
+          {overpayRemaining !== null ? (
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowForm(false); setError(null); setOverpayRemaining(null) }} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
+              <button onClick={() => save(true)} disabled={saving} className="text-sm px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'ยืนยันบันทึกยอดเกิน'}</button>
+            </div>
+          ) : (
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowForm(false); setError(null) }} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
+              <button onClick={() => save()} disabled={saving || !amount} className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึกการชำระ'}</button>
+            </div>
+          )}
         </div>
       )}
       {list.length === 0 ? <p className="text-center text-sm text-gray-400 py-4">ยังไม่มีประวัติการชำระ</p> : list.map(p => (
