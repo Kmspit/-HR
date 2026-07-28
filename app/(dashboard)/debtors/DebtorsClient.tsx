@@ -140,28 +140,35 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
 
   const loadDebtors = useCallback(async () => {
     setLoading(true)
-    const r = await fetch(`/api/debtors?q=${encodeURIComponent(q)}&status=${filterSt}&page=${page}`)
-    if (r.ok) { const d = await r.json(); setDebtors(d.items); setTotal(d.total) }
+    const { ok, data, status } = await apiJson<{ items: Debtor[]; total: number }>(`/api/debtors?q=${encodeURIComponent(q)}&status=${filterSt}&page=${page}`)
+    if (ok) {
+      setDebtors(data.items); setTotal(data.total)
+    } else {
+      toast.error(apiErrorMessage(data, 'โหลดรายชื่อลูกหนี้ไม่สำเร็จ', status))
+    }
     setLoading(false)
   }, [q, filterSt, page])
 
   const loadSummary = useCallback(async () => {
     if (!canManage) return
-    const r = await fetch('/api/debtors/summary')
-    if (r.ok) setSummary(await r.json())
+    const { ok, data, status } = await apiJson('/api/debtors/summary')
+    if (ok) setSummary(data as unknown as Summary)
+    else toast.error(apiErrorMessage(data, 'โหลดข้อมูลสรุปไม่สำเร็จ', status))
   }, [canManage])
 
   const loadDetail = useCallback(async (id: string) => {
     const [rDebtor, rContacts, rPromises] = await Promise.all([
-      fetch(`/api/debtors/${id}`),
-      fetch(`/api/debtors/${id}/contacts`),
-      fetch(`/api/debtors/${id}/promises`),
+      apiJson(`/api/debtors/${id}`),
+      apiJson(`/api/debtors/${id}/contacts`),
+      apiJson(`/api/debtors/${id}/promises`),
     ])
     if (rDebtor.ok) {
-      const d = await rDebtor.json()
-      if (rContacts.ok) d.contacts = await rContacts.json()
-      if (rPromises.ok) d.promises = await rPromises.json()
+      const d = rDebtor.data as unknown as Debtor
+      if (rContacts.ok) d.contacts = rContacts.data as unknown as DebtorContact[]
+      if (rPromises.ok) d.promises = rPromises.data as unknown as PromiseToPay[]
       setSelected(d)
+    } else {
+      toast.error(apiErrorMessage(rDebtor.data, 'โหลดข้อมูลลูกหนี้ไม่สำเร็จ', rDebtor.status))
     }
   }, [])
 
@@ -169,7 +176,10 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
   useEffect(() => { if (mainTab === 'dashboard') loadSummary() }, [mainTab, loadSummary])
   useEffect(() => {
     if (canManage) {
-      fetch('/api/employees?limit=200').then(r => r.ok ? r.json() : null).then(d => { if (d?.users) setEmployees(d.users) })
+      apiJson<{ users: User[] }>('/api/employees?limit=200').then(({ ok, data, status }) => {
+        if (ok) { if (data.users) setEmployees(data.users) }
+        else toast.error(apiErrorMessage(data, 'โหลดรายชื่อพนักงานไม่สำเร็จ', status))
+      })
     }
   }, [canManage])
 
@@ -620,12 +630,14 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
   const [promisedAmount, setPromisedAmt] = useState('')
   const [nextContactAt, setNextContact] = useState('')
   const [saving, setSaving]             = useState(false)
+  const [error, setError]               = useState<string | null>(null)
   const [contacts, setContacts]         = useState<DebtorContact[]>(debtor.contacts ?? [])
 
   const save = async () => {
     setSaving(true)
+    setError(null)
     try {
-      const r = await fetch(`/api/debtors/${debtor.id}/contacts`, {
+      const { ok, data, status } = await apiJson(`/api/debtors/${debtor.id}/contacts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -635,15 +647,11 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
           nextContactAt: nextContactAt || null,
         }),
       })
-      if (r.ok) {
-        const c = await r.json()
-        setContacts(prev => [c, ...prev])
-        setShowForm(false); setNote(''); setPromisedAt(''); setPromisedAmt(''); setNextContact('')
-        onRefresh()
-      }
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      if (!ok) { setError(apiErrorMessage(data, 'บันทึกการติดต่อไม่สำเร็จ', status)); return }
+      const c = data as unknown as DebtorContact
+      setContacts(prev => [c, ...prev])
+      setShowForm(false); setNote(''); setPromisedAt(''); setPromisedAmt(''); setNextContact('')
+      onRefresh()
     } finally {
       setSaving(false)
     }
@@ -707,8 +715,13 @@ function ContactTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: str
             <input id="field-7" type="datetime-local" value={nextContactAt} onChange={e => setNextContact(e.target.value)}
               className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" />
           </div>
+          {error && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-sm px-4 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">ยกเลิก</button>
+            <button onClick={() => { setShowForm(false); setError(null) }} className="text-sm px-4 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">ยกเลิก</button>
             <button onClick={save} disabled={saving}
               className="text-sm px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">
               {saving ? 'บันทึก…' : 'บันทึก'}
@@ -763,38 +776,37 @@ function PromisesTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
   const [promisedDate, setDate]     = useState('')
   const [note, setNote]             = useState('')
   const [saving, setSaving]         = useState(false)
+  const [error, setError]           = useState<string | null>(null)
   const [promises, setPromises]     = useState<PromiseToPay[]>(debtor.promises ?? [])
 
   const save = async () => {
     if (!promisedAmount || !promisedDate) return
     setSaving(true)
+    setError(null)
     try {
-      const r = await fetch(`/api/debtors/${debtor.id}/promises`, {
+      const { ok, data, status } = await apiJson(`/api/debtors/${debtor.id}/promises`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ promisedAmount: Number(promisedAmount), promisedDate, note: note || null }),
       })
-      if (r.ok) {
-        const p = await r.json()
-        setPromises(prev => [p, ...prev])
-        setShowForm(false); setAmount(''); setDate(''); setNote('')
-        onRefresh()
-      }
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      if (!ok) { setError(apiErrorMessage(data, 'สร้างสัญญาชำระไม่สำเร็จ', status)); return }
+      const p = data as unknown as PromiseToPay
+      setPromises(prev => [p, ...prev])
+      setShowForm(false); setAmount(''); setDate(''); setNote('')
+      onRefresh()
     } finally {
       setSaving(false)
     }
   }
 
-  const updateStatus = async (promiseId: string, status: string) => {
-    await fetch(`/api/debtors/${debtor.id}/promises`, {
+  const updateStatus = async (promiseId: string, newStatus: string) => {
+    const { ok, data, status: httpStatus } = await apiJson(`/api/debtors/${debtor.id}/promises`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ promiseId, status }),
+      body: JSON.stringify({ promiseId, status: newStatus }),
     })
-    setPromises(prev => prev.map(p => p.id === promiseId ? { ...p, status } : p))
+    if (!ok) { toast.error(apiErrorMessage(data, 'อัปเดตสถานะไม่สำเร็จ', httpStatus)); return }
+    setPromises(prev => prev.map(p => p.id === promiseId ? { ...p, status: newStatus } : p))
     onRefresh()
   }
 
@@ -824,8 +836,13 @@ function PromisesTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
             <input id="field-10" value={note} onChange={e => setNote(e.target.value)}
               className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="…" />
           </div>
+          {error && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-sm px-4 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">ยกเลิก</button>
+            <button onClick={() => { setShowForm(false); setError(null) }} className="text-sm px-4 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">ยกเลิก</button>
             <button onClick={save} disabled={saving || !promisedAmount || !promisedDate}
               className="text-sm px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-50">
               {saving ? 'บันทึก…' : 'สร้างสัญญา'}
@@ -879,20 +896,20 @@ function FollowUpTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
   const [note, setNote]         = useState('')
   const [nextFU, setNextFU]     = useState('')
   const [saving, setSaving]     = useState(false)
+  const [error, setError]       = useState<string | null>(null)
 
   const save = async () => {
     if (!result) return
     setSaving(true)
+    setError(null)
     try {
-      const r = await fetch(`/api/debtors/${debtor.id}/followups`, {
+      const { ok, data, status } = await apiJson(`/api/debtors/${debtor.id}/followups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ method, followedAt, result, note: note || null, nextFollowUp: nextFU || null }),
       })
-      if (r.ok) { setShowForm(false); setResult(''); setNote(''); setNextFU(''); onRefresh() }
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      if (!ok) { setError(apiErrorMessage(data, 'บันทึกการติดตามไม่สำเร็จ', status)); return }
+      setShowForm(false); setResult(''); setNote(''); setNextFU(''); onRefresh()
     } finally {
       setSaving(false)
     }
@@ -930,8 +947,13 @@ function FollowUpTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: st
               <input id="field-15" type="datetime-local" value={nextFU} onChange={e => setNextFU(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
           </div>
+          {error && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
+            <button onClick={() => { setShowForm(false); setError(null) }} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
             <button onClick={save} disabled={saving || !result} className="text-sm px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
           </div>
         </div>
@@ -1072,31 +1094,32 @@ function ApptTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: string
   const [location, setLocation]     = useState('')
   const [note, setNote]             = useState('')
   const [saving, setSaving]         = useState(false)
+  const [error, setError]           = useState<string | null>(null)
 
   const save = async () => {
     if (!appointDate) return
     setSaving(true)
+    setError(null)
     try {
-      const r = await fetch(`/api/debtors/${debtor.id}/appointments`, {
+      const { ok, data, status } = await apiJson(`/api/debtors/${debtor.id}/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ appointDate, agreedAmount: Number(agreedAmount || 0), location: location || null, note: note || null }),
       })
-      if (r.ok) { setShowForm(false); setApptDate(''); setAgreed(''); setLocation(''); setNote(''); onRefresh() }
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      if (!ok) { setError(apiErrorMessage(data, 'สร้างนัดชำระไม่สำเร็จ', status)); return }
+      setShowForm(false); setApptDate(''); setAgreed(''); setLocation(''); setNote(''); onRefresh()
     } finally {
       setSaving(false)
     }
   }
 
-  const updateApptStatus = async (apptId: string, status: string) => {
-    await fetch(`/api/payment-appointments/${apptId}`, {
+  const updateApptStatus = async (apptId: string, newStatus: string) => {
+    const { ok, data, status: httpStatus } = await apiJson(`/api/payment-appointments/${apptId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: newStatus }),
     })
+    if (!ok) { toast.error(apiErrorMessage(data, 'อัปเดตสถานะนัดไม่สำเร็จ', httpStatus)); return }
     onRefresh()
   }
 
@@ -1124,8 +1147,13 @@ function ApptTab({ debtor, userId, onRefresh }: { debtor: Debtor; userId: string
               <input id="field-23" value={note} onChange={e => setNote(e.target.value)} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="…" />
             </div>
           </div>
+          {error && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
+            <button onClick={() => { setShowForm(false); setError(null) }} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
             <button onClick={save} disabled={saving || !appointDate} className="text-sm px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'สร้างนัด'}</button>
           </div>
         </div>
@@ -1173,11 +1201,9 @@ function FilesTab({ debtor, onRefresh }: { debtor: Debtor; onRefresh: () => void
       const fd = new FormData()
       fd.append('file', file)
       fd.append('docType', docType)
-      const r = await fetch(`/api/debtors/${debtor.id}/files`, { method: 'POST', body: fd })
-      if (r.ok) onRefresh()
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      const { ok, data, status } = await apiJson(`/api/debtors/${debtor.id}/files`, { method: 'POST', body: fd })
+      if (!ok) { toast.error(apiErrorMessage(data, 'อัพโหลดไฟล์ไม่สำเร็จ', status)); return }
+      onRefresh()
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -1186,11 +1212,12 @@ function FilesTab({ debtor, onRefresh }: { debtor: Debtor; onRefresh: () => void
 
   const deleteFile = async (fileId: string) => {
     if (!confirm('ลบไฟล์นี้?')) return
-    await fetch(`/api/debtors/${debtor.id}/files`, {
+    const { ok, data, status } = await apiJson(`/api/debtors/${debtor.id}/files`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileId }),
     })
+    if (!ok) { toast.error(apiErrorMessage(data, 'ลบไฟล์ไม่สำเร็จ', status)); return }
     onRefresh()
   }
 
@@ -1257,12 +1284,14 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
     note:        debtor?.note        ?? '',
   })
   const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState<string | null>(null)
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
     if (!form.firstName || !form.lastName) return
     setSaving(true)
+    setError(null)
     const url    = mode === 'create' ? '/api/debtors' : `/api/debtors/${debtor!.id}`
     const method = mode === 'create' ? 'POST'        : 'PATCH'
     const tags = form.tags ? JSON.stringify(form.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)) : '[]'
@@ -1284,11 +1313,9 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
       assetAddress: form.assetAddress || null,
     }
     try {
-      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (r.ok) onSave()
-    } catch (error) {
-      console.error('[SAVE ERROR]', error)
-      throw error
+      const { ok, data, status } = await apiJson(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (!ok) { setError(apiErrorMessage(data, mode === 'create' ? 'เพิ่มลูกหนี้ไม่สำเร็จ' : 'บันทึกไม่สำเร็จ', status)); return }
+      onSave()
     } finally {
       setSaving(false)
     }
@@ -1425,6 +1452,11 @@ function DebtorModal({ mode, debtor, employees, userId, onClose, onSave }: {
                 <input id="field-37" value={form.assetAddress} onChange={e => set('assetAddress', e.target.value)} placeholder="บ้าน / ที่ดิน / ยานพาหนะ"
                   className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
               </div>
+            </div>
+          )}
+          {error && (
+            <div className="mx-6 mb-4 rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
             </div>
           )}
           <div className="p-6 pt-0 flex gap-3 justify-end">
