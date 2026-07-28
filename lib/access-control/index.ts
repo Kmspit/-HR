@@ -224,6 +224,11 @@ const CLIENT_ROLE: Role[] = ['CLIENT']
 // so the deleted-requests page/API stay consistent with each other.
 const OUTSIDE_WORK_APPROVERS: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 
+// Matches DEBTOR_DELETE_ROLES in lib/debtor-access.ts (same population that can
+// already DELETE/restore a debtor) — kept in sync manually so the deleted-debtors
+// page/API stay consistent with each other.
+const DEBTOR_DELETE_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
+
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
   '/executive':          EXEC_ONLY,
@@ -260,6 +265,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/case-documents':     LEGAL_MODULE,
   '/clients':            CLIENT_MGMT,
   '/debtors':            LEGAL_MODULE,
+  '/debtors/deleted':    DEBTOR_DELETE_ROLES,
   '/debt-followup':      LEGAL_MODULE,
   '/payment-appointments': LEGAL_MODULE,
   '/court-calendar':     LEGAL_MODULE,

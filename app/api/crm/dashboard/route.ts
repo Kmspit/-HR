@@ -26,15 +26,17 @@ export async function GET() {
     topCollectors,
     recentContacts,
   ] = await Promise.all([
-    prisma.debtor.count(),
+    prisma.debtor.count({ where: { deletedAt: null } }),
 
     prisma.debtor.groupBy({
       by: ['riskLevel'],
+      where: { deletedAt: null },
       _count: true,
     }),
 
     prisma.debtor.groupBy({
       by: ['status'],
+      where: { deletedAt: null },
       _count: true,
       _sum: { remainingDebt: true },
     }),
@@ -86,6 +88,7 @@ export async function GET() {
   const noContactCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const noContactCount = await prisma.debtor.count({
     where: {
+      deletedAt: null,
       status: { notIn: ['PAID', 'UNREACHABLE'] },
       OR: [
         { lastContactAt: null },

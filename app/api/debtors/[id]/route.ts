@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkDebtorAccess, DEBTOR_MANAGE_ROLES as CAN_MANAGE } from '@/lib/debtor-access'
+import { checkDebtorAccess, DEBTOR_MANAGE_ROLES as CAN_MANAGE, DEBTOR_DELETE_ROLES as CAN_DELETE } from '@/lib/debtor-access'
 import { apiError } from '@/lib/api-handler'
+import { createAuditLog } from '@/lib/notifications'
 
-const CAN_DELETE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
 const userSel    = { id: true, name: true, department: true, role: true }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -59,8 +59,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id }  = await params
 
-  const existingDebtor = await prisma.debtor.findUnique({ where: { id }, select: { assignedToId: true, paidAmount: true } })
-  if (!existingDebtor) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const existingDebtor = await prisma.debtor.findUnique({ where: { id }, select: { assignedToId: true, paidAmount: true, deletedAt: true } })
+  if (!existingDebtor || existingDebtor.deletedAt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (!CAN_MANAGE.includes(session.user.role) && existingDebtor.assignedToId !== session.user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -114,7 +114,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!CAN_DELETE.includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
-  await prisma.debtor.delete({ where: { id } })
+  const existing = await prisma.debtor.findUnique({ where: { id }, select: { deletedAt: true } })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (existing.deletedAt) return NextResponse.json({ error: 'รายการนี้ถูกลบไปแล้ว' }, { status: 400 })
+
+  // Soft-delete only — ข้อมูลลูกหนี้อาจต้องตรวจสอบย้อนหลัง ห้าม hard delete.
+  const result = await prisma.debtor.updateMany({
+    where: { id, deletedAt: null },
+    data: { deletedAt: new Date(), deletedById: session.user.id },
+  })
+  if (result.count === 0) {
+    return NextResponse.json({ error: 'รายการนี้ถูกลบไปแล้ว' }, { status: 400 })
+  }
+
+  const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
+  await createAuditLog({
+    actorId: session.user.id, targetId: id, targetType: 'Debtor',
+    action: 'DELETE',
+    before: { deletedAt: null },
+    after:  { deletedAt: new Date().toISOString() },
+    ip,
+  })
+
   return NextResponse.json({ ok: true })
 } catch (err) {
   return apiError(err)

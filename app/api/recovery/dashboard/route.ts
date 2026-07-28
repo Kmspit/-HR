@@ -110,7 +110,7 @@ export async function GET() {
   // Enrich top debtors
   const topDebtorIds = topDebtors.map(d => d.debtorId)
   const topDebtorUsers = await prisma.debtor.findMany({
-    where: { id: { in: topDebtorIds } },
+    where: { id: { in: topDebtorIds }, deletedAt: null },
     select: { id: true, firstName: true, lastName: true, debtorNumber: true, remainingDebt: true },
   })
   const debtorMap = Object.fromEntries(topDebtorUsers.map(d => [d.id, d]))

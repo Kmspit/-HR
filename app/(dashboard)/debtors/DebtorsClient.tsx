@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { toast } from 'sonner'
 import { DEBTOR_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -112,6 +113,8 @@ const APPT_COLORS: Record<string, string> = {
   MISSED: 'bg-red-100 text-red-700', CANCELLED: 'bg-gray-100 text-gray-600',
 }
 const CAN_MANAGE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
+// Matches DEBTOR_DELETE_ROLES in lib/debtor-access.ts — company-wide roles only.
+const CAN_DELETE = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 0 })
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
@@ -119,6 +122,7 @@ const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('th-TH', { da
 
 export default function DebtorsClient({ userId, userRole, userName }: { userId: string; userRole: string; userName: string }) {
   const canManage  = CAN_MANAGE.includes(userRole)
+  const canDelete  = CAN_DELETE.includes(userRole)
   const [mainTab, setMainTab]       = useState<'list' | 'dashboard'>('list')
   const [debtors,  setDebtors]      = useState<Debtor[]>([])
   const [total,    setTotal]        = useState(0)
@@ -170,6 +174,16 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
   }, [canManage])
 
   const handleSelectDebtor = (d: Debtor) => { loadDetail(d.id); setDetailTab('info') }
+
+  const handleDeleteDebtor = async () => {
+    if (!selected) return
+    if (!window.confirm(`ยืนยันลบลูกหนี้ "${selected.firstName} ${selected.lastName}" (${selected.debtorNumber})?\nรายการนี้จะย้ายไปหน้า "ลูกหนี้ที่ถูกลบ" และกู้คืนได้ภายหลัง`)) return
+    const { ok, data, status } = await apiJson(`/api/debtors/${selected.id}`, { method: 'DELETE' })
+    if (!ok) { toast.error(apiErrorMessage(data, 'ลบไม่สำเร็จ', status)); return }
+    toast.success('ลบลูกหนี้แล้ว')
+    setSelected(null)
+    loadDebtors()
+  }
 
   return (
     <div className="flex flex-col md:h-[calc(100dvh-64px)] md:overflow-hidden">
@@ -268,6 +282,8 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
                 employees={employees}
                 onRefresh={() => { loadDetail(selected.id); loadDebtors() }}
                 onEdit={() => setShowEdit(true)}
+                canDelete={canDelete}
+                onDelete={handleDeleteDebtor}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
@@ -296,6 +312,8 @@ export default function DebtorsClient({ userId, userRole, userName }: { userId: 
                   employees={employees}
                   onRefresh={() => { loadDetail(selected.id); loadDebtors() }}
                   onEdit={() => setShowEdit(true)}
+                  canDelete={canDelete}
+                  onDelete={handleDeleteDebtor}
                 />
               </div>
             </div>
@@ -403,10 +421,10 @@ function DashboardView({ summary }: { summary: Summary | null }) {
 
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
-function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employees, onRefresh, onEdit }: {
+function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employees, onRefresh, onEdit, canDelete, onDelete }: {
   debtor: Debtor; activeTab: string; setActiveTab: (t: 'info'|'crm'|'contact'|'promises'|'followup'|'payment'|'appt'|'files') => void
   userId: string; userRole: string; employees: User[]
-  onRefresh: () => void; onEdit: () => void
+  onRefresh: () => void; onEdit: () => void; canDelete: boolean; onDelete: () => void
 }) {
   const tabs: { key: 'info'|'crm'|'contact'|'promises'|'followup'|'payment'|'appt'|'files'; label: string }[] = [
     { key: 'info',     label: 'ข้อมูล' },
@@ -445,6 +463,9 @@ function DetailPanel({ debtor, activeTab, setActiveTab, userId, userRole, employ
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[debtor.status]}`}>{STATUS_LABELS[debtor.status]}</span>
             <button onClick={onEdit} className="text-xs px-3 py-1.5 border border-slate-200 dark:border-white/[0.1] rounded-lg hover:bg-slate-50 dark:hover:bg-white/[0.05] text-slate-700 dark:text-slate-300 transition">แก้ไข</button>
+            {canDelete && (
+              <button onClick={onDelete} className="text-xs px-3 py-1.5 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition">ลบ</button>
+            )}
           </div>
         </div>
 

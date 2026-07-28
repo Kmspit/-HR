@@ -53,7 +53,7 @@ export async function GET() {
     prisma.case.count({ where: { ...caseBase, riskLevel: { in: ['HIGH', 'CRITICAL'] } } }),
     prisma.case.count({ where: { ...caseBase, priority: 'CRITICAL' as CasePriority } }),
 
-    prisma.debtor.count({ where: { riskLevel: 'CRITICAL', status: { notIn: ['COMPLETED', 'CLOSED'] } } }),
+    prisma.debtor.count({ where: { deletedAt: null, riskLevel: 'CRITICAL', status: { notIn: ['COMPLETED', 'CLOSED'] } } }),
 
     prisma.courtEvent.count({ where: { appointmentDate: { gte: todayStart, lte: todayEnd }, status: { in: ['SCHEDULED', 'CONFIRMED'] } } }),
     prisma.courtEvent.count({ where: { appointmentDate: { gte: todayStart, lte: weekEnd }, status: { in: ['SCHEDULED', 'CONFIRMED'] } } }),
@@ -88,6 +88,7 @@ export async function GET() {
 
     prisma.debtor.count({
       where: {
+        deletedAt: null,
         status: { notIn: ['COMPLETED', 'CLOSED', 'CANCELLED'] },
         OR: [
           { lastContactAt: { lt: last7 } },
@@ -136,7 +137,7 @@ export async function GET() {
   })
 
   const highDebtDebtors = await prisma.debtor.findMany({
-    where: { remainingDebt: { gt: 100000 }, status: { notIn: ['COMPLETED', 'CLOSED'] } },
+    where: { deletedAt: null, remainingDebt: { gt: 100000 }, status: { notIn: ['COMPLETED', 'CLOSED'] } },
     select: { id: true, debtorNumber: true, firstName: true, lastName: true, remainingDebt: true, riskLevel: true, lastContactAt: true },
     orderBy: { remainingDebt: 'desc' },
     take: 5,

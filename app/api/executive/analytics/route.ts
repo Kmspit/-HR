@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
     // Resolve debtor names
     const debtorIds  = topDebtors.map(r => r.debtorId)
     const debtors    = debtorIds.length > 0
-      ? await prisma.debtor.findMany({ where: { id: { in: debtorIds } }, select: { id: true, firstName: true, lastName: true, debtorNumber: true } })
+      ? await prisma.debtor.findMany({ where: { id: { in: debtorIds }, deletedAt: null }, select: { id: true, firstName: true, lastName: true, debtorNumber: true } })
       : []
     const debtorMap  = Object.fromEntries(debtors.map(d => [d.id, d]))
 
@@ -166,12 +166,13 @@ export async function GET(req: NextRequest) {
       }),
       prisma.debtor.groupBy({
         by: ['riskLevel'],
-        where: { status: { notIn: ['COMPLETED', 'CLOSED', 'CANCELLED'] } },
+        where: { deletedAt: null, status: { notIn: ['COMPLETED', 'CLOSED', 'CANCELLED'] } },
         _count: { id: true },
         _sum: { remainingDebt: true },
       }),
       prisma.debtor.findMany({
         where: {
+          deletedAt: null,
           status: { notIn: ['COMPLETED', 'CLOSED', 'CANCELLED'] },
           OR: [
             { lastContactAt: { lt: new Date(now.getTime() - 7 * 86_400_000) } },

@@ -27,23 +27,23 @@ export async function GET() {
     overdueAppts,
     topRemaining,
   ] = await Promise.all([
-    prisma.debtor.count(),
-    prisma.debtor.groupBy({ by: ['status'], _count: { id: true } }),
-    prisma.debtor.aggregate({ _sum: { totalDebt: true } }),
-    prisma.debtor.aggregate({ _sum: { paidAmount: true } }),
-    prisma.debtor.aggregate({ _sum: { remainingDebt: true } }),
+    prisma.debtor.count({ where: { deletedAt: null } }),
+    prisma.debtor.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { id: true } }),
+    prisma.debtor.aggregate({ where: { deletedAt: null }, _sum: { totalDebt: true } }),
+    prisma.debtor.aggregate({ where: { deletedAt: null }, _sum: { paidAmount: true } }),
+    prisma.debtor.aggregate({ where: { deletedAt: null }, _sum: { remainingDebt: true } }),
     prisma.debtPayment.aggregate({
-      where: { paidAt: { gte: month1st } },
+      where: { paidAt: { gte: month1st }, debtor: { deletedAt: null } },
       _sum: { amount: true },
     }),
     prisma.paymentAppointment.count({
-      where: { appointDate: { gte: now }, status: 'PENDING' },
+      where: { appointDate: { gte: now }, status: 'PENDING', debtor: { deletedAt: null } },
     }),
     prisma.paymentAppointment.count({
-      where: { appointDate: { lt: now }, status: 'PENDING' },
+      where: { appointDate: { lt: now }, status: 'PENDING', debtor: { deletedAt: null } },
     }),
     prisma.debtor.findMany({
-      where:   { remainingDebt: { gt: 0 } },
+      where:   { remainingDebt: { gt: 0 }, deletedAt: null },
       orderBy: { remainingDebt: 'desc' },
       take:    10,
       select:  { id: true, debtorNumber: true, firstName: true, lastName: true, status: true, totalDebt: true, remainingDebt: true, assignedTo: { select: { name: true } } },

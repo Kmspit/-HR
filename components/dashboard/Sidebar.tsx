@@ -21,6 +21,7 @@ import {
   WORK_MODULE,
   isNavPathHidden,
 } from '@/lib/module-gates'
+import { DEBTOR_DELETE_ROLES } from '@/lib/debtor-access'
 
 const Icon = ({ d, className }: { d: string; className?: string }) => (
   <svg
@@ -162,6 +163,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/branches',        icon: 'settings',    label: 'จัดการสาขา',          roles: HR_ADMIN },
       { href: '/organization',    icon: 'employees',   label: 'ฝ่าย/แผนก/ส่วนงาน',  roles: HR_ADMIN },
       { href: '/outside-work/deleted', icon: 'outside', label: 'รายการที่ถูกลบ (นอกสถานที่)', roles: HR_CORE },
+      { href: '/debtors/deleted',      icon: 'debt',    label: 'ลูกหนี้ที่ถูกลบ',            roles: DEBTOR_DELETE_ROLES as Role[] },
     ],
   },
   {

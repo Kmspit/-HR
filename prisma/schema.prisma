@@ -531,6 +531,7 @@ model User {
   // Phase 8 — Debt Collection CRM
   debtorsAssigned           Debtor[]               @relation("DebtorAssignee")
   debtorsCreated            Debtor[]               @relation("DebtorCreator")
+  debtorsDeleted            Debtor[]               @relation("DebtorDeletedBy")
   debtFollowUps             DebtFollowUp[]         @relation("FollowUpPerformer")
   debtPaymentsReceived      DebtPayment[]          @relation("PaymentReceiver")
   debtPaymentsCreated       DebtPayment[]          @relation("PaymentCreator")
@@ -1909,10 +1910,13 @@ model Debtor {
   registeredAddress    String?   @map("registered_address")
   assetAddress         String?   @map("asset_address")
   lastContactAt        DateTime? @map("last_contact_at")
+  deletedAt            DateTime? @map("deleted_at")    // soft-delete — เก็บร่องรอยไว้ตรวจสอบย้อนหลัง (ข้อมูลลูกหนี้)
+  deletedById          String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
 
   task         TaskAssignment?      @relation(fields: [taskId],      references: [id])
   assignedTo   User?                @relation("DebtorAssignee",      fields: [assignedToId], references: [id])
   createdBy    User                 @relation("DebtorCreator",       fields: [createdById],  references: [id])
+  deletedBy    User?                @relation("DebtorDeletedBy",     fields: [deletedById],  references: [id])
   followUps    DebtFollowUp[]
   payments     DebtPayment[]
   appointments PaymentAppointment[]
@@ -1924,6 +1928,7 @@ model Debtor {
   @@index([status])
   @@index([assignedToId])
   @@index([riskLevel])
+  @@index([deletedAt])
   @@map("debtors")
 }
 

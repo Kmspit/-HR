@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const page   = Math.max(1, Number(searchParams.get('page') ?? 1))
   const limit  = 50
 
-  const where: Record<string, unknown> = {}
+  const where: Record<string, unknown> = { deletedAt: null }
   if (q) {
     where.OR = [
       { firstName:    { contains: q } },
