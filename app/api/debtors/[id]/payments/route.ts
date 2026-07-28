@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (access.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body    = await req.json()
-  const { amount, paidAt, channel, receivedById, note } = body
+  const { amount, paidAt, channel, receivedById, note, confirmOverpayment } = body
 
   if (!amount || !paidAt || !channel) {
     return NextResponse.json({ error: 'amount, paidAt, channel are required' }, { status: 400 })
@@ -68,7 +68,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // the derived status, the payment record) happens inside this one
   // transaction, reading back the value just written in the same
   // transaction rather than a value read outside it that could go stale.
-  const { payment, newRemainingDebt } = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
+    // Re-check the live balance inside the transaction (not the `debtor`
+    // read above, which happened before the transaction and could be stale
+    // relative to a concurrent payment) — a payment larger than what's
+    // actually still owed needs an explicit confirmation, since nothing in
+    // this system tracks fees/interest that would legitimately justify
+    // paying more than remainingDebt.
+    const current = await tx.debtor.findUnique({ where: { id }, select: { remainingDebt: true } })
+    const currentRemaining = current?.remainingDebt ?? 0
+    if (!confirmOverpayment && validAmount > currentRemaining) {
+      return { overLimit: true as const, remainingDebt: currentRemaining }
+    }
+
     const balanceUpdate = await tx.debtor.update({
       where: { id },
       data: {
@@ -108,8 +120,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
 
-    return { payment, newRemainingDebt }
+    return { overLimit: false as const, payment, newRemainingDebt }
   })
+
+  if (result.overLimit) {
+    return NextResponse.json(
+      {
+        error: 'AMOUNT_EXCEEDS_REMAINING_DEBT',
+        message:
+          `ยอดที่ชำระ (฿${validAmount.toLocaleString('th-TH')}) เกินยอดหนี้คงเหลือ (฿${result.remainingDebt.toLocaleString('th-TH')}) — ` +
+          `ถ้าต้องการบันทึกยอดนี้จริง (เช่น รวมค่าปรับ/ดอกเบี้ยเพิ่มเติมที่ไม่ได้อยู่ในระบบ) กรุณายืนยันอีกครั้ง`,
+        remainingDebt: result.remainingDebt,
+      },
+      { status: 400 },
+    )
+  }
+  const { payment, newRemainingDebt } = result
 
   // Notify assignee
   if (debtor.assignedToId && debtor.assignedToId !== session.user.id) {

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { createNotification } from '@/lib/notifications'
 import { parseNonNegativeNumber } from '@/lib/utils'
 import { apiError } from '@/lib/api-handler'
+import { isCompanyWideApprover } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const userSel = { id: true, name: true, role: true, department: true }
 
@@ -13,6 +15,16 @@ export async function GET(req: NextRequest) {
  try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Invoices are a finance-department document, not per-employee/per-team
+  // data (unlike expense-claims/case-finance), so there's no legitimate
+  // MANAGER/TEAM_LEADER subtree to scope down to — anyone who isn't a
+  // company-wide finance role (or the already-scoped CLIENT branch below)
+  // has no business seeing billing invoices at all. Previously this route
+  // had no role check whatsoever beyond authentication.
+  if (session.user.role !== 'CLIENT' && !isCompanyWideApprover(session.user.role as Role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(req.url)
   const q            = searchParams.get('q') ?? ''

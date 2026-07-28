@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseNonNegativeNumber } from '@/lib/utils'
 import { apiError } from '@/lib/api-handler'
+import { isCompanyWideApprover } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const userSel = { id: true, name: true, role: true, department: true }
 const FINANCE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
@@ -30,8 +32,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
     },
   })
-
   if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Same gate as the list route: no role check existed here at all before —
+  // any authenticated user (MANAGER, TEAM_LEADER, ordinary staff) could read
+  // any invoice by id, including client tax IDs/addresses and payment
+  // history. CLIENT is scoped to only their own linked invoice (mirrors the
+  // list route's clientName-match heuristic), matching the same underlying
+  // gap this closes for that role too, not just staff.
+  if (session.user.role === 'CLIENT') {
+    const userRecord = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } })
+    if (!userRecord?.name || !invoice.clientName.includes(userRecord.name)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } else if (!isCompanyWideApprover(session.user.role as Role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   return NextResponse.json(invoice)
  } catch (err) {
   return apiError(err)

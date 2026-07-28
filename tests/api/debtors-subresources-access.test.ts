@@ -58,7 +58,7 @@ describe('debtors/[id] sub-resources — ownership check (CAN_MANAGE || assigned
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(prisma.debtor.findUnique).mockResolvedValue({
-      assignedToId: 'collector-1', paidAmount: 0, totalDebt: 10000,
+      assignedToId: 'collector-1', paidAmount: 0, totalDebt: 10000, remainingDebt: 10000,
       firstName: 'x', lastName: 'y',
     } as never)
     vi.mocked(prisma.paymentAppointment.findMany).mockResolvedValue([] as never)
@@ -219,6 +219,47 @@ describe('debtors/[id] sub-resources — ownership check (CAN_MANAGE || assigned
         expect(prisma.debtPayment.create).toHaveBeenCalledWith(
           expect.objectContaining({ data: expect.objectContaining({ amount: 300, debtorId: 'debtor-1' }) }),
         )
+      })
+
+      it('rejects an amount exceeding remainingDebt with 400 and does not write anything', async () => {
+        vi.mocked(prisma.debtor.findUnique).mockResolvedValue({
+          assignedToId: 'collector-1', paidAmount: 0, totalDebt: 10000, remainingDebt: 1000,
+          firstName: 'x', lastName: 'y',
+        } as never)
+
+        const res = await paymentPost(makePostReq({ amount: 5000, paidAt: '2026-08-01', channel: 'CASH' }), { params })
+        expect(res.status).toBe(400)
+        const data = await res.json()
+        expect(data.error).toBe('AMOUNT_EXCEEDS_REMAINING_DEBT')
+        expect(data.remainingDebt).toBe(1000)
+        expect(prisma.debtor.update).not.toHaveBeenCalled()
+        expect(prisma.debtPayment.create).not.toHaveBeenCalled()
+      })
+
+      it('allows an amount exceeding remainingDebt when confirmOverpayment is explicitly set', async () => {
+        vi.mocked(prisma.debtor.findUnique).mockResolvedValue({
+          assignedToId: 'collector-1', paidAmount: 0, totalDebt: 10000, remainingDebt: 1000,
+          firstName: 'x', lastName: 'y',
+        } as never)
+        vi.mocked(prisma.debtor.update).mockResolvedValueOnce({ remainingDebt: -4000, paidAmount: 5000 } as never)
+
+        const res = await paymentPost(
+          makePostReq({ amount: 5000, paidAt: '2026-08-01', channel: 'CASH', confirmOverpayment: true }),
+          { params },
+        )
+        expect(res.status).toBe(201)
+        expect(prisma.debtPayment.create).toHaveBeenCalled()
+      })
+
+      it('does not require confirmOverpayment when the amount exactly matches remainingDebt', async () => {
+        vi.mocked(prisma.debtor.findUnique).mockResolvedValue({
+          assignedToId: 'collector-1', paidAmount: 0, totalDebt: 10000, remainingDebt: 1000,
+          firstName: 'x', lastName: 'y',
+        } as never)
+        vi.mocked(prisma.debtor.update).mockResolvedValueOnce({ remainingDebt: 0, paidAmount: 1000 } as never)
+
+        const res = await paymentPost(makePostReq({ amount: 1000, paidAt: '2026-08-01', channel: 'CASH' }), { params })
+        expect(res.status).toBe(201)
       })
     })
 

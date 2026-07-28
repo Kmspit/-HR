@@ -14,6 +14,22 @@ export async function GET(
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
 
+  // Same case-access check as this file's own POST handler (and
+  // app/api/cases/[id]/risk/route.ts) — GET had no check at all, letting
+  // any authenticated user read any case's full activity timeline.
+  const c = await prisma.case.findUnique({
+    where:  { id },
+    select: { createdById: true, assignedEmployeeId: true, department: true },
+  })
+  if (!c) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const canAccess =
+    EXEC_ROLES.includes(session.user.role) ||
+    c.createdById === session.user.id ||
+    c.assignedEmployeeId === session.user.id
+
+  if (!canAccess) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const timeline = await prisma.caseTimeline.findMany({
     where:   { caseId: id },
     include: { user: { select: { id: true, name: true, role: true } } },
