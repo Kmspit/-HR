@@ -47,7 +47,7 @@ type Doc = {
   uploadedBy: { id: string; name: string; role: string }
   assignedTo: { id: string; name: string; role: string } | null
   files: DocFile[]
-  signatures: { id: string; signerName: string; signedAt: string }[]
+  signatures: { id: string; signerName: string; signedAt: string; stale?: boolean }[]
   _count: { files: number; versions: number }
 }
 
@@ -298,6 +298,28 @@ function PreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
 
           {doc.description && (
             <p className="text-white/50 text-xs bg-white/5 rounded-xl px-3 py-2">{doc.description}</p>
+          )}
+
+          {doc.signatures.length > 0 && (
+            <div className="bg-white/5 rounded-xl px-3 py-2 space-y-2">
+              <p className="text-white/40 text-xs">ลายเซ็น ({doc.signatures.length})</p>
+              {doc.signatures.map((sig) => (
+                <div key={sig.id} className="flex items-center gap-2 text-xs">
+                  {sig.stale ? (
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+                  )}
+                  <span className="text-white font-medium">{sig.signerName}</span>
+                  <span className="text-white/40">· {formatDateTime(sig.signedAt)}</span>
+                  {sig.stale && (
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">
+                      ⚠️ เอกสารถูกแก้ไขหลังเซ็น
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
     </PortalModal>
@@ -622,6 +644,17 @@ function DocCard({ doc, onPreview, onArchive, userId, role }: {
             )}
             {latestFile?.fileSize && (
               <span>{formatBytes(latestFile.fileSize)}</span>
+            )}
+            {doc.signatures.length > 0 && (
+              doc.signatures.some((s) => s.stale) ? (
+                <span className="flex items-center gap-1 text-amber-300">
+                  <AlertCircle className="w-3 h-3" /> ลายเซ็นเก่ากว่าเอกสาร
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-green-400">
+                  <CheckCircle className="w-3 h-3" /> เซ็นแล้ว ({doc.signatures.length})
+                </span>
+              )
             )}
           </div>
 

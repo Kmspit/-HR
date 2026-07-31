@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900021
+export const CURRENT_SCHEMA_VERSION = 900022
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -1645,6 +1645,12 @@ async function runEnsure(force = false): Promise<boolean> {
       console.log('[MIGRATION v900021] audit_logs already has no targetId FK, skipping rebuild')
     }
   }
+
+  // v900022 — CaseDocumentSignature.docVersion (same fix as v900020's
+  // DigitalSignature.docVersion, applied to the signature system actually in
+  // use for case documents — binds a signature to the document's file
+  // version at sign time so an edit afterward can be detected as stale)
+  await addColumnIfMissing('case_document_signatures', 'doc_version', `ALTER TABLE case_document_signatures ADD COLUMN doc_version TEXT NOT NULL DEFAULT ''`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
           uploadedBy: { select: { id: true, name: true, role: true } },
           assignedTo: { select: { id: true, name: true, role: true } },
           files:      { orderBy: { version: 'desc' }, take: 1 },
-          signatures: { orderBy: { signedAt: 'asc' }, select: { id: true, signerName: true, signedAt: true } },
+          signatures: { orderBy: { signedAt: 'asc' }, select: { id: true, signerName: true, signedAt: true, docVersion: true } },
           _count:     { select: { files: true, versions: true } },
         },
         orderBy: { updatedAt: 'desc' },
@@ -143,8 +143,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ docs: [], total: 0 }, { status: 500 })
   }
 
+  // Same staleness check as the detail route — files[0] is the current
+  // content (orderBy version desc), a signature is stale once its docVersion
+  // no longer matches it.
+  const docsWithStaleness = docs.map((doc) => {
+    const currentFileVersion = doc.files?.[0]?.version != null ? String(doc.files[0].version) : null
+    return {
+      ...doc,
+      signatures: (doc.signatures ?? []).map((sig) => ({
+        ...sig,
+        stale: currentFileVersion !== null && sig.docVersion !== currentFileVersion,
+      })),
+    }
+  })
+
   return NextResponse.json({
-    docs,
+    docs: docsWithStaleness,
     total,
     page,
     pages: Math.ceil(total / limit),

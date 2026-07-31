@@ -52,7 +52,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     userAgent:  req.headers.get('user-agent'),
   })
 
-  return NextResponse.json(doc)
+  // `files` is ordered version desc, so [0] is the current content — a
+  // signature is stale once the file it was signed against is no longer
+  // the current one (re-uploaded since).
+  const currentFileVersion = doc.files?.[0]?.version != null ? String(doc.files[0].version) : null
+  const signatures = (doc.signatures ?? []).map((sig) => ({
+    ...sig,
+    stale: currentFileVersion !== null && sig.docVersion !== currentFileVersion,
+  }))
+
+  return NextResponse.json({ ...doc, signatures })
 } catch (err) {
   return apiError(err)
  }

@@ -1734,6 +1734,17 @@ model CaseDocumentSignature {
   signatureUrl   String?  @map("signature_url")
   typedName      String?  @map("typed_name")
   signedAt       DateTime @default(now()) @map("signed_at")
+  // Snapshot of CaseDocumentFile.version (stringified) for the document's
+  // current file AT THE MOMENT OF SIGNING — not client-supplied, computed
+  // server-side by the sign route since this model (unlike the generic
+  // DigitalSignature) always points at a known CaseDocument. A signature
+  // whose docVersion no longer matches the document's current file version
+  // was made against content that has since been replaced — see `stale` on
+  // GET /api/case-documents responses. Deliberately NOT compared against
+  // CaseDocumentVersion.versionNumber or CaseDocument.updatedAt: both those
+  // also bump on metadata-only edits (title/tags/category), which would
+  // falsely flag a signature stale even though the signed file never changed.
+  docVersion     String   @default("") @map("doc_version")
 
   document CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
   signedBy User         @relation("CaseDocSigner",    fields: [signedById], references: [id])

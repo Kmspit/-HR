@@ -26,6 +26,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const doc = await prisma.caseDocument.findUnique({ where: { id: documentId } })
   if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
 
+  // Snapshot the current file's content version — not client-supplied, this
+  // model always points at a known CaseDocument so the server can (and
+  // should) compute it directly rather than trusting the caller.
+  const currentFile = await prisma.caseDocumentFile.findFirst({
+    where: { documentId },
+    orderBy: { version: 'desc' },
+  })
+  if (!currentFile) {
+    return NextResponse.json({ error: 'ไม่มีไฟล์เอกสารให้เซ็น — กรุณาอัปโหลดไฟล์ก่อน' }, { status: 400 })
+  }
+
   const body = await req.json()
   const { signatureType, typedName, signatureData, signerPosition } = body
   // signatureType: 'TYPED' | 'DRAWN' | 'UPLOADED'
@@ -72,6 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       signatureData:  signatureType === 'DRAWN' ? signatureData : null,
       signatureUrl,
       typedName:      typedName ?? null,
+      docVersion:     String(currentFile.version),
     },
   })
 
