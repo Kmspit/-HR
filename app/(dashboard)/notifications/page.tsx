@@ -9,11 +9,18 @@ export default async function NotificationsPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const rows = await prisma.notification.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-  })
+  // unreadCount must come from an unbounded query, same as the header badge
+  // (app/(dashboard)/layout.tsx) — deriving it from `rows` (capped to the most
+  // recent 200 for display) undercounts once a user has >200 notifications,
+  // showing 0 unread here while the header badge still shows the real number.
+  const [rows, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    }),
+    prisma.notification.count({ where: { userId: session.user.id, isRead: false } }),
+  ])
 
   const notifications = rows.map((n) => ({
     id: n.id,
@@ -27,7 +34,6 @@ export default async function NotificationsPage() {
   }))
 
   const tabCounts = computeTabCounts(rows)
-  const unreadCount = tabCounts.all.unread
 
   return (
     <div className="flex flex-col min-h-full">

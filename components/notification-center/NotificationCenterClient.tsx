@@ -81,9 +81,14 @@ export default function NotificationCenterClient({
   const [tabCounts, setTabCounts] = useState(initialTabCounts)
   const [markingAll, setMarkingAll] = useState(false)
 
-  const recomputeCounts = useCallback((list: NotificationItem[]) => {
+  // `items` only ever holds the most recent 200 (see the slice below), so
+  // unreadCount must never be derived by filtering it — that undercounts as
+  // soon as an unread item older than the newest 200 exists. tabCounts (the
+  // per-tab breakdown) still comes from the loaded list; each call site below
+  // updates the true unreadCount separately via a known delta or a fresh
+  // server-pushed value instead.
+  const recomputeTabCounts = useCallback((list: NotificationItem[]) => {
     setTabCounts(computeTabCounts(list))
-    setUnreadCount(list.filter((n) => !n.isRead).length)
   }, [])
 
   useNotificationStream({
@@ -92,19 +97,22 @@ export default function NotificationCenterClient({
       if (count === 0) {
         setItems((prev) => {
           const next = prev.map((n) => ({ ...n, isRead: true }))
-          setTabCounts(computeTabCounts(next))
+          recomputeTabCounts(next)
           return next
         })
       }
     },
     onNew: (notif) => {
+      let isDuplicate = false
       setItems((prev) => {
-        if (prev.some((n) => n.id === notif.id)) return prev
+        if (prev.some((n) => n.id === notif.id)) { isDuplicate = true; return prev }
         const next = [notif, ...prev].slice(0, 200)
-        setTabCounts(computeTabCounts(next))
-        setUnreadCount(next.filter((n) => !n.isRead).length)
+        recomputeTabCounts(next)
         return next
       })
+      // A freshly created notification is unread by definition — but skip the
+      // increment if this event turned out to be a duplicate of one we already have.
+      if (!isDuplicate) setUnreadCount((c) => c + 1)
     },
   })
 
@@ -123,12 +131,18 @@ export default function NotificationCenterClient({
       toast.error('ไม่สามารถทำเครื่องหมายว่าอ่านแล้ว')
       return
     }
+    let wasUnread = false
     setItems((prev) => {
-      const next = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      recomputeCounts(next)
+      const next = prev.map((n) => {
+        if (n.id !== id) return n
+        wasUnread = !n.isRead
+        return { ...n, isRead: true }
+      })
+      recomputeTabCounts(next)
       return next
     })
-  }, [recomputeCounts])
+    if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1))
+  }, [recomputeTabCounts])
 
   const markAllRead = useCallback(async () => {
     setMarkingAll(true)
@@ -144,16 +158,20 @@ export default function NotificationCenterClient({
       }
       setItems((prev) => {
         const next = prev.map((n) => ({ ...n, isRead: true }))
-        recomputeCounts(next)
+        recomputeTabCounts(next)
         return next
       })
+      // Every notification for this user is now read, server-side — the true
+      // count is unambiguously 0 regardless of how many exist outside the
+      // loaded 200-item window.
+      setUnreadCount(0)
       toast.success('อ่านการแจ้งเตือนทั้งหมดแล้ว')
     } catch {
       toast.error('เกิดข้อผิดพลาด')
     } finally {
       setMarkingAll(false)
     }
-  }, [recomputeCounts])
+  }, [recomputeTabCounts])
 
   const handleClick = useCallback(
     (item: NotificationItem) => {
