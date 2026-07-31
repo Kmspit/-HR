@@ -2145,6 +2145,7 @@ model ClientContract {
   paymentTerms    String?  @map("payment_terms")
   status          String   @default("ACTIVE")
   note            String?
+  renewedFromId   String?  @unique @map("renewed_from_id") // สัญญาก่อนหน้าที่ฉบับนี้ต่ออายุมา — @unique กันสัญญาสองฉบับ renew มาจากต้นเดียวกัน; ตั้งค่านี้แล้วสัญญาเดิมจะถูกเปลี่ยนเป็น SUPERSEDED ใน transaction เดียวกัน (ดู POST /api/client-companies/[id]/contracts)
   createdById     String   @map("created_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt      @map("updated_at")
@@ -2153,6 +2154,8 @@ model ClientContract {
   createdBy     User                @relation("ClientContractCreator",  fields: [createdById], references: [id])
   files         ClientCompanyFile[]
   slaRecords    ClientSlaRecord[]
+  renewedFrom   ClientContract?     @relation("ContractRenewal", fields: [renewedFromId], references: [id])
+  renewedInto   ClientContract?     @relation("ContractRenewal")
 
   @@index([clientCompanyId])
   @@index([endDate])

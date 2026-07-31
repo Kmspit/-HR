@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { CONTRACT_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 
 interface Company { id: string; clientCode: string; companyName: string; phone?: string }
 interface Contract {
@@ -14,15 +16,132 @@ interface Contract {
   _count: { files: number; slaRecords: number }
 }
 
-const CONTRACT_STATUSES = ['ACTIVE', 'EXPIRED', 'TERMINATED', 'PENDING']
+const CONTRACT_STATUSES = ['ACTIVE', 'EXPIRED', 'TERMINATED', 'PENDING', 'SUPERSEDED']
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700', EXPIRED: 'bg-red-100 text-red-700',
   TERMINATED: 'bg-gray-100 text-gray-600', PENDING: 'bg-yellow-100 text-yellow-700',
+  SUPERSEDED: 'bg-blue-100 text-blue-700',
 }
 
 const fmt     = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 0 })
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })
 const daysLeft = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400_000)
+const toDateInput = (d: string | Date) => new Date(d).toISOString().slice(0, 10)
+
+// ─── Renewal modal ─────────────────────────────────────────────────────────
+
+function RenewModal({ contract, onClose, onRenewed }: {
+  contract: Contract; onClose: () => void; onRenewed: () => void
+}) {
+  const oneYearLater = new Date(contract.endDate)
+  oneYearLater.setFullYear(oneYearLater.getFullYear() + 1)
+
+  const [form, setForm] = useState({
+    serviceType:  contract.serviceType,
+    startDate:    toDateInput(contract.endDate),
+    endDate:      toDateInput(oneYearLater),
+    value:        String(contract.value),
+    slaAgreement: contract.slaAgreement ?? '',
+    paymentTerms: contract.paymentTerms ?? '',
+    note:         '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState<string | null>(null)
+
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
+
+  const submit = async () => {
+    if (!form.serviceType.trim() || !form.startDate || !form.endDate) return
+    setSaving(true)
+    setError(null)
+    try {
+      const { ok, data, status } = await apiJson(`/api/client-companies/${contract.clientCompany.id}/contracts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceType:   form.serviceType.trim(),
+          startDate:     form.startDate,
+          endDate:       form.endDate,
+          value:         Number(form.value || 0),
+          slaAgreement:  form.slaAgreement.trim() || null,
+          paymentTerms:  form.paymentTerms.trim() || null,
+          note:          form.note.trim() || null,
+          renewedFromId: contract.id,
+        }),
+      })
+      if (!ok) { setError(apiErrorMessage(data, 'ต่ออายุสัญญาไม่สำเร็จ', status)); return }
+      toast.success('ต่ออายุสัญญาเรียบร้อย — สัญญาเดิมถูกเปลี่ยนเป็น "ถูกแทนที่แล้ว"')
+      onRenewed()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-60 overflow-y-auto flex items-center justify-center p-4">
+      <div role="dialog" aria-modal aria-label="ต่ออายุสัญญา" className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">ต่ออายุสัญญา</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            สัญญาใหม่จะแทนที่ <span className="font-mono">{contract.contractNumber}</span> ({contract.clientCompany.companyName}) —
+            สัญญาเดิมจะถูกเปลี่ยนสถานะเป็น &quot;ถูกแทนที่แล้ว&quot; อัตโนมัติ ไม่นับซ้ำในยอดสัญญาที่ใช้งานอยู่อีกต่อไป
+          </p>
+        </div>
+        <div className="p-6 grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <label htmlFor="renew-service-type" className="text-xs text-gray-500 mb-1 block">ประเภทบริการ *</label>
+            <input id="renew-service-type" value={form.serviceType} onChange={(e) => set('serviceType', e.target.value)}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          </div>
+          <div>
+            <label htmlFor="renew-start-date" className="text-xs text-gray-500 mb-1 block">วันที่เริ่ม *</label>
+            <input id="renew-start-date" type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          </div>
+          <div>
+            <label htmlFor="renew-end-date" className="text-xs text-gray-500 mb-1 block">วันหมดอายุ *</label>
+            <input id="renew-end-date" type="date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          </div>
+          <div>
+            <label htmlFor="renew-value" className="text-xs text-gray-500 mb-1 block">มูลค่า (บาท)</label>
+            <input id="renew-value" type="number" value={form.value} onChange={(e) => set('value', e.target.value)}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          </div>
+          <div>
+            <label htmlFor="renew-payment-terms" className="text-xs text-gray-500 mb-1 block">เงื่อนไขการชำระเงิน</label>
+            <input id="renew-payment-terms" value={form.paymentTerms} onChange={(e) => set('paymentTerms', e.target.value)}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          </div>
+          <div className="col-span-2">
+            <label htmlFor="renew-sla" className="text-xs text-gray-500 mb-1 block">SLA Agreement</label>
+            <input id="renew-sla" value={form.slaAgreement} onChange={(e) => set('slaAgreement', e.target.value)}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          </div>
+          <div className="col-span-2">
+            <label htmlFor="renew-note" className="text-xs text-gray-500 mb-1 block">หมายเหตุ</label>
+            <textarea id="renew-note" value={form.note} onChange={(e) => set('note', e.target.value)} rows={2}
+              className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" />
+          </div>
+        </div>
+        {error && (
+          <div className="mx-6 mb-4 rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        )}
+        <div className="p-6 pt-0 flex gap-3 justify-end">
+          <button onClick={onClose} className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700">ยกเลิก</button>
+          <button onClick={submit} disabled={saving || !form.serviceType.trim() || !form.startDate || !form.endDate}
+            className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm disabled:opacity-50">
+            {saving ? 'กำลังบันทึก…' : 'ต่ออายุสัญญา'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main list ───────────────────────────────────────────────────────────
 
 export default function ContractsClient({ userId, userRole }: { userId: string; userRole: string }) {
   const [contracts,  setContracts]  = useState<Contract[]>([])
@@ -32,6 +151,7 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
   const [filterSt,   setFilterSt]   = useState('')
   const [expiring,   setExpiring]   = useState(false)
   const [loading,    setLoading]    = useState(true)
+  const [renewing,   setRenewing]   = useState<Contract | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -123,10 +243,13 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-600'}`}>{STATUS_LABELS[c.status] ?? c.status}</span>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-1">
+                          {c.status === 'ACTIVE' && (
+                            <button onClick={() => setRenewing(c)} className="text-[12px] px-2 py-0.5 bg-green-50 hover:bg-green-100 text-green-600 rounded">ต่ออายุ</button>
+                          )}
                           {c.status === 'ACTIVE' && (
                             <button onClick={() => updateStatus(c.id, 'EXPIRED')} className="text-[12px] px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 rounded">หมดอายุ</button>
                           )}
@@ -154,6 +277,14 @@ export default function ContractsClient({ userId, userRole }: { userId: string; 
           <span className="text-gray-500">หน้า {page} / {pages}</span>
           <button onClick={() => setPage(p => p+1)} disabled={page>=pages} className="px-3 py-1.5 border rounded-lg disabled:opacity-40">ถัดไป ›</button>
         </div>
+      )}
+
+      {renewing && (
+        <RenewModal
+          contract={renewing}
+          onClose={() => setRenewing(null)}
+          onRenewed={() => { setRenewing(null); load() }}
+        />
       )}
     </div>
   )

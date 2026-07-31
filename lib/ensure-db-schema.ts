@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900018
+export const CURRENT_SCHEMA_VERSION = 900019
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -1590,6 +1590,11 @@ async function runEnsure(force = false): Promise<boolean> {
   // v900018 — Debtor soft-delete (same pattern as OutsideWorkRequest.deletedAt/deletedById)
   await addColumnIfMissing('debtors', 'deleted_at',    `ALTER TABLE debtors ADD COLUMN deleted_at DATETIME`)
   await addColumnIfMissing('debtors', 'deleted_by_id', `ALTER TABLE debtors ADD COLUMN deleted_by_id TEXT`)
+
+  // v900019 — ClientContract renewal linkage (fixes ACTIVE-total double-counting
+  // on renewal — the old contract gets superseded instead of staying ACTIVE)
+  await addColumnIfMissing('client_contracts', 'renewed_from_id', `ALTER TABLE client_contracts ADD COLUMN renewed_from_id TEXT`)
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS idx_client_contracts_renewed_from_id ON client_contracts (renewed_from_id)`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

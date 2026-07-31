@@ -82,10 +82,11 @@ export const DOCUMENT_STATUS_LABEL: Record<string, string> = {
 }
 
 export const CONTRACT_STATUS_LABEL: Record<string, string> = {
-  ACTIVE:     'มีผล',
-  EXPIRED:    'หมดอายุ',
-  TERMINATED: 'ยกเลิก',
-  PENDING:    'รออนุมัติ',
+  ACTIVE:      'มีผล',
+  EXPIRED:     'หมดอายุ',
+  TERMINATED:  'ยกเลิก',
+  PENDING:     'รออนุมัติ',
+  SUPERSEDED:  'ถูกแทนที่แล้ว',
 }
 
 export const PAYMENT_APPT_STATUS_LABEL: Record<string, string> = {
