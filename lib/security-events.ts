@@ -17,6 +17,7 @@ export type SecurityEventType =
   | 'NEW_DEVICE'
   | 'SESSION_REVOKED'
   | 'BACKUP_CREATED'
+  | 'BACKUP_FAILED'
   | 'BACKUP_RESTORED'
   | 'DOCUMENT_EXPORTED'
 

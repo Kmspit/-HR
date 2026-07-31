@@ -19,8 +19,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { loadBackupPayload, BACKUP_TABLE_SPECS } from '@/lib/backup'
+import { loadBackupTable, BACKUP_TABLE_SPECS } from '@/lib/backup'
 import { logSecurityEvent } from '@/lib/security-events'
+
+export const maxDuration = 300
 
 const ALLOWED_ROLES = ['CEO', 'SUPER_ADMIN'] as const
 
@@ -58,11 +60,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
   }
 
-  const payload = await loadBackupPayload(record.storagePublicId)
-  if (!payload) {
-    return NextResponse.json({ error: 'ไม่พบไฟล์ backup ใน storage' }, { status: 404 })
+  const tableRows = await loadBackupTable(record.storagePublicId, table)
+  if (tableRows === null) {
+    return NextResponse.json({ error: 'ไม่พบไฟล์ backup ของตารางนี้ใน storage' }, { status: 404 })
   }
-  const rows = (payload[table] ?? []) as Record<string, unknown>[]
+  const rows = tableRows as Record<string, unknown>[]
   if (rows.length === 0) {
     return NextResponse.json({ table, dryRun, totalInBackup: 0, alreadyExists: 0, wouldInsert: 0, inserted: 0, skipped: 0, failed: 0, errors: [] })
   }
