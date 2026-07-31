@@ -50,15 +50,11 @@ export async function GET(req: NextRequest) {
         enqueue(`event: announcement\ndata: ${JSON.stringify(data)}\n\n`)
       }
 
-      const onNotification = (data: { userId: string; count: number }) => {
-        if (data.userId !== userId) return
-        enqueue(`event: notification\ndata: ${JSON.stringify({ count: data.count })}\n\n`)
-      }
-
-      const onNewNotification = (data: { userId: string; notification: unknown }) => {
-        if (data.userId !== userId) return
-        enqueue(`event: new-notification\ndata: ${JSON.stringify({ notification: data.notification })}\n\n`)
-      }
+      // Notification count/item push used to go out on this same connection
+      // (events 'notification'/'new-notification') — replaced by polling
+      // (lib/notification-center/poll.ts) since the in-process emitter this
+      // route reads from can't be reached by a write handled on a different
+      // serverless instance. Only the announcement channel still uses SSE.
 
       enqueue(`: connected\n\n`)
 
@@ -67,14 +63,10 @@ export async function GET(req: NextRequest) {
       }, 25000)
 
       announcementEmitter.on('new-announcement', onAnnouncement)
-      announcementEmitter.on('notification-count', onNotification)
-      announcementEmitter.on('new-notification', onNewNotification)
 
       req.signal.addEventListener('abort', () => {
         clearInterval(heartbeat)
         announcementEmitter.off('new-announcement', onAnnouncement)
-        announcementEmitter.off('notification-count', onNotification)
-        announcementEmitter.off('new-notification', onNewNotification)
         try { controller.close() } catch {}
       })
     },
