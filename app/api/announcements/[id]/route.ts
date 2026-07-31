@@ -11,6 +11,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
     const body = await req.json() as Record<string, unknown>

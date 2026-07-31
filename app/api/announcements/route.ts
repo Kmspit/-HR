@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { announcementEmitter } from '@/lib/announcement-events'
 import { ANNOUNCEMENT_EDITOR_ROLES } from '@/lib/access-control'
+import { matchesAnnouncementTargeting } from '@/lib/announcement-access'
 
 function toAnnDto(a: {
   id: string; title: string; body: string; type: string; targetType: string
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (session.user.role === 'CLIENT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { searchParams } = new URL(req.url)
     const archive = searchParams.get('archive') === 'true'
@@ -50,9 +52,11 @@ export async function GET(req: NextRequest) {
     const isHR = ANNOUNCEMENT_EDITOR_ROLES.includes(session.user.role)
     const userId = session.user.id
 
-    // Archive path — keep existing simple behavior, just add total
+    // Archive path — same role gate + audience targeting as the non-archived path
+    // below. Previously ran before any of that, so any authenticated user could
+    // read every archived announcement regardless of role or targeting.
     if (archive) {
-      const where = month && year
+      const archiveWhere = month && year
         ? {
             isArchived: true,
             publishAt: {
@@ -61,14 +65,36 @@ export async function GET(req: NextRequest) {
             },
           }
         : { isArchived: true }
-      const rows = await prisma.announcement.findMany({
-        where,
-        orderBy: { publishAt: 'desc' },
-        take: 50,
+
+      if (isHR) {
+        const rows = await prisma.announcement.findMany({
+          where: archiveWhere,
+          orderBy: { publishAt: 'desc' },
+          take: 50,
+        })
+        return NextResponse.json({
+          announcements: rows.map((a) => toAnnDto(a, userId)),
+          total: rows.length,
+          page: 1,
+          pages: 1,
+        })
+      }
+
+      const archiveUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { branchId: true, divisionId: true, departmentId: true, sectionId: true },
       })
+      const rows = await prisma.announcement.findMany({
+        where: archiveWhere,
+        orderBy: { publishAt: 'desc' },
+        take: 200,
+      })
+      const filtered = rows.filter((a) => matchesAnnouncementTargeting(
+        a.targetType, a.targetIds ? JSON.parse(a.targetIds) : [], userId, archiveUser,
+      ))
       return NextResponse.json({
-        announcements: rows.map((a) => toAnnDto(a, userId)),
-        total: rows.length,
+        announcements: filtered.map((a) => toAnnDto(a, userId)),
+        total: filtered.length,
         page: 1,
         pages: 1,
       })
@@ -105,19 +131,9 @@ export async function GET(req: NextRequest) {
       orderBy: { publishAt: 'desc' },
       take: 200,
     })
-    const filtered = rows.filter((a) => {
-      if (a.targetType === 'ALL') return true
-      const ids: string[] = a.targetIds ? JSON.parse(a.targetIds) : []
-      if (ids.length === 0) return a.targetType === 'ALL'
-      switch (a.targetType) {
-        case 'INDIVIDUAL':   return ids.includes(userId)
-        case 'BRANCH':       return !!user?.branchId && ids.includes(user.branchId)
-        case 'DIVISION':     return !!user?.divisionId && ids.includes(user.divisionId)
-        case 'DEPARTMENT':   return !!user?.departmentId && ids.includes(user.departmentId)
-        case 'SECTION':      return !!user?.sectionId && ids.includes(user.sectionId)
-        default:             return true
-      }
-    })
+    const filtered = rows.filter((a) => matchesAnnouncementTargeting(
+      a.targetType, a.targetIds ? JSON.parse(a.targetIds) : [], userId, user,
+    ))
     const total = filtered.length
     const paginated = filtered.slice((page - 1) * limit, page * limit)
     return NextResponse.json({
