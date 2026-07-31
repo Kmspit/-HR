@@ -94,48 +94,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 2. 1-hour before reminders (same run, checked on exact minute) ────────
+  // No "N minutes/hours before" tier here — this cron runs once daily (Vercel
+  // Hobby plan cap) with up to ±59min timing slop, so a narrow same-hour window
+  // can only ever match a coincidental slice of events. The same-day (daysAhead
+  // === 0) reminder above already covers "you have an appointment today," on
+  // both this model and CourtEvent (section 3 below) — don't re-add a tighter
+  // window without a higher-frequency cron (Pro plan) to actually back it.
 
-  const oneHourFrom = new Date(now.getTime() + 60 * 60 * 1000)
-  const oneHourWindow = new Date(now.getTime() + 65 * 60 * 1000) // 5 min window
-
-  const imminentEvents = await prisma.calendarEvent.findMany({
-    where: {
-      startAt: { gte: oneHourFrom, lte: oneHourWindow },
-      status: 'SCHEDULED',
-      reminderEnabled: true,
-      eventType: { in: COURT_EVENT_TYPES },
-    },
-    select: {
-      id: true, title: true, eventType: true,
-      courtName: true, caseNumber: true, startTime: true,
-      caseId: true,
-      createdById: true,
-      assignedLawyerId: true, assignedEmployeeId: true,
-    },
-  })
-
-  for (const ev of imminentEvents) {
-    const typeStr  = TYPE_LABEL[ev.eventType] ?? 'นัดหมาย'
-    const courtStr = ev.courtName ? ` — ${ev.courtName}` : ''
-    const caseStr  = ev.caseNumber ? ` [${ev.caseNumber}]` : ''
-
-    const title   = `⏰ ${typeStr}อีก 1 ชั่วโมง`
-    const message = `${ev.title}${courtStr}${caseStr}`
-    const link    = ev.caseId ? `/cases/${ev.caseId}` : '/court-calendar'
-
-    const recipientIds = new Set<string>([ev.createdById])
-    if (ev.assignedLawyerId)   recipientIds.add(ev.assignedLawyerId)
-    if (ev.assignedEmployeeId) recipientIds.add(ev.assignedEmployeeId)
-
-    for (const userId of recipientIds) {
-      void createNotification({ userId, type: 'CALENDAR_REMINDER', title, message, link })
-      void sendLineMessage(userId, `${title}\n${message}`)
-    }
-    sent++
-  }
-
-  // ── 3. Auto-mark MISSED + escalate ───────────────────────────────────────
+  // ── 2. Auto-mark MISSED + escalate ───────────────────────────────────────
 
   const graceCutoff = new Date(now.getTime() - MISS_GRACE_MINUTES * 60 * 1000)
 
@@ -191,7 +157,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 4. CourtEvent reminders ───────────────────────────────────────────────
+  // ── 3. CourtEvent reminders ───────────────────────────────────────────────
 
   for (const daysAhead of REMINDER_OFFSETS_DAYS) {
     const { start: dayStart, end: dayEnd } = bangkokDayRange(daysAhead)
@@ -238,7 +204,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 5. Auto-mark CourtEvents as MISSED ───────────────────────────────────
+  // ── 4. Auto-mark CourtEvents as MISSED ───────────────────────────────────
 
   const ceGraceCutoff = new Date(now.getTime() - MISS_GRACE_MINUTES * 60 * 1000)
 

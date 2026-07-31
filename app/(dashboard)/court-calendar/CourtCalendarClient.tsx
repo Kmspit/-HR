@@ -16,7 +16,7 @@ import TimeSelect24h from '@/components/ui/TimeSelect24h'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type EventSource = 'calendar' | 'case_court' | 'task'
+type EventSource = 'calendar' | 'case_court' | 'task' | 'court_event'
 
 interface CalEvent {
   id: string
@@ -474,11 +474,23 @@ function EventDetail({ event, onClose, onStatusChange, canEdit }: {
     if (!event.isEditable) return
     setUpdating(true)
     try {
-      await fetch(`/api/court-calendar/${event.id}`, {
+      // court_event rows (the primary production model, unlike the read-only
+      // case_court/task overlays) keep their own unprefixed CourtEvent id and
+      // must go through /api/court-events, not /api/court-calendar which only
+      // knows the CalendarEvent table — PATCHing the wrong one 404s silently.
+      const url = event.source === 'court_event'
+        ? `/api/court-events/${event.id}`
+        : `/api/court-calendar/${event.id}`
+      const res = await fetch(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error || 'อัปเดตไม่สำเร็จ')
+        return
+      }
       onStatusChange(status)
       toast.success(`อัปเดตสถานะเป็น "${STATUS_LABEL[status]}"`)
     } catch {
