@@ -13,13 +13,16 @@ vi.mock('@/lib/prisma', () => {
     debtFollowUp:         { findMany: vi.fn(), create: vi.fn() },
     debtPayment:          { findMany: vi.fn(), create: vi.fn() },
     debtorContact:        { findMany: vi.fn(), create: vi.fn() },
-    promiseToPay:         { findMany: vi.fn(), create: vi.fn() },
+    promiseToPay:         { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     $transaction:         vi.fn((cb: any) => cb(prisma)),
   }
   return { prisma }
 })
 
-vi.mock('@/lib/notifications', () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/notifications', () => ({
+  createNotification: vi.fn().mockResolvedValue(undefined),
+  createAuditLog:      vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('@/lib/automation-engine', () => ({ triggerAutomation: vi.fn().mockReturnValue({ catch: () => undefined }) }))
 vi.mock('cloudinary', () => ({ v2: { config: vi.fn(), uploader: { upload: vi.fn(), destroy: vi.fn() } } }))
 vi.mock('@/lib/api-guard', () => ({ requireCsrf: vi.fn().mockReturnValue(null) }))
@@ -38,7 +41,8 @@ import { GET as fileGet, POST as filePost, DELETE as fileDelete } from '@/app/ap
 import { GET as followupGet, POST as followupPost } from '@/app/api/debtors/[id]/followups/route'
 import { GET as paymentGet, POST as paymentPost } from '@/app/api/debtors/[id]/payments/route'
 import { GET as contactGet, POST as contactPost } from '@/app/api/debtors/[id]/contacts/route'
-import { GET as promiseGet, POST as promisePost } from '@/app/api/debtors/[id]/promises/route'
+import { GET as promiseGet, POST as promisePost, PATCH as promisePatch } from '@/app/api/debtors/[id]/promises/route'
+import { createAuditLog } from '@/lib/notifications'
 
 const params = Promise.resolve({ id: 'debtor-1' })
 const collectorSession = { user: { id: 'collector-1', role: 'ENFORCEMENT' } }
@@ -51,6 +55,11 @@ function makeGetReq() {
 function makePostReq(body: Record<string, unknown>) {
   return new NextRequest('http://localhost/api/debtors/debtor-1/x', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+}
+function makePatchReq(body: Record<string, unknown>) {
+  return new NextRequest('http://localhost/api/debtors/debtor-1/x', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   })
 }
 
@@ -125,6 +134,64 @@ describe('debtors/[id] sub-resources — ownership check (CAN_MANAGE || assigned
       vi.mocked(auth).mockResolvedValue(managerSession as never)
       const res = await promisePost(makePostReq({ promisedAmount: 1000, promisedDate: '2026-08-01' }), { params })
       expect(res.status).toBe(201)
+    })
+
+    describe('promises PATCH — audit trail', () => {
+      beforeEach(() => {
+        vi.mocked(auth).mockResolvedValue(managerSession as never)
+        vi.mocked(prisma.promiseToPay.findFirst).mockResolvedValue({
+          id: 'p1', debtorId: 'debtor-1', status: 'PENDING', actualAmount: null, actualDate: null,
+        } as never)
+        vi.mocked(prisma.promiseToPay.update).mockResolvedValue({
+          id: 'p1', debtorId: 'debtor-1', status: 'KEPT', actualAmount: 1000, actualDate: new Date('2026-08-01'),
+          promisedAmount: 1000, promisedDate: new Date('2026-08-01'),
+        } as never)
+      })
+
+      it('rejects BROKEN with no reason', async () => {
+        const res = await promisePatch(makePatchReq({ promiseId: 'p1', status: 'BROKEN' }), { params })
+        expect(res.status).toBe(400)
+        expect(prisma.promiseToPay.update).not.toHaveBeenCalled()
+      })
+
+      it('rejects CANCELLED with a blank/whitespace reason', async () => {
+        const res = await promisePatch(makePatchReq({ promiseId: 'p1', status: 'CANCELLED', reason: '   ' }), { params })
+        expect(res.status).toBe(400)
+        expect(prisma.promiseToPay.update).not.toHaveBeenCalled()
+      })
+
+      it('accepts BROKEN with a reason and writes an audit log capturing before/after + reason', async () => {
+        vi.mocked(prisma.promiseToPay.update).mockResolvedValueOnce({
+          id: 'p1', debtorId: 'debtor-1', status: 'BROKEN', actualAmount: null, actualDate: null,
+          promisedAmount: 1000, promisedDate: new Date('2026-08-01'),
+        } as never)
+        const res = await promisePatch(makePatchReq({ promiseId: 'p1', status: 'BROKEN', reason: 'ลูกหนี้ไม่รับสาย' }), { params })
+        expect(res.status).toBe(200)
+        expect(createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            targetId:   'p1',
+            targetType: 'PromiseToPay',
+            action:     'UPDATE',
+            before:     expect.objectContaining({ status: 'PENDING' }),
+            after:      expect.objectContaining({ status: 'BROKEN', reason: 'ลูกหนี้ไม่รับสาย' }),
+          }),
+        )
+      })
+
+      it('does not require a reason for KEPT and still writes an audit log', async () => {
+        const res = await promisePatch(makePatchReq({ promiseId: 'p1', status: 'KEPT', actualAmount: 1000, actualDate: '2026-08-01' }), { params })
+        expect(res.status).toBe(200)
+        expect(createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({ after: expect.objectContaining({ status: 'KEPT', reason: null }) }),
+        )
+      })
+
+      it('returns 404 instead of throwing when the promise does not belong to this debtor', async () => {
+        vi.mocked(prisma.promiseToPay.findFirst).mockResolvedValueOnce(null)
+        const res = await promisePatch(makePatchReq({ promiseId: 'wrong-id', status: 'KEPT' }), { params })
+        expect(res.status).toBe(404)
+        expect(prisma.promiseToPay.update).not.toHaveBeenCalled()
+      })
     })
 
     it('contacts POST forbids a LAWYER/ENFORCEMENT stranger (not assigned to this debtor) — same as GET', async () => {

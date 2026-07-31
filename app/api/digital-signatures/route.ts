@@ -29,7 +29,19 @@ export async function GET(req: NextRequest) {
     include: { signedBy: { select: { id: true, name: true, role: true } } },
     orderBy: { signedAt: 'asc' },
   })
-  return NextResponse.json(signatures)
+
+  // Optional: caller passes what it currently believes the document's
+  // version/hash to be — only the caller knows how to compute that for its
+  // own docType, so the API can't determine staleness on its own. When
+  // supplied, each signature is annotated so a stale one (signed against a
+  // version that no longer matches) doesn't get silently treated as valid.
+  const currentVersion = req.nextUrl.searchParams.get('currentVersion')
+  const withValidity = signatures.map((sig) => ({
+    ...sig,
+    ...(currentVersion !== null ? { stale: sig.docVersion !== currentVersion } : {}),
+  }))
+
+  return NextResponse.json(withValidity)
 } catch (err) {
   return apiError(err)
  }
@@ -54,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   let signatureData: string | null = null
   let signatureUrl:  string | null = null
-  let docType: string, docId: string, signatureType: string, typedName: string | null
+  let docType: string, docId: string, signatureType: string, typedName: string | null, docVersion: string
 
   if (contentType.includes('multipart/form-data')) {
     const fd  = await req.formData()
@@ -62,6 +74,7 @@ export async function POST(req: NextRequest) {
     docId         = fd.get('docId')         as string
     signatureType = fd.get('signatureType') as string ?? 'UPLOAD'
     typedName     = fd.get('typedName')     as string | null
+    docVersion    = fd.get('docVersion')    as string
 
     const file = fd.get('file') as File | null
     if (file && file.size > 0) {
@@ -82,10 +95,19 @@ export async function POST(req: NextRequest) {
     signatureType = body.signatureType ?? 'TYPED'
     typedName     = body.typedName ?? null
     signatureData = body.signatureData ?? null
+    docVersion    = body.docVersion
   }
 
   if (!docType || !docId) {
     return NextResponse.json({ error: 'docType and docId are required' }, { status: 400 })
+  }
+  // A signature that doesn't record what version of the document it signed
+  // stays "valid" forever even after the document changes — this is the exact
+  // gap the round-9 audit flagged, so the caller must supply *something*
+  // (version number, updatedAt, content hash — whatever it treats as
+  // canonical for this docType) or signing is refused outright.
+  if (!docVersion || !docVersion.trim()) {
+    return NextResponse.json({ error: 'docVersion is required — the version/hash of the document content being signed' }, { status: 400 })
   }
 
   const user = await prisma.user.findUnique({
@@ -105,6 +127,7 @@ export async function POST(req: NextRequest) {
       typedName:      typedName     ?? null,
       docType,
       docId,
+      docVersion,
       ip,
       userAgent:      userAgent ?? null,
     },

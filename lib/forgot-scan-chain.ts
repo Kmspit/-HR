@@ -33,20 +33,31 @@ export type ApplyToAttendanceOptions = {
   actorId?: string
 }
 
+export type ApplyToAttendanceResult =
+  | { applied: true }
+  | { applied: false; reason: 'NO_ATTENDANCE' | 'ALREADY_RECORDED'; message: string }
+
 /**
  * Apply approved forgot-scan time to Attendance.
- * @returns true if applied; false if request/field/attendance missing (non-checkin without row).
+ *
+ * Guards against silently overwriting a field that already has a real scan
+ * (or a prior correction) in it — forgot-scan exists to fill in *missing*
+ * data, not to blindly clobber whatever is already there. If the target
+ * field is already non-null, this refuses instead of overwriting; the
+ * caller is expected to reject the request and point HR at the direct
+ * attendance-override tool (`/api/attendance/hr-override`) for genuine
+ * corrections to existing data.
  */
 export async function applyToAttendance(
   requestId: string,
   prisma: PrismaClient,
   options?: ApplyToAttendanceOptions,
-): Promise<boolean> {
+): Promise<ApplyToAttendanceResult> {
   const req = await prisma.forgotScanRequest.findUnique({ where: { id: requestId } })
-  if (!req) return false
+  if (!req) return { applied: false, reason: 'NO_ATTENDANCE', message: APPLY_ATTENDANCE_FAILED_MSG }
 
   const field = FIELD_MAP[req.scanType]
-  if (!field) return false
+  if (!field) return { applied: false, reason: 'NO_ATTENDANCE', message: APPLY_ATTENDANCE_FAILED_MSG }
 
   const editedById = options?.actorId ?? req.hrId ?? undefined
 
@@ -84,12 +95,22 @@ export async function applyToAttendance(
           : {}),
       },
     })
-    return true
+    return { applied: true }
   }
 
-  if (!att) return false
+  if (!att) return { applied: false, reason: 'NO_ATTENDANCE', message: APPLY_ATTENDANCE_FAILED_MSG }
 
   const original = att[field as keyof typeof att] as Date | null
+
+  if (original !== null) {
+    const existingLabel = original.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })
+    const label = SCAN_TYPE_LABEL[req.scanType] ?? req.scanType
+    return {
+      applied: false,
+      reason:  'ALREADY_RECORDED',
+      message: `เวลา${label}ของวันนี้มีการบันทึกไว้แล้ว (${existingLabel}) — ไม่สามารถเขียนทับผ่านคำขอแก้ไขเวลาได้ หากต้องการแก้ไขเวลาที่มีอยู่แล้ว กรุณาใช้ฟีเจอร์แก้ไขเวลาเข้างานของ HR โดยตรง`,
+    }
+  }
 
   await prisma.attendance.update({
     where: { id: att.id },
@@ -112,7 +133,7 @@ export async function applyToAttendance(
     },
   })
 
-  return true
+  return { applied: true }
 }
 
 /** Apply attendance first; set APPROVED + hrId only after success. */
@@ -121,9 +142,9 @@ export async function finalizeForgotScanApproval(
   requestId: string,
   actorId: string,
 ): Promise<void> {
-  const applied = await applyToAttendance(requestId, prisma, { actorId })
-  if (!applied) {
-    throw new Error(APPLY_ATTENDANCE_FAILED_MSG)
+  const result = await applyToAttendance(requestId, prisma, { actorId })
+  if (!result.applied) {
+    throw new Error(result.message)
   }
 
   await prisma.forgotScanRequest.update({
@@ -194,21 +215,21 @@ export async function applyChainToForgotScan(
       data: { currentStepOrder: 0 },
     })
 
-    const applied = await applyToAttendance(requestId, prisma)
-    if (!applied) {
+    const result = await applyToAttendance(requestId, prisma)
+    if (!result.applied) {
       await prisma.forgotScanRequest.update({
         where: { id: requestId },
         data: {
           status: 'REJECTED',
           currentStepOrder: 0,
-          hrNote: APPLY_ATTENDANCE_FAILED_MSG,
+          hrNote: result.message,
         },
       })
       await createNotification({
         userId,
         type: 'FORGOT_SCAN_REJECTED',
         title: '❌ คำขอแก้ไขเวลาไม่สำเร็จ',
-        message: APPLY_ATTENDANCE_FAILED_MSG,
+        message: result.message,
         link: '/forgot-scan',
       })
       return

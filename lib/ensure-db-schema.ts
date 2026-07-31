@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900019
+export const CURRENT_SCHEMA_VERSION = 900021
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -1595,6 +1595,56 @@ async function runEnsure(force = false): Promise<boolean> {
   // on renewal — the old contract gets superseded instead of staying ACTIVE)
   await addColumnIfMissing('client_contracts', 'renewed_from_id', `ALTER TABLE client_contracts ADD COLUMN renewed_from_id TEXT`)
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS idx_client_contracts_renewed_from_id ON client_contracts (renewed_from_id)`)
+
+  // v900020 — DigitalSignature.docVersion (binds a signature to the document's
+  // content/version at sign time — a signature with no version binding stays
+  // "valid" forever even if the document is edited afterward)
+  await addColumnIfMissing('digital_signatures', 'doc_version', `ALTER TABLE digital_signatures ADD COLUMN doc_version TEXT NOT NULL DEFAULT ''`)
+
+  // v900021 — AuditLog.targetId FK removal. targetId is used polymorphically
+  // across ~17 call sites (LeaveRequest, ForgotScanRequest, PromiseToPay,
+  // Warning, Debtor, etc., not just User), but the live column carried a FK
+  // straight to users.id — every createAuditLog() call with a non-user
+  // targetId silently failed with SQLITE_CONSTRAINT and was swallowed by its
+  // own try/catch, so audit logging had been a near-total no-op. SQLite can't
+  // drop a FK in place, so this rebuilds the table (data preserved) without it.
+  {
+    const fkRows = await prisma.$queryRawUnsafe<{ table: string }[]>(`PRAGMA foreign_key_list(audit_logs)`)
+    const hasTargetIdFk = fkRows.some((r) => (r as unknown as { from: string }).from === 'targetId')
+    if (hasTargetIdFk) {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE audit_logs_v900021 (
+          id TEXT NOT NULL PRIMARY KEY,
+          actorId TEXT NOT NULL,
+          targetId TEXT,
+          targetType TEXT,
+          action TEXT NOT NULL,
+          before TEXT,
+          after TEXT,
+          ip TEXT,
+          userAgent TEXT,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (actorId) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
+        )
+      `)
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO audit_logs_v900021 (id, actorId, targetId, targetType, action, before, after, ip, userAgent, createdAt)
+        SELECT id, actorId, targetId, targetType, action, before, after, ip, userAgent, createdAt FROM audit_logs
+      `)
+      const oldCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM audit_logs`)
+      const newCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM audit_logs_v900021`)
+      if (Number(oldCount[0]?.cnt ?? 0) !== Number(newCount[0]?.cnt ?? -1)) {
+        throw new Error(`[MIGRATION v900021 ABORT] row count mismatch after copy (old=${oldCount[0]?.cnt}, new=${newCount[0]?.cnt}) — refusing to drop audit_logs`)
+      }
+      await prisma.$executeRawUnsafe(`DROP TABLE audit_logs`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE audit_logs_v900021 RENAME TO audit_logs`)
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_actor_created_idx ON audit_logs (actorId, createdAt)`)
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_target_created_idx ON audit_logs (targetId, createdAt)`)
+      console.log(`[MIGRATION v900021] Rebuilt "audit_logs" without targetId FK (${newCount[0]?.cnt} rows preserved)`)
+    } else {
+      console.log('[MIGRATION v900021] audit_logs already has no targetId FK, skipping rebuild')
+    }
+  }
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

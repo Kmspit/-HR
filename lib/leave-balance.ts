@@ -1,6 +1,16 @@
 import { prisma } from '@/lib/prisma'
-import type { LeaveBalance } from '@prisma/client'
+import type { LeaveBalance, LeaveType } from '@prisma/client'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
+
+/** Only these leave types are tracked against a yearly quota (LeaveBalance /
+ *  LeavePolicy) — the rest (UNPAID, MATERNITY, ORDINATION, FUNERAL, WEDDING,
+ *  SPECIAL_HOLIDAY) have no quota field anywhere in the schema, so there's
+ *  nothing to cap them against. */
+const QUOTA_TRACKED_TYPES: Partial<Record<LeaveType, 'sick' | 'vacation' | 'personal'>> = {
+  SICK:     'sick',
+  VACATION: 'vacation',
+  PERSONAL: 'personal',
+}
 
 /** ตรวจสอบว่าอยู่ในช่วงทดลองงานหรือไม่ */
 export function isOnProbation(startDate: Date | null | undefined, probationMonths: number): boolean {
@@ -124,4 +134,38 @@ export async function getLeaveBalanceStats(
     },
     isProbation,
   }
+}
+
+/**
+ * Checked right before a LeaveRequest transitions to APPROVED (not at
+ * submission) — quota can change between request and approval, so the only
+ * moment that matters is the one where days actually get "spent". Types with
+ * no tracked quota (see QUOTA_TRACKED_TYPES) always pass. `remaining` here
+ * already excludes this request's own days (getLeaveUsedByYear only counts
+ * status: 'APPROVED' rows, and this one isn't APPROVED yet), so comparing
+ * `days > remaining` correctly answers "would approving this push them over".
+ */
+export async function checkLeaveQuota(
+  leaveId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const leave = await prisma.leaveRequest.findUnique({
+    where: { id: leaveId },
+    select: { userId: true, type: true, days: true, startDate: true },
+  })
+  if (!leave) return { ok: true }
+
+  const field = QUOTA_TRACKED_TYPES[leave.type]
+  if (!field) return { ok: true }
+
+  const year = leave.startDate.getFullYear()
+  const stats = await getLeaveBalanceStats(leave.userId, year)
+  const remaining = stats.remaining[field]
+
+  if (leave.days > remaining) {
+    return {
+      ok: false,
+      message: `การอนุมัตินี้จะทำให้เกินโควตาวันลาคงเหลือ — เหลือ ${remaining} วัน แต่ขอลา ${leave.days} วัน`,
+    }
+  }
+  return { ok: true }
 }

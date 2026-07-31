@@ -388,14 +388,68 @@ describe('POST /api/digital-signatures — CLIENT role blocked (Phase B)', () =>
 
   it('forbids a CLIENT session from creating a signature', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'client-1', role: 'CLIENT' } } as never)
-    const res = await digitalSignaturePost(jsonReq('http://localhost/api/digital-signatures', { docType: 'ApprovalRequest', docId: 'doc-1', signatureType: 'TYPED', typedName: 'X' }))
+    const res = await digitalSignaturePost(jsonReq('http://localhost/api/digital-signatures', { docType: 'ApprovalRequest', docId: 'doc-1', signatureType: 'TYPED', typedName: 'X', docVersion: 'v1' }))
     expect(res.status).toBe(403)
     expect(prisma.digitalSignature.create).not.toHaveBeenCalled()
   })
 
-  it('allows a non-CLIENT authenticated user to sign', async () => {
+  it('allows a non-CLIENT authenticated user to sign when docVersion is supplied', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'emp-1', role: 'EMPLOYEE' } } as never)
+    const res = await digitalSignaturePost(jsonReq('http://localhost/api/digital-signatures', { docType: 'ApprovalRequest', docId: 'doc-1', signatureType: 'TYPED', typedName: 'X', docVersion: 'v1' }))
+    expect(res.status).toBe(201)
+    expect(prisma.digitalSignature.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ docVersion: 'v1' }) }),
+    )
+  })
+
+  it('rejects signing when docVersion is missing — a signature must record what it signed', async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'emp-1', role: 'EMPLOYEE' } } as never)
     const res = await digitalSignaturePost(jsonReq('http://localhost/api/digital-signatures', { docType: 'ApprovalRequest', docId: 'doc-1', signatureType: 'TYPED', typedName: 'X' }))
-    expect(res.status).toBe(201)
+    expect(res.status).toBe(400)
+    expect(prisma.digitalSignature.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects signing when docVersion is blank/whitespace', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'emp-1', role: 'EMPLOYEE' } } as never)
+    const res = await digitalSignaturePost(jsonReq('http://localhost/api/digital-signatures', { docType: 'ApprovalRequest', docId: 'doc-1', signatureType: 'TYPED', typedName: 'X', docVersion: '   ' }))
+    expect(res.status).toBe(400)
+    expect(prisma.digitalSignature.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/digital-signatures — staleness annotation against currentVersion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'emp-1', role: 'EMPLOYEE' } } as never)
+  })
+
+  it('marks a signature stale when its docVersion no longer matches currentVersion', async () => {
+    vi.mocked(prisma.digitalSignature.findMany).mockResolvedValue([
+      { id: 'sig-1', docType: 'ApprovalRequest', docId: 'doc-1', docVersion: 'v1', signedBy: { id: 'u1', name: 'X', role: 'EMPLOYEE' } },
+    ] as never)
+    const { GET } = await import('@/app/api/digital-signatures/route')
+    const res = await GET(new NextRequest('http://localhost/api/digital-signatures?docType=ApprovalRequest&docId=doc-1&currentVersion=v2'))
+    const body = await res.json()
+    expect(body[0]).toEqual(expect.objectContaining({ docVersion: 'v1', stale: true }))
+  })
+
+  it('marks a signature not stale when its docVersion matches currentVersion', async () => {
+    vi.mocked(prisma.digitalSignature.findMany).mockResolvedValue([
+      { id: 'sig-1', docType: 'ApprovalRequest', docId: 'doc-1', docVersion: 'v1', signedBy: { id: 'u1', name: 'X', role: 'EMPLOYEE' } },
+    ] as never)
+    const { GET } = await import('@/app/api/digital-signatures/route')
+    const res = await GET(new NextRequest('http://localhost/api/digital-signatures?docType=ApprovalRequest&docId=doc-1&currentVersion=v1'))
+    const body = await res.json()
+    expect(body[0]).toEqual(expect.objectContaining({ docVersion: 'v1', stale: false }))
+  })
+
+  it('omits the stale field entirely when currentVersion is not supplied', async () => {
+    vi.mocked(prisma.digitalSignature.findMany).mockResolvedValue([
+      { id: 'sig-1', docType: 'ApprovalRequest', docId: 'doc-1', docVersion: 'v1', signedBy: { id: 'u1', name: 'X', role: 'EMPLOYEE' } },
+    ] as never)
+    const { GET } = await import('@/app/api/digital-signatures/route')
+    const res = await GET(new NextRequest('http://localhost/api/digital-signatures?docType=ApprovalRequest&docId=doc-1'))
+    const body = await res.json()
+    expect(body[0]).not.toHaveProperty('stale')
   })
 })

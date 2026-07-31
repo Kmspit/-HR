@@ -41,18 +41,18 @@ describe('applyToAttendance', () => {
 
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns true and records hrId when attendance row exists', async () => {
+  it('returns applied:true and records hrId when the target field is empty', async () => {
     vi.mocked(mockPrisma.forgotScanRequest.findUnique).mockResolvedValue(mockForgotScan() as never)
     vi.mocked(mockPrisma.attendance.findFirst).mockResolvedValue({
       id: ATT_ID,
-      checkOut: new Date('2026-06-01T17:00:00+07:00'),
+      checkOut: null,
     } as never)
     vi.mocked(mockPrisma.attendance.update).mockResolvedValue({} as never)
     vi.mocked(mockPrisma.forgotScanRequest.update).mockResolvedValue({} as never)
 
-    const ok = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
+    const result = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
 
-    expect(ok).toBe(true)
+    expect(result).toEqual({ applied: true })
     expect(mockPrisma.attendance.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ editedById: ACTOR_ID }),
@@ -68,15 +68,31 @@ describe('applyToAttendance', () => {
     )
   })
 
-  it('returns false when non-checkin and no attendance row', async () => {
+  it('refuses to overwrite when the target field already has a real value', async () => {
+    vi.mocked(mockPrisma.forgotScanRequest.findUnique).mockResolvedValue(mockForgotScan() as never)
+    vi.mocked(mockPrisma.attendance.findFirst).mockResolvedValue({
+      id: ATT_ID,
+      checkOut: new Date('2026-06-01T17:00:00+07:00'),
+    } as never)
+
+    const result = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
+
+    expect(result).toEqual(
+      expect.objectContaining({ applied: false, reason: 'ALREADY_RECORDED' }),
+    )
+    expect(mockPrisma.attendance.update).not.toHaveBeenCalled()
+    expect(mockPrisma.forgotScanRequest.update).not.toHaveBeenCalled()
+  })
+
+  it('returns NO_ATTENDANCE when non-checkin and no attendance row', async () => {
     vi.mocked(mockPrisma.forgotScanRequest.findUnique).mockResolvedValue(
       mockForgotScan({ scanType: 'checkout' }) as never,
     )
     vi.mocked(mockPrisma.attendance.findFirst).mockResolvedValue(null)
 
-    const ok = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
+    const result = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
 
-    expect(ok).toBe(false)
+    expect(result).toEqual({ applied: false, reason: 'NO_ATTENDANCE', message: APPLY_ATTENDANCE_FAILED_MSG })
     expect(mockPrisma.forgotScanRequest.update).not.toHaveBeenCalled()
   })
 
@@ -88,9 +104,9 @@ describe('applyToAttendance', () => {
     vi.mocked(mockPrisma.attendance.create).mockResolvedValue({ id: ATT_ID } as never)
     vi.mocked(mockPrisma.forgotScanRequest.update).mockResolvedValue({} as never)
 
-    const ok = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
+    const result = await applyToAttendance(REQUEST_ID, mockPrisma as never, { actorId: ACTOR_ID })
 
-    expect(ok).toBe(true)
+    expect(result).toEqual({ applied: true })
     expect(mockPrisma.attendance.create).toHaveBeenCalled()
   })
 })

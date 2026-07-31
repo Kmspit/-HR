@@ -1,6 +1,7 @@
 import type { ApprovalStepStatus, PrismaClient, Role } from '@prisma/client'
-import { createNotification } from '@/lib/notifications'
+import { createNotification, notifyRole } from '@/lib/notifications'
 import { canApproverActOnRequester } from '@/lib/org-scope'
+import { checkLeaveQuota } from '@/lib/leave-balance'
 import {
   canUserActOnStep,
   isOrgSupervisorTemplateStep,
@@ -98,6 +99,27 @@ export async function applyChainToLeave(
   })
 
   if (requester?.role === 'CEO' || requester?.role === 'SUPER_ADMIN') {
+    // No one above CEO/SUPER_ADMIN can approve them, so this branch normally
+    // auto-approves outright — but that must not bypass the quota check just
+    // because there's no human in the loop. If it fails, leave the request
+    // PENDING (chain attached, but never auto-finalized) and tell HR it needs
+    // manual handling instead of silently rubber-stamping it.
+    const quota = await checkLeaveQuota(leaveId)
+    if (!quota.ok) {
+      const claim = await prisma.leaveRequest.updateMany({
+        where: { id: leaveId, chainConfigId: null },
+        data: { chainConfigId: chainId },
+      })
+      if (claim.count > 0) {
+        await notifyRole(
+          'MANAGER_HR', 'SYSTEM', '⚠️ คำขอลาเกินโควตา (ต้องตรวจสอบเอง)',
+          `${quota.message} — ผู้ขอเป็น ${requester.role} ไม่มีผู้อนุมัติระดับสูงกว่า ต้องตรวจสอบ/ปรับโควตาด้วยตนเอง`,
+          '/approval-center',
+        )
+      }
+      return
+    }
+
     const claim = await prisma.leaveRequest.updateMany({
       where: { id: leaveId, chainConfigId: null },
       data: {
@@ -165,6 +187,19 @@ export async function applyChainToLeave(
     .sort((a, b) => a.stepOrder - b.stepOrder)[0]
 
   if (!firstPending) {
+    // Every step in the chain got SKIPPED (e.g. no org supervisor resolved) —
+    // would otherwise finalize immediately with zero real approvers involved.
+    // Same quota gate as the CEO/SUPER_ADMIN branch above.
+    const quota = await checkLeaveQuota(leaveId)
+    if (!quota.ok) {
+      await notifyRole(
+        'MANAGER_HR', 'SYSTEM', '⚠️ คำขอลาเกินโควตา (ไม่มีขั้นอนุมัติจริง)',
+        `${quota.message} — สายอนุมัติของคำขอนี้ไม่มีผู้อนุมัติจริง (ทุกขั้นถูกข้าม) ต้องตรวจสอบด้วยตนเอง`,
+        '/approval-center',
+      )
+      return
+    }
+
     await prisma.leaveRequest.update({
       where: { id: leaveId },
       data: {
@@ -682,6 +717,19 @@ export async function executeLeaveStepAction(
   }
   if (!ceoOverride && !(await canApproverActOnRequester(prisma, actorId, role, leave.userId))) {
     return { error: 'คุณไม่มีสิทธิ์อนุมัติคำขอของพนักงานคนนี้', status: 403 }
+  }
+
+  // If this action would finalize the chain (no other step still pending),
+  // check the leave-day quota before committing anything — this is the one
+  // moment the request actually becomes APPROVED and "spends" the days.
+  if (action === 'APPROVE') {
+    const remainingStep = await prisma.leaveApprovalStep.findFirst({
+      where: { leaveRequestId: leaveId, status: 'PENDING', stepOrder: { gt: currentStep.stepOrder } },
+    })
+    if (!remainingStep) {
+      const quota = await checkLeaveQuota(leaveId)
+      if (!quota.ok) return { error: quota.message, status: 409 }
+    }
   }
 
   const claim = await prisma.leaveApprovalStep.updateMany({

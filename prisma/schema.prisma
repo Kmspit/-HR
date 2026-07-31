@@ -477,7 +477,6 @@ model User {
   weeklyPlans     WeeklyLawyerPlan[]
   approvalActions ApprovalHistory[]   @relation("ApprovedBy")
   notifications   Notification[]
-  auditLogs       AuditLog[]          @relation("AuditUser")
   auditActions    AuditLog[]          @relation("AuditActor")
   leaveBalances   LeaveBalance[]
   warnings         Warning[]
@@ -1013,6 +1012,14 @@ model Notification {
 model AuditLog {
   id         String      @id @default(cuid())
   actorId    String
+  // Polymorphic pointer to whatever record `targetType` names (LeaveRequest,
+  // ForgotScanRequest, PromiseToPay, Warning, a User for role/password
+  // actions, etc.) — deliberately NOT a real relation/FK. It used to be a FK
+  // to users.id, which silently broke every createAuditLog() call across the
+  // app (17 call sites) whose targetId wasn't actually a user id: the insert
+  // failed with SQLITE_CONSTRAINT and createAuditLog()'s own try/catch
+  // swallowed it, so audit logging for leave/forgot-scan/outside-work/
+  // warnings/payroll/debtors/promises had been silently no-op-ing.
   targetId   String?
   targetType String?
   action     AuditAction
@@ -1023,7 +1030,6 @@ model AuditLog {
   createdAt  DateTime    @default(now())
 
   actor  User  @relation("AuditActor", fields: [actorId], references: [id])
-  target User? @relation("AuditUser", fields: [targetId], references: [id])
 
   @@index([actorId, createdAt])
   @@index([targetId, createdAt])
@@ -2363,6 +2369,13 @@ model DigitalSignature {
   typedName      String?  @map("typed_name")
   docType        String   @map("doc_type")
   docId          String   @map("doc_id")
+  // Content/version identifier of the target document AT THE MOMENT OF SIGNING
+  // (a version number, updatedAt timestamp, or content hash — whatever the
+  // caller considers canonical for that docType). Without this a signature has
+  // no binding to what was actually signed — if the document is edited later,
+  // the old signature would still read as valid with no way to tell. Required,
+  // not defaulted: a signature that doesn't know what it signed is meaningless.
+  docVersion     String   @map("doc_version")
   ip             String?
   userAgent      String?
   signedAt       DateTime @default(now()) @map("signed_at")

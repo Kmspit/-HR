@@ -15,7 +15,7 @@ vi.mock('@/lib/approval-chain', () => ({
 }))
 
 const applyChainToForgotScan = vi.fn().mockResolvedValue(undefined)
-const applyToAttendance = vi.fn().mockResolvedValue(true)
+const applyToAttendance = vi.fn().mockResolvedValue({ applied: true })
 vi.mock('@/lib/weekly-plan-chain', () => ({ applyChainToWeeklyPlan: vi.fn() }))
 vi.mock('@/lib/forgot-scan-chain', () => ({
   applyChainToForgotScan: (...a: unknown[]) => applyChainToForgotScan(...a),
@@ -148,7 +148,7 @@ describe('attachAllPendingDefaultChains — legacy ADMIN_APPROVED migration no l
     getDefaultChain.mockImplementation((_p: unknown, type: string) =>
       Promise.resolve(type === 'FORGOT_SCAN' ? { id: 'fs-chain' } : null),
     )
-    applyToAttendance.mockResolvedValueOnce(true)
+    applyToAttendance.mockResolvedValueOnce({ applied: true })
     const forgotScanUpdate = vi.fn().mockResolvedValue({})
     const prisma = {
       leaveRequest: { findMany: vi.fn().mockResolvedValue([]) },
@@ -180,7 +180,11 @@ describe('attachAllPendingDefaultChains — legacy ADMIN_APPROVED migration no l
     getDefaultChain.mockImplementation((_p: unknown, type: string) =>
       Promise.resolve(type === 'FORGOT_SCAN' ? { id: 'fs-chain' } : null),
     )
-    applyToAttendance.mockResolvedValueOnce(false)
+    applyToAttendance.mockResolvedValueOnce({
+      applied: false,
+      reason: 'NO_ATTENDANCE',
+      message: 'ไม่สามารถ apply เวลาได้ — ไม่พบ attendance record ของวันนี้',
+    })
     const forgotScanUpdate = vi.fn().mockResolvedValue({})
     const prisma = {
       leaveRequest: { findMany: vi.fn().mockResolvedValue([]) },

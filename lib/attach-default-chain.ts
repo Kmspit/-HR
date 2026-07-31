@@ -5,7 +5,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { getDefaultChain, applyChainToLeave, applyChainToOutsideWork } from '@/lib/approval-chain'
 import { applyChainToWeeklyPlan } from '@/lib/weekly-plan-chain'
-import { applyChainToForgotScan, applyToAttendance, APPLY_ATTENDANCE_FAILED_MSG } from '@/lib/forgot-scan-chain'
+import { applyChainToForgotScan, applyToAttendance } from '@/lib/forgot-scan-chain'
 
 export type ChainAttachResult = { leave: number; outside: number; weekly: number; forgotScan: number }
 
@@ -152,12 +152,12 @@ export async function attachAllPendingDefaultChains(
           // the no-steps-required path in applyChainToForgotScan) instead of
           // pointing currentStepOrder back at the step we just approved, which
           // would leave the request stuck in a state no one could act on.
-          const applied = await applyToAttendance(row.id, prisma)
+          const result = await applyToAttendance(row.id, prisma)
           await prisma.forgotScanRequest.update({
             where: { id: row.id },
-            data: applied
+            data: result.applied
               ? { currentStepOrder: 0, status: 'APPROVED' }
-              : { currentStepOrder: 0, status: 'REJECTED', hrNote: APPLY_ATTENDANCE_FAILED_MSG },
+              : { currentStepOrder: 0, status: 'REJECTED', hrNote: result.message },
           })
         }
       }
