@@ -464,12 +464,6 @@ export default function ExecutiveClient({ role, department }: { role: string; de
                 )}
               </SectionCard>
             </div>
-
-            <div className="text-center">
-              <Link href="/automation" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-600 hover:underline">
-                จัดการ Automation Rules →
-              </Link>
-            </div>
           </div>
         )}
       </div>

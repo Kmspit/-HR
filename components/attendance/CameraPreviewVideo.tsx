@@ -9,6 +9,8 @@ type Props = {
   stream: MediaStream | null
   ready: boolean
   loading?: boolean
+  /** ข้อความใต้สปินเนอร์ตอน loading — ให้ตรงกับสิ่งที่กำลังรออยู่จริง (โหลดโมเดล AI vs ขอสิทธิ์กล้อง) */
+  loadingLabel?: string
   overlayLabel?: string
   className?: string
   mirror?: boolean
@@ -21,6 +23,7 @@ export default function CameraPreviewVideo({
   stream,
   ready,
   loading = false,
+  loadingLabel,
   overlayLabel,
   className,
   mirror = true,
@@ -93,7 +96,7 @@ export default function CameraPreviewVideo({
       {showSpinner && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-20">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <p className="text-[11px] text-slate-400">กำลังเปิดกล้อง...</p>
+          <p className="text-[11px] text-slate-400">{loadingLabel ?? 'กำลังเปิดกล้อง...'}</p>
         </div>
       )}
       {!stream && !loading && (
@@ -120,6 +123,7 @@ export function CameraPreviewVideoWithRef({
   stream,
   ready,
   loading,
+  loadingLabel,
   overlayLabel,
   className,
   mirror = true,
@@ -186,7 +190,7 @@ export function CameraPreviewVideoWithRef({
       {showSpinner && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-20">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <p className="text-[11px] text-slate-400">กำลังเปิดกล้อง...</p>
+          <p className="text-[11px] text-slate-400">{loadingLabel ?? 'กำลังเปิดกล้อง...'}</p>
         </div>
       )}
     </div>

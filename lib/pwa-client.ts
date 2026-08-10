@@ -28,6 +28,14 @@ export function isIosSafari(): boolean {
   return true
 }
 
+/** ตรวจว่ากำลังเปิดผ่าน in-app browser ของ LINE — ช่องทางที่พนักงานส่วนใหญ่มักกดลิงก์
+ *  เข้ามา (แจ้งเตือน/OTP ของระบบนี้ส่งผ่าน LINE OA) แต่ iOS ไม่อนุญาตติดตั้ง PWA จาก
+ *  in-app browser ใดๆ เลย ต้องเปิดด้วย Safari จริงๆ เท่านั้น */
+export function isLineInApp(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Line\//i.test(navigator.userAgent)
+}
+
 export function isAndroid(): boolean {
   if (typeof navigator === 'undefined') return false
   return /android/i.test(navigator.userAgent)

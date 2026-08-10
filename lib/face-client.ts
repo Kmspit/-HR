@@ -11,10 +11,36 @@ import {
 
 let modelsLoaded = false
 let faceapi: typeof FaceApi | null = null
+let loadPromise: Promise<void> | null = null
 
-export async function loadFaceModels(): Promise<void> {
-  if (modelsLoaded && faceapi) return
+/** ผิดพลาดตอนโหลดโมเดลจดจำใบหน้า (เน็ตช้า/หลุด, ไฟล์โมเดลโหลดไม่สำเร็จ) — แยกจาก
+ *  ปัญหาสิทธิ์กล้อง เพื่อให้ผู้เรียกแสดงข้อความที่ตรงกับสาเหตุจริง */
+export class FaceModelLoadError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options)
+    this.name = 'FaceModelLoadError'
+  }
+}
 
+const MODEL_LOAD_TIMEOUT_MS = 20_000
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(
+      () => reject(new FaceModelLoadError('หมดเวลาโหลดระบบจดจำใบหน้า — สัญญาณอินเทอร์เน็ตช้าเกินไป')),
+      ms,
+    )
+    p.then((v) => {
+      clearTimeout(id)
+      resolve(v)
+    }).catch((err) => {
+      clearTimeout(id)
+      reject(err)
+    })
+  })
+}
+
+async function loadFaceModelsInner(): Promise<void> {
   const tf = await import('@tensorflow/tfjs-core')
   await import('@tensorflow/tfjs-backend-webgl')
   if (tf.getBackend() !== 'webgl') {
@@ -22,14 +48,29 @@ export async function loadFaceModels(): Promise<void> {
   }
   await tf.ready()
 
-  faceapi = await import('@vladmandic/face-api')
+  const mod = await import('@vladmandic/face-api')
   const MODEL_URL = '/models'
   await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-    faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    mod.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    mod.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+    mod.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
   ])
+  faceapi = mod
   modelsLoaded = true
+}
+
+export async function loadFaceModels(): Promise<void> {
+  if (modelsLoaded && faceapi) return
+  // กันเรียกซ้ำพร้อมกัน (เช่น preload จาก useCameraStream + เรียกจาก scanFaceFromVideo
+  // เกือบพร้อมกัน) ให้ทุกผู้เรียกรอ promise เดียวกันแทนการโหลดซ้ำ
+  if (loadPromise) return loadPromise
+
+  loadPromise = withTimeout(loadFaceModelsInner(), MODEL_LOAD_TIMEOUT_MS).catch((err) => {
+    loadPromise = null // ให้ลองใหม่ได้ในครั้งถัดไปแทนที่จะค้าง error เดิมตลอดไป
+    if (err instanceof FaceModelLoadError) throw err
+    throw new FaceModelLoadError('โหลดระบบจดจำใบหน้าไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', { cause: err })
+  })
+  return loadPromise
 }
 
 function detectorOptions() {

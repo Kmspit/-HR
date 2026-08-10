@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Download, Share2, X } from 'lucide-react'
+import { Copy, Download, Share2, X } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   dismissPwaPrompt,
+  isIosDevice,
   isIosSafari,
+  isLineInApp,
   isPwaDismissed,
   isStandalone,
 } from '@/lib/pwa-client'
@@ -19,6 +22,7 @@ export default function PWAInstallPrompt() {
   const pathname = usePathname()
   const [visible, setVisible] = useState(false)
   const [iosMode, setIosMode] = useState(false)
+  const [iosNonSafari, setIosNonSafari] = useState(false)
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [installing, setInstalling] = useState(false)
 
@@ -26,8 +30,16 @@ export default function PWAInstallPrompt() {
     if (pathname === '/install') return
     if (isStandalone() || isPwaDismissed()) return
 
-    if (isIosSafari()) {
-      setIosMode(true)
+    if (isIosDevice()) {
+      // iOS ไม่รองรับ beforeinstallprompt ในเบราว์เซอร์ไหนเลย (แม้แต่ตัวที่เป็น
+      // WebKit เหมือนกัน) — ต้องแยกเป็น 2 เคส: Safari จริง (แสดงขั้นตอน Add to Home
+      // Screen ได้เลย) กับ in-app browser อื่น เช่น LINE/Chrome-iOS (ต้องบอกให้ไป
+      // เปิดด้วย Safari ก่อน ไม่งั้นจะไม่มีทาง "ติดตั้ง" ได้เลยแม้แต่ปุ่มเดียว)
+      if (isIosSafari()) {
+        setIosMode(true)
+      } else {
+        setIosNonSafari(true)
+      }
       setVisible(true)
       return
     }
@@ -61,7 +73,84 @@ export default function PWAInstallPrompt() {
     }
   }, [installEvent])
 
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      toast.success('คัดลอกลิงก์แล้ว — วางใน Safari เพื่อเปิด')
+    } catch {
+      toast.error('คัดลอกไม่สำเร็จ — กรุณาคัดลอกลิงก์จากแถบที่อยู่ด้วยตนเอง')
+    }
+  }, [])
+
   if (!visible) return null
+
+  if (iosNonSafari) {
+    return (
+      <>
+        <button
+          type="button"
+          aria-label="ปิด"
+          className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-[2px]"
+          onClick={close}
+        />
+        <div
+          role="dialog"
+          aria-label="ต้องเปิดด้วย Safari เพื่อติดตั้งแอพ"
+          className="fixed bottom-0 inset-x-0 z-[60] rounded-t-2xl bg-white p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl dark:bg-slate-900"
+        >
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-50">
+              📱 ติดตั้งแอพลงมือถือ
+            </h3>
+            <button
+              type="button"
+              onClick={close}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="ปิด"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-300">
+            iPhone/iPad ติดตั้งแอพได้เฉพาะตอนเปิดด้วย{' '}
+            <strong>Safari</strong> เท่านั้น — เบราว์เซอร์ที่ใช้อยู่ตอนนี้
+            {isLineInApp() ? ' (LINE)' : ''} ยังติดตั้งไม่ได้
+          </p>
+
+          {isLineInApp() ? (
+            <p className="mt-3 text-sm leading-relaxed text-gray-700 dark:text-slate-300">
+              กดปุ่ม <strong>⋯</strong> มุมขวาบนของหน้าจอ LINE แล้วเลือก{' '}
+              <strong>&quot;เปิดด้วยเบราว์เซอร์อื่น&quot;</strong> หรือ{' '}
+              <strong>&quot;Open in Safari&quot;</strong>
+            </p>
+          ) : (
+            <p className="mt-3 text-sm leading-relaxed text-gray-700 dark:text-slate-300">
+              คัดลอกลิงก์นี้แล้วเปิดด้วย Safari อีกครั้ง
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={copyLink}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-600"
+          >
+            <Copy className="h-4 w-4" />
+            คัดลอกลิงก์
+          </button>
+
+          <button
+            type="button"
+            onClick={close}
+            className="mt-3 w-full py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            ปิด — แสดงอีกครั้งใน 7 วัน
+          </button>
+        </div>
+      </>
+    )
+  }
 
   if (iosMode) {
     return (

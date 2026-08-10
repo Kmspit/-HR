@@ -61,10 +61,12 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
   const savingRef = useRef(false)
 
   const showCamera = phase === 'camera' || phase === 'scan'
-  const { stream, ready, error: cameraError, retry } = useCameraStream({
+  const { stream, ready, error: cameraError, stage, retry } = useCameraStream({
     enabled: showCamera,
     preloadFaceModels: loadFaceModels,
   })
+  const [scanError, setScanError] = useState('')
+  const scanFailCountRef = useRef(0)
 
   const allShotsDone = samples.length >= SAMPLE_TARGET
 
@@ -76,6 +78,8 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
     if (phase !== 'scan' || !ready || cameraError || saving) return
 
     let cancelled = false
+    scanFailCountRef.current = 0
+    setScanError('')
 
     const tick = async () => {
       if (cancelled || savingRef.current || !videoRef.current || videoRef.current.videoWidth === 0) return
@@ -84,8 +88,21 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
       const currentStep = ANGLE_STEPS[samplesRef.current.length] ?? ANGLE_STEPS[SAMPLE_TARGET - 1]
       setHint(`${currentStep.instruction} — ถ่าย ${samplesRef.current.length + 1}/${SAMPLE_TARGET}`)
 
-      const result = await scanFaceFromVideo(videoRef.current)
+      let result
+      try {
+        result = await scanFaceFromVideo(videoRef.current)
+      } catch (err) {
+        // ไม่ throw ทิ้งเงียบๆ — ถ้าพังซ้ำหลายครั้งติดกัน (เช่น WebGL context หลุดกลางสแกน)
+        // ต้องบอกผู้ใช้ตรงๆ แทนที่จะปล่อยให้ค้างเฉยๆ โดยไม่รู้สาเหตุ
+        console.error('[face-register] scan error:', err)
+        scanFailCountRef.current += 1
+        if (scanFailCountRef.current >= 5) {
+          setScanError('การสแกนใบหน้าขัดข้อง — กรุณากด "เริ่มใหม่" หรือรีเฟรชหน้าแล้วลองอีกครั้ง')
+        }
+        return
+      }
       if (cancelled) return
+      scanFailCountRef.current = 0
 
       if (!result.descriptor || result.score < 0.5) {
         stableRef.current = 0
@@ -168,9 +185,11 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
     samplesRef.current = []
     stableRef.current = 0
     savingRef.current = false
+    scanFailCountRef.current = 0
     setSamples([])
     setHint('')
     setSaving(false)
+    setScanError('')
   }
 
   if (phase === 'done' && !allowUpdate) {
@@ -230,6 +249,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
             stream={stream}
             ready={ready}
             loading={!ready && !cameraError}
+            loadingLabel={stage === 'loading-models' ? 'กำลังโหลดระบบจดจำใบหน้า (ครั้งแรกอาจใช้เวลาสักครู่)...' : 'กำลังเปิดกล้อง...'}
             overlayLabel={phase === 'scan' ? 'หน้าตรง' : 'เตรียมกล้อง'}
           />
 
@@ -315,6 +335,25 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
               <button type="button" onClick={retry} className="btn-secondary w-full py-2 text-xs">
                 <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
                 ลองเปิดกล้องอีกครั้ง
+              </button>
+            </div>
+          )}
+
+          {!cameraError && scanError && (
+            <div className="space-y-2">
+              <p className="text-xs text-red-400 flex items-center justify-center gap-1 text-center">
+                <AlertCircle className="w-3.5 h-3.5" /> {scanError}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  resetScan()
+                  setPhase('camera')
+                }}
+                className="btn-secondary w-full py-2 text-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
+                เริ่มใหม่
               </button>
             </div>
           )}

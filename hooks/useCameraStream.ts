@@ -1,12 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FaceModelLoadError } from '@/lib/face-client'
 
 export type CameraStreamOptions = {
   enabled: boolean
   /** โหลด face-api ก่อนเปิดกล้อง (ลงทะเบียน/สแกนใบหน้า) */
   preloadFaceModels?: () => Promise<void>
 }
+
+/** ระยะของการเตรียมกล้อง — ใช้แสดงข้อความ loading ให้ตรงกับสิ่งที่กำลังเกิดขึ้นจริง
+ *  แทนคำว่า "กำลังเปิดกล้อง..." เดียวที่ครอบทั้งขั้นโหลดโมเดล AI (~6MB ตอนแรกที่ยังไม่cache)
+ *  และขั้นขอสิทธิ์กล้องจริง ซึ่งใช้เวลาต่างกันมากและผู้ใช้ควรรู้ว่ากำลังรออะไรอยู่ */
+export type CameraStage = 'idle' | 'loading-models' | 'requesting-camera' | 'ready'
 
 async function requestUserMedia(): Promise<MediaStream> {
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
@@ -47,6 +53,7 @@ export function useCameraStream({ enabled, preloadFaceModels }: CameraStreamOpti
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
+  const [stage, setStage] = useState<CameraStage>('idle')
   const [tick, setTick] = useState(0)
 
   const stop = useCallback(() => {
@@ -54,27 +61,36 @@ export function useCameraStream({ enabled, preloadFaceModels }: CameraStreamOpti
     streamRef.current = null
     setStream(null)
     setReady(false)
+    setStage('idle')
   }, [])
 
   const start = useCallback(async () => {
     setError('')
     setReady(false)
     try {
-      if (preloadFaceModels) await preloadFaceModels()
+      if (preloadFaceModels) {
+        setStage('loading-models')
+        await preloadFaceModels()
+      }
       stop()
+      setStage('requesting-camera')
       const media = await requestUserMedia()
       streamRef.current = media
       setStream(media)
       setReady(true)
+      setStage('ready')
       return true
     } catch (err) {
       console.error('[camera]', err)
       const msg =
-        err instanceof Error && err.name === 'NotAllowedError'
-          ? 'กรุณาอนุญาตกล้องในเบราว์เซอร์ (ไอคอนกุญแจที่แถบ URL)'
-          : 'ไม่สามารถเปิดกล้องได้ — ตรวจสอบการอนุญาตและลองรีเฟรชหน้า'
+        err instanceof FaceModelLoadError
+          ? err.message
+          : err instanceof Error && err.name === 'NotAllowedError'
+            ? 'กรุณาอนุญาตกล้องในเบราว์เซอร์ (ไอคอนกุญแจที่แถบ URL)'
+            : 'ไม่สามารถเปิดกล้องได้ — ตรวจสอบการอนุญาตและลองรีเฟรชหน้า'
       setError(msg)
       setReady(false)
+      setStage('idle')
       return false
     }
   }, [preloadFaceModels, stop])
@@ -92,7 +108,7 @@ export function useCameraStream({ enabled, preloadFaceModels }: CameraStreamOpti
     setTick((t) => t + 1)
   }, [])
 
-  return { stream, ready, error, stop, retry, start }
+  return { stream, ready, error, stage, stop, retry, start }
 }
 
 /** ผูก MediaStream กับ <video> หลัง element mount (แก้จอดำบนมือถือ/PC) */
