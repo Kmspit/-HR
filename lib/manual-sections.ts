@@ -19,6 +19,9 @@ const PATH_SECTION: Record<string, string> = {
   '/line-oa': 'line-oa',
   '/tasks': 'tasks',
   '/cases': 'cases',
+  '/notifications': 'notifications',
+  '/documents': 'documents',
+  '/debtors/deleted': 'debtors-deleted',
 }
 
 export function manualSectionFromPath(pathname: string): string | undefined {
@@ -61,4 +64,7 @@ export const MANUAL_SECTION_TAB: Record<string, 'employee' | 'hr'> = {
   'cases-documents': 'hr',
   'outside-work-deleted': 'hr',
   'line-oa': 'hr',
+  notifications: 'employee',
+  documents: 'employee',
+  'debtors-deleted': 'hr',
 }
