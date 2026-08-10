@@ -519,7 +519,7 @@ export default function CheckInPanel({
         onSuccess?.()
       } catch (err) {
         console.error('[attendance]', err)
-        toast.error('เกิดข้อผิดพลาด')
+        toast.error('เกิดข้อผิดพลาด — กรุณาลองใหม่อีกครั้ง หากยังไม่ได้กรุณาติดต่อ HR')
       } finally {
         submittingRef.current = false
         setIsLoading(false)

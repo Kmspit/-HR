@@ -663,7 +663,7 @@ export default function OutsideWorkExcelForm({
       }
       toast.success('บันทึกสำเร็จ — ส่งเข้าขั้นตอนอนุมัติแล้ว')
       router.refresh()
-    } catch { toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่') }
+    } catch { toast.error('เกิดข้อผิดพลาด — กรุณาลองใหม่อีกครั้ง หากยังไม่ได้กรุณาติดต่อ HR') }
     finally   { setSaving(false) }
   }
 

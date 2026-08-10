@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-export function apiError(err: unknown, fallback = 'เกิดข้อผิดพลาดในระบบ') {
+export function apiError(err: unknown, fallback = 'เกิดข้อผิดพลาดในระบบ — กรุณาลองใหม่อีกครั้ง หากยังไม่ได้กรุณาติดต่อ HR') {
   const errObj = err as Record<string, unknown>
   const prismaCode = errObj?.code ? String(errObj.code) : null
   const prismaMsg  = err instanceof Error ? err.message : String(err)

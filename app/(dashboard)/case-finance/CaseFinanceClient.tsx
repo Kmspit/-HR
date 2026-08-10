@@ -242,7 +242,13 @@ export default function CaseFinanceClient({ userRole }: Props) {
                 {/* Income by type pie */}
                 <div className="bg-white rounded-xl border p-4 shadow-sm">
                   <h3 className="font-semibold text-gray-800 mb-3">สัดส่วนรายรับตามประเภท</h3>
-                  <IncomeTypePieChart incomeByType={summary.incomeByType} />
+                  {Object.keys(summary.incomeByType).length > 0 ? (
+                    <IncomeTypePieChart incomeByType={summary.incomeByType} />
+                  ) : (
+                    <div className="h-[160px] flex items-center justify-center">
+                      <p className="text-sm text-gray-400">ยังไม่มีข้อมูลรายรับในช่วงนี้</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

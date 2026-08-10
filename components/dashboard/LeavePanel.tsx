@@ -156,7 +156,7 @@ export default function LeavePanel({
       setTab('history')
     } catch (err) {
       console.error('[leave]', err)
-      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด — กรุณาลองใหม่อีกครั้ง หากยังไม่ได้กรุณาติดต่อ HR')
     } finally { setLoading(false) }
   }
 
