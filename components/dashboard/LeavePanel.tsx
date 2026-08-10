@@ -22,6 +22,7 @@ type Leave = {
   status: string
   attachmentUrl?: string | null
   createdAt: string
+  rejectionReason?: string | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -386,6 +387,12 @@ export default function LeavePanel({
               </div>
               <p className="text-xs text-slate-400">{formatThaiDate(l.startDate)} — {formatThaiDate(l.endDate)} ({l.days} วัน)</p>
               {l.reason && <p className="mt-1.5 text-xs text-slate-300 bg-white/5 rounded-lg px-3 py-1.5">{l.reason}</p>}
+              {l.status === 'REJECTED' && (
+                <p className="mt-1.5 text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5">
+                  <span className="font-semibold">เหตุผลที่ปฏิเสธ: </span>
+                  {l.rejectionReason || 'ไม่ระบุเหตุผล — ติดต่อ HR เพื่อสอบถามเพิ่มเติม'}
+                </p>
+              )}
               {l.attachmentUrl && (
                 <a href={l.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-green-400 hover:underline">
                   📎 ดูเอกสารแนบ

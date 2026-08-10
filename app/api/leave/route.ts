@@ -47,10 +47,25 @@ export async function GET(req: NextRequest) {
     const leaves = await prisma.leaveRequest.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { name: true, employeeId: true } } },
+      include: {
+        user: { select: { name: true, employeeId: true } },
+        // เหตุผลปฏิเสธถูกบันทึกไว้ที่ step ที่ถูกปฏิเสธจริงแล้ว แต่ไม่เคยถูกส่งออกมาให้
+        // เจ้าของคำขอเห็นเลย — ดึงเฉพาะ step REJECTED (ปกติมีได้แค่ 1 step ต่อคำขอ
+        // เพราะ rejectLeaveChain ข้าม step ที่เหลือทั้งหมดทันทีที่มีคนปฏิเสธ)
+        stepLogs: {
+          where: { status: 'REJECTED' },
+          select: { comment: true },
+          take: 1,
+        },
+      },
     })
 
-    return NextResponse.json({ leaves })
+    const result = leaves.map(({ stepLogs, ...leave }) => ({
+      ...leave,
+      rejectionReason: stepLogs[0]?.comment ?? null,
+    }))
+
+    return NextResponse.json({ leaves: result })
   } catch (err) {
     return apiError(err)
   }
