@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, Loader2, ScanFace, RefreshCw, Check, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { AlertCircle, Camera, Loader2, ScanFace, RefreshCw, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
@@ -44,9 +45,13 @@ type PendingCapture = {
   liveness: LivenessChallengeResult
 }
 
-// ใบหน้าต้องชัดพอ (detector score) และมองตรงกล้อง ต่อเนื่องเท่านี้ก่อน capture
+// ใบหน้าต้องชัดพอ (detector score) และมองตรงกล้องตอนกดถ่าย — ใช้เป็นเกณฑ์แจ้งเตือน/
+// ปฏิเสธการกดถ่ายถ้าคุณภาพยังไม่พอ (ไม่ใช่ trigger auto-capture แบบเดิมอีกต่อไป)
 const ALIGN_SCORE = 0.5   // ลดจาก 0.6 — ตรวจจับง่ายขึ้น ลด false-reject
-const STABLE_MS = 1600    // เพิ่มจาก 900 → 1600 ms: ~8 samples, โอกาสกะพริบตาสูงขึ้น
+// เวลาขั้นต่ำที่ต้องเล็งกล้องก่อนปุ่ม "ถ่ายภาพ" จะกดได้ — คงค่าเดิมจากตอนที่ยังเป็น
+// auto-capture (STABLE_MS) ไว้เป๊ะ เพื่อการันตีว่า liveness samples ที่เก็บได้ (blink/
+// movement/luminance) มีปริมาณ/ช่วงเวลาไม่น้อยไปกว่าเดิมเลย แม้จะเปลี่ยนมาเป็นกดถ่ายเอง
+const MIN_SAMPLE_WINDOW_MS = 1600
 
 const MAX_RETRIES = 3
 const COOLDOWN_MS = 30_000
@@ -72,14 +77,19 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   const [cooldownSecs, setCooldownSecs] = useState(0)
   const [reviewCapture, setReviewCapture] = useState<PendingCapture | null>(null)
   const [reviewSecsLeft, setReviewSecsLeft] = useState(0)
+  const [canCapture, setCanCapture] = useState(false)
 
   const doneRef = useRef(false)
   const verifyingRef = useRef(false)
-  const alignedSinceRef = useRef<number | null>(null)
+  const readySinceRef = useRef<number | null>(null)
   const cooldownUntilRef = useRef<number | null>(null)
   const lastMultiFaceCheckRef = useRef<number>(0)
+  // ผลสแกนล่าสุดจาก detection loop — ใช้ตอนกด "ถ่ายภาพ" แทนการสแกนใหม่ตอนนั้น
+  // (เลี่ยง latency ตอนกด และใช้ descriptor/pose ที่ผู้ใช้เห็นบนจอจริงๆ)
+  const lastScanRef = useRef<Awaited<ReturnType<typeof scanFaceFromVideo>> | null>(null)
 
-  // Liveness data accumulators — filled during stable alignment window
+  // Liveness data accumulators — เก็บต่อเนื่องตลอดตั้งแต่กล้องพร้อม ไม่ต้องรอ "นิ่งพอ"
+  // เหมือนตอน auto-capture เดิม แต่ยังคงเก็บครบเหมือนเดิมทุกประการ (ดู MIN_SAMPLE_WINDOW_MS)
   const earSamplesRef = useRef<number[]>([])
   const nosePosRef = useRef<{ x: number; y: number }[]>([])
   const lumSamplesRef = useRef<number[]>([])
@@ -151,10 +161,8 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
 
         if (!ok) {
           toast.error(apiErrorMessage(data as Record<string, unknown>, 'ใบหน้าไม่ตรงกับที่ลงทะเบียน', status))
-          alignedSinceRef.current = null
-          earSamplesRef.current = []
-          nosePosRef.current = []
-          lumSamplesRef.current = []
+          // reviewCapture -> null (ใน handleConfirmCapture ด้านล่าง) ทำให้ effect ที่ผูกกับ
+          // [ready, done, cameraError, reviewCapture] รีเซ็ต accumulator ให้เองอยู่แล้ว
           verifyingRef.current = false
           setBusy(false)
 
@@ -189,7 +197,6 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         const logId = (data as { logId?: string }).logId
         if (!logId) {
           toast.error('ไม่ได้รับ log การยืนยัน')
-          alignedSinceRef.current = null
           verifyingRef.current = false
           setBusy(false)
           return false
@@ -222,7 +229,6 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         console.error('[face-scan]', err)
         toast.error('สแกนใบหน้าไม่สำเร็จ')
         setHint(PROMPT_DEFAULT)
-        alignedSinceRef.current = null
         verifyingRef.current = false
         setBusy(false)
         return false
@@ -246,10 +252,10 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
 
   const handleRetake = useCallback(() => {
     setReviewCapture(null)
-    alignedSinceRef.current = null
-    earSamplesRef.current = []
-    nosePosRef.current = []
-    lumSamplesRef.current = []
+    lastScanRef.current = null
+    // earSamplesRef/nosePosRef/lumSamplesRef/readySinceRef/canCapture ถูกรีเซ็ตใน
+    // effect ที่ผูกกับ [ready, reviewCapture] อยู่แล้ว (reviewCapture: non-null -> null
+    // ที่นี่ทำให้ effect นั้นรันใหม่) ไม่ต้องรีเซ็ตซ้ำตรงนี้
     setHint(PROMPT_DEFAULT)
   }, [])
 
@@ -274,8 +280,10 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
     return () => clearInterval(interval)
   }, [reviewCapture, handleRetake])
 
-  // ลูปอัตโนมัติ: เปิดกล้อง → ตรวจจับใบหน้า → ตรงกล้อง+ชัด → capture อัตโนมัติ → รอตรวจสอบ/ยืนยัน
-  // reviewCapture ไม่ null = capture ไปแล้ว รอ user กด "ยืนยัน"/"ถ่ายใหม่" — หยุด loop นี้ไว้ก่อน
+  // ลูปตรวจจับต่อเนื่อง: เปิดกล้อง → สแกนซ้ำๆ เพื่อเก็บ liveness samples (blink/movement/
+  // luminance) และอัปเดตคำแนะนำบนจอตลอดเวลา — ไม่ capture อัตโนมัติอีกต่อไป ผู้ใช้กดปุ่ม
+  // "ถ่ายภาพ" เองเมื่อพร้อม (ดู handleManualCapture) โดยใช้ sample ที่เก็บสะสมมาจนถึงตอนนั้น
+  // reviewCapture ไม่ null = ถ่ายไปแล้ว รอ user กด "ยืนยัน"/"ถ่ายใหม่" — หยุด loop นี้ไว้ก่อน
   useEffect(() => {
     if (!ready || done || cameraError || reviewCapture) return
 
@@ -297,10 +305,11 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         return
       }
 
-      // Luminance check — ตรวจแสงก่อนสแกน
+      // Luminance check — ตรวจแสงก่อนสแกน (ไม่เก็บ sample รอบนี้ถ้ามืดเกินไป)
       const lum = sampleVideoLuminance(video)
       if (lum < MIN_LUMINANCE) {
         setHint('กรุณาอยู่ในที่มีแสงเพียงพอ')
+        lastScanRef.current = null
         timer = setTimeout(() => void tick(), 600)
         return
       }
@@ -313,6 +322,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         if (cancelled || doneRef.current) return
         if (fc > 1) {
           setHint('กรุณาอยู่ในเฟรมเพียงคนเดียว')
+          lastScanRef.current = null
           timer = setTimeout(() => void tick(), 800)
           return
         }
@@ -322,82 +332,36 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         const scan = await scanFaceFromVideo(video)
         if (cancelled || doneRef.current || verifyingRef.current) return
 
-        // Camera quality checks จาก detection box
-        if (scan.descriptor) {
-          if (scan.faceSizePct < MIN_FACE_SIZE_PCT) {
-            setHint('กรุณาขยับใบหน้าเข้ากล้อง')
-            alignedSinceRef.current = null
-            timer = setTimeout(() => void tick(), 400)
-            return
-          }
-          if (scan.faceSizePct > MAX_FACE_SIZE_PCT) {
-            setHint('กรุณาถอยออกจากกล้องเล็กน้อย')
-            alignedSinceRef.current = null
-            timer = setTimeout(() => void tick(), 400)
-            return
-          }
-          if (Math.abs(scan.faceCenterX - 0.5) > MAX_CENTER_OFFSET) {
-            setHint('กรุณาจัดใบหน้าให้อยู่กลางกล้อง')
-            alignedSinceRef.current = null
-            timer = setTimeout(() => void tick(), 400)
-            return
-          }
-        }
+        lastScanRef.current = scan
 
-        const aligned = !!scan.descriptor && scan.score >= ALIGN_SCORE && scan.pose === 'center'
+        // สะสม liveness sample ทุกรอบที่ตรวจพบใบหน้าจริง — ต่อเนื่องตั้งแต่กล้องพร้อม
+        // ไม่ต้องรอ "นิ่ง/ตรงกล้องพอ" เหมือน auto-capture เดิมอีกต่อไป (การเคลื่อนไหว
+        // เล็กน้อยระหว่างเล็งกล้องยิ่งช่วยให้ movement/luminance sample หลากหลายขึ้นด้วยซ้ำ)
+        if (scan.earAvg > 0) earSamplesRef.current.push(scan.earAvg)
+        if (scan.nosePt) nosePosRef.current.push(scan.nosePt)
+        lumSamplesRef.current.push(lum)
 
-        if (aligned) {
-          if (alignedSinceRef.current === null) {
-            // Reset liveness accumulators when stable alignment starts
-            alignedSinceRef.current = Date.now()
-            earSamplesRef.current = []
-            nosePosRef.current = []
-            lumSamplesRef.current = []
-          }
-
-          // Accumulate liveness data on every tick during stable window
-          if (scan.earAvg > 0) earSamplesRef.current.push(scan.earAvg)
-          if (scan.nosePt) nosePosRef.current.push(scan.nosePt)
-          if (video.videoWidth > 0) lumSamplesRef.current.push(sampleVideoLuminance(video))
-
-          const held = Date.now() - alignedSinceRef.current
-          if (held >= STABLE_MS) {
-            const liveness = scoreLivenessSamples({
-              earSamples: earSamplesRef.current,
-              nosePositions: nosePosRef.current,
-              luminanceSamples: lumSamplesRef.current,
-              flags: [],
-            })
-            const jpeg = captureJpegFromVideo(video)
-            if (!jpeg) {
-              // capture ล้มเหลว (rare) — รีเซ็ตแล้วสแกนต่อ ไม่ค้าง state ผิดจังหวะ
-              alignedSinceRef.current = null
-              earSamplesRef.current = []
-              nosePosRef.current = []
-              lumSamplesRef.current = []
-              timer = setTimeout(() => void tick(), 400)
-              return
-            }
-            // capture แล้วหยุดรอตรวจสอบ — ยังไม่ POST ไป /api/face/verify จนกว่าจะกด "ยืนยัน"
-            setReviewCapture({
-              imageDataUrl: jpeg,
-              descriptor: scan.descriptor as number[],
-              score: scan.score,
-              liveness,
-            })
-            return
-          }
-          const pct = Math.min(100, Math.round((held / STABLE_MS) * 100))
-          setHint(`นิ่ง ๆ ไว้ กำลังสแกน... ${pct}%`)
-          timer = setTimeout(() => void tick(), 200)
+        // คำแนะนำบนจอ — เป็นแค่ hint ไม่ block การเก็บ sample; เช็คเวลาที่เล็งกล้องมาแล้ว
+        // แบบ inline จาก readySinceRef (ไม่ใช้ canCapture state ตรงๆ เพราะ closure ของ
+        // effect นี้ไม่ได้ผูกกับมัน จะได้ค่าเก่าค้าง) ให้ตรงกับสถานะปุ่มจริงเสมอ
+        const timeReady = readySinceRef.current !== null && Date.now() - readySinceRef.current >= MIN_SAMPLE_WINDOW_MS
+        if (!scan.descriptor) {
+          setHint(PROMPT_DEFAULT)
+        } else if (scan.faceSizePct < MIN_FACE_SIZE_PCT) {
+          setHint('กรุณาขยับใบหน้าเข้ากล้อง')
+        } else if (scan.faceSizePct > MAX_FACE_SIZE_PCT) {
+          setHint('กรุณาถอยออกจากกล้องเล็กน้อย')
+        } else if (Math.abs(scan.faceCenterX - 0.5) > MAX_CENTER_OFFSET) {
+          setHint('กรุณาจัดใบหน้าให้อยู่กลางกล้อง')
+        } else if (scan.score < ALIGN_SCORE || scan.pose !== 'center') {
+          setHint(PROMPT_ALIGN)
+        } else if (!timeReady) {
+          setHint('กำลังเตรียมกล้อง...')
         } else {
-          alignedSinceRef.current = null
-          earSamplesRef.current = []
-          nosePosRef.current = []
-          lumSamplesRef.current = []
-          setHint(scan.descriptor ? PROMPT_ALIGN : PROMPT_DEFAULT)
-          timer = setTimeout(() => void tick(), 400)
+          setHint('พร้อมแล้ว — กดปุ่มถ่ายภาพด้านล่าง')
         }
+
+        timer = setTimeout(() => void tick(), 300)
       } catch (error) {
         console.error('[FaceScan] detection loop error:', error)
         timer = setTimeout(() => void tick(), 600)
@@ -411,6 +375,68 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
       if (timer) clearTimeout(timer)
     }
   }, [ready, done, cameraError, reviewCapture])
+
+  // เกตเวลาขั้นต่ำก่อนปุ่ม "ถ่ายภาพ" จะกดได้ + รีเซ็ต accumulator ทุกครั้งที่เริ่มเล็งกล้องใหม่
+  // (กล้องเพิ่งพร้อม หรือกด "ถ่ายใหม่" กลับมาจากหน้ารีวิว) — คง MIN_SAMPLE_WINDOW_MS เท่าค่า
+  // STABLE_MS เดิมเป๊ะ เพื่อการันตีปริมาณ/ช่วงเวลาของ liveness sample ไม่น้อยไปกว่า auto-capture เดิม
+  useEffect(() => {
+    if (!ready || done || cameraError || reviewCapture) {
+      setCanCapture(false)
+      return
+    }
+    readySinceRef.current = Date.now()
+    earSamplesRef.current = []
+    nosePosRef.current = []
+    lumSamplesRef.current = []
+    setCanCapture(false)
+    const timer = setTimeout(() => setCanCapture(true), MIN_SAMPLE_WINDOW_MS)
+    return () => clearTimeout(timer)
+  }, [ready, done, cameraError, reviewCapture])
+
+  const handleManualCapture = useCallback(() => {
+    if (!canCapture || busy || verifyingRef.current) return
+    const video = videoRef.current
+    const scan = lastScanRef.current
+    if (!video) return
+
+    if (!scan?.descriptor) {
+      toast.error('ไม่พบใบหน้าในเฟรม — กรุณาจัดใบหน้าให้อยู่ในกรอบแล้วลองใหม่')
+      return
+    }
+    if (scan.faceSizePct < MIN_FACE_SIZE_PCT) {
+      toast.error('กรุณาขยับใบหน้าเข้ากล้องแล้วลองใหม่')
+      return
+    }
+    if (scan.faceSizePct > MAX_FACE_SIZE_PCT) {
+      toast.error('กรุณาถอยออกจากกล้องเล็กน้อยแล้วลองใหม่')
+      return
+    }
+    if (Math.abs(scan.faceCenterX - 0.5) > MAX_CENTER_OFFSET) {
+      toast.error('กรุณาจัดใบหน้าให้อยู่กลางกล้องแล้วลองใหม่')
+      return
+    }
+
+    // คำนวณ liveness จาก sample ที่สะสมมาตั้งแต่กล้องพร้อม (อย่างน้อย MIN_SAMPLE_WINDOW_MS
+    // เพราะปุ่มนี้ถูก disable ไว้จนกว่าจะครบเวลานั้น) — ใช้ scoreLivenessSamples ตัวเดิม
+    // ไม่ได้ลดเกณฑ์หรือ bypass การตรวจ anti-spoof ใดๆ จากของเดิมเลย
+    const liveness = scoreLivenessSamples({
+      earSamples: earSamplesRef.current,
+      nosePositions: nosePosRef.current,
+      luminanceSamples: lumSamplesRef.current,
+      flags: [],
+    })
+    const jpeg = captureJpegFromVideo(video)
+    if (!jpeg) {
+      toast.error('ถ่ายภาพไม่สำเร็จ กรุณาลองใหม่')
+      return
+    }
+    setReviewCapture({
+      imageDataUrl: jpeg,
+      descriptor: scan.descriptor as number[],
+      score: scan.score,
+      liveness,
+    })
+  }, [canCapture, busy])
 
   // ── หน้าสำเร็จ / หน้ากล้องเปิดไม่ได้ — การ์ดเล็กแบบเดิม ไม่เต็มจอ ──
   if (done) {
@@ -459,8 +485,13 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
   }
 
   // ── หน้าตรวจสอบรูปก่อนยืนยัน — เต็มจอ ──
+  // Portal ไป document.body: ถ้า render inline ในต้นไม้ปกติ ancestor ของ dashboard layout
+  // (flex-1/h-full ผ่าน <main> ธรรมดา) ทำให้ position:fixed ตัวนี้ถูกคำนวณผิด containing
+  // block ไปเป็นกล่องของ <main> แทนที่จะเป็น viewport จริง — พิสูจน์แล้วด้วย getBoundingClientRect
+  // (fixed+top:0 แต่ขึ้น top จริง 64px ตาม topbar สูง) เหมือนบั๊กเดียวกับที่ PortalModal.tsx
+  // แก้ไปแล้วสำหรับ modal ทั่วไป — ปุ่ม "จม" ใต้ viewport ที่เจอมาหลายรอบคือบั๊กนี้เป๊ะๆ
   if (reviewCapture) {
-    return (
+    return createPortal(
       <div className="fixed inset-x-0 top-0 z-[90] h-[100dvh] bg-black flex flex-col">
         <div className="relative flex-1 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -517,12 +548,13 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     )
   }
 
-  // ── หน้ากล้องสแกน — เต็มจอ ──
-  return (
+  // ── หน้ากล้องสแกน — เต็มจอ ── (portal เหตุผลเดียวกับหน้ารีวิวด้านบน)
+  return createPortal(
     <div className="fixed inset-x-0 top-0 z-[90] h-[100dvh] bg-black">
       <CameraPreviewVideoWithRef
         videoRef={videoRef}
@@ -562,6 +594,33 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           </p>
         )}
       </div>
-    </div>
+
+      {!cooldownUntil && (
+        <div
+          className="absolute inset-x-0 bottom-0 z-[91] flex justify-center px-6"
+          style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+        >
+          <button
+            type="button"
+            onClick={handleManualCapture}
+            disabled={!canCapture || busy}
+            className="flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-black shadow-lg disabled:opacity-50 active:scale-[0.97] transition-transform"
+          >
+            {canCapture ? (
+              <>
+                <Camera className="w-5 h-5" />
+                ถ่ายภาพ
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                กำลังเตรียมกล้อง...
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+    </div>,
+    document.body,
   )
 }
