@@ -5,6 +5,7 @@ import { toDateKey } from '@/lib/company-holidays'
 import { findApprovedLeaveOnDate, type ApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import { ATTENDANCE_COMPLETED_PATCH } from '@/lib/attendance-flow'
 import {
+  bangkokDateKey,
   dayOfWeekBangkok,
   formatDateBangkok,
   formatDateDdMmYyyyBangkok,
@@ -472,7 +473,7 @@ export async function buildMonthlyWorkLog(
 function summarizeWorkLogRows(rows: AttendanceWorkLogRow[]): WorkLogSummary {
   const byDate = new Map<string, AttendanceWorkLogRow[]>()
   for (const r of rows) {
-    const key = r.date.slice(0, 10)
+    const key = bangkokDateKey(new Date(r.date))
     const list = byDate.get(key) ?? []
     list.push(r)
     byDate.set(key, list)
