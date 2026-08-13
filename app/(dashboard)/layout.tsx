@@ -6,6 +6,7 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DeviceBinder from '@/components/dashboard/DeviceBinder'
 import { prisma } from '@/lib/prisma'
 import { hasOrgAssignment, needsOrgAssignment } from '@/lib/user-org'
+import { resolveProfileImageUrl } from '@/lib/profile-avatar-url'
 import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
 import DashboardMotionShell from '@/components/motion/DashboardMotionShell'
 import { NotificationStreamProvider } from '@/components/notification-center/NotificationStreamProvider'
@@ -26,16 +27,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
     needsOrgSetup = !hasOrgAssignment(orgUser ?? {})
   }
 
+  const [avatarUser, unreadCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { profileImage: true },
+    }),
+    prisma.notification.count({
+      where: { userId: session.user.id, isRead: false },
+    }),
+  ])
+
   const user = {
     name:       session.user.name ?? '',
     email:      session.user.email ?? '',
     role:       session.user.role,
     department: session.user.department,
+    avatarUrl:  resolveProfileImageUrl(avatarUser?.profileImage ?? null),
   }
-
-  const unreadCount = await prisma.notification.count({
-    where: { userId: session.user.id, isRead: false },
-  })
 
   return (
     <NotificationStreamProvider>

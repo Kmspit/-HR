@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import type { Role } from '@prisma/client'
 
 type Props = {
-  user: { name: string; email: string; role: Role; department: string | null }
+  user: { name: string; email: string; role: Role; department: string | null; avatarUrl?: string | null }
   unreadCount?: number
 }
 

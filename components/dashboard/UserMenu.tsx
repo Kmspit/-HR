@@ -11,13 +11,14 @@ import { useLoading } from '@/components/LoadingProvider'
 import Spinner from '@/components/ui/Spinner'
 
 type Props = {
-  user: { name: string; email: string; role: Role }
+  user: { name: string; email: string; role: Role; avatarUrl?: string | null }
   showName?: boolean
 }
 
 export default function UserMenu({ user, showName = true }: Props) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const mounted = useRef(true)
   const { showLoading, hideLoading } = useLoading()
@@ -61,13 +62,25 @@ export default function UserMenu({ user, showName = true }: Props) {
         aria-haspopup="menu"
       >
         <div
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl text-[11px] font-bold text-white"
           style={{
             background: 'linear-gradient(135deg, #22c55e 0%, #8b5cf6 100%)',
             boxShadow: open ? '0 0 0 2px rgba(99,102,241,0.45)' : 'none',
           }}
         >
-          {signingOut ? <Spinner size="sm" className="text-white" /> : getInitials(user.name)}
+          {signingOut ? (
+            <Spinner size="sm" className="text-white" />
+          ) : user.avatarUrl && !avatarFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatarUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setAvatarFailed(true)}
+            />
+          ) : (
+            getInitials(user.name)
+          )}
         </div>
         {showName && (
           <div className="hidden md:block min-w-0 text-left">
