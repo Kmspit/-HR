@@ -209,7 +209,7 @@ export default function NotificationBell({ initialCount }: Props) {
                             {n.title}
                           </p>
                           {n.message && (
-                            <p className="text-[12px] dark:text-slate-500 light:text-slate-400 line-clamp-1 mt-0.5">
+                            <p className="text-[12px] dark:text-slate-500 light:text-slate-400 line-clamp-1 mt-0.5 break-words">
                               {n.message}
                             </p>
                           )}

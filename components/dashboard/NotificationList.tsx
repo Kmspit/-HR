@@ -176,11 +176,11 @@ export default function NotificationList({ notifications: initial }: { notificat
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 justify-between">
-                      <p className={`text-[13px] font-semibold leading-snug ${n.isRead ? 'text-slate-300' : 'text-white'}`}>{n.title}</p>
+                      <p className={`text-[13px] font-semibold leading-snug break-words ${n.isRead ? 'text-slate-300' : 'text-white'}`}>{n.title}</p>
                       {!n.isRead && <div className="h-2 w-2 rounded-full bg-green-400 flex-shrink-0" />}
                     </div>
                     {n.message && (
-                      <p className="mt-0.5 text-[12px] text-slate-400 line-clamp-2 leading-relaxed">{n.message}</p>
+                      <p className="mt-0.5 text-[12px] text-slate-400 line-clamp-2 leading-relaxed break-words">{n.message}</p>
                     )}
                     <div className="mt-1.5 flex items-center gap-3">
                       <span className="text-[12px] text-slate-500">{formatThaiDateTime(n.createdAt)}</span>

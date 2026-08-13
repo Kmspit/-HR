@@ -54,11 +54,11 @@ function NotificationCard({
             </span>
             {!item.isRead && <span className={`h-2 w-2 rounded-full ${styles.dot} ml-auto sm:ml-0`} />}
           </div>
-          <p className={`text-[14px] font-bold leading-snug ${item.isRead ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+          <p className={`text-[14px] font-bold leading-snug break-words ${item.isRead ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
             {item.title}
           </p>
           {item.message && (
-            <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+            <p className="mt-1 text-[13px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed break-words">
               {item.message}
             </p>
           )}
