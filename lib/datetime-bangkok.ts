@@ -24,9 +24,24 @@ export function bangkokDateKey(d: Date = new Date()): string {
   }).format(d)
 }
 
+/** 00:00:00 ของวันที่ระบุตามเวลาไทย — เวอร์ชันทั่วไปของ startOfTodayBangkok ที่รับ
+ *  Date ใดก็ได้ ใช้แทน d.setHours(0,0,0,0) ซึ่งตัดขอบเขตวันตาม timezone ของ
+ *  runtime (UTC บน Vercel) ไม่ใช่เวลาไทย ทำให้ขอบเขตวันเพี้ยนไป 7 ชั่วโมง */
+export function startOfDayBangkok(d: Date = new Date()): Date {
+  return new Date(`${bangkokDateKey(d)}T00:00:00+07:00`)
+}
+
 /** 00:00:00 ของวันนี้ตามเวลาไทย (ใช้เป็น attendance.date) */
 export function startOfTodayBangkok(): Date {
-  return new Date(`${bangkokDateKey()}T00:00:00+07:00`)
+  return startOfDayBangkok()
+}
+
+/** ดัชนีวันในสัปดาห์ (0=อาทิตย์..6=เสาร์) ตามปฏิทินไทยของ Date ที่ระบุ — ใช้แทน
+ *  date.getDay() ซึ่งตีความ Date ตาม timezone ของ runtime: ค่า attendance.date
+ *  เก็บเป็น "เที่ยงคืนไทย" (เช่น 12 ส.ค. 17:00 UTC สำหรับวันที่ 13 ส.ค. ไทย) บน
+ *  Vercel (runtime = UTC) date.getDay() จะได้วันก่อนหน้าเสมอ */
+export function dayOfWeekBangkok(d: Date): number {
+  return new Date(`${bangkokDateKey(d)}T00:00:00Z`).getUTCDay()
 }
 
 /**

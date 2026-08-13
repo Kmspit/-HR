@@ -1,5 +1,6 @@
 import type { LeaveType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { startOfDayBangkok } from '@/lib/datetime-bangkok'
 
 const APPROVED = ['APPROVED', 'ADMIN_APPROVED'] as const
 
@@ -16,10 +17,8 @@ export async function findApprovedLeaveOnDate(
   userId: string,
   date: Date,
 ): Promise<ApprovedLeaveOnDate | null> {
-  const dayStart = new Date(date)
-  dayStart.setHours(0, 0, 0, 0)
-  const dayEnd = new Date(date)
-  dayEnd.setHours(23, 59, 59, 999)
+  const dayStart = startOfDayBangkok(date)
+  const dayEnd = new Date(dayStart.getTime() + 86_400_000 - 1)
 
   const leave = await prisma.leaveRequest.findFirst({
     where: {

@@ -5,9 +5,11 @@ import { toDateKey } from '@/lib/company-holidays'
 import { findApprovedLeaveOnDate, type ApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
 import { ATTENDANCE_COMPLETED_PATCH } from '@/lib/attendance-flow'
 import {
+  dayOfWeekBangkok,
   formatDateBangkok,
   formatDateDdMmYyyyBangkok,
   formatTimeBangkok,
+  startOfDayBangkok,
 } from '@/lib/datetime-bangkok'
 
 /** 0 = อาทิตย์ … 6 = เสาร์ (ตรงกับ Date.getDay()) */
@@ -35,7 +37,7 @@ export const ATTENDANCE_STATUS_DISPLAY: Record<AttendanceStatus, string> = {
 const APPROVED_LEAVE_STATUSES = ['APPROVED', 'ADMIN_APPROVED'] as const
 
 export function getDayOfWeekIndex(date: Date): number {
-  return date.getDay()
+  return dayOfWeekBangkok(date)
 }
 
 export function getThaiWeekdayLabel(date: Date): string {
@@ -269,10 +271,8 @@ function pickApprovedLeaveForDate(
   leaves: ApprovedLeaveOnDate[],
   date: Date,
 ): ApprovedLeaveOnDate | null {
-  const dayStart = new Date(date)
-  dayStart.setHours(0, 0, 0, 0)
-  const dayEnd = new Date(date)
-  dayEnd.setHours(23, 59, 59, 999)
+  const dayStart = startOfDayBangkok(date)
+  const dayEnd = new Date(dayStart.getTime() + 86_400_000 - 1)
 
   let best: ApprovedLeaveOnDate | null = null
   for (const l of leaves) {
@@ -405,9 +405,9 @@ export async function syncApprovedLeaveAttendance(
   for (const leave of leaves) {
     const start = new Date(Math.max(leave.startDate.getTime(), rangeStart.getTime()))
     const end = new Date(Math.min(leave.endDate.getTime(), rangeEnd.getTime()))
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const day = new Date(d)
-      day.setHours(0, 0, 0, 0)
+    const startDay = startOfDayBangkok(start)
+    const endDay = startOfDayBangkok(end)
+    for (let day = startDay; day.getTime() <= endDay.getTime(); day = new Date(day.getTime() + 86_400_000)) {
       const hasCheckIn = await prisma.attendance.findFirst({
         where: { userId, date: day, checkIn: { not: null } },
       })
