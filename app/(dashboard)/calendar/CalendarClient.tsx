@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { cn, formatLateMinutes } from '@/lib/utils'
 import { buildHolidayMapForMonth, type HolidayRecord } from '@/lib/company-holidays'
+import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import HolidayManagePanel, { type HolidayItem } from '@/components/calendar/HolidayManagePanel'
 
 type AttendanceRecord = {
@@ -98,15 +99,14 @@ export default function CalendarClient({
 
   const attendanceMap: Record<string, AttendanceRecord> = {}
   for (const r of attendance) {
-    attendanceMap[r.date.slice(0, 10)] = r
+    attendanceMap[bangkokDateKey(new Date(r.date))] = r
   }
 
   const leaveSet = new Set<string>()
   for (const l of leaves) {
-    const start = new Date(l.startDate)
     const end = new Date(l.endDate)
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      leaveSet.add(d.toISOString().slice(0, 10))
+    for (let d = new Date(l.startDate); d <= end; d = new Date(d.getTime() + 86_400_000)) {
+      leaveSet.add(bangkokDateKey(d))
     }
   }
 
@@ -129,7 +129,7 @@ export default function CalendarClient({
 
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = bangkokDateKey(new Date())
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
