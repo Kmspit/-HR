@@ -182,9 +182,9 @@ export default function ClientsClient({ userRole }: Props) {
         <button onClick={() => setShowCreate(true)} className="px-4 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 ml-auto">+ เพิ่มลูกค้า</button>
       </div>
 
-      <div className="flex gap-4 items-start">
-        {/* Client list */}
-        <div className="flex-1 min-w-0">
+      <div className="flex flex-col md:flex-row gap-4 items-start">
+        {/* Client list — full width on mobile, hidden once a client is selected (mobile only) */}
+        <div className={`${selected ? 'hidden md:block' : ''} flex-1 min-w-0`}>
           <div className="text-xs text-gray-500 mb-2">{clients.length} ลูกค้า</div>
           {loading ? (
             <div className="text-center py-10 text-gray-400 text-sm">กำลังโหลด...</div>
@@ -214,9 +214,12 @@ export default function ClientsClient({ userRole }: Props) {
           )}
         </div>
 
-        {/* Detail panel */}
+        {/* Detail panel — full width on mobile (replaces the list), fixed-width sidebar on desktop */}
         {selected && (
-          <div className="w-96 shrink-0 bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-4 sticky top-4">
+          <div className="w-full md:w-96 shrink-0 bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-4 md:sticky md:top-4">
+            <button onClick={() => setSelected(null)} className="md:hidden -mb-2 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+              ‹ กลับไปรายชื่อลูกค้า
+            </button>
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-semibold text-gray-800">{selected.name}</h3>

@@ -122,9 +122,9 @@ export default function InvoicesClient({ userId, userRole }: { userId: string; u
         </button>
       </div>
 
-      <div className="flex gap-4 flex-1 min-h-0">
-        {/* Left: list */}
-        <div className="flex flex-col gap-2 w-80 flex-shrink-0 overflow-y-auto">
+      <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+        {/* Left: list — full width on mobile, hidden once an invoice is selected (mobile only) */}
+        <div className={`${selected ? 'hidden md:flex' : 'flex'} flex-col gap-2 w-full md:w-80 flex-shrink-0 overflow-y-auto`}>
           {loading ? (
             <p className="text-center text-sm text-gray-400 py-8">กำลังโหลด…</p>
           ) : invoices.length === 0 ? (
@@ -166,8 +166,13 @@ export default function InvoicesClient({ userId, userRole }: { userId: string; u
           )}
         </div>
 
-        {/* Right: detail */}
-        <div className="flex-1 min-w-0">
+        {/* Right: detail — full width on mobile, shown only once an invoice is selected (mobile only) */}
+        <div className={`${selected ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 flex-col`}>
+          {selected && (
+            <button onClick={() => setSelected(null)} className="md:hidden mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+              ‹ กลับไปรายการใบแจ้งหนี้
+            </button>
+          )}
           {selected ? (
             <InvoiceDetail
               invoice={selected}

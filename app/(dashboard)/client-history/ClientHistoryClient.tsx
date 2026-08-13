@@ -85,9 +85,9 @@ export default function ClientHistoryClient({ userId, userRole }: { userId: stri
         <Link href="/client-companies" className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50">← ลูกค้าองค์กร</Link>
       </div>
 
-      <div className="flex gap-4 flex-1 min-h-0">
-        {/* Left: company list */}
-        <div className="w-72 flex-shrink-0 flex flex-col gap-3">
+      <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+        {/* Left: company list — full width on mobile, hidden once a company is selected (mobile only) */}
+        <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-72 flex-shrink-0 flex-col gap-3`}>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาบริษัท…" className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500" />
           <select value={filterSt} onChange={e => setFilterSt(e.target.value)} className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">
             <option value="">ทุกสถานะ</option>
@@ -119,8 +119,13 @@ export default function ClientHistoryClient({ userId, userRole }: { userId: stri
           </div>
         </div>
 
-        {/* Right: detail */}
-        <div className="flex-1 min-w-0">
+        {/* Right: detail — full width on mobile, shown only once a company is selected (mobile only) */}
+        <div className={`${selected ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 flex-col`}>
+          {selected && (
+            <button onClick={() => setSelected(null)} className="md:hidden mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+              ‹ กลับไปรายชื่อบริษัท
+            </button>
+          )}
           {loadingDetail ? (
             <div className="h-full flex items-center justify-center text-gray-400">กำลังโหลด…</div>
           ) : selected ? (
