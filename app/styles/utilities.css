@@ -412,6 +412,18 @@ select option,
   -webkit-overflow-scrolling: touch;
 }
 
+/* Hides the native scrollbar on intentionally horizontally-scrollable strips
+   (filter tabs, chip rows) while keeping touch/wheel/keyboard scroll working.
+   Used across 7 components — was referenced everywhere but never defined,
+   so every one of those rows showed its raw browser scrollbar instead. */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge/IE */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Chromium Edge */
+}
+
 /* ป้องกัน SVG ขยายเต็มจอ */
 .hr-icon,
 aside svg,
