@@ -14,7 +14,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
 
   return (
 
-    <div key={pathname} className="page-enter min-h-0 flex-1 flex flex-col">
+    <div key={pathname} className="page-enter">
 
       {children}
 

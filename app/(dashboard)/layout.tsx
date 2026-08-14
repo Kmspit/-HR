@@ -55,7 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {/* Main content */}
       <div className="dashboard-main flex flex-1 flex-col min-h-0 min-w-0 md:overflow-hidden">
         <DashboardHeader user={user} unreadCount={unreadCount} />
-        <main className="dashboard-main-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="dashboard-main-scroll flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
           <DashboardMotionShell>
             {needsOrgSetup && <OrgSetupBanner />}
             {children}
