@@ -41,11 +41,13 @@ export default async function NotificationsPage() {
         title="ศูนย์แจ้งเตือน"
         subtitle={unreadCount > 0 ? `${unreadCount} รายการยังไม่ได้อ่าน` : 'อ่านครบแล้ว — อัปเดตแบบเรียลไทม์'}
       />
-      <NotificationCenterClient
-        notifications={notifications}
-        unreadCount={unreadCount}
-        tabCounts={tabCounts}
-      />
+      <div className="min-w-0 flex-1">
+        <NotificationCenterClient
+          notifications={notifications}
+          unreadCount={unreadCount}
+          tabCounts={tabCounts}
+        />
+      </div>
     </div>
   )
 }

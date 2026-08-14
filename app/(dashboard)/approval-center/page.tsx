@@ -31,9 +31,11 @@ export default async function ApprovalCenterPage() {
         title="ศูนย์อนุมัติ"
         subtitle="ลา · ออกนอกสถานที่ · แก้เวลา · แผนงานสัปดาห์"
       />
-      <Suspense fallback={<CenterSkeleton />}>
-        <ApprovalCenterClient {...JSON.parse(JSON.stringify(data))} />
-      </Suspense>
+      <div className="min-w-0 flex-1">
+        <Suspense fallback={<CenterSkeleton />}>
+          <ApprovalCenterClient {...JSON.parse(JSON.stringify(data))} />
+        </Suspense>
+      </div>
     </div>
   )
 }

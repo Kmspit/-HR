@@ -34,7 +34,9 @@ export default async function EmployeeTimelinePage({
         title="ไทม์ไลน์พนักงาน"
         subtitle={`${data.employee.name} · ${data.events.length} เหตุการณ์`}
       />
-      <EmployeeTimelineClient {...JSON.parse(JSON.stringify(data))} />
+      <div className="min-w-0 flex-1">
+        <EmployeeTimelineClient {...JSON.parse(JSON.stringify(data))} />
+      </div>
     </div>
   )
 }
