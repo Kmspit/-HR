@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import type { NotificationType, Role } from '@prisma/client'
+import type { AuditAction, NotificationType, Role } from '@prisma/client'
 import { pushLineMessages, pushLineText } from '@/lib/line-api'
 import { broadcastNotificationUpdate, broadcastNotificationUpdates, toNotificationItem } from '@/lib/notification-center/broadcast'
 
@@ -164,7 +164,7 @@ export async function createAuditLog(params: {
   actorId: string
   targetId?: string
   targetType?: string
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'LOGIN' | 'LOGOUT' | 'PASSWORD_RESET'
+  action: AuditAction
   before?: object
   after?: object
   ip?: string

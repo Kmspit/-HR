@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
-import { normalizeEmail, normalizeNationalId, parseBirthDate, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
+import {
+  normalizeEmail,
+  normalizeNationalId,
+  parseBirthDate,
+  isBlankProtectedField,
+  SELF_PROFILE_FORBIDDEN,
+} from '@/lib/profile-update'
 import { normalizeThaiPhone } from '@/lib/profile-name'
 import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
 import { requireAuth, requireOrgScope, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
@@ -115,19 +121,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.phone = phone
     }
 
-    if (body.nationalId !== undefined) {
+    if (body.nationalId !== undefined && !isBlankProtectedField('nationalId', body.nationalId)) {
       const nationalId = normalizeNationalId(body.nationalId)
-      if (body.nationalId != null && String(body.nationalId).trim() !== '' && !nationalId) {
+      if (!nationalId) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนต้อง 13 หลัก' }, { status: 400 })
       }
-      if (nationalId) {
-        const dup = await prisma.user.findFirst({ where: { nationalId, NOT: { id } } })
-        if (dup) {
-          return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
-        }
+      const dup = await prisma.user.findFirst({ where: { nationalId, NOT: { id } } })
+      if (dup) {
+        return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
       }
       data.nationalId = nationalId
     }
+    // blank nationalId is silently skipped, not written — clearing it is a deliberate,
+    // separate action (see PROTECTED_CLEAR_FIELDS), not a side effect of saving the form
 
     if (body.birthDate !== undefined) {
       const birth = parseBirthDate(body.birthDate)
@@ -174,11 +180,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       'baseSalary',
       'socialSecurity',
       'isCoworker',
-      'startDate',
     ] as const
 
     for (const key of allowedFields) {
       if (key in body) data[key] = body[key]
+    }
+
+    // startDate is protected — see PROTECTED_CLEAR_FIELDS. Handled separately from the
+    // generic loop above so a blank value is skipped instead of nulling out tenure.
+    if ('startDate' in body && !isBlankProtectedField('startDate', body.startDate)) {
+      data.startDate = body.startDate
     }
 
     if ('lineId' in body) {

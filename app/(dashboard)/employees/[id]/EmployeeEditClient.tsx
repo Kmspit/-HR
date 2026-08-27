@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   Save,
@@ -23,6 +23,10 @@ import {
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { diffFormPayload } from '@/lib/form-diff'
+import { maskNationalId } from '@/lib/national-id'
+import { revealReducer, initialRevealState, idleTimeoutAction } from '@/lib/national-id-reveal'
+import { createIdleTimer } from '@/lib/idle-timer'
 import FormField from '@/components/profile/FormField'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
@@ -58,7 +62,8 @@ type Employee = {
   birthDate: string | null
   address: string | null
   addressIdCard: string | null
-  nationalId: string | null
+  /** opt-in — not selected by the server page anymore; populated via "ดูเลขเต็ม" (GET /api/users/[id]/sensitive) */
+  nationalId?: string | null
   warningCount: number
 }
 
@@ -122,12 +127,77 @@ export default function EmployeeEditClient({
     addressIdCard: employee.addressIdCard ?? '',
     nationalId: employee.nationalId ?? '',
   })
+  // Snapshot of `form` as it was when this component mounted — used to submit only the
+  // fields the user actually touched. Never mutated (setForm always replaces via spread),
+  // so this stays a stable baseline for diffing at save time. This also protects fields
+  // this form no longer has real data for (e.g. nationalId — see SAFE_USER_SELECT opt-in):
+  // an untouched blank field diffs to "no change" instead of being sent as a clear.
+  const initialFormRef = useRef(form)
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
+
+  // ── National ID reveal (GET /api/users/[id]/sensitive) ──────────────────────
+  // Fetching hits an audited endpoint, so it must happen at most once per reveal —
+  // show/hide toggling after that only flips the local view of the cached value.
+  const [revealState, dispatchReveal] = useReducer(revealReducer, initialRevealState)
+  const [revealLoading, setRevealLoading] = useState(false)
+  // Always mirrors the current form.nationalId so the idle-timeout closure (created once,
+  // see createIdleTimer below) never reads a stale value.
+  const latestNationalIdRef = useRef(form.nationalId)
+  useEffect(() => {
+    latestNationalIdRef.current = form.nationalId
+  }, [form.nationalId])
+
+  const idleTimerRef = useRef(createIdleTimer(() => {
+    // Auto-clear exists so the national ID doesn't sit on screen unattended — it must
+    // never destroy an edit HR is mid-way through.
+    const action = idleTimeoutAction(latestNationalIdRef.current, initialFormRef.current.nationalId)
+    if (action === 'HIDE') {
+      dispatchReveal({ type: 'HIDE' })
+      return
+    }
+    dispatchReveal({ type: 'CLEAR' })
+    setForm((f) => ({ ...f, nationalId: '' }))
+    initialFormRef.current = { ...initialFormRef.current, nationalId: '' }
+  }, 60_000))
+
+  useEffect(() => {
+    const idleTimer = idleTimerRef.current
+    return () => idleTimer.cancel()
+  }, [])
+
+  const revealNationalId = async () => {
+    setRevealLoading(true)
+    try {
+      const { ok, data, status } = await apiJson<{ user: { nationalId: string | null } }>(
+        `/api/users/${employee.id}/sensitive`,
+      )
+      if (!ok) {
+        toast.error(apiErrorMessage(data, 'ดูเลขบัตรประชาชนไม่สำเร็จ', status))
+        return
+      }
+      const real = data.user?.nationalId ?? ''
+      setForm((f) => ({ ...f, nationalId: real }))
+      initialFormRef.current = { ...initialFormRef.current, nationalId: real }
+      dispatchReveal({ type: 'FETCHED', value: real })
+      idleTimerRef.current.touch()
+    } catch (err) {
+      console.error('[reveal-national-id]', err)
+      toast.error('ดูเลขบัตรประชาชนไม่สำเร็จ')
+    } finally {
+      setRevealLoading(false)
+    }
+  }
+
+  const toggleNationalIdVisible = () => {
+    dispatchReveal({ type: 'TOGGLE' })
+    idleTimerRef.current.touch()
+  }
 
   const set = (k: keyof typeof form, v: string | number | boolean) => {
     setForm((f) => ({ ...f, [k]: v }))
     setErrors((e) => ({ ...e, [k]: undefined }))
+    if (k === 'nationalId' && revealState.status !== 'hidden') idleTimerRef.current.touch()
   }
 
   const ic = (key: string) => (errors[key] ? profileInputErrorClass : profileInputClass)
@@ -161,31 +231,40 @@ export default function EmployeeEditClient({
     }
     setSaving(true)
     try {
-      const payload: Record<string, unknown> = {
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        nickname: form.nickname.trim() || null,
-        prefix: form.prefix.trim() || null,
-        phone: form.phone,
-        address: form.address.trim() || null,
-        addressIdCard: form.addressIdCard.trim() || null,
-        birthDate: form.birthDate || null,
-        nationalId: form.nationalId.replace(/\D/g, '') || null,
-        lineId: form.lineId,
-        lineUserId: form.lineUserId,
-        lineDisplayName: form.lineDisplayName,
-        department: form.department,
-        position: form.position,
-        employeeType: form.employeeType,
-        baseSalary: form.baseSalary,
-        socialSecurity: form.socialSecurity,
-        isCoworker: form.isCoworker,
-        startDate: form.startDate || null,
+      // Same value transforms as before, keyed by form field — but only applied to
+      // fields that actually changed from the mount-time snapshot, so an untouched
+      // field is never sent (and can never overwrite the existing DB value with a
+      // blank). See initialFormRef above.
+      const transforms: Record<keyof typeof form, () => unknown> = {
+        name: () => form.name.trim(),
+        email: () => form.email.trim().toLowerCase(),
+        nickname: () => form.nickname.trim() || null,
+        prefix: () => form.prefix.trim() || null,
+        phone: () => form.phone,
+        address: () => form.address.trim() || null,
+        addressIdCard: () => form.addressIdCard.trim() || null,
+        birthDate: () => form.birthDate || null,
+        nationalId: () => form.nationalId.replace(/\D/g, '') || null,
+        lineId: () => form.lineId,
+        lineUserId: () => form.lineUserId,
+        lineDisplayName: () => form.lineDisplayName,
+        department: () => form.department,
+        position: () => form.position,
+        employeeType: () => form.employeeType,
+        baseSalary: () => form.baseSalary,
+        socialSecurity: () => form.socialSecurity,
+        isCoworker: () => form.isCoworker,
+        startDate: () => form.startDate || null,
+        role: () => form.role,
+        status: () => form.status,
       }
-      if (!isSelf) {
-        payload.role = form.role
-        payload.status = form.status
-      }
+
+      const payload = diffFormPayload(
+        form,
+        initialFormRef.current,
+        transforms,
+        (key) => (key === 'role' || key === 'status') && isSelf, // server also rejects this for self
+      )
 
       const { ok, data, status } = await apiJson(`/api/users/${employee.id}`, {
         method: 'PATCH',
@@ -350,11 +429,14 @@ export default function EmployeeEditClient({
                 />
               </FormField>
               <FormField label="เลขบัตรประชาชน" error={errors.nationalId}>
-                <input
-                  value={form.nationalId}
-                  onChange={(e) => set('nationalId', e.target.value.replace(/\D/g, '').slice(0, 13))}
-                  className={ic('nationalId')}
-                  inputMode="numeric"
+                <NationalIdField
+                  form={form}
+                  set={set}
+                  ic={ic}
+                  revealState={revealState}
+                  revealLoading={revealLoading}
+                  onReveal={revealNationalId}
+                  onToggleVisible={toggleNationalIdVisible}
                 />
               </FormField>
             </div>
@@ -606,6 +688,79 @@ export default function EmployeeEditClient({
         </button>
       </div>
 
+    </div>
+  )
+}
+
+// ── National ID field — masked by default, "ดูเลขเต็ม" fetches once from
+// GET /api/users/[id]/sensitive, then show/hide toggles locally with no refetch ──
+function NationalIdField({
+  form,
+  set,
+  ic,
+  revealState,
+  revealLoading,
+  onReveal,
+  onToggleVisible,
+}: {
+  form: { nationalId: string }
+  set: (k: 'nationalId', v: string) => void
+  ic: (key: string) => string
+  revealState: { status: 'hidden' | 'visible' | 'masked' }
+  revealLoading: boolean
+  onReveal: () => void
+  onToggleVisible: () => void
+}) {
+  const onChangeDigits = (e: React.ChangeEvent<HTMLInputElement>) =>
+    set('nationalId', e.target.value.replace(/\D/g, '').slice(0, 13))
+
+  if (revealState.status === 'hidden') {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="flex-1 py-2.5 text-sm text-white/40 font-mono tracking-wide">x-xxxx-xxxxx-xx-x</span>
+        <button
+          type="button"
+          onClick={onReveal}
+          disabled={revealLoading}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 text-xs font-medium hover:bg-white/10 transition disabled:opacity-50"
+        >
+          {revealLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          ดูเลขเต็ม
+        </button>
+      </div>
+    )
+  }
+
+  const masked = maskNationalId(form.nationalId)
+
+  if (masked.status === 'MISSING') {
+    return (
+      <div className="space-y-1">
+        <p className="text-[12px] text-white/40">ยังไม่ได้กรอก</p>
+        <input value={form.nationalId} onChange={onChangeDigits} className={ic('nationalId')} inputMode="numeric" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1">
+      {masked.status === 'INVALID' && (
+        <p className="text-[12px] text-amber-400">ข้อมูลไม่ถูกต้อง — กรุณาตรวจสอบกับบัตรประชาชนจริง</p>
+      )}
+      <div className="flex items-center gap-2">
+        {revealState.status === 'visible' ? (
+          <input value={form.nationalId} onChange={onChangeDigits} className={`${ic('nationalId')} flex-1`} inputMode="numeric" />
+        ) : (
+          <span className="flex-1 py-2.5 text-sm text-white/80 font-mono tracking-wide">{masked.display}</span>
+        )}
+        <button
+          type="button"
+          onClick={onToggleVisible}
+          className="shrink-0 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 text-xs font-medium hover:bg-white/10 transition"
+        >
+          {revealState.status === 'visible' ? 'ซ่อน' : 'ดูเลขเต็ม'}
+        </button>
+      </div>
     </div>
   )
 }
