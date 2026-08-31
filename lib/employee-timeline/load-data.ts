@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
 import { formatThaiDate, formatThaiDateTime } from '@/lib/utils'
 import {
@@ -38,6 +39,8 @@ export async function loadEmployeeTimeline(
   prisma: PrismaClient,
   userId: string,
 ): Promise<EmployeeTimelinePayload | null> {
+  await ensurePayrollPayslipColumns()
+
   const employee = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -104,7 +107,7 @@ export async function loadEmployeeTimeline(
       },
     }),
     prisma.payroll.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
       take: 36,
       select: {

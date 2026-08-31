@@ -7,6 +7,7 @@ import { parseTaxDetail } from '@/lib/payroll-tax'
 import { HR_ROLES } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
 export async function GET(
   req: NextRequest,
@@ -15,6 +16,8 @@ export async function GET(
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    await ensurePayrollPayslipColumns()
 
     const { id } = await params
 
@@ -33,7 +36,7 @@ export async function GET(
       },
     })
 
-    if (!payroll) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!payroll || payroll.deletedAt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     if (payroll.status !== 'APPROVED') {
       return NextResponse.json({ error: 'ต้องอนุมัติ payroll ก่อนดาวน์โหลดสลิป' }, { status: 403 })

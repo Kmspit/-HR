@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { HR_ROLES, canApprovePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
 export async function GET(
   _req: NextRequest,
@@ -12,6 +13,8 @@ export async function GET(
   try {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    await ensurePayrollPayslipColumns()
 
     const { id } = await params
     const isHR = (HR_ROLES as readonly string[]).includes(session.user.role)
@@ -34,7 +37,7 @@ export async function GET(
       },
     })
 
-    if (!payroll) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!payroll || payroll.deletedAt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (!isHR && payroll.userId !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -66,11 +69,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    await ensurePayrollPayslipColumns()
+
     const { id } = await params
     const body = await req.json() as { status?: string; note?: string }
 
     const payroll = await prisma.payroll.findUnique({ where: { id } })
-    if (!payroll) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!payroll || payroll.deletedAt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const scope = buildBranchScope(session.user, {})
     const targetInScope = await prisma.user.findFirst({

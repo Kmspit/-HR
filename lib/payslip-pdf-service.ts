@@ -9,7 +9,7 @@ const DEFAULT_COMPANY = 'บริษัท เค เอ็ม เซอร์�
 export type PayrollSlipRecord = Awaited<ReturnType<typeof loadPayrollForSlip>>
 
 export async function loadPayrollForSlip(payrollId: string) {
-  return prisma.payroll.findUnique({
+  const payroll = await prisma.payroll.findUnique({
     where: { id: payrollId },
     include: {
       user: {
@@ -26,6 +26,7 @@ export async function loadPayrollForSlip(payrollId: string) {
       },
     },
   })
+  return payroll?.deletedAt ? null : payroll
 }
 
 export async function buildPayrollSlipPdfBuffer(payroll: NonNullable<PayrollSlipRecord>): Promise<{

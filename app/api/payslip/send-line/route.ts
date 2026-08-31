@@ -88,9 +88,9 @@ export async function POST(req: NextRequest) {
 
     const anchor = await prisma.payroll.findUnique({
       where: { id: payrollId },
-      select: { id: true, month: true, year: true, userId: true },
+      select: { id: true, month: true, year: true, userId: true, deletedAt: true },
     })
-    if (!anchor) {
+    if (!anchor || anchor.deletedAt) {
       return NextResponse.json({ error: 'ไม่พบ payroll' }, { status: 404 })
     }
 
@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
       month: anchor.month,
       year: anchor.year,
       status: 'APPROVED' as const,
+      deletedAt: null,
       ...(userId ? { userId } : {}),
       ...(!userId && excludeUserIds?.length ? { userId: { notIn: excludeUserIds } } : {}),
       ...(userRelationFilter ? { user: userRelationFilter } : {}),

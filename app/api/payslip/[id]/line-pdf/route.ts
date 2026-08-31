@@ -35,11 +35,17 @@ export async function GET(
         status: true,
         userId: true,
         payslipCloudinaryPublicId: true,
+        deletedAt: true,
         user: { select: { employeeId: true } },
       },
     })
     if (!payroll || payroll.status !== 'APPROVED') {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (payroll.deletedAt) {
+      // Deliberately breaks the old download link rather than serving a
+      // cancelled payslip — full UX wording lands in step 5.
+      return NextResponse.json({ error: 'สลิปถูกยกเลิก กรุณาติดต่อ HR' }, { status: 410 })
     }
 
     const publicId = await resolvePayslipPdfPublicId({
