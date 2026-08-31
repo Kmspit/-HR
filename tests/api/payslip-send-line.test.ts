@@ -540,6 +540,47 @@ describe('POST /api/payslip/send-line', () => {
 
   })
 
+  it('bulk mode excludes pre-flight-blocked userIds via excludeUserIds — never even attempted', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      month: 6,
+      year: 2026,
+      userId: 'u1',
+    } as never)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([{ id: 'pay-1', userId: 'u1' }] as never)
+
+    await POST(makePostReq({ payrollId: 'pay-1', excludeUserIds: ['blocked-1', 'blocked-2'] }))
+
+    expect(prisma.payroll.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: { notIn: ['blocked-1', 'blocked-2'] },
+        }),
+      }),
+    )
+  })
+
+  it('single-user mode (userId set) ignores excludeUserIds — targets that one person regardless', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.payroll.findUnique)
+      .mockResolvedValueOnce({ id: 'pay-1', month: 6, year: 2026, userId: 'u1' } as never)
+      .mockResolvedValueOnce(approvedPayrollUser as never)
+      .mockResolvedValueOnce(approvedPayrollUser as never)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([{ id: 'pay-1', userId: 'u1' }] as never)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({} as never)
+
+    await POST(makePostReq({ payrollId: 'pay-1', userId: 'u1', excludeUserIds: ['u1'] }))
+
+    expect(prisma.payroll.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: 'u1' }),
+      }),
+    )
+    const call = vi.mocked(prisma.payroll.findMany).mock.calls[0][0] as { where: Record<string, unknown> }
+    expect(call.where).not.toHaveProperty('notIn')
+  })
+
 })
 
 

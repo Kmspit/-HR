@@ -7,6 +7,8 @@ import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQu
 import { canAccessPage } from '@/lib/page-access'
 import { canApprovePayroll } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { maskNationalId } from '@/lib/national-id'
+import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
 import { Suspense } from 'react'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -44,6 +46,7 @@ export default async function PayrollPage({
         socialSecurity: true,
         baseSalary: true,
         lineUserId: true,
+        nationalId: true,
       },
       orderBy: { name: 'asc' },
     }),
@@ -58,6 +61,9 @@ export default async function PayrollPage({
   const payrollByUser = new Map(payrollRecords.map((p) => [p.userId, p]))
 
   const payrolls = employees.map((emp) => {
+    // Only the derived status ever reaches the client — never emp.nationalId itself
+    // (same opt-in policy as SAFE_USER_SELECT; see lib/payslip-preflight.ts).
+    const nationalIdStatus = maskNationalId(emp.nationalId).status
     const p = payrollByUser.get(emp.id)
     if (p) {
       return {
@@ -86,6 +92,7 @@ export default async function PayrollPage({
         payslipSentStatus: p.payslipSentStatus ?? null,
         payslipSentError: p.payslipSentError ?? null,
         lineLinked: !!emp.lineUserId,
+        nationalIdStatus,
       }
     }
     return {
@@ -113,6 +120,7 @@ export default async function PayrollPage({
       payslipSentStatus: null,
       payslipSentError: null,
       lineLinked: !!emp.lineUserId,
+      nationalIdStatus,
     }
   })
 
@@ -128,6 +136,7 @@ export default async function PayrollPage({
         totalEmployees={employees.length}
         filterBranchId={branchParam}
         canApprove={canApprovePayroll(session.user.role)}
+        cloudinaryConfigured={isCloudinaryConfigured()}
       />
     </div>
   )

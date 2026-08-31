@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle } from 'lucide-react'
+import Link from 'next/link'
+import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle, AlertTriangle } from 'lucide-react'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
 import { ManualButton } from '@/components/ui/ManualButton'
 import PortalModal from '@/components/ui/PortalModal'
+import { getPayslipBlockers, isPayslipSendReady, partitionPayslipBatch } from '@/lib/payslip-preflight'
 
 type PayrollRow = {
   id: string
@@ -35,6 +37,8 @@ type PayrollRow = {
   payslipSentStatus?: string | null
   payslipSentError?: string | null
   lineLinked?: boolean
+  /** Never the raw nationalId — see lib/payslip-preflight.ts / lib/national-id.ts */
+  nationalIdStatus?: 'MASKED' | 'MISSING' | 'INVALID'
 }
 
 type LateSummary = {
@@ -50,6 +54,7 @@ type Props = {
   totalEmployees?: number
   filterBranchId?: string
   canApprove?: boolean
+  cloudinaryConfigured?: boolean
 }
 
 const MONTH_NAMES = [
@@ -75,6 +80,7 @@ export default function PayrollClient({
   totalEmployees,
   filterBranchId,
   canApprove = false,
+  cloudinaryConfigured = true,
 }: Props) {
   const [month, setMonth] = useState(initMonth)
   const [year, setYear] = useState(initYear)
@@ -87,6 +93,8 @@ export default function PayrollClient({
   const [sendingBatch, setSendingBatch] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [approvingBatch, setApprovingBatch] = useState(false)
+  const [showSendAllModal, setShowSendAllModal] = useState(false)
+  const [showBlockedList, setShowBlockedList] = useState(false)
 
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
@@ -175,12 +183,9 @@ export default function PayrollClient({
   }
 
   const sendSlipLine = async (row: PayrollRow) => {
-    if (!row.hasPayroll || row.status !== 'APPROVED') {
-      toast.error('ต้องอนุมัติ payroll ก่อนส่งสลิป')
-      return
-    }
-    if (!row.lineLinked) {
-      toast.error('พนักงานยังไม่ได้เชื่อม LINE OA')
+    const blockers = getPayslipBlockers(row)
+    if (blockers.length > 0) {
+      toast.error(blockers[0].action)
       return
     }
     const isResend = row.payslipSentStatus === 'SUCCESS'
@@ -219,32 +224,32 @@ export default function PayrollClient({
     setSendingId(null)
   }
 
-  const sendAllSlipsLine = async () => {
-    const approved = payrolls.filter((p) => p.hasPayroll && p.status === 'APPROVED')
-    const linked = approved.filter((p) => p.lineLinked)
-    const pending = linked.filter((p) => p.payslipSentStatus !== 'SUCCESS')
-    if (pending.length === 0) {
-      toast.error(linked.length > 0 ? 'ส่งสลิปครบแล้วทุกคนที่เชื่อม LINE' : 'ไม่มีพนักงานที่อนุมัติแล้วและเชื่อม LINE')
+  // Shared by the banner, the pre-send modal, and the actual send — a row only ever
+  // gets attempted once it has zero blockers, so a known-to-fail send is never sent.
+  const { eligible: eligibleToSendRows, blocked: blockedRows, alreadySent } = partitionPayslipBatch(payrolls)
+  const alreadySentCount = alreadySent.length
+
+  const sendAllSlipsLine = () => {
+    if (eligibleToSendRows.length === 0) {
+      toast.error(alreadySentCount > 0 ? 'ส่งสลิปครบแล้วทุกคนที่พร้อมส่ง' : 'ไม่มีพนักงานที่พร้อมส่งสลิปตอนนี้')
       return
     }
-    const skippedNoLine = approved.length - linked.length
-    const alreadySent = linked.length - pending.length
-    const okConfirm = window.confirm(
-      `ส่งสลิปเงินเดือนผ่าน LINE ให้พนักงาน ${pending.length} คน?` +
-        (alreadySent > 0 ? `\n(ข้าม ${alreadySent} คนที่ส่งแล้ว)` : '') +
-        (skippedNoLine > 0 ? `\n(ข้าม ${skippedNoLine} คนที่ยังไม่เชื่อม LINE)` : '') +
-        `\n\nPDF จะถูกเข้ารหัสด้วยเลขบัตรประชาชน 4 ตัวท้าย`,
-    )
-    if (!okConfirm) return
+    setShowSendAllModal(true)
+  }
+
+  const confirmSendAllSlipsLine = async () => {
+    setShowSendAllModal(false)
+    if (eligibleToSendRows.length === 0) return
 
     setSendingBatch(true)
-    const anchor = pending[0]
+    const anchor = eligibleToSendRows[0]
+    const excludeUserIds = blockedRows.map((p) => p.userId)
     let totalSent = 0
     let totalFailed = 0
     let hasMore = true
     let batchError: string | null = null
 
-    // offset 0 ทุกรอบ — SUCCESS ถูก exclude ฝั่ง server; FAILED ยังอยู่ใน queue
+    // offset 0 ทุกรอบ — SUCCESS/blocked ถูก exclude ฝั่ง server; FAILED ยังอยู่ใน queue
     while (hasMore) {
       const { ok, data, status } = await apiJson<{
         sent?: number
@@ -259,6 +264,7 @@ export default function PayrollClient({
         body: JSON.stringify({
           payrollId: anchor.id,
           offset: 0,
+          excludeUserIds,
           ...(filterBranchId ? { branchId: filterBranchId } : {}),
         }),
       })
@@ -477,6 +483,70 @@ export default function PayrollClient({
         </div>
       </div>
 
+      {!cloudinaryConfigured && (
+        <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-sm text-red-400">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          ระบบยังไม่ได้ตั้งค่า Cloudinary — ส่งสลิปไม่ได้เลยตอนนี้ (ทุกคน) กรุณาติดต่อ IT
+        </div>
+      )}
+
+      {blockedRows.length > 0 && (
+        <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-4 space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowBlockedList((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 text-sm text-amber-400 font-medium"
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              ส่งสลิปไม่ได้ตอนนี้ {blockedRows.length} คน
+            </span>
+            <span className="text-xs text-amber-400/70">{showBlockedList ? 'ซ่อนรายชื่อ' : 'ดูรายชื่อ'}</span>
+          </button>
+          <p className="text-[11px] text-amber-400/60 pl-6">แยกตามสาเหตุ (หนึ่งคนอาจติดหลายข้อพร้อมกัน ตัวเลขข้างล่างจึงรวมกันได้มากกว่า {blockedRows.length}):</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-400/80 pl-6">
+            {Object.values(
+              blockedRows
+                .flatMap((p) => getPayslipBlockers(p))
+                .reduce<Record<string, { label: string; count: number }>>((acc, b) => {
+                  acc[b.code] = { label: b.label, count: (acc[b.code]?.count ?? 0) + 1 }
+                  return acc
+                }, {}),
+            ).map((entry) => (
+              <span key={entry.label}>
+                {entry.label} {entry.count} คน
+              </span>
+            ))}
+          </div>
+          {showBlockedList && (
+            <div className="pt-2 space-y-1.5 border-t border-amber-500/20">
+              {blockedRows.map((p) => (
+                <div key={p.userId} className="flex items-center justify-between gap-2 text-xs">
+                  <Link
+                    href={`/employees/${p.userId}`}
+                    target="_blank"
+                    className="text-slate-700 dark:text-white/80 hover:underline truncate"
+                  >
+                    {p.name}
+                  </Link>
+                  <span className="flex flex-wrap gap-1 justify-end">
+                    {getPayslipBlockers(p).map((b) => (
+                      <span
+                        key={b.code}
+                        title={b.action}
+                        className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-[11px] cursor-help"
+                      >
+                        {b.label}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-slate-500 dark:text-white/45 px-1">
         พนักงานที่ยังไม่ได้เชื่อม LINE OA ให้แอดบอท LINE แล้วส่งรหัส 6 หลัก
       </p>
@@ -581,8 +651,8 @@ export default function PayrollClient({
                 <button
                   type="button"
                   onClick={() => sendSlipLine(p)}
-                  disabled={sendingId === p.id || sendingBatch || !p.lineLinked}
-                  title={!p.lineLinked ? 'พนักงานยังไม่ได้เชื่อม LINE OA' : undefined}
+                  disabled={sendingId === p.id || sendingBatch || !isPayslipSendReady(p)}
+                  title={getPayslipBlockers(p)[0]?.action}
                   className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl text-sm font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50 transition"
                 >
                   {sendingId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
@@ -707,8 +777,8 @@ export default function PayrollClient({
                         <button
                           type="button"
                           onClick={() => sendSlipLine(p)}
-                          disabled={sendingId === p.id || sendingBatch || !p.lineLinked}
-                          title={!p.lineLinked ? 'พนักงานยังไม่ได้เชื่อม LINE OA' : undefined}
+                          disabled={sendingId === p.id || sendingBatch || !isPayslipSendReady(p)}
+                          title={getPayslipBlockers(p)[0]?.action}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50 transition"
                         >
                           {sendingId === p.id ? (
@@ -764,6 +834,81 @@ export default function PayrollClient({
               lateDays={detailRow.lateDays}
               lateDeductionDetail={detailRow.lateDeductionDetail}
             />
+        </PortalModal>
+      )}
+
+      {showSendAllModal && (
+        <PortalModal
+          onClose={() => setShowSendAllModal(false)}
+          ariaLabel="ยืนยันส่งสลิปเงินเดือนผ่าน LINE"
+          panelClassName="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[85dvh] flex flex-col"
+        >
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">ยืนยันส่งสลิปเงินเดือนผ่าน LINE</h2>
+          </div>
+          <div className="p-6 space-y-4 overflow-y-auto">
+            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+              ส่งได้ {eligibleToSendRows.length} คน
+            </div>
+            {alreadySentCount > 0 && (
+              <p className="text-xs text-slate-500 dark:text-white/50">(ข้าม {alreadySentCount} คนที่ส่งสำเร็จแล้ว)</p>
+            )}
+            {blockedRows.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  ข้าม {blockedRows.length} คน (ส่งไม่ได้)
+                </p>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {blockedRows.map((p) => (
+                    <div
+                      key={p.userId}
+                      className="flex items-center justify-between gap-2 text-xs border-b border-gray-100 dark:border-white/5 pb-1.5"
+                    >
+                      <Link
+                        href={`/employees/${p.userId}`}
+                        target="_blank"
+                        className="text-slate-700 dark:text-white/80 hover:underline truncate"
+                      >
+                        {p.name}
+                      </Link>
+                      <span className="flex flex-wrap gap-1 justify-end">
+                        {getPayslipBlockers(p).map((b) => (
+                          <span
+                            key={b.code}
+                            title={b.action}
+                            className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] cursor-help"
+                          >
+                            {b.label}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-slate-500 dark:text-white/50">
+              PDF จะถูกเข้ารหัสด้วยเลขบัตรประชาชน 4 ตัวท้ายของแต่ละคน
+            </p>
+          </div>
+          <div className="p-6 pt-4 flex gap-3 justify-end border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => setShowSendAllModal(false)}
+              className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={confirmSendAllSlipsLine}
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold"
+            >
+              ส่งให้ {eligibleToSendRows.length} คน
+            </button>
+          </div>
         </PortalModal>
       )}
     </div>

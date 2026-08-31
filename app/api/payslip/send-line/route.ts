@@ -23,6 +23,9 @@ const bodySchema = z.object({
   forceResend: z.boolean().optional(),
   offset: z.number().int().min(0).optional(),
   limit: z.number().int().min(1).max(BATCH_CHUNK).optional(),
+  /** Pre-flight-excluded userIds (e.g. no LINE / no valid nationalId) — never even
+   *  attempted, so they can't burn a lock/attempt that's known to fail. Bulk mode only. */
+  excludeUserIds: z.array(z.string()).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { payrollId, userId, branchId, forceResend, offset = 0, limit } = parsed.data
+    const { payrollId, userId, branchId, forceResend, offset = 0, limit, excludeUserIds } = parsed.data
 
     await ensurePayrollPayslipColumns()
 
@@ -110,6 +113,7 @@ export async function POST(req: NextRequest) {
       year: anchor.year,
       status: 'APPROVED' as const,
       ...(userId ? { userId } : {}),
+      ...(!userId && excludeUserIds?.length ? { userId: { notIn: excludeUserIds } } : {}),
       ...(userRelationFilter ? { user: userRelationFilter } : {}),
       ...(!forceResend && !userId
         ? {
