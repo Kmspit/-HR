@@ -484,7 +484,8 @@ model User {
   warningsIssued   Warning[]           @relation("WarningsIssued")
   warningsApproved Warning[]           @relation("WarningApprovedBy")
   warningsRejected Warning[]           @relation("WarningRejectedBy")
-  payrolls        Payroll[]
+  payrolls        Payroll[]           @relation("PayrollUser")
+  payrollsDeleted Payroll[]           @relation("PayrollDeletedBy")
   holidaysCreated CompanyHoliday[]  @relation("HolidayCreator")
   savedWorkPlaces     SavedWorkPlace[]
   device              UserDevice?
@@ -495,7 +496,8 @@ model User {
   outsideWorkStepActions   OutsideWorkApprovalStep[] @relation("OutsideStepActor")
   weeklyPlanStepActions    WeeklyPlanApprovalStep[]  @relation("WeeklyPlanStepActor")
   forgotScanStepActions    ForgotScanApprovalStep[]  @relation("ForgotScanStepActor")
-  salarySlips         SalarySlip[]
+  salarySlips         SalarySlip[]        @relation("SalarySlipUser")
+  salarySlipsDeleted  SalarySlip[]        @relation("SalarySlipDeletedBy")
   taxHistories        TaxHistory[]
   probationEvaluation      ProbationEvaluation?
   probationEvaluationsGiven ProbationEvaluation[] @relation("ProbationEvaluator")
@@ -1125,33 +1127,41 @@ model Payroll {
   approvedById    String?
   approvedAt      DateTime?
   note            String?
+  deletedAt       DateTime? @map("deleted_at")    // soft-delete — สลิปเงินเดือนต้องเก็บตามกฎหมายแรงงานอย่างน้อย 2 ปี ห้าม hard delete
+  deletedById     String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id])
+  user       User        @relation("PayrollUser", fields: [userId], references: [id])
+  deletedBy  User?       @relation("PayrollDeletedBy", fields: [deletedById], references: [id])
   salarySlip SalarySlip?
 
   @@unique([userId, month, year])
+  @@index([deletedAt])
   @@map("payrolls")
 }
 
 // ── SALARY SLIPS ────────────────────────────────
 
 model SalarySlip {
-  id        String   @id @default(cuid())
-  payrollId String   @unique
-  userId    String
-  month     Int
-  year      Int
-  pdfBase64 String?
-  issuedAt  DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  payrollId   String    @unique
+  userId      String
+  month       Int
+  year        Int
+  pdfBase64   String?
+  issuedAt    DateTime  @default(now())
+  deletedAt   DateTime? @map("deleted_at")    // soft-delete — เก็บคู่กับ Payroll ที่ลบ (ไม่ใช้ onDelete: Cascade ของ payroll เพราะ cascade ทำงานเฉพาะ hard delete)
+  deletedById String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id])
+  payroll   Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  user      User    @relation("SalarySlipUser", fields: [userId], references: [id])
+  deletedBy User?   @relation("SalarySlipDeletedBy", fields: [deletedById], references: [id])
 
   @@unique([userId, month, year])
+  @@index([deletedAt])
   @@map("salary_slips")
 }
 

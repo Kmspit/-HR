@@ -410,6 +410,46 @@ describe('POST /api/payslip/send-line', () => {
 
 
 
+  it('returns 404 when anchor payroll is soft-deleted', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      month: 6,
+      year: 2026,
+      userId: 'u1',
+      deletedAt: new Date('2026-08-01'),
+    } as never)
+
+    const res = await POST(makePostReq({ payrollId: 'pay-1' }))
+    expect(res.status).toBe(404)
+    const data = await res.json()
+    expect(data.error).toBe('ไม่พบ payroll')
+  })
+
+  it('filters soft-deleted rows out of the batch query', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      month: 6,
+      year: 2026,
+      userId: 'u1',
+    } as never)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([{ id: 'pay-1', userId: 'u1' }] as never)
+
+    await POST(makePostReq({ payrollId: 'pay-1', branchId: 'branch-a' }))
+
+    expect(prisma.payroll.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ deletedAt: null }),
+      }),
+    )
+    expect(prisma.payroll.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ deletedAt: null }),
+      }),
+    )
+  })
+
   it('sends single employee with proxy download URL in flex', async () => {
 
     vi.mocked(auth).mockResolvedValue(hrSession as never)
@@ -769,6 +809,30 @@ describe('sendPayslipViaLineForPayroll', () => {
 
     )
 
+  })
+
+  it('treats a soft-deleted payroll as not found', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1',
+      userId: 'u1',
+      month: 6,
+      year: 2026,
+      status: 'APPROVED',
+      payslipSentStatus: null,
+      deletedAt: new Date('2026-08-01'),
+      user: {
+        id: 'u1',
+        name: 'Test User',
+        nationalId: '1234567890123',
+        lineUserId: 'U12345678901234567890123456789012',
+      },
+    } as never)
+
+    const result = await sendPayslipViaLineForPayroll('pay-1')
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('ไม่พบข้อมูล payroll')
+    expect(buildPayrollSlipPdfBuffer).not.toHaveBeenCalled()
   })
 
   it('skips when already SUCCESS without forceResend', async () => {

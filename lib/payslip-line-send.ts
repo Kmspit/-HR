@@ -183,6 +183,7 @@ export async function sendPayslipViaLineForPayroll(
       year: true,
       status: true,
       payslipSentStatus: true,
+      deletedAt: true,
       user: {
         select: {
           id: true,
@@ -201,7 +202,7 @@ export async function sendPayslipViaLineForPayroll(
     ok: false,
   }
 
-  if (!payroll) {
+  if (!payroll || payroll.deletedAt) {
     return { ...base, error: 'ไม่พบข้อมูล payroll' }
   }
 

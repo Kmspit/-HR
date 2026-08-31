@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       if (!targetUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const payrolls = await prisma.payroll.findMany({
-      where: { month, year, userId },
+      where: { month, year, userId, deletedAt: null },
       include: {
         user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
       },
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 
   if (!isPayrollAdmin) {
     const payrolls = await prisma.payroll.findMany({
-      where: { month, year, userId: session.user.id },
+      where: { month, year, userId: session.user.id, deletedAt: null },
       include: {
         user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
       },
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       orderBy: { name: 'asc' },
     }),
     prisma.payroll.findMany({
-      where: { month, year, ...(nestedUser ? { user: nestedUser } : {}) },
+      where: { month, year, deletedAt: null, ...(nestedUser ? { user: nestedUser } : {}) },
       include: {
         user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
       },
@@ -185,9 +185,9 @@ export async function PATCH(req: NextRequest) {
 
   const existing = await prisma.payroll.findUnique({
     where: { id },
-    select: { id: true, userId: true, month: true, year: true, status: true },
+    select: { id: true, userId: true, month: true, year: true, status: true, deletedAt: true },
   })
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!existing || existing.deletedAt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const targetInScope = await prisma.user.findFirst({
     where: branchUserWhere(scope, { id: existing.userId }),
@@ -241,16 +241,32 @@ export async function PATCH(req: NextRequest) {
     }
 
     try {
-      await prisma.salarySlip.upsert({
+      // Same collision as generate/route.ts's payroll upsert: an upsert keyed on
+      // payrollId would silently resurrect a soft-deleted slip (its deletedAt
+      // stays set while issuedAt gets refreshed — a stuck half-deleted row).
+      // Should never happen given payroll+slip are always deleted together in
+      // the same transaction (see soft-delete step 3), but if the invariant
+      // is ever violated, refuse rather than write over it.
+      const existingSlip = await prisma.salarySlip.findUnique({
         where: { payrollId: payroll.id },
-        create: {
-          payrollId: payroll.id,
-          userId: payroll.userId,
-          month: payroll.month,
-          year: payroll.year,
-        },
-        update: { issuedAt: new Date() },
+        select: { id: true, deletedAt: true },
       })
+      if (existingSlip?.deletedAt) {
+        console.error('[payroll approve] salary slip already soft-deleted — skipping upsert', {
+          payrollId: payroll.id, slipId: existingSlip.id,
+        })
+      } else {
+        await prisma.salarySlip.upsert({
+          where: { payrollId: payroll.id },
+          create: {
+            payrollId: payroll.id,
+            userId: payroll.userId,
+            month: payroll.month,
+            year: payroll.year,
+          },
+          update: { issuedAt: new Date() },
+        })
+      }
     } catch { /* ignore slip errors — non-critical */ }
   }
 
