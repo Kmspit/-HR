@@ -22,6 +22,10 @@ vi.mock('@/lib/api-handler', () => ({
   apiError: (err: unknown) => new Response(JSON.stringify({ error: String(err) }), { status: 500 }),
 }))
 
+vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
+  ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/utils', () => ({
   monthDateRange: vi.fn().mockReturnValue({ start: new Date('2025-01-01'), end: new Date('2025-01-31') }),
 }))
@@ -145,6 +149,31 @@ describe('POST /api/payroll/generate — does not overwrite APPROVED payroll', (
     expect(data.skippedApproved).toEqual([]) // top-level check didn't catch it
     expect(data.message).toContain('พนักงาน หนึ่ง') // but the race-skip did
 
+    const upsertCalls = vi.mocked(prisma.payroll.upsert).mock.calls
+    expect(upsertCalls).toHaveLength(1)
+    expect(upsertCalls[0][0].where).toEqual({ userId_month_year: { userId: 'emp-2', month: 1, year: 2025 } })
+  })
+
+  it('rejects regenerating over a soft-deleted payroll instead of resurrecting it', async () => {
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    // The in-transaction re-check finds emp-1's row soft-deleted.
+    vi.mocked(prisma.payroll.findUnique).mockImplementation(({ where }: any) => {
+      if (where.userId_month_year.userId === 'emp-1') {
+        return Promise.resolve({ status: 'DRAFT', deletedAt: new Date('2026-08-01') }) as any
+      }
+      return Promise.resolve({ status: 'DRAFT', deletedAt: null }) as any
+    })
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.count).toBe(1) // only emp-2 written
+    expect(data.deletedSkipped).toEqual(['พนักงาน หนึ่ง'])
+    expect(data.deletedWarning).toContain('ต้องกู้คืนก่อนถึงจะคำนวณใหม่ได้')
+    expect(data.deletedWarning).toContain('พนักงาน หนึ่ง')
+
+    // emp-1's soft-deleted row must never be touched by upsert.
     const upsertCalls = vi.mocked(prisma.payroll.upsert).mock.calls
     expect(upsertCalls).toHaveLength(1)
     expect(upsertCalls[0][0].where).toEqual({ userId_month_year: { userId: 'emp-2', month: 1, year: 2025 } })

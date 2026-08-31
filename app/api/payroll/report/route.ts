@@ -241,16 +241,32 @@ export async function PATCH(req: NextRequest) {
     }
 
     try {
-      await prisma.salarySlip.upsert({
+      // Same collision as generate/route.ts's payroll upsert: an upsert keyed on
+      // payrollId would silently resurrect a soft-deleted slip (its deletedAt
+      // stays set while issuedAt gets refreshed — a stuck half-deleted row).
+      // Should never happen given payroll+slip are always deleted together in
+      // the same transaction (see soft-delete step 3), but if the invariant
+      // is ever violated, refuse rather than write over it.
+      const existingSlip = await prisma.salarySlip.findUnique({
         where: { payrollId: payroll.id },
-        create: {
-          payrollId: payroll.id,
-          userId: payroll.userId,
-          month: payroll.month,
-          year: payroll.year,
-        },
-        update: { issuedAt: new Date() },
+        select: { id: true, deletedAt: true },
       })
+      if (existingSlip?.deletedAt) {
+        console.error('[payroll approve] salary slip already soft-deleted — skipping upsert', {
+          payrollId: payroll.id, slipId: existingSlip.id,
+        })
+      } else {
+        await prisma.salarySlip.upsert({
+          where: { payrollId: payroll.id },
+          create: {
+            payrollId: payroll.id,
+            userId: payroll.userId,
+            month: payroll.month,
+            year: payroll.year,
+          },
+          update: { issuedAt: new Date() },
+        })
+      }
     } catch { /* ignore slip errors — non-critical */ }
   }
 

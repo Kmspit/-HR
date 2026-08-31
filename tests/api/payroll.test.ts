@@ -8,6 +8,8 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     payroll:      { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    salarySlip:   { findUnique: vi.fn(), upsert: vi.fn() },
+    taxHistory:   { upsert: vi.fn() },
     user:         { findMany: vi.fn(), findFirst: vi.fn() },
     leave:        { findMany: vi.fn() },
     attendance:   { findMany: vi.fn() },
@@ -219,5 +221,49 @@ describe('PATCH /api/payroll/report branch scope', () => {
     const res = await reportPatch(req)
     expect(res.status).toBe(404)
     expect(prisma.payroll.update).not.toHaveBeenCalled()
+  })
+
+  function makeApproveReq() {
+    return new NextRequest('http://localhost/api/payroll/report', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'pay-1', status: 'APPROVED' }),
+    })
+  }
+
+  it('skips the salary slip upsert when an existing slip is soft-deleted — never writes over it', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1', userId: 'emp-1', month: 1, year: 2025, status: 'PENDING', deletedAt: null,
+    } as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'emp-1' } as any)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({
+      id: 'pay-1', userId: 'emp-1', month: 1, year: 2025, taxDetail: null,
+    } as any)
+    vi.mocked(prisma.salarySlip.findUnique).mockResolvedValue({
+      id: 'slip-1', deletedAt: new Date('2026-08-01'),
+    } as any)
+
+    const res = await reportPatch(makeApproveReq())
+    expect(res.status).toBe(200)
+    expect(prisma.salarySlip.upsert).not.toHaveBeenCalled()
+  })
+
+  it('upserts the salary slip normally when no soft-deleted slip exists', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      id: 'pay-1', userId: 'emp-1', month: 1, year: 2025, status: 'PENDING', deletedAt: null,
+    } as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'emp-1' } as any)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({
+      id: 'pay-1', userId: 'emp-1', month: 1, year: 2025, taxDetail: null,
+    } as any)
+    vi.mocked(prisma.salarySlip.findUnique).mockResolvedValue(null as any)
+
+    const res = await reportPatch(makeApproveReq())
+    expect(res.status).toBe(200)
+    expect(prisma.salarySlip.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { payrollId: 'pay-1' } }),
+    )
   })
 })

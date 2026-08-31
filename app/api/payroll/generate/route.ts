@@ -12,6 +12,7 @@ import {
 } from '@/lib/payroll-late-deduction'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
 import type { HolidayRecord } from '@/lib/company-holidays'
+import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -33,6 +34,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id || !(GENERATE_ROLES as readonly string[]).includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    await ensurePayrollPayslipColumns()
+
     const { month, year, branchId: filterBranchId } = await req.json()
     if (!month || !year) {
       return NextResponse.json({ error: 'month and year required' }, { status: 400 })
@@ -161,6 +165,10 @@ export async function POST(req: NextRequest) {
     // `existingApproved` read above and this employee's write below — caught
     // by the fresh in-transaction status re-check just before the upsert.
     const raceSkippedNames: string[] = []
+    // Employees whose payroll for this key was soft-deleted (legally retained,
+    // cancelled) — the upsert must never silently resurrect it by overwriting
+    // deletedAt-still-set data with fresh DRAFT numbers.
+    const deletedSkippedNames: string[] = []
 
     const results = await Promise.all(
       pendingEmployees.map(async (emp) => {
@@ -264,8 +272,12 @@ export async function POST(req: NextRequest) {
         return prisma.$transaction(async (tx) => {
           const current = await tx.payroll.findUnique({
             where: { userId_month_year: { userId: emp.id, month, year } },
-            select: { status: true },
+            select: { status: true, deletedAt: true },
           })
+          if (current?.deletedAt) {
+            deletedSkippedNames.push(emp.name)
+            return null
+          }
           if (current?.status === 'APPROVED') {
             raceSkippedNames.push(emp.name)
             return null
@@ -293,6 +305,10 @@ export async function POST(req: NextRequest) {
       disabledIncluded: disabledIncluded.map((e) => ({ userId: e.id, name: e.name })),
       ...(allSkippedNames.length > 0 && {
         message: `ข้าม ${allSkippedNames.length} รายการที่อนุมัติแล้ว (ไม่คำนวณทับ): ${allSkippedNames.join(', ')}`,
+      }),
+      ...(deletedSkippedNames.length > 0 && {
+        deletedSkipped: deletedSkippedNames,
+        deletedWarning: `ต้องกู้คืนก่อนถึงจะคำนวณใหม่ได้ — ${deletedSkippedNames.length} รายการถูกลบไปแล้ว: ${deletedSkippedNames.join(', ')}`,
       }),
       ...(disabledIncluded.length > 0 && {
         disabledWarning:

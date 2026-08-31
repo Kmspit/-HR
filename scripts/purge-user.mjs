@@ -9,6 +9,7 @@
 import { config } from 'dotenv'
 import { resolve } from 'path'
 import { createInterface } from 'readline'
+import { pathToFileURL } from 'url'
 
 config({ path: resolve(process.cwd(), '.env') })
 
@@ -43,6 +44,30 @@ async function findUser(ref) {
   const byId = await prisma.user.findUnique({ where: { id: ref } })
   if (byId) return byId
   return prisma.user.findUnique({ where: { email: ref } })
+}
+
+/**
+ * This script hard-deletes — it should only ever run against test accounts.
+ * Block on any data a real employee would have that can't be recreated:
+ * payroll (legally retained, counts soft-deleted rows too since those are
+ * still real payslip history), disciplinary warnings, tax history, and any
+ * audit log where this user is the actor (their action history).
+ */
+async function checkPurgeGuard(db, userId) {
+  const [payrolls, warnings, taxHistories, auditLogsAsActor] = await Promise.all([
+    db.payroll.count({ where: { userId } }),
+    db.warning.count({ where: { userId } }),
+    db.taxHistory.count({ where: { userId } }),
+    db.auditLog.count({ where: { actorId: userId } }),
+  ])
+
+  const found = []
+  if (payrolls > 0) found.push({ label: 'payroll', count: payrolls })
+  if (warnings > 0) found.push({ label: 'warnings (เอกสารวินัย)', count: warnings })
+  if (taxHistories > 0) found.push({ label: 'tax_histories (เอกสารภาษี)', count: taxHistories })
+  if (auditLogsAsActor > 0) found.push({ label: 'audit_logs ที่เป็น actor', count: auditLogsAsActor })
+
+  return found
 }
 
 async function purgeUser(db, userId) {
@@ -169,6 +194,15 @@ async function main() {
 
   console.log('พบผู้ใช้:', user.name, `(${user.email})`, 'id:', user.id, 'status:', user.status)
 
+  const blockers = await checkPurgeGuard(prisma, user.id)
+  if (blockers.length > 0) {
+    console.error(
+      '✗ ปฏิเสธ — บัญชีนี้มีข้อมูลที่กู้คืนไม่ได้ สคริปต์นี้ใช้ลบได้เฉพาะบัญชีทดสอบเท่านั้น:',
+    )
+    for (const b of blockers) console.error(`  - ${b.label}: ${b.count} รายการ`)
+    process.exit(1)
+  }
+
   if (dryRun) {
     const related = {
       attendances: await prisma.attendance.count({ where: { userId: user.id } }),
@@ -202,9 +236,16 @@ async function main() {
   console.log('✓ ลบ user แล้ว —', user.email)
 }
 
-main()
-  .catch((e) => {
-    console.error('ล้มเหลว:', e.message)
-    process.exit(1)
-  })
-  .finally(() => prisma.$disconnect())
+export { checkPurgeGuard }
+
+// Running as a script (not imported for its exports, e.g. by tests) — skip
+// `main()` on import so requiring this module never touches the DB or exits
+// the process as a side effect.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .catch((e) => {
+      console.error('ล้มเหลว:', e.message)
+      process.exit(1)
+    })
+    .finally(() => prisma.$disconnect())
+}
