@@ -15,7 +15,12 @@ import { requireAuth, requireOrgScope, requireEditOrgScope, isGuardResponse } fr
 import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
 import { HR_ADMIN } from '@/lib/module-gates'
+import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
 import type { Role, UserStatus } from '@prisma/client'
+
+function requestIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -57,6 +62,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const scopeCheck = await requireEditOrgScope(id)
       if (isGuardResponse(scopeCheck)) return scopeCheck
     }
+
+    const beforeAudit = await prisma.user.findUnique({ where: { id }, select: EMPLOYEE_AUDIT_SELECT })
 
     const body = await req.json()
 
@@ -230,6 +237,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const user = await prisma.user.update({ where: { id }, data, select: SAFE_USER_SELECT })
     if (shouldRevokeSession) await bumpSessionEpoch(id)
+
+    if (beforeAudit) {
+      const afterAudit = await prisma.user.findUnique({ where: { id }, select: EMPLOYEE_AUDIT_SELECT })
+      if (afterAudit) {
+        await logEmployeeUpdateIfChanged({
+          actorId: session.user.id,
+          targetId: id,
+          before: snapshotEmployeeForAudit(beforeAudit),
+          after: snapshotEmployeeForAudit(afterAudit),
+          ip: requestIp(req),
+          userAgent: req.headers.get('user-agent') ?? undefined,
+        })
+      }
+    }
+
     return NextResponse.json({ user })
   } catch (err) {
     return apiError(err)

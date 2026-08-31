@@ -24,10 +24,15 @@ vi.mock('@/lib/session-epoch', () => ({
   bumpSessionEpoch: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/notifications', () => ({
+  createAuditLog: vi.fn().mockResolvedValue(undefined),
+}))
+
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createAuditLog } from '@/lib/notifications'
 import { PATCH } from '@/app/api/users/[id]/route'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -174,5 +179,122 @@ describe('PATCH /api/users/[id] — protected fields (nationalId, startDate, emp
       expect(res.status).toBe(200)
       expect(updateData()).not.toHaveProperty('employeeId')
     })
+  })
+})
+
+describe('PATCH /api/users/[id] — admin-edit audit log (targetType User, action UPDATE)', () => {
+  function baseAuditRow(overrides: Record<string, unknown> = {}) {
+    return {
+      email: 'emp9@co.com', phone: '0812345678', name: 'พนักงาน เก้า', nameEn: null,
+      nickname: null, prefix: null, address: null, addressIdCard: null,
+      birthDate: null, nationalId: '1111111111111', lineId: null,
+      role: 'EMPLOYEE', status: 'ACTIVE', startDate: null,
+      department: 'IT', position: 'Dev', employeeType: 'permanent_employee',
+      managerId: null, teamLeaderId: null, baseSalary: 30000,
+      socialSecurity: true, isCoworker: false, divisionId: 'div-1', sectionId: null,
+      ...overrides,
+    }
+  }
+
+  const scopeCheckRow = { branchId: 'b1', managerId: null, teamLeaderId: null }
+
+  function mockAuditSequence(before: Record<string, unknown>, after: Record<string, unknown>) {
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(scopeCheckRow as never) // HR org-scope check
+      .mockResolvedValueOnce(before as never)        // beforeAudit
+      .mockResolvedValueOnce(after as never)          // afterAudit
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: 'emp-9' } as never)
+  })
+
+  it('records a baseSalary change as plain numbers — never masked', async () => {
+    mockAuditSequence(baseAuditRow({ baseSalary: 30000 }), baseAuditRow({ baseSalary: 35000 }))
+
+    const res = await PATCH(makePatch('emp-9', { baseSalary: 35000 }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'hr-1',
+        targetId: 'emp-9',
+        targetType: 'User',
+        action: 'UPDATE',
+        before: expect.objectContaining({ baseSalary: 30000 }),
+        after: expect.objectContaining({ baseSalary: 35000 }),
+      }),
+    )
+  })
+
+  it('masks nationalId in the audit snapshot — the raw digits never appear anywhere in the payload', async () => {
+    mockAuditSequence(
+      baseAuditRow({ nationalId: '1111111111111' }),
+      baseAuditRow({ nationalId: '2222222222222' }),
+    )
+
+    await PATCH(makePatch('emp-9', { nationalId: '2222222222222' }), { params: params('emp-9') })
+
+    const call = vi.mocked(createAuditLog).mock.calls[0][0] as { before: unknown; after: unknown }
+    const raw = JSON.stringify(call)
+    expect(raw).not.toContain('1111111111111')
+    expect(raw).not.toContain('2222222222222')
+    expect((call.after as { nationalId: { masked: string; fp: string } }).nationalId.masked).toBeTruthy()
+  })
+
+  it('does not write an audit log when nothing actually changed', async () => {
+    const row = baseAuditRow()
+    mockAuditSequence(row, row)
+
+    await PATCH(makePatch('emp-9', { position: row.position }), { params: params('emp-9') })
+
+    expect(createAuditLog).not.toHaveBeenCalled()
+  })
+
+  it('records a role change', async () => {
+    mockAuditSequence(baseAuditRow({ role: 'EMPLOYEE' }), baseAuditRow({ role: 'TEAM_LEADER' }))
+
+    const res = await PATCH(makePatch('emp-9', { role: 'TEAM_LEADER' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: expect.objectContaining({ role: 'EMPLOYEE' }),
+        after: expect.objectContaining({ role: 'TEAM_LEADER' }),
+      }),
+    )
+  })
+
+  it('records a status change', async () => {
+    mockAuditSequence(baseAuditRow({ status: 'ACTIVE' }), baseAuditRow({ status: 'DISABLED' }))
+
+    const res = await PATCH(makePatch('emp-9', { status: 'DISABLED' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: expect.objectContaining({ status: 'ACTIVE' }),
+        after: expect.objectContaining({ status: 'DISABLED' }),
+      }),
+    )
+  })
+
+  it('records a managerId (org reporting line) change', async () => {
+    mockAuditSequence(
+      baseAuditRow({ managerId: null }),
+      baseAuditRow({ managerId: 'mgr-2' }),
+    )
+
+    await PATCH(makePatch('emp-9', { managerId: 'mgr-2' }), { params: params('emp-9') })
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: expect.objectContaining({ managerId: null }),
+        after: expect.objectContaining({ managerId: 'mgr-2' }),
+      }),
+    )
   })
 })
