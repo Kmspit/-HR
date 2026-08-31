@@ -58,6 +58,26 @@
 .dark .skeleton { @apply bg-slate-800/80; }
 .light .skeleton { @apply bg-slate-200/90; }
 
+/* Scrollable tables — must work at every viewport width, not just mobile: a wide
+ * data table (e.g. payroll's 11-column min-w-[1150px] table) needs this on desktop
+ * too. Previously lived entirely inside the @media(max-width:768px) block below,
+ * so it silently did nothing on any table only rendered at md: and up — overflow
+ * defaulted to visible, and the ancestor .glass-card's overflow-hidden clipped the
+ * table instead of letting it scroll. See payroll pre-flight table-overflow fix. */
+.table-scroll {
+  @apply overflow-x-auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll::after {
+  content: 'เลื่อนซ้าย-ขวา →';
+  display: block;
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 0 2px;
+}
+.dark .table-scroll::after { color: rgb(100 116 139); }
+.light .table-scroll::after { color: rgb(71 85 105); }
+
 /* ── Mobile utilities ── */
 @media (max-width: 768px) {
   /* Larger touch targets on mobile */
@@ -75,21 +95,13 @@
     @apply p-3.5;
   }
 
-  /* Scrollable tables */
+  /* Edge-to-edge bleed past the page's own padding, and swipe-snap — both only
+   * make sense on a mobile touch layout, unlike the scroll mechanics above which
+   * now apply everywhere. */
   .table-scroll {
-    @apply overflow-x-auto -mx-4 px-4;
-    -webkit-overflow-scrolling: touch;
+    @apply -mx-4 px-4;
     scroll-snap-type: x proximity;
   }
-  .table-scroll::after {
-    content: 'เลื่อนซ้าย-ขวา →';
-    display: block;
-    font-size: 12px;
-    text-align: center;
-    padding: 6px 0 2px;
-  }
-  .dark .table-scroll::after { color: rgb(100 116 139); }
-  .light .table-scroll::after { color: rgb(71 85 105); }
   .table-scroll table {
     @apply min-w-[480px];
   }
