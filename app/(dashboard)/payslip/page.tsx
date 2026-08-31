@@ -71,7 +71,7 @@ export default async function PayslipPage() {
     await ensurePayrollPayslipColumns()
 
     const payrolls = await prisma.payroll.findMany({
-      where: { userId: session.user.id, status: { in: ['APPROVED', 'SENT'] } },
+      where: { userId: session.user.id, status: { in: ['APPROVED', 'SENT'] }, deletedAt: null },
       select: PAYSLIP_PAYROLL_SELECT,
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
       take: 36,

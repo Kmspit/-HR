@@ -5,7 +5,7 @@ import PayrollClient from './PayrollClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { canAccessPage } from '@/lib/page-access'
-import { canApprovePayroll } from '@/lib/access-control'
+import { canApprovePayroll, PAYROLL_DELETE_ROLES } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { maskNationalId } from '@/lib/national-id'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
@@ -51,7 +51,7 @@ export default async function PayrollPage({
       orderBy: { name: 'asc' },
     }),
     prisma.payroll.findMany({
-      where: { month, year, ...(nestedUser ? { user: nestedUser } : {}) },
+      where: { month, year, deletedAt: null, ...(nestedUser ? { user: nestedUser } : {}) },
       include: {
         user: { select: { name: true, employeeId: true, department: true, position: true, socialSecurity: true } },
       },
@@ -136,6 +136,7 @@ export default async function PayrollPage({
         totalEmployees={employees.length}
         filterBranchId={branchParam}
         canApprove={canApprovePayroll(session.user.role)}
+        canDelete={PAYROLL_DELETE_ROLES.includes(session.user.role)}
         cloudinaryConfigured={isCloudinaryConfigured()}
       />
     </div>

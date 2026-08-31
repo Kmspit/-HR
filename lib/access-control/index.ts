@@ -249,6 +249,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/holidays':           HR_ADMIN,
   '/forgot-scan':        ALL_ROLES,
   '/payroll':            HR_CORE,
+  '/payroll/deleted':    PAYROLL_DELETE_ROLES,
   '/reports':            [...MGR_UP],
   '/payslip':            ALL_ROLES,
   '/employees':          EMPLOYEE_MGMT,

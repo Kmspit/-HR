@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle, AlertTriangle } from 'lucide-react'
+import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -54,6 +54,7 @@ type Props = {
   totalEmployees?: number
   filterBranchId?: string
   canApprove?: boolean
+  canDelete?: boolean
   cloudinaryConfigured?: boolean
 }
 
@@ -80,6 +81,7 @@ export default function PayrollClient({
   totalEmployees,
   filterBranchId,
   canApprove = false,
+  canDelete = false,
   cloudinaryConfigured = true,
 }: Props) {
   const [month, setMonth] = useState(initMonth)
@@ -95,6 +97,8 @@ export default function PayrollClient({
   const [approvingBatch, setApprovingBatch] = useState(false)
   const [showSendAllModal, setShowSendAllModal] = useState(false)
   const [showBlockedList, setShowBlockedList] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<PayrollRow | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const loadPayrolls = async (m: number, y: number) => {
     setLoading(true)
@@ -336,6 +340,21 @@ export default function PayrollClient({
     }
     await loadPayrolls(month, year)
     setApprovingBatch(false)
+  }
+
+  const confirmDeletePayroll = async () => {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    setDeletingId(target.id)
+    const { ok, data, status } = await apiJson(`/api/payroll/${target.id}`, { method: 'DELETE' })
+    if (ok) {
+      toast.success(`ลบ payroll ${target.name} แล้ว — กู้คืนได้ที่หน้า "payroll ที่ถูกลบ"`)
+      await loadPayrolls(month, year)
+    } else {
+      toast.error(apiErrorMessage(data, 'ลบไม่สำเร็จ', status))
+    }
+    setDeletingId(null)
+    setDeleteTarget(null)
   }
 
   const renderLineStatus = (p: PayrollRow) => {
@@ -659,6 +678,17 @@ export default function PayrollClient({
                   ส่ง LINE สลิปเงินเดือน
                 </button>
               )}
+              {canDelete && p.hasPayroll && (
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(p)}
+                  disabled={deletingId === p.id}
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition"
+                >
+                  {deletingId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  ลบ payroll
+                </button>
+              )}
             </div>
           )
         })}
@@ -681,10 +711,11 @@ export default function PayrollClient({
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">LINE</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">ส่งสลิป LINE</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>
+                {canDelete && <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
-              {loading && <TableSkeletonRows rows={6} cols={12} />}
+              {loading && <TableSkeletonRows rows={6} cols={canDelete ? 13 : 12} />}
               {!loading &&
                 payrolls.map((p) => (
                   <tr key={p.id} className={`table-row-hover ${!p.hasPayroll ? 'opacity-70' : ''}`}>
@@ -792,11 +823,33 @@ export default function PayrollClient({
                         <span className="text-white/20 text-xs">—</span>
                       )}
                     </td>
+                    {canDelete && (
+                      <td className="p-3 text-center">
+                        {p.hasPayroll ? (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(p)}
+                            disabled={deletingId === p.id}
+                            title="ลบ payroll"
+                            aria-label={`ลบ payroll ของ ${p.name}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition"
+                          >
+                            {deletingId === p.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="text-white/20 text-xs">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               {!loading && payrolls.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="p-8 text-center text-white/30">
+                  <td colSpan={canDelete ? 13 : 12} className="p-8 text-center text-white/30">
                     ยังไม่มีข้อมูล กด &quot;คำนวณ&quot; เพื่อสร้าง payroll
                   </td>
                 </tr>
@@ -907,6 +960,58 @@ export default function PayrollClient({
               className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold"
             >
               ส่งให้ {eligibleToSendRows.length} คน
+            </button>
+          </div>
+        </PortalModal>
+      )}
+
+      {deleteTarget && (
+        <PortalModal
+          onClose={() => (deletingId ? undefined : setDeleteTarget(null))}
+          ariaLabel="ยืนยันลบ payroll"
+          panelClassName="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md"
+        >
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+              <Trash2 className="w-4 h-4 text-red-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">ยืนยันลบ payroll</h2>
+              <p className="text-xs text-slate-500 dark:text-white/50 mt-0.5">สลิปเงินเดือนเป็นเอกสารที่กฎหมายกำหนดให้เก็บ — ลบแล้วยังกู้คืนได้</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-3">
+            <div className="rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 space-y-1">
+              <p className="font-medium text-slate-900 dark:text-white">{deleteTarget.name}</p>
+              <p className="text-sm text-slate-600 dark:text-white/60">
+                {MONTH_NAMES[month]} {year + 543}
+              </p>
+              <p className="text-sm font-semibold text-red-500">
+                ยอดสุทธิ ฿{deleteTarget.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-white/50">
+              รายการนี้จะย้ายไปหน้า &quot;payroll ที่ถูกลบ&quot; และกู้คืนได้ภายหลังโดยผู้มีสิทธิ์เท่านั้น
+              ลิงก์ดาวน์โหลดสลิปเดิม (ถ้าเคยส่งผ่าน LINE) จะใช้ไม่ได้อีกต่อไป
+            </p>
+          </div>
+          <div className="p-6 pt-0 flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={!!deletingId}
+              className="px-5 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeletePayroll}
+              disabled={!!deletingId}
+              className="flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+            >
+              {deletingId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              ลบ payroll
             </button>
           </div>
         </PortalModal>

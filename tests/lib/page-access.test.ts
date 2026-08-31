@@ -17,4 +17,19 @@ describe('canAccessPage', () => {
   it('allows LAWYER on weekly-plan', () => {
     expect(canAccessPage('LAWYER', '/weekly-plan')).toBe(true)
   })
+
+  it('allows SUPER_ADMIN and CEO on payroll/deleted (PAYROLL_DELETE_ROLES)', () => {
+    expect(canAccessPage('SUPER_ADMIN', '/payroll/deleted')).toBe(true)
+    expect(canAccessPage('CEO', '/payroll/deleted')).toBe(true)
+  })
+
+  it('blocks HR and MANAGER_HR on payroll/deleted — legally-retained docs are an executive decision', () => {
+    expect(canAccessPage('HR', '/payroll/deleted')).toBe(false)
+    expect(canAccessPage('MANAGER_HR', '/payroll/deleted')).toBe(false)
+  })
+
+  it('still allows HR_CORE roles on the regular payroll page — only the deleted view is narrower', () => {
+    expect(canAccessPage('HR', '/payroll')).toBe(true)
+    expect(canAccessPage('MANAGER_HR', '/payroll')).toBe(true)
+  })
 })
