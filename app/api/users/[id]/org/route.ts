@@ -12,6 +12,12 @@ import { syncUserLegacyDepartment, validateOrgAssignment } from '@/lib/user-org'
 
 import { createNotification } from '@/lib/notifications'
 
+import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
+
+function requestIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
@@ -60,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       where: { id },
 
-      select: { id: true, name: true, email: true, branchId: true, status: true },
+      select: { ...EMPLOYEE_AUDIT_SELECT, branchId: true },
 
     })
 
@@ -122,7 +128,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     await syncUserLegacyDepartment(id, departmentId)
 
-
+    const afterAudit = await prisma.user.findUnique({ where: { id }, select: EMPLOYEE_AUDIT_SELECT })
+    if (afterAudit) {
+      await logEmployeeUpdateIfChanged({
+        actorId: session.user.id,
+        targetId: id,
+        before: snapshotEmployeeForAudit(user),
+        after: snapshotEmployeeForAudit(afterAudit),
+        ip: requestIp(req),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+      })
+    }
 
     if (user.status === 'ACTIVE') {
 
