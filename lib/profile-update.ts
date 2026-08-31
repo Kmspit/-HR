@@ -38,6 +38,29 @@ export function normalizeNationalId(raw: string | null | undefined): string | nu
   return digits
 }
 
+/**
+ * Fields where clearing must be a deliberate, separate action — never a side effect of
+ * saving unrelated form fields. nationalId feeds the payslip PDF password
+ * (nationalIdPdfPassword), startDate feeds tenure/probation calculations, and employeeId
+ * appears on official documents — a blank value silently wiping any of these is a data-
+ * loss bug, not a valid "clear the field" request.
+ */
+export const PROTECTED_CLEAR_FIELDS: ReadonlySet<string> = new Set([
+  'nationalId',
+  'startDate',
+  'employeeId',
+])
+
+/**
+ * True when `key` is a protected field and `raw` is blank (absent/null/whitespace-only).
+ * Callers should skip writing the field entirely in this case — leave the existing DB
+ * value untouched — rather than normalize the blank value to null and write that.
+ */
+export function isBlankProtectedField(key: string, raw: unknown): boolean {
+  if (!PROTECTED_CLEAR_FIELDS.has(key)) return false
+  return raw == null || String(raw).trim() === ''
+}
+
 export function parseBirthDate(raw: string | null | undefined): Date | null | 'invalid' {
   if (raw == null || String(raw).trim() === '') return null
   const d = new Date(String(raw).trim())
@@ -72,7 +95,8 @@ export type ParsedSelfProfile =
         address: string | null
         addressIdCard: string | null
         birthDate: Date | null
-        nationalId: string | null
+        /** Present only when there's a valid value to write — see isBlankProtectedField. */
+        nationalId?: string
       }
     }
   | { ok: false; error: string }
@@ -97,8 +121,9 @@ export function parseSelfProfileInput(input: SelfProfileInput): ParsedSelfProfil
   const birthParsed = parseBirthDate(input.birthDate)
   if (birthParsed === 'invalid') return { ok: false, error: 'วันเกิดไม่ถูกต้อง' }
 
-  const nationalId = normalizeNationalId(input.nationalId)
-  if (input.nationalId != null && String(input.nationalId).trim() !== '' && !nationalId) {
+  const nationalIdBlank = isBlankProtectedField('nationalId', input.nationalId)
+  const nationalId = nationalIdBlank ? null : normalizeNationalId(input.nationalId)
+  if (!nationalIdBlank && !nationalId) {
     return { ok: false, error: 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก' }
   }
 
@@ -113,7 +138,8 @@ export function parseSelfProfileInput(input: SelfProfileInput): ParsedSelfProfil
       address: input.address?.trim() || null,
       addressIdCard: input.addressIdCard?.trim() || null,
       birthDate: birthParsed,
-      nationalId,
+      // blank input → key omitted entirely, so the update never touches the column
+      ...(nationalId ? { nationalId } : {}),
     },
   }
 }

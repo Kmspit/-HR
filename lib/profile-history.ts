@@ -1,3 +1,5 @@
+import { maskNationalId, nationalIdFingerprint } from '@/lib/national-id'
+
 /** ป้ายฟิลด์สำหรับประวัติการแก้ไขโปรไฟล์ */
 const PROFILE_FIELD_LABELS: Record<string, string> = {
   email: 'อีเมล',
@@ -23,6 +25,12 @@ function parseJsonObject(raw: string | null | undefined): Record<string, unknown
 }
 
 function formatValue(key: string, val: unknown): string {
+  if (key === 'nationalId') {
+    if (val == null) return '—'
+    if (typeof val === 'object') return (val as { masked?: string }).masked ?? '—'
+    // Rows written before masking existed stored the raw value — still never print it.
+    return maskNationalId(String(val)).display
+  }
   if (val == null || val === '') return '—'
   if (key === 'birthDate' && typeof val === 'string') {
     const d = new Date(val)
@@ -99,7 +107,10 @@ export function snapshotProfileForAudit(u: {
     nickname: u.nickname,
     address: u.address,
     birthDate: u.birthDate?.toISOString().slice(0, 10) ?? null,
-    nationalId: u.nationalId,
+    // Masked + a fingerprint (not the plaintext) — the fingerprint is what lets
+    // summarizeProfileChanges() detect a real edit even when two different national IDs
+    // happen to mask identically (they share a last digit). See nationalIdFingerprint().
+    nationalId: { masked: maskNationalId(u.nationalId).display, fp: nationalIdFingerprint(u.nationalId) },
     lineId: u.lineId,
     profileImage: u.profileImage ? '(มีรูป)' : null,
   }

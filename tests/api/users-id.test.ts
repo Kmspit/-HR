@@ -101,3 +101,78 @@ describe('PATCH /api/users/[id] — editing another user requires canManageUserP
     )
   })
 })
+
+describe('PATCH /api/users/[id] — protected fields (nationalId, startDate, employeeId) never get silently cleared', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    // HR editing someone else needs the org-scope lookup to resolve.
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ branchId: 'b1', managerId: null, teamLeaderId: null } as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null) // no dup by default
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: 'emp-9' } as never)
+  })
+
+  function updateData() {
+    return vi.mocked(prisma.user.update).mock.calls[0][0].data as Record<string, unknown>
+  }
+
+  describe('nationalId', () => {
+    it('is left untouched when the key is absent from the body', async () => {
+      const res = await PATCH(makePatch('emp-9', { position: 'Lead' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('nationalId')
+    })
+
+    it('is left untouched when sent as an empty string', async () => {
+      const res = await PATCH(makePatch('emp-9', { nationalId: '' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('nationalId')
+    })
+
+    it('is left untouched when sent as null', async () => {
+      const res = await PATCH(makePatch('emp-9', { nationalId: null }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('nationalId')
+    })
+
+    it('is written when a valid 13-digit value is sent', async () => {
+      const res = await PATCH(makePatch('emp-9', { nationalId: '1234567890123' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData().nationalId).toBe('1234567890123')
+    })
+  })
+
+  describe('startDate', () => {
+    it('is left untouched when the key is absent from the body', async () => {
+      const res = await PATCH(makePatch('emp-9', { position: 'Lead' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('startDate')
+    })
+
+    it('is left untouched when sent as an empty string', async () => {
+      const res = await PATCH(makePatch('emp-9', { startDate: '' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('startDate')
+    })
+
+    it('is left untouched when sent as null', async () => {
+      const res = await PATCH(makePatch('emp-9', { startDate: null }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('startDate')
+    })
+
+    it('is written when a valid date value is sent', async () => {
+      const res = await PATCH(makePatch('emp-9', { startDate: '2024-01-15' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData().startDate).toEqual(new Date('2024-01-15'))
+    })
+  })
+
+  describe('employeeId', () => {
+    it('has no write path via this endpoint — sending it has no effect either way', async () => {
+      const res = await PATCH(makePatch('emp-9', { employeeId: 'X999', position: 'Lead' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData()).not.toHaveProperty('employeeId')
+    })
+  })
+})

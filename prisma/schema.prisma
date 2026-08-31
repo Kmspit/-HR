@@ -224,6 +224,7 @@ enum AuditAction {
   // Phase 15 — Security
   EXPORT
   SECURITY_CHANGE
+  VIEW
 }
 
 enum HolidayType {
