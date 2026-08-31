@@ -184,6 +184,12 @@ export const canAccessPayroll      = (role: Role) => hasPermission(role, 'payrol
 export const canManagePayroll      = (role: Role) => hasPermission(role, 'manage_payroll')
 export const canApprovePayroll     = (role: Role) =>
   hasPermission(role, 'approve_payroll') || hasPermission(role, 'manage_payroll')
+
+/** Soft-delete/restore a payroll (and its salary slip) — deliberately narrower than
+ * canManagePayroll: this touches a legally-retained document, so it's an executive
+ * decision (SUPER_ADMIN/CEO), not a routine HR action. Not derived from the
+ * permission table on purpose. */
+export const PAYROLL_DELETE_ROLES: Role[] = ['SUPER_ADMIN', 'CEO']
 export const canManageEmployees    = (role: Role) => hasPermission(role, 'manage_employees')
 export const canViewAllDashboard   = (role: Role) => hasPermission(role, 'view_all_dashboard')
 export const canViewTeamOnly       = (role: Role) => hasPermission(role, 'view_team_only')

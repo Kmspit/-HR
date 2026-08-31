@@ -26,9 +26,15 @@ export type SoftDeleteResult = { ok: true } | { ok: false; error: string }
 export async function softDelete(params: {
   /** The row's current deletedAt, read just before calling this. */
   currentDeletedAt: Date | null | undefined
-  /** Must perform `prisma.<model>.updateMany({ where: { id, deletedAt: null }, data: { deletedAt, deletedById } })`. */
+  /** Must perform `prisma.<model>.updateMany({ where: { id, deletedAt: null }, data: { deletedAt, deletedById } })`.
+   *  May internally run a multi-table transaction (e.g. also soft-deleting a
+   *  1:1 child row) as long as it returns the parent row's update count. */
   updateMany: (data: { deletedAt: Date; deletedById: string }) => Promise<{ count: number }>
   audit: SoftDeleteAuditContext
+  /** Extra fields merged into the audit log's `after` payload — e.g. embed the
+   *  row's own id when `audit.targetId` points at a different entity (a
+   *  parent/owner) instead of the row itself. */
+  auditExtra?: Record<string, unknown>
 }): Promise<SoftDeleteResult> {
   if (params.currentDeletedAt) {
     return { ok: false, error: 'รายการนี้ถูกลบไปแล้ว' }
@@ -47,7 +53,7 @@ export async function softDelete(params: {
     targetType: params.audit.targetType,
     action: 'DELETE',
     before: { deletedAt: null },
-    after: { deletedAt: deletedAt.toISOString() },
+    after: { deletedAt: deletedAt.toISOString(), ...params.auditExtra },
     ip: params.audit.ip,
     userAgent: params.audit.userAgent,
   })
@@ -62,9 +68,11 @@ export async function softDelete(params: {
  */
 export async function restoreSoftDeleted(params: {
   currentDeletedAt: Date | null | undefined
-  /** Must perform `prisma.<model>.update({ where: { id }, data: { deletedAt: null, deletedById: null } })`. */
+  /** Must perform `prisma.<model>.update({ where: { id }, data: { deletedAt: null, deletedById: null } })`.
+   *  May internally run a multi-table transaction, mirroring `softDelete`'s `updateMany`. */
   update: (data: { deletedAt: null; deletedById: null }) => Promise<unknown>
   audit: SoftDeleteAuditContext
+  auditExtra?: Record<string, unknown>
 }): Promise<SoftDeleteResult> {
   if (!params.currentDeletedAt) {
     return { ok: false, error: 'รายการนี้ไม่ได้ถูกลบ' }
@@ -78,7 +86,7 @@ export async function restoreSoftDeleted(params: {
     targetType: params.audit.targetType,
     action: 'UPDATE',
     before: { deletedAt: params.currentDeletedAt.toISOString() },
-    after: { deletedAt: null },
+    after: { deletedAt: null, ...params.auditExtra },
     ip: params.audit.ip,
     userAgent: params.audit.userAgent,
   })
