@@ -41,4 +41,8 @@ export function decryptField(blob: string, salt: string): string {
  *  deriveKey's comment). Add new entries here as new encrypted fields ship. */
 export const FIELD_SALTS = {
   DEPENDENT_NATIONAL_ID: 'hrflow-dependent-id-v1',
+  /** Shared by BankAccount.accountNameEnc and .accountNumberEnc — both
+   *  describe the same real-world account and are always read/decrypted
+   *  together, unlike DEPENDENT_NATIONAL_ID's separate-category reasoning. */
+  BANK_ACCOUNT: 'hrflow-bank-v1',
 } as const

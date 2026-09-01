@@ -54,4 +54,18 @@ describe('field-crypto', () => {
     const tampered = buf.toString('base64')
     expect(() => decryptField(tampered, FIELD_SALTS.DEPENDENT_NATIONAL_ID)).toThrow()
   })
+
+  it('keeps each FIELD_SALTS entry distinct', () => {
+    const values = Object.values(FIELD_SALTS)
+    expect(new Set(values).size).toBe(values.length)
+  })
+
+  it('round-trips both BankAccount fields under the shared BANK_ACCOUNT salt', () => {
+    const name = 'สมชาย ใจดี'
+    const number = '1234567890'
+    const encName = encryptField(name, FIELD_SALTS.BANK_ACCOUNT)
+    const encNumber = encryptField(number, FIELD_SALTS.BANK_ACCOUNT)
+    expect(decryptField(encName, FIELD_SALTS.BANK_ACCOUNT)).toBe(name)
+    expect(decryptField(encNumber, FIELD_SALTS.BANK_ACCOUNT)).toBe(number)
+  })
 })
