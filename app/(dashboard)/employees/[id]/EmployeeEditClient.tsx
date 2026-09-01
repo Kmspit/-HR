@@ -24,7 +24,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { diffFormPayload } from '@/lib/form-diff'
-import { maskNationalId } from '@/lib/national-id'
+import { maskNationalId, isValidThaiNationalIdChecksum } from '@/lib/national-id'
 import { revealReducer, initialRevealState, idleTimeoutAction } from '@/lib/national-id-reveal'
 import { createIdleTimer } from '@/lib/idle-timer'
 import FormField from '@/components/profile/FormField'
@@ -216,6 +216,17 @@ export default function EmployeeEditClient({
     if (!isValidThaiPhoneInput(form.phone)) e.phone = 'เบอร์ 10 หลัก'
     if (form.lineId.trim() && !isValidLineIdInput(form.lineId)) e.lineId = lineIdHint()
     if (!isValidNationalIdInput(form.nationalId)) e.nationalId = 'เลขบัตร 13 หลัก'
+    // Checksum only applies when HR actually typed a new value — never re-validates a
+    // stored nationalId that was merely revealed and left untouched. Existing employees
+    // whose real ID predates this check (possibly mistyped years ago) must stay editable
+    // for every OTHER field without being forced to also fix an ID they didn't touch.
+    else if (
+      form.nationalId.trim() &&
+      form.nationalId !== initialFormRef.current.nationalId &&
+      !isValidThaiNationalIdChecksum(form.nationalId)
+    ) {
+      e.nationalId = 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)'
+    }
     if (form.birthDate) {
       const d = new Date(form.birthDate)
       if (Number.isNaN(d.getTime()) || d > new Date()) e.birthDate = 'วันเกิดไม่ถูกต้อง'

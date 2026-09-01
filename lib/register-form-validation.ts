@@ -1,5 +1,6 @@
 import { isValidEmailInput, isValidNationalIdInput, isValidThaiPhoneInput } from '@/lib/profile-validators-client'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
+import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
 
 /**
  * Pure validation for the registration wizard, one function per step — kept
@@ -20,9 +21,13 @@ export type RegisterPersonalInfo = {
 
 export type RegisterPersonalErrors = Partial<Record<keyof RegisterPersonalInfo, string>>
 
-/** nationalId was optional pre-Phase-1; it's required now (13 digits, format
- *  only — this app has never done the Thai checksum algorithm anywhere, so
- *  isValidNationalIdInput's plain regex stays the one source of truth). */
+/** nationalId was optional pre-Phase-1; it's required now — format (13 digits)
+ *  plus the real กรมการปกครอง check digit (lib/national-id.ts). This is a
+ *  brand-new registration, not an edit of stored data, so there's no
+ *  "don't invalidate existing values" concern here — every submission is new
+ *  input and can be held to the full check. Contrast with the employee-edit
+ *  page, which only checksum-validates a nationalId the editor actually
+ *  changed (see EmployeeEditClient.tsx). */
 export function validateRegisterPersonalStep(form: RegisterPersonalInfo): RegisterPersonalErrors {
   const e: RegisterPersonalErrors = {}
   if (!form.branchId) e.branchId = 'กรุณาเลือกสาขา'
@@ -36,6 +41,7 @@ export function validateRegisterPersonalStep(form: RegisterPersonalInfo): Regist
   else if (!isValidLineIdInput(form.lineId)) e.lineId = lineIdHint()
   if (!form.nationalId.trim()) e.nationalId = 'กรุณากรอกเลขบัตรประชาชน'
   else if (!isValidNationalIdInput(form.nationalId)) e.nationalId = 'เลขบัตรประชาชนต้อง 13 หลัก'
+  else if (!isValidThaiNationalIdChecksum(form.nationalId)) e.nationalId = 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)'
   return e
 }
 

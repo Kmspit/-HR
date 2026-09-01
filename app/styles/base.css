@@ -74,10 +74,11 @@
        white canvas beyond the document edges. Scoped to html (not body) on purpose —
        html is the real scrolling element here (overflow-x:hidden forces overflow-y to
        compute as auto per spec), so this stops the bounce at the true root scroller.
-       Do NOT add this to body on mobile — body's overflow-x:clip / .dark body's
-       overflow-x:hidden dance was hard-won to fix an Android Chrome scroll-freeze bug
-       (see the mobile scroll-fix comments in responsive.css); overscroll-behavior on
-       body risks resurrecting it. */
+       Do NOT add overflow-x:hidden to body, ever, at any width — body must always
+       stay clip (see the .dark body rule below, and the mobile scroll-fix comments
+       in responsive.css) or it becomes a second competing scroll container. Do NOT
+       add overscroll-behavior to body either — body risks resurrecting the Android
+       Chrome scroll-freeze bug the mobile fix in responsive.css already solved. */
     overscroll-behavior-y: none;
   }
 
@@ -129,7 +130,25 @@
     @apply bg-[#070b14] text-slate-100 antialiased;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    overflow-x: hidden;
+    /* Must be clip, not hidden — this exact line has been flipped back to hidden
+       and re-fixed at least 3 times (commit history: b8420ff/a57e981 2026-06-17,
+       357d57c 2026-06-18, then silently regressed again before this fix). hidden
+       here — combined with html's own overflow-x:hidden at the top of this file,
+       which must stay (06f9bd4, Android position:fixed containing-block fix) —
+       makes body a SECOND, competing CSS scroll container (overflow-x:hidden
+       forces overflow-y:auto per spec). Two scroll containers with body's own
+       height equal to its content (no fixed height) means body has nothing to
+       scroll internally, and blocks propagation to the real (html) scroller —
+       vertical scroll silently stops working entirely, not just an Android
+       touch-propagation glitch. Confirmed live in production 2026-09-01, via
+       DevTools (scrollHeight 1270 vs clientHeight 773, both html and body
+       computing overflow "hidden auto"): the Phase 1 registration form, in
+       dark mode, exceeded one viewport's height and could not scroll at all
+       until this line changed to clip — matching the *unconditional* body
+       rule above (which has always correctly said clip) and 357d57c's own
+       prior fix for the same bug class.
+       If you're tempted to change this back to hidden — don't; find another way. */
+    overflow-x: clip;
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34,197,94,0.1) 0%, transparent 60%),
       radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);

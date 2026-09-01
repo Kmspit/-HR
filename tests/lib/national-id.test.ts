@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maskNationalId, nationalIdFingerprint } from '@/lib/national-id'
+import { maskNationalId, nationalIdFingerprint, isValidThaiNationalIdChecksum } from '@/lib/national-id'
 
 describe('maskNationalId — never throws, reveals at most the last digit', () => {
   it('masks a valid 13-digit id, keeping only the last digit', () => {
@@ -57,5 +57,45 @@ describe('nationalIdFingerprint — distinguishes values that mask identically',
     const fp = nationalIdFingerprint('1234567890123')
     expect(fp).not.toContain('1234567890123')
     expect(fp).toMatch(/^[0-9a-f]{12}$/)
+  })
+})
+
+describe('isValidThaiNationalIdChecksum — กรมการปกครอง check digit formula', () => {
+  // Synthetic test vector verified by hand against the published formula — not a real
+  // person's ID. sum of digit[i]*(13-i) for i=0..11 = 159; 159%11=5; (11-5)%10=6 = digit[12].
+  const VALID_ID = '1101700207366'
+
+  it('accepts a number whose 13th digit matches the computed check digit', () => {
+    expect(isValidThaiNationalIdChecksum(VALID_ID)).toBe(true)
+  })
+
+  it('rejects the same number with two interior digits transposed', () => {
+    // Swap positions 4 and 5 (1-indexed): 1101700207366 -> 1107100207366.
+    // Recomputed sum=165, 165%11=0, checkDigit=1, but the 13th digit is still 6 -> mismatch.
+    expect(isValidThaiNationalIdChecksum('1107100207366')).toBe(false)
+  })
+
+  it('rejects a repeated-digit number (1111111111111)', () => {
+    expect(isValidThaiNationalIdChecksum('1111111111111')).toBe(false)
+  })
+
+  it('rejects anything that is not exactly 13 digits', () => {
+    expect(isValidThaiNationalIdChecksum('123')).toBe(false)
+    expect(isValidThaiNationalIdChecksum('12345678901234')).toBe(false)
+    expect(isValidThaiNationalIdChecksum('')).toBe(false)
+    expect(isValidThaiNationalIdChecksum(null)).toBe(false)
+    expect(isValidThaiNationalIdChecksum(undefined)).toBe(false)
+  })
+
+  it('strips non-digit formatting before checking, same as maskNationalId', () => {
+    expect(isValidThaiNationalIdChecksum('1-1017-00207-36-6')).toBe(true)
+  })
+
+  it('rejects a format-valid (13-digit) number whose check digit is simply wrong', () => {
+    // Confirms this is a stricter check than maskNationalId's format-only rule —
+    // maskNationalId(a purely sequential id) already treats this exact value as
+    // well-formed (see national-id.test.ts above), which is the whole point of
+    // keeping the two functions separate.
+    expect(isValidThaiNationalIdChecksum('1234567890123')).toBe(false)
   })
 })
