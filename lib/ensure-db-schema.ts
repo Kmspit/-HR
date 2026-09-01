@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900025
+export const CURRENT_SCHEMA_VERSION = 900026
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -38,7 +38,7 @@ export const ALL_MAPPED_TABLES = [
   'case_clients', 'case_debtors', 'case_courts', 'case_timelines', 'case_templates', 'case_checklists',
   'case_debtor_activities', 'automation_rules', 'automation_execution_logs', 'recovery_payments',
   'case_financials', 'court_events', 'schema_migrations', 'employee_profiles',
-  'emergency_contacts', 'dependents',
+  'emergency_contacts', 'dependents', 'bank_accounts',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -1745,6 +1745,51 @@ async function runEnsure(force = false): Promise<boolean> {
   `)
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS dependents_user_idx ON dependents (userId)
+  `)
+
+  // v900026 — Phase 1 step 3: BankAccount, 1:N additive table (no FK, same
+  // convention as emergency_contacts/dependents above). Guarded with the same
+  // COUNT(*)=0 check before dropping — this table hasn't been shaped by any
+  // throwaway script this time, but step 2 revised shape after review twice,
+  // so building it defensively from the start avoids repeating that fire drill.
+  // accountNameEnc/accountNumberEnc use lib/field-crypto.ts's
+  // FIELD_SALTS.BANK_ACCOUNT. Rows are never deleted on account change —
+  // callers set isActive = false instead (enforced at the API layer, not here).
+  {
+    const table = 'bank_accounts'
+    const existing = await prisma.$queryRawUnsafe<{ name: string }[]>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = '${table}'`,
+    )
+    if (existing.length > 0) {
+      const countRows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+        `SELECT COUNT(*) AS cnt FROM ${table}`,
+      )
+      const count = Number(countRows[0]?.cnt ?? 0)
+      if (count > 0) {
+        console.warn(`[MIGRATION v900026] "${table}" has ${count} row(s) — refusing to drop/rebuild, needs a manual ALTER path instead`)
+      } else {
+        await prisma.$executeRawUnsafe(`DROP TABLE "${table}"`)
+      }
+    }
+  }
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS bank_accounts (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      bankCode TEXT NOT NULL,
+      accountNameEnc TEXT NOT NULL,
+      accountNumberEnc TEXT NOT NULL,
+      accountNumberLast4 TEXT NOT NULL,
+      accountType TEXT,
+      isPrimary INTEGER NOT NULL DEFAULT 0,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS bank_accounts_user_idx ON bank_accounts (userId)
   `)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────

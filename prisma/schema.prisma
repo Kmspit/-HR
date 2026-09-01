@@ -502,6 +502,7 @@ model User {
   employeeProfile     EmployeeProfile?
   emergencyContacts   EmergencyContact[]
   dependents          Dependent[]
+  bankAccounts        BankAccount[]
   faceLogs            AttendanceFaceLog[]
   chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
   leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
@@ -715,6 +716,34 @@ model Dependent {
 
   @@index([userId])
   @@map("dependents")
+}
+
+/// Phase 1 step 3 — บัญชีธนาคาร (1:N, สำหรับโอนเงินเดือน). accountNameEnc /
+/// accountNumberEnc เข้ารหัสด้วย lib/field-crypto.ts (FIELD_SALTS.BANK_ACCOUNT)
+/// เพราะชื่อบัญชีอาจไม่ตรงกับชื่อพนักงาน (บัญชีร่วม) และเลขบัญชีเป็นข้อมูล
+/// การเงินโดยตรง — เก็บ accountNumberLast4 แบบ plain ไว้แสดงผลไม่ต้องถอดรหัส
+/// ทุกครั้ง. ห้ามลบแถวเมื่อพนักงานเปลี่ยนบัญชี (บังคับที่ระดับ API ไม่ใช่ schema)
+/// — set isActive = false แทน เพราะ payslip ย้อนหลังอาจอ้างอิงบัญชีเดิม และ
+/// เป็นหลักฐานว่าเคยโอนเข้าบัญชีไหน
+model BankAccount {
+  id                  String  @id @default(cuid())
+  userId              String
+  bankCode            String
+  accountNameEnc      String
+  accountNumberEnc    String
+  accountNumberLast4  String
+  accountType         String?
+  isPrimary           Boolean @default(false)
+  isActive            Boolean @default(true)
+  sortOrder           Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("bank_accounts")
 }
 
 model AttendanceFaceLog {
