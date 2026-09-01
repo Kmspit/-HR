@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900022
+export const CURRENT_SCHEMA_VERSION = 900023
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -37,7 +37,7 @@ export const ALL_MAPPED_TABLES = [
   'device_sessions', 'otp_codes', 'two_factor_setups', 'backup_records', 'case_number_seqs', 'cases',
   'case_clients', 'case_debtors', 'case_courts', 'case_timelines', 'case_templates', 'case_checklists',
   'case_debtor_activities', 'automation_rules', 'automation_execution_logs', 'recovery_payments',
-  'case_financials', 'court_events', 'schema_migrations',
+  'case_financials', 'court_events', 'schema_migrations', 'employee_profiles',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -1640,6 +1640,39 @@ async function runEnsure(force = false): Promise<boolean> {
   // use for case documents — binds a signature to the document's file
   // version at sign time so an edit afterward can be detected as stale)
   await addColumnIfMissing('case_document_signatures', 'doc_version', `ALTER TABLE case_document_signatures ADD COLUMN doc_version TEXT NOT NULL DEFAULT ''`)
+
+  // v900023 — Phase 1 (employee registry) step 1: EmployeeProfile, a 1:1
+  // additive table. Existing User.address / User.addressIdCard stay put as
+  // the still-read "current value" cache (see grep sweep in this PR's
+  // description) — nothing here touches or migrates them.
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS employee_profiles (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      nationality TEXT,
+      maritalStatus TEXT,
+      personalEmail TEXT,
+      currentHouseNo TEXT,
+      currentMoo TEXT,
+      currentSoi TEXT,
+      currentRoad TEXT,
+      currentTambon TEXT,
+      currentAmphoe TEXT,
+      currentProvince TEXT,
+      currentPostalCode TEXT,
+      regHouseNo TEXT,
+      regMoo TEXT,
+      regSoi TEXT,
+      regRoad TEXT,
+      regTambon TEXT,
+      regAmphoe TEXT,
+      regProvince TEXT,
+      regPostalCode TEXT,
+      sameAsCurrentAddress INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
