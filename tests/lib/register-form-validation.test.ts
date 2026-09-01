@@ -20,10 +20,13 @@ import {
   type RegisterBankAccount,
 } from '@/lib/register-form-validation'
 
+// Checksum-valid synthetic test vector (see tests/lib/national-id.test.ts) — not a real
+// person's ID. '1234567890123' (the old fixture here) is format-valid but checksum-invalid,
+// which is now rejected by validateRegisterPersonalStep, so this had to change.
 const validPersonal = {
   branchId: 'b1', firstName: 'สมชาย', lastName: 'ใจดี',
   email: 'somchai@example.com', phone: '0812345678', lineId: '@somchai',
-  nationalId: '1234567890123',
+  nationalId: '1101700207366',
 }
 
 describe('validateRegisterPersonalStep', () => {
@@ -38,6 +41,11 @@ describe('validateRegisterPersonalStep', () => {
 
   it('rejects a nationalId that is not exactly 13 digits', () => {
     const e = validateRegisterPersonalStep({ ...validPersonal, nationalId: '123' })
+    expect(e.nationalId).toBeTruthy()
+  })
+
+  it('rejects a format-valid (13-digit) nationalId whose check digit is wrong', () => {
+    const e = validateRegisterPersonalStep({ ...validPersonal, nationalId: '1234567890123' })
     expect(e.nationalId).toBeTruthy()
   })
 
