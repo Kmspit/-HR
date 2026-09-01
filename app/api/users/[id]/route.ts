@@ -16,6 +16,7 @@ import { SAFE_USER_SELECT, MANAGER_USER_SELECT } from '@/lib/safe-user-select'
 import { bumpSessionEpoch } from '@/lib/session-epoch'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
+import { createAuditLog } from '@/lib/notifications'
 import type { Role, UserStatus } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
@@ -172,6 +173,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.status = nextStatus
     }
 
+    // baseSalary is deliberately not in allowedFields — it's HR_ADMIN-only
+    // (SUPER_ADMIN/CEO/MANAGER_HR/HR/ADMIN), narrower than the general
+    // canManageUserProfile gate that lets this endpoint through in the first
+    // place (which still includes MANAGER). A MANAGER editing a direct
+    // report's other fields is normal; touching pay is not. Ignored rather
+    // than a hard error — this must not break an older client that still
+    // sends the field alongside other edits it's allowed to make — but the
+    // attempt itself is audit-logged below.
+    let baseSalaryAttemptedBy: string | null = null
+    if ('baseSalary' in body && body.baseSalary !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.baseSalary = body.baseSalary
+      } else {
+        baseSalaryAttemptedBy = session.user.role
+      }
+    }
+
     const allowedFields = [
       'name',
       'nameEn',
@@ -184,7 +202,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       'employeeType',
       'managerId',
       'teamLeaderId',
-      'baseSalary',
       'socialSecurity',
       'isCoworker',
     ] as const
@@ -250,6 +267,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           userAgent: req.headers.get('user-agent') ?? undefined,
         })
       }
+    }
+
+    if (baseSalaryAttemptedBy) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'User',
+        action: 'UPDATE',
+        after: {
+          baseSalaryChangeBlocked: true,
+          attemptedRole: baseSalaryAttemptedBy,
+          attemptedValue: body.baseSalary,
+        },
+        ip: requestIp(req),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+      })
     }
 
     return NextResponse.json({ user })

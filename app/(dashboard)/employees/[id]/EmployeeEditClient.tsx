@@ -98,9 +98,15 @@ type FormErrors = Partial<Record<string, string>>
 export default function EmployeeEditClient({
   employee,
   currentUserId,
+  canEditSalary,
 }: {
   employee: Employee
   currentUserId: string
+  /** HR_ADMIN only (SUPER_ADMIN/CEO/MANAGER_HR/HR/ADMIN) — narrower than the
+   *  canManageUserProfile gate that lets this page open at all, which still
+   *  includes MANAGER. Computed server-side in page.tsx from the viewer's
+   *  own role, not derived from `employee` (which is the person being edited). */
+  canEditSalary: boolean
 }) {
   const router = useRouter()
   const isSelf = employee.id === currentUserId
@@ -556,26 +562,28 @@ export default function EmployeeEditClient({
             </div>
           </section>
 
-          <section className="glass-card rounded-2xl p-5 space-y-4">
-            <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
-              <DollarSign className="w-4 h-4 text-green-400" /> เงินเดือน
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="เงินเดือนฐาน (บาท/เดือน)">
-                <input
-                  type="number"
-                  value={form.baseSalary}
-                  onChange={(e) => set('baseSalary', parseFloat(e.target.value) || 0)}
-                  className={profileInputClass}
-                />
-              </FormField>
-              {form.socialSecurity && (
-                <div className="flex items-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
-                  ประกันสังคม: ฿{Math.min(form.baseSalary * 0.05, 750).toFixed(0)}/เดือน
-                </div>
-              )}
-            </div>
-          </section>
+          {canEditSalary && (
+            <section className="glass-card rounded-2xl p-5 space-y-4">
+              <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
+                <DollarSign className="w-4 h-4 text-green-400" /> เงินเดือน
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label="เงินเดือนฐาน (บาท/เดือน)">
+                  <input
+                    type="number"
+                    value={form.baseSalary}
+                    onChange={(e) => set('baseSalary', parseFloat(e.target.value) || 0)}
+                    className={profileInputClass}
+                  />
+                </FormField>
+                {form.socialSecurity && (
+                  <div className="flex items-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
+                    ประกันสังคม: ฿{Math.min(form.baseSalary * 0.05, 750).toFixed(0)}/เดือน
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       )}
 

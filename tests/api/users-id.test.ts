@@ -298,3 +298,67 @@ describe('PATCH /api/users/[id] — admin-edit audit log (targetType User, actio
     )
   })
 })
+
+describe('PATCH /api/users/[id] — baseSalary restricted to HR_ADMIN (Phase 1 step 0)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: 'report-1' } as never)
+  })
+
+  function updateData() {
+    return vi.mocked(prisma.user.update).mock.calls[0][0].data as Record<string, unknown>
+  }
+
+  it('silently ignores baseSalary from MANAGER (no error) but logs the blocked attempt', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }] as never) // direct report, passes edit-org-scope
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never) // no beforeAudit row -> skip employee-audit block
+
+    const res = await PATCH(
+      makePatch('report-1', { baseSalary: 999999, position: 'Senior Dev' }),
+      { params: params('report-1') },
+    )
+
+    expect(res.status).toBe(200)
+    expect(updateData()).not.toHaveProperty('baseSalary')
+    expect(updateData()).toMatchObject({ position: 'Senior Dev' })
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'mgr-1',
+        targetId: 'report-1',
+        targetType: 'User',
+        action: 'UPDATE',
+        after: expect.objectContaining({
+          baseSalaryChangeBlocked: true,
+          attemptedRole: 'MANAGER',
+          attemptedValue: 999999,
+        }),
+      }),
+    )
+  })
+
+  it('allows HR to change baseSalary for another employee, with no blocked-attempt audit log', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ branchId: 'b1', managerId: null, teamLeaderId: null } as never) // HR org-scope check
+      .mockResolvedValueOnce(null as never) // no beforeAudit row -> skip employee-audit block
+
+    const res = await PATCH(makePatch('emp-9', { baseSalary: 45000 }), { params: params('emp-9') })
+
+    expect(res.status).toBe(200)
+    expect(updateData()).toMatchObject({ baseSalary: 45000 })
+    expect(createAuditLog).not.toHaveBeenCalled()
+  })
+
+  it('still blocks a self-edit of baseSalary with the pre-existing 403, before the HR_ADMIN gate ever runs', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+
+    const res = await PATCH(makePatch('hr-1', { baseSalary: 50000 }), { params: params('hr-1') })
+
+    expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+    expect(createAuditLog).not.toHaveBeenCalled()
+  })
+})

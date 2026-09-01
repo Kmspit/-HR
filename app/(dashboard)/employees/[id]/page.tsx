@@ -6,6 +6,7 @@ import Topbar from '@/components/dashboard/Topbar'
 import EmployeeEditClient from './EmployeeEditClient'
 import { canManageUserProfile } from '@/lib/role-assignment'
 import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
+import { HR_ADMIN } from '@/lib/module-gates'
 
 export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -47,6 +48,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       <Topbar title="แก้ไขข้อมูลพนักงาน" subtitle={user.name} />
       <EmployeeEditClient
       currentUserId={session.user.id}
+      canEditSalary={HR_ADMIN.includes(role)}
       employee={{
         ...user,
         baseSalary: user.baseSalary ?? 0,
