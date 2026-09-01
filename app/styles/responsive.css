@@ -696,8 +696,16 @@
      body { overflow-x: clip } is the only fix needed:
      clip does NOT force overflow-y: auto (unlike hidden), so body is NOT a scroll
      container, touch events propagate to the viewport, and Android scroll works.
-     !important beats .dark body { overflow-x: hidden } (specificity 0,1,1 vs 0,0,1). */
-  body { overflow-x: clip !important; }
+
+     No !important here anymore (removed 2026-09-01) — it used to be load-bearing
+     to beat .dark body { overflow-x: hidden }'s higher specificity (0,1,1 vs this
+     rule's 0,0,1), which was silently undoing this whole fix in dark mode. That
+     rule now says clip too (base.css, same value everywhere), so there's no
+     competing declaration left to beat. If dark-mode mobile scroll breaks again,
+     look for a *new* rule setting body's overflow-x to something other than clip
+     before reaching for !important again — see base.css's .dark body comment for
+     the full incident history (this exact bug has round-tripped 3+ times). */
+  body { overflow-x: clip; }
 }
 @media (min-width: 768px) {
   body { overscroll-behavior-y: contain; }
