@@ -503,6 +503,7 @@ model User {
   emergencyContacts   EmergencyContact[]
   dependents          Dependent[]
   bankAccounts        BankAccount[]
+  employmentAssignments EmploymentAssignment[]
   faceLogs            AttendanceFaceLog[]
   chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
   leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
@@ -744,6 +745,94 @@ model BankAccount {
 
   @@index([userId])
   @@map("bank_accounts")
+}
+
+/// Phase 1 step 4 — flat catalog, ยังไม่ scope ตามแผนก (18 คน/5 ตำแหน่งตอน
+/// launch ที่จะแยกทีหลังได้). name เป็น natural key กันสร้างซ้ำ, seed จาก
+/// distinct User.position ที่มีอยู่ตอน ensureDbSchema รัน — ทิ้งได้เพราะข้อมูล
+/// พนักงานทั้งหมดจะถูกล้างก่อน pilot อยู่แล้ว seed แค่กันตารางว่างตอน dev
+model JobPosition {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments EmploymentAssignment[]
+
+  @@map("job_positions")
+}
+
+/// Phase 1 step 4 — ประวัติการจ้างงานแบบ effective-dated, additive ล้วน:
+/// ไม่แตะ User.position/department/baseSalary เดิมเลย ฟิลด์เหล่านั้นบน User
+/// ยังเป็น "ค่าปัจจุบัน (cache)" ที่ consumer เดิมอ่านต่อได้โดยไม่ต้องแก้อะไร —
+/// sync ระหว่างสองที่นี้เป็นงานของขั้น 7-8 ตอนมี UI ไม่ใช่ที่นี่.
+/// ไม่มี effectiveTo โดยตั้งใจ — สถานะ ณ วันใดวันหนึ่งคำนวณจาก record ที่มี
+/// effectiveFrom ล่าสุดที่ <= วันนั้น (ดู lib/employment-assignment.ts) แทนที่
+/// จะเก็บ effectiveTo ซ้ำซ้อน ซึ่งจะเพี้ยนได้ถ้าแก้ประวัติย้อนหลัง
+model EmploymentAssignment {
+  id             String                 @id @default(cuid())
+  userId         String
+  effectiveFrom  DateTime
+  changeType     EmploymentChangeType
+  employmentType EmploymentType
+
+  divisionId   String?
+  departmentId String?
+  sectionId    String?
+  jobPositionId String
+  branchId     String?
+  managerId    String?
+  teamLeaderId String?
+
+  /// ค่า ณ เวลาที่ assignment นี้มีผล — ไม่ใช่ค่าปัจจุบัน
+  baseSalary Float
+
+  contractEndDate DateTime?
+
+  terminationType   TerminationType?
+  terminationReason String?
+  rehireEligible    Boolean?
+
+  reason String?
+  note   String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPosition JobPosition @relation(fields: [jobPositionId], references: [id])
+
+  @@index([userId, effectiveFrom])
+  @@map("employment_assignments")
+}
+
+enum EmploymentChangeType {
+  HIRE
+  PROBATION_PASS
+  PROMOTION
+  TRANSFER
+  CONTRACT_RENEW
+  TERMINATION
+}
+
+/// ไม่มี PROBATION — ทดลองงานเป็นสถานะ ไม่ใช่ประเภทการจ้าง
+enum EmploymentType {
+  FULL_TIME
+  CONTRACT
+  PART_TIME
+  DAILY
+  INTERN
+}
+
+enum TerminationType {
+  RESIGN
+  DISMISS
+  CONTRACT_END
+  RETIRE
+  DECEASED
 }
 
 model AttendanceFaceLog {

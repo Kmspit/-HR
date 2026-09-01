@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900026
+export const CURRENT_SCHEMA_VERSION = 900027
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -38,7 +38,8 @@ export const ALL_MAPPED_TABLES = [
   'case_clients', 'case_debtors', 'case_courts', 'case_timelines', 'case_templates', 'case_checklists',
   'case_debtor_activities', 'automation_rules', 'automation_execution_logs', 'recovery_payments',
   'case_financials', 'court_events', 'schema_migrations', 'employee_profiles',
-  'emergency_contacts', 'dependents', 'bank_accounts',
+  'emergency_contacts', 'dependents', 'bank_accounts', 'job_positions',
+  'employment_assignments',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -1791,6 +1792,90 @@ async function runEnsure(force = false): Promise<boolean> {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS bank_accounts_user_idx ON bank_accounts (userId)
   `)
+
+  // v900027 — Phase 1 step 4 (the riskiest step of this phase, per the plan):
+  // JobPosition (flat catalog master) + EmploymentAssignment (effective-dated
+  // history). Both additive/no FK, guarded COUNT(*)=0 rebuild from the start
+  // like step 3. Nothing here touches User.position/department/baseSalary —
+  // those stay the "current value" cache every existing consumer keeps
+  // reading; syncing them from EmploymentAssignment is step 7-8's job once
+  // there's a UI to drive it.
+  for (const table of ['job_positions', 'employment_assignments']) {
+    const existing = await prisma.$queryRawUnsafe<{ name: string }[]>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = '${table}'`,
+    )
+    if (existing.length === 0) continue
+    const countRows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+      `SELECT COUNT(*) AS cnt FROM ${table}`,
+    )
+    const count = Number(countRows[0]?.cnt ?? 0)
+    if (count > 0) {
+      console.warn(`[MIGRATION v900027] "${table}" has ${count} row(s) — refusing to drop/rebuild, needs a manual ALTER path instead`)
+      continue
+    }
+    await prisma.$executeRawUnsafe(`DROP TABLE "${table}"`)
+  }
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS job_positions (
+      id TEXT NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      code TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS employment_assignments (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      effectiveFrom DATETIME NOT NULL,
+      changeType TEXT NOT NULL,
+      employmentType TEXT NOT NULL,
+      divisionId TEXT,
+      departmentId TEXT,
+      sectionId TEXT,
+      jobPositionId TEXT NOT NULL,
+      branchId TEXT,
+      managerId TEXT,
+      teamLeaderId TEXT,
+      baseSalary REAL NOT NULL,
+      contractEndDate DATETIME,
+      terminationType TEXT,
+      terminationReason TEXT,
+      rehireEligible INTEGER,
+      reason TEXT,
+      note TEXT,
+      createdById TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS employment_assignments_user_effective_idx
+    ON employment_assignments (userId, effectiveFrom)
+  `)
+
+  // Seed job_positions from whatever User.position values are already in use
+  // — purely so the table isn't empty in dev. Disposable: employee data gets
+  // wiped before pilot launch (see project notes), so this seed doesn't need
+  // to survive that. update:{} deliberately never overwrites an admin's
+  // isActive/sortOrder edit on a re-run — only fills in ones that are missing.
+  const distinctPositions = await prisma.user.findMany({
+    where: { position: { not: null } },
+    select: { position: true },
+    distinct: ['position'],
+  })
+  for (const row of distinctPositions) {
+    const name = row.position?.trim()
+    if (!name) continue
+    await prisma.jobPosition.upsert({
+      where: { name },
+      update: {},
+      create: { name, isActive: true, sortOrder: 0 },
+    })
+  }
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
