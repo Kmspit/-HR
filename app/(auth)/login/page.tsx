@@ -10,7 +10,14 @@ export default async function LoginPage({ searchParams }: Props) {
   const { error } = await searchParams
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 py-8">
+    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center px-4 py-8">
+      {/* This page's own blob wrapper already scopes overflow-hidden to just
+          the two negative-offset blobs below — the outer div above used to
+          duplicate overflow-hidden redundantly, which (same bug as the
+          shared (auth)/layout.tsx fix) would cap the whole page's vertical
+          scroll once content grew past one viewport. Removed here for the
+          same reason, even though login's own content has never been tall
+          enough to trigger it in practice. */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-32 -top-32 h-72 w-72 rounded-full opacity-10 blur-3xl" style={{ background: 'radial-gradient(circle,#22c55e,transparent)' }} />
         <div className="absolute -right-20 bottom-20 h-64 w-64 rounded-full opacity-8 blur-3xl" style={{ background: 'radial-gradient(circle,#8b5cf6,transparent)' }} />
