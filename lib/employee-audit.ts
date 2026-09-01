@@ -1,5 +1,8 @@
 import { maskNationalId, nationalIdFingerprint } from '@/lib/national-id'
 import { createAuditLog } from '@/lib/notifications'
+import { ROLE_LABELS } from '@/lib/access-control'
+import { USER_STATUS_LABEL } from '@/lib/status-labels'
+import type { Role } from '@prisma/client'
 
 /**
  * Every field an HR/Admin can write to another employee's record, via either
@@ -136,4 +139,172 @@ export async function logEmployeeUpdateIfChanged(params: {
     ip: params.ip,
     userAgent: params.userAgent,
   })
+}
+
+// ── Displaying the trail on /employees/[id]'s "ประวัติการแก้ไข" tab ──────────
+
+/** Date this audit trail started being written — shown in the empty state so
+ *  it's clear there's no history before this, not that the feature is broken. */
+export const EMPLOYEE_AUDIT_TRACKING_START = '2026-08-31'
+
+const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
+  email: 'อีเมล',
+  phone: 'เบอร์โทร',
+  name: 'ชื่อ-นามสกุล',
+  nameEn: 'ชื่อภาษาอังกฤษ',
+  nickname: 'ชื่อเล่น',
+  prefix: 'คำนำหน้า',
+  address: 'ที่อยู่',
+  addressIdCard: 'ที่อยู่ตามบัตรประชาชน',
+  birthDate: 'วันเกิด',
+  nationalId: 'เลขบัตรประชาชน',
+  lineId: 'LINE ID',
+  role: 'สิทธิ์การใช้งาน (Role)',
+  status: 'สถานะบัญชี',
+  startDate: 'วันที่เริ่มงาน',
+  department: 'แผนก',
+  position: 'ตำแหน่ง',
+  employeeType: 'ประเภทพนักงาน',
+  managerId: 'ผู้จัดการ',
+  teamLeaderId: 'หัวหน้าทีม',
+  baseSalary: 'เงินเดือนฐาน',
+  socialSecurity: 'ประกันสังคม',
+  isCoworker: 'พนักงานร่วมงาน',
+  divisionId: 'ฝ่าย',
+  sectionId: 'ส่วนงาน',
+}
+
+/** Field keys whose value is an id referencing another row (User/Division/
+ *  Section) that must be resolved to a name for display, never shown raw. */
+const ID_REFERENCE_FIELDS = ['managerId', 'teamLeaderId', 'divisionId', 'sectionId'] as const
+
+/** Name lookups batch-fetched once per request and passed into formatting —
+ *  never resolved per-field, since that would mean one query per changed
+ *  value per history row. */
+export type EmployeeNameLookup = {
+  users: Map<string, string>
+  divisions: Map<string, string>
+  sections: Map<string, string>
+}
+
+/** Scans a set of before/after snapshot pairs and returns every id that
+ *  needs resolving via EmployeeNameLookup, split by which table to query. */
+export function collectReferencedIds(
+  snapshots: EmployeeAuditSnapshot[],
+): { userIds: string[]; divisionIds: string[]; sectionIds: string[] } {
+  const userIds = new Set<string>()
+  const divisionIds = new Set<string>()
+  const sectionIds = new Set<string>()
+  for (const snap of snapshots) {
+    if (snap.managerId) userIds.add(snap.managerId)
+    if (snap.teamLeaderId) userIds.add(snap.teamLeaderId)
+    if (snap.divisionId) divisionIds.add(snap.divisionId)
+    if (snap.sectionId) sectionIds.add(snap.sectionId)
+  }
+  return { userIds: [...userIds], divisionIds: [...divisionIds], sectionIds: [...sectionIds] }
+}
+
+function resolveIdReference(field: (typeof ID_REFERENCE_FIELDS)[number], id: string | null, lookup: EmployeeNameLookup): string {
+  if (!id) return '—'
+  const map = field === 'divisionId' ? lookup.divisions : field === 'sectionId' ? lookup.sections : lookup.users
+  return map.get(id) ?? '(ไม่พบข้อมูล)'
+}
+
+const currencyFmt = (n: number) => `฿${n.toLocaleString('th-TH')}`
+
+function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, lookup: EmployeeNameLookup): string {
+  if (val == null || val === '') return '—'
+
+  if (key === 'nationalId') {
+    const v = val as EmployeeAuditSnapshot['nationalId']
+    return v.masked
+  }
+  if (key === 'baseSalary') return currencyFmt(val as number)
+  if (key === 'role') return ROLE_LABELS[val as Role] ?? String(val)
+  if (key === 'status') return USER_STATUS_LABEL[val as string] ?? String(val)
+  if ((ID_REFERENCE_FIELDS as readonly string[]).includes(key)) {
+    return resolveIdReference(key as (typeof ID_REFERENCE_FIELDS)[number], val as string, lookup)
+  }
+  if (key === 'socialSecurity' || key === 'isCoworker') return val ? 'ใช่' : 'ไม่ใช่'
+  if ((key === 'birthDate' || key === 'startDate') && typeof val === 'string') {
+    const d = new Date(val)
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+  }
+  return String(val)
+}
+
+/** Diffs two employee snapshots into readable "label: old → new" lines —
+ *  separate from summarizeProfileChanges() (self-edit) on purpose, same
+ *  reasoning as snapshotEmployeeForAudit() vs snapshotProfileForAudit(). */
+export function summarizeEmployeeChanges(
+  before: EmployeeAuditSnapshot,
+  after: EmployeeAuditSnapshot,
+  lookup: EmployeeNameLookup,
+): string[] {
+  const lines: string[] = []
+  for (const key of Object.keys(EMPLOYEE_FIELD_LABELS) as (keyof EmployeeAuditSnapshot)[]) {
+    const b = before[key]
+    const a = after[key]
+
+    if (key === 'nationalId') {
+      const bv = b as EmployeeAuditSnapshot['nationalId']
+      const av = a as EmployeeAuditSnapshot['nationalId']
+      if (bv.fp === av.fp) continue
+      const line = bv.masked === av.masked
+        ? `${EMPLOYEE_FIELD_LABELS[key]}: เปลี่ยนแปลง (${av.masked})`
+        : `${EMPLOYEE_FIELD_LABELS[key]}: ${bv.masked} → ${av.masked}`
+      lines.push(line)
+      continue
+    }
+
+    if (JSON.stringify(b) === JSON.stringify(a)) continue
+    lines.push(`${EMPLOYEE_FIELD_LABELS[key]}: ${formatEmployeeValue(key, b, lookup)} → ${formatEmployeeValue(key, a, lookup)}`)
+  }
+  return lines
+}
+
+export type EmployeeHistoryItem = {
+  id: string
+  at: string
+  actorName: string
+  changes: string[]
+}
+
+/** Parses raw AuditLog rows (targetType:'User', action:'UPDATE') into display
+ *  items, dropping any entry where nothing recognizable actually changed
+ *  (e.g. a legacy row from before a field existed) so the list never shows
+ *  an empty-looking card. */
+export function mapEmployeeAuditLogs(
+  logs: {
+    id: string
+    createdAt: Date
+    before: string | null
+    after: string | null
+    actor: { name: string } | null
+  }[],
+  lookup: EmployeeNameLookup,
+): EmployeeHistoryItem[] {
+  return logs
+    .map((log) => {
+      let before: EmployeeAuditSnapshot | null = null
+      let after: EmployeeAuditSnapshot | null = null
+      try {
+        before = log.before ? (JSON.parse(log.before) as EmployeeAuditSnapshot) : null
+        after = log.after ? (JSON.parse(log.after) as EmployeeAuditSnapshot) : null
+      } catch {
+        return null
+      }
+      if (!before || !after) return null
+      const changes = summarizeEmployeeChanges(before, after, lookup)
+      if (changes.length === 0) return null
+      return {
+        id: log.id,
+        at: log.createdAt.toISOString(),
+        actorName: log.actor?.name ?? 'ไม่ทราบ',
+        changes,
+      }
+    })
+    .filter((item): item is EmployeeHistoryItem => item !== null)
 }

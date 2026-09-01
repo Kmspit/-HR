@@ -28,6 +28,7 @@ import { maskNationalId } from '@/lib/national-id'
 import { revealReducer, initialRevealState, idleTimeoutAction } from '@/lib/national-id-reveal'
 import { createIdleTimer } from '@/lib/idle-timer'
 import FormField from '@/components/profile/FormField'
+import EmployeeEditHistoryTab from '@/components/employees/EmployeeEditHistoryTab'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
   isValidEmailInput,
@@ -91,7 +92,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 const STATUS_LIST = ['ACTIVE', 'PENDING', 'DISABLED', 'REJECTED']
 
-type TabKey = 'profile' | 'work' | 'system'
+type TabKey = 'profile' | 'work' | 'system' | 'history'
 type FormErrors = Partial<Record<string, string>>
 
 export default function EmployeeEditClient({
@@ -297,6 +298,7 @@ export default function EmployeeEditClient({
       label: 'ระบบ & สิทธิ์',
       hasError: Object.keys(errors).some(k => ['lineId'].includes(k)),
     },
+    { key: 'history', label: 'ประวัติการแก้ไข', hasError: false },
   ]
 
   const quickLinks = [
@@ -671,6 +673,10 @@ export default function EmployeeEditClient({
           </section>
         </div>
       )}
+
+      {/* ── Tab: ประวัติการแก้ไข ── (stays mounted across tab switches so it
+          only fetches once per page visit, not every time the tab reopens) */}
+      <EmployeeEditHistoryTab employeeId={employee.id} active={activeTab === 'history'} />
 
       {/* ── Mobile save button ── */}
       <div
