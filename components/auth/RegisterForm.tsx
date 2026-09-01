@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { apiJson } from '@/lib/client-api'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { Eye, EyeOff, Loader2, ChevronLeft, ChevronRight, Building2, Plus, Trash2 } from 'lucide-react'
 import {
   DEFAULT_COMPANY_BRANCHES,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/company-branches'
 import { lineIdHint } from '@/lib/line-id-client'
 import { englishOnlyFieldError, ENGLISH_ONLY_ERROR } from '@/lib/english-input'
+import { THAI_BANKS } from '@/lib/thai-banks'
 import {
   validateRegisterPersonalStep,
   validateRegisterAddressStep,
@@ -18,13 +20,22 @@ import {
   copyAddressIfSame,
   validateRegisterEmergencyContacts,
   emergencyContactsStepHasErrors,
+  validateRegisterDependents,
+  dependentsStepHasErrors,
+  validateRegisterBankAccounts,
+  bankAccountsStepHasErrors,
   validateRegisterEmployeeStep,
   validateRegisterPasswordStep,
   MAX_REGISTER_EMERGENCY_CONTACTS,
+  DEPENDENT_RELATION_TYPES,
   type RegisterAddress,
   type RegisterAddressStepErrors,
   type RegisterEmergencyContact,
   type RegisterEmergencyContactErrors,
+  type RegisterDependent,
+  type RegisterDependentErrors,
+  type RegisterBankAccount,
+  type RegisterBankAccountErrors,
 } from '@/lib/register-form-validation'
 import {
   saveRegisterDraft,
@@ -49,9 +60,16 @@ const FALLBACK_BRANCHES: BranchOption[] = DEFAULT_COMPANY_BRANCHES.map((b) => ({
   label: registerBranchLabel(b.name, b.registerTag),
 }))
 
-const STEPS = ['ข้อมูลส่วนตัว', 'ที่อยู่', 'ผู้ติดต่อฉุกเฉิน', 'ข้อมูลพนักงาน', 'ตั้งรหัสผ่าน']
+const STEPS = ['ข้อมูลส่วนตัว', 'ที่อยู่', 'ผู้ติดต่อฉุกเฉิน', 'ผู้อยู่ในอุปการะ', 'บัญชีธนาคาร', 'ข้อมูลพนักงาน', 'ตั้งรหัสผ่าน']
 
 const MARITAL_STATUS_OPTIONS = ['โสด', 'สมรส', 'หย่าร้าง', 'หม้าย']
+
+const DEPENDENT_RELATION_LABELS: Record<(typeof DEPENDENT_RELATION_TYPES)[number], string> = {
+  SPOUSE: 'คู่สมรส',
+  CHILD: 'บุตร',
+  PARENT: 'บิดา/มารดา',
+  OTHER: 'อื่นๆ',
+}
 
 /** baseSalary/startDate are gone from this form entirely — HR sets both at
  *  approval time now (Phase 1 step 7's unified approve+org-assign modal),
@@ -70,6 +88,13 @@ const EMPTY_ADDRESS: RegisterAddress = {
 
 const EMPTY_CONTACT: RegisterEmergencyContact = { name: '', relationship: '', phone: '', altPhone: '' }
 
+const EMPTY_DEPENDENT: RegisterDependent = { name: '', relationType: '', birthDate: '', nationalId: '', isTaxAllowance: false }
+
+const EMPTY_BANK_ACCOUNT: RegisterBankAccount = { bankCode: '', accountNumber: '', accountName: '', accountType: '', isPrimary: false }
+
+const MAX_REGISTER_DEPENDENTS = 10
+const MAX_REGISTER_BANK_ACCOUNTS = 5
+
 const ROLES = [
   { value: 'EMPLOYEE', label: '👤 พนักงาน',               desc: 'เข้าออกงาน, ขอลา, ดูสลิป' },
   { value: 'LAWYER',   label: '⚖️ ทนายความ',              desc: 'ส่งแผนงานรายสัปดาห์' },
@@ -87,13 +112,16 @@ const ADDRESS_FIELD_LABELS: { key: keyof RegisterAddress; label: string; require
 ]
 
 export default function RegisterForm() {
+  const router = useRouter()
   const [step, setStep] = useState(0)
-  const [loading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
   const [showCPw, setShowCPw] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [addressErrors, setAddressErrors] = useState<RegisterAddressStepErrors>({ current: {}, registered: {} })
   const [contactErrors, setContactErrors] = useState<RegisterEmergencyContactErrors[]>([])
+  const [dependentErrors, setDependentErrors] = useState<RegisterDependentErrors[]>([])
+  const [bankAccountErrors, setBankAccountErrors] = useState<RegisterBankAccountErrors[]>([])
   const [branches, setBranches] = useState<BranchOption[]>(FALLBACK_BRANCHES)
   const [loadingBranches, setLoadingBranches] = useState(true)
 
@@ -108,6 +136,8 @@ export default function RegisterForm() {
   const [registeredAddress, setRegisteredAddress] = useState<RegisterAddress>(EMPTY_ADDRESS)
   const [sameAsCurrentAddress, setSameAsCurrentAddress] = useState(false)
   const [emergencyContacts, setEmergencyContacts] = useState<RegisterEmergencyContact[]>([{ ...EMPTY_CONTACT }])
+  const [dependents, setDependents] = useState<RegisterDependent[]>([])
+  const [bankAccounts, setBankAccounts] = useState<RegisterBankAccount[]>([])
 
   // Draft restore — client-only, runs once on mount.
   const restoredRef = useRef(false)
@@ -134,6 +164,8 @@ export default function RegisterForm() {
     })
     setSameAsCurrentAddress(draft.sameAsCurrentAddress)
     if (draft.emergencyContacts.length) setEmergencyContacts(draft.emergencyContacts)
+    setDependents(draft.dependents as RegisterDependent[])
+    setBankAccounts(draft.bankAccounts as RegisterBankAccount[])
     toast.info('กู้คืนข้อมูลที่กรอกไว้ก่อนหน้านี้แล้ว')
   }, [])
 
@@ -158,11 +190,13 @@ export default function RegisterForm() {
         regRoad: effectiveRegistered.road, regTambon: effectiveRegistered.tambon, regAmphoe: effectiveRegistered.amphoe,
         regProvince: effectiveRegistered.province, regPostalCode: effectiveRegistered.postalCode,
         emergencyContacts,
+        dependents,
+        bankAccounts,
       }
       saveRegisterDraft(draft, window.localStorage)
     }, 400)
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
-  }, [form, currentAddress, registeredAddress, sameAsCurrentAddress, emergencyContacts, step])
+  }, [form, currentAddress, registeredAddress, sameAsCurrentAddress, emergencyContacts, dependents, bankAccounts, step])
 
   useEffect(() => {
     apiJson<{
@@ -251,6 +285,23 @@ export default function RegisterForm() {
   const removeContact = (index: number) =>
     setEmergencyContacts((list) => list.filter((_, i) => i !== index))
 
+  const setDependentField = (index: number, key: keyof RegisterDependent, val: string | boolean) =>
+    setDependents((list) => list.map((d, i) => (i === index ? { ...d, [key]: val } : d)))
+  const addDependent = () =>
+    setDependents((list) => (list.length >= MAX_REGISTER_DEPENDENTS ? list : [...list, { ...EMPTY_DEPENDENT }]))
+  const removeDependent = (index: number) =>
+    setDependents((list) => list.filter((_, i) => i !== index))
+
+  const setBankAccountField = (index: number, key: keyof RegisterBankAccount, val: string | boolean) =>
+    setBankAccounts((list) => list.map((b, i) => (i === index ? { ...b, [key]: val } : b)))
+  const addBankAccount = () =>
+    setBankAccounts((list) => (list.length >= MAX_REGISTER_BANK_ACCOUNTS ? list : [...list, { ...EMPTY_BANK_ACCOUNT, isPrimary: list.length === 0 }]))
+  const removeBankAccount = (index: number) =>
+    setBankAccounts((list) => list.filter((_, i) => i !== index))
+  /** Only one account can be primary — selecting a new one clears the rest. */
+  const setPrimaryBankAccount = (index: number) =>
+    setBankAccounts((list) => list.map((b, i) => ({ ...b, isPrimary: i === index })))
+
   const next = () => {
     if (step === 0) {
       const e = validateRegisterPersonalStep({
@@ -268,6 +319,14 @@ export default function RegisterForm() {
       setContactErrors(errs)
       if (emergencyContactsStepHasErrors(errs)) return
     } else if (step === 3) {
+      const errs = validateRegisterDependents(dependents)
+      setDependentErrors(errs)
+      if (dependentsStepHasErrors(errs)) return
+    } else if (step === 4) {
+      const errs = validateRegisterBankAccounts(bankAccounts)
+      setBankAccountErrors(errs)
+      if (bankAccountsStepHasErrors(errs)) return
+    } else if (step === 5) {
       const e = validateRegisterEmployeeStep({ role: form.role })
       setErrors((prev) => ({ ...prev, ...e }))
       if (Object.keys(e).length) return
@@ -278,15 +337,70 @@ export default function RegisterForm() {
 
   const back = () => { setErrors({}); setStep((s) => s - 1) }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    // Registration is not wired to the backend yet — /api/register still
-    // expects the old (pre-Phase-1) shape (baseSalary/startDate, a single
-    // free-text address, no emergency contacts) and rebuilding it to accept
-    // this form's shape is Phase 1 step 6's job, not this one's. Submitting
-    // now would either 400 on the missing old required fields or silently
-    // drop everything this step added — so the button stays disabled and
-    // this handler is a no-op guard, not a real submit path.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const passwordErrs = validateRegisterPasswordStep({ password: form.password, confirmPassword: form.confirmPassword })
+    if (Object.keys(passwordErrs).length) {
+      setErrors((prev) => ({ ...prev, ...passwordErrs }))
+      toast.error('กรุณาตรวจสอบรหัสผ่าน')
+      return
+    }
+
+    const effectiveRegistered = copyAddressIfSame(currentAddress, registeredAddress, sameAsCurrentAddress)
+    const payload = {
+      name: `${form.prefix}${form.firstName.trim()} ${form.lastName.trim()}`.replace(/\s+/g, ' ').trim(),
+      prefix: form.prefix,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      nickname: form.nickname.trim() || undefined,
+      email: form.email.trim().toLowerCase(),
+      phone: form.phone,
+      lineId: form.lineId.trim(),
+      birthDate: form.birthDate || undefined,
+      nationalId: form.nationalId,
+      nationality: form.nationality.trim() || undefined,
+      maritalStatus: form.maritalStatus || undefined,
+      role: form.role as 'EMPLOYEE' | 'LAWYER',
+      branchId: form.branchId,
+      socialSecurity: form.socialSecurity,
+      password: form.password,
+      currentAddress,
+      registeredAddress: effectiveRegistered,
+      sameAsCurrentAddress,
+      emergencyContacts,
+      dependents,
+      bankAccounts,
+    }
+
+    setLoading(true)
+    try {
+      const { ok, data, status } = await apiJson<{ success?: boolean; message?: string }>(
+        '/api/register',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      )
+
+      if (!ok) {
+        if (status === 0) {
+          toast.error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ — ตรวจสอบว่า npm run dev ยังรันอยู่')
+        } else {
+          toast.error(apiErrorMessage(data, 'สมัครไม่สำเร็จ', status))
+        }
+        return
+      }
+
+      clearRegisterDraft(window.localStorage)
+      toast.success('สมัครเรียบร้อย! กรุณารอ HR อนุมัติ (1-2 วันทำการ)')
+      setTimeout(() => router.push('/?status=pending'), 1500)
+    } catch (err) {
+      console.error('[register]', err)
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const inputClass = (key: keyof FormData) =>
@@ -535,8 +649,116 @@ export default function RegisterForm() {
         </div>
       )}
 
-      {/* STEP 3: Employee Info */}
+      {/* STEP 3: Dependents (optional) */}
       {step === 3 && (
+        <div className="space-y-4 animate-fade-in">
+          <p className="text-xs text-slate-400 light:text-slate-600">ไม่บังคับ — ข้ามได้ถ้าไม่มีผู้อยู่ในอุปการะ (เพิ่มได้สูงสุด {MAX_REGISTER_DEPENDENTS} คน)</p>
+          {dependents.map((dep, i) => {
+            const err = dependentErrors[i] ?? {}
+            return (
+              <div key={i} className="space-y-3 rounded-xl border border-white/10 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ผู้อยู่ในอุปการะ #{i + 1}</span>
+                  <button type="button" onClick={() => removeDependent(i)} className="text-red-400 hover:text-red-300 p-1" aria-label="ลบผู้อยู่ในอุปการะคนนี้">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label htmlFor={`dep-${i}-name`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ชื่อ-นามสกุล *</label>
+                    <input id={`dep-${i}-name`} type="text" className={addressInputClass(err.name)} value={dep.name} onChange={(e) => setDependentField(i, 'name', e.target.value)} />
+                    {err.name && <p className="text-xs text-red-400">{err.name}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`dep-${i}-rel`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ความสัมพันธ์ *</label>
+                    <select id={`dep-${i}-rel`} className={addressInputClass(err.relationType)} value={dep.relationType} onChange={(e) => setDependentField(i, 'relationType', e.target.value)}>
+                      <option value="">เลือกความสัมพันธ์</option>
+                      {DEPENDENT_RELATION_TYPES.map((r) => <option key={r} value={r}>{DEPENDENT_RELATION_LABELS[r]}</option>)}
+                    </select>
+                    {err.relationType && <p className="text-xs text-red-400">{err.relationType}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`dep-${i}-birth`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">วันเกิด</label>
+                    <input id={`dep-${i}-birth`} type="date" className={addressInputClass()} value={dep.birthDate} onChange={(e) => setDependentField(i, 'birthDate', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`dep-${i}-nid`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เลขบัตรประชาชน</label>
+                    <input id={`dep-${i}-nid`} type="text" placeholder="ไม่บังคับ" className={addressInputClass()} value={dep.nationalId} onChange={(e) => setDependentField(i, 'nationalId', e.target.value)} />
+                  </div>
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+                  <input type="checkbox" checked={dep.isTaxAllowance} onChange={(e) => setDependentField(i, 'isTaxAllowance', e.target.checked)} className="accent-green-500 h-4 w-4" />
+                  ใช้สิทธิลดหย่อนภาษี
+                </label>
+              </div>
+            )
+          })}
+          {dependents.length < MAX_REGISTER_DEPENDENTS && (
+            <button type="button" onClick={addDependent} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/20 py-2.5 text-sm text-slate-300 hover:border-white/40 hover:text-white transition-all">
+              <Plus size={15} /> เพิ่มผู้อยู่ในอุปการะ
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* STEP 4: Bank Accounts (optional) */}
+      {step === 4 && (
+        <div className="space-y-4 animate-fade-in">
+          <p className="text-xs text-slate-400 light:text-slate-600">ไม่บังคับ — ข้ามได้ถ้ายังไม่มีบัญชีธนาคาร (เพิ่มได้สูงสุด {MAX_REGISTER_BANK_ACCOUNTS} บัญชี)</p>
+          {bankAccounts.map((acc, i) => {
+            const err = bankAccountErrors[i] ?? {}
+            return (
+              <div key={i} className="space-y-3 rounded-xl border border-white/10 p-4">
+                <div className="flex items-center justify-between">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">
+                    <input type="radio" name="primary-bank" checked={acc.isPrimary} onChange={() => setPrimaryBankAccount(i)} className="accent-green-500" />
+                    บัญชีหลัก
+                  </label>
+                  <button type="button" onClick={() => removeBankAccount(i)} className="text-red-400 hover:text-red-300 p-1" aria-label="ลบบัญชีนี้">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label htmlFor={`bank-${i}-code`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ธนาคาร *</label>
+                    <select id={`bank-${i}-code`} className={addressInputClass(err.bankCode)} value={acc.bankCode} onChange={(e) => setBankAccountField(i, 'bankCode', e.target.value)}>
+                      <option value="">เลือกธนาคาร</option>
+                      {THAI_BANKS.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}
+                    </select>
+                    {err.bankCode && <p className="text-xs text-red-400">{err.bankCode}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`bank-${i}-type`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ประเภทบัญชี</label>
+                    <select id={`bank-${i}-type`} className={addressInputClass()} value={acc.accountType} onChange={(e) => setBankAccountField(i, 'accountType', e.target.value)}>
+                      <option value="">ไม่ระบุ</option>
+                      <option value="ออมทรัพย์">ออมทรัพย์</option>
+                      <option value="กระแสรายวัน">กระแสรายวัน</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`bank-${i}-number`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เลขบัญชี *</label>
+                    <input id={`bank-${i}-number`} type="text" inputMode="numeric" placeholder="1234567890" className={addressInputClass(err.accountNumber)} value={acc.accountNumber} onChange={(e) => setBankAccountField(i, 'accountNumber', e.target.value.replace(/\D/g, '').slice(0, 15))} />
+                    {err.accountNumber && <p className="text-xs text-red-400">{err.accountNumber}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`bank-${i}-name`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ชื่อบัญชี *</label>
+                    <input id={`bank-${i}-name`} type="text" placeholder="ชื่ออาจไม่ตรงกับชื่อพนักงาน เช่น บัญชีร่วม" className={addressInputClass(err.accountName)} value={acc.accountName} onChange={(e) => setBankAccountField(i, 'accountName', e.target.value)} />
+                    {err.accountName && <p className="text-xs text-red-400">{err.accountName}</p>}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {bankAccounts.length < MAX_REGISTER_BANK_ACCOUNTS && (
+            <button type="button" onClick={addBankAccount} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/20 py-2.5 text-sm text-slate-300 hover:border-white/40 hover:text-white transition-all">
+              <Plus size={15} /> เพิ่มบัญชีธนาคาร
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* STEP 5: Employee Info */}
+      {step === 5 && (
         <div className="space-y-4 animate-fade-in">
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-200/90">
             สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'} — ฝ่าย/แผนก/ส่วนงาน/เงินเดือน/วันเริ่มงาน HR จะกำหนดหลังอนุมัติบัญชี
@@ -572,8 +794,8 @@ export default function RegisterForm() {
         </div>
       )}
 
-      {/* STEP 4: Password */}
-      {step === 4 && (
+      {/* STEP 6: Password */}
+      {step === 6 && (
         <div className="space-y-4 animate-fade-in">
           <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 text-sm text-slate-300">
             <p className="font-semibold text-white mb-1">สรุปข้อมูล</p>
@@ -582,6 +804,8 @@ export default function RegisterForm() {
             <p>สาขา: {branches.find((b) => b.id === form.branchId)?.label ?? '—'}</p>
             <p>ตำแหน่ง/Role: {ROLES.find(r => r.value === form.role)?.label ?? '-'}</p>
             <p>ผู้ติดต่อฉุกเฉิน: {emergencyContacts.length} คน</p>
+            <p>ผู้อยู่ในอุปการะ: {dependents.length} คน</p>
+            <p>บัญชีธนาคาร: {bankAccounts.length} บัญชี</p>
           </div>
 
           <div className="space-y-1.5">
@@ -628,9 +852,9 @@ export default function RegisterForm() {
             {errors.confirmPassword && <p className="text-xs text-red-400">{errors.confirmPassword}</p>}
           </div>
 
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200/90">
-            <p className="font-semibold">🚧 ระบบสมัครยังไม่เปิดใช้งาน</p>
-            <p className="mt-1">หน้านี้อยู่ระหว่างปรับปรุง (Phase 1) — ปุ่มส่งคำขอสมัครจะเปิดใช้งานเมื่อระบบหลังบ้านพร้อมรองรับข้อมูลชุดใหม่ทั้งหมด</p>
+          <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-3 text-xs text-slate-400 light:text-slate-600">
+            <p>✅ หลังสมัคร บัญชีจะอยู่ในสถานะ <strong className="text-yellow-400">รอการอนุมัติ</strong></p>
+            <p className="mt-1">✅ HR / Manager จะตรวจสอบและแจ้งผลทาง LINE หรืออีเมล</p>
           </div>
         </div>
       )}
@@ -647,17 +871,11 @@ export default function RegisterForm() {
             ถัดไป <ChevronRight size={16} />
           </button>
         ) : (
-          <button type="submit" disabled className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-700 py-3 text-sm font-semibold text-slate-400 cursor-not-allowed opacity-70">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : null} ระบบสมัครจะเปิดใช้งานเร็วๆ นี้
+          <button type="submit" disabled={loading} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-500 transition-all disabled:opacity-60">
+            {loading ? <><Loader2 size={16} className="animate-spin" /> กำลังส่ง...</> : '✅ ส่งคำขอสมัคร'}
           </button>
         )}
       </div>
     </form>
   )
-}
-
-/** Exposed for step 6 — clears the autosaved draft once real submission
- *  ships and a registration actually succeeds. Not called anywhere yet. */
-export function clearRegisterFormDraft() {
-  clearRegisterDraft(window.localStorage)
 }

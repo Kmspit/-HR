@@ -30,6 +30,8 @@ const sampleDraft: RegisterFormDraftFields = {
   regHouseNo: '', regMoo: '', regSoi: '', regRoad: '',
   regTambon: '', regAmphoe: '', regProvince: '', regPostalCode: '',
   emergencyContacts: [{ name: 'สมหญิง', relationship: 'มารดา', phone: '0898765432', altPhone: '' }],
+  dependents: [{ name: 'เด็กชาย ใจดี', relationType: 'CHILD', birthDate: '2015-01-01', nationalId: '', isTaxAllowance: true }],
+  bankAccounts: [{ bankCode: '004', accountNumber: '1234567890', accountName: 'สมชาย ใจดี', accountType: 'ออมทรัพย์', isPrimary: true }],
 }
 
 describe('register-form-storage', () => {
@@ -60,6 +62,13 @@ describe('register-form-storage', () => {
   it('returns null for a validly-parsed but wrong-shaped payload', () => {
     const storage = makeFakeStorage()
     storage.setItem(REGISTER_DRAFT_STORAGE_KEY, JSON.stringify({ foo: 'bar' }))
+    expect(loadRegisterDraft(storage)).toBeNull()
+  })
+
+  it('returns null for a draft saved by an older form version missing dependents/bankAccounts', () => {
+    const storage = makeFakeStorage()
+    const { dependents: _dependents, bankAccounts: _bankAccounts, ...staleDraft } = sampleDraft
+    storage.setItem(REGISTER_DRAFT_STORAGE_KEY, JSON.stringify(staleDraft))
     expect(loadRegisterDraft(storage)).toBeNull()
   })
 

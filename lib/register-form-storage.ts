@@ -19,6 +19,22 @@ export type RegisterEmergencyContactDraft = {
   altPhone: string
 }
 
+export type RegisterDependentDraft = {
+  name: string
+  relationType: string
+  birthDate: string
+  nationalId: string
+  isTaxAllowance: boolean
+}
+
+export type RegisterBankAccountDraft = {
+  bankCode: string
+  accountNumber: string
+  accountName: string
+  accountType: string
+  isPrimary: boolean
+}
+
 export type RegisterFormDraftFields = {
   step: number
   prefix: string
@@ -53,6 +69,8 @@ export type RegisterFormDraftFields = {
   regProvince: string
   regPostalCode: string
   emergencyContacts: RegisterEmergencyContactDraft[]
+  dependents: RegisterDependentDraft[]
+  bankAccounts: RegisterBankAccountDraft[]
 }
 
 /** Minimal storage shape this module actually needs — lets tests pass a
@@ -77,10 +95,16 @@ export function loadRegisterDraft(storage: DraftStorage): RegisterFormDraftField
     const raw = storage.getItem(REGISTER_DRAFT_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as RegisterFormDraftFields).emergencyContacts)) {
+    if (!parsed || typeof parsed !== 'object') return null
+    const p = parsed as RegisterFormDraftFields
+    // Checks every array field, not just emergencyContacts — a draft saved
+    // by an older version of this form (e.g. before dependents/bankAccounts
+    // existed) would otherwise pass as "valid" and then crash the component
+    // the moment it tries to read draft.dependents.length.
+    if (!Array.isArray(p.emergencyContacts) || !Array.isArray(p.dependents) || !Array.isArray(p.bankAccounts)) {
       return null
     }
-    return parsed as RegisterFormDraftFields
+    return p
   } catch {
     return null
   }

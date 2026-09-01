@@ -9,9 +9,15 @@ import {
   emergencyContactsStepHasErrors,
   validateRegisterEmployeeStep,
   validateRegisterPasswordStep,
+  validateRegisterDependents,
+  dependentsStepHasErrors,
+  validateRegisterBankAccounts,
+  bankAccountsStepHasErrors,
   MAX_REGISTER_EMERGENCY_CONTACTS,
   type RegisterAddress,
   type RegisterEmergencyContact,
+  type RegisterDependent,
+  type RegisterBankAccount,
 } from '@/lib/register-form-validation'
 
 const validPersonal = {
@@ -166,5 +172,65 @@ describe('validateRegisterPasswordStep', () => {
   it('rejects mismatched passwords', () => {
     const e = validateRegisterPasswordStep({ password: 'password123', confirmPassword: 'different123' })
     expect(e.confirmPassword).toBeTruthy()
+  })
+})
+
+const validDependent: RegisterDependent = {
+  name: 'เด็กชาย ใจดี', relationType: 'CHILD', birthDate: '2015-01-01', nationalId: '', isTaxAllowance: true,
+}
+
+describe('validateRegisterDependents + dependentsStepHasErrors', () => {
+  it('is a no-op for an empty list — the whole step is optional', () => {
+    const errors = validateRegisterDependents([])
+    expect(errors).toEqual([])
+    expect(dependentsStepHasErrors(errors)).toBe(false)
+  })
+
+  it('passes a fully-filled dependent (birthDate/nationalId stay optional)', () => {
+    const errors = validateRegisterDependents([validDependent])
+    expect(dependentsStepHasErrors(errors)).toBe(false)
+  })
+
+  it('never format-validates nationalId (foreign dependents may lack a 13-digit Thai ID)', () => {
+    const errors = validateRegisterDependents([{ ...validDependent, nationalId: 'not-a-valid-id-at-all' }])
+    expect(dependentsStepHasErrors(errors)).toBe(false)
+  })
+
+  it('requires name and relationType on any row that was added', () => {
+    const errors = validateRegisterDependents([{ ...validDependent, name: '', relationType: '' }])
+    expect(errors[0]).toEqual({ name: 'กรุณากรอกชื่อ', relationType: 'กรุณาเลือกความสัมพันธ์' })
+    expect(dependentsStepHasErrors(errors)).toBe(true)
+  })
+})
+
+const validBankAccount: RegisterBankAccount = {
+  bankCode: '004', accountNumber: '1234567890', accountName: 'สมชาย ใจดี', accountType: 'ออมทรัพย์', isPrimary: true,
+}
+
+describe('validateRegisterBankAccounts + bankAccountsStepHasErrors', () => {
+  it('is a no-op for an empty list — the whole step is optional', () => {
+    const errors = validateRegisterBankAccounts([])
+    expect(errors).toEqual([])
+    expect(bankAccountsStepHasErrors(errors)).toBe(false)
+  })
+
+  it('passes a fully-filled bank account', () => {
+    const errors = validateRegisterBankAccounts([validBankAccount])
+    expect(bankAccountsStepHasErrors(errors)).toBe(false)
+  })
+
+  it('rejects an account number that is too short', () => {
+    const errors = validateRegisterBankAccounts([{ ...validBankAccount, accountNumber: '123' }])
+    expect(errors[0].accountNumber).toBeTruthy()
+  })
+
+  it('requires bankCode/accountNumber/accountName on any row that was added', () => {
+    const errors = validateRegisterBankAccounts([{ bankCode: '', accountNumber: '', accountName: '', accountType: '', isPrimary: false }])
+    expect(errors[0]).toEqual({
+      bankCode: 'กรุณาเลือกธนาคาร',
+      accountNumber: 'กรุณากรอกเลขบัญชี',
+      accountName: 'กรุณากรอกชื่อบัญชี',
+    })
+    expect(bankAccountsStepHasErrors(errors)).toBe(true)
   })
 })

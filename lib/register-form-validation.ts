@@ -143,6 +143,67 @@ export function emergencyContactsStepHasErrors(errors: RegisterEmergencyContactE
   return errors.some((e) => Object.keys(e).length > 0)
 }
 
+export const DEPENDENT_RELATION_TYPES = ['SPOUSE', 'CHILD', 'PARENT', 'OTHER'] as const
+export type DependentRelationType = (typeof DEPENDENT_RELATION_TYPES)[number]
+
+export type RegisterDependent = {
+  name: string
+  relationType: DependentRelationType | ''
+  birthDate: string
+  nationalId: string
+  isTaxAllowance: boolean
+}
+
+export type RegisterDependentErrors = Partial<Record<'name' | 'relationType', string>>
+
+/** The whole step is optional (0 dependents is fine) — but each row the
+ *  applicant actually adds still needs a name and a relationType, since
+ *  relationType drives tax-allowance eligibility calculations later.
+ *  nationalId is deliberately never format-validated here (see the schema
+ *  comment on Dependent — a foreign dependent may not have a 13-digit
+ *  Thai ID at all). */
+export function validateRegisterDependents(dependents: RegisterDependent[]): RegisterDependentErrors[] {
+  return dependents.map((d) => {
+    const e: RegisterDependentErrors = {}
+    if (!d.name.trim()) e.name = 'กรุณากรอกชื่อ'
+    if (!d.relationType) e.relationType = 'กรุณาเลือกความสัมพันธ์'
+    return e
+  })
+}
+
+export function dependentsStepHasErrors(errors: RegisterDependentErrors[]): boolean {
+  return errors.some((e) => Object.keys(e).length > 0)
+}
+
+export type RegisterBankAccount = {
+  bankCode: string
+  accountNumber: string
+  accountName: string
+  accountType: string
+  isPrimary: boolean
+}
+
+export type RegisterBankAccountErrors = Partial<Record<'bankCode' | 'accountNumber' | 'accountName', string>>
+
+/** Also optional as a whole step — each added row needs bank/number/name.
+ *  accountNumber format is loosely checked (10-15 digits after stripping
+ *  spaces/dashes) since Thai account number lengths vary by bank. */
+export function validateRegisterBankAccounts(accounts: RegisterBankAccount[]): RegisterBankAccountErrors[] {
+  return accounts.map((a) => {
+    const e: RegisterBankAccountErrors = {}
+    if (!a.bankCode) e.bankCode = 'กรุณาเลือกธนาคาร'
+    const digits = a.accountNumber.replace(/[\s-]/g, '')
+    if (!digits) e.accountNumber = 'กรุณากรอกเลขบัญชี'
+    else if (!/^\d{10,15}$/.test(digits)) e.accountNumber = 'เลขบัญชีไม่ถูกต้อง'
+    if (!a.accountName.trim()) e.accountName = 'กรุณากรอกชื่อบัญชี'
+    return e
+  })
+}
+
+export function bankAccountsStepHasErrors(errors: RegisterBankAccountErrors[]): boolean {
+  return errors.some((e) => Object.keys(e).length > 0)
+}
+
 export type RegisterEmployeeInfo = {
   role: string
 }
