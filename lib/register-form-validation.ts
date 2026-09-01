@@ -52,10 +52,11 @@ export type RegisterAddress = {
 
 export type RegisterAddressErrors = Partial<Record<keyof RegisterAddress, string>>
 
-const REQUIRED_ADDRESS_MSG: Record<keyof RegisterAddress, string> = {
+/** moo/soi are deliberately not required — condos and other in-city
+ *  addresses commonly have neither, and forcing the field just gets a
+ *  garbage "-" or "ไม่มี" typed in instead of real data. */
+const REQUIRED_ADDRESS_MSG: Partial<Record<keyof RegisterAddress, string>> = {
   houseNo: 'กรุณากรอกบ้านเลขที่',
-  moo: 'กรุณากรอกหมู่',
-  soi: 'กรุณากรอกซอย',
   road: 'กรุณากรอกถนน',
   tambon: 'กรุณากรอกตำบล/แขวง',
   amphoe: 'กรุณากรอกอำเภอ/เขต',
@@ -66,7 +67,7 @@ const REQUIRED_ADDRESS_MSG: Record<keyof RegisterAddress, string> = {
 export function validateRegisterAddress(address: RegisterAddress): RegisterAddressErrors {
   const e: RegisterAddressErrors = {}
   for (const key of Object.keys(REQUIRED_ADDRESS_MSG) as (keyof RegisterAddress)[]) {
-    if (!address[key].trim()) e[key] = REQUIRED_ADDRESS_MSG[key]
+    if (!address[key].trim()) e[key] = REQUIRED_ADDRESS_MSG[key]!
   }
   if (address.postalCode.trim() && !/^\d{5}$/.test(address.postalCode.trim())) {
     e.postalCode = 'รหัสไปรษณีย์ 5 หลัก'

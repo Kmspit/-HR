@@ -75,15 +75,15 @@ const ROLES = [
   { value: 'LAWYER',   label: '⚖️ ทนายความ',              desc: 'ส่งแผนงานรายสัปดาห์' },
 ]
 
-const ADDRESS_FIELD_LABELS: { key: keyof RegisterAddress; label: string }[] = [
-  { key: 'houseNo', label: 'บ้านเลขที่' },
-  { key: 'moo', label: 'หมู่' },
-  { key: 'soi', label: 'ซอย' },
-  { key: 'road', label: 'ถนน' },
-  { key: 'tambon', label: 'ตำบล/แขวง' },
-  { key: 'amphoe', label: 'อำเภอ/เขต' },
-  { key: 'province', label: 'จังหวัด' },
-  { key: 'postalCode', label: 'รหัสไปรษณีย์' },
+const ADDRESS_FIELD_LABELS: { key: keyof RegisterAddress; label: string; required: boolean }[] = [
+  { key: 'houseNo', label: 'บ้านเลขที่', required: true },
+  { key: 'moo', label: 'หมู่', required: false },
+  { key: 'soi', label: 'ซอย', required: false },
+  { key: 'road', label: 'ถนน', required: true },
+  { key: 'tambon', label: 'ตำบล/แขวง', required: true },
+  { key: 'amphoe', label: 'อำเภอ/เขต', required: true },
+  { key: 'province', label: 'จังหวัด', required: true },
+  { key: 'postalCode', label: 'รหัสไปรษณีย์', required: true },
 ]
 
 export default function RegisterForm() {
@@ -302,9 +302,9 @@ export default function RegisterForm() {
     idPrefix: string,
   ) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {ADDRESS_FIELD_LABELS.map(({ key, label }) => (
+      {ADDRESS_FIELD_LABELS.map(({ key, label, required }) => (
         <div key={key} className="space-y-1.5 min-w-0">
-          <label htmlFor={`${idPrefix}-${key}`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">{label} *</label>
+          <label htmlFor={`${idPrefix}-${key}`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">{label}{required ? ' *' : ''}</label>
           <input
             id={`${idPrefix}-${key}`}
             type="text"

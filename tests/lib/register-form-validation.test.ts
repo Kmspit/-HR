@@ -65,12 +65,18 @@ describe('validateRegisterAddress', () => {
     expect(validateRegisterAddress(validAddress)).toEqual({})
   })
 
-  it('flags every blank sub-field', () => {
+  it('flags the 6 required sub-fields when blank', () => {
     const empty: RegisterAddress = {
       houseNo: '', moo: '', soi: '', road: '', tambon: '', amphoe: '', province: '', postalCode: '',
     }
     const e = validateRegisterAddress(empty)
-    expect(Object.keys(e)).toHaveLength(8)
+    expect(Object.keys(e).sort()).toEqual(['amphoe', 'houseNo', 'postalCode', 'province', 'road', 'tambon'])
+  })
+
+  it('does not require moo or soi (condos/in-city addresses often have neither)', () => {
+    const e = validateRegisterAddress({ ...validAddress, moo: '', soi: '' })
+    expect(e.moo).toBeUndefined()
+    expect(e.soi).toBeUndefined()
   })
 
   it('rejects a postal code that is not 5 digits', () => {
@@ -84,7 +90,7 @@ describe('validateRegisterAddressStep + addressStepHasErrors', () => {
     const blank: RegisterAddress = { houseNo: '', moo: '', soi: '', road: '', tambon: '', amphoe: '', province: '', postalCode: '' }
     const result = validateRegisterAddressStep(validAddress, blank, false)
     expect(result.current).toEqual({})
-    expect(Object.keys(result.registered)).toHaveLength(8)
+    expect(Object.keys(result.registered)).toHaveLength(6)
     expect(addressStepHasErrors(result)).toBe(true)
   })
 
