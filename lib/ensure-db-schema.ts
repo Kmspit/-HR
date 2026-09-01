@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900023
+export const CURRENT_SCHEMA_VERSION = 900025
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -38,6 +38,7 @@ export const ALL_MAPPED_TABLES = [
   'case_clients', 'case_debtors', 'case_courts', 'case_timelines', 'case_templates', 'case_checklists',
   'case_debtor_activities', 'automation_rules', 'automation_execution_logs', 'recovery_payments',
   'case_financials', 'court_events', 'schema_migrations', 'employee_profiles',
+  'emergency_contacts', 'dependents',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -1672,6 +1673,78 @@ async function runEnsure(force = false): Promise<boolean> {
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
+  `)
+
+  // v900024/v900025 — Phase 1 step 2: EmergencyContact + Dependent, both 1:N
+  // additive tables (no FK, matching this file's existing convention for new
+  // tables — see e.g. attendance_face_scans / line_link_codes above). Version
+  // bumped to 900025 (this block is still labeled v900024 below) purely
+  // because a throwaway verification script had already run v900024 against
+  // production with the *first* draft's shape before review feedback changed
+  // it — bumping forces runEnsure() to execute this block again instead of
+  // skipping on "already applied".
+  //
+  // Shape changed once (relationship→relationType enum, plain nationalId→
+  // encrypted nationalIdEnc/nationalIdLast4, +altPhone/isPrimary/
+  // isTaxAllowance/note) after step 2's first draft got review feedback,
+  // while these tables had already been created against production by a
+  // throwaway verification script — so this rebuilds in place rather than
+  // ALTERing, guarded by a row-count check so it refuses to touch either
+  // table if it ever finds real data (matches the audit_logs v900021
+  // rebuild's caution, just without the copy-forward since these tables
+  // never shipped behind any API/UI to have real rows in the first place).
+  for (const table of ['emergency_contacts', 'dependents']) {
+    const existing = await prisma.$queryRawUnsafe<{ name: string }[]>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = '${table}'`,
+    )
+    if (existing.length === 0) continue
+    const countRows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+      `SELECT COUNT(*) AS cnt FROM ${table}`,
+    )
+    const count = Number(countRows[0]?.cnt ?? 0)
+    if (count > 0) {
+      console.warn(`[MIGRATION v900024] "${table}" has ${count} row(s) — refusing to drop/rebuild, needs a manual ALTER path instead`)
+      continue
+    }
+    await prisma.$executeRawUnsafe(`DROP TABLE "${table}"`)
+  }
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS emergency_contacts (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      name TEXT NOT NULL,
+      relationship TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      altPhone TEXT,
+      address TEXT,
+      isPrimary INTEGER NOT NULL DEFAULT 0,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS emergency_contacts_user_idx ON emergency_contacts (userId)
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS dependents (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      name TEXT NOT NULL,
+      relationType TEXT NOT NULL DEFAULT 'OTHER',
+      nationalIdEnc TEXT,
+      nationalIdLast4 TEXT,
+      birthDate DATETIME,
+      isTaxAllowance INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS dependents_user_idx ON dependents (userId)
   `)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────

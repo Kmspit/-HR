@@ -302,6 +302,15 @@ enum CourtPriority {
   CRITICAL
 }
 
+/// สำหรับ Dependent.relationType — คงที่เฉพาะประเภทที่มีผลต่อการคำนวณสิทธิ
+/// ลดหย่อนภาษีต่างกัน ไม่ใช่ free text
+enum DependentRelationType {
+  SPOUSE
+  CHILD
+  PARENT
+  OTHER
+}
+
 // ── COMPANY BRANCH ──────────────────────────────
 
 model CompanyBranch {
@@ -491,6 +500,8 @@ model User {
   device              UserDevice?
   faceProfile         UserFaceProfile?
   employeeProfile     EmployeeProfile?
+  emergencyContacts   EmergencyContact[]
+  dependents          Dependent[]
   faceLogs            AttendanceFaceLog[]
   chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
   leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
@@ -652,6 +663,58 @@ model EmployeeProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("employee_profiles")
+}
+
+/// Phase 1 step 2 — ผู้ติดต่อฉุกเฉิน (1:N ต่อพนักงาน คนหนึ่งมีได้หลายคน,
+/// ฟอร์มสมัครงานบังคับอย่างน้อย 1 คน แต่บังคับที่ระดับ API/UI ไม่ใช่ schema)
+model EmergencyContact {
+  id           String  @id @default(cuid())
+  userId       String
+  name         String
+  relationship String
+  phone        String
+  altPhone     String?
+  address      String?
+  /// ใครโทรก่อนเวลาฉุกเฉิน — แยกจาก sortOrder ซึ่งเป็นแค่ลำดับการแสดงผล
+  isPrimary    Boolean @default(false)
+  sortOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+/// Phase 1 step 2 — ผู้อยู่ในอุปการะ (1:N, ทั้งหมดเป็น optional ที่ระดับฟอร์ม
+/// ยกเว้น relationType/isTaxAllowance ซึ่งจำเป็นสำหรับคำนวณสิทธิลดหย่อนภาษี
+/// ตอนทำ ภ.ง.ด.1ก). nationalId เข้ารหัสด้วย lib/field-crypto.ts — เป็นเลขบัตร
+/// ของบุคคลที่สามที่ไม่ได้ยินยอมให้ระบบนี้เก็บข้อมูลเขาโดยตรง จึงระวังมากกว่า
+/// nationalId ของพนักงานเอง (ซึ่งยัง masked-only ไม่ได้เข้ารหัส) — เก็บ 4 ตัวท้าย
+/// แยกไว้แบบ plain สำหรับแสดงผลโดยไม่ต้องถอดรหัสทุกครั้ง. ยังไม่ validate รูปแบบ
+/// 13 หลักเพราะบางกรณี (บุตรต่างชาติ) อาจไม่มีเลขบัตรไทย
+model Dependent {
+  id               String                @id @default(cuid())
+  userId           String
+  name             String
+  relationType     DependentRelationType
+  nationalIdEnc    String?
+  nationalIdLast4  String?
+  birthDate        DateTime?
+  /// ใช้สิทธิลดหย่อนภาษีของพนักงานได้หรือไม่ (กฎหมายอนุญาตเฉพาะบางความสัมพันธ์/เงื่อนไข)
+  isTaxAllowance   Boolean               @default(false)
+  note             String?
+  sortOrder        Int                   @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("dependents")
 }
 
 model AttendanceFaceLog {
