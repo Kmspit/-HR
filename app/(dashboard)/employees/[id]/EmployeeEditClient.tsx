@@ -29,6 +29,7 @@ import { revealReducer, initialRevealState, idleTimeoutAction } from '@/lib/nati
 import { createIdleTimer } from '@/lib/idle-timer'
 import FormField from '@/components/profile/FormField'
 import EmployeeEditHistoryTab from '@/components/employees/EmployeeEditHistoryTab'
+import EmployeeProfileTab from '@/components/employees/EmployeeProfileTab'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
   isValidEmailInput,
@@ -92,7 +93,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 const STATUS_LIST = ['ACTIVE', 'PENDING', 'DISABLED', 'REJECTED']
 
-type TabKey = 'profile' | 'work' | 'system' | 'history'
+type TabKey = 'profile' | 'personal' | 'work' | 'system' | 'history'
 type FormErrors = Partial<Record<string, string>>
 
 export default function EmployeeEditClient({
@@ -309,6 +310,7 @@ export default function EmployeeEditClient({
       label: 'ทั่วไป',
       hasError: Object.keys(errors).some(k => ['name','email','phone','nationalId','birthDate'].includes(k)),
     },
+    { key: 'personal', label: 'ข้อมูลส่วนตัวเพิ่มเติม', hasError: false },
     { key: 'work', label: 'การทำงาน', hasError: false },
     {
       key: 'system',
@@ -504,6 +506,10 @@ export default function EmployeeEditClient({
           </section>
         </div>
       )}
+
+      {/* ── Tab: ข้อมูลส่วนตัวเพิ่มเติม ── (stays mounted across tab switches,
+          same reasoning as the history tab below) */}
+      <EmployeeProfileTab employeeId={employee.id} active={activeTab === 'personal'} />
 
       {/* ── Tab: การทำงาน ── */}
       {activeTab === 'work' && (

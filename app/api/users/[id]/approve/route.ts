@@ -42,7 +42,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const body   = await req.json() as ApproveBody
     const ip     = (await headers()).get('x-forwarded-for') ?? 'unknown'
 
-    const user = await prisma.user.findUnique({ where: { id } })
+    // select (not the bare model) — snapshotEmployeeForAudit's "before" snapshot
+    // below now needs employeeProfile too (Phase 1 step 8a), which isn't part of
+    // the default User shape; status/branchId are the two non-audit fields this
+    // route reads off `user` elsewhere. Same pattern as the org route's own
+    // `select: { ...EMPLOYEE_AUDIT_SELECT, branchId: true }`.
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { ...EMPLOYEE_AUDIT_SELECT, status: true, branchId: true },
+    })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     if (user.status !== 'PENDING') return NextResponse.json({ error: 'User is not pending' }, { status: 400 })
 
