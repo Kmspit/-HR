@@ -82,6 +82,7 @@
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.42.2",
+    "geothai": "^3.0.1",
     "jose": "^5.9.6",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",

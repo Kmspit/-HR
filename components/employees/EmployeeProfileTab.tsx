@@ -9,6 +9,7 @@ import { profileInputClass, profileInputErrorClass } from '@/lib/profile-validat
 import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
 import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
 import type { RegisterAddress } from '@/lib/register-form-validation'
+import ThaiAddressFields, { type ThaiAddressValue } from '@/components/shared/ThaiAddressFields'
 import {
   employeeProfileLoadReducer,
   initialEmployeeProfileLoadState,
@@ -80,6 +81,14 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
     setForm((f) => (f ? { ...f, registeredAddress: { ...f.registeredAddress, [key]: value } } : f))
     setErrors((e) => ({ ...e, registeredAddress: { ...e.registeredAddress, [key]: undefined } }))
   }
+  const setCurrentThaiAddress = (next: ThaiAddressValue) => {
+    setForm((f) => (f ? { ...f, currentAddress: { ...f.currentAddress, ...next } } : f))
+    setErrors((e) => ({ ...e, currentAddress: { ...e.currentAddress, province: undefined, amphoe: undefined, tambon: undefined } }))
+  }
+  const setRegisteredThaiAddress = (next: ThaiAddressValue) => {
+    setForm((f) => (f ? { ...f, registeredAddress: { ...f.registeredAddress, ...next } } : f))
+    setErrors((e) => ({ ...e, registeredAddress: { ...e.registeredAddress, province: undefined, amphoe: undefined, tambon: undefined } }))
+  }
 
   const save = async () => {
     if (!form) return
@@ -141,25 +150,39 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
 
   const addrClass = (err?: string) => (err ? profileInputErrorClass : profileInputClass)
 
+  // houseNo/moo/soi/road stay free text — only tambon/amphoe/province/
+  // postalCode moved to the ThaiAddressFields combobox (Thai-address-dropdown
+  // plan, approved 2026-09-02).
+  const FREE_TEXT_ADDRESS_FIELDS = ADDRESS_FIELD_LABELS.filter(
+    ({ key }) => !(['tambon', 'amphoe', 'province', 'postalCode'] as const).includes(key as never),
+  )
+
   const renderAddress = (
     address: RegisterAddress,
     setter: (key: keyof RegisterAddress, value: string) => void,
+    setThaiAddress: (next: ThaiAddressValue) => void,
     fieldErrors: Partial<Record<keyof RegisterAddress, string>>,
     idPrefix: string,
-    disabled = false,
   ) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {ADDRESS_FIELD_LABELS.map(({ key, label, required }) => (
-        <FormField key={key} label={label} required={required} error={fieldErrors[key]}>
-          <input
-            id={`${idPrefix}-${key}`}
-            value={address[key]}
-            disabled={disabled}
-            onChange={(e) => setter(key, e.target.value)}
-            className={`${addrClass(fieldErrors[key])} disabled:opacity-50`}
-          />
-        </FormField>
-      ))}
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {FREE_TEXT_ADDRESS_FIELDS.map(({ key, label, required }) => (
+          <FormField key={key} label={label} required={required} error={fieldErrors[key]}>
+            <input
+              id={`${idPrefix}-${key}`}
+              value={address[key]}
+              onChange={(e) => setter(key, e.target.value)}
+              className={addrClass(fieldErrors[key])}
+            />
+          </FormField>
+        ))}
+      </div>
+      <ThaiAddressFields
+        idPrefix={idPrefix}
+        value={{ province: address.province, amphoe: address.amphoe, tambon: address.tambon, postalCode: address.postalCode }}
+        onChange={setThaiAddress}
+        errors={{ province: fieldErrors.province, amphoe: fieldErrors.amphoe, tambon: fieldErrors.tambon }}
+      />
     </div>
   )
 
@@ -196,7 +219,7 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
         <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
           <MapPin className="w-4 h-4 text-green-400" /> ที่อยู่ปัจจุบัน
         </h2>
-        {renderAddress(form.currentAddress, setCurrentAddressField, errors.currentAddress, 'cur')}
+        {renderAddress(form.currentAddress, setCurrentAddressField, setCurrentThaiAddress, errors.currentAddress, 'cur')}
       </section>
 
       <section className="glass-card rounded-2xl p-5 space-y-4">
@@ -215,7 +238,7 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
           </label>
         </div>
         {!form.sameAsCurrentAddress &&
-          renderAddress(form.registeredAddress, setRegisteredAddressField, errors.registeredAddress, 'reg')}
+          renderAddress(form.registeredAddress, setRegisteredAddressField, setRegisteredThaiAddress, errors.registeredAddress, 'reg')}
       </section>
 
       <button

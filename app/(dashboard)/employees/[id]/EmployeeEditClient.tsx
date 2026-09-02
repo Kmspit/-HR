@@ -40,6 +40,7 @@ import {
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
 import { EMPLOYEE_TYPES } from '@/lib/access-control'
+import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
 type Employee = {
@@ -425,11 +426,22 @@ export default function EmployeeEditClient({
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <FormField label="คำนำหน้า">
-                <input
+                <select
                   value={form.prefix}
                   onChange={(e) => set('prefix', e.target.value)}
                   className={profileInputClass}
-                />
+                >
+                  <option value="" className="bg-slate-900">— เลือก —</option>
+                  {/* A stored value from before this became a closed dropdown
+                      (or a genuine gap in PREFIX_OPTIONS) stays visible as its
+                      own option instead of silently showing blank — matches
+                      the address dropdown's "never discard an unmatched
+                      existing value" rule. */}
+                  {form.prefix && !PREFIX_OPTIONS.includes(form.prefix) && (
+                    <option value={form.prefix} className="bg-slate-900">{form.prefix} (ค่าเดิม)</option>
+                  )}
+                  {PREFIX_OPTIONS.map((p) => <option key={p} value={p} className="bg-slate-900">{p}</option>)}
+                </select>
               </FormField>
               <div className="sm:col-span-2">
                 <FormField label="ชื่อ-นามสกุล" required error={errors.name}>
