@@ -50,6 +50,16 @@ const nextConfig: NextConfig = {
       './assets/fonts/**/*',
       './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
     ],
+    // geothai reads geo.json/metadata.json/postal_lookup.json via
+    // fs.readFileSync() at a path computed from import.meta.url at runtime
+    // (not a static require()), so Vercel's Node File Trace can't see the
+    // dependency and won't copy these files into the Lambda bundle on its
+    // own — same class of bug as the font files above. Confirmed by
+    // reading node_modules/geothai/dist/index.cjs directly; not yet
+    // re-verified against a live preview deployment (2026-09-02).
+    '/api/thai-address/provinces': ['./node_modules/geothai/dist/data/**/*'],
+    '/api/thai-address/districts': ['./node_modules/geothai/dist/data/**/*'],
+    '/api/thai-address/subdistricts': ['./node_modules/geothai/dist/data/**/*'],
   },
   serverExternalPackages: [
     '@prisma/client',
