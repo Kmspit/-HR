@@ -49,6 +49,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       <EmployeeEditClient
       currentUserId={session.user.id}
       canEditSalary={HR_ADMIN.includes(role)}
+      canViewSensitive={HR_ADMIN.includes(role)}
       employee={{
         ...user,
         baseSalary: user.baseSalary ?? 0,
