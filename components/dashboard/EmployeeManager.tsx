@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, CheckCircle, XCircle, Search, Layers, Pencil, SlidersHorizontal, UserPlus, ChevronDown } from 'lucide-react'
 import OrgAssignModal from '@/components/dashboard/OrgAssignModal'
+import ApproveAssignModal from '@/components/dashboard/ApproveAssignModal'
 import { formatThaiDate } from '@/lib/utils'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { ROLE_LABELS, ROLE_COLORS, ROLE_ICONS, ROLE_DESCRIPTIONS } from '@/lib/access-control'
@@ -34,6 +35,9 @@ type Props = {
   initialTab: string
   orgFilterOptions?: { divisions: OrgOpt[]; departments: OrgOpt[]; sections: OrgOpt[] }
   currentOrgFilters?: { divisionId?: string; departmentId?: string; sectionId?: string }
+  /** HR_ADMIN only — computed server-side from the viewer's own role, passed
+   *  through to ApproveAssignModal to decide whether the salary field shows. */
+  canEditSalary: boolean
 }
 
 function orgLabel(u: User) {
@@ -58,11 +62,12 @@ function roleBadge(role: Role) {
   )
 }
 
-export default function EmployeeManager({ users, stats, initialTab, orgFilterOptions, currentOrgFilters }: Props) {
+export default function EmployeeManager({ users, stats, initialTab, orgFilterOptions, currentOrgFilters, canEditSalary }: Props) {
   const [tab, setTab] = useState<'all' | 'pending' | 'disabled'>(initialTab === 'pending' ? 'pending' : 'all')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [assignUser, setAssignUser] = useState<User | null>(null)
+  const [approveUser, setApproveUser] = useState<User | null>(null)
   const [showOrgFilter, setShowOrgFilter] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -89,19 +94,22 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
     return matchTab
   })
 
-  const handleApprove = async (id: string, action: 'APPROVE' | 'REJECT') => {
+  // APPROVE now opens ApproveAssignModal instead of calling the API directly
+  // (Phase 1 step 7 — unified approve+org-assign) — see setApproveUser below.
+  // REJECT needs no extra data, so it stays a direct one-click action.
+  const handleReject = async (id: string) => {
     setLoading(id)
     try {
       const { ok, data, status } = await apiJson(`/api/users/${id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action: 'REJECT' }),
       })
       if (!ok) { toast.error(apiErrorMessage(data, 'เกิดข้อผิดพลาด', status)); return }
-      toast.success(action === 'APPROVE' ? '✅ อนุมัติบัญชีแล้ว' : '❌ ปฏิเสธบัญชีแล้ว')
+      toast.success('❌ ปฏิเสธบัญชีแล้ว')
       router.refresh()
     } catch (err) {
-      console.error('[employee-approve]', err)
+      console.error('[employee-reject]', err)
       toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     }
     finally { setLoading(null) }
@@ -283,12 +291,12 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                 {statusBadge(u.status)}
               </div>
               <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id}
+                <button type="button" onClick={() => setApproveUser(u)} disabled={loading === u.id}
                   className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-600 py-2.5 text-[14px] font-semibold text-white hover:bg-green-500 disabled:opacity-50 touch-manipulation">
                   {loading === u.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
                   อนุมัติ
                 </button>
-                <button type="button" onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id}
+                <button type="button" onClick={() => handleReject(u.id)} disabled={loading === u.id}
                   className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 py-2.5 text-[14px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 touch-manipulation">
                   <XCircle size={14} />
                   ปฏิเสธ
@@ -343,11 +351,11 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                     <div className="flex flex-wrap gap-1.5">
                       {tab === 'pending' && (
                         <>
-                          <button type="button" onClick={() => handleApprove(u.id, 'APPROVE')} disabled={loading === u.id}
+                          <button type="button" onClick={() => setApproveUser(u)} disabled={loading === u.id}
                             className="flex min-h-[40px] items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-green-500 disabled:opacity-50 touch-manipulation">
                             {loading === u.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} อนุมัติ
                           </button>
-                          <button type="button" onClick={() => handleApprove(u.id, 'REJECT')} disabled={loading === u.id}
+                          <button type="button" onClick={() => handleReject(u.id)} disabled={loading === u.id}
                             className="flex min-h-[40px] items-center gap-1 rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-[13px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 touch-manipulation">
                             <XCircle size={12} /> ปฏิเสธ
                           </button>
@@ -376,6 +384,16 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
           userName={assignUser.name}
           branchId={assignUser.branchId ?? null}
           onClose={() => setAssignUser(null)}
+        />
+      )}
+
+      {approveUser && (
+        <ApproveAssignModal
+          userId={approveUser.id}
+          userName={approveUser.name}
+          branchId={approveUser.branchId ?? null}
+          canEditSalary={canEditSalary}
+          onClose={() => setApproveUser(null)}
         />
       )}
 

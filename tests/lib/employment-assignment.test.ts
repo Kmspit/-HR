@@ -9,7 +9,7 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
-import { getAssignmentAsOf } from '@/lib/employment-assignment'
+import { getAssignmentAsOf, getCurrentAssignment, mapEmploymentTypeToLegacy } from '@/lib/employment-assignment'
 
 describe('getAssignmentAsOf', () => {
   beforeEach(() => {
@@ -52,5 +52,55 @@ describe('getAssignmentAsOf', () => {
       expect.objectContaining({ where: { userId: 'user-2', effectiveFrom: { lte: new Date('2026-06-01') } } }),
     )
     expect(result).toMatchObject({ id: 'ea-2' })
+  })
+})
+
+describe('getCurrentAssignment', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns the assignment when the most recent one is not a TERMINATION', async () => {
+    vi.mocked(prisma.employmentAssignment.findFirst).mockResolvedValue({ id: 'ea-1', changeType: 'PROMOTION' } as never)
+
+    const result = await getCurrentAssignment('user-1')
+
+    expect(result).toEqual({ id: 'ea-1', changeType: 'PROMOTION' })
+  })
+
+  it('returns null (not the row) when the most recent assignment is a TERMINATION — the exact bug this guards against', async () => {
+    vi.mocked(prisma.employmentAssignment.findFirst).mockResolvedValue({ id: 'ea-2', changeType: 'TERMINATION' } as never)
+
+    const result = await getCurrentAssignment('departed-user')
+
+    expect(result).toBeNull()
+  })
+
+  it('returns null when there is no assignment at all', async () => {
+    vi.mocked(prisma.employmentAssignment.findFirst).mockResolvedValue(null)
+
+    const result = await getCurrentAssignment('never-hired-user')
+
+    expect(result).toBeNull()
+  })
+})
+
+describe('mapEmploymentTypeToLegacy', () => {
+  it('maps FULL_TIME and INTERN onto their exact pre-existing semantic match', () => {
+    expect(mapEmploymentTypeToLegacy('FULL_TIME')).toBe('permanent_employee')
+    expect(mapEmploymentTypeToLegacy('INTERN')).toBe('intern')
+  })
+
+  it('maps CONTRACT/PART_TIME/DAILY onto the 3 new additive legacy values', () => {
+    expect(mapEmploymentTypeToLegacy('CONTRACT')).toBe('contract_employee')
+    expect(mapEmploymentTypeToLegacy('PART_TIME')).toBe('part_time_employee')
+    expect(mapEmploymentTypeToLegacy('DAILY')).toBe('daily_employee')
+  })
+
+  it('never maps anything onto probation_employee — that value is legacy-display-only', () => {
+    const types: Array<Parameters<typeof mapEmploymentTypeToLegacy>[0]> = ['FULL_TIME', 'CONTRACT', 'PART_TIME', 'DAILY', 'INTERN']
+    for (const t of types) {
+      expect(mapEmploymentTypeToLegacy(t)).not.toBe('probation_employee')
+    }
   })
 })

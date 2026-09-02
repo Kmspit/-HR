@@ -7,6 +7,7 @@ import { canAccessPage } from '@/lib/page-access'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, resolveFilterBranchId, parseBranchQueryParam } from '@/lib/branch-scope'
 import { employeeListWhere, parseOrgFilterParam } from '@/lib/employee-filters'
+import { HR_ADMIN } from '@/lib/module-gates'
 import { Suspense } from 'react'
 
 export default async function EmployeesPage({
@@ -100,6 +101,7 @@ export default async function EmployeesPage({
             sections: JSON.parse(JSON.stringify(sections)),
           }}
           currentOrgFilters={orgFilters}
+          canEditSalary={HR_ADMIN.includes(session.user.role)}
         />
       </Suspense>
     </div>
