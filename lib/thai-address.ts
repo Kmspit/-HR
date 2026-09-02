@@ -1,39 +1,54 @@
-import { getAllProvinces, getDistrictsByCriterion, getSubdistrictsByCriterion } from 'geothai'
 import type { ThaiProvinceOption, ThaiDistrictOption, ThaiSubdistrictOption } from '@/lib/thai-address-shared'
+import provincesData from '@/data/thai-address/provinces.json'
+import districtsData from '@/data/thai-address/districts.json'
+import subdistrictsData from '@/data/thai-address/subdistricts.json'
 
 /**
- * Server-only wrapper around the `geothai` package — import this ONLY from
- * the app/api/thai-address/* route handlers, never from a 'use client'
- * component (not even for its types — see lib/thai-address-shared.ts's
- * header comment for why that alone broke the client build once already).
- * geothai's data is one fully denormalized nested tree (each Province
- * carries its Districts, each District carries its Subdistricts — ~7,400
- * subdistricts nationwide, ~6MB unpacked, read via `node:fs` at runtime,
- * which cannot be bundled for the browser at all); importing it client-side
- * would both ship that whole tree in the browser bundle AND fail the
- * webpack build outright. Instead, the 3 API routes call these functions
- * server-side and return only the small slice the client actually asked
- * for (see this repo's Thai-address-dropdown plan, approved 2026-09-02) —
- * province list once, districts for one province, subdistricts for one
- * district. Always strip geothai's own nested children arrays before
- * returning — a District object still carries its full subdistricts[]
- * internally, which would defeat the whole point if passed straight through.
+ * Server-only — import this ONLY from the app/api/thai-address/* route
+ * handlers, never from a 'use client' component (not even for its types —
+ * see lib/thai-address-shared.ts's header comment for why that alone broke
+ * the client build once already).
+ *
+ * Originally called the `geothai` npm package directly at request time.
+ * geothai reads its own data via fs.readFileSync() at a path computed from
+ * import.meta.url — that worked locally and in `next build`'s own trace
+ * output (each route's generated route.js.nft.json under .next/server/app/
+ * api/thai-address/ correctly listed geothai's data files after adding an
+ * outputFileTracingIncludes entry), but the deployed Vercel preview still
+ * returned an empty province list. Most likely explanation (not confirmed
+ * via direct Lambda log access — every preview URL on this project sits
+ * behind Vercel's own SSO wall, which blocked both curl and `vercel logs`
+ * from this environment):
+ * import.meta.url-derived path resolution is a documented class of issue
+ * on Vercel — files can be correctly traced/bundled and still not be found
+ * at the path a package computes for itself at runtime, because Vercel's
+ * actual Lambda filesystem layout doesn't necessarily mirror the local
+ * node_modules layout that the relative-path math assumes (see e.g.
+ * https://github.com/vercel/next.js/issues/55523 and reports of ENOENT at
+ * /var/task/... paths for import.meta.url-based file reads).
+ *
+ * Fix: these 3 JSON files (data/thai-address/*.json, generated once by
+ * scripts/generate-thai-address-data.ts and checked into the repo, not
+ * node_modules) are imported here as ordinary static imports. That's fully
+ * statically analyzable — webpack inlines the JSON directly into this
+ * route's own compiled output, so there's no separate file and no runtime
+ * path computation for a tracer (or Vercel's Lambda layout) to get wrong.
  */
 
 export function listThaiProvinces(): ThaiProvinceOption[] {
-  return getAllProvinces().map((p) => ({ code: String(p.code), name_th: p.name_th }))
+  return provincesData
 }
 
 export function listThaiDistricts(provinceCode: string): ThaiDistrictOption[] {
-  const code = Number(provinceCode)
-  if (!Number.isInteger(code)) return []
-  return getDistrictsByCriterion({ province_code: code }).map((d) => ({ code: String(d.code), name_th: d.name_th }))
+  if (!provinceCode) return []
+  return districtsData
+    .filter((d) => d.province_code === provinceCode)
+    .map((d) => ({ code: d.code, name_th: d.name_th }))
 }
 
 export function listThaiSubdistricts(districtCode: string): ThaiSubdistrictOption[] {
-  const code = Number(districtCode)
-  if (!Number.isInteger(code)) return []
-  return getSubdistrictsByCriterion({ district_code: code }).map((s) => ({
-    code: String(s.code), name_th: s.name_th, postal_code: String(s.postal_code),
-  }))
+  if (!districtCode) return []
+  return subdistrictsData
+    .filter((s) => s.district_code === districtCode)
+    .map((s) => ({ code: s.code, name_th: s.name_th, postal_code: s.postal_code }))
 }
