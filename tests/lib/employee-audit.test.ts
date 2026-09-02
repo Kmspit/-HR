@@ -290,4 +290,47 @@ describe('mapEmployeeAuditLogs', () => {
     expect(() => mapEmployeeAuditLogs(logs, emptyLookup())).not.toThrow()
     expect(mapEmployeeAuditLogs(logs, emptyLookup())).toEqual([])
   })
+
+  it('renders a subrecord event (EmergencyContact/Dependent/BankAccount CRUD, Phase 1 step 8b follow-up) using its pre-computed lines, not the User-field diff logic', () => {
+    const logs = [{
+      id: 'log-1',
+      createdAt: new Date('2026-09-02T10:00:00Z'),
+      before: null,
+      after: JSON.stringify({ subrecordEvent: true, entityType: 'BankAccount', lines: ['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'] }),
+      actor: { name: 'HR คนหนึ่ง' },
+    }]
+    const items = mapEmployeeAuditLogs(logs, emptyLookup())
+    expect(items).toHaveLength(1)
+    expect(items[0].actorName).toBe('HR คนหนึ่ง')
+    expect(items[0].changes).toEqual(['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'])
+  })
+
+  it('drops a subrecord event with an empty lines array (nothing actually changed)', () => {
+    const logs = [{
+      id: 'log-1', createdAt: new Date(), before: null,
+      after: JSON.stringify({ subrecordEvent: true, entityType: 'EmergencyContact', lines: [] }),
+      actor: { name: 'X' },
+    }]
+    expect(mapEmployeeAuditLogs(logs, emptyLookup())).toEqual([])
+  })
+
+  it('mixes subrecord events and User-field diffs in one call, each rendered by its own path', () => {
+    const before = snapshotEmployeeForAudit(row({ position: 'Junior' }))
+    const after = snapshotEmployeeForAudit(row({ position: 'Senior' }))
+    const logs = [
+      {
+        id: 'log-1', createdAt: new Date('2026-09-02T09:00:00Z'), before: JSON.stringify(before), after: JSON.stringify(after),
+        actor: { name: 'HR A' },
+      },
+      {
+        id: 'log-2', createdAt: new Date('2026-09-02T10:00:00Z'), before: null,
+        after: JSON.stringify({ subrecordEvent: true, entityType: 'Dependent', lines: ['เพิ่มผู้อยู่ในอุปการะ: เด็ก (บุตร)'] }),
+        actor: { name: 'HR B' },
+      },
+    ]
+    const items = mapEmployeeAuditLogs(logs, emptyLookup())
+    expect(items).toHaveLength(2)
+    expect(items[0].changes.some((c) => c.includes('Junior') && c.includes('Senior'))).toBe(true)
+    expect(items[1].changes).toEqual(['เพิ่มผู้อยู่ในอุปการะ: เด็ก (บุตร)'])
+  })
 })

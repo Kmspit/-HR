@@ -15,6 +15,7 @@ import { englishOnlyFieldError, ENGLISH_ONLY_ERROR } from '@/lib/english-input'
 import { THAI_BANKS } from '@/lib/thai-banks'
 import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
 import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
+import { DEPENDENT_RELATION_LABELS } from '@/lib/dependent-relation-labels'
 import {
   validateRegisterPersonalStep,
   validateRegisterAddressStep,
@@ -63,13 +64,6 @@ const FALLBACK_BRANCHES: BranchOption[] = DEFAULT_COMPANY_BRANCHES.map((b) => ({
 }))
 
 const STEPS = ['ข้อมูลส่วนตัว', 'ที่อยู่', 'ผู้ติดต่อฉุกเฉิน', 'ผู้อยู่ในอุปการะ', 'บัญชีธนาคาร', 'ข้อมูลพนักงาน', 'ตั้งรหัสผ่าน']
-
-const DEPENDENT_RELATION_LABELS: Record<(typeof DEPENDENT_RELATION_TYPES)[number], string> = {
-  SPOUSE: 'คู่สมรส',
-  CHILD: 'บุตร',
-  PARENT: 'บิดา/มารดา',
-  OTHER: 'อื่นๆ',
-}
 
 /** baseSalary/startDate are gone from this form entirely — HR sets both at
  *  approval time now (Phase 1 step 7's unified approve+org-assign modal),

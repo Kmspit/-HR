@@ -146,4 +146,22 @@ describe('GET /api/users/[id]/history', () => {
       expect.objectContaining({ take: 50, orderBy: { createdAt: 'desc' } }),
     )
   })
+
+  it('renders a BankAccount/Dependent/EmergencyContact subrecord event (Phase 1 step 8b follow-up) end to end, and never crashes collectReferencedIds on its non-User shape', async () => {
+    vi.mocked(requireEditOrgScope).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([{
+      id: 'log-1', createdAt: new Date(), before: null,
+      after: JSON.stringify({ subrecordEvent: true, entityType: 'BankAccount', lines: ['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'] }),
+      actor: { name: 'HR คนหนึ่ง' },
+    }] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.division.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.section.findMany).mockResolvedValue([] as never)
+
+    const res = await GET(makeReq(), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.history).toHaveLength(1)
+    expect(data.history[0].changes).toEqual(['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'])
+  })
 })

@@ -10,6 +10,10 @@ import {
   type EmployeeNameLookup,
 } from '@/lib/employee-audit'
 
+function isSubrecordEvent(v: unknown): boolean {
+  return typeof v === 'object' && v !== null && (v as { subrecordEvent?: unknown }).subrecordEvent === true
+}
+
 // Same role gate as PATCH /api/users/[id] and PATCH /api/users/[id]/org —
 // whoever can edit this employee's record can see who changed what in it.
 const HISTORY_TAKE = 50
@@ -36,8 +40,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const snapshots: EmployeeAuditSnapshot[] = []
     for (const log of logs) {
       try {
-        if (log.before) snapshots.push(JSON.parse(log.before) as EmployeeAuditSnapshot)
-        if (log.after) snapshots.push(JSON.parse(log.after) as EmployeeAuditSnapshot)
+        const before: unknown = log.before ? JSON.parse(log.before) : null
+        const after: unknown = log.after ? JSON.parse(log.after) : null
+        // Subrecord events (EmergencyContact/Dependent/BankAccount CRUD) are
+        // not EmployeeAuditSnapshot-shaped — collectReferencedIds() below
+        // only looks for User-row id fields (managerId etc.), which these
+        // don't have, so they're skipped here entirely rather than pushed in.
+        if (before && !isSubrecordEvent(before)) snapshots.push(before as EmployeeAuditSnapshot)
+        if (after && !isSubrecordEvent(after)) snapshots.push(after as EmployeeAuditSnapshot)
       } catch {
         // Skip unparsable/legacy rows — mapEmployeeAuditLogs() re-parses and
         // drops these the same way when building the display list.

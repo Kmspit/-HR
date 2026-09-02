@@ -30,6 +30,7 @@ import { createIdleTimer } from '@/lib/idle-timer'
 import FormField from '@/components/profile/FormField'
 import EmployeeEditHistoryTab from '@/components/employees/EmployeeEditHistoryTab'
 import EmployeeProfileTab from '@/components/employees/EmployeeProfileTab'
+import EmployeeContactsBankTab from '@/components/employees/EmployeeContactsBankTab'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
   isValidEmailInput,
@@ -93,13 +94,14 @@ const ROLE_LABELS: Record<string, string> = {
 }
 const STATUS_LIST = ['ACTIVE', 'PENDING', 'DISABLED', 'REJECTED']
 
-type TabKey = 'profile' | 'personal' | 'work' | 'system' | 'history'
+type TabKey = 'profile' | 'personal' | 'contacts' | 'work' | 'system' | 'history'
 type FormErrors = Partial<Record<string, string>>
 
 export default function EmployeeEditClient({
   employee,
   currentUserId,
   canEditSalary,
+  canViewSensitive,
 }: {
   employee: Employee
   currentUserId: string
@@ -108,6 +110,11 @@ export default function EmployeeEditClient({
    *  includes MANAGER. Computed server-side in page.tsx from the viewer's
    *  own role, not derived from `employee` (which is the person being edited). */
   canEditSalary: boolean
+  /** Same literal role list as canEditSalary today (HR_ADMIN), kept as a
+   *  separate prop — Phase 1 step 8b — since "may edit pay" and "may view a
+   *  dependent's national ID / an account number" are different permissions
+   *  that only happen to share a role list right now. */
+  canViewSensitive: boolean
 }) {
   const router = useRouter()
   const isSelf = employee.id === currentUserId
@@ -311,6 +318,7 @@ export default function EmployeeEditClient({
       hasError: Object.keys(errors).some(k => ['name','email','phone','nationalId','birthDate'].includes(k)),
     },
     { key: 'personal', label: 'ข้อมูลส่วนตัวเพิ่มเติม', hasError: false },
+    { key: 'contacts', label: 'ผู้ติดต่อ & บัญชีธนาคาร', hasError: false },
     { key: 'work', label: 'การทำงาน', hasError: false },
     {
       key: 'system',
@@ -510,6 +518,10 @@ export default function EmployeeEditClient({
       {/* ── Tab: ข้อมูลส่วนตัวเพิ่มเติม ── (stays mounted across tab switches,
           same reasoning as the history tab below) */}
       <EmployeeProfileTab employeeId={employee.id} active={activeTab === 'personal'} />
+
+      {/* ── Tab: ผู้ติดต่อ & บัญชีธนาคาร ── (stays mounted across tab switches,
+          same reasoning as the history tab below) */}
+      <EmployeeContactsBankTab employeeId={employee.id} active={activeTab === 'contacts'} canViewSensitive={canViewSensitive} />
 
       {/* ── Tab: การทำงาน ── */}
       {activeTab === 'work' && (
