@@ -787,8 +787,10 @@ model EmploymentAssignment {
   managerId    String?
   teamLeaderId String?
 
-  /// ค่า ณ เวลาที่ assignment นี้มีผล — ไม่ใช่ค่าปัจจุบัน
-  baseSalary Float
+  /// ค่า ณ เวลาที่ assignment นี้มีผล — ไม่ใช่ค่าปัจจุบัน. Nullable โดยตั้งใจ (Phase 1
+  /// step 7): ผู้ที่ไม่มีสิทธิ์แก้เงินเดือน (ไม่ใช่ HR_ADMIN) ยังอนุมัติ+สร้าง
+  /// assignment ได้ แค่ไม่กรอกเงินเดือน — HR_ADMIN มากรอกทีหลังผ่านหน้าแก้ไขพนักงาน
+  baseSalary Float?
 
   contractEndDate DateTime?
 

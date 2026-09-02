@@ -207,16 +207,31 @@ export const canViewAllAttendance = (role: Role) =>
 
 // ── Employee type labels ──────────────────────────────────────────────────────
 
+// probation_employee stays here only for legacy records' labels to keep
+// resolving correctly (conflated "employment type" with "on probation",
+// which Phase 1's EmploymentAssignment.employmentType enum deliberately
+// doesn't — see its schema comment) — nothing new writes this value.
+// contract_employee/part_time_employee/daily_employee added in Phase 1
+// step 7 as the sync targets for EmploymentAssignment's
+// CONTRACT/PART_TIME/DAILY (see lib/employment-assignment.ts's
+// mapEmploymentTypeToLegacy) — permanent_employee/intern were already an
+// exact semantic match for FULL_TIME/INTERN, reused as-is.
 export const EMPLOYEE_TYPE_LABELS: Record<string, string> = {
   permanent_employee: 'พนักงานประจำ',
   probation_employee: 'พนักงานทดลองงาน',
   intern:             'นักศึกษาฝึกงาน',
+  contract_employee:  'พนักงานสัญญาจ้าง',
+  part_time_employee: 'พนักงานพาร์ทไทม์',
+  daily_employee:     'พนักงานรายวัน',
 }
 
 export const EMPLOYEE_TYPES = [
   { value: 'permanent_employee', label: 'พนักงานประจำ' },
   { value: 'probation_employee', label: 'พนักงานทดลองงาน' },
   { value: 'intern',             label: 'นักศึกษาฝึกงาน' },
+  { value: 'contract_employee',  label: 'พนักงานสัญญาจ้าง' },
+  { value: 'part_time_employee', label: 'พนักงานพาร์ทไทม์' },
+  { value: 'daily_employee',     label: 'พนักงานรายวัน' },
 ]
 
 // Permissions are static (ROLE_PERMISSIONS). No DB table — see docs/deploy-profiles.md RBAC note.
