@@ -14,12 +14,12 @@ import type { Role } from '@prisma/client'
 // + the 16 structured address sub-fields) joins into the SAME shared select
 // rather than getting its own audit trail, per this file's own design intent
 // above ("a single audit trail per employee is easier to review than two").
-// User.address/addressIdCard (already audited below) stay as the free-text
-// display cache kept in sync from these structured fields — both are
-// audited, which is intentionally a little redundant (a changed address
-// shows up twice: once as the concatenated string, once per structured
-// field) rather than risk silently dropping the field that's actually the
-// source of truth.
+// All 16 address sub-fields are tracked here (nothing is silently dropped
+// from the audit DATA), but summarizeEmployeeChanges() below deliberately
+// does NOT display them one line per field — see ADDRESS_DETAIL_FIELDS for
+// why (a multi-field address edit produced one near-duplicate line per
+// field, on top of the User.address/addressIdCard concat line that already
+// shows the same before/after in full).
 const EMPLOYEE_PROFILE_AUDIT_SELECT = {
   nationality: true,
   maritalStatus: true,
@@ -337,6 +337,26 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
   return String(val)
 }
 
+/**
+ * The 16 structured address sub-fields are tracked in full in the snapshot
+ * (see EMPLOYEE_PROFILE_AUDIT_SELECT above — nothing is dropped from the
+ * audit DATA), but are excluded from the DISPLAYED diff here — `address` /
+ * `addressIdCard` (the legacy concatenation, kept in sync by the same PUT
+ * that writes these) already show the complete before/after text in one
+ * line each. Without this exclusion, editing all 8 fields of one address
+ * produced 9 near-duplicate lines (1 concat line + 8 granular ones) for a
+ * single logical edit — confirmed against a real 3-field edit on 2026-09-02,
+ * which rendered 4 lines for what a reviewer reads as one change. Grouped by
+ * address block (not just silently reusing whichever fields happen to
+ * differ) so a change is never split across two summaries either.
+ */
+const ADDRESS_DETAIL_FIELDS = new Set<keyof EmployeeAuditSnapshot>([
+  'currentHouseNo', 'currentMoo', 'currentSoi', 'currentRoad',
+  'currentTambon', 'currentAmphoe', 'currentProvince', 'currentPostalCode',
+  'regHouseNo', 'regMoo', 'regSoi', 'regRoad',
+  'regTambon', 'regAmphoe', 'regProvince', 'regPostalCode',
+])
+
 /** Diffs two employee snapshots into readable "label: old → new" lines —
  *  separate from summarizeProfileChanges() (self-edit) on purpose, same
  *  reasoning as snapshotEmployeeForAudit() vs snapshotProfileForAudit(). */
@@ -347,6 +367,8 @@ export function summarizeEmployeeChanges(
 ): string[] {
   const lines: string[] = []
   for (const key of Object.keys(EMPLOYEE_FIELD_LABELS) as (keyof EmployeeAuditSnapshot)[]) {
+    if (ADDRESS_DETAIL_FIELDS.has(key)) continue
+
     const b = before[key]
     const a = after[key]
 

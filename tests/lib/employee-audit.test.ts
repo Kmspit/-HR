@@ -180,11 +180,31 @@ describe('summarizeEmployeeChanges', () => {
   it('detects a first-time EmployeeProfile creation (null -> filled) as changes, Phase 1 step 8a', () => {
     const before = snapshotEmployeeForAudit(row({ employeeProfile: null }))
     const after = snapshotEmployeeForAudit(row({
+      address: '1 ถนนสุขุมวิท จ.กรุงเทพมหานคร', // synced concat — same PUT transaction that writes the profile
       employeeProfile: profileRow({ nationality: 'ไทย', currentProvince: 'กรุงเทพมหานคร' }),
     }))
     const lines = summarizeEmployeeChanges(before, after, emptyLookup())
     expect(lines.some((l) => l.startsWith('สัญชาติ') && l.includes('ไทย'))).toBe(true)
-    expect(lines.some((l) => l.startsWith('จังหวัด (ที่อยู่ปัจจุบัน)') && l.includes('กรุงเทพมหานคร'))).toBe(true)
+    expect(lines.some((l) => l.startsWith('ที่อยู่:') && l.includes('กรุงเทพมหานคร'))).toBe(true)
+  })
+
+  it('collapses a multi-field address edit into ONE line via the address concat, not one line per sub-field (Phase 1 step 8a — confirmed against a live 3-field edit)', () => {
+    const before = snapshotEmployeeForAudit(row({
+      address: '99 ถนนสุขุมวิท ต.คลองตัน อ.วัฒนา จ.กรุงเทพมหานคร 10110',
+      employeeProfile: profileRow({ currentHouseNo: '99', currentRoad: 'ถนนสุขุมวิท', currentTambon: 'คลองตัน' }),
+    }))
+    const after = snapshotEmployeeForAudit(row({
+      address: '101 ถนนพระราม 4 ต.คลองเตย จ.กรุงเทพมหานคร 10110',
+      employeeProfile: profileRow({ currentHouseNo: '101', currentRoad: 'ถนนพระราม 4', currentTambon: 'คลองเตย' }),
+    }))
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const addressLines = lines.filter((l) => l.startsWith('ที่อยู่:'))
+    expect(addressLines).toHaveLength(1)
+    // None of the granular per-field labels leak into the display, even though
+    // the underlying snapshot still carries them (see the next describe block).
+    expect(lines.some((l) => l.startsWith('บ้านเลขที่ (ที่อยู่ปัจจุบัน)'))).toBe(false)
+    expect(lines.some((l) => l.startsWith('ถนน (ที่อยู่ปัจจุบัน)'))).toBe(false)
+    expect(lines.some((l) => l.startsWith('ตำบล/แขวง (ที่อยู่ปัจจุบัน)'))).toBe(false)
   })
 
   it('formats sameAsCurrentAddress as ใช่/ไม่ใช่, not a raw boolean', () => {
