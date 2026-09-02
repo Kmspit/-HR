@@ -13,6 +13,8 @@ import {
 import { lineIdHint } from '@/lib/line-id-client'
 import { englishOnlyFieldError, ENGLISH_ONLY_ERROR } from '@/lib/english-input'
 import { THAI_BANKS } from '@/lib/thai-banks'
+import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
+import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
 import {
   validateRegisterPersonalStep,
   validateRegisterAddressStep,
@@ -62,8 +64,6 @@ const FALLBACK_BRANCHES: BranchOption[] = DEFAULT_COMPANY_BRANCHES.map((b) => ({
 
 const STEPS = ['ข้อมูลส่วนตัว', 'ที่อยู่', 'ผู้ติดต่อฉุกเฉิน', 'ผู้อยู่ในอุปการะ', 'บัญชีธนาคาร', 'ข้อมูลพนักงาน', 'ตั้งรหัสผ่าน']
 
-const MARITAL_STATUS_OPTIONS = ['โสด', 'สมรส', 'หย่าร้าง', 'หม้าย']
-
 const DEPENDENT_RELATION_LABELS: Record<(typeof DEPENDENT_RELATION_TYPES)[number], string> = {
   SPOUSE: 'คู่สมรส',
   CHILD: 'บุตร',
@@ -98,17 +98,6 @@ const MAX_REGISTER_BANK_ACCOUNTS = 5
 const ROLES = [
   { value: 'EMPLOYEE', label: '👤 พนักงาน',               desc: 'เข้าออกงาน, ขอลา, ดูสลิป' },
   { value: 'LAWYER',   label: '⚖️ ทนายความ',              desc: 'ส่งแผนงานรายสัปดาห์' },
-]
-
-const ADDRESS_FIELD_LABELS: { key: keyof RegisterAddress; label: string; required: boolean }[] = [
-  { key: 'houseNo', label: 'บ้านเลขที่', required: true },
-  { key: 'moo', label: 'หมู่', required: false },
-  { key: 'soi', label: 'ซอย', required: false },
-  { key: 'road', label: 'ถนน', required: true },
-  { key: 'tambon', label: 'ตำบล/แขวง', required: true },
-  { key: 'amphoe', label: 'อำเภอ/เขต', required: true },
-  { key: 'province', label: 'จังหวัด', required: true },
-  { key: 'postalCode', label: 'รหัสไปรษณีย์', required: true },
 ]
 
 export default function RegisterForm() {

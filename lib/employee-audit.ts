@@ -10,6 +10,39 @@ import type { Role } from '@prisma/client'
  * one shared select/snapshot pair since the two routes edit the same record
  * and a single audit trail per employee is easier to review than two.
  */
+// Phase 1 step 8a — EmployeeProfile (nationality/maritalStatus/personalEmail
+// + the 16 structured address sub-fields) joins into the SAME shared select
+// rather than getting its own audit trail, per this file's own design intent
+// above ("a single audit trail per employee is easier to review than two").
+// User.address/addressIdCard (already audited below) stay as the free-text
+// display cache kept in sync from these structured fields — both are
+// audited, which is intentionally a little redundant (a changed address
+// shows up twice: once as the concatenated string, once per structured
+// field) rather than risk silently dropping the field that's actually the
+// source of truth.
+const EMPLOYEE_PROFILE_AUDIT_SELECT = {
+  nationality: true,
+  maritalStatus: true,
+  personalEmail: true,
+  currentHouseNo: true,
+  currentMoo: true,
+  currentSoi: true,
+  currentRoad: true,
+  currentTambon: true,
+  currentAmphoe: true,
+  currentProvince: true,
+  currentPostalCode: true,
+  sameAsCurrentAddress: true,
+  regHouseNo: true,
+  regMoo: true,
+  regSoi: true,
+  regRoad: true,
+  regTambon: true,
+  regAmphoe: true,
+  regProvince: true,
+  regPostalCode: true,
+} as const
+
 export const EMPLOYEE_AUDIT_SELECT = {
   email: true,
   phone: true,
@@ -35,7 +68,31 @@ export const EMPLOYEE_AUDIT_SELECT = {
   isCoworker: true,
   divisionId: true,
   sectionId: true,
+  employeeProfile: { select: EMPLOYEE_PROFILE_AUDIT_SELECT },
 } as const
+
+type EmployeeProfileAuditRow = {
+  nationality: string | null
+  maritalStatus: string | null
+  personalEmail: string | null
+  currentHouseNo: string | null
+  currentMoo: string | null
+  currentSoi: string | null
+  currentRoad: string | null
+  currentTambon: string | null
+  currentAmphoe: string | null
+  currentProvince: string | null
+  currentPostalCode: string | null
+  sameAsCurrentAddress: boolean
+  regHouseNo: string | null
+  regMoo: string | null
+  regSoi: string | null
+  regRoad: string | null
+  regTambon: string | null
+  regAmphoe: string | null
+  regProvince: string | null
+  regPostalCode: string | null
+}
 
 type EmployeeAuditRow = {
   email: string
@@ -62,6 +119,11 @@ type EmployeeAuditRow = {
   isCoworker: boolean
   divisionId: string | null
   sectionId: string | null
+  /** Nullable — a legacy employee (pre step 5/6) may not have an
+   *  EmployeeProfile row yet; every profile field snapshots to null until
+   *  HR fills the tab in for the first time (see the profile PUT route's
+   *  upsert). */
+  employeeProfile: EmployeeProfileAuditRow | null
 }
 
 /**
@@ -112,6 +174,26 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     isCoworker: u.isCoworker,
     divisionId: u.divisionId,
     sectionId: u.sectionId,
+    nationality: u.employeeProfile?.nationality ?? null,
+    maritalStatus: u.employeeProfile?.maritalStatus ?? null,
+    personalEmail: u.employeeProfile?.personalEmail ?? null,
+    currentHouseNo: u.employeeProfile?.currentHouseNo ?? null,
+    currentMoo: u.employeeProfile?.currentMoo ?? null,
+    currentSoi: u.employeeProfile?.currentSoi ?? null,
+    currentRoad: u.employeeProfile?.currentRoad ?? null,
+    currentTambon: u.employeeProfile?.currentTambon ?? null,
+    currentAmphoe: u.employeeProfile?.currentAmphoe ?? null,
+    currentProvince: u.employeeProfile?.currentProvince ?? null,
+    currentPostalCode: u.employeeProfile?.currentPostalCode ?? null,
+    sameAsCurrentAddress: u.employeeProfile?.sameAsCurrentAddress ?? false,
+    regHouseNo: u.employeeProfile?.regHouseNo ?? null,
+    regMoo: u.employeeProfile?.regMoo ?? null,
+    regSoi: u.employeeProfile?.regSoi ?? null,
+    regRoad: u.employeeProfile?.regRoad ?? null,
+    regTambon: u.employeeProfile?.regTambon ?? null,
+    regAmphoe: u.employeeProfile?.regAmphoe ?? null,
+    regProvince: u.employeeProfile?.regProvince ?? null,
+    regPostalCode: u.employeeProfile?.regPostalCode ?? null,
   }
 }
 
@@ -172,6 +254,26 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   isCoworker: 'พนักงานร่วมงาน',
   divisionId: 'ฝ่าย',
   sectionId: 'ส่วนงาน',
+  nationality: 'สัญชาติ',
+  maritalStatus: 'สถานภาพสมรส',
+  personalEmail: 'อีเมลส่วนตัว',
+  currentHouseNo: 'บ้านเลขที่ (ที่อยู่ปัจจุบัน)',
+  currentMoo: 'หมู่ (ที่อยู่ปัจจุบัน)',
+  currentSoi: 'ซอย (ที่อยู่ปัจจุบัน)',
+  currentRoad: 'ถนน (ที่อยู่ปัจจุบัน)',
+  currentTambon: 'ตำบล/แขวง (ที่อยู่ปัจจุบัน)',
+  currentAmphoe: 'อำเภอ/เขต (ที่อยู่ปัจจุบัน)',
+  currentProvince: 'จังหวัด (ที่อยู่ปัจจุบัน)',
+  currentPostalCode: 'รหัสไปรษณีย์ (ที่อยู่ปัจจุบัน)',
+  sameAsCurrentAddress: 'ที่อยู่ทะเบียนบ้านเหมือนที่อยู่ปัจจุบัน',
+  regHouseNo: 'บ้านเลขที่ (ทะเบียนบ้าน)',
+  regMoo: 'หมู่ (ทะเบียนบ้าน)',
+  regSoi: 'ซอย (ทะเบียนบ้าน)',
+  regRoad: 'ถนน (ทะเบียนบ้าน)',
+  regTambon: 'ตำบล/แขวง (ทะเบียนบ้าน)',
+  regAmphoe: 'อำเภอ/เขต (ทะเบียนบ้าน)',
+  regProvince: 'จังหวัด (ทะเบียนบ้าน)',
+  regPostalCode: 'รหัสไปรษณีย์ (ทะเบียนบ้าน)',
 }
 
 /** Field keys whose value is an id referencing another row (User/Division/
@@ -225,7 +327,7 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
   if ((ID_REFERENCE_FIELDS as readonly string[]).includes(key)) {
     return resolveIdReference(key as (typeof ID_REFERENCE_FIELDS)[number], val as string, lookup)
   }
-  if (key === 'socialSecurity' || key === 'isCoworker') return val ? 'ใช่' : 'ไม่ใช่'
+  if (key === 'socialSecurity' || key === 'isCoworker' || key === 'sameAsCurrentAddress') return val ? 'ใช่' : 'ไม่ใช่'
   if ((key === 'birthDate' || key === 'startDate') && typeof val === 'string') {
     const d = new Date(val)
     if (!Number.isNaN(d.getTime())) {

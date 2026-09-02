@@ -14,6 +14,18 @@ import {
   type EmployeeNameLookup,
 } from '@/lib/employee-audit'
 
+function profileRow(overrides: Record<string, unknown> = {}) {
+  return {
+    nationality: null, maritalStatus: null, personalEmail: null,
+    currentHouseNo: null, currentMoo: null, currentSoi: null, currentRoad: null,
+    currentTambon: null, currentAmphoe: null, currentProvince: null, currentPostalCode: null,
+    sameAsCurrentAddress: false,
+    regHouseNo: null, regMoo: null, regSoi: null, regRoad: null,
+    regTambon: null, regAmphoe: null, regProvince: null, regPostalCode: null,
+    ...overrides,
+  }
+}
+
 function row(overrides: Record<string, unknown> = {}) {
   return {
     email: 'a@co.com', phone: null, name: 'ก ข', nameEn: null,
@@ -23,6 +35,7 @@ function row(overrides: Record<string, unknown> = {}) {
     department: null, position: null, employeeType: null,
     managerId: null, teamLeaderId: null, baseSalary: 30000,
     socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null,
+    employeeProfile: null,
     ...overrides,
   } as Parameters<typeof snapshotEmployeeForAudit>[0]
 }
@@ -53,8 +66,30 @@ describe('snapshotEmployeeForAudit', () => {
       'startDate', 'department', 'position', 'employeeType', 'managerId',
       'teamLeaderId', 'baseSalary', 'socialSecurity', 'isCoworker',
       'divisionId', 'sectionId',
+      'nationality', 'maritalStatus', 'personalEmail',
+      'currentHouseNo', 'currentMoo', 'currentSoi', 'currentRoad',
+      'currentTambon', 'currentAmphoe', 'currentProvince', 'currentPostalCode',
+      'sameAsCurrentAddress',
+      'regHouseNo', 'regMoo', 'regSoi', 'regRoad',
+      'regTambon', 'regAmphoe', 'regProvince', 'regPostalCode',
     ]
     expect(Object.keys(snap).sort()).toEqual(expectedKeys.sort())
+  })
+
+  it('defaults every EmployeeProfile field to null/false when the user has no profile row yet', () => {
+    const snap = snapshotEmployeeForAudit(row({ employeeProfile: null }))
+    expect(snap.nationality).toBeNull()
+    expect(snap.currentHouseNo).toBeNull()
+    expect(snap.sameAsCurrentAddress).toBe(false)
+  })
+
+  it('reads EmployeeProfile fields through the nested relation when present', () => {
+    const snap = snapshotEmployeeForAudit(row({
+      employeeProfile: profileRow({ nationality: 'ไทย', currentProvince: 'กรุงเทพมหานคร', sameAsCurrentAddress: true }),
+    }))
+    expect(snap.nationality).toBe('ไทย')
+    expect(snap.currentProvince).toBe('กรุงเทพมหานคร')
+    expect(snap.sameAsCurrentAddress).toBe(true)
   })
 })
 
@@ -140,6 +175,24 @@ describe('summarizeEmployeeChanges', () => {
     const line = lines.find((l) => l.startsWith('ผู้จัดการ'))
     expect(line).toContain('(ไม่พบข้อมูล)')
     expect(line).not.toContain('mgr-deleted-id')
+  })
+
+  it('detects a first-time EmployeeProfile creation (null -> filled) as changes, Phase 1 step 8a', () => {
+    const before = snapshotEmployeeForAudit(row({ employeeProfile: null }))
+    const after = snapshotEmployeeForAudit(row({
+      employeeProfile: profileRow({ nationality: 'ไทย', currentProvince: 'กรุงเทพมหานคร' }),
+    }))
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    expect(lines.some((l) => l.startsWith('สัญชาติ') && l.includes('ไทย'))).toBe(true)
+    expect(lines.some((l) => l.startsWith('จังหวัด (ที่อยู่ปัจจุบัน)') && l.includes('กรุงเทพมหานคร'))).toBe(true)
+  })
+
+  it('formats sameAsCurrentAddress as ใช่/ไม่ใช่, not a raw boolean', () => {
+    const before = snapshotEmployeeForAudit(row({ employeeProfile: profileRow({ sameAsCurrentAddress: false }) }))
+    const after = snapshotEmployeeForAudit(row({ employeeProfile: profileRow({ sameAsCurrentAddress: true }) }))
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const line = lines.find((l) => l.startsWith('ที่อยู่ทะเบียนบ้านเหมือนที่อยู่ปัจจุบัน'))
+    expect(line).toContain('ไม่ใช่ → ใช่')
   })
 
   it('never includes the raw nationalId even when it changed', () => {
