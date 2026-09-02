@@ -2,9 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { requireAuth, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
-import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
+import { encryptField, decryptField, FIELD_SALTS } from '@/lib/field-crypto'
 import { validateBankAccountRow } from '@/lib/employee-subrecords-validation'
+import { createAuditLog } from '@/lib/notifications'
+import {
+  summarizeBankAccountUpdate,
+  summarizeBankAccountDisable,
+  summarizeBankAccountReactivate,
+  type BankAccountAuditRow,
+} from '@/lib/subrecord-audit'
 import type { Prisma } from '@prisma/client'
+
+function requestIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 function coercePatch(body: unknown) {
   const o = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
@@ -60,14 +71,42 @@ export async function PATCH(
       }
     }
 
+    const accountNumberTouched = form.accountNumber !== undefined
+
+    // accountNumberEnc is always selected (cheap column) but only decrypted
+    // below when this edit actually touches accountNumber — see
+    // subrecord-audit.ts's header comment.
+    const beforeRow = await prisma.bankAccount.findFirst({
+      where: { id: bankAccountId, userId: id },
+      select: {
+        bankCode: true, accountNameEnc: true, accountNumberLast4: true, accountNumberEnc: true,
+        accountType: true, isPrimary: true, isActive: true,
+      },
+    })
+    if (!beforeRow) return NextResponse.json({ error: 'ไม่พบข้อมูล' }, { status: 404 })
+
+    const before: BankAccountAuditRow = {
+      bankCode: beforeRow.bankCode,
+      accountName: decryptField(beforeRow.accountNameEnc, FIELD_SALTS.BANK_ACCOUNT),
+      accountNumberLast4: beforeRow.accountNumberLast4,
+      accountType: beforeRow.accountType,
+      isPrimary: beforeRow.isPrimary,
+      isActive: beforeRow.isActive,
+      ...(accountNumberTouched
+        ? { accountNumberPlain: decryptField(beforeRow.accountNumberEnc, FIELD_SALTS.BANK_ACCOUNT) }
+        : {}),
+    }
+
     const data: Prisma.BankAccountUpdateManyMutationInput = {}
     if (form.bankCode) data.bankCode = form.bankCode
     if (form.accountName) data.accountNameEnc = encryptField(form.accountName.trim(), FIELD_SALTS.BANK_ACCOUNT)
     if (!isActiveOnly) data.accountType = form.accountType.trim() || null
-    if (form.accountNumber !== undefined) {
-      const digits = form.accountNumber.replace(/[\s-]/g, '')
+    let afterAccountNumberPlain: string | null = null
+    if (accountNumberTouched) {
+      const digits = (form.accountNumber as string).replace(/[\s-]/g, '')
       data.accountNumberEnc = encryptField(digits, FIELD_SALTS.BANK_ACCOUNT)
       data.accountNumberLast4 = digits.slice(-4)
+      afterAccountNumberPlain = digits
     }
     if (form.isActive !== undefined) data.isActive = form.isActive
 
@@ -92,6 +131,38 @@ export async function PATCH(
     })
 
     if (updated === 0) return NextResponse.json({ error: 'ไม่พบข้อมูล' }, { status: 404 })
+
+    const after: BankAccountAuditRow = {
+      bankCode: (data.bankCode as string | undefined) ?? before.bankCode,
+      accountName: form.accountName ? form.accountName.trim() : before.accountName,
+      accountNumberLast4: accountNumberTouched ? (data.accountNumberLast4 as string) : before.accountNumberLast4,
+      accountType: (data.accountType as string | null | undefined) ?? before.accountType,
+      isPrimary: (data.isPrimary as boolean | undefined) ?? before.isPrimary,
+      isActive: form.isActive ?? before.isActive,
+      ...(accountNumberTouched ? { accountNumberPlain: afterAccountNumberPlain } : {}),
+    }
+
+    let event
+    if (isActiveOnly && form.isActive === false) {
+      event = summarizeBankAccountDisable(before)
+    } else if (isActiveOnly && form.isActive === true) {
+      event = summarizeBankAccountReactivate(before)
+    } else {
+      event = summarizeBankAccountUpdate(before, after)
+    }
+
+    if (event) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'User',
+        action: 'UPDATE',
+        after: event,
+        ip: requestIp(req),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+      })
+    }
+
     return NextResponse.json({ success: true })
   } catch (err) {
     return apiError(err)

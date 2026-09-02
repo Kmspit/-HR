@@ -4,6 +4,12 @@ import { apiError } from '@/lib/api-handler'
 import { requireAuth, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
 import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
 import { validateBankAccountRow, bankAccountRowHasErrors } from '@/lib/employee-subrecords-validation'
+import { createAuditLog } from '@/lib/notifications'
+import { summarizeBankAccountCreate } from '@/lib/subrecord-audit'
+
+function requestIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 function coerceForm(body: unknown) {
   const o = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
@@ -58,6 +64,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           id: true, bankCode: true, accountNumberLast4: true, accountType: true, isPrimary: true, isActive: true,
         },
       })
+    })
+
+    await createAuditLog({
+      actorId: session.user.id,
+      targetId: id,
+      targetType: 'User',
+      action: 'UPDATE',
+      after: summarizeBankAccountCreate({
+        bankCode: account.bankCode,
+        accountName: form.accountName.trim(),
+        accountNumberLast4: account.accountNumberLast4,
+        accountType: account.accountType,
+        isPrimary: account.isPrimary,
+        isActive: account.isActive,
+      }),
+      ip: requestIp(req),
+      userAgent: req.headers.get('user-agent') ?? undefined,
     })
 
     return NextResponse.json({ account: { ...account, accountName: form.accountName.trim() } }, { status: 201 })

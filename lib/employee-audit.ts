@@ -396,6 +396,25 @@ export type EmployeeHistoryItem = {
   changes: string[]
 }
 
+/** EmergencyContact/Dependent/BankAccount are separate tables, not fields of
+ *  the User row — CRUD on them (Phase 1 step 8b follow-up) writes into this
+ *  SAME trail (targetId: the employee, targetType:'User', action:'UPDATE',
+ *  same as every other write here) rather than a second trail, but the
+ *  before/after diffing logic above doesn't apply to them. lib/subrecord-
+ *  audit.ts's summarizers compute the human-readable lines at WRITE time and
+ *  store them directly under `after` with this marker, so mapEmployeeAuditLogs
+ *  below can render them without attempting a field diff. */
+export type SubrecordEntityType = 'EmergencyContact' | 'Dependent' | 'BankAccount'
+export type SubrecordAuditEvent = {
+  subrecordEvent: true
+  entityType: SubrecordEntityType
+  lines: string[]
+}
+
+function isSubrecordAuditEvent(v: unknown): v is SubrecordAuditEvent {
+  return typeof v === 'object' && v !== null && (v as { subrecordEvent?: unknown }).subrecordEvent === true
+}
+
 /** Parses raw AuditLog rows (targetType:'User', action:'UPDATE') into display
  *  items, dropping any entry where nothing recognizable actually changed
  *  (e.g. a legacy row from before a field existed) so the list never shows
@@ -412,16 +431,27 @@ export function mapEmployeeAuditLogs(
 ): EmployeeHistoryItem[] {
   return logs
     .map((log) => {
-      let before: EmployeeAuditSnapshot | null = null
-      let after: EmployeeAuditSnapshot | null = null
+      let before: unknown = null
+      let after: unknown = null
       try {
-        before = log.before ? (JSON.parse(log.before) as EmployeeAuditSnapshot) : null
-        after = log.after ? (JSON.parse(log.after) as EmployeeAuditSnapshot) : null
+        before = log.before ? JSON.parse(log.before) : null
+        after = log.after ? JSON.parse(log.after) : null
       } catch {
         return null
       }
+
+      if (isSubrecordAuditEvent(after)) {
+        if (after.lines.length === 0) return null
+        return {
+          id: log.id,
+          at: log.createdAt.toISOString(),
+          actorName: log.actor?.name ?? 'ไม่ทราบ',
+          changes: after.lines,
+        }
+      }
+
       if (!before || !after) return null
-      const changes = summarizeEmployeeChanges(before, after, lookup)
+      const changes = summarizeEmployeeChanges(before as EmployeeAuditSnapshot, after as EmployeeAuditSnapshot, lookup)
       if (changes.length === 0) return null
       return {
         id: log.id,

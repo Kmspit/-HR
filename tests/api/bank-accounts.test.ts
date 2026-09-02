@@ -65,6 +65,10 @@ const hrSession = { user: { id: 'hr-1', role: 'HR', branchId: 'b1' } }
 const managerSession = { user: { id: 'mgr-1', role: 'MANAGER', branchId: 'b1' } }
 
 const validBody = { bankCode: 'SCB', accountNumber: '1234567890', accountName: 'สมชาย ใจดี' }
+const existingRow = {
+  bankCode: 'KTB', accountNameEnc: 'enc:ชื่อเก่า', accountNumberLast4: '4417',
+  accountNumberEnc: 'enc:1112224417', accountType: null, isPrimary: false, isActive: true,
+}
 
 describe('POST /api/users/[id]/bank-accounts', () => {
   beforeEach(() => {
@@ -115,6 +119,16 @@ describe('POST /api/users/[id]/bank-accounts', () => {
     expect(raw).not.toContain('accountNumberEnc')
     expect(raw).not.toContain('enc:1234567890')
   })
+
+  it('writes an audit log — masked account number, never the raw digits', async () => {
+    await POST(makePost('emp-9', validBody), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    const raw = JSON.stringify(call)
+    expect(raw).not.toContain('1234567890')
+    const line = (call.after as { lines: string[] }).lines[0]
+    expect(line).toContain('เพิ่มบัญชีธนาคาร')
+    expect(line).toContain('7890')
+  })
 })
 
 describe('PATCH /api/users/[id]/bank-accounts/[bankAccountId]', () => {
@@ -122,13 +136,15 @@ describe('PATCH /api/users/[id]/bank-accounts/[bankAccountId]', () => {
     vi.clearAllMocks()
     vi.mocked(requireAuth).mockResolvedValue(hrSession as never)
     vi.mocked(requireEditOrgScope).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.bankAccount.findFirst).mockResolvedValue(existingRow as never)
     vi.mocked(prisma.bankAccount.updateMany).mockResolvedValue({ count: 1 } as never)
   })
 
   it('404s on ownership mismatch', async () => {
-    vi.mocked(prisma.bankAccount.updateMany).mockResolvedValue({ count: 0 } as never)
+    vi.mocked(prisma.bankAccount.findFirst).mockResolvedValue(null)
     const res = await PATCH(makePatch('emp-9', validBody), { params: params('emp-9') })
     expect(res.status).toBe(404)
+    expect(prisma.bankAccount.updateMany).not.toHaveBeenCalled()
   })
 
   it('an isActive:false-only PATCH (the "delete" button) never hard-deletes, just flips the flag', async () => {
@@ -142,6 +158,19 @@ describe('PATCH /api/users/[id]/bank-accounts/[bankAccountId]', () => {
     await PATCH(makePatch('emp-9', { isActive: false }), { params: params('emp-9') })
     const call = vi.mocked(prisma.bankAccount.updateMany).mock.calls.at(-1)?.[0] as { data: Record<string, unknown> }
     expect(call.data.isPrimary).toBe(false)
+  })
+
+  it('logs a disable action distinctly from a generic edit', async () => {
+    await PATCH(makePatch('emp-9', { isActive: false }), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    expect((call.after as { lines: string[] }).lines[0]).toContain('ปิดใช้งานบัญชีธนาคาร')
+  })
+
+  it('logs a reactivate action distinctly', async () => {
+    vi.mocked(prisma.bankAccount.findFirst).mockResolvedValue({ ...existingRow, isActive: false } as never)
+    await PATCH(makePatch('emp-9', { isActive: true }), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    expect((call.after as { lines: string[] }).lines[0]).toContain('เปิดใช้งานบัญชีธนาคารอีกครั้ง')
   })
 
   it('re-encrypts accountNumber only when explicitly present in the body', async () => {
@@ -161,6 +190,20 @@ describe('PATCH /api/users/[id]/bank-accounts/[bankAccountId]', () => {
     expect(prisma.bankAccount.updateMany).toHaveBeenNthCalledWith(1, {
       where: { userId: 'emp-9', isPrimary: true, NOT: { id: 'b1' } }, data: { isPrimary: false },
     })
+  })
+
+  it('audit-logs an accountNumber change as masked, never the raw digits', async () => {
+    await PATCH(makePatch('emp-9', validBody), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    const raw = JSON.stringify(call)
+    expect(raw).not.toContain('1234567890')
+    expect((call.after as { lines: string[] }).lines.some((l) => l.startsWith('เลขบัญชี'))).toBe(true)
+  })
+
+  it('does not report a nationalId-style line when accountNumber is untouched', async () => {
+    await PATCH(makePatch('emp-9', { bankCode: 'KTB', accountName: 'ชื่อเก่า' }), { params: params('emp-9') })
+    // Nothing actually changed (same bankCode/accountName as existingRow) — no audit log at all.
+    expect(createAuditLog).not.toHaveBeenCalled()
   })
 })
 

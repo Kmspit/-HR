@@ -5,7 +5,13 @@ import { requireAuth, requireEditOrgScope, isGuardResponse } from '@/lib/api-gua
 import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
 import { validateDependentRow, dependentRowHasErrors } from '@/lib/employee-subrecords-validation'
 import { DEPENDENT_RELATION_TYPES } from '@/lib/register-form-validation'
+import { createAuditLog } from '@/lib/notifications'
+import { summarizeDependentCreate } from '@/lib/subrecord-audit'
 import type { DependentRelationType } from '@prisma/client'
+
+function requestIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 function coerceForm(body: unknown) {
   const o = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
@@ -62,11 +68,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
 
+    const birthDateIso = dependent.birthDate ? dependent.birthDate.toISOString().slice(0, 10) : null
+
+    await createAuditLog({
+      actorId: session.user.id,
+      targetId: id,
+      targetType: 'User',
+      action: 'UPDATE',
+      after: summarizeDependentCreate({
+        name: dependent.name,
+        relationType: dependent.relationType,
+        birthDate: birthDateIso,
+        nationalIdLast4: dependent.nationalIdLast4,
+        isTaxAllowance: dependent.isTaxAllowance,
+        note: dependent.note,
+      }),
+      ip: requestIp(req),
+      userAgent: req.headers.get('user-agent') ?? undefined,
+    })
+
     return NextResponse.json({
-      dependent: {
-        ...dependent,
-        birthDate: dependent.birthDate ? dependent.birthDate.toISOString().slice(0, 10) : null,
-      },
+      dependent: { ...dependent, birthDate: birthDateIso },
     }, { status: 201 })
   } catch (err) {
     return apiError(err)

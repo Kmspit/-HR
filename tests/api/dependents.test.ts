@@ -55,6 +55,10 @@ const hrSession = { user: { id: 'hr-1', role: 'HR', branchId: 'b1' } }
 const managerSession = { user: { id: 'mgr-1', role: 'MANAGER', branchId: 'b1' } }
 
 const validBody = { name: 'เด็กหญิง ก', relationType: 'CHILD' }
+const existingRow = {
+  name: 'เด็กเก่า', relationType: 'CHILD', birthDate: null, nationalIdLast4: null,
+  nationalIdEnc: null, isTaxAllowance: false, note: null,
+}
 
 describe('POST /api/users/[id]/dependents', () => {
   beforeEach(() => {
@@ -102,6 +106,17 @@ describe('POST /api/users/[id]/dependents', () => {
     expect(raw).not.toContain('1234567890123')
     expect(raw).not.toContain('nationalIdEnc')
   })
+
+  it('writes an audit log — masked last4, never the raw nationalId', async () => {
+    vi.mocked(prisma.dependent.create).mockResolvedValue({
+      id: 'd1', name: 'เด็กหญิง ก', relationType: 'CHILD', birthDate: null, nationalIdLast4: '0123', isTaxAllowance: false, note: null,
+    } as never)
+    await POST(makePost('emp-9', { ...validBody, nationalId: '1234567890123' }), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    const raw = JSON.stringify(call)
+    expect(raw).not.toContain('1234567890123')
+    expect((call.after as { lines: string[] }).lines[0]).toContain('เพิ่มผู้อยู่ในอุปการะ: เด็กหญิง ก')
+  })
 })
 
 describe('PATCH /api/users/[id]/dependents/[dependentId]', () => {
@@ -109,13 +124,15 @@ describe('PATCH /api/users/[id]/dependents/[dependentId]', () => {
     vi.clearAllMocks()
     vi.mocked(requireAuth).mockResolvedValue(hrSession as never)
     vi.mocked(requireEditOrgScope).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.dependent.findFirst).mockResolvedValue(existingRow as never)
     vi.mocked(prisma.dependent.updateMany).mockResolvedValue({ count: 1 } as never)
   })
 
   it('404s when ownership does not match', async () => {
-    vi.mocked(prisma.dependent.updateMany).mockResolvedValue({ count: 0 } as never)
+    vi.mocked(prisma.dependent.findFirst).mockResolvedValue(null)
     const res = await PATCH(makePatch('emp-9', validBody), { params: params('emp-9') })
     expect(res.status).toBe(404)
+    expect(prisma.dependent.updateMany).not.toHaveBeenCalled()
   })
 
   it('leaves nationalId untouched when the field is absent from the body', async () => {
@@ -138,6 +155,35 @@ describe('PATCH /api/users/[id]/dependents/[dependentId]', () => {
     expect(call.data.nationalIdEnc).toBe('enc:9876543210123')
     expect(call.data.nationalIdLast4).toBe('0123')
   })
+
+  it('writes an audit log describing the name change, not a JSON dump', async () => {
+    await PATCH(makePatch('emp-9', { ...validBody, name: 'เด็กใหม่' }), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    expect((call.after as { lines: string[] }).lines.some((l) => l.includes('เด็กเก่า → เด็กใหม่'))).toBe(true)
+  })
+
+  it('audit-logs a nationalId change as masked+fingerprint, never plaintext', async () => {
+    await PATCH(makePatch('emp-9', { ...validBody, nationalId: '9876543210123' }), { params: params('emp-9') })
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    const raw = JSON.stringify(call)
+    expect(raw).not.toContain('9876543210123')
+    expect((call.after as { lines: string[] }).lines.some((l) => l.startsWith('เลขบัตรประชาชน'))).toBe(true)
+  })
+
+  it('does not write an audit log when nothing actually changed', async () => {
+    await PATCH(makePatch('emp-9', { name: existingRow.name, relationType: existingRow.relationType }), { params: params('emp-9') })
+    expect(createAuditLog).not.toHaveBeenCalled()
+  })
+
+  it('does not decrypt the stored nationalId when the edit never touches it', async () => {
+    await PATCH(makePatch('emp-9', { ...validBody, name: 'เด็กใหม่' }), { params: params('emp-9') })
+    // decryptField is mocked to strip an "enc:" prefix — if it had been called
+    // on a null/undefined value the call itself wouldn't throw here, so the
+    // real assertion is indirect: no nationalId line should appear since the
+    // field was never part of this edit.
+    const call = vi.mocked(createAuditLog).mock.calls[0][0]
+    expect((call.after as { lines: string[] }).lines.some((l) => l.startsWith('เลขบัตรประชาชน'))).toBe(false)
+  })
 })
 
 describe('DELETE /api/users/[id]/dependents/[dependentId]', () => {
@@ -145,12 +191,21 @@ describe('DELETE /api/users/[id]/dependents/[dependentId]', () => {
     vi.clearAllMocks()
     vi.mocked(requireAuth).mockResolvedValue(hrSession as never)
     vi.mocked(requireEditOrgScope).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.dependent.findFirst).mockResolvedValue(existingRow as never)
   })
 
   it('deletes for real and 404s on ownership mismatch', async () => {
-    vi.mocked(prisma.dependent.deleteMany).mockResolvedValue({ count: 0 } as never)
+    vi.mocked(prisma.dependent.findFirst).mockResolvedValue(null)
     const res = await DELETE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
     expect(res.status).toBe(404)
+  })
+
+  it('writes an audit log for the delete', async () => {
+    vi.mocked(prisma.dependent.deleteMany).mockResolvedValue({ count: 1 } as never)
+    await DELETE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ after: expect.objectContaining({ lines: [expect.stringContaining('ลบผู้อยู่ในอุปการะ')] }) }),
+    )
   })
 })
 

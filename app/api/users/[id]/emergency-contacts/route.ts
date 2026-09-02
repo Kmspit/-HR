@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { requireAuth, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
 import { validateEmergencyContactRow, emergencyContactRowHasErrors } from '@/lib/employee-subrecords-validation'
+import { createAuditLog } from '@/lib/notifications'
+import { summarizeContactCreate } from '@/lib/subrecord-audit'
+
+function requestIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 function coerceForm(body: unknown) {
   const o = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
@@ -50,6 +56,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           isPrimary: form.isPrimary,
         },
       })
+    })
+
+    await createAuditLog({
+      actorId: session.user.id,
+      targetId: id,
+      targetType: 'User',
+      action: 'UPDATE',
+      after: summarizeContactCreate(contact),
+      ip: requestIp(req),
+      userAgent: req.headers.get('user-agent') ?? undefined,
     })
 
     return NextResponse.json({ contact }, { status: 201 })
