@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import Topbar from '@/components/dashboard/Topbar'
 import PerformanceClient from './PerformanceClient'
 import { calcKpiScore } from '@/lib/kpi'
+import { getDirectReportUserIds } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const CAN_SEE_ALL  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
 const CAN_SEE_TEAM = ['MANAGER', 'TEAM_LEADER', 'ADMIN']
@@ -29,11 +31,12 @@ export default async function PerformancePage() {
   if (CAN_SEE_ALL.includes(role)) {
     whereAssignee = undefined
   } else if (CAN_SEE_TEAM.includes(role)) {
-    const members = await prisma.user.findMany({
-      where: { OR: [{ managerId: userId }, { teamLeaderId: userId }] },
-      select: { id: true },
-    })
-    whereAssignee = { in: [userId, ...members.map((u) => u.id)] }
+    // getDirectReportUserIds only resolves MANAGER/TEAM_LEADER reports
+    // (ACTIVE-only) — returns [] for ADMIN, same as the old unfiltered OR
+    // query does in practice today (verified live: no ADMIN account
+    // currently has any managerId/teamLeaderId pointing at it).
+    const memberIds = await getDirectReportUserIds(prisma, userId, role as Role)
+    whereAssignee = { in: [userId, ...memberIds] }
   } else {
     whereAssignee = { in: [userId] }
   }

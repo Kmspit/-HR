@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 import { calcSlaDeadline } from '@/lib/task-sla'
 import { apiError } from '@/lib/api-handler'
+import { getDirectReportUserIds } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const CAN_ASSIGN  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER']
 const CAN_SEE_ALL = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR']
@@ -44,12 +46,10 @@ export async function GET(req: Request) {
     where = { assignedById: userId }
   } else if (view === 'my_team') {
     // Manager: their managed users; Team leader: team members; others: own
-    if (role === 'MANAGER') {
-      const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
-      where = { assigneeId: { in: managed.map(u => u.id) } }
-    } else if (role === 'TEAM_LEADER') {
-      const members = await prisma.user.findMany({ where: { teamLeaderId: userId }, select: { id: true } })
-      where = { assigneeId: { in: members.map(u => u.id) } }
+    // (ACTIVE-only, via the shared getDirectReportUserIds helper)
+    if (role === 'MANAGER' || role === 'TEAM_LEADER') {
+      const memberIds = await getDirectReportUserIds(prisma, userId, role as Role)
+      where = { assigneeId: { in: memberIds } }
     } else {
       where = { assigneeId: userId }
     }
@@ -78,14 +78,9 @@ export async function GET(req: Request) {
     where.dueDate = { gte: now, lte: endOfWeek }
     where.status  = { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] }
   } else if (filter === 'my_team') {
-    const teamIds: string[] = []
-    if (role === 'MANAGER') {
-      const managed = await prisma.user.findMany({ where: { managerId: userId }, select: { id: true } })
-      teamIds.push(...managed.map(u => u.id))
-    } else if (role === 'TEAM_LEADER') {
-      const members = await prisma.user.findMany({ where: { teamLeaderId: userId }, select: { id: true } })
-      teamIds.push(...members.map(u => u.id))
-    }
+    const teamIds: string[] = (role === 'MANAGER' || role === 'TEAM_LEADER')
+      ? await getDirectReportUserIds(prisma, userId, role as Role)
+      : []
     if (teamIds.length > 0) where.assigneeId = { in: teamIds }
   }
 

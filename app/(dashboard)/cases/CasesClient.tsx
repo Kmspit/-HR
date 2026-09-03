@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { CASE_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import { CASE_CREATE_ROLES, CASE_EXEC_ROLES } from '@/lib/case-permissions'
 import PortalModal from '@/components/ui/PortalModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -75,9 +76,6 @@ const RISK_COLOR: Record<string, string> = {
   CRITICAL: 'text-red-600 font-semibold',
 }
 
-const CAN_CREATE  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
-const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
-
 type SmartFilter = 'high_risk' | 'court_this_week' | 'overdue' | 'assigned_to_me' | 'critical'
 const SMART_FILTER_LABELS: Record<SmartFilter, string> = {
   high_risk:      '⚡ ความเสี่ยงสูง',
@@ -115,8 +113,8 @@ export default function CasesClient({ role, userId, userName }: { role: string; 
   const [execSummary, setExecSummary] = useState<ExecutiveSummary | null>(null)
   const [activeView,  setActiveView]  = useState<'list' | 'executive'>('list')
 
-  const canCreate = CAN_CREATE.includes(role)
-  const isExec    = EXEC_ROLES.includes(role)
+  const canCreate = CASE_CREATE_ROLES.includes(role)
+  const isExec    = CASE_EXEC_ROLES.includes(role)
 
   const fetchCases = useCallback(async () => {
     setLoading(true)
