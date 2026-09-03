@@ -74,25 +74,49 @@ export default async function EmployeesPage({
 
   const user = { name: session.user.name ?? '', email: session.user.email ?? '', role: session.user.role, department: session.user.department }
 
+  // Phase 1 step 8c — a DISABLED user could mean "administratively
+  // suspended" or "formally offboarded" (TERMINATION assignment). Both use
+  // the same User.status value (see lib/employment-assignment-validation.ts's
+  // header comment on why no separate TERMINATED status was added), so the
+  // distinction is derived here from each disabled employee's most recent
+  // EmploymentAssignment row rather than a stored flag. `distinct` +
+  // `orderBy` gives "latest row per user" in one query instead of N queries.
+  const disabledUserIds = users.filter((u) => u.status === 'DISABLED').map((u) => u.id)
+  const latestAssignments = disabledUserIds.length
+    ? await prisma.employmentAssignment.findMany({
+        where: { userId: { in: disabledUserIds } },
+        orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
+        distinct: ['userId'],
+        select: { userId: true, changeType: true },
+      })
+    : []
+  const terminatedUserIds = new Set(
+    latestAssignments.filter((a) => a.changeType === 'TERMINATION').map((a) => a.userId),
+  )
+
   const stats = {
-    total:   users.filter(u => u.status === 'ACTIVE').length,
-    pending: users.filter(u => u.status === 'PENDING').length,
-    active:  users.filter(u => u.status === 'ACTIVE').length,
-    disabled: users.filter(u => u.status === 'DISABLED').length,
+    total:      users.length,
+    pending:    users.filter(u => u.status === 'PENDING').length,
+    active:     users.filter(u => u.status === 'ACTIVE').length,
+    disabled:   users.filter(u => u.status === 'DISABLED' && !terminatedUserIds.has(u.id)).length,
+    terminated: users.filter(u => u.status === 'DISABLED' && terminatedUserIds.has(u.id)).length,
+    rejected:   users.filter(u => u.status === 'REJECTED').length,
   }
 
   return (
     <div className="flex flex-col">
       <Topbar
         title="จัดการพนักงาน"
-        subtitle={`พนักงานทั้งหมด ${stats.active} คน · รออนุมัติ ${stats.pending} คน`}
+        subtitle={`พนักงานทั้งหมด ${stats.total} คน · Active ${stats.active} คน · รออนุมัติ ${stats.pending} คน`}
       />
       <Suspense fallback={null}>
         <BranchFilterBar role={session.user.role} filterBranchId={branchParam} />
       </Suspense>
       <Suspense fallback={<div className="p-5 text-slate-500 text-sm">กำลังโหลด...</div>}>
         <EmployeeManager
-          users={JSON.parse(JSON.stringify(users))}
+          users={JSON.parse(JSON.stringify(
+            users.map((u) => ({ ...u, isTerminated: terminatedUserIds.has(u.id) })),
+          ))}
           stats={stats}
           initialTab={defaultTab}
           orgFilterOptions={{
