@@ -75,6 +75,14 @@ export type InactiveAssigneeGap = {
   employeeId: string
   employeeName: string
   employeeStatus: string
+  /** Only meaningful when employeeStatus is DISABLED — true if the
+   *  employee's most recent EmploymentAssignment is a TERMINATION
+   *  ("พ้นสภาพ", formally offboarded — needs urgent reassignment) vs merely
+   *  administratively suspended ("ระงับ" — may just be paused pending
+   *  resolution). Same DISABLED-status ambiguity as employees/page.tsx's
+   *  isTerminated; undefined for PENDING/REJECTED, where the distinction
+   *  doesn't apply. */
+  isTerminated?: boolean
   cases: InactiveAssigneeCaseRef[]
   tasks: InactiveAssigneeTaskRef[]
 }
@@ -127,6 +135,28 @@ export async function getInactiveAssigneeGaps(prisma: PrismaClient): Promise<{
     entryFor(t.assignee.id, t.assignee.name, t.assignee.status).tasks.push({
       id: t.id, title: t.title, status: t.status,
     })
+  }
+
+  // DISABLED-vs-terminated split — same derivation as employees/page.tsx's
+  // isTerminated: the employee's most recent EmploymentAssignment row is a
+  // TERMINATION. Only queried for DISABLED gap entries (PENDING/REJECTED
+  // don't have this ambiguity).
+  const disabledIds = [...byEmployee.values()]
+    .filter((g) => g.employeeStatus === 'DISABLED')
+    .map((g) => g.employeeId)
+  if (disabledIds.length) {
+    const latestAssignments = await prisma.employmentAssignment.findMany({
+      where: { userId: { in: disabledIds } },
+      orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
+      distinct: ['userId'],
+      select: { userId: true, changeType: true },
+    })
+    const terminatedIds = new Set(
+      latestAssignments.filter((a) => a.changeType === 'TERMINATION').map((a) => a.userId),
+    )
+    for (const id of disabledIds) {
+      byEmployee.get(id)!.isTerminated = terminatedIds.has(id)
+    }
   }
 
   const gaps = [...byEmployee.values()].sort((a, b) => a.employeeName.localeCompare(b.employeeName))

@@ -26,8 +26,27 @@ type InactiveAssigneeGap = {
   employeeId: string
   employeeName: string
   employeeStatus: string
+  /** Only meaningful when employeeStatus === 'DISABLED' — see lib/org-hierarchy-audit.ts */
+  isTerminated?: boolean
   cases: { id: string; caseNumber: string; caseTitle: string; status: string }[]
   tasks: { id: string; title: string; status: string }[]
+}
+
+const INACTIVE_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'รออนุมัติ',
+  REJECTED: 'ถูกปฏิเสธ',
+}
+
+/** DISABLED splits into พ้นสภาพ (terminated — urgent) vs ระงับ (suspended —
+ *  may just be paused); PENDING/REJECTED are rare edge cases with no such
+ *  distinction, shown as-is. */
+function inactiveAssigneeLabel(g: InactiveAssigneeGap): { text: string; urgent: boolean } {
+  if (g.employeeStatus === 'DISABLED') {
+    return g.isTerminated
+      ? { text: 'พ้นสภาพ — ต้อง reassign ด่วน', urgent: true }
+      : { text: 'ระงับ — อาจแค่รอพัก', urgent: false }
+  }
+  return { text: INACTIVE_STATUS_LABEL[g.employeeStatus] ?? g.employeeStatus, urgent: false }
 }
 
 export default function OrganizationClient({
@@ -202,18 +221,21 @@ export default function OrganizationClient({
             หรือ reassign คดี/งานให้คนที่ยัง active
           </p>
           <ul className="text-xs text-red-100/90 space-y-1.5 max-h-40 overflow-y-auto">
-            {inactiveAssigneeGaps.map((g) => (
-              <li key={g.employeeId}>
-                <span className="font-medium">{g.employeeName}</span>
-                <span className="text-red-200/60"> ({g.employeeStatus})</span>
-                {g.cases.length > 0 && (
-                  <> — คดี {g.cases.length} รายการ: {g.cases.map((c) => c.caseNumber).join(', ')}</>
-                )}
-                {g.tasks.length > 0 && (
-                  <> — งาน {g.tasks.length} รายการ: {g.tasks.map((t) => t.title).join(', ')}</>
-                )}
-              </li>
-            ))}
+            {inactiveAssigneeGaps.map((g) => {
+              const { text: statusText, urgent } = inactiveAssigneeLabel(g)
+              return (
+                <li key={g.employeeId}>
+                  <span className="font-medium">{g.employeeName}</span>
+                  <span className={urgent ? 'text-red-300 font-semibold' : 'text-red-200/60'}> ({statusText})</span>
+                  {g.cases.length > 0 && (
+                    <> — คดี {g.cases.length} รายการ: {g.cases.map((c) => c.caseNumber).join(', ')}</>
+                  )}
+                  {g.tasks.length > 0 && (
+                    <> — งาน {g.tasks.length} รายการ: {g.tasks.map((t) => t.title).join(', ')}</>
+                  )}
+                </li>
+              )
+            })}
             {inactiveAssigneeGapCount > inactiveAssigneeGaps.length && (
               <li className="text-red-200/70">… และอีก {inactiveAssigneeGapCount - inactiveAssigneeGaps.length} คน</li>
             )}

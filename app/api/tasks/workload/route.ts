@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { WORKLOAD_STATUS_LABEL as STATUS_LABEL_TH } from '@/lib/status-labels'
 import { apiError } from '@/lib/api-handler'
+import { getDirectReportUserIds } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 const ACTIVE_STATUSES = [
   'PENDING', 'NEW', 'ASSIGNED', 'IN_PROGRESS',
@@ -38,18 +40,11 @@ export async function GET(req: Request) {
       select: { id: true },
     })
     userIds = users.map((u) => u.id)
-  } else if (role === 'MANAGER') {
-    const managed = await prisma.user.findMany({
-      where: { managerId: session.user.id },
-      select: { id: true },
-    })
-    userIds = [session.user.id, ...managed.map((u) => u.id)]
-  } else if (role === 'TEAM_LEADER') {
-    const members = await prisma.user.findMany({
-      where: { teamLeaderId: session.user.id },
-      select: { id: true },
-    })
-    userIds = [session.user.id, ...members.map((u) => u.id)]
+  } else if (role === 'MANAGER' || role === 'TEAM_LEADER') {
+    // ACTIVE-only, via the shared helper — matches the SUPER_ADMIN/CEO/
+    // MANAGER_HR/HR branch above, which already filtered status: 'ACTIVE'.
+    const memberIds = await getDirectReportUserIds(prisma, session.user.id, role as Role)
+    userIds = [session.user.id, ...memberIds]
   } else {
     userIds = [session.user.id]
   }

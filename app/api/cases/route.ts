@@ -4,9 +4,7 @@ import { NextResponse } from 'next/server'
 import { createNotification, sendLineMessage } from '@/lib/notifications'
 import { triggerAutomation } from '@/lib/automation-engine'
 import { apiError } from '@/lib/api-handler'
-
-const EXEC_ROLES  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
-const CAN_CREATE  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT']
+import { CASE_CREATE_ROLES as CAN_CREATE, CASE_EXEC_ROLES as EXEC_ROLES } from '@/lib/case-permissions'
 
 const userSelect = { id: true, name: true, department: true, employeeId: true, role: true } as const
 

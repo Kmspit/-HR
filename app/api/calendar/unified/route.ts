@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { getDirectReportUserIds } from '@/lib/org-scope'
+import type { Role } from '@prisma/client'
 
 // Color map for event types
 const EVENT_TYPE_META: Record<string, { label: string; color: string }> = {
@@ -32,14 +34,13 @@ export async function GET(req: NextRequest) {
   const isAdmin  = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN'].includes(role)
   const isMgr    = ['MANAGER', 'TEAM_LEADER'].includes(role)
 
-  // Fetch team member IDs for managers
+  // Fetch team member IDs for managers (ACTIVE-only, via the shared helper —
+  // was an unfiltered inline query before, could surface a terminated/
+  // disabled member's calendar events under their old manager/team leader)
   let teamIds: string[] = [userId]
   if (isMgr) {
-    const members = await prisma.user.findMany({
-      where: { OR: [{ managerId: userId }, { teamLeaderId: userId }] },
-      select: { id: true },
-    })
-    teamIds = [userId, ...members.map((m) => m.id)]
+    const memberIds = await getDirectReportUserIds(prisma, userId, role as Role)
+    teamIds = [userId, ...memberIds]
   }
 
   const dateRange = { gte: start, lte: end }
