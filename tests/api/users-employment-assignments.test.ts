@@ -245,6 +245,26 @@ describe('POST /api/users/[id]/employment-assignments — PROMOTION/TRANSFER/CON
       expect.objectContaining({ actorId: 'hr-1', targetId: 'emp-9', targetType: 'User', action: 'UPDATE' }),
     )
   })
+
+  it('never touches status for a normal (non-rehire) promotion', async () => {
+    // beforeEach's default latest assignment is changeType HIRE, not TERMINATION.
+    const res = await POST(makePost(validPromotionBody), { params: params() })
+    const call = mocks.update.mock.calls[0][0] as { data: Record<string, unknown> }
+    expect('status' in call.data).toBe(false)
+    expect((await res.json()).rehired).toBe(false)
+  })
+
+  it('rehire: flips User.status back to ACTIVE in the same transaction when the latest assignment is a TERMINATION', async () => {
+    vi.mocked(prisma.employmentAssignment.findFirst).mockResolvedValue(latestAssignment({
+      effectiveFrom: new Date('2026-01-01'), changeType: 'TERMINATION',
+    }) as never)
+    const res = await POST(makePost(validPromotionBody), { params: params() })
+    expect(res.status).toBe(201)
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'ACTIVE' }) }),
+    )
+    expect((await res.json()).rehired).toBe(true)
+  })
 })
 
 const validTerminationBody = {

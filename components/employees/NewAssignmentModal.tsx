@@ -41,7 +41,7 @@ const EMPTY_FORM = (): NewAssignmentForm => ({
 })
 
 export default function NewAssignmentModal({
-  userId, userName, branchId, canEditSalary, currentAssignment, onClose, onSaved,
+  userId, userName, branchId, canEditSalary, currentAssignment, isTerminated, onClose, onSaved,
 }: {
   userId: string
   userName: string
@@ -52,6 +52,11 @@ export default function NewAssignmentModal({
    *  is picked — null for an employee with no current assignment yet
    *  (TERMINATION is disabled in that case, matching the API's own guard). */
   currentAssignment: EmploymentAssignmentRow | null
+  /** True when the employee's latest assignment is a TERMINATION (พ้นสภาพ) —
+   *  drives the rehire confirmation notice below. The route itself flips
+   *  User.status back to ACTIVE automatically for any non-TERMINATION
+   *  changeType created while this is true. */
+  isTerminated: boolean
   onClose: () => void
   onSaved: () => void
 }) {
@@ -145,7 +150,7 @@ export default function NewAssignmentModal({
       })
     }
 
-    const { ok, data, status } = await apiJson(`/api/users/${userId}/employment-assignments`, {
+    const { ok, data, status } = await apiJson<{ rehired?: boolean }>(`/api/users/${userId}/employment-assignments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -155,7 +160,13 @@ export default function NewAssignmentModal({
       toast.error(apiErrorMessage(data as Record<string, unknown>, 'บันทึกไม่สำเร็จ', status))
       return
     }
-    toast.success(form.changeType === 'TERMINATION' ? '✅ บันทึกการพ้นสภาพแล้ว' : '✅ บันทึกประวัติตำแหน่งแล้ว')
+    toast.success(
+      form.changeType === 'TERMINATION'
+        ? '✅ บันทึกการพ้นสภาพแล้ว'
+        : data?.rehired
+          ? '✅ บันทึกแล้ว — พนักงานกลับมาใช้งานได้อีกครั้ง'
+          : '✅ บันทึกประวัติตำแหน่งแล้ว',
+    )
     onClose()
     onSaved()
   }
@@ -247,6 +258,11 @@ export default function NewAssignmentModal({
             </>
           ) : form.changeType ? (
             <>
+              {isTerminated && (
+                <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[12px] text-amber-300">
+                  พนักงานคนนี้พ้นสภาพอยู่ — การบันทึกนี้จะทำให้กลับมาใช้งานได้อีกครั้ง
+                </p>
+              )}
               <div>
                 <label htmlFor="new-pos-field" className="text-xs text-slate-500">ตำแหน่ง *</label>
                 {!addingNewPosition ? (
