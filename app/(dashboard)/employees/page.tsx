@@ -95,17 +95,19 @@ export default async function EmployeesPage({
   )
 
   const stats = {
-    total:   users.filter(u => u.status === 'ACTIVE').length,
-    pending: users.filter(u => u.status === 'PENDING').length,
-    active:  users.filter(u => u.status === 'ACTIVE').length,
-    disabled: users.filter(u => u.status === 'DISABLED').length,
+    total:      users.length,
+    pending:    users.filter(u => u.status === 'PENDING').length,
+    active:     users.filter(u => u.status === 'ACTIVE').length,
+    disabled:   users.filter(u => u.status === 'DISABLED' && !terminatedUserIds.has(u.id)).length,
+    terminated: users.filter(u => u.status === 'DISABLED' && terminatedUserIds.has(u.id)).length,
+    rejected:   users.filter(u => u.status === 'REJECTED').length,
   }
 
   return (
     <div className="flex flex-col">
       <Topbar
         title="จัดการพนักงาน"
-        subtitle={`พนักงานทั้งหมด ${stats.active} คน · รออนุมัติ ${stats.pending} คน`}
+        subtitle={`พนักงานทั้งหมด ${stats.total} คน · Active ${stats.active} คน · รออนุมัติ ${stats.pending} คน`}
       />
       <Suspense fallback={null}>
         <BranchFilterBar role={session.user.role} filterBranchId={branchParam} />

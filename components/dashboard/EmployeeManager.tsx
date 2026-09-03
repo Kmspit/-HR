@@ -32,9 +32,18 @@ type User = {
 
 type OrgOpt = { id: string; name: string; code?: string; divisionId?: string; departmentId?: string }
 
+type TabId = 'all' | 'pending' | 'disabled' | 'terminated' | 'rejected'
+const VALID_TABS: TabId[] = ['all', 'pending', 'disabled', 'terminated', 'rejected']
+
 type Props = {
   users: User[]
-  stats: { total: number; pending: number; active: number; disabled: number }
+  /** disabled = administratively suspended (DISABLED, not terminated);
+   *  terminated = formally offboarded (DISABLED + latest assignment is
+   *  TERMINATION) — see EmployeeManager's own statusBadge comment on why
+   *  these are two counts despite sharing one User.status value. total
+   *  counts literally everyone regardless of status (previously equal to
+   *  active — a pre-existing naming bug fixed alongside this). */
+  stats: { total: number; pending: number; active: number; disabled: number; terminated: number; rejected: number }
   initialTab: string
   orgFilterOptions?: { divisions: OrgOpt[]; departments: OrgOpt[]; sections: OrgOpt[] }
   currentOrgFilters?: { divisionId?: string; departmentId?: string; sectionId?: string }
@@ -66,7 +75,7 @@ function roleBadge(role: Role) {
 }
 
 export default function EmployeeManager({ users, stats, initialTab, orgFilterOptions, currentOrgFilters, canEditSalary }: Props) {
-  const [tab, setTab] = useState<'all' | 'pending' | 'disabled'>(initialTab === 'pending' ? 'pending' : 'all')
+  const [tab, setTab] = useState<TabId>(VALID_TABS.includes(initialTab as TabId) ? (initialTab as TabId) : 'all')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [assignUser, setAssignUser] = useState<User | null>(null)
@@ -88,13 +97,20 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
 
   const sel = (key: 'divisionId' | 'departmentId' | 'sectionId') => currentOrgFilters?.[key] ?? ''
 
+  // "ทั้งหมด" is a real "everyone" view (every status, dimmed for non-ACTIVE
+  // rows below) — the other 4 tabs are each one specific bucket. disabled
+  // and terminated both read User.status === 'DISABLED' and split on
+  // isTerminated, since there's no separate TERMINATED status (see
+  // statusBadge's own comment).
   const filtered = users.filter((u) => {
-    const matchTab = tab === 'all' ? u.status === 'ACTIVE' || u.status === 'DISABLED' : tab === 'pending' ? u.status === 'PENDING' : u.status === 'DISABLED'
     if (tab === 'all') {
       const matchSearch = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.department ?? '').toLowerCase().includes(search.toLowerCase())
-      return u.status === 'ACTIVE' && matchSearch
+      return matchSearch
     }
-    return matchTab
+    if (tab === 'pending') return u.status === 'PENDING'
+    if (tab === 'disabled') return u.status === 'DISABLED' && !u.isTerminated
+    if (tab === 'terminated') return u.status === 'DISABLED' && !!u.isTerminated
+    return u.status === 'REJECTED' // tab === 'rejected'
   })
 
   // APPROVE now opens ApproveAssignModal instead of calling the API directly
@@ -142,12 +158,13 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
   return (
     <div className="p-5 md:p-6 space-y-5 max-w-full overflow-x-hidden">
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: 'Active', value: stats.active, color: 'text-green-600 dark:text-green-400' },
           { label: 'รออนุมัติ', value: stats.pending, color: 'text-amber-600 dark:text-yellow-400' },
           { label: 'ระงับ', value: stats.disabled, color: 'text-slate-500 dark:text-slate-400' },
-          { label: 'ทั้งหมด', value: stats.total, color: 'text-green-600 dark:text-green-400' },
+          { label: 'พ้นสภาพ', value: stats.terminated, color: 'text-slate-500 dark:text-slate-400' },
+          { label: 'ทั้งหมด', value: stats.total, color: 'text-cyan-600 dark:text-cyan-400' },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 text-center shadow-sm">
             <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
@@ -217,9 +234,11 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1 border border-slate-200 dark:border-white/5 overflow-x-auto max-w-full">
           {[
-            { id: 'all' as const, label: `ทั้งหมด (${stats.active})` },
+            { id: 'all' as const, label: `ทั้งหมด (${stats.total})` },
             { id: 'pending' as const, label: `รออนุมัติ (${stats.pending})` },
             { id: 'disabled' as const, label: `ระงับ (${stats.disabled})` },
+            { id: 'terminated' as const, label: `พ้นสภาพ (${stats.terminated})` },
+            { id: 'rejected' as const, label: `ปฏิเสธ (${stats.rejected})` },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex-shrink-0 rounded-lg px-4 py-2 text-[13px] font-semibold transition-all min-h-[40px] ${tab === t.id ? 'bg-green-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
@@ -236,15 +255,15 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
         )}
       </div>
 
-      {/* Mobile card layout — all/disabled tabs */}
-      {(tab === 'all' || tab === 'disabled') && (
+      {/* Mobile card layout — all/disabled/terminated/rejected tabs (pending has its own approve/reject card below) */}
+      {tab !== 'pending' && (
         <div className="md:hidden space-y-3">
           {filtered.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-8 text-center text-slate-500">
               ไม่มีข้อมูล
             </div>
           ) : filtered.map((u) => (
-            <div key={`card-${u.id}`} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 shadow-sm">
+            <div key={`card-${u.id}`} className={`rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-4 shadow-sm ${tab === 'all' && u.status !== 'ACTIVE' ? 'opacity-60' : ''}`}>
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-500/10 text-sm font-bold text-green-700 dark:text-green-400">
                   {u.name[0]}
@@ -335,7 +354,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
               {filtered.length === 0 ? (
                 <tr><td colSpan={8} className="py-10 text-center text-[14px] text-slate-500">ไม่มีข้อมูล</td></tr>
               ) : filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                <tr key={u.id} className={`hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${tab === 'all' && u.status !== 'ACTIVE' ? 'opacity-60' : ''}`}>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-green-100 dark:bg-green-500/10 text-[13px] font-bold text-green-700 dark:text-green-400">{u.name[0]}</div>
