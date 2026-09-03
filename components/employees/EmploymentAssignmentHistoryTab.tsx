@@ -105,6 +105,10 @@ export default function EmploymentAssignmentHistoryTab({
   // state.phase === 'loaded'
   const { assignments, currentAssignmentId } = state.data
   const currentAssignment = assignments.find((a) => a.id === currentAssignmentId) ?? null
+  // currentAssignmentId is null both when there's no history at all AND when
+  // the latest row is a TERMINATION (getCurrentAssignment excludes it) — only
+  // the second case means "this employee is currently พ้นสภาพ".
+  const isTerminated = assignments.length > 0 && currentAssignmentId === null
 
   return (
     <div className="space-y-4">
@@ -174,6 +178,7 @@ export default function EmploymentAssignmentHistoryTab({
           branchId={branchId}
           canEditSalary={canViewSalary}
           currentAssignment={currentAssignment}
+          isTerminated={isTerminated}
           onClose={() => setShowNewModal(false)}
           onSaved={() => void load()}
         />

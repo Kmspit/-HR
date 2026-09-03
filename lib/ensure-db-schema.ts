@@ -1865,6 +1865,195 @@ async function runEnsure(force = false): Promise<boolean> {
     ON employment_assignments (userId, effectiveFrom)
   `)
 
+  // v900029 — retrofit real FK + ON DELETE CASCADE onto the 5 Phase 1 tables
+  // that schema.prisma always declared it for but whose CREATE TABLE here
+  // (v900023/24/25/26/27/28 above) never actually included a FOREIGN KEY
+  // clause. Found via a real deletion test during Phase 1's own closeout
+  // review: deleting a throwaway test User left EmployeeProfile/
+  // EmergencyContact/Dependent/BankAccount/EmploymentAssignment rows behind
+  // as permanent orphans — confirmed via `PRAGMA foreign_key_list`, all 5
+  // tables had zero FK constraints despite `onDelete: Cascade` in
+  // schema.prisma. This matters now specifically because the ~18-employee
+  // account wipe planned before pilot launch would otherwise leave orphaned
+  // PII (encrypted bank account numbers, encrypted dependent national IDs,
+  // addresses) behind forever — a real PDPA concern, not just a cleanliness
+  // one. employment_assignments also gets a second FK (jobPositionId ->
+  // job_positions, RESTRICT — matches schema.prisma, which declares that
+  // relation with no onDelete override).
+  //
+  // A broader audit run alongside this (comparing every @relation(fields:...)
+  // in schema.prisma against live PRAGMA foreign_key_list output) found the
+  // same gap is actually systemic — the large majority of this schema's ~194
+  // declared relations have no matching live FK, going back well before
+  // Phase 1, because any relation field added via addColumnIfMissing-style
+  // `ALTER TABLE ADD COLUMN` (SQLite cannot add a FK constraint that way) never
+  // got one. That is far outside this migration's scope — flagged separately
+  // in this phase's closeout report, not fixed here. This migration only
+  // touches the 5 tables the current employee-deletion PDPA concern is about.
+  //
+  // SQLite can't ALTER a table to add a FK in place, so — same as v900021 —
+  // this rebuilds each table (data copied and row-count-verified before the
+  // old one is dropped), guarded by checking whether the FK already exists
+  // so a re-run after a successful pass is a no-op.
+  {
+    type RebuildTarget = {
+      table: string
+      checkField: string
+      columns: string
+      createExtra: string
+    }
+    const targets: RebuildTarget[] = [
+      {
+        table: 'employee_profiles', checkField: 'userId',
+        columns: 'id, userId, nationality, maritalStatus, personalEmail, currentHouseNo, currentMoo, currentSoi, currentRoad, currentTambon, currentAmphoe, currentProvince, currentPostalCode, regHouseNo, regMoo, regSoi, regRoad, regTambon, regAmphoe, regProvince, regPostalCode, sameAsCurrentAddress, createdAt, updatedAt',
+        createExtra: `
+          id TEXT NOT NULL PRIMARY KEY,
+          userId TEXT NOT NULL UNIQUE,
+          nationality TEXT,
+          maritalStatus TEXT,
+          personalEmail TEXT,
+          currentHouseNo TEXT,
+          currentMoo TEXT,
+          currentSoi TEXT,
+          currentRoad TEXT,
+          currentTambon TEXT,
+          currentAmphoe TEXT,
+          currentProvince TEXT,
+          currentPostalCode TEXT,
+          regHouseNo TEXT,
+          regMoo TEXT,
+          regSoi TEXT,
+          regRoad TEXT,
+          regTambon TEXT,
+          regAmphoe TEXT,
+          regProvince TEXT,
+          regPostalCode TEXT,
+          sameAsCurrentAddress INTEGER NOT NULL DEFAULT 0,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
+        `,
+      },
+      {
+        table: 'emergency_contacts', checkField: 'userId',
+        columns: 'id, userId, name, relationship, phone, altPhone, address, isPrimary, sortOrder, createdAt, updatedAt',
+        createExtra: `
+          id TEXT NOT NULL PRIMARY KEY,
+          userId TEXT NOT NULL,
+          name TEXT NOT NULL,
+          relationship TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          altPhone TEXT,
+          address TEXT,
+          isPrimary INTEGER NOT NULL DEFAULT 0,
+          sortOrder INTEGER NOT NULL DEFAULT 0,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
+        `,
+      },
+      {
+        table: 'dependents', checkField: 'userId',
+        columns: 'id, userId, name, relationType, nationalIdEnc, nationalIdLast4, birthDate, isTaxAllowance, note, sortOrder, createdAt, updatedAt',
+        createExtra: `
+          id TEXT NOT NULL PRIMARY KEY,
+          userId TEXT NOT NULL,
+          name TEXT NOT NULL,
+          relationType TEXT NOT NULL DEFAULT 'OTHER',
+          nationalIdEnc TEXT,
+          nationalIdLast4 TEXT,
+          birthDate DATETIME,
+          isTaxAllowance INTEGER NOT NULL DEFAULT 0,
+          note TEXT,
+          sortOrder INTEGER NOT NULL DEFAULT 0,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
+        `,
+      },
+      {
+        table: 'bank_accounts', checkField: 'userId',
+        columns: 'id, userId, bankCode, accountNameEnc, accountNumberEnc, accountNumberLast4, accountType, isPrimary, isActive, sortOrder, createdAt, updatedAt',
+        createExtra: `
+          id TEXT NOT NULL PRIMARY KEY,
+          userId TEXT NOT NULL,
+          bankCode TEXT NOT NULL,
+          accountNameEnc TEXT NOT NULL,
+          accountNumberEnc TEXT NOT NULL,
+          accountNumberLast4 TEXT NOT NULL,
+          accountType TEXT,
+          isPrimary INTEGER NOT NULL DEFAULT 0,
+          isActive INTEGER NOT NULL DEFAULT 1,
+          sortOrder INTEGER NOT NULL DEFAULT 0,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
+        `,
+      },
+      {
+        table: 'employment_assignments', checkField: 'userId',
+        columns: 'id, userId, effectiveFrom, changeType, employmentType, divisionId, departmentId, sectionId, jobPositionId, branchId, managerId, teamLeaderId, baseSalary, contractEndDate, terminationType, terminationReason, rehireEligible, reason, note, createdById, createdAt',
+        createExtra: `
+          id TEXT NOT NULL PRIMARY KEY,
+          userId TEXT NOT NULL,
+          effectiveFrom DATETIME NOT NULL,
+          changeType TEXT NOT NULL,
+          employmentType TEXT NOT NULL,
+          divisionId TEXT,
+          departmentId TEXT,
+          sectionId TEXT,
+          jobPositionId TEXT NOT NULL,
+          branchId TEXT,
+          managerId TEXT,
+          teamLeaderId TEXT,
+          baseSalary REAL,
+          contractEndDate DATETIME,
+          terminationType TEXT,
+          terminationReason TEXT,
+          rehireEligible INTEGER,
+          reason TEXT,
+          note TEXT,
+          createdById TEXT NOT NULL,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE,
+          FOREIGN KEY (jobPositionId) REFERENCES job_positions (id) ON DELETE RESTRICT ON UPDATE CASCADE
+        `,
+      },
+    ]
+
+    for (const t of targets) {
+      const fkRows = await prisma.$queryRawUnsafe<{ from: string }[]>(`PRAGMA foreign_key_list(${t.table})`)
+      const hasFk = fkRows.some((r) => r.from === t.checkField)
+      if (hasFk) {
+        console.log(`[MIGRATION v900029] "${t.table}" already has FK, skipping rebuild`)
+        continue
+      }
+
+      const tmpTable = `${t.table}_v900029`
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${tmpTable}`)
+      await prisma.$executeRawUnsafe(`CREATE TABLE ${tmpTable} (${t.createExtra})`)
+      await prisma.$executeRawUnsafe(`INSERT INTO ${tmpTable} (${t.columns}) SELECT ${t.columns} FROM ${t.table}`)
+
+      const oldCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM ${t.table}`)
+      const newCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM ${tmpTable}`)
+      if (Number(oldCount[0]?.cnt ?? 0) !== Number(newCount[0]?.cnt ?? -1)) {
+        throw new Error(`[MIGRATION v900029 ABORT] row count mismatch after copy for "${t.table}" (old=${oldCount[0]?.cnt}, new=${newCount[0]?.cnt}) — refusing to drop`)
+      }
+
+      await prisma.$executeRawUnsafe(`DROP TABLE ${t.table}`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE ${tmpTable} RENAME TO ${t.table}`)
+      console.log(`[MIGRATION v900029] Rebuilt "${t.table}" with FK + ON DELETE CASCADE (${newCount[0]?.cnt} row(s) preserved)`)
+    }
+
+    // Recreate the indexes each table had before the rebuild (DROP TABLE
+    // also drops its indexes) — same names/definitions as where each table
+    // was first created above.
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS emergency_contacts_user_idx ON emergency_contacts (userId)`)
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS dependents_user_idx ON dependents (userId)`)
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS bank_accounts_user_idx ON bank_accounts (userId)`)
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS employment_assignments_user_effective_idx ON employment_assignments (userId, effectiveFrom)`)
+  }
+
   // Seed job_positions from whatever User.position values are already in use
   // — purely so the table isn't empty in dev. Disposable: employee data gets
   // wiped before pilot launch (see project notes), so this seed doesn't need

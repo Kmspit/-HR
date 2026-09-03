@@ -264,6 +264,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const legacyEmployeeType = mapEmploymentTypeToLegacy(employmentType)
 
+    // Rehire: the employee's latest assignment was a TERMINATION, and this
+    // new row is not one — creating a real PROMOTION/TRANSFER/CONTRACT_RENEW
+    // for them is itself the "yes, bring them back" action, so flip
+    // User.status back to ACTIVE in the same transaction rather than leaving
+    // it stuck on DISABLED until someone separately edits the raw status
+    // field (which had no connection to this flow at all before).
+    const isRehire = latest?.changeType === 'TERMINATION'
+
     const created = await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id },
@@ -275,6 +283,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           sectionId,
           employeeType: legacyEmployeeType,
           baseSalary,
+          ...(isRehire ? { status: 'ACTIVE' as const } : {}),
         },
       })
       return tx.employmentAssignment.create({
@@ -305,7 +314,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       })
     }
 
-    return NextResponse.json({ assignment: { id: created.id } }, { status: 201 })
+    return NextResponse.json({ assignment: { id: created.id }, rehired: isRehire }, { status: 201 })
   } catch (err) {
     return apiError(err)
   }
