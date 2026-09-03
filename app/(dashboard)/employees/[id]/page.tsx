@@ -34,7 +34,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       employeeType: true,
       department: true, position: true, baseSalary: true, socialSecurity: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
-      lineUserId: true, lineDisplayName: true,
+      lineUserId: true, lineDisplayName: true, branchId: true,
       prefix: true, nickname: true, birthDate: true, address: true, addressIdCard: true,
     },
   })
@@ -50,6 +50,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       currentUserId={session.user.id}
       canEditSalary={HR_ADMIN.includes(role)}
       canViewSensitive={HR_ADMIN.includes(role)}
+      canManageEmploymentHistory={HR_ADMIN.includes(role)}
       employee={{
         ...user,
         baseSalary: user.baseSalary ?? 0,

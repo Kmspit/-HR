@@ -17,6 +17,9 @@ type User = {
   role: Role; status: string; department: string | null; position: string | null
   phone: string | null; baseSalary: number | null; socialSecurity: boolean
   startDate: string | null; lineId: string | null; isCoworker: boolean; createdAt: string
+  /** DISABLED + most recent EmploymentAssignment is TERMINATION — see
+   *  statusBadge()'s own comment. Undefined/false for anyone not disabled. */
+  isTerminated?: boolean
   branch?: { name: string; code: string } | null
   branchId?: string | null
   divisionId?: string | null
@@ -115,14 +118,24 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
     finally { setLoading(null) }
   }
 
-  const statusBadge = (s: string) => {
+  // isTerminated (Phase 1 step 8c) — a DISABLED user whose most recent
+  // EmploymentAssignment is a TERMINATION row is formally offboarded
+  // ("พ้นสภาพ"), not merely administratively suspended ("ระงับ"). Both share
+  // the same User.status value (see lib/employment-assignment-validation.ts's
+  // header comment on why no separate TERMINATED status exists), so the
+  // label needs this extra signal rather than reading status alone.
+  const statusBadge = (s: string, isTerminated?: boolean) => {
     const map: Record<string, string> = {
       ACTIVE: 'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/10',
       PENDING: 'text-amber-700 dark:text-yellow-400 bg-amber-100 dark:bg-yellow-500/10',
       DISABLED: 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-500/10',
       REJECTED: 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/10',
     }
-    const label: Record<string, string> = { ACTIVE: 'Active', PENDING: 'รอ Approve', DISABLED: 'ระงับ', REJECTED: 'ปฏิเสธ' }
+    const label: Record<string, string> = {
+      ACTIVE: 'Active', PENDING: 'รอ Approve',
+      DISABLED: s === 'DISABLED' && isTerminated ? 'พ้นสภาพ' : 'ระงับ',
+      REJECTED: 'ปฏิเสธ',
+    }
     return <span className={`rounded-lg px-2.5 py-1 text-[12px] font-semibold ${map[s] ?? 'text-slate-600 bg-slate-100'}`}>{label[s] ?? s}</span>
   }
 
@@ -242,7 +255,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                       <p className="font-semibold text-slate-900 dark:text-white text-[14px] leading-tight">{u.name}</p>
                       <p className="text-[12px] text-slate-500 mt-0.5 truncate">{u.position ?? '—'}</p>
                     </div>
-                    {statusBadge(u.status)}
+                    {statusBadge(u.status, u.isTerminated)}
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1 truncate">{orgLabel(u)}</p>
                   {u.branch && (
@@ -288,7 +301,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                   <p className="text-[11px] text-cyan-600 dark:text-cyan-400/80 truncate">{u.branch ? `${u.branch.name} (${u.branch.code})` : '—'}</p>
                   <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
                 </div>
-                {statusBadge(u.status)}
+                {statusBadge(u.status, u.isTerminated)}
               </div>
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => setApproveUser(u)} disabled={loading === u.id}
@@ -342,7 +355,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                   <td className="px-4 py-3.5">
                     {roleBadge(u.role)}
                   </td>
-                  <td className="px-4 py-3.5">{statusBadge(u.status)}</td>
+                  <td className="px-4 py-3.5">{statusBadge(u.status, u.isTerminated)}</td>
                   <td className="px-4 py-3.5 text-[13px] text-slate-600 dark:text-slate-400">{u.startDate ? formatThaiDate(u.startDate) : '-'}</td>
                   <td className="px-4 py-3.5">
                     <span className={`rounded-lg px-2.5 py-1 text-[12px] font-semibold ${u.socialSecurity ? 'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/10' : 'text-slate-500 bg-slate-100 dark:bg-slate-700'}`}>{u.socialSecurity ? 'อยู่' : 'ไม่อยู่'}</span>

@@ -31,6 +31,7 @@ import FormField from '@/components/profile/FormField'
 import EmployeeEditHistoryTab from '@/components/employees/EmployeeEditHistoryTab'
 import EmployeeProfileTab from '@/components/employees/EmployeeProfileTab'
 import EmployeeContactsBankTab from '@/components/employees/EmployeeContactsBankTab'
+import EmploymentAssignmentHistoryTab from '@/components/employees/EmploymentAssignmentHistoryTab'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
   isValidEmailInput,
@@ -69,6 +70,7 @@ type Employee = {
   /** opt-in — not selected by the server page anymore; populated via "ดูเลขเต็ม" (GET /api/users/[id]/sensitive) */
   nationalId?: string | null
   warningCount: number
+  branchId: string | null
 }
 
 const ROLES = [
@@ -95,7 +97,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 const STATUS_LIST = ['ACTIVE', 'PENDING', 'DISABLED', 'REJECTED']
 
-type TabKey = 'profile' | 'personal' | 'contacts' | 'work' | 'system' | 'history'
+type TabKey = 'profile' | 'personal' | 'contacts' | 'assignments' | 'work' | 'system' | 'history'
 type FormErrors = Partial<Record<string, string>>
 
 export default function EmployeeEditClient({
@@ -103,6 +105,7 @@ export default function EmployeeEditClient({
   currentUserId,
   canEditSalary,
   canViewSensitive,
+  canManageEmploymentHistory,
 }: {
   employee: Employee
   currentUserId: string
@@ -116,6 +119,9 @@ export default function EmployeeEditClient({
    *  dependent's national ID / an account number" are different permissions
    *  that only happen to share a role list right now. */
   canViewSensitive: boolean
+  /** Same literal role list again — Phase 1 step 8c — gates the "สร้าง
+   *  ประวัติใหม่" button on the employment-history tab. */
+  canManageEmploymentHistory: boolean
 }) {
   const router = useRouter()
   const isSelf = employee.id === currentUserId
@@ -320,6 +326,7 @@ export default function EmployeeEditClient({
     },
     { key: 'personal', label: 'ข้อมูลส่วนตัวเพิ่มเติม', hasError: false },
     { key: 'contacts', label: 'ผู้ติดต่อ & บัญชีธนาคาร', hasError: false },
+    { key: 'assignments', label: 'ประวัติตำแหน่ง', hasError: false },
     { key: 'work', label: 'การทำงาน', hasError: false },
     {
       key: 'system',
@@ -534,6 +541,17 @@ export default function EmployeeEditClient({
       {/* ── Tab: ผู้ติดต่อ & บัญชีธนาคาร ── (stays mounted across tab switches,
           same reasoning as the history tab below) */}
       <EmployeeContactsBankTab employeeId={employee.id} active={activeTab === 'contacts'} canViewSensitive={canViewSensitive} />
+
+      {/* ── Tab: ประวัติตำแหน่ง ── (stays mounted across tab switches, same
+          reasoning as the history tab below) */}
+      <EmploymentAssignmentHistoryTab
+        employeeId={employee.id}
+        employeeName={employee.name}
+        active={activeTab === 'assignments'}
+        branchId={employee.branchId}
+        canViewSalary={canEditSalary}
+        canManage={canManageEmploymentHistory}
+      />
 
       {/* ── Tab: การทำงาน ── */}
       {activeTab === 'work' && (
