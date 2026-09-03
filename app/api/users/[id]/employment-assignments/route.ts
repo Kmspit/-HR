@@ -148,8 +148,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       where: { userId: id },
       orderBy: [{ effectiveFrom: 'desc' }, { createdAt: 'desc' }],
     })
-    if (latest && effectiveFrom.getTime() <= latest.effectiveFrom.getTime()) {
-      return NextResponse.json({ error: 'วันที่มีผลต้องอยู่หลังประวัติล่าสุด (กันลำดับเวลาสับสน)' }, { status: 400 })
+    if (latest && effectiveFrom.getTime() < latest.effectiveFrom.getTime()) {
+      // Same-day is allowed (a promotion and a same-day termination, or
+      // several backfilled rows from one HR session, are real cases) —
+      // ties are broken by createdAt in getAssignmentAsOf/getCurrentAssignment
+      // (lib/employment-assignment.ts), which already orders by
+      // [{effectiveFrom:'desc'},{createdAt:'desc'}]. Only a date strictly
+      // before the latest existing row is rejected.
+      return NextResponse.json({ error: 'วันที่มีผลต้องไม่อยู่ก่อนประวัติล่าสุด' }, { status: 400 })
     }
     // TERMINATION carries forward the current assignment's position/org/
     // salary (see below) — there must be one to carry forward from.

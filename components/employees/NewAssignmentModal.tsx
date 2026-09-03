@@ -243,7 +243,7 @@ export default function NewAssignmentModal({
                 </div>
                 {errors.rehireEligible && <p className="mt-1 text-[12px] text-red-400">{errors.rehireEligible}</p>}
               </div>
-              <p className="text-[11px] text-slate-500">ตำแหน่ง/แผนก/เงินเดือนจะยึดค่าล่าสุดของพนักงานไว้ ไม่ต้องกรอกใหม่ — สถานะบัญชีจะเปลี่ยนเป็น &ldquo;ระงับ&rdquo; ทันที</p>
+              <p className="text-[11px] text-slate-500">ตำแหน่ง/แผนก/เงินเดือนจะยึดค่าล่าสุดของพนักงานไว้ ไม่ต้องกรอกใหม่ — สถานะบัญชีจะเปลี่ยนเป็น &ldquo;พ้นสภาพ&rdquo; ทันที</p>
             </>
           ) : form.changeType ? (
             <>

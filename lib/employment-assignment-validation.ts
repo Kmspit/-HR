@@ -48,12 +48,14 @@ export type NewAssignmentErrors = Partial<Record<
 >>
 
 /**
- * effectiveFrom must land strictly after the employee's most recent existing
- * assignment (never blank/tie — ambiguous ordering breaks
- * getAssignmentAsOf's "most recent as of date" derivation) and never in the
- * future (a future-dated row would need a deferred sync job that doesn't
- * exist yet — see the route's own comment; blocking it here is the
- * documented, deliberate scope cut for this step, not an oversight).
+ * effectiveFrom must land on or after the employee's most recent existing
+ * assignment (same-day is allowed — a promotion and a same-day termination,
+ * or several backfilled rows from one HR session, are real cases; ties are
+ * broken by createdAt, see getAssignmentAsOf/getCurrentAssignment in
+ * lib/employment-assignment.ts) and never in the future (a future-dated row
+ * would need a deferred sync job that doesn't exist yet — see the route's
+ * own comment; blocking it here is the documented, deliberate scope cut for
+ * this step, not an oversight).
  * `context` is passed in rather than read from Date.now()/a live query so
  * this stays a pure, easily-testable function.
  */
@@ -73,8 +75,8 @@ export function validateNewAssignment(
     todayEnd.setHours(23, 59, 59, 999)
     if (effectiveDate.getTime() > todayEnd.getTime()) {
       errors.effectiveFrom = 'ไม่สามารถระบุวันที่ในอนาคตได้'
-    } else if (context.latestEffectiveFrom && effectiveDate.getTime() <= context.latestEffectiveFrom.getTime()) {
-      errors.effectiveFrom = 'วันที่มีผลต้องอยู่หลังประวัติล่าสุด'
+    } else if (context.latestEffectiveFrom && effectiveDate.getTime() < context.latestEffectiveFrom.getTime()) {
+      errors.effectiveFrom = 'วันที่มีผลต้องไม่อยู่ก่อนประวัติล่าสุด'
     }
   }
 

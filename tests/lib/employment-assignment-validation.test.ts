@@ -44,9 +44,13 @@ describe('validateNewAssignment — general', () => {
     expect(errors.effectiveFrom).toBeUndefined()
   })
 
-  it('blocks effectiveFrom on or before the latest existing assignment', () => {
-    expect(validateNewAssignment(form({ effectiveFrom: '2026-01-01' }), ctx).effectiveFrom).toBeTruthy()
+  it('blocks effectiveFrom strictly before the latest existing assignment', () => {
     expect(validateNewAssignment(form({ effectiveFrom: '2025-12-01' }), ctx).effectiveFrom).toBeTruthy()
+  })
+
+  it('allows effectiveFrom equal to the latest existing assignment (same-day backfill, e.g. a same-day promotion + termination)', () => {
+    const errors = validateNewAssignment(form({ effectiveFrom: '2026-01-01' }), ctx)
+    expect(errors.effectiveFrom).toBeUndefined()
   })
 
   it('allows any past-but-after-latest date when there is no existing assignment yet', () => {

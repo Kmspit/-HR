@@ -202,10 +202,17 @@ describe('POST /api/users/[id]/employment-assignments — PROMOTION/TRANSFER/CON
     expect(mocks.create).not.toHaveBeenCalled()
   })
 
-  it('blocks effectiveFrom on or before the latest existing assignment', async () => {
-    const res = await POST(makePost({ ...validPromotionBody, effectiveFrom: '2026-01-01' }), { params: params() })
+  it('blocks effectiveFrom strictly before the latest existing assignment', async () => {
+    const res = await POST(makePost({ ...validPromotionBody, effectiveFrom: '2025-12-01' }), { params: params() })
     expect(res.status).toBe(400)
     expect(mocks.create).not.toHaveBeenCalled()
+  })
+
+  it('allows effectiveFrom equal to the latest existing assignment (same-day backfill)', async () => {
+    vi.mocked(prisma.employmentAssignment.findFirst).mockResolvedValue(latestAssignment({ effectiveFrom: new Date('2026-09-03') }) as never)
+    const res = await POST(makePost({ ...validPromotionBody, effectiveFrom: '2026-09-03' }), { params: params() })
+    expect(res.status).toBe(201)
+    expect(mocks.create).toHaveBeenCalled()
   })
 
   it('requires baseSalary (always HR_ADMIN-gated action, never conditionally hidden)', async () => {
@@ -296,5 +303,12 @@ describe('POST /api/users/[id]/employment-assignments — TERMINATION', () => {
     const call = mocks.update.mock.calls[0][0] as { data: Record<string, unknown> }
     expect('position' in call.data).toBe(false)
     expect('baseSalary' in call.data).toBe(false)
+  })
+
+  it('allows a same-day termination right after a same-day promotion (real case: promote then terminate the same day)', async () => {
+    vi.mocked(prisma.employmentAssignment.findFirst).mockResolvedValue(latestAssignment({ effectiveFrom: new Date('2026-09-03') }) as never)
+    const res = await POST(makePost({ ...validTerminationBody, effectiveFrom: '2026-09-03' }), { params: params() })
+    expect(res.status).toBe(201)
+    expect(mocks.create).toHaveBeenCalled()
   })
 })
