@@ -50,6 +50,15 @@ const nextConfig: NextConfig = {
       './assets/fonts/**/*',
       './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
     ],
+    // NOTE for whoever touches this next: an entry for /api/thai-address/*
+    // (including geothai's data files) was tried here first for the same
+    // reason as the font entry above, but it did not fix the deployed
+    // preview (province dropdown stayed empty) — see lib/thai-address.ts's
+    // header comment. That route no longer calls geothai at request time
+    // at all (static JSON import instead), so no entry is needed here.
+    // If you're re-adding a geothai (or similar import.meta.url-based
+    // file-reading package) dependency, read that comment before assuming
+    // outputFileTracingIncludes alone will fix it on Vercel.
   },
   serverExternalPackages: [
     '@prisma/client',

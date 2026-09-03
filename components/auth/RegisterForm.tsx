@@ -16,6 +16,8 @@ import { THAI_BANKS } from '@/lib/thai-banks'
 import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
 import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
 import { DEPENDENT_RELATION_LABELS } from '@/lib/dependent-relation-labels'
+import { PREFIX_OPTIONS } from '@/lib/prefix-options'
+import ThaiAddressFields from '@/components/shared/ThaiAddressFields'
 import {
   validateRegisterPersonalStep,
   validateRegisterAddressStep,
@@ -392,26 +394,42 @@ export default function RegisterForm() {
   const addressInputClass = (err?: string) =>
     `w-full rounded-xl border bg-slate-900/95 px-4 py-3 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-2 focus:ring-green-500/50 ${err ? 'border-red-500/50' : 'border-white/10 focus:border-green-500/50'}`
 
+  // houseNo/moo/soi/road stay free text — only tambon/amphoe/province/
+  // postalCode moved to the ThaiAddressFields combobox (Thai-address-dropdown
+  // plan, approved 2026-09-02).
+  const FREE_TEXT_ADDRESS_FIELDS = ADDRESS_FIELD_LABELS.filter(
+    ({ key }) => !(['tambon', 'amphoe', 'province', 'postalCode'] as const).includes(key as never),
+  )
+
   const renderAddressFields = (
     address: RegisterAddress,
     setField: (key: keyof RegisterAddress, val: string) => void,
+    setAddress: (updater: (a: RegisterAddress) => RegisterAddress) => void,
     fieldErrors: Partial<Record<keyof RegisterAddress, string>>,
     idPrefix: string,
   ) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {ADDRESS_FIELD_LABELS.map(({ key, label, required }) => (
-        <div key={key} className="space-y-1.5 min-w-0">
-          <label htmlFor={`${idPrefix}-${key}`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">{label}{required ? ' *' : ''}</label>
-          <input
-            id={`${idPrefix}-${key}`}
-            type="text"
-            className={addressInputClass(fieldErrors[key])}
-            value={address[key]}
-            onChange={(e) => setField(key, e.target.value)}
-          />
-          {fieldErrors[key] && <p className="text-xs text-red-400">{fieldErrors[key]}</p>}
-        </div>
-      ))}
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {FREE_TEXT_ADDRESS_FIELDS.map(({ key, label, required }) => (
+          <div key={key} className="space-y-1.5 min-w-0">
+            <label htmlFor={`${idPrefix}-${key}`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">{label}{required ? ' *' : ''}</label>
+            <input
+              id={`${idPrefix}-${key}`}
+              type="text"
+              className={addressInputClass(fieldErrors[key])}
+              value={address[key]}
+              onChange={(e) => setField(key, e.target.value)}
+            />
+            {fieldErrors[key] && <p className="text-xs text-red-400">{fieldErrors[key]}</p>}
+          </div>
+        ))}
+      </div>
+      <ThaiAddressFields
+        idPrefix={idPrefix}
+        value={{ province: address.province, amphoe: address.amphoe, tambon: address.tambon, postalCode: address.postalCode }}
+        onChange={(next) => setAddress((a) => ({ ...a, ...next }))}
+        errors={{ province: fieldErrors.province, amphoe: fieldErrors.amphoe, tambon: fieldErrors.tambon }}
+      />
     </div>
   )
 
@@ -474,7 +492,7 @@ export default function RegisterForm() {
             <div className="space-y-1.5 min-w-0">
               <label htmlFor="field-1" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">คำนำหน้า</label>
               <select id="field-1" value={form.prefix} onChange={(e) => set('prefix', e.target.value)} className={inputClass('prefix')}>
-                {['นาย', 'นาง', 'นางสาว', 'ดร.', 'อื่นๆ'].map((p) => <option key={p} value={p}>{p}</option>)}
+                {PREFIX_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div className="sm:col-span-2 space-y-1.5 min-w-0">
@@ -562,7 +580,7 @@ export default function RegisterForm() {
         <div className="space-y-5 animate-fade-in">
           <div>
             <h3 className="text-sm font-semibold text-white mb-3">ที่อยู่ปัจจุบัน</h3>
-            {renderAddressFields(currentAddress, setCurrentField, addressErrors.current, 'cur')}
+            {renderAddressFields(currentAddress, setCurrentField, setCurrentAddress, addressErrors.current, 'cur')}
           </div>
 
           <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-3.5 text-sm text-slate-300">
@@ -578,7 +596,7 @@ export default function RegisterForm() {
           {!sameAsCurrentAddress && (
             <div>
               <h3 className="text-sm font-semibold text-white mb-3">ที่อยู่ตามทะเบียนบ้าน</h3>
-              {renderAddressFields(registeredAddress, setRegisteredField, addressErrors.registered, 'reg')}
+              {renderAddressFields(registeredAddress, setRegisteredField, setRegisteredAddress, addressErrors.registered, 'reg')}
             </div>
           )}
         </div>

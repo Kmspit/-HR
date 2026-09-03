@@ -8,6 +8,7 @@ export const API_PUBLIC_PREFIXES = [
   '/api/webhook',
   '/api/cron',
   '/api/branches/public',
+  '/api/thai-address',
   '/api/auth/callback',
   '/api/auth/session',
   '/api/auth/csrf',
