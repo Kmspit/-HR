@@ -5,6 +5,7 @@ import Topbar from '@/components/dashboard/Topbar'
 import EmployeeTimelineClient from '@/components/employee-timeline/EmployeeTimelineClient'
 import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { loadEmployeeTimeline } from '@/lib/employee-timeline/load-data'
+import { HR_ADMIN } from '@/lib/module-gates'
 import type { Role } from '@prisma/client'
 
 export default async function EmployeeTimelinePage({
@@ -25,7 +26,8 @@ export default async function EmployeeTimelinePage({
   )
   if (!allowed) redirect('/unauthorized')
 
-  const data = await loadEmployeeTimeline(prisma, id)
+  const canViewSalary = HR_ADMIN.includes(session.user.role as Role) || id === session.user.id
+  const data = await loadEmployeeTimeline(prisma, id, canViewSalary)
   if (!data) notFound()
 
   return (

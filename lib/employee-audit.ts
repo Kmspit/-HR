@@ -364,10 +364,15 @@ export function summarizeEmployeeChanges(
   before: EmployeeAuditSnapshot,
   after: EmployeeAuditSnapshot,
   lookup: EmployeeNameLookup,
+  canViewSalary: boolean,
 ): string[] {
   const lines: string[] = []
   for (const key of Object.keys(EMPLOYEE_FIELD_LABELS) as (keyof EmployeeAuditSnapshot)[]) {
     if (ADDRESS_DETAIL_FIELDS.has(key)) continue
+    // backlog 4.3 — same HR_ADMIN gate as the employee's own salary field;
+    // this edit-history diff would otherwise print a plain "เงินเดือนฐาน:
+    // 25,000 → 30,000" line for a MANAGER viewing their report's history.
+    if (key === 'baseSalary' && !canViewSalary) continue
 
     const b = before[key]
     const a = after[key]
@@ -428,6 +433,7 @@ export function mapEmployeeAuditLogs(
     actor: { name: string } | null
   }[],
   lookup: EmployeeNameLookup,
+  canViewSalary: boolean,
 ): EmployeeHistoryItem[] {
   return logs
     .map((log) => {
@@ -451,7 +457,7 @@ export function mapEmployeeAuditLogs(
       }
 
       if (!before || !after) return null
-      const changes = summarizeEmployeeChanges(before as EmployeeAuditSnapshot, after as EmployeeAuditSnapshot, lookup)
+      const changes = summarizeEmployeeChanges(before as EmployeeAuditSnapshot, after as EmployeeAuditSnapshot, lookup, canViewSalary)
       if (changes.length === 0) return null
       return {
         id: log.id,

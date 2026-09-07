@@ -74,6 +74,11 @@ export default async function EmployeesPage({
 
   const user = { name: session.user.name ?? '', email: session.user.email ?? '', role: session.user.role, department: session.user.department }
 
+  // backlog 4.3 — canEditSalary only hid the salary INPUT for MANAGER; the
+  // raw value was still shipped to the client in this page's props (visible
+  // via page source / React DevTools). Filtered at the source here instead.
+  const canViewSalary = HR_ADMIN.includes(session.user.role)
+
   // Phase 1 step 8c — a DISABLED user could mean "administratively
   // suspended" or "formally offboarded" (TERMINATION assignment). Both use
   // the same User.status value (see lib/employment-assignment-validation.ts's
@@ -115,7 +120,11 @@ export default async function EmployeesPage({
       <Suspense fallback={<div className="p-5 text-slate-500 text-sm">กำลังโหลด...</div>}>
         <EmployeeManager
           users={JSON.parse(JSON.stringify(
-            users.map((u) => ({ ...u, isTerminated: terminatedUserIds.has(u.id) })),
+            users.map((u) => ({
+              ...u,
+              baseSalary: canViewSalary ? u.baseSalary : null,
+              isTerminated: terminatedUserIds.has(u.id),
+            })),
           ))}
           stats={stats}
           initialTab={defaultTab}
@@ -125,7 +134,7 @@ export default async function EmployeesPage({
             sections: JSON.parse(JSON.stringify(sections)),
           }}
           currentOrgFilters={orgFilters}
-          canEditSalary={HR_ADMIN.includes(session.user.role)}
+          canEditSalary={canViewSalary}
         />
       </Suspense>
     </div>

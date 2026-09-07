@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
+import { HR_ADMIN } from '@/lib/module-gates'
 import {
   mapEmployeeAuditLogs,
   collectReferencedIds,
@@ -9,6 +10,7 @@ import {
   type EmployeeAuditSnapshot,
   type EmployeeNameLookup,
 } from '@/lib/employee-audit'
+import type { Role } from '@prisma/client'
 
 function isSubrecordEvent(v: unknown): boolean {
   return typeof v === 'object' && v !== null && (v as { subrecordEvent?: unknown }).subrecordEvent === true
@@ -23,6 +25,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params
     const scopeCheck = await requireEditOrgScope(id)
     if (isGuardResponse(scopeCheck)) return scopeCheck
+
+    // backlog 4.3 — same HR_ADMIN gate as the employee's own salary field.
+    // requireEditOrgScope lets a MANAGER through for their own reports, but
+    // that must not include seeing "เงินเดือนฐาน: ... → ..." in the diff.
+    const canViewSalary = HR_ADMIN.includes(scopeCheck.user.role as Role) || id === scopeCheck.user.id
 
     const logs = await prisma.auditLog.findMany({
       where: { targetId: id, targetType: 'User', action: 'UPDATE' },
@@ -73,7 +80,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       sections: new Map(sections.map((s) => [s.id, s.name])),
     }
 
-    const history = mapEmployeeAuditLogs(logs, lookup)
+    const history = mapEmployeeAuditLogs(logs, lookup, canViewSalary)
 
     return NextResponse.json({ history, trackingStartedAt: EMPLOYEE_AUDIT_TRACKING_START })
   } catch (err) {
