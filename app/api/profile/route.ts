@@ -8,7 +8,11 @@ import { splitDisplayName } from '@/lib/profile-name'
 import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
 import { ROLE_LABELS } from '@/lib/access-control'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
-import { parseSelfProfileInput, SELF_PROFILE_FORBIDDEN } from '@/lib/profile-update'
+import {
+  parseSelfProfileInput, SELF_PROFILE_FORBIDDEN,
+  isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE,
+} from '@/lib/profile-update'
+import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
 
 function formatDate(d: Date | null | undefined) {
   if (!d) return null
@@ -268,6 +272,28 @@ export async function PATCH(req: NextRequest) {
         profileImage: true,
       },
     })
+
+    // Checksum/age-range checks only apply when the value actually changed —
+    // never re-validates data that predates these checks just because the
+    // form re-submitted it unchanged alongside other edits. Same rule as
+    // the employee-edit endpoint (app/api/users/[id]/route.ts).
+    if (
+      parsed.data.nationalId !== undefined &&
+      parsed.data.nationalId !== beforeAudit?.nationalId &&
+      !isValidThaiNationalIdChecksum(parsed.data.nationalId)
+    ) {
+      return NextResponse.json({ error: 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)' }, { status: 400 })
+    }
+    if (
+      parsed.data.birthDate !== null &&
+      parsed.data.birthDate.getTime() !== beforeAudit?.birthDate?.getTime() &&
+      !isReasonableBirthDate(parsed.data.birthDate)
+    ) {
+      return NextResponse.json(
+        { error: `วันเกิดไม่สมเหตุสมผล (อายุต้องอยู่ระหว่าง ${MIN_EMPLOYEE_AGE}-${MAX_EMPLOYEE_AGE} ปี)` },
+        { status: 400 },
+      )
+    }
 
     let user
     try {

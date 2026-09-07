@@ -20,13 +20,19 @@ import {
   type RegisterBankAccount,
 } from '@/lib/register-form-validation'
 
+function yearsAgo(years: number): string {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - years)
+  return d.toISOString().slice(0, 10)
+}
+
 // Checksum-valid synthetic test vector (see tests/lib/national-id.test.ts) — not a real
 // person's ID. '1234567890123' (the old fixture here) is format-valid but checksum-invalid,
 // which is now rejected by validateRegisterPersonalStep, so this had to change.
 const validPersonal = {
   branchId: 'b1', firstName: 'สมชาย', lastName: 'ใจดี',
   email: 'somchai@example.com', phone: '0812345678', lineId: '@somchai',
-  nationalId: '1101700207366',
+  nationalId: '1101700207366', birthDate: yearsAgo(30),
 }
 
 describe('validateRegisterPersonalStep', () => {
@@ -51,11 +57,31 @@ describe('validateRegisterPersonalStep', () => {
 
   it('flags each required field independently when blank', () => {
     const e = validateRegisterPersonalStep({
-      branchId: '', firstName: '', lastName: '', email: '', phone: '', lineId: '', nationalId: '',
+      branchId: '', firstName: '', lastName: '', email: '', phone: '', lineId: '', nationalId: '', birthDate: '',
     })
     expect(Object.keys(e).sort()).toEqual(
       ['branchId', 'email', 'firstName', 'lastName', 'lineId', 'nationalId', 'phone'].sort(),
     )
+  })
+
+  it('birthDate stays optional — a blank value is not an error', () => {
+    const e = validateRegisterPersonalStep({ ...validPersonal, birthDate: '' })
+    expect(e.birthDate).toBeUndefined()
+  })
+
+  it('backlog 4.9 — rejects a birthDate that would make the applicant 5 years old', () => {
+    const e = validateRegisterPersonalStep({ ...validPersonal, birthDate: yearsAgo(5) })
+    expect(e.birthDate).toBeTruthy()
+  })
+
+  it('backlog 4.9 — rejects a birthDate that would make the applicant 100 years old', () => {
+    const e = validateRegisterPersonalStep({ ...validPersonal, birthDate: yearsAgo(100) })
+    expect(e.birthDate).toBeTruthy()
+  })
+
+  it('accepts a birthDate at the edges of the 15-80 year range', () => {
+    expect(validateRegisterPersonalStep({ ...validPersonal, birthDate: yearsAgo(16) }).birthDate).toBeUndefined()
+    expect(validateRegisterPersonalStep({ ...validPersonal, birthDate: yearsAgo(79) }).birthDate).toBeUndefined()
   })
 
   it('rejects an invalid email format', () => {

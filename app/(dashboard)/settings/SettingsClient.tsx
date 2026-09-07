@@ -20,7 +20,6 @@ type Settings = {
   lineChannelId: string
   lineChannelSecret: string
   lineAccessToken: string
-  lineNotifyToken: string
   geofenceLat: number | null
   geofenceLng: number | null
   geofenceRadius: number
@@ -43,7 +42,6 @@ export default function SettingsClient({ settings }: { settings: Settings | null
     lineChannelId: settings?.lineChannelId ?? '',
     lineChannelSecret: settings?.lineChannelSecret ?? '',
     lineAccessToken: settings?.lineAccessToken ?? '',
-    lineNotifyToken: settings?.lineNotifyToken ?? '',
     geofenceLat: settings?.geofenceLat ?? null,
     geofenceLng: settings?.geofenceLng ?? null,
     geofenceRadius: settings?.geofenceRadius ?? 200,
@@ -253,7 +251,6 @@ export default function SettingsClient({ settings }: { settings: Settings | null
           <>
             <div className="grid grid-cols-1 gap-4">
               <Input label="LINE Channel Access Token (Messaging API)" value={form.lineAccessToken} onChange={(v: string) => set('lineAccessToken', v)} type="password" placeholder="ดูได้ที่ LINE Developers Console" />
-              <Input label="LINE Notify Token (สำหรับ broadcast)" value={form.lineNotifyToken} onChange={(v: string) => set('lineNotifyToken', v)} type="password" />
               <Input label="LINE Channel ID" value={form.lineChannelId} onChange={(v: string) => set('lineChannelId', v)} />
               <Input label="LINE Channel Secret" value={form.lineChannelSecret} onChange={(v: string) => set('lineChannelSecret', v)} type="password" />
             </div>

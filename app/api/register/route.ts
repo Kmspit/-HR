@@ -8,7 +8,8 @@ import { apiError, runNotify } from '@/lib/api-handler'
 import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
-import { normalizeNationalId, parseBirthDate } from '@/lib/profile-update'
+import { normalizeNationalId, parseBirthDate, isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE } from '@/lib/profile-update'
+import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
 import { formatThaiAddress } from '@/lib/thai-address-format'
 import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
 
@@ -118,6 +119,12 @@ export async function POST(req: NextRequest) {
     if (!nationalId) {
       return NextResponse.json({ error: 'เลขบัตรประชาชนต้อง 13 หลัก' }, { status: 400 })
     }
+    // Brand-new registration, not an edit of stored data — every submission
+    // is new input, so (unlike the employee-edit endpoint) there's no
+    // "don't retroactively invalidate" concern here; always checksum it.
+    if (!isValidThaiNationalIdChecksum(nationalId)) {
+      return NextResponse.json({ error: 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)' }, { status: 400 })
+    }
 
     // Generic on purpose — this endpoint is public/unauthenticated (anyone can
     // reach it, no session at all), so a field-specific message here would let
@@ -172,6 +179,13 @@ export async function POST(req: NextRequest) {
     const birthDate = parseBirthDate(data.birthDate)
     if (birthDate === 'invalid') {
       return NextResponse.json({ error: 'วันเกิดไม่ถูกต้อง' }, { status: 400 })
+    }
+    // Same "brand-new data, always check" reasoning as nationalId above.
+    if (birthDate !== null && !isReasonableBirthDate(birthDate)) {
+      return NextResponse.json(
+        { error: `วันเกิดไม่สมเหตุสมผล (อายุต้องอยู่ระหว่าง ${MIN_EMPLOYEE_AGE}-${MAX_EMPLOYEE_AGE} ปี)` },
+        { status: 400 },
+      )
     }
 
     const user = await prisma.$transaction(async (tx) => {

@@ -11,7 +11,7 @@ import { SETTINGS_EDIT_ROLES } from '@/lib/access-control'
 const ALLOWED_FIELDS = [
   'companyName', 'companyNameEn', 'officeAddress', 'workStartTime', 'workEndTime', 'lateGraceMin',
   'sickDaysYear', 'vacationDaysYear', 'personalDaysYear',
-  'lineChannelId', 'lineChannelSecret', 'lineAccessToken', 'lineNotifyToken',
+  'lineChannelId', 'lineChannelSecret', 'lineAccessToken',
   'geofenceLat', 'geofenceLng', 'geofenceRadius', 'lateDeductRate', 'absentDeductRate',
   'imageRetentionDays', 'outsideWorkPlanTitle',
 ] as const
@@ -25,7 +25,7 @@ const SETTINGS_SELECT = {
   id: true, companyName: true, companyNameEn: true, officeAddress: true, logoUrl: true,
   workStartTime: true, workEndTime: true, lunchReturnTime: true, lateGraceMin: true,
   sickDaysYear: true, vacationDaysYear: true, personalDaysYear: true,
-  lineChannelId: true, lineChannelSecret: true, lineAccessToken: true, lineNotifyToken: true,
+  lineChannelId: true, lineChannelSecret: true, lineAccessToken: true,
   geofenceLat: true, geofenceLng: true, geofenceRadius: true,
   lateDeductRate: true, absentDeductRate: true, imageRetentionDays: true, probationMonths: true,
   outsideWorkPlanTitle: true, updatedAt: true,

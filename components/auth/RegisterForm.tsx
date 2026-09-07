@@ -292,6 +292,7 @@ export default function RegisterForm() {
       const e = validateRegisterPersonalStep({
         branchId: form.branchId, firstName: form.firstName, lastName: form.lastName,
         email: form.email, phone: form.phone, lineId: form.lineId, nationalId: form.nationalId,
+        birthDate: form.birthDate,
       })
       setErrors((prev) => ({ ...prev, ...e }))
       if (Object.keys(e).length) return
@@ -551,6 +552,7 @@ export default function RegisterForm() {
             <div className="space-y-1.5">
               <label htmlFor="field-8" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">วันเกิด</label>
               <input id="field-8" type="date" className={inputClass('birthDate')} value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
+              {errors.birthDate && <p className="text-xs text-red-400">{errors.birthDate}</p>}
             </div>
             <div className="space-y-1.5">
               <label htmlFor="field-9" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เลขบัตรประชาชน *</label>

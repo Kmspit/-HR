@@ -1,6 +1,7 @@
 import { isValidEmailInput, isValidNationalIdInput, isValidThaiPhoneInput } from '@/lib/profile-validators-client'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE } from '@/lib/profile-update'
 
 /**
  * Pure validation for the registration wizard, one function per step — kept
@@ -17,6 +18,7 @@ export type RegisterPersonalInfo = {
   phone: string
   lineId: string
   nationalId: string
+  birthDate: string
 }
 
 export type RegisterPersonalErrors = Partial<Record<keyof RegisterPersonalInfo, string>>
@@ -42,6 +44,16 @@ export function validateRegisterPersonalStep(form: RegisterPersonalInfo): Regist
   if (!form.nationalId.trim()) e.nationalId = 'กรุณากรอกเลขบัตรประชาชน'
   else if (!isValidNationalIdInput(form.nationalId)) e.nationalId = 'เลขบัตรประชาชนต้อง 13 หลัก'
   else if (!isValidThaiNationalIdChecksum(form.nationalId)) e.nationalId = 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)'
+  // Same "brand-new data, always check" reasoning as nationalId above —
+  // catches "today's date typed as birthday" (backlog 4.9, a real incident).
+  if (form.birthDate.trim()) {
+    const d = new Date(form.birthDate)
+    if (Number.isNaN(d.getTime()) || d > new Date()) {
+      e.birthDate = 'วันเกิดไม่ถูกต้อง'
+    } else if (!isReasonableBirthDate(d)) {
+      e.birthDate = `อายุต้องอยู่ระหว่าง ${MIN_EMPLOYEE_AGE}-${MAX_EMPLOYEE_AGE} ปี`
+    }
+  }
   return e
 }
 

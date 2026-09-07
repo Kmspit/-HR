@@ -69,6 +69,20 @@ export function parseBirthDate(raw: string | null | undefined): Date | null | 'i
   return d
 }
 
+export const MIN_EMPLOYEE_AGE = 15
+export const MAX_EMPLOYEE_AGE = 80
+
+/** Sanity range for an employee's age (not a legal minimum-working-age
+ *  check) — catches "today's date typed as birthday" and similar mistakes,
+ *  which parseBirthDate()'s not-in-the-future check alone can't (a real
+ *  incident, backlog 4.9). Callers apply this only to a birthDate that
+ *  actually changed — same "don't retroactively invalidate stored data"
+ *  rule as isValidThaiNationalIdChecksum. */
+export function isReasonableBirthDate(date: Date, now: Date = new Date()): boolean {
+  const ageYears = (now.getTime() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+  return ageYears >= MIN_EMPLOYEE_AGE && ageYears <= MAX_EMPLOYEE_AGE
+}
+
 export type SelfProfileInput = {
   prefix?: string
   firstName?: string

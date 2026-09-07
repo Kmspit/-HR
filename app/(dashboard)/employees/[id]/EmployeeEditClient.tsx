@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import { diffFormPayload } from '@/lib/form-diff'
 import { maskNationalId, isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE } from '@/lib/profile-update'
 import { revealReducer, initialRevealState, idleTimeoutAction } from '@/lib/national-id-reveal'
 import { createIdleTimer } from '@/lib/idle-timer'
 import FormField from '@/components/profile/FormField'
@@ -244,7 +245,16 @@ export default function EmployeeEditClient({
     }
     if (form.birthDate) {
       const d = new Date(form.birthDate)
-      if (Number.isNaN(d.getTime()) || d > new Date()) e.birthDate = 'วันเกิดไม่ถูกต้อง'
+      if (Number.isNaN(d.getTime()) || d > new Date()) {
+        e.birthDate = 'วันเกิดไม่ถูกต้อง'
+      // Age-range check only applies when HR actually changed the value —
+      // same "don't retroactively invalidate stored data" rule as nationalId.
+      } else if (
+        form.birthDate !== initialFormRef.current.birthDate &&
+        !isReasonableBirthDate(d)
+      ) {
+        e.birthDate = `อายุต้องอยู่ระหว่าง ${MIN_EMPLOYEE_AGE}-${MAX_EMPLOYEE_AGE} ปี`
+      }
     }
     return e
   }
