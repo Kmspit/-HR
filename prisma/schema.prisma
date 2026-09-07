@@ -1662,7 +1662,6 @@ model CompanySettings {
   lineChannelId    String?
   lineChannelSecret String?
   lineAccessToken  String?
-  lineNotifyToken  String?
   geofenceLat      Float?
   geofenceLng      Float?
   geofenceRadius      Float    @default(200)

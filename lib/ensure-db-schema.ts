@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900030
+export const CURRENT_SCHEMA_VERSION = 900031
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2110,6 +2110,79 @@ async function runEnsure(force = false): Promise<boolean> {
       console.log(`[MIGRATION v900030] Rebuilt "audit_logs" with nullable actorId + actorLabel (${newCount[0]?.cnt} rows preserved)`)
     } else {
       console.log('[MIGRATION v900030] audit_logs.actorId already nullable, skipping rebuild')
+    }
+  }
+
+  // v900031 — drop CompanySettings.lineNotifyToken (backlog 4.10). Genuinely
+  // dead: settable and displayed in /settings, but no code anywhere reads it
+  // back to use as a token — every sendLineNotify() call site passes only a
+  // message, never the token argument, so it always falls back to the
+  // LINE_NOTIFY_TOKEN env var instead. LINE Notify itself has also been
+  // discontinued by LINE corp. Kept as an unused column, it would just be a
+  // stored secret nobody reads or maintains — a security liability with no
+  // benefit, so it's removed rather than merely hidden from the UI.
+  //
+  // SQLite can't drop a column with a live app on an older Prisma Client
+  // still expecting it mid-deploy, so — same as v900021/v900029/v900030 —
+  // this rebuilds the table (data copied and row-count-verified before the
+  // old one is dropped). company_settings is a true singleton (id defaults
+  // to 'singleton', always exactly 1 row), so this is about as low-risk as
+  // a rebuild gets.
+  {
+    const columns = await prisma.$queryRawUnsafe<{ name: string }[]>(`PRAGMA table_info(company_settings)`)
+    const hasLineNotifyToken = columns.some((c) => c.name === 'lineNotifyToken')
+    if (hasLineNotifyToken) {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS company_settings_v900031`)
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE company_settings_v900031 (
+          id TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton',
+          companyName TEXT NOT NULL DEFAULT 'บริษัท ตัวอย่าง จำกัด',
+          companyNameEn TEXT,
+          logoUrl TEXT,
+          workStartTime TEXT NOT NULL DEFAULT '08:30',
+          workEndTime TEXT NOT NULL DEFAULT '17:30',
+          lateGraceMin INTEGER NOT NULL DEFAULT 15,
+          sickDaysYear INTEGER NOT NULL DEFAULT 30,
+          vacationDaysYear INTEGER NOT NULL DEFAULT 6,
+          personalDaysYear INTEGER NOT NULL DEFAULT 3,
+          lineChannelId TEXT,
+          lineChannelSecret TEXT,
+          lineAccessToken TEXT,
+          geofenceLat REAL,
+          geofenceLng REAL,
+          geofenceRadius REAL NOT NULL DEFAULT 200,
+          lateDeductRate REAL NOT NULL DEFAULT 0,
+          absentDeductRate REAL NOT NULL DEFAULT 0,
+          updatedAt DATETIME NOT NULL,
+          officeAddress TEXT,
+          imageRetentionDays INTEGER NOT NULL DEFAULT 90,
+          probationMonths INTEGER NOT NULL DEFAULT 3,
+          lunchReturnTime TEXT NOT NULL DEFAULT '13:00',
+          outside_work_plan_title TEXT DEFAULT 'แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท'
+        )
+      `)
+      const keepColumns = [
+        'id', 'companyName', 'companyNameEn', 'logoUrl', 'workStartTime', 'workEndTime',
+        'lateGraceMin', 'sickDaysYear', 'vacationDaysYear', 'personalDaysYear',
+        'lineChannelId', 'lineChannelSecret', 'lineAccessToken',
+        'geofenceLat', 'geofenceLng', 'geofenceRadius', 'lateDeductRate', 'absentDeductRate',
+        'updatedAt', 'officeAddress', 'imageRetentionDays', 'probationMonths', 'lunchReturnTime',
+        'outside_work_plan_title',
+      ].join(', ')
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO company_settings_v900031 (${keepColumns})
+        SELECT ${keepColumns} FROM company_settings
+      `)
+      const oldCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM company_settings`)
+      const newCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM company_settings_v900031`)
+      if (Number(oldCount[0]?.cnt ?? 0) !== Number(newCount[0]?.cnt ?? -1)) {
+        throw new Error(`[MIGRATION v900031 ABORT] row count mismatch after copy (old=${oldCount[0]?.cnt}, new=${newCount[0]?.cnt}) — refusing to drop company_settings`)
+      }
+      await prisma.$executeRawUnsafe(`DROP TABLE company_settings`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE company_settings_v900031 RENAME TO company_settings`)
+      console.log(`[MIGRATION v900031] Rebuilt "company_settings" without lineNotifyToken (${newCount[0]?.cnt} row(s) preserved)`)
+    } else {
+      console.log('[MIGRATION v900031] company_settings.lineNotifyToken already gone, skipping rebuild')
     }
   }
 
