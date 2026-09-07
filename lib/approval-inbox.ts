@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs'
+
 import type { PrismaClient, Role } from '@prisma/client'
 
 import { canUserActOnStep } from '@/lib/approval-chain-shared'
@@ -10,7 +12,15 @@ import { attachAllPendingDefaultChains } from '@/lib/attach-default-chain'
 
 
 
-let chainAttachPromise: Promise<unknown> | null = null
+// Memoized so concurrent inbox loads (getApprovalCenterInboxCounts's
+// Promise.all calls this 3x at once) share one in-flight attach pass instead
+// of racing three redundant ones. On failure the memo is cleared instead of
+// being cached as "done" — a single transient failure used to permanently
+// disable default-chain attachment for the rest of this server instance's
+// life with zero visibility (found during the 4.2 audit-log investigation:
+// the same class of swallowed-error bug, but worse — this one broke real
+// approval routing, not just its own log).
+let chainAttachPromise: Promise<void> | null = null
 
 
 
@@ -18,7 +28,19 @@ async function ensureChainsAttached(prisma: PrismaClient): Promise<void> {
 
   if (!chainAttachPromise) {
 
-    chainAttachPromise = attachAllPendingDefaultChains(prisma).catch(() => {})
+    chainAttachPromise = attachAllPendingDefaultChains(prisma)
+
+      .then(() => undefined)
+
+      .catch((err) => {
+
+        console.error('[ensureChainsAttached] failed to attach default approval chains', err)
+
+        Sentry.captureException(err)
+
+        chainAttachPromise = null // don't cache the failure — retry on the next call
+
+      })
 
   }
 

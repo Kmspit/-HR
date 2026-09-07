@@ -23,6 +23,9 @@ vi.mock('@/lib/notifications', () => ({
   sendLineMessage:    vi.fn().mockResolvedValue(undefined),
 }))
 
+const sentryMocks = vi.hoisted(() => ({ captureException: vi.fn() }))
+vi.mock('@sentry/nextjs', () => sentryMocks)
+
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'
@@ -102,5 +105,19 @@ describe('court-events/[id] — canEdit now matches the case-level UI gate', () 
     vi.mocked(auth).mockResolvedValue({ user: { id: 'other-creator', role: 'LAWYER', department: null } } as never)
     const res = await PATCH(makeReq('PATCH', { note: 'x' }), { params })
     expect(res.status).toBe(200)
+  })
+
+  it('a failed case-timeline write on a status change is reported to Sentry, not silently dropped', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'other-creator', role: 'LAWYER', department: null } } as never)
+    vi.mocked(prisma.courtEvent.update).mockResolvedValue({ ...eventRow, status: 'COMPLETED', caseId: 'case-1' } as never)
+    vi.mocked(prisma.caseTimeline.create).mockRejectedValueOnce(new Error('DB blip'))
+
+    const res = await PATCH(makeReq('PATCH', { status: 'COMPLETED' }), { params })
+    expect(res.status).toBe(200) // the main response must not break
+
+    await vi.waitFor(() => expect(sentryMocks.captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({ tags: expect.objectContaining({ courtEventId: 'event-1' }) }),
+    ))
   })
 })

@@ -3,6 +3,7 @@
  * Central rule evaluation + action execution for all system triggers.
  */
 
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 
@@ -263,8 +264,15 @@ export async function triggerAutomation(
       select: { id: true, name: true, conditions: true, actions: true, testMode: true, priority: true },
       orderBy: { priority: 'desc' },
     })
-  } catch {
-    return // DB not ready — fail silently
+  } catch (err) {
+    // Never throw — a broken automation rule query must not break the
+    // caller's own action (a case/debtor/payment mutation). But this used
+    // to be swallowed with zero logging at all, worse than createAuditLog's
+    // console-only bug — the exact class of thing that let that bug run
+    // for months unnoticed.
+    console.error('[triggerAutomation] failed to load rules for trigger', trigger, err)
+    Sentry.captureException(err, { tags: { trigger } })
+    return
   }
 
   for (const rule of rules) {
@@ -321,8 +329,12 @@ export async function triggerAutomation(
           },
         }),
       ])
-    } catch {
-      // Logging failure should not break the caller
+    } catch (err) {
+      // Logging failure should not break the caller, but it should be
+      // visible — this used to be swallowed with zero logging, losing the
+      // audit trail of which automations ran with no trace at all.
+      console.error('[triggerAutomation] failed to write execution log for rule', rule.id, err)
+      Sentry.captureException(err, { tags: { trigger, ruleId: rule.id } })
     }
   }
 }

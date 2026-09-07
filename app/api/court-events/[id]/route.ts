@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
@@ -80,7 +81,13 @@ async function handleMissed(event: {
       description: `พลาดนัด ${typeStr} ที่ ${event.courtName}`,
       meta:        JSON.stringify({ courtEventId: event.id, taskId: task.id, priority: event.priority }),
     },
-  }).catch(() => undefined)
+  }).catch((err) => {
+    // A silent gap here is a compliance-relevant gap in the case's own
+    // audit trail (a missed court date not showing up in its timeline) —
+    // discoverable only by manual DB inspection, same as the createAuditLog bug.
+    console.error('[court-events] failed to write COURT_MISSED case timeline entry', event.id, err)
+    Sentry.captureException(err, { tags: { caseId: event.caseId, courtEventId: event.id } })
+  })
 
   // Fire automation
   triggerAutomation('COURT_MISSED', {
@@ -198,7 +205,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         description: `เปลี่ยนสถานะนัดศาล ${updated.courtName}: ${prevStatus} → ${status}`,
         meta:        JSON.stringify({ courtEventId: id, from: prevStatus, to: status }),
       },
-    }).catch(() => undefined)
+    }).catch((err) => {
+      console.error('[court-events] failed to write COURT_STATUS_CHANGED case timeline entry', id, err)
+      Sentry.captureException(err, { tags: { caseId: updated.caseId, courtEventId: id } })
+    })
   }
 
   return NextResponse.json(updated)
