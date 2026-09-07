@@ -5,6 +5,13 @@
  *   npm run db:purge-user -- <userId หรือ email>
  *   npm run db:purge-user -- --dry-run user@example.com
  *   npm run db:purge-user -- --yes clxxxxxxxx
+ *   npm run db:purge-user -- --force-guard --yes clxxxxxxxx
+ *
+ * --force-guard: ข้าม checkPurgeGuard (ปกติบล็อกบัญชีที่มี payroll/warnings/
+ * taxHistory/audit-log-ที่เป็น-actor เพราะกู้คืนไม่ได้ตามกฎหมาย) — ใช้เฉพาะ
+ * ตอนที่ยืนยันแล้วว่าบัญชีเป้าหมายไม่ใช่พนักงานจริงที่ต้องเก็บประวัติไว้
+ * ยังพิมพ์รายการที่ guard เจอให้เห็นเสมอ ไม่ได้ซ่อนไว้ — แค่ไม่ exit(1)
+ * ไม่เปลี่ยนพฤติกรรม default (ไม่ใส่ flag นี้ ยังบล็อกเหมือนเดิมทุกกรณี)
  */
 import { config } from 'dotenv'
 import { resolve } from 'path'
@@ -27,6 +34,7 @@ const prisma =
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const dryRun = args.includes('--dry-run')
 const yes = args.includes('--yes')
+const forceGuard = args.includes('--force-guard')
 const target = args.find((a) => !a.startsWith('--'))
 
 function ask(question) {
@@ -88,6 +96,19 @@ async function purgeUser(db, userId) {
     counts[label] =
       result && typeof result.count === 'number' ? result.count : result ? 1 : 0
   }
+
+  // login_attempts/security_events: schema.prisma declares onDelete: SetNull
+  // for both, but (same class of gap as the 5 Phase-1 tables fixed in
+  // v900029) the live DB has no real FK on either — confirmed via
+  // PRAGMA foreign_key_list during Phase 1's closeout audit. Deleted
+  // outright here (not nulled — nothing reads these rows by anything
+  // other than userId, so a null-userId row would just be dead weight).
+  await run('login_attempts', () => db.loginAttempt.deleteMany({ where: { userId } }))
+  await run('security_events', () => db.securityEvent.deleteMany({ where: { userId } }))
+  // calendar_events.createdById has no real FK either and no cascade —
+  // same "owned record, delete wholesale" treatment already given to
+  // leaveRequest/outsideWorkRequest/weeklyLawyerPlan below.
+  await run('calendar_events', () => db.calendarEvent.deleteMany({ where: { createdById: userId } }))
 
   await run('attendance_face_logs', () =>
     db.attendanceFaceLog.deleteMany({ where: { userId } }),
@@ -175,14 +196,31 @@ async function purgeUser(db, userId) {
     }),
   )
 
+  // employee_profiles/emergency_contacts/dependents/bank_accounts/
+  // employment_assignments need no explicit handling here — as of migration
+  // v900029 (Phase 1 closeout) they have a real FK + ON DELETE CASCADE, so
+  // the users delete below removes them automatically. Before v900029 this
+  // script would have left every one of those behind as a permanent orphan
+  // (confirmed the hard way — see that migration's own commit message).
   await run('users', () => db.user.delete({ where: { id: userId } }))
 
   return counts
 }
 
+/** Thrown to force a rollback after running the real purgeUser() logic
+ *  inside a transaction — this is how --dry-run gets its numbers, so a
+ *  dry-run can never drift from what a real run actually deletes (a
+ *  hand-maintained parallel count list could silently go stale). */
+class DryRunAbort extends Error {
+  constructor(counts) {
+    super('dry-run-abort')
+    this.counts = counts
+  }
+}
+
 async function main() {
   if (!target) {
-    console.error('ใช้: npm run db:purge-user -- <userId หรือ email> [--dry-run] [--yes]')
+    console.error('ใช้: npm run db:purge-user -- <userId หรือ email> [--dry-run] [--yes] [--force-guard]')
     process.exit(1)
   }
 
@@ -197,23 +235,42 @@ async function main() {
   const blockers = await checkPurgeGuard(prisma, user.id)
   if (blockers.length > 0) {
     console.error(
-      '✗ ปฏิเสธ — บัญชีนี้มีข้อมูลที่กู้คืนไม่ได้ สคริปต์นี้ใช้ลบได้เฉพาะบัญชีทดสอบเท่านั้น:',
+      forceGuard
+        ? '⚠ guard เจอข้อมูลที่ปกติจะบล็อก แต่ --force-guard ให้ดำเนินการต่อ:'
+        : '✗ ปฏิเสธ — บัญชีนี้มีข้อมูลที่กู้คืนไม่ได้ สคริปต์นี้ใช้ลบได้เฉพาะบัญชีทดสอบเท่านั้น:',
     )
     for (const b of blockers) console.error(`  - ${b.label}: ${b.count} รายการ`)
-    process.exit(1)
+    if (!forceGuard) process.exit(1)
   }
 
   if (dryRun) {
-    const related = {
-      attendances: await prisma.attendance.count({ where: { userId: user.id } }),
-      leaveRequests: await prisma.leaveRequest.count({ where: { userId: user.id } }),
-      warnings: await prisma.warning.count({
-        where: { OR: [{ userId: user.id }, { issuedById: user.id }] },
-      }),
-      approvedOthers: await prisma.user.count({ where: { approvedById: user.id } }),
+    // These 5 (Phase 1) tables need no explicit delete call in purgeUser()
+    // any more — v900029 made them real ON DELETE CASCADE — so they never
+    // appear in its `counts` object even though the real run does remove
+    // them (silently, via the DB's own FK trigger the instant `users` is
+    // deleted). Queried here purely so --dry-run's report is a complete
+    // picture, not because the real deletion path needs them.
+    const cascadeCounts = {
+      employee_profiles: await prisma.employeeProfile.count({ where: { userId: user.id } }),
+      emergency_contacts: await prisma.emergencyContact.count({ where: { userId: user.id } }),
+      dependents: await prisma.dependent.count({ where: { userId: user.id } }),
+      bank_accounts: await prisma.bankAccount.count({ where: { userId: user.id } }),
+      employment_assignments: await prisma.employmentAssignment.count({ where: { userId: user.id } }),
     }
-    console.log('--dry-run: จะลบข้อมูลตัวอย่าง', related)
-    console.log('รันจริง: npm run db:purge-user -- --yes', user.id)
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const counts = await purgeUser(tx, user.id)
+        throw new DryRunAbort(counts)
+      })
+    } catch (e) {
+      if (!(e instanceof DryRunAbort)) throw e
+      console.log(`--dry-run: จะลบข้อมูลของ "${user.name}" (${user.email}) ดังนี้ (ไม่มีอะไรถูกลบจริง — transaction ถูก rollback):`)
+      const entries = Object.entries({ ...e.counts, ...cascadeCounts }).filter(([, v]) => v > 0)
+      if (entries.length === 0) console.log('  (ไม่มีข้อมูลผูกอยู่เลยนอกจากตัว user เอง)')
+      for (const [k, v] of entries) console.log(`  - ${k}: ${v}${Object.prototype.hasOwnProperty.call(cascadeCounts, k) ? ' (cascade อัตโนมัติ)' : ''}`)
+      console.log('รันจริง: npm run db:purge-user --', forceGuard ? '--force-guard ' : '', '--yes', user.id)
+    }
     return
   }
 
