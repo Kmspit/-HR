@@ -42,7 +42,10 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       if (isGuardResponse(scopeCheck)) return scopeCheck
     }
 
-    const canViewSalary = HR_ADMIN.includes(session.user.role as Role)
+    // Self always sees their own salary history (PDPA s.30 self-access) —
+    // profile self-service, Phase 1 step 8c follow-up. HR_ADMIN still
+    // required to see anyone ELSE's.
+    const canViewSalary = HR_ADMIN.includes(session.user.role as Role) || id === session.user.id
 
     const [assignments, current] = await Promise.all([
       prisma.employmentAssignment.findMany({

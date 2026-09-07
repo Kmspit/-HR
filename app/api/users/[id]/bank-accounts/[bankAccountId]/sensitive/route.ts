@@ -10,10 +10,16 @@ import type { Role } from '@prisma/client'
 /**
  * Reveals a bank account's full account number — same shape/reasoning as
  * the dependent nationalId .../sensitive route and the employee's own
- * .../sensitive route: HR_ADMIN only, every call audit-logged (success or
- * denied). accountName is NOT gated here — it's already shown decrypted in
- * the personal-records list (see that route's comment), so there's nothing
- * additional to reveal for it.
+ * .../sensitive route: HR_ADMIN only *when viewing someone else's*, every
+ * such call audit-logged (success or denied). accountName is NOT gated
+ * here — it's already shown decrypted in the personal-records list (see
+ * that route's comment), so there's nothing additional to reveal for it.
+ *
+ * Self-service (profile self-service, Phase 1 step 8c follow-up): an
+ * employee viewing their OWN account number is always allowed and
+ * deliberately NOT audit-logged — see the dependent nationalId sensitive
+ * route's own comment for why (routine self-view isn't the power-imbalance
+ * access this trail exists to catch).
  */
 export async function GET(
   req: NextRequest,
@@ -24,9 +30,10 @@ export async function GET(
     if (isGuardResponse(session)) return session
 
     const { id, bankAccountId } = await params
+    const isSelf = id === session.user.id
     const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
 
-    if (!HR_ADMIN.includes(session.user.role as Role)) {
+    if (!isSelf && !HR_ADMIN.includes(session.user.role as Role)) {
       await createAuditLog({
         actorId: session.user.id,
         targetId: id,
@@ -46,14 +53,16 @@ export async function GET(
 
     const accountNumber = decryptField(account.accountNumberEnc, FIELD_SALTS.BANK_ACCOUNT)
 
-    await createAuditLog({
-      actorId: session.user.id,
-      targetId: id,
-      targetType: 'BankAccountSensitiveData',
-      action: 'VIEW',
-      after: { result: 'SUCCESS', bankAccountId },
-      ip,
-    })
+    if (!isSelf) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'BankAccountSensitiveData',
+        action: 'VIEW',
+        after: { result: 'SUCCESS', bankAccountId },
+        ip,
+      })
+    }
 
     return NextResponse.json({ accountNumber })
   } catch (err) {

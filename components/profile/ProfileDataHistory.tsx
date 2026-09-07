@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, Briefcase, Calendar, Clock, History, Layers } from 'lucide-react'
+import { Building2, Briefcase, Calendar, Clock, History, Layers, Wallet } from 'lucide-react'
 import type { ProfileHistoryItem } from '@/lib/profile-history'
 
 export type ProfileRecordInfo = {
@@ -11,6 +11,9 @@ export type ProfileRecordInfo = {
   departmentName: string
   sectionName: string
   lastUpdatedAt: string
+  /** null when baseSalary hasn't been set yet (e.g. still PENDING approval) — never hidden for self, this is always the viewer's own record. */
+  baseSalary: number | null
+  startDate: string
 }
 
 type Props = {
@@ -36,6 +39,11 @@ function formatThaiDate(iso: string) {
     month: 'long',
     year: 'numeric',
   })
+}
+
+function formatSalary(n: number | null) {
+  if (n == null) return '—'
+  return `฿${n.toLocaleString('th-TH')}`
 }
 
 function InfoCell({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
@@ -97,6 +105,16 @@ export default function ProfileDataHistory({ record, history }: Props) {
           label="ส่วนงาน"
           value={record.sectionName}
           icon={<Layers className="w-3.5 h-3.5" />}
+        />
+        <InfoCell
+          label="เงินเดือน"
+          value={formatSalary(record.baseSalary)}
+          icon={<Wallet className="w-3.5 h-3.5" />}
+        />
+        <InfoCell
+          label="วันเริ่มงาน"
+          value={record.startDate ? formatThaiDate(record.startDate) : '—'}
+          icon={<Calendar className="w-3.5 h-3.5" />}
         />
       </dl>
 

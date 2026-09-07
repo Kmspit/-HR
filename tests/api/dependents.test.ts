@@ -53,6 +53,7 @@ function makePatch(id: string, body: Record<string, unknown>) {
 const params = (id: string, dependentId = 'd1') => Promise.resolve({ id, dependentId })
 const hrSession = { user: { id: 'hr-1', role: 'HR', branchId: 'b1' } }
 const managerSession = { user: { id: 'mgr-1', role: 'MANAGER', branchId: 'b1' } }
+const selfSession = { user: { id: 'emp-9', role: 'EMPLOYEE', branchId: 'b1' } }
 
 const validBody = { name: 'เด็กหญิง ก', relationType: 'CHILD' }
 const existingRow = {
@@ -246,5 +247,19 @@ describe('GET /api/users/[id]/dependents/[dependentId]/sensitive', () => {
     vi.mocked(prisma.dependent.findFirst).mockResolvedValue(null)
     const res = await GET_SENSITIVE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
     expect(res.status).toBe(404)
+  })
+
+  it('self-service: an employee with no HR_ADMIN role can reveal their OWN dependent\'s national ID', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    const res = await GET_SENSITIVE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.nationalId).toBe('1234567890123')
+  })
+
+  it('self-service: viewing your own dependent\'s national ID is never audit-logged', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    await GET_SENSITIVE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
+    expect(createAuditLog).not.toHaveBeenCalled()
   })
 })

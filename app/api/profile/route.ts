@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError, runNotify } from '@/lib/api-handler'
-import { createAuditLog } from '@/lib/notifications'
+import { createAuditLog, notifyRole } from '@/lib/notifications'
 import { snapshotProfileForAudit } from '@/lib/profile-history'
 import { splitDisplayName } from '@/lib/profile-name'
 import { isAvatarFile, storeProfileAvatar } from '@/lib/profile-avatar'
@@ -118,8 +118,6 @@ function readProfileBody(
     nickname: get('nickname'),
     phone: get('phone'),
     email: get('email'),
-    address: get('address'),
-    addressIdCard: get('addressIdCard'),
     lineId: get('lineId'),
     birthDate: get('birthDate'),
     nationalId: get('nationalId'),
@@ -184,8 +182,6 @@ export async function PATCH(req: NextRequest) {
       nickname: raw.nickname ?? null,
       phone: raw.phone,
       email: raw.email,
-      address: raw.address ?? null,
-      addressIdCard: raw.addressIdCard ?? null,
       birthDate: raw.birthDate ?? null,
       nationalId: raw.nationalId ?? null,
     })
@@ -297,6 +293,23 @@ export async function PATCH(req: NextRequest) {
             before: beforeSnap,
             after: afterSnap,
           }),
+        )
+      }
+
+      // FYI-only, not a block (profile self-service, Phase 1 step 8c
+      // follow-up) — nationalId's last 4 digits are the payslip PDF's open
+      // password (see lib/payslip-pdf-encrypt.ts), so HR needs to know the
+      // instant an employee changes it themselves, or an old payslip will
+      // silently stop opening with no obvious reason why.
+      if ((beforeAudit.nationalId ?? '') !== (user.nationalId ?? '')) {
+        await runNotify(() =>
+          notifyRole(
+            'MANAGER_HR',
+            'PROFILE_SENSITIVE_SELF_EDIT',
+            '⚠️ พนักงานแก้เลขบัตรประชาชนตัวเอง',
+            `${user.name} (${user.email}) แก้เลขบัตรประชาชนของตัวเองในหน้าโปรไฟล์ — สลิปเงินเดือนเก่าที่ส่งไปแล้วใช้รหัสเดิม (4 ตัวท้ายเลขบัตรเดิม) เปิดไม่ได้อีกต่อไป`,
+            `/employees/${session.user.id}`,
+          ),
         )
       }
     }

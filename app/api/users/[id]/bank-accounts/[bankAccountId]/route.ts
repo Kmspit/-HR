@@ -4,7 +4,7 @@ import { apiError } from '@/lib/api-handler'
 import { requireAuth, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
 import { encryptField, decryptField, FIELD_SALTS } from '@/lib/field-crypto'
 import { validateBankAccountRow } from '@/lib/employee-subrecords-validation'
-import { createAuditLog } from '@/lib/notifications'
+import { createAuditLog, notifyRole } from '@/lib/notifications'
 import {
   summarizeBankAccountUpdate,
   summarizeBankAccountDisable,
@@ -161,6 +161,20 @@ export async function PATCH(
         ip: requestIp(req),
         userAgent: req.headers.get('user-agent') ?? undefined,
       })
+    }
+
+    // FYI-only, not a block (profile self-service, Phase 1 step 8c
+    // follow-up) — only when the account NUMBER itself changed (not name/
+    // type/isPrimary/isActive edits), since that's the one change that
+    // actually redirects where the salary lands.
+    if (id === session.user.id && accountNumberTouched) {
+      await notifyRole(
+        'MANAGER_HR',
+        'PROFILE_SENSITIVE_SELF_EDIT',
+        '⚠️ พนักงานแก้เลขบัญชีธนาคารตัวเอง',
+        `${session.user.name} (${session.user.email}) แก้เลขบัญชีธนาคาร (...${after.accountNumberLast4}) ในหน้าโปรไฟล์ของตัวเอง`,
+        `/employees/${id}`,
+      )
     }
 
     return NextResponse.json({ success: true })

@@ -4,7 +4,7 @@ import { apiError } from '@/lib/api-handler'
 import { requireAuth, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
 import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
 import { validateBankAccountRow, bankAccountRowHasErrors } from '@/lib/employee-subrecords-validation'
-import { createAuditLog } from '@/lib/notifications'
+import { createAuditLog, notifyRole } from '@/lib/notifications'
 import { summarizeBankAccountCreate } from '@/lib/subrecord-audit'
 
 function requestIp(req: NextRequest): string {
@@ -82,6 +82,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ip: requestIp(req),
       userAgent: req.headers.get('user-agent') ?? undefined,
     })
+
+    // FYI-only, not a block (profile self-service, Phase 1 step 8c
+    // follow-up) — an employee adding their own bank account changes where
+    // their salary gets deposited, so HR needs to know it happened even
+    // though nothing here requires their approval.
+    if (id === session.user.id) {
+      await notifyRole(
+        'MANAGER_HR',
+        'PROFILE_SENSITIVE_SELF_EDIT',
+        '⚠️ พนักงานเพิ่มบัญชีธนาคารตัวเอง',
+        `${session.user.name} (${session.user.email}) เพิ่มบัญชีธนาคารใหม่ (...${account.accountNumberLast4}) ในหน้าโปรไฟล์ของตัวเอง`,
+        `/employees/${id}`,
+      )
+    }
 
     return NextResponse.json({ account: { ...account, accountName: form.accountName.trim() } }, { status: 201 })
   } catch (err) {

@@ -76,8 +76,6 @@ export type SelfProfileInput = {
   nickname?: string | null
   phone?: string
   email?: string
-  address?: string | null
-  addressIdCard?: string | null
   lineId?: string
   birthDate?: string | null
   nationalId?: string | null
@@ -92,8 +90,6 @@ export type ParsedSelfProfile =
         nickname: string | null
         phone: string
         email: string
-        address: string | null
-        addressIdCard: string | null
         birthDate: Date | null
         /** Present only when there's a valid value to write — see isBlankProtectedField. */
         nationalId?: string
@@ -135,8 +131,6 @@ export function parseSelfProfileInput(input: SelfProfileInput): ParsedSelfProfil
       nickname: input.nickname?.trim() || null,
       phone,
       email,
-      address: input.address?.trim() || null,
-      addressIdCard: input.addressIdCard?.trim() || null,
       birthDate: birthParsed,
       // blank input → key omitted entirely, so the update never touches the column
       ...(nationalId ? { nationalId } : {}),
