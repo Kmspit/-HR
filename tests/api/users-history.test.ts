@@ -43,6 +43,7 @@ function makeReq() {
 const params = (id: string) => Promise.resolve({ id })
 
 const hrSession = { user: { id: 'hr-1', role: 'HR', branchId: 'b1' } }
+const managerSession = { user: { id: 'mgr-1', role: 'MANAGER', branchId: 'b1' } }
 
 describe('GET /api/users/[id]/history', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -163,5 +164,43 @@ describe('GET /api/users/[id]/history', () => {
     const data = await res.json()
     expect(data.history).toHaveLength(1)
     expect(data.history[0].changes).toEqual(['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'])
+  })
+
+  it('backlog 4.3 — a MANAGER (allowed through requireEditOrgScope for their own report) never receives the baseSalary line in the raw response body', async () => {
+    vi.mocked(requireEditOrgScope).mockResolvedValue(managerSession as never)
+    const before = snapshotEmployeeForAudit(row({ baseSalary: 30000, position: 'Junior' }))
+    const after = snapshotEmployeeForAudit(row({ baseSalary: 35000, position: 'Senior' }))
+    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([{
+      id: 'log-1', createdAt: new Date(), before: JSON.stringify(before), after: JSON.stringify(after),
+      actor: { name: 'HR' },
+    }] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.division.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.section.findMany).mockResolvedValue([] as never)
+
+    const res = await GET(makeReq(), { params: params('emp-9') })
+    const raw = await res.text()
+    expect(raw).not.toContain('30,000')
+    expect(raw).not.toContain('35,000')
+    expect(raw).toContain('Junior')
+    expect(raw).toContain('Senior')
+  })
+
+  it('an HR_ADMIN viewer still gets the baseSalary line (unchanged behaviour)', async () => {
+    vi.mocked(requireEditOrgScope).mockResolvedValue(hrSession as never)
+    const before = snapshotEmployeeForAudit(row({ baseSalary: 30000 }))
+    const after = snapshotEmployeeForAudit(row({ baseSalary: 35000 }))
+    vi.mocked(prisma.auditLog.findMany).mockResolvedValue([{
+      id: 'log-1', createdAt: new Date(), before: JSON.stringify(before), after: JSON.stringify(after),
+      actor: { name: 'HR' },
+    }] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.division.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.section.findMany).mockResolvedValue([] as never)
+
+    const res = await GET(makeReq(), { params: params('emp-9') })
+    const raw = await res.text()
+    expect(raw).toContain('30,000')
+    expect(raw).toContain('35,000')
   })
 })

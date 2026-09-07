@@ -43,17 +43,22 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
 
   const warningCount = await prisma.warning.count({ where: { userId: id } })
 
+  // backlog 4.3 — canEditSalary only hid the salary INPUT for MANAGER; the
+  // raw value was still shipped to the client in this page's props (visible
+  // via page source / React DevTools). Filtered at the source here instead.
+  const canViewSalary = HR_ADMIN.includes(role)
+
   return (
     <div className="flex flex-col min-h-0">
       <Topbar title="แก้ไขข้อมูลพนักงาน" subtitle={user.name} />
       <EmployeeEditClient
       currentUserId={session.user.id}
-      canEditSalary={HR_ADMIN.includes(role)}
+      canEditSalary={canViewSalary}
       canViewSensitive={HR_ADMIN.includes(role)}
       canManageEmploymentHistory={HR_ADMIN.includes(role)}
       employee={{
         ...user,
-        baseSalary: user.baseSalary ?? 0,
+        baseSalary: canViewSalary ? (user.baseSalary ?? 0) : 0,
         startDate: user.startDate?.toISOString() ?? null,
         birthDate: user.birthDate?.toISOString() ?? null,
         employeeType: user.employeeType ?? 'permanent_employee',

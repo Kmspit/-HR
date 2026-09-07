@@ -38,6 +38,7 @@ const MONTH_NAMES = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.
 export async function loadEmployeeTimeline(
   prisma: PrismaClient,
   userId: string,
+  canViewSalary: boolean,
 ): Promise<EmployeeTimelinePayload | null> {
   await ensurePayrollPayslipColumns()
 
@@ -106,25 +107,36 @@ export async function loadEmployeeTimeline(
         issuedBy: { select: { name: true } },
       },
     }),
-    prisma.payroll.findMany({
-      where: { userId, deletedAt: null },
-      orderBy: [{ year: 'desc' }, { month: 'desc' }],
-      take: 36,
-      select: {
-        id: true, month: true, year: true, baseSalary: true, netSalary: true,
-        lateDeduction: true, absentDeduction: true, status: true, createdAt: true,
-        updatedAt: true,
-      },
-    }),
-    prisma.auditLog.findMany({
-      where: { targetId: userId, targetType: 'User', action: 'UPDATE' },
-      orderBy: { createdAt: 'desc' },
-      take: 40,
-      select: {
-        id: true, before: true, after: true, createdAt: true,
-        actor: { select: { name: true } },
-      },
-    }),
+    // Payroll figures (baseSalary/netSalary/deductions) and salary-change
+    // audit rows are fetched only for a viewer allowed to see this
+    // employee's salary — filtered at the query itself, not just left out
+    // of what gets rendered, so an unauthorized viewer's request never
+    // holds the value server-side either (backlog 4.3 — MANAGER couldn't
+    // edit salary anymore but this timeline still queried and rendered it
+    // in plain text for their reports).
+    canViewSalary
+      ? prisma.payroll.findMany({
+          where: { userId, deletedAt: null },
+          orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          take: 36,
+          select: {
+            id: true, month: true, year: true, baseSalary: true, netSalary: true,
+            lateDeduction: true, absentDeduction: true, status: true, createdAt: true,
+            updatedAt: true,
+          },
+        })
+      : Promise.resolve([]),
+    canViewSalary
+      ? prisma.auditLog.findMany({
+          where: { targetId: userId, targetType: 'User', action: 'UPDATE' },
+          orderBy: { createdAt: 'desc' },
+          take: 40,
+          select: {
+            id: true, before: true, after: true, createdAt: true,
+            actor: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]),
     prisma.leaveApprovalStep.findMany({
       where: {
         leaveRequest: { userId },

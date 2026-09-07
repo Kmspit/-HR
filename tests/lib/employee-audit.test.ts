@@ -137,7 +137,7 @@ describe('summarizeEmployeeChanges', () => {
   it('formats a baseSalary change in Thai currency', () => {
     const before = snapshotEmployeeForAudit(row({ baseSalary: 30000 }))
     const after = snapshotEmployeeForAudit(row({ baseSalary: 35000 }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     expect(lines).toContainEqual(expect.stringContaining('฿30,000'))
     expect(lines).toContainEqual(expect.stringContaining('฿35,000'))
   })
@@ -145,7 +145,7 @@ describe('summarizeEmployeeChanges', () => {
   it('formats role/status using their Thai labels, not the raw enum', () => {
     const before = snapshotEmployeeForAudit(row({ role: 'EMPLOYEE', status: 'ACTIVE' }))
     const after = snapshotEmployeeForAudit(row({ role: 'TEAM_LEADER', status: 'DISABLED' }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     const roleLine = lines.find((l) => l.startsWith('สิทธิ์การใช้งาน'))
     const statusLine = lines.find((l) => l.startsWith('สถานะบัญชี'))
     expect(roleLine).not.toContain('EMPLOYEE')
@@ -162,7 +162,7 @@ describe('summarizeEmployeeChanges', () => {
       divisions: new Map(),
       sections: new Map(),
     }
-    const lines = summarizeEmployeeChanges(before, after, lookup)
+    const lines = summarizeEmployeeChanges(before, after, lookup, true)
     const line = lines.find((l) => l.startsWith('ผู้จัดการ'))
     expect(line).toContain('สมชาย ใจดี')
     expect(line).not.toContain('mgr-cuid-123')
@@ -171,7 +171,7 @@ describe('summarizeEmployeeChanges', () => {
   it('falls back to "(ไม่พบข้อมูล)" when the referenced manager no longer resolves (e.g. deleted)', () => {
     const before = snapshotEmployeeForAudit(row({ managerId: null }))
     const after = snapshotEmployeeForAudit(row({ managerId: 'mgr-deleted-id' }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     const line = lines.find((l) => l.startsWith('ผู้จัดการ'))
     expect(line).toContain('(ไม่พบข้อมูล)')
     expect(line).not.toContain('mgr-deleted-id')
@@ -183,7 +183,7 @@ describe('summarizeEmployeeChanges', () => {
       address: '1 ถนนสุขุมวิท จ.กรุงเทพมหานคร', // synced concat — same PUT transaction that writes the profile
       employeeProfile: profileRow({ nationality: 'ไทย', currentProvince: 'กรุงเทพมหานคร' }),
     }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     expect(lines.some((l) => l.startsWith('สัญชาติ') && l.includes('ไทย'))).toBe(true)
     expect(lines.some((l) => l.startsWith('ที่อยู่:') && l.includes('กรุงเทพมหานคร'))).toBe(true)
   })
@@ -197,7 +197,7 @@ describe('summarizeEmployeeChanges', () => {
       address: '101 ถนนพระราม 4 ต.คลองเตย จ.กรุงเทพมหานคร 10110',
       employeeProfile: profileRow({ currentHouseNo: '101', currentRoad: 'ถนนพระราม 4', currentTambon: 'คลองเตย' }),
     }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     const addressLines = lines.filter((l) => l.startsWith('ที่อยู่:'))
     expect(addressLines).toHaveLength(1)
     // None of the granular per-field labels leak into the display, even though
@@ -210,7 +210,7 @@ describe('summarizeEmployeeChanges', () => {
   it('formats sameAsCurrentAddress as ใช่/ไม่ใช่, not a raw boolean', () => {
     const before = snapshotEmployeeForAudit(row({ employeeProfile: profileRow({ sameAsCurrentAddress: false }) }))
     const after = snapshotEmployeeForAudit(row({ employeeProfile: profileRow({ sameAsCurrentAddress: true }) }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     const line = lines.find((l) => l.startsWith('ที่อยู่ทะเบียนบ้านเหมือนที่อยู่ปัจจุบัน'))
     expect(line).toContain('ไม่ใช่ → ใช่')
   })
@@ -218,7 +218,7 @@ describe('summarizeEmployeeChanges', () => {
   it('never includes the raw nationalId even when it changed', () => {
     const before = snapshotEmployeeForAudit(row({ nationalId: '1111111111111' }))
     const after = snapshotEmployeeForAudit(row({ nationalId: '2222222222222' }))
-    const lines = summarizeEmployeeChanges(before, after, emptyLookup())
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
     const raw = lines.join('\n')
     expect(raw).not.toContain('1111111111111')
     expect(raw).not.toContain('2222222222222')
@@ -227,7 +227,15 @@ describe('summarizeEmployeeChanges', () => {
 
   it('returns an empty array when nothing changed', () => {
     const snap = snapshotEmployeeForAudit(row())
-    expect(summarizeEmployeeChanges(snap, snap, emptyLookup())).toEqual([])
+    expect(summarizeEmployeeChanges(snap, snap, emptyLookup(), true)).toEqual([])
+  })
+
+  it('backlog 4.3 — omits the baseSalary line entirely when canViewSalary is false, keeping other changes', () => {
+    const before = snapshotEmployeeForAudit(row({ baseSalary: 30000, position: 'Junior' }))
+    const after = snapshotEmployeeForAudit(row({ baseSalary: 35000, position: 'Senior' }))
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), false)
+    expect(lines.some((l) => l.includes('฿30,000') || l.includes('฿35,000'))).toBe(false)
+    expect(lines.some((l) => l.includes('Junior') && l.includes('Senior'))).toBe(true)
   })
 })
 
@@ -261,7 +269,7 @@ describe('mapEmployeeAuditLogs', () => {
       after: JSON.stringify(after),
       actor: { name: 'HR คนหนึ่ง' },
     }]
-    const items = mapEmployeeAuditLogs(logs, emptyLookup())
+    const items = mapEmployeeAuditLogs(logs, emptyLookup(), true)
     expect(items).toHaveLength(1)
     expect(items[0].actorName).toBe('HR คนหนึ่ง')
     expect(items[0].changes.some((c) => c.includes('Junior') && c.includes('Senior'))).toBe(true)
@@ -273,7 +281,7 @@ describe('mapEmployeeAuditLogs', () => {
     const logs = [{
       id: 'log-1', createdAt: new Date(), before: JSON.stringify(snap), after: JSON.stringify(snap2), actor: null,
     }]
-    const items = mapEmployeeAuditLogs(logs, emptyLookup())
+    const items = mapEmployeeAuditLogs(logs, emptyLookup(), true)
     expect(items[0].actorName).toBe('ไม่ทราบ')
   })
 
@@ -282,13 +290,13 @@ describe('mapEmployeeAuditLogs', () => {
     const logs = [{
       id: 'log-1', createdAt: new Date(), before: JSON.stringify(snap), after: JSON.stringify(snap), actor: { name: 'X' },
     }]
-    expect(mapEmployeeAuditLogs(logs, emptyLookup())).toEqual([])
+    expect(mapEmployeeAuditLogs(logs, emptyLookup(), true)).toEqual([])
   })
 
   it('drops unparsable/legacy rows without throwing', () => {
     const logs = [{ id: 'log-1', createdAt: new Date(), before: 'not json', after: 'also not json', actor: { name: 'X' } }]
-    expect(() => mapEmployeeAuditLogs(logs, emptyLookup())).not.toThrow()
-    expect(mapEmployeeAuditLogs(logs, emptyLookup())).toEqual([])
+    expect(() => mapEmployeeAuditLogs(logs, emptyLookup(), true)).not.toThrow()
+    expect(mapEmployeeAuditLogs(logs, emptyLookup(), true)).toEqual([])
   })
 
   it('renders a subrecord event (EmergencyContact/Dependent/BankAccount CRUD, Phase 1 step 8b follow-up) using its pre-computed lines, not the User-field diff logic', () => {
@@ -299,7 +307,7 @@ describe('mapEmployeeAuditLogs', () => {
       after: JSON.stringify({ subrecordEvent: true, entityType: 'BankAccount', lines: ['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'] }),
       actor: { name: 'HR คนหนึ่ง' },
     }]
-    const items = mapEmployeeAuditLogs(logs, emptyLookup())
+    const items = mapEmployeeAuditLogs(logs, emptyLookup(), true)
     expect(items).toHaveLength(1)
     expect(items[0].actorName).toBe('HR คนหนึ่ง')
     expect(items[0].changes).toEqual(['เพิ่มบัญชีธนาคาร: กสิกรไทย สมชาย ใจดี •••••••••4417'])
@@ -311,7 +319,7 @@ describe('mapEmployeeAuditLogs', () => {
       after: JSON.stringify({ subrecordEvent: true, entityType: 'EmergencyContact', lines: [] }),
       actor: { name: 'X' },
     }]
-    expect(mapEmployeeAuditLogs(logs, emptyLookup())).toEqual([])
+    expect(mapEmployeeAuditLogs(logs, emptyLookup(), true)).toEqual([])
   })
 
   it('mixes subrecord events and User-field diffs in one call, each rendered by its own path', () => {
@@ -328,9 +336,30 @@ describe('mapEmployeeAuditLogs', () => {
         actor: { name: 'HR B' },
       },
     ]
-    const items = mapEmployeeAuditLogs(logs, emptyLookup())
+    const items = mapEmployeeAuditLogs(logs, emptyLookup(), true)
     expect(items).toHaveLength(2)
     expect(items[0].changes.some((c) => c.includes('Junior') && c.includes('Senior'))).toBe(true)
     expect(items[1].changes).toEqual(['เพิ่มผู้อยู่ในอุปการะ: เด็ก (บุตร)'])
+  })
+
+  it('backlog 4.3 — a salary-only change disappears entirely (empty diff) when canViewSalary is false', () => {
+    const before = snapshotEmployeeForAudit(row({ baseSalary: 30000 }))
+    const after = snapshotEmployeeForAudit(row({ baseSalary: 35000 }))
+    const logs = [{
+      id: 'log-1', createdAt: new Date(), before: JSON.stringify(before), after: JSON.stringify(after), actor: { name: 'HR' },
+    }]
+    expect(mapEmployeeAuditLogs(logs, emptyLookup(), false)).toEqual([])
+  })
+
+  it('backlog 4.3 — a mixed change keeps the non-salary line and drops the salary one when canViewSalary is false', () => {
+    const before = snapshotEmployeeForAudit(row({ baseSalary: 30000, position: 'Junior' }))
+    const after = snapshotEmployeeForAudit(row({ baseSalary: 35000, position: 'Senior' }))
+    const logs = [{
+      id: 'log-1', createdAt: new Date(), before: JSON.stringify(before), after: JSON.stringify(after), actor: { name: 'HR' },
+    }]
+    const items = mapEmployeeAuditLogs(logs, emptyLookup(), false)
+    expect(items).toHaveLength(1)
+    expect(items[0].changes.some((c) => c.includes('Junior') && c.includes('Senior'))).toBe(true)
+    expect(items[0].changes.some((c) => c.includes('30,000') || c.includes('35,000'))).toBe(false)
   })
 })
