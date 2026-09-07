@@ -41,11 +41,12 @@ vi.mock('@/lib/module-gates', () => ({
 
 vi.mock('@/lib/notifications', () => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
+  notifyRole: vi.fn().mockResolvedValue(undefined),
 }))
 
 import { requireAuth, requireEditOrgScope } from '@/lib/api-guard'
 import { prisma } from '@/lib/prisma'
-import { createAuditLog } from '@/lib/notifications'
+import { createAuditLog, notifyRole } from '@/lib/notifications'
 import { POST } from '@/app/api/users/[id]/bank-accounts/route'
 import { PATCH } from '@/app/api/users/[id]/bank-accounts/[bankAccountId]/route'
 import { GET as GET_SENSITIVE } from '@/app/api/users/[id]/bank-accounts/[bankAccountId]/sensitive/route'
@@ -61,8 +62,9 @@ function makePatch(id: string, body: Record<string, unknown>) {
   })
 }
 const params = (id: string, bankAccountId = 'b1') => Promise.resolve({ id, bankAccountId })
-const hrSession = { user: { id: 'hr-1', role: 'HR', branchId: 'b1' } }
+const hrSession = { user: { id: 'hr-1', role: 'HR', branchId: 'b1', name: 'HR คนหนึ่ง', email: 'hr@co.com' } }
 const managerSession = { user: { id: 'mgr-1', role: 'MANAGER', branchId: 'b1' } }
+const selfSession = { user: { id: 'emp-9', role: 'EMPLOYEE', branchId: 'b1', name: 'พนักงาน เก้า', email: 'emp9@co.com' } }
 
 const validBody = { bankCode: 'SCB', accountNumber: '1234567890', accountName: 'สมชาย ใจดี' }
 const existingRow = {
@@ -128,6 +130,22 @@ describe('POST /api/users/[id]/bank-accounts', () => {
     const line = (call.after as { lines: string[] }).lines[0]
     expect(line).toContain('เพิ่มบัญชีธนาคาร')
     expect(line).toContain('7890')
+  })
+
+  it('does not notify HR when HR creates the account on someone else\'s behalf', async () => {
+    await POST(makePost('emp-9', validBody), { params: params('emp-9') })
+    expect(notifyRole).not.toHaveBeenCalled()
+  })
+
+  it('notifies MANAGER_HR when the employee creates their own bank account (self-service)', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    await POST(makePost('emp-9', validBody), { params: params('emp-9') })
+    expect(notifyRole).toHaveBeenCalledWith(
+      'MANAGER_HR', 'PROFILE_SENSITIVE_SELF_EDIT',
+      expect.stringContaining('เพิ่มบัญชีธนาคาร'),
+      expect.stringContaining('พนักงาน เก้า'),
+      expect.any(String),
+    )
   })
 })
 
@@ -205,6 +223,28 @@ describe('PATCH /api/users/[id]/bank-accounts/[bankAccountId]', () => {
     // Nothing actually changed (same bankCode/accountName as existingRow) — no audit log at all.
     expect(createAuditLog).not.toHaveBeenCalled()
   })
+
+  it('does not notify HR when HR edits someone else\'s account number', async () => {
+    await PATCH(makePatch('emp-9', validBody), { params: params('emp-9') })
+    expect(notifyRole).not.toHaveBeenCalled()
+  })
+
+  it('notifies MANAGER_HR when the employee changes their own account number (self-service)', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    await PATCH(makePatch('emp-9', validBody), { params: params('emp-9') })
+    expect(notifyRole).toHaveBeenCalledWith(
+      'MANAGER_HR', 'PROFILE_SENSITIVE_SELF_EDIT',
+      expect.stringContaining('เลขบัญชีธนาคาร'),
+      expect.stringContaining('พนักงาน เก้า'),
+      expect.any(String),
+    )
+  })
+
+  it('does not notify when the employee edits their own account but the number itself is untouched', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    await PATCH(makePatch('emp-9', { bankCode: 'SCB', accountName: 'X' }), { params: params('emp-9') })
+    expect(notifyRole).not.toHaveBeenCalled()
+  })
 })
 
 describe('GET /api/users/[id]/bank-accounts/[bankAccountId]/sensitive', () => {
@@ -244,5 +284,19 @@ describe('GET /api/users/[id]/bank-accounts/[bankAccountId]/sensitive', () => {
     vi.mocked(prisma.bankAccount.findFirst).mockResolvedValue(null)
     const res = await GET_SENSITIVE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
     expect(res.status).toBe(404)
+  })
+
+  it('self-service: an employee with no HR_ADMIN role can reveal their OWN account number', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    const res = await GET_SENSITIVE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.accountNumber).toBe('1234567890')
+  })
+
+  it('self-service: viewing your own account number is never audit-logged', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(selfSession as never)
+    await GET_SENSITIVE(new NextRequest('http://localhost/x'), { params: params('emp-9') })
+    expect(createAuditLog).not.toHaveBeenCalled()
   })
 })

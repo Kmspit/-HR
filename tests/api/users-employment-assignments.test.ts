@@ -134,6 +134,18 @@ describe('GET /api/users/[id]/employment-assignments', () => {
     expect('baseSalary' in data.assignments[0]).toBe(false)
   })
 
+  it('self-service: includes baseSalary for a non-HR_ADMIN viewer looking at their OWN history', async () => {
+    const selfEmployeeSession = { user: { id: 'emp-9', role: 'EMPLOYEE', branchId: 'b1' } }
+    vi.mocked(requireAuth).mockResolvedValue(selfEmployeeSession as never)
+    vi.mocked(prisma.employmentAssignment.findMany).mockResolvedValue([{
+      ...latestAssignment(), jobPosition: { name: 'ผู้จัดการ' },
+    }] as never)
+    const res = await GET(makeGet(), { params: params() })
+    expect(requireOrgScope).not.toHaveBeenCalled()
+    const data = await res.json()
+    expect(data.assignments[0].baseSalary).toBe(30000)
+  })
+
   it('marks currentAssignmentId using getCurrentAssignment (TERMINATION-aware), not just the latest row', async () => {
     const hireRow = { ...latestAssignment({ id: 'assign-1', effectiveFrom: new Date('2026-01-01'), changeType: 'HIRE' }), jobPosition: { name: 'พนักงาน' } }
     const terminationRow = { ...latestAssignment({ id: 'assign-2', effectiveFrom: new Date('2026-06-01'), changeType: 'TERMINATION' }), jobPosition: { name: 'พนักงาน' } }

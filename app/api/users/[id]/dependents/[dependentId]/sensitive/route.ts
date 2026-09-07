@@ -10,11 +10,19 @@ import type { Role } from '@prisma/client'
 /**
  * Reveals a dependent's full national ID — same shape as
  * app/api/users/[id]/sensitive/route.ts (the employee's own national ID):
- * HR_ADMIN only, every call audit-logged (success or denied) so access is
- * traceable even though the value never appears in the default list
- * response. targetId is the EMPLOYEE's id (not the dependent's), matching
- * how the rest of the employee-history feed groups by employee; the
- * specific dependentId is carried in the log's `after` payload instead.
+ * HR_ADMIN only *when viewing someone else's*, every such call audit-logged
+ * (success or denied) so access is traceable even though the value never
+ * appears in the default list response. targetId is the EMPLOYEE's id (not
+ * the dependent's), matching how the rest of the employee-history feed
+ * groups by employee; the specific dependentId is carried in the log's
+ * `after` payload instead.
+ *
+ * Self-service (profile self-service, Phase 1 step 8c follow-up): an
+ * employee viewing their OWN dependent's national ID is always allowed —
+ * it's their own family's data under PDPA s.30 — and deliberately NOT
+ * audit-logged, since logging every routine self-view of one's own data
+ * would just be noise on a trail meant to catch a power-imbalanced access
+ * (someone else looking at data that isn't theirs).
  */
 export async function GET(
   req: NextRequest,
@@ -25,9 +33,10 @@ export async function GET(
     if (isGuardResponse(session)) return session
 
     const { id, dependentId } = await params
+    const isSelf = id === session.user.id
     const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
 
-    if (!HR_ADMIN.includes(session.user.role as Role)) {
+    if (!isSelf && !HR_ADMIN.includes(session.user.role as Role)) {
       await createAuditLog({
         actorId: session.user.id,
         targetId: id,
@@ -49,14 +58,16 @@ export async function GET(
       ? decryptField(dependent.nationalIdEnc, FIELD_SALTS.DEPENDENT_NATIONAL_ID)
       : null
 
-    await createAuditLog({
-      actorId: session.user.id,
-      targetId: id,
-      targetType: 'DependentSensitiveData',
-      action: 'VIEW',
-      after: { result: 'SUCCESS', dependentId },
-      ip,
-    })
+    if (!isSelf) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'DependentSensitiveData',
+        action: 'VIEW',
+        after: { result: 'SUCCESS', dependentId },
+        ip,
+      })
+    }
 
     return NextResponse.json({ nationalId })
   } catch (err) {

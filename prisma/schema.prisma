@@ -99,6 +99,11 @@ enum NotificationType {
   FORGOT_SCAN_REQUEST
   FORGOT_SCAN_APPROVED
   FORGOT_SCAN_REJECTED
+  // Phase 1 step 8c follow-up — employee self-service /profile: an employee
+  // changed their own nationalId (payslip PDF open-password source, last 4
+  // digits) or bank account (payroll deposit target) themselves. FYI only,
+  // not a block — see app/api/profile PATCH and the bank-accounts routes.
+  PROFILE_SENSITIVE_SELF_EDIT
   TASK_ASSIGNED
   TASK_SUBMITTED
   TASK_APPROVED
