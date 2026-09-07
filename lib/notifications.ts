@@ -19,6 +19,7 @@ export async function createNotification(params: {
     return row
   } catch (err) {
     console.error('[createNotification]', err)
+    Sentry.captureException(err, { tags: { type: params.type } })
   }
 }
 
@@ -42,6 +43,7 @@ export async function notifyRole(
     await broadcastNotificationUpdates(users.map((u) => u.id))
   } catch (err) {
     console.error('[notifyRole]', err)
+    Sentry.captureException(err, { tags: { role, type } })
   }
 }
 
@@ -100,8 +102,17 @@ export async function sendLineNotify(message: string, token?: string): Promise<b
       headers,
       body: new URLSearchParams({ message }),
     })
+    if (!res.ok) {
+      // Used as the hard-escalation channel to CEO/HR (approval-escalation,
+      // 72h-stuck approvers) — a failed broadcast here used to leave nobody
+      // aware the escalation never went out.
+      console.error('[LINE Notify] request failed', res.status, await res.text().catch(() => ''))
+      Sentry.captureMessage(`[LINE Notify] request failed with status ${res.status}`, 'error')
+    }
     return res.ok
-  } catch {
+  } catch (err) {
+    console.error('[LINE Notify]', err)
+    Sentry.captureException(err)
     return false
   }
 }
