@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import type { AuditAction, NotificationType, Role } from '@prisma/client'
 import { pushLineMessages, pushLineText } from '@/lib/line-api'
@@ -160,8 +161,12 @@ function row(label: string, value: string) {
 }
 
 // ─── Audit log ────────────────────────────────────────
+/** actorId is null for system/cron-triggered actions with no real User to
+ *  point at — pass actorLabel (e.g. 'cron:auto-checkout') to identify which
+ *  subsystem acted; see prisma/schema.prisma's AuditLog model comment. */
 export async function createAuditLog(params: {
-  actorId: string
+  actorId: string | null
+  actorLabel?: string
   targetId?: string
   targetType?: string
   action: AuditAction
@@ -179,6 +184,11 @@ export async function createAuditLog(params: {
       },
     })
   } catch (err) {
+    // Never throw — audit logging must not break the action it's recording.
+    // But a swallowed failure here is exactly what let the actorId FK bug
+    // (cron writing a sentinel 'system' string) go unnoticed for months —
+    // console.error alone goes to Vercel function logs nobody watches.
     console.error('[createAuditLog]', err)
+    Sentry.captureException(err, { tags: { action: params.action, targetType: params.targetType } })
   }
 }

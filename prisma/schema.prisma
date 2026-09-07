@@ -1246,7 +1246,15 @@ model Notification {
 
 model AuditLog {
   id         String      @id @default(cuid())
-  actorId    String
+  // Nullable for system/cron-triggered actions with no real User to point at
+  // (e.g. the auto-checkout cron) — previously these used the sentinel
+  // string 'system', which silently violated this field's FK to users.id on
+  // every single write (createAuditLog()'s own try/catch swallowed the
+  // error). actorLabel identifies which subsystem acted when actorId is
+  // null (e.g. 'cron:auto-checkout') — "the system did this" alone stops
+  // being enough once more than one automated source writes audit logs.
+  actorId    String?
+  actorLabel String?
   // Polymorphic pointer to whatever record `targetType` names (LeaveRequest,
   // ForgotScanRequest, PromiseToPay, Warning, a User for role/password
   // actions, etc.) — deliberately NOT a real relation/FK. It used to be a FK
@@ -1264,7 +1272,7 @@ model AuditLog {
   userAgent  String?
   createdAt  DateTime    @default(now())
 
-  actor  User  @relation("AuditActor", fields: [actorId], references: [id])
+  actor  User?  @relation("AuditActor", fields: [actorId], references: [id])
 
   @@index([actorId, createdAt])
   @@index([targetId, createdAt])
