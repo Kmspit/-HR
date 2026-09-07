@@ -119,7 +119,7 @@ export default function ProfileClient({ userId, branchId, initial, recordInfo, e
   }
 
   const save = async () => {
-    const v = validateSelfProfileForm(form)
+    const v = validateSelfProfileForm(form, { nationalId: initial.nationalId, birthDate: initial.birthDate })
     if (Object.keys(v).length) {
       setErrors(v)
       toast.error('กรุณาตรวจสอบข้อมูลที่กรอก')

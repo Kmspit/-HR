@@ -47,6 +47,15 @@ function makePatch(id: string, body: Record<string, unknown>) {
 
 const params = (id: string) => Promise.resolve({ id })
 
+// Checksum-valid synthetic test vectors (see tests/lib/national-id.test.ts) — not
+// real people's IDs. Backlog 4.1 added a server-side checksum check, so a
+// format-valid-but-checksum-invalid fixture ('1234567890123'/'1111111111111'/
+// '2222222222222', all used elsewhere in this file for non-checksum-related
+// assertions) is no longer written by this route unless it's unchanged from
+// the stored value.
+const VALID_NATIONAL_ID = '1101700207366'
+const VALID_NATIONAL_ID_2 = '3101999123453'
+
 const teamLeaderSession = { user: { id: 'tl-1', role: 'TEAM_LEADER', branchId: 'b1' } }
 const managerSession    = { user: { id: 'mgr-1', role: 'MANAGER', branchId: 'b1' } }
 const hrSession         = { user: { id: 'hr-1', role: 'HR', branchId: 'b1' } }
@@ -140,8 +149,26 @@ describe('PATCH /api/users/[id] — protected fields (nationalId, startDate, emp
       expect(updateData()).not.toHaveProperty('nationalId')
     })
 
-    it('is written when a valid 13-digit value is sent', async () => {
+    it('is written when a valid 13-digit checksum-valid value is sent', async () => {
+      const res = await PATCH(makePatch('emp-9', { nationalId: VALID_NATIONAL_ID }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      expect(updateData().nationalId).toBe(VALID_NATIONAL_ID)
+    })
+  })
+
+  describe('backlog 4.1 — server-side nationalId checksum, only on actual change', () => {
+    it('rejects a format-valid (13-digit) but checksum-invalid nationalId when it differs from the stored value', async () => {
+      // beforeAudit (prisma.user.findUnique) has no nationalId field at all here — treated as "changed".
       const res = await PATCH(makePatch('emp-9', { nationalId: '1234567890123' }), { params: params('emp-9') })
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toContain('เลขตรวจสอบไม่ตรง')
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('does NOT re-validate checksum when the sent value is identical to the stored value, even though that stored value is itself checksum-invalid', async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ branchId: 'b1', managerId: null, teamLeaderId: null, nationalId: '1234567890123' } as never)
+      const res = await PATCH(makePatch('emp-9', { nationalId: '1234567890123', position: 'Lead' }), { params: params('emp-9') })
       expect(res.status).toBe(200)
       expect(updateData().nationalId).toBe('1234567890123')
     })
@@ -170,6 +197,40 @@ describe('PATCH /api/users/[id] — protected fields (nationalId, startDate, emp
       const res = await PATCH(makePatch('emp-9', { startDate: '2024-01-15' }), { params: params('emp-9') })
       expect(res.status).toBe(200)
       expect(updateData().startDate).toEqual(new Date('2024-01-15'))
+    })
+  })
+
+  describe('backlog 4.9 — birthDate age-range sanity check, only on actual change', () => {
+    function yearsAgo(years: number): string {
+      const d = new Date()
+      d.setFullYear(d.getFullYear() - years)
+      return d.toISOString().slice(0, 10)
+    }
+
+    it('rejects a birthDate that would make the employee 5 years old when it differs from the stored value', async () => {
+      const res = await PATCH(makePatch('emp-9', { birthDate: yearsAgo(5) }), { params: params('emp-9') })
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toContain('15-80')
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('rejects a birthDate that would make the employee 100 years old', async () => {
+      const res = await PATCH(makePatch('emp-9', { birthDate: yearsAgo(100) }), { params: params('emp-9') })
+      expect(res.status).toBe(400)
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+
+    it('accepts a reasonable birthDate (age 30)', async () => {
+      const res = await PATCH(makePatch('emp-9', { birthDate: yearsAgo(30) }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+    })
+
+    it('does NOT re-validate age when the sent birthDate is identical to the stored value, even though that stored value is itself out of range', async () => {
+      const outOfRangeBirthDate = new Date(yearsAgo(100))
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ branchId: 'b1', managerId: null, teamLeaderId: null, birthDate: outOfRangeBirthDate } as never)
+      const res = await PATCH(makePatch('emp-9', { birthDate: outOfRangeBirthDate.toISOString(), position: 'Lead' }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
     })
   })
 
@@ -232,16 +293,17 @@ describe('PATCH /api/users/[id] — admin-edit audit log (targetType User, actio
 
   it('masks nationalId in the audit snapshot — the raw digits never appear anywhere in the payload', async () => {
     mockAuditSequence(
-      baseAuditRow({ nationalId: '1111111111111' }),
-      baseAuditRow({ nationalId: '2222222222222' }),
+      baseAuditRow({ nationalId: VALID_NATIONAL_ID }),
+      baseAuditRow({ nationalId: VALID_NATIONAL_ID_2 }),
     )
 
-    await PATCH(makePatch('emp-9', { nationalId: '2222222222222' }), { params: params('emp-9') })
+    const res = await PATCH(makePatch('emp-9', { nationalId: VALID_NATIONAL_ID_2 }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
 
     const call = vi.mocked(createAuditLog).mock.calls[0][0] as { before: unknown; after: unknown }
     const raw = JSON.stringify(call)
-    expect(raw).not.toContain('1111111111111')
-    expect(raw).not.toContain('2222222222222')
+    expect(raw).not.toContain(VALID_NATIONAL_ID)
+    expect(raw).not.toContain(VALID_NATIONAL_ID_2)
     expect((call.after as { nationalId: { masked: string; fp: string } }).nationalId.masked).toBeTruthy()
   })
 

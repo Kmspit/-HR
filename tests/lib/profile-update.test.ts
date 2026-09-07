@@ -3,7 +3,16 @@ import {
   isBlankProtectedField,
   PROTECTED_CLEAR_FIELDS,
   parseSelfProfileInput,
+  isReasonableBirthDate,
+  MIN_EMPLOYEE_AGE,
+  MAX_EMPLOYEE_AGE,
 } from '@/lib/profile-update'
+
+function yearsAgo(years: number): Date {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - years)
+  return d
+}
 
 const validInput = {
   firstName: 'สมชาย',
@@ -34,6 +43,25 @@ describe('PROTECTED_CLEAR_FIELDS / isBlankProtectedField', () => {
   it('is false for a protected field with a real value', () => {
     expect(isBlankProtectedField('nationalId', '1234567890123')).toBe(false)
     expect(isBlankProtectedField('startDate', '2024-01-15')).toBe(false)
+  })
+})
+
+describe('isReasonableBirthDate — backlog 4.9', () => {
+  it(`rejects an age below ${MIN_EMPLOYEE_AGE} (a real incident: today's date typed as birthday)`, () => {
+    expect(isReasonableBirthDate(new Date())).toBe(false)
+    expect(isReasonableBirthDate(yearsAgo(5))).toBe(false)
+    expect(isReasonableBirthDate(yearsAgo(14))).toBe(false)
+  })
+
+  it(`rejects an age above ${MAX_EMPLOYEE_AGE}`, () => {
+    expect(isReasonableBirthDate(yearsAgo(81))).toBe(false)
+    expect(isReasonableBirthDate(yearsAgo(100))).toBe(false)
+  })
+
+  it('accepts ages comfortably within the range', () => {
+    expect(isReasonableBirthDate(yearsAgo(16))).toBe(true)
+    expect(isReasonableBirthDate(yearsAgo(79))).toBe(true)
+    expect(isReasonableBirthDate(yearsAgo(30))).toBe(true)
   })
 })
 

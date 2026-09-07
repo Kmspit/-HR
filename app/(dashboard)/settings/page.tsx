@@ -17,7 +17,7 @@ export default async function SettingsPage() {
     select: {
       companyName: true, companyNameEn: true, workStartTime: true, workEndTime: true, lateGraceMin: true,
       sickDaysYear: true, vacationDaysYear: true, personalDaysYear: true,
-      lineChannelId: true, lineChannelSecret: true, lineAccessToken: true, lineNotifyToken: true,
+      lineChannelId: true, lineChannelSecret: true, lineAccessToken: true,
       geofenceLat: true, geofenceLng: true, geofenceRadius: true,
       lateDeductRate: true, absentDeductRate: true, imageRetentionDays: true, outsideWorkPlanTitle: true,
     },

@@ -6,9 +6,13 @@ import {
   normalizeEmail,
   normalizeNationalId,
   parseBirthDate,
+  isReasonableBirthDate,
+  MIN_EMPLOYEE_AGE,
+  MAX_EMPLOYEE_AGE,
   isBlankProtectedField,
   SELF_PROFILE_FORBIDDEN,
 } from '@/lib/profile-update'
+import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
 import { normalizeThaiPhone } from '@/lib/profile-name'
 import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
 import { requireAuth, requireOrgScope, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
@@ -134,6 +138,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!nationalId) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนต้อง 13 หลัก' }, { status: 400 })
       }
+      // Checksum only applies when the editor actually changed the value —
+      // never re-validates a stored nationalId that predates this check
+      // (possibly mistyped years ago) just because the form re-submitted it
+      // unchanged alongside other edits. Same rule as the UI (EmployeeEditClient.tsx).
+      if (nationalId !== beforeAudit?.nationalId && !isValidThaiNationalIdChecksum(nationalId)) {
+        return NextResponse.json({ error: 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)' }, { status: 400 })
+      }
       const dup = await prisma.user.findFirst({ where: { nationalId, NOT: { id } } })
       if (dup) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
@@ -147,6 +158,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const birth = parseBirthDate(body.birthDate)
       if (birth === 'invalid') {
         return NextResponse.json({ error: 'วันเกิดไม่ถูกต้อง' }, { status: 400 })
+      }
+      // Age-range sanity check only applies when the date actually changed —
+      // same "don't retroactively invalidate stored data" rule as nationalId.
+      if (
+        birth !== null &&
+        birth.getTime() !== beforeAudit?.birthDate?.getTime() &&
+        !isReasonableBirthDate(birth)
+      ) {
+        return NextResponse.json(
+          { error: `วันเกิดไม่สมเหตุสมผล (อายุต้องอยู่ระหว่าง ${MIN_EMPLOYEE_AGE}-${MAX_EMPLOYEE_AGE} ปี)` },
+          { status: 400 },
+        )
       }
       data.birthDate = birth
     }

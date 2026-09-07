@@ -63,10 +63,23 @@ const validAddress = {
   tambon: 'คลองเตย', amphoe: 'คลองเตย', province: 'กรุงเทพมหานคร', postalCode: '10110',
 }
 
+function yearsAgo(years: number): string {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - years)
+  return d.toISOString().slice(0, 10)
+}
+
+// Checksum-valid synthetic test vector (see tests/lib/national-id.test.ts) — not a
+// real person's ID. Backlog 4.1 added a server-side checksum check, so a
+// format-valid-but-checksum-invalid fixture (the old '1234567890123' here) is no
+// longer accepted.
+const VALID_NATIONAL_ID = '1101700207366'
+
 const validBody = {
   name: 'Somchai Test', firstName: 'Somchai', lastName: 'Test',
   email: 'somchai@x.com', phone: '0812345678',
-  nationalId: '1234567890123',
+  nationalId: VALID_NATIONAL_ID,
+  birthDate: yearsAgo(30),
   role: 'EMPLOYEE',
   password: 'Password1', branchId: 'branch-1', lineId: '@somchai',
   currentAddress: validAddress,
@@ -163,6 +176,66 @@ describe('POST /api/register — nationalId is now required and format-validated
   it('rejects an empty emergencyContacts array (zod .min(1))', async () => {
     const res = await POST(makeReq({ ...validBody, emergencyContacts: [] }))
     expect(res.status).toBe(400)
+  })
+})
+
+describe('POST /api/register — backlog 4.1: server-side checksum on nationalId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    assertLineFieldsUnique.mockResolvedValue({ ok: true })
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.companyBranch.findFirst).mockResolvedValue({ id: 'branch-1', name: 'HQ' } as never)
+    vi.mocked(prisma.user.create).mockResolvedValue({ id: 'u1' } as never)
+  })
+
+  it('rejects a format-valid (13-digit) nationalId whose check digit is wrong, even hitting the API directly', async () => {
+    const res = await POST(makeReq({ ...validBody, nationalId: '1234567890123' }))
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toContain('เลขตรวจสอบไม่ตรง')
+    expect(prisma.user.create).not.toHaveBeenCalled()
+  })
+
+  it('accepts a checksum-valid nationalId', async () => {
+    const res = await POST(makeReq(validBody))
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('POST /api/register — backlog 4.9: birthDate age-range sanity check', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    assertLineFieldsUnique.mockResolvedValue({ ok: true })
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.companyBranch.findFirst).mockResolvedValue({ id: 'branch-1', name: 'HQ' } as never)
+    vi.mocked(prisma.user.create).mockResolvedValue({ id: 'u1' } as never)
+  })
+
+  it('rejects a birthDate that would make the applicant 5 years old', async () => {
+    const res = await POST(makeReq({ ...validBody, birthDate: yearsAgo(5) }))
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toContain('15-80')
+    expect(prisma.user.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects a birthDate that would make the applicant 100 years old', async () => {
+    const res = await POST(makeReq({ ...validBody, birthDate: yearsAgo(100) }))
+    expect(res.status).toBe(400)
+    expect(prisma.user.create).not.toHaveBeenCalled()
+  })
+
+  it('accepts a reasonable birthDate (age 30)', async () => {
+    const res = await POST(makeReq(validBody))
+    expect(res.status).toBe(200)
+  })
+
+  it('still accepts a blank birthDate — the field stays optional', async () => {
+    const { birthDate: _birthDate, ...body } = validBody
+    const res = await POST(makeReq(body))
+    expect(res.status).toBe(200)
   })
 })
 

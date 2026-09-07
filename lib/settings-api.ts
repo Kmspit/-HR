@@ -1,7 +1,6 @@
 const SECRET_KEYS = [
   'lineChannelSecret',
   'lineAccessToken',
-  'lineNotifyToken',
 ] as const
 
 export function maskSettingsSecrets<T extends Record<string, unknown>>(

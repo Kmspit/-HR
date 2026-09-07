@@ -1,4 +1,6 @@
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
+import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE } from '@/lib/profile-update'
 
 export function isValidEmailInput(raw: string): boolean {
   const e = raw.trim().toLowerCase()
@@ -29,14 +31,21 @@ export type ProfileFormErrors = Partial<
   >
 >
 
-export function validateSelfProfileForm(form: {
-  firstName: string
-  email: string
-  phone: string
-  lineId: string
-  nationalId?: string
-  birthDate?: string
-}): ProfileFormErrors {
+export function validateSelfProfileForm(
+  form: {
+    firstName: string
+    email: string
+    phone: string
+    lineId: string
+    nationalId?: string
+    birthDate?: string
+  },
+  /** Original stored values, for change-detection — checksum/age-range
+   *  checks only apply when the value actually changed, never re-validating
+   *  stored data that predates these checks just because the form
+   *  re-submitted it unchanged. Same rule as EmployeeEditClient.tsx. */
+  original?: { nationalId?: string | null; birthDate?: string | null },
+): ProfileFormErrors {
   const e: ProfileFormErrors = {}
   if (!form.firstName.trim()) e.firstName = 'กรุณากรอกชื่อ'
   if (!isValidEmailInput(form.email)) e.email = 'รูปแบบอีเมลไม่ถูกต้อง'
@@ -44,10 +53,23 @@ export function validateSelfProfileForm(form: {
   if (!form.lineId.trim() || !isValidLineIdInput(form.lineId)) e.lineId = lineIdHint()
   if (form.nationalId != null && !isValidNationalIdInput(form.nationalId)) {
     e.nationalId = 'เลขบัตร 13 หลัก'
+  } else if (
+    form.nationalId?.trim() &&
+    form.nationalId !== (original?.nationalId ?? '') &&
+    !isValidThaiNationalIdChecksum(form.nationalId)
+  ) {
+    e.nationalId = 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)'
   }
   if (form.birthDate?.trim()) {
     const d = new Date(form.birthDate)
-    if (Number.isNaN(d.getTime()) || d > new Date()) e.birthDate = 'วันเกิดไม่ถูกต้อง'
+    if (Number.isNaN(d.getTime()) || d > new Date()) {
+      e.birthDate = 'วันเกิดไม่ถูกต้อง'
+    } else if (
+      form.birthDate !== (original?.birthDate ?? '') &&
+      !isReasonableBirthDate(d)
+    ) {
+      e.birthDate = `อายุต้องอยู่ระหว่าง ${MIN_EMPLOYEE_AGE}-${MAX_EMPLOYEE_AGE} ปี`
+    }
   }
   return e
 }
