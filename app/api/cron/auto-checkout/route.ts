@@ -76,7 +76,8 @@ export async function GET(req: NextRequest) {
 
       // Audit log
       await createAuditLog({
-        actorId:    'system',
+        actorId:    null,
+        actorLabel: 'cron:auto-checkout',
         targetId:   session.id,
         targetType: 'Attendance',
         action:     'UPDATE',

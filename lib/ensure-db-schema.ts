@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900028
+export const CURRENT_SCHEMA_VERSION = 900030
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2052,6 +2052,65 @@ async function runEnsure(force = false): Promise<boolean> {
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS dependents_user_idx ON dependents (userId)`)
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS bank_accounts_user_idx ON bank_accounts (userId)`)
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS employment_assignments_user_effective_idx ON employment_assignments (userId, effectiveFrom)`)
+  }
+
+  // v900030 — AuditLog.actorId nullable + new actorLabel column. Found via a
+  // real 4.2 backlog investigation: app/api/cron/auto-checkout used the
+  // sentinel actorId 'system', which violates actorId's real FK to users.id
+  // on every write — createAuditLog()'s own try/catch swallowed the
+  // resulting SQLITE_CONSTRAINT error silently. Confirmed live: 7 real
+  // Attendance rows have autoCheckout=true but zero matching audit_logs rows
+  // exist for any of them. actorId now allows NULL for system/cron-triggered
+  // actions; actorLabel (e.g. 'cron:auto-checkout') records which subsystem
+  // acted, since knowing only "the system did this" isn't enough once more
+  // than one automated source writes audit logs. Deliberately NOT creating a
+  // fake "system" User row instead — that would need permanent exclusion
+  // from every employee list/count/report query in the app forever (the
+  // exact class of mistake the manager@demo.com incident already came from),
+  // and would risk being swept up by the pre-pilot account-wipe in progress.
+  //
+  // SQLite can't ALTER a column's NOT NULL in place, so — same as v900021 —
+  // this rebuilds the table (data copied and row-count-verified before the
+  // old one is dropped), guarded by checking actorId's current nullability
+  // so a re-run after a successful pass is a no-op.
+  {
+    const columns = await prisma.$queryRawUnsafe<{ name: string; notnull: number }[]>(`PRAGMA table_info(audit_logs)`)
+    const actorIdCol = columns.find((c) => c.name === 'actorId')
+    if (actorIdCol?.notnull === 1) {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS audit_logs_v900030`)
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE audit_logs_v900030 (
+          id TEXT NOT NULL PRIMARY KEY,
+          actorId TEXT,
+          actorLabel TEXT,
+          targetId TEXT,
+          targetType TEXT,
+          action TEXT NOT NULL,
+          before TEXT,
+          after TEXT,
+          ip TEXT,
+          userAgent TEXT,
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (actorId) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
+        )
+      `)
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO audit_logs_v900030 (id, actorId, targetId, targetType, action, before, after, ip, userAgent, createdAt)
+        SELECT id, actorId, targetId, targetType, action, before, after, ip, userAgent, createdAt FROM audit_logs
+      `)
+      const oldCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM audit_logs`)
+      const newCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM audit_logs_v900030`)
+      if (Number(oldCount[0]?.cnt ?? 0) !== Number(newCount[0]?.cnt ?? -1)) {
+        throw new Error(`[MIGRATION v900030 ABORT] row count mismatch after copy (old=${oldCount[0]?.cnt}, new=${newCount[0]?.cnt}) — refusing to drop audit_logs`)
+      }
+      await prisma.$executeRawUnsafe(`DROP TABLE audit_logs`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE audit_logs_v900030 RENAME TO audit_logs`)
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_actor_created_idx ON audit_logs (actorId, createdAt)`)
+      await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS audit_logs_target_created_idx ON audit_logs (targetId, createdAt)`)
+      console.log(`[MIGRATION v900030] Rebuilt "audit_logs" with nullable actorId + actorLabel (${newCount[0]?.cnt} rows preserved)`)
+    } else {
+      console.log('[MIGRATION v900030] audit_logs.actorId already nullable, skipping rebuild')
+    }
   }
 
   // Seed job_positions from whatever User.position values are already in use

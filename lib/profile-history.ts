@@ -73,14 +73,14 @@ export function mapProfileAuditLogs(
     createdAt: Date
     before: string | null
     after: string | null
-    actor: { name: string }
+    actor: { name: string } | null
   }[],
 ): ProfileHistoryItem[] {
   return logs
     .map((log) => ({
       id: log.id,
       at: log.createdAt.toISOString(),
-      actorName: log.actor.name,
+      actorName: log.actor?.name ?? 'ไม่ทราบ',
       changes: summarizeProfileChanges(log.before, log.after),
     }))
     .filter((item) => item.changes.length > 0)
