@@ -18,7 +18,7 @@ describe('snapshotProfileForAudit — nationalId is never persisted as plaintext
   it('stores a masked display, not the raw digits', () => {
     const snap = snapshotProfileForAudit(baseUser)
     expect(JSON.stringify(snap)).not.toContain('1234567890123')
-    expect(snap.nationalId).toEqual({ masked: 'x-xxxx-xxxxx-xx-3', fp: expect.any(String) })
+    expect(snap.nationalId).toEqual({ masked: 'x-xxxx-xxxx0-12-3', fp: expect.any(String) })
   })
 
   it('handles a missing nationalId without throwing', () => {
@@ -35,12 +35,12 @@ describe('summarizeProfileChanges — still detects a real nationalId edit after
     expect(changes.some((c) => c.startsWith('เลขบัตรประชาชน'))).toBe(false)
   })
 
-  it('reports a change when nationalId changes to a DIFFERENT value that masks identically (same last digit)', () => {
+  it('reports a change when nationalId changes to a DIFFERENT value that masks identically (same last 4 digits)', () => {
     const before = JSON.stringify(snapshotProfileForAudit({ ...baseUser, nationalId: '1234567890123' }))
-    const after = JSON.stringify(snapshotProfileForAudit({ ...baseUser, nationalId: '9999999999993' }))
+    const after = JSON.stringify(snapshotProfileForAudit({ ...baseUser, nationalId: '9999999990123' }))
     // sanity: these really do mask the same way — that's the exact case the fingerprint exists for
     expect(snapshotProfileForAudit({ ...baseUser, nationalId: '1234567890123' }).nationalId.masked).toBe(
-      snapshotProfileForAudit({ ...baseUser, nationalId: '9999999999993' }).nationalId.masked,
+      snapshotProfileForAudit({ ...baseUser, nationalId: '9999999990123' }).nationalId.masked,
     )
     const changes = summarizeProfileChanges(before, after)
     expect(changes.some((c) => c.startsWith('เลขบัตรประชาชน'))).toBe(true)
@@ -61,7 +61,7 @@ describe('summarizeProfileChanges — still detects a real nationalId edit after
     const after = JSON.stringify(snapshotProfileForAudit({ ...baseUser, nationalId: '1234567890123' }))
     const changes = summarizeProfileChanges(before, after)
     const line = changes.find((c) => c.startsWith('เลขบัตรประชาชน'))
-    expect(line).toBe('เลขบัตรประชาชน: ยังไม่ได้กรอก → x-xxxx-xxxxx-xx-3')
+    expect(line).toBe('เลขบัตรประชาชน: ยังไม่ได้กรอก → x-xxxx-xxxx0-12-3')
   })
 
   it('legacy rows (nationalId stored as a raw string before masking existed) never leak the raw value when displayed', () => {

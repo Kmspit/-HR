@@ -40,10 +40,10 @@ export function normalizeNationalId(raw: string | null | undefined): string | nu
 
 /**
  * Fields where clearing must be a deliberate, separate action — never a side effect of
- * saving unrelated form fields. nationalId feeds the payslip PDF password
- * (nationalIdPdfPassword), startDate feeds tenure/probation calculations, and employeeId
- * appears on official documents — a blank value silently wiping any of these is a data-
- * loss bug, not a valid "clear the field" request.
+ * saving unrelated form fields. nationalId appears on official/statutory documents and
+ * dependent-relationship records, startDate feeds tenure/probation calculations, and
+ * employeeId appears on official documents — a blank value silently wiping any of these
+ * is a data-loss bug, not a valid "clear the field" request.
  */
 export const PROTECTED_CLEAR_FIELDS: ReadonlySet<string> = new Set([
   'nationalId',

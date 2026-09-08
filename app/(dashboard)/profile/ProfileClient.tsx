@@ -311,7 +311,7 @@ export default function ProfileClient({ userId, branchId, initial, recordInfo, e
                 />
               </FormField>
             </div>
-            <FormField label="เลขบัตรประชาชน" error={errors.nationalId} hint="13 หลัก (ไม่บังคับ) — 4 ตัวท้ายใช้เป็นรหัสเปิดไฟล์สลิปเงินเดือน เปลี่ยนแล้ว HR จะได้รับแจ้งเตือนอัตโนมัติ">
+            <FormField label="เลขบัตรประชาชน" error={errors.nationalId} hint="13 หลัก (ไม่บังคับ) — เปลี่ยนแล้ว HR จะได้รับแจ้งเตือนอัตโนมัติ">
               <input
                 value={form.nationalId}
                 onChange={(e) => set('nationalId', e.target.value.replace(/\D/g, '').slice(0, 13))}
