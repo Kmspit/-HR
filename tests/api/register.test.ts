@@ -126,8 +126,12 @@ describe('POST /api/register — duplicate-field errors are generic (public, una
   })
 
   it('duplicate nationalId: same generic message', async () => {
+    // Duplicate detection now keys off nationalIdFp, not the plaintext column —
+    // see the nationalId-encryption Phase 1 backlog item (random-IV ciphertext
+    // never collides even for the same plaintext, so the deterministic
+    // fingerprint is the only column that can still catch a duplicate).
     vi.mocked(prisma.user.findFirst).mockImplementation(((args: { where: Record<string, unknown> }) =>
-      Promise.resolve(args.where && 'nationalId' in args.where ? { id: 'existing' } : null)) as never)
+      Promise.resolve(args.where && 'nationalIdFp' in args.where ? { id: 'existing' } : null)) as never)
     const res = await POST(makeReq(validBody))
     const data = await res.json()
     expect(res.status).toBe(409)
@@ -200,6 +204,15 @@ describe('POST /api/register — backlog 4.1: server-side checksum on nationalId
   it('accepts a checksum-valid nationalId', async () => {
     const res = await POST(makeReq(validBody))
     expect(res.status).toBe(200)
+  })
+
+  it('nationalId-encryption Phase 1 — dual-writes plaintext + encrypted + fingerprint on create', async () => {
+    await POST(makeReq(validBody))
+    const call = vi.mocked(prisma.user.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.nationalId).toBe(VALID_NATIONAL_ID)
+    expect(call.data.nationalIdEncrypted).toBeTruthy()
+    expect(String(call.data.nationalIdEncrypted)).not.toContain(VALID_NATIONAL_ID)
+    expect(call.data.nationalIdFp).toBeTruthy()
   })
 })
 

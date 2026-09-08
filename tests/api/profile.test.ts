@@ -84,6 +84,18 @@ describe('PATCH /api/profile — nationalId self-edit notification', () => {
     expect(notifyRole).not.toHaveBeenCalled()
   })
 
+  it('nationalId-encryption Phase 1 — dual-writes encrypted + fingerprint alongside plaintext', async () => {
+    mocks.findUnique.mockResolvedValue(userRow({ nationalId: VALID_NATIONAL_ID }))
+    mocks.update.mockResolvedValue(userRow({ nationalId: VALID_NATIONAL_ID_2 }))
+    const res = await PATCH(makePatch({ ...validPayload, nationalId: VALID_NATIONAL_ID_2 }))
+    expect(res.status).toBe(200)
+    const data = mocks.update.mock.calls[0][0].data as Record<string, unknown>
+    expect(data.nationalId).toBe(VALID_NATIONAL_ID_2)
+    expect(data.nationalIdEncrypted).toBeTruthy()
+    expect(String(data.nationalIdEncrypted)).not.toContain(VALID_NATIONAL_ID_2)
+    expect(data.nationalIdFp).toBeTruthy()
+  })
+
   it('notifies MANAGER_HR when the employee changes their own nationalId', async () => {
     mocks.findUnique.mockResolvedValue(userRow({ nationalId: VALID_NATIONAL_ID }))
     mocks.update.mockResolvedValue(userRow({ nationalId: VALID_NATIONAL_ID_2 }))

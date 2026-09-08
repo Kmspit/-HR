@@ -12,7 +12,7 @@ import {
   isBlankProtectedField,
   SELF_PROFILE_FORBIDDEN,
 } from '@/lib/profile-update'
-import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { isValidThaiNationalIdChecksum, encryptedNationalIdFields } from '@/lib/national-id'
 import { normalizeThaiPhone } from '@/lib/profile-name'
 import { canAssignRole, canChangeUserStatus } from '@/lib/role-assignment'
 import { requireAuth, requireOrgScope, requireEditOrgScope, isGuardResponse } from '@/lib/api-guard'
@@ -145,11 +145,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (nationalId !== beforeAudit?.nationalId && !isValidThaiNationalIdChecksum(nationalId)) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)' }, { status: 400 })
       }
-      const dup = await prisma.user.findFirst({ where: { nationalId, NOT: { id } } })
+      // nationalId-encryption Phase 1 — computed once, reused for both the
+      // duplicate check (must use nationalIdFp: random-IV ciphertext never
+      // collides even for the same plaintext) and the write below.
+      const nationalIdEnc = encryptedNationalIdFields(nationalId)
+      const dup = await prisma.user.findFirst({ where: { nationalIdFp: nationalIdEnc.nationalIdFp, NOT: { id } } })
       if (dup) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
       }
       data.nationalId = nationalId
+      Object.assign(data, nationalIdEnc)
     }
     // blank nationalId is silently skipped, not written — clearing it is a deliberate,
     // separate action (see PROTECTED_CLEAR_FIELDS), not a side effect of saving the form

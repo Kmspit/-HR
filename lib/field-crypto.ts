@@ -58,4 +58,10 @@ export const FIELD_SALTS = {
    *  describe the same real-world account and are always read/decrypted
    *  together, unlike DEPENDENT_NATIONAL_ID's separate-category reasoning. */
   BANK_ACCOUNT: 'hrflow-bank-v1',
+  /** User.nationalIdEncrypted — nationalId-encryption Phase 1. Separate from
+   *  DEPENDENT_NATIONAL_ID even though both encrypt a Thai national ID: a
+   *  compromised key for one must never help decrypt the other, and the two
+   *  values belong to different data subjects (the employee vs. a dependent
+   *  who never consented to this system holding their ID at all). */
+  USER_NATIONAL_ID: 'hrflow-user-nationalid-v1',
 } as const

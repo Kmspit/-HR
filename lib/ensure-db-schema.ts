@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900031
+export const CURRENT_SCHEMA_VERSION = 900032
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2186,6 +2186,22 @@ async function runEnsure(force = false): Promise<boolean> {
     }
   }
 
+  // v900032 — nationalId-encryption Phase 1 step 1 (backlog: encrypt
+  // User.nationalId at rest). Adds nationalIdEncrypted (AES-256-GCM via
+  // lib/field-crypto.ts, FIELD_SALTS.USER_NATIONAL_ID) + nationalIdFp (sha256
+  // fingerprint via lib/national-id.ts's nationalIdFingerprint()) as parallel,
+  // additive columns — dual-write only. The plaintext `nationalId` column is
+  // NOT touched or dropped here; that's Phase 2, a separate deploy, once
+  // Phase 1 has run cleanly in production for a while. Backfilling existing
+  // rows is a separate, explicitly-approved step
+  // (scripts/backfill-nationalid-encrypt.ts) — this migration only prepares
+  // the columns/index and writes no data, so it's safe to ship ahead of the
+  // backfill (an all-NULL unique column has no collisions in SQLite — NULLs
+  // never equal each other under a UNIQUE index).
+  await addUserColumnIfMissing('nationalIdEncrypted', `ALTER TABLE users ADD COLUMN nationalIdEncrypted TEXT`)
+  await addUserColumnIfMissing('nationalIdFp', `ALTER TABLE users ADD COLUMN nationalIdFp TEXT`)
+  await migrateUserNationalIdUniqueToFingerprint()
+
   // Seed job_positions from whatever User.position values are already in use
   // — purely so the table isn't empty in dev. Disposable: employee data gets
   // wiped before pilot launch (see project notes), so this seed doesn't need
@@ -2290,5 +2306,30 @@ async function migrateAttendanceMultiSessionUnique() {
   await prisma.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS attendances_userId_date_sessionIndex_key
     ON attendances (userId, date, sessionIndex)
+  `)
+}
+
+/** Moves the @unique constraint from users.nationalId (plaintext) to
+ *  users.nationalIdFp (sha256 fingerprint) — see v900032's comment for why.
+ *  Safe to run before nationalIdFp is backfilled: an all-NULL unique column
+ *  has no collisions in SQLite (NULLs never equal each other under UNIQUE). */
+async function migrateUserNationalIdUniqueToFingerprint() {
+  const indexes = await prisma.$queryRawUnsafe<{ name: string; sql: string | null }[]>(
+    `SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'users'`,
+  )
+  const hasNewUnique = indexes.some((i) => i.name === 'users_nationalIdFp_key')
+  if (hasNewUnique) return
+
+  const oldUnique = indexes.find((i) => i.name === 'users_nationalId_key')
+  if (oldUnique) {
+    try {
+      await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "${oldUnique.name}"`)
+    } catch (err) {
+      console.warn('[ensureDbSchema] drop old users.nationalId unique', err)
+    }
+  }
+
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_nationalIdFp_key ON users (nationalIdFp)
   `)
 }
