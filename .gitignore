@@ -50,3 +50,8 @@ public/fallback-*.js
 next-env.d.ts
 .vercel
 .env*
+
+# scripts/payslip-pdf-manual-test.ts output — a real employee's real salary
+# data written to local disk for manual PDF-reader verification. Must never
+# be committed.
+manual-test-*.pdf
