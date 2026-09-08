@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
 import { buildPayrollSlipPdfBuffer } from '@/lib/payslip-pdf-service'
-import { encryptPayslipPdfBuffer, nationalIdPdfPassword } from '@/lib/payslip-pdf-encrypt'
+import { encryptPayslipPdfBuffer, payslipPdfPassword } from '@/lib/payslip-pdf-encrypt'
 import {
   isCloudinaryConfigured,
   loadUserImageContext,
@@ -39,7 +39,7 @@ function periodLabel(month: number, year: number): string {
   return `${MONTH_TH[month]} ${year + 543}`
 }
 
-function buildPayslipLineFlex(month: number, year: number, downloadUrl: string) {
+function buildPayslipLineFlex(month: number, year: number, downloadUrl: string, password: string) {
   const period = periodLabel(month, year)
   return {
     type: 'flex',
@@ -53,14 +53,9 @@ function buildPayslipLineFlex(month: number, year: number, downloadUrl: string) 
           { type: 'text', text: `📄 สลิปเงินเดือน ${period}`, weight: 'bold', wrap: true },
           { type: 'text', text: DEFAULT_COMPANY, size: 'sm', color: '#888888', wrap: true, margin: 'sm' },
           { type: 'text', text: 'กรุณากด Download เพื่อดูสลิป', size: 'sm', color: '#888888', wrap: true, margin: 'md' },
-          {
-            type: 'text',
-            text: 'รหัส: เลขบัตรประชาชน 4 ตัวหลัง',
-            size: 'sm',
-            color: '#cc0000',
-            wrap: true,
-            margin: 'sm',
-          },
+          { type: 'separator', margin: 'md' },
+          { type: 'text', text: 'รหัสเปิดไฟล์ PDF', size: 'sm', color: '#888888', wrap: true, margin: 'md' },
+          { type: 'text', text: password, size: 'xl', weight: 'bold', color: '#cc0000', wrap: true, margin: 'xs' },
         ],
       },
       footer: {
@@ -188,7 +183,6 @@ export async function sendPayslipViaLineForPayroll(
         select: {
           id: true,
           name: true,
-          nationalId: true,
           lineUserId: true,
         },
       },
@@ -231,16 +225,7 @@ export async function sendPayslipViaLineForPayroll(
     }
   }
 
-  const password = nationalIdPdfPassword(payroll.user.nationalId)
-  if (!password) {
-    await markPayslipSendStatus(payrollId, 'FAILED', 'ไม่มีเลขบัตรประชาชน 4 ตัวท้ายสำหรับเข้ารหัส PDF')
-    return {
-      ...base,
-      userId: payroll.userId,
-      name: payroll.user.name,
-      error: 'ไม่มีเลขบัตรประชาชน 4 ตัวท้ายสำหรับเข้ารหัส PDF',
-    }
-  }
+  const password = payslipPdfPassword(payrollId)
 
   const locked = await acquireSendLock(payrollId, options?.forceResend)
   if (!locked) {
@@ -267,7 +252,6 @@ export async function sendPayslipViaLineForPayroll(
             department: true,
             position: true,
             branchId: true,
-            nationalId: true,
             lineUserId: true,
           },
         },
@@ -302,7 +286,7 @@ export async function sendPayslipViaLineForPayroll(
       return { ...base, userId: payroll.userId, name: payroll.user.name, error: err }
     }
 
-    const flex = buildPayslipLineFlex(payroll.month, payroll.year, downloadUrl)
+    const flex = buildPayslipLineFlex(payroll.month, payroll.year, downloadUrl, password)
     const push = await pushLineMessages(payroll.user.lineUserId, [flex])
 
     if (!push.ok) {

@@ -2,17 +2,27 @@ import { SignJWT, jwtVerify } from 'jose'
 
 const TOKEN_TTL_SEC = 60 * 60 * 24 * 7 // 7 วัน
 
-function secretKey() {
+/** Raw secret string (not yet key-encoded) — shared by the JWT signing
+ *  below and the payslip PDF open-password (lib/payslip-pdf-encrypt.ts's
+ *  payslipPdfPassword), which needs a plain string for HMAC rather than a
+ *  Uint8Array. Reusing this secret for the password doesn't widen the trust
+ *  boundary: anyone who could forge/steal it can already mint a valid
+ *  download-access token for any payslip, bypassing the password anyway.
+ *  Same production-safety guard either way: missing in production is a hard
+ *  error, not a silent dev-only fallback leaking into a real deploy. */
+export function payslipSecretRaw(): string {
   const raw =
     process.env.PAYSLIP_PDF_ACCESS_SECRET?.trim() ||
     process.env.NEXTAUTH_SECRET?.trim()
-  if (!raw) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('PAYSLIP_PDF_ACCESS_SECRET or NEXTAUTH_SECRET is required in production')
-    }
-    return new TextEncoder().encode('hrflow-payslip-pdf-dev-only')
+  if (raw) return raw
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('PAYSLIP_PDF_ACCESS_SECRET or NEXTAUTH_SECRET is required in production')
   }
-  return new TextEncoder().encode(raw)
+  return 'hrflow-payslip-pdf-dev-only'
+}
+
+function secretKey() {
+  return new TextEncoder().encode(payslipSecretRaw())
 }
 
 /** Short JWT — เก็บแค่ payrollId (publicId resolve ฝั่ง server) */
