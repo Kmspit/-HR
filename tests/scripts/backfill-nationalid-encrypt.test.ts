@@ -3,6 +3,8 @@ import {
   shouldSkipRow,
   verifyRoundTrip,
   processRow,
+  parseBatchSize,
+  runBatch,
   type BackfillRow,
 } from '@/scripts/backfill-nationalid-encrypt'
 import { encryptedNationalIdFields } from '@/lib/national-id'
@@ -179,5 +181,129 @@ describe('processRow — live write mode', () => {
     const data = db.user.update.mock.calls[0][0].data as Record<string, unknown>
     expect(data).not.toHaveProperty('nationalId')
     expect(JSON.stringify(data)).not.toContain(row.nationalId as string)
+  })
+})
+
+describe('parseBatchSize', () => {
+  it('defaults to 1 when no --batch-size flag is present', () => {
+    expect(parseBatchSize([])).toBe(1)
+    expect(parseBatchSize(['node', 'scripts/backfill-nationalid-encrypt.ts'])).toBe(1)
+  })
+
+  it('parses a valid --batch-size=N flag', () => {
+    expect(parseBatchSize(['--batch-size=25'])).toBe(25)
+    expect(parseBatchSize(['--dry-run', '--batch-size=5'])).toBe(5)
+  })
+
+  it('falls back to 1 for a non-numeric, zero, or negative value', () => {
+    expect(parseBatchSize(['--batch-size=abc'])).toBe(1)
+    expect(parseBatchSize(['--batch-size=0'])).toBe(1)
+    expect(parseBatchSize(['--batch-size=-5'])).toBe(1)
+    expect(parseBatchSize(['--batch-size=1.5'])).toBe(1)
+  })
+})
+
+/**
+ * A tiny in-memory fake standing in for prisma — filters/updates rows the
+ * same way the real PENDING_WHERE query would, so runBatch() tests exercise
+ * genuine "fetch pending, write, re-check pending" behavior rather than just
+ * asserting on mock call shapes.
+ */
+type FakeRow = { id: string; nationalId: string | null; nationalIdEncrypted: string | null; nationalIdFp: string | null }
+
+function isPending(row: FakeRow): boolean {
+  return row.nationalId != null && (row.nationalIdEncrypted == null || row.nationalIdFp == null)
+}
+
+function makeFakeDb(rows: FakeRow[]) {
+  const store = new Map(rows.map((r) => [r.id, { ...r }]))
+  return {
+    user: {
+      findMany: vi.fn(async ({ take }: { take: number }) =>
+        [...store.values()]
+          .filter(isPending)
+          .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+          .slice(0, take)
+          .map((r) => ({ ...r })),
+      ),
+      count: vi.fn(async () => [...store.values()].filter(isPending).length),
+      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const row = store.get(where.id)
+        if (row) Object.assign(row, data)
+      }),
+      findUniqueOrThrow: vi.fn(async ({ where }: { where: { id: string } }) => {
+        const row = store.get(where.id)
+        if (!row) throw new Error('not found')
+        return { nationalId: row.nationalId, nationalIdEncrypted: row.nationalIdEncrypted }
+      }),
+    },
+  }
+}
+
+describe('runBatch — batch-size + rerun behavior', () => {
+  const ORIGINAL_ENV = { ...process.env }
+
+  beforeEach(() => {
+    process.env.FACE_ENCRYPTION_SECRET = 'test-secret-for-backfill-script'
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  const threeRows: FakeRow[] = [
+    { id: 'u1', nationalId: '1101700207366', nationalIdEncrypted: null, nationalIdFp: null },
+    { id: 'u2', nationalId: '3101999123453', nationalIdEncrypted: null, nationalIdFp: null },
+    { id: 'u3', nationalId: '1234567890124', nationalIdEncrypted: null, nationalIdFp: null },
+  ]
+
+  it('processes exactly batchSize rows and reports how many pending rows remain', async () => {
+    const db = makeFakeDb(threeRows)
+    const summary = await runBatch(db, 2, false)
+    expect(summary.processed).toBe(2)
+    expect(summary.succeeded).toBe(2)
+    expect(summary.errors).toEqual([])
+    expect(summary.remaining).toBe(1)
+  })
+
+  it('never processes more than batchSize rows even when more are pending', async () => {
+    const db = makeFakeDb(threeRows)
+    await runBatch(db, 1, false)
+    expect(db.user.update).toHaveBeenCalledTimes(1)
+  })
+
+  it('rerunning the same command automatically advances to the next pending rows, without overlap', async () => {
+    const db = makeFakeDb(threeRows)
+
+    const first = await runBatch(db, 2, false)
+    expect(first.processed).toBe(2)
+    expect(first.remaining).toBe(1)
+
+    const second = await runBatch(db, 2, false)
+    expect(second.processed).toBe(1) // only u3 was still pending
+    expect(second.remaining).toBe(0)
+
+    const firstIds = db.user.update.mock.calls.slice(0, 2).map((c) => c[0].where.id)
+    const secondIds = db.user.update.mock.calls.slice(2).map((c) => c[0].where.id)
+    expect(new Set(firstIds).size + new Set(secondIds).size).toBe(3)
+    expect([...firstIds, ...secondIds].sort()).toEqual(['u1', 'u2', 'u3'])
+  })
+
+  it('a third call after everything is done processes zero rows and reports zero remaining', async () => {
+    const db = makeFakeDb(threeRows)
+    await runBatch(db, 3, false)
+    const third = await runBatch(db, 3, false)
+    expect(third.processed).toBe(0)
+    expect(third.remaining).toBe(0)
+    expect(third.errors).toEqual([])
+  })
+
+  it('dry-run never advances state — rerunning the same dry-run command processes the SAME batch every time', async () => {
+    const db = makeFakeDb(threeRows)
+    const first = await runBatch(db, 1, true)
+    const second = await runBatch(db, 1, true)
+    expect(first.remaining).toBe(3)
+    expect(second.remaining).toBe(3)
+    expect(db.user.update).not.toHaveBeenCalled()
   })
 })
