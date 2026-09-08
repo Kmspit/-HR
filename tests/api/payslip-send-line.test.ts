@@ -138,13 +138,7 @@ vi.mock('@/lib/payslip-pdf-service', () => ({
 
 vi.mock('@/lib/payslip-pdf-encrypt', () => ({
 
-  nationalIdPdfPassword: vi.fn((id: string | null) => {
-
-    const d = String(id ?? '').replace(/\D/g, '')
-
-    return d.length >= 4 ? d.slice(-4) : null
-
-  }),
+  payslipPdfPassword: vi.fn((payrollId: string) => `pw-${payrollId}`),
 
   encryptPayslipPdfBuffer: vi.fn().mockResolvedValue(Buffer.from('%PDF-encrypted')),
 
@@ -220,7 +214,7 @@ import { POST } from '@/app/api/payslip/send-line/route'
 
 import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
 
-import { encryptPayslipPdfBuffer } from '@/lib/payslip-pdf-encrypt'
+import { encryptPayslipPdfBuffer, payslipPdfPassword } from '@/lib/payslip-pdf-encrypt'
 
 import { pushLineMessages } from '@/lib/line-api'
 
@@ -308,7 +302,6 @@ const approvedPayrollUser = {
 
     branchId: null,
 
-    nationalId: '1234567890123',
 
     lineUserId: 'U12345678901234567890123456789012',
 
@@ -659,7 +652,6 @@ describe('sendPayslipViaLineForPayroll', () => {
 
         name: 'Test User',
 
-        nationalId: '1234567890123',
 
         lineUserId: null,
 
@@ -721,7 +713,6 @@ describe('sendPayslipViaLineForPayroll', () => {
 
         name: 'Test User',
 
-        nationalId: '1234567890123',
 
         lineUserId: 'U12345678901234567890123456789012',
 
@@ -771,7 +762,6 @@ describe('sendPayslipViaLineForPayroll', () => {
 
           name: 'Test User',
 
-          nationalId: '1234567890123',
 
           lineUserId: 'U12345678901234567890123456789012',
 
@@ -791,7 +781,8 @@ describe('sendPayslipViaLineForPayroll', () => {
 
     expect(result.ok).toBe(true)
 
-    expect(encryptPayslipPdfBuffer).toHaveBeenCalledWith(expect.any(Buffer), '0123')
+    expect(payslipPdfPassword).toHaveBeenCalledWith('pay-1')
+    expect(encryptPayslipPdfBuffer).toHaveBeenCalledWith(expect.any(Buffer), 'pw-pay-1')
 
     expect(prisma.payroll.update).toHaveBeenCalledWith(
 
@@ -823,7 +814,6 @@ describe('sendPayslipViaLineForPayroll', () => {
       user: {
         id: 'u1',
         name: 'Test User',
-        nationalId: '1234567890123',
         lineUserId: 'U12345678901234567890123456789012',
       },
     } as never)
@@ -846,7 +836,6 @@ describe('sendPayslipViaLineForPayroll', () => {
       user: {
         id: 'u1',
         name: 'Test User',
-        nationalId: '1234567890123',
         lineUserId: 'U12345678901234567890123456789012',
       },
     } as never)
@@ -856,6 +845,70 @@ describe('sendPayslipViaLineForPayroll', () => {
     expect(result.ok).toBe(false)
     expect(result.skipped).toBe(true)
     expect(buildPayrollSlipPdfBuffer).not.toHaveBeenCalled()
+  })
+
+  it('backlog: payslip password review — an employee with NO nationalId on file can still send successfully (the old blocker is gone)', async () => {
+    vi.mocked(prisma.payroll.findUnique)
+      .mockResolvedValueOnce({
+        id: 'pay-1',
+        userId: 'u1',
+        month: 6,
+        year: 2026,
+        status: 'APPROVED',
+        payslipSentStatus: null,
+        user: {
+          id: 'u1',
+          name: 'No National ID User',
+          // no nationalId at all — the old code required a >=4-digit
+          // nationalId here to even compute a password; the new HMAC-based
+          // password never looks at this field in the first place.
+          lineUserId: 'U12345678901234567890123456789012',
+        },
+      } as never)
+      .mockResolvedValueOnce(approvedPayrollUser as never)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({} as never)
+
+    const result = await sendPayslipViaLineForPayroll('pay-1')
+
+    expect(result.ok).toBe(true)
+    expect(payslipPdfPassword).toHaveBeenCalledWith('pay-1')
+  })
+
+  it('sends the PDF-open password in the same LINE message as the download link, clearly labeled', async () => {
+    vi.mocked(prisma.payroll.findUnique)
+      .mockResolvedValueOnce({
+        id: 'pay-1',
+        userId: 'u1',
+        month: 6,
+        year: 2026,
+        status: 'APPROVED',
+        payslipSentStatus: null,
+        user: {
+          id: 'u1',
+          name: 'Test User',
+          lineUserId: 'U12345678901234567890123456789012',
+        },
+      } as never)
+      .mockResolvedValueOnce(approvedPayrollUser as never)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({} as never)
+
+    await sendPayslipViaLineForPayroll('pay-1')
+
+    expect(pushLineMessages).toHaveBeenCalledWith(
+      'U12345678901234567890123456789012',
+      expect.arrayContaining([
+        expect.objectContaining({
+          contents: expect.objectContaining({
+            body: expect.objectContaining({
+              contents: expect.arrayContaining([
+                expect.objectContaining({ text: 'รหัสเปิดไฟล์ PDF' }),
+                expect.objectContaining({ text: 'pw-pay-1' }),
+              ]),
+            }),
+          }),
+        }),
+      ]),
+    )
   })
 
 })

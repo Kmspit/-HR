@@ -10,26 +10,12 @@ const ready: PayslipPreflightRow = {
   hasPayroll: true,
   status: 'APPROVED',
   lineLinked: true,
-  nationalIdStatus: 'MASKED',
 }
 
 describe('isPayslipSendReady / getPayslipBlockers', () => {
   it('a fully ready row has no blockers', () => {
     expect(getPayslipBlockers(ready)).toEqual([])
     expect(isPayslipSendReady(ready)).toBe(true)
-  })
-
-  it('missing nationalId (MISSING) is blocked with NO_NATIONAL_ID, never INVALID', () => {
-    const row = { ...ready, nationalIdStatus: 'MISSING' as const }
-    const blockers = getPayslipBlockers(row)
-    expect(blockers.map((b) => b.code)).toEqual(['NO_NATIONAL_ID'])
-    expect(isPayslipSendReady(row)).toBe(false)
-  })
-
-  it('wrong-length nationalId (INVALID, e.g. 15 digits) is blocked with INVALID_NATIONAL_ID', () => {
-    const row = { ...ready, nationalIdStatus: 'INVALID' as const }
-    const blockers = getPayslipBlockers(row)
-    expect(blockers.map((b) => b.code)).toEqual(['INVALID_NATIONAL_ID'])
   })
 
   it('not linked to LINE is blocked with NO_LINE', () => {
@@ -55,22 +41,39 @@ describe('isPayslipSendReady / getPayslipBlockers', () => {
   })
 
   it('a row can carry multiple blockers at once', () => {
-    const row = { hasPayroll: true, status: 'DRAFT', lineLinked: false, nationalIdStatus: 'MISSING' as const }
+    const row = { hasPayroll: true, status: 'DRAFT', lineLinked: false }
     const codes = getPayslipBlockers(row).map((b) => b.code)
-    expect(codes).toEqual(['NOT_APPROVED', 'NO_LINE', 'NO_NATIONAL_ID'])
+    expect(codes).toEqual(['NOT_APPROVED', 'NO_LINE'])
     expect(isPayslipSendReady(row)).toBe(false)
   })
 
   it('every blocker carries a human action, not just a code', () => {
     for (const row of [
-      { ...ready, nationalIdStatus: 'MISSING' as const },
-      { ...ready, nationalIdStatus: 'INVALID' as const },
       { ...ready, lineLinked: false },
       { ...ready, status: 'DRAFT' },
+      { ...ready, hasPayroll: false },
     ]) {
       const [blocker] = getPayslipBlockers(row)
       expect(blocker.label.length).toBeGreaterThan(0)
       expect(blocker.action.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('backlog: payslip password review — a missing or invalid nationalId is no longer a blocker at all (the PDF password no longer derives from it)', () => {
+    // The old shape allowed a `nationalIdStatus` field; the type no longer
+    // has it, but even passing it through (e.g. a stale client payload)
+    // must never resurrect the old NO_NATIONAL_ID/INVALID_NATIONAL_ID codes.
+    const rowWithStaleField = { ...ready, nationalIdStatus: 'MISSING' } as PayslipPreflightRow
+    expect(getPayslipBlockers(rowWithStaleField)).toEqual([])
+    expect(isPayslipSendReady(rowWithStaleField)).toBe(true)
+  })
+
+  it('lists exactly the 3 remaining blocker types — NO_NATIONAL_ID/INVALID_NATIONAL_ID are gone for good', () => {
+    const allBlockers = getPayslipBlockers({ hasPayroll: false, status: 'DRAFT', lineLinked: false })
+    // hasPayroll:false wins over NOT_APPROVED, so only NO_PAYROLL + NO_LINE show here —
+    // this test is really about codes never including the removed ones.
+    for (const b of allBlockers) {
+      expect(['NO_PAYROLL', 'NOT_APPROVED', 'NO_LINE']).toContain(b.code)
     }
   })
 })
@@ -82,21 +85,7 @@ describe('partitionPayslipBatch — the actual batch-send filter', () => {
     ...overrides,
   })
 
-  it('คนไม่มีเลขบัตร ต้องถูกตัดออกจาก batch (blocked, ไม่ใช่ eligible)', () => {
-    const rows = [withId('no-id', { nationalIdStatus: 'MISSING' })]
-    const { eligible, blocked } = partitionPayslipBatch(rows)
-    expect(eligible).toEqual([])
-    expect(blocked.map((r) => r.userId)).toEqual(['no-id'])
-  })
-
-  it('คนเลขบัตรไม่ใช่ 13 หลัก (INVALID) ต้องถูกตัดออกจาก batch', () => {
-    const rows = [withId('bad-id', { nationalIdStatus: 'INVALID' })]
-    const { eligible, blocked } = partitionPayslipBatch(rows)
-    expect(eligible).toEqual([])
-    expect(blocked.map((r) => r.userId)).toEqual(['bad-id'])
-  })
-
-  it('คนที่พร้อม (approved + LINE เชื่อมแล้ว + เลขบัตรครบ 13 หลัก) ต้องยังส่งได้ปกติ', () => {
+  it('คนที่พร้อม (approved + LINE เชื่อมแล้ว) ต้องยังส่งได้ปกติ — ไม่ต้องมีเลขบัตรอีกต่อไป', () => {
     const rows = [withId('ready-1')]
     const { eligible, blocked } = partitionPayslipBatch(rows)
     expect(blocked).toEqual([])
@@ -111,18 +100,16 @@ describe('partitionPayslipBatch — the actual batch-send filter', () => {
     expect(alreadySent.map((r) => r.userId)).toEqual(['done-1'])
   })
 
-  it('batch ผสม — แยกแต่ละคนเข้ากลุ่มถูกต้องพร้อมกัน', () => {
+  it('batch ผสม — แยกแต่ละคนเข้ากลุ่มถูกต้องพร้อมกัน (ไม่มีการบล็อกด้วยเลขบัตรอีกแล้ว)', () => {
     const rows = [
       withId('ready-1'),
-      withId('no-id', { nationalIdStatus: 'MISSING' }),
-      withId('bad-id', { nationalIdStatus: 'INVALID' }),
       withId('no-line', { lineLinked: false }),
       withId('not-approved', { status: 'DRAFT' }),
       withId('done-1', { payslipSentStatus: 'SUCCESS' }),
     ]
     const { eligible, blocked, alreadySent } = partitionPayslipBatch(rows)
     expect(eligible.map((r) => r.userId)).toEqual(['ready-1'])
-    expect(blocked.map((r) => r.userId)).toEqual(['no-id', 'bad-id', 'no-line', 'not-approved'])
+    expect(blocked.map((r) => r.userId)).toEqual(['no-line', 'not-approved'])
     expect(alreadySent.map((r) => r.userId)).toEqual(['done-1'])
   })
 })

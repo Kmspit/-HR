@@ -37,8 +37,6 @@ type PayrollRow = {
   payslipSentStatus?: string | null
   payslipSentError?: string | null
   lineLinked?: boolean
-  /** Never the raw nationalId — see lib/payslip-preflight.ts / lib/national-id.ts */
-  nationalIdStatus?: 'MASKED' | 'MISSING' | 'INVALID'
 }
 
 type LateSummary = {

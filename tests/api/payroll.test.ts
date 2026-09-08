@@ -123,12 +123,12 @@ describe('GET /api/payroll/report', () => {
     expect(json.payrolls.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('never includes the raw nationalId in the response — only a derived nationalIdStatus', async () => {
+  it('backlog: payslip password review — never queries or returns nationalId at all anymore (the payslip password no longer depends on it)', async () => {
     vi.mocked(auth).mockResolvedValue(hrSession as any)
     const SECRET_NATIONAL_ID = '1234567890123'
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', name: 'A', employeeId: 'E1', department: 'IT', position: 'Dev', socialSecurity: true, baseSalary: 30000, lineUserId: 'U1', nationalId: SECRET_NATIONAL_ID },
-      { id: 'emp-2', name: 'B', employeeId: 'E2', department: 'HR', position: 'Staff', socialSecurity: true, baseSalary: 25000, lineUserId: null, nationalId: null },
+      { id: 'emp-1', name: 'A', employeeId: 'E1', department: 'IT', position: 'Dev', socialSecurity: true, baseSalary: 30000, lineUserId: 'U1' },
+      { id: 'emp-2', name: 'B', employeeId: 'E2', department: 'HR', position: 'Staff', socialSecurity: true, baseSalary: 25000, lineUserId: null },
     ] as any)
     vi.mocked(prisma.payroll.findMany).mockResolvedValue([mockPayroll] as any)
 
@@ -138,16 +138,15 @@ describe('GET /api/payroll/report', () => {
 
     // The raw digits must never appear anywhere in the response body.
     expect(rawBody).not.toContain(SECRET_NATIONAL_ID)
-    // And no row may carry a `nationalId` key at all — only the derived status.
+    // No row may carry a nationalId or nationalIdStatus key at all anymore —
+    // stronger than the old "masked-only" guarantee: it's not even queried.
     const json = JSON.parse(rawBody)
     for (const row of json.payrolls) {
       expect(row).not.toHaveProperty('nationalId')
-      expect(['MASKED', 'MISSING', 'INVALID']).toContain(row.nationalIdStatus)
+      expect(row).not.toHaveProperty('nationalIdStatus')
     }
-    const withSecret = json.payrolls.find((r: { userId: string }) => r.userId === 'emp-1')
-    expect(withSecret.nationalIdStatus).toBe('MASKED')
-    const withoutSecret = json.payrolls.find((r: { userId: string }) => r.userId === 'emp-2')
-    expect(withoutSecret.nationalIdStatus).toBe('MISSING')
+    const findManyCall = vi.mocked(prisma.user.findMany).mock.calls[0][0] as { select: Record<string, unknown> }
+    expect(findManyCall.select).not.toHaveProperty('nationalId')
   })
 
   it('returns specific user payroll for HR querying by userId', async () => {

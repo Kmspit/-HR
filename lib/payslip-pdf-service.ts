@@ -20,7 +20,6 @@ export async function loadPayrollForSlip(payrollId: string) {
           department: true,
           position: true,
           branchId: true,
-          nationalId: true,
           lineUserId: true,
         },
       },

@@ -5,7 +5,6 @@ import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQu
 import { createAuditLog } from '@/lib/notifications'
 import { canManagePayroll, canApprovePayroll } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
-import { maskNationalId } from '@/lib/national-id'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -70,7 +69,6 @@ export async function GET(req: NextRequest) {
         socialSecurity: true,
         baseSalary: true,
         lineUserId: true,
-        nationalId: true,
       },
       orderBy: { name: 'asc' },
     }),
@@ -85,9 +83,6 @@ export async function GET(req: NextRequest) {
   const payrollByUser = new Map(payrollRecords.map((p) => [p.userId, p]))
 
   const payrolls = employees.map((emp) => {
-    // Only the derived status ever reaches the client — never emp.nationalId itself
-    // (same opt-in policy as SAFE_USER_SELECT; see lib/payslip-preflight.ts).
-    const nationalIdStatus = maskNationalId(emp.nationalId).status
     const p = payrollByUser.get(emp.id)
     if (p) {
       return {
@@ -119,7 +114,6 @@ export async function GET(req: NextRequest) {
         payslipSentStatus: p.payslipSentStatus ?? null,
         payslipSentError: p.payslipSentError ?? null,
         lineLinked: !!emp.lineUserId,
-        nationalIdStatus,
       }
     }
     return {
@@ -151,7 +145,6 @@ export async function GET(req: NextRequest) {
       payslipSentStatus: null,
       payslipSentError: null,
       lineLinked: !!emp.lineUserId,
-      nationalIdStatus,
     }
   })
 
