@@ -12,7 +12,7 @@ import {
   parseSelfProfileInput, SELF_PROFILE_FORBIDDEN,
   isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE,
 } from '@/lib/profile-update'
-import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { isValidThaiNationalIdChecksum, encryptedNationalIdFields } from '@/lib/national-id'
 
 function formatDate(d: Date | null | undefined) {
   if (!d) return null
@@ -219,9 +219,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'อีเมลนี้มีในระบบแล้ว' }, { status: 409 })
     }
 
-    if (parsed.data.nationalId) {
+    // nationalId-encryption Phase 1 — computed once, reused for both the
+    // duplicate check (must use nationalIdFp: random-IV ciphertext never
+    // collides even for the same plaintext) and the write below.
+    const nationalIdEnc = parsed.data.nationalId ? encryptedNationalIdFields(parsed.data.nationalId) : null
+    if (parsed.data.nationalId && nationalIdEnc) {
       const dupId = await prisma.user.findFirst({
-        where: { nationalId: parsed.data.nationalId, NOT: { id: session.user.id } },
+        where: { nationalIdFp: nationalIdEnc.nationalIdFp, NOT: { id: session.user.id } },
       })
       if (dupId) {
         return NextResponse.json({ error: 'เลขบัตรประชาชนนี้มีในระบบแล้ว' }, { status: 409 })
@@ -230,6 +234,7 @@ export async function PATCH(req: NextRequest) {
 
     const updateData: Record<string, unknown> = {
       ...parsed.data,
+      ...(nationalIdEnc ?? {}),
       lineId: lineParsed.lineId,
     }
 

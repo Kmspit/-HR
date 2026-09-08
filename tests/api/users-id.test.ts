@@ -154,6 +154,15 @@ describe('PATCH /api/users/[id] — protected fields (nationalId, startDate, emp
       expect(res.status).toBe(200)
       expect(updateData().nationalId).toBe(VALID_NATIONAL_ID)
     })
+
+    it('nationalId-encryption Phase 1 — dual-writes encrypted + fingerprint alongside plaintext', async () => {
+      const res = await PATCH(makePatch('emp-9', { nationalId: VALID_NATIONAL_ID }), { params: params('emp-9') })
+      expect(res.status).toBe(200)
+      const data = updateData()
+      expect(data.nationalIdEncrypted).toBeTruthy()
+      expect(String(data.nationalIdEncrypted)).not.toContain(VALID_NATIONAL_ID)
+      expect(data.nationalIdFp).toBeTruthy()
+    })
   })
 
   describe('backlog 4.1 — server-side nationalId checksum, only on actual change', () => {

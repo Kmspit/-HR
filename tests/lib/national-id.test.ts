@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { maskNationalId, nationalIdFingerprint, isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { maskNationalId, nationalIdFingerprint, isValidThaiNationalIdChecksum, encryptedNationalIdFields } from '@/lib/national-id'
+import { decryptField, FIELD_SALTS } from '@/lib/field-crypto'
 
 describe('maskNationalId — never throws, reveals at most the last digit', () => {
   it('masks a valid 13-digit id, keeping only the last digit', () => {
@@ -97,5 +98,50 @@ describe('isValidThaiNationalIdChecksum — กรมการปกครอง
     // well-formed (see national-id.test.ts above), which is the whole point of
     // keeping the two functions separate.
     expect(isValidThaiNationalIdChecksum('1234567890123')).toBe(false)
+  })
+})
+
+describe('encryptedNationalIdFields — nationalId-encryption Phase 1 dual-write helper', () => {
+  const ORIGINAL_ENV = { ...process.env }
+
+  beforeEach(() => {
+    process.env.FACE_ENCRYPTION_SECRET = 'test-secret-for-national-id'
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it('round-trips: nationalIdEncrypted decrypts back to the original digits', () => {
+    const id = '1101700207366'
+    const { nationalIdEncrypted } = encryptedNationalIdFields(id)
+    expect(nationalIdEncrypted).not.toContain(id)
+    expect(decryptField(nationalIdEncrypted, FIELD_SALTS.USER_NATIONAL_ID)).toBe(id)
+  })
+
+  it('nationalIdFp matches nationalIdFingerprint() for the same input', () => {
+    const id = '1101700207366'
+    expect(encryptedNationalIdFields(id).nationalIdFp).toBe(nationalIdFingerprint(id))
+  })
+
+  it('same id encrypted twice produces different ciphertext (random IV) but the same fingerprint', () => {
+    const id = '1101700207366'
+    const a = encryptedNationalIdFields(id)
+    const b = encryptedNationalIdFields(id)
+    expect(a.nationalIdEncrypted).not.toBe(b.nationalIdEncrypted)
+    expect(a.nationalIdFp).toBe(b.nationalIdFp)
+  })
+
+  it('different ids produce different fingerprints — duplicate detection still distinguishes them', () => {
+    const a = encryptedNationalIdFields('1101700207366')
+    const b = encryptedNationalIdFields('3101999123453')
+    expect(a.nationalIdFp).not.toBe(b.nationalIdFp)
+  })
+
+  it('is encrypted under a salt distinct from the Dependent/BankAccount fields (key isolation)', () => {
+    const id = '1101700207366'
+    const { nationalIdEncrypted } = encryptedNationalIdFields(id)
+    expect(() => decryptField(nationalIdEncrypted, FIELD_SALTS.DEPENDENT_NATIONAL_ID)).toThrow()
+    expect(() => decryptField(nationalIdEncrypted, FIELD_SALTS.BANK_ACCOUNT)).toThrow()
   })
 })

@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
 
 export type MaskedNationalId = {
   status: 'MASKED' | 'MISSING' | 'INVALID'
@@ -54,4 +55,32 @@ export function isValidThaiNationalIdChecksum(raw: string | null | undefined): b
   }
   const checkDigit = (11 - (sum % 11)) % 10
   return checkDigit === Number(digits[12])
+}
+
+export type EncryptedNationalId = {
+  nationalIdEncrypted: string
+  nationalIdFp: string
+}
+
+/**
+ * nationalId-encryption Phase 1 dual-write helper — computes the two new
+ * columns (AES-256-GCM ciphertext + sha256 fingerprint) from an already
+ * normalized, non-blank nationalId. Callers ALSO keep writing the existing
+ * plaintext `nationalId` column during Phase 1 (see the backlog item) — this
+ * only adds the two parallel columns, it never replaces the plaintext write.
+ *
+ * Every duplicate-nationalId check must switch from `where: { nationalId }`
+ * to `where: { nationalIdFp: encryptedNationalIdFields(x).nationalIdFp }` —
+ * once nationalIdEncrypted uses a random IV per call (true from Phase 1
+ * onward), two equal plaintexts never produce equal ciphertext, so only the
+ * deterministic fingerprint can still detect a collision.
+ */
+export function encryptedNationalIdFields(nationalId: string): EncryptedNationalId {
+  return {
+    nationalIdEncrypted: encryptField(nationalId, FIELD_SALTS.USER_NATIONAL_ID),
+    // nationalId is always a normalized, non-blank 13-digit string here (every
+    // caller validates before reaching this point) — nationalIdFingerprint()
+    // only returns null for blank input, so this cast is safe.
+    nationalIdFp: nationalIdFingerprint(nationalId) as string,
+  }
 }

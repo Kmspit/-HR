@@ -9,7 +9,7 @@ import { assertLineFieldsUnique, parseLineFields } from '@/lib/line-profile'
 import { rateLimit } from '@/lib/rate-limit'
 import { assertEnglishCredential } from '@/lib/english-input'
 import { normalizeNationalId, parseBirthDate, isReasonableBirthDate, MIN_EMPLOYEE_AGE, MAX_EMPLOYEE_AGE } from '@/lib/profile-update'
-import { isValidThaiNationalIdChecksum } from '@/lib/national-id'
+import { isValidThaiNationalIdChecksum, encryptedNationalIdFields } from '@/lib/national-id'
 import { formatThaiAddress } from '@/lib/thai-address-format'
 import { encryptField, FIELD_SALTS } from '@/lib/field-crypto'
 
@@ -125,6 +125,10 @@ export async function POST(req: NextRequest) {
     if (!isValidThaiNationalIdChecksum(nationalId)) {
       return NextResponse.json({ error: 'เลขบัตรประชาชนไม่ถูกต้อง (เลขตรวจสอบไม่ตรง)' }, { status: 400 })
     }
+    // nationalId-encryption Phase 1 — computed once, reused for both the
+    // duplicate check below (must use nationalIdFp, not nationalId: random-IV
+    // ciphertext never collides even for the same plaintext) and the create().
+    const nationalIdEnc = encryptedNationalIdFields(nationalId)
 
     // Generic on purpose — this endpoint is public/unauthenticated (anyone can
     // reach it, no session at all), so a field-specific message here would let
@@ -143,7 +147,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: DUPLICATE_MSG }, { status: 409 })
     }
 
-    const existingId = await prisma.user.findFirst({ where: { nationalId }, select: { id: true } })
+    const existingId = await prisma.user.findFirst({ where: { nationalIdFp: nationalIdEnc.nationalIdFp }, select: { id: true } })
     if (existingId) {
       return NextResponse.json({ error: DUPLICATE_MSG }, { status: 409 })
     }
@@ -207,6 +211,7 @@ export async function POST(req: NextRequest) {
           address:       formatThaiAddress({ ...data.currentAddress, moo: data.currentAddress.moo ?? '', soi: data.currentAddress.soi ?? '' }) || null,
           addressIdCard: formatThaiAddress({ ...effectiveRegistered, moo: effectiveRegistered.moo ?? '', soi: effectiveRegistered.soi ?? '' }) || null,
           nationalId,
+          ...nationalIdEnc,
           role:          data.role,
           status:        'PENDING',
           department:    null,
