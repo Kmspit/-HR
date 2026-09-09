@@ -60,22 +60,80 @@ async function findUser(ref) {
  * payroll (legally retained, counts soft-deleted rows too since those are
  * still real payslip history), disciplinary warnings, tax history, and any
  * audit log where this user is the actor (their action history).
+ *
+ * Also blocks on 12 more tables discovered during the pre-pilot wipe review
+ * (2026-09-09): each has a REQUIRED (NOT NULL) FK to users.id with
+ * ON DELETE RESTRICT/NO ACTION in the real DB. purgeUser() cannot null these
+ * out (Prisma rejects writing null to a non-nullable column) and must not
+ * silently delete real business/financial/case records (invoices, payments,
+ * receipts, court dates, case activity/timeline logs, debtor contact logs,
+ * promises to pay, recovery payments, automation rules) just because the
+ * staff member who created/handled them is being purged — so a target
+ * account with any row here is refused, same as payroll/warnings/tax above.
+ * (billing_invoices.approvedById and billing_payments.receivedById are the
+ * only two of the original 14 flagged pairs that ARE nullable — those are
+ * cleared in purgeUser() below instead of blocking here.)
+ *
+ * case_templates.created_by_id is checked via raw SQL: that table has a real
+ * FK in the live DB but no corresponding Prisma model on either this branch
+ * or main (the "case template" feature was removed from the schema while
+ * the table + constraint were left behind) — there is no `db.caseTemplate`
+ * to call at all.
  */
 async function checkPurgeGuard(db, userId) {
-  const [payrolls, warnings, taxHistories, auditLogsAsActor] = await Promise.all([
+  const [
+    payrolls, warnings, taxHistories, auditLogsAsActor,
+    billingInvoicesCreated, billingPaymentsCreated, billingReceiptsCreated,
+    caseCourtsCreated, caseTimelines, caseDebtorActivities,
+    debtorContacts, promisesToPay, recoveryPaymentsCreated, recoveryPaymentsCollected,
+    automationRules, caseTemplatesRaw,
+  ] = await Promise.all([
     db.payroll.count({ where: { userId } }),
     db.warning.count({ where: { userId } }),
     db.taxHistory.count({ where: { userId } }),
     db.auditLog.count({ where: { actorId: userId } }),
+    db.billingInvoice.count({ where: { createdById: userId } }),
+    db.billingPayment.count({ where: { createdById: userId } }),
+    db.billingReceipt.count({ where: { createdById: userId } }),
+    db.caseCourt.count({ where: { createdById: userId } }),
+    db.caseTimeline.count({ where: { userId } }),
+    db.caseDebtorActivity.count({ where: { actorId: userId } }),
+    db.debtorContact.count({ where: { performedById: userId } }),
+    db.promiseToPay.count({ where: { createdById: userId } }),
+    db.recoveryPayment.count({ where: { createdById: userId } }),
+    db.recoveryPayment.count({ where: { collectorId: userId } }),
+    db.automationRule.count({ where: { createdById: userId } }),
+    db.$queryRawUnsafe('SELECT COUNT(*) as cnt FROM case_templates WHERE created_by_id = ?', userId),
   ])
+  const caseTemplates = Number(caseTemplatesRaw?.[0]?.cnt ?? 0)
 
   const found = []
   if (payrolls > 0) found.push({ label: 'payroll', count: payrolls })
   if (warnings > 0) found.push({ label: 'warnings (เอกสารวินัย)', count: warnings })
   if (taxHistories > 0) found.push({ label: 'tax_histories (เอกสารภาษี)', count: taxHistories })
   if (auditLogsAsActor > 0) found.push({ label: 'audit_logs ที่เป็น actor', count: auditLogsAsActor })
+  if (billingInvoicesCreated > 0) found.push({ label: 'billing_invoices (ผู้สร้าง)', count: billingInvoicesCreated })
+  if (billingPaymentsCreated > 0) found.push({ label: 'billing_payments (ผู้สร้าง)', count: billingPaymentsCreated })
+  if (billingReceiptsCreated > 0) found.push({ label: 'billing_receipts (ผู้สร้าง)', count: billingReceiptsCreated })
+  if (caseCourtsCreated > 0) found.push({ label: 'case_courts (ผู้สร้าง)', count: caseCourtsCreated })
+  if (caseTimelines > 0) found.push({ label: 'case_timelines (ผู้กระทำ)', count: caseTimelines })
+  if (caseDebtorActivities > 0) found.push({ label: 'case_debtor_activities (ผู้กระทำ)', count: caseDebtorActivities })
+  if (debtorContacts > 0) found.push({ label: 'debtor_contacts (ผู้ติดต่อ)', count: debtorContacts })
+  if (promisesToPay > 0) found.push({ label: 'promises_to_pay (ผู้สร้าง)', count: promisesToPay })
+  if (recoveryPaymentsCreated > 0) found.push({ label: 'recovery_payments (ผู้สร้าง)', count: recoveryPaymentsCreated })
+  if (recoveryPaymentsCollected > 0) found.push({ label: 'recovery_payments (ผู้เก็บเงิน)', count: recoveryPaymentsCollected })
+  if (automationRules > 0) found.push({ label: 'automation_rules (ผู้สร้าง)', count: automationRules })
+  if (caseTemplates > 0) found.push({ label: 'case_templates (ผู้สร้าง, ไม่มี Prisma model)', count: caseTemplates })
 
   return found
+}
+
+/** True only when checkPurgeGuard() found blockers AND --force-guard was NOT
+ *  passed — the one condition under which main() must refuse to proceed.
+ *  Extracted as a pure function so the --force-guard behavior (both with and
+ *  without) has its own test, independent of process.argv/process.exit. */
+function shouldBlockPurge(blockers, forceGuard) {
+  return blockers.length > 0 && !forceGuard
 }
 
 async function purgeUser(db, userId) {
@@ -196,6 +254,16 @@ async function purgeUser(db, userId) {
     }),
   )
 
+  // The only 2 of the 14 FK gaps found in the 2026-09-09 wipe review that
+  // are actually nullable — every other one is a required (NOT NULL) column
+  // and is a checkPurgeGuard() blocker instead (see that function's comment).
+  await run('billing_invoices.approvedById cleared', () =>
+    db.billingInvoice.updateMany({ where: { approvedById: userId }, data: { approvedById: null } }),
+  )
+  await run('billing_payments.receivedById cleared', () =>
+    db.billingPayment.updateMany({ where: { receivedById: userId }, data: { receivedById: null } }),
+  )
+
   // employee_profiles/emergency_contacts/dependents/bank_accounts/
   // employment_assignments need no explicit handling here — as of migration
   // v900029 (Phase 1 closeout) they have a real FK + ON DELETE CASCADE, so
@@ -215,6 +283,33 @@ class DryRunAbort extends Error {
   constructor(counts) {
     super('dry-run-abort')
     this.counts = counts
+  }
+}
+
+/**
+ * Runs purgeUser() inside a single prisma.$transaction() and returns its
+ * per-table counts — used for BOTH --dry-run (rollback: true, always aborts
+ * via DryRunAbort so nothing is written) and the real run (rollback: false,
+ * lets the transaction commit). Real deletes used to run un-transacted,
+ * step by step — a FK error partway through (e.g. a future gap this
+ * script's guard doesn't yet know about) would leave the account
+ * half-deleted: some tables cleared, the `users` row still there. Wrapping
+ * the real path the same way dry-run already worked means any failure now
+ * rolls everything back atomically instead of leaving a half-purged account.
+ */
+async function purgeUserInTransaction(db, userId, { rollback }) {
+  if (!rollback) {
+    return db.$transaction((tx) => purgeUser(tx, userId))
+  }
+  try {
+    await db.$transaction(async (tx) => {
+      const counts = await purgeUser(tx, userId)
+      throw new DryRunAbort(counts)
+    })
+    throw new Error('unreachable: dry-run transaction did not abort')
+  } catch (e) {
+    if (e instanceof DryRunAbort) return e.counts
+    throw e
   }
 }
 
@@ -240,7 +335,7 @@ async function main() {
         : '✗ ปฏิเสธ — บัญชีนี้มีข้อมูลที่กู้คืนไม่ได้ สคริปต์นี้ใช้ลบได้เฉพาะบัญชีทดสอบเท่านั้น:',
     )
     for (const b of blockers) console.error(`  - ${b.label}: ${b.count} รายการ`)
-    if (!forceGuard) process.exit(1)
+    if (shouldBlockPurge(blockers, forceGuard)) process.exit(1)
   }
 
   if (dryRun) {
@@ -258,19 +353,12 @@ async function main() {
       employment_assignments: await prisma.employmentAssignment.count({ where: { userId: user.id } }),
     }
 
-    try {
-      await prisma.$transaction(async (tx) => {
-        const counts = await purgeUser(tx, user.id)
-        throw new DryRunAbort(counts)
-      })
-    } catch (e) {
-      if (!(e instanceof DryRunAbort)) throw e
-      console.log(`--dry-run: จะลบข้อมูลของ "${user.name}" (${user.email}) ดังนี้ (ไม่มีอะไรถูกลบจริง — transaction ถูก rollback):`)
-      const entries = Object.entries({ ...e.counts, ...cascadeCounts }).filter(([, v]) => v > 0)
-      if (entries.length === 0) console.log('  (ไม่มีข้อมูลผูกอยู่เลยนอกจากตัว user เอง)')
-      for (const [k, v] of entries) console.log(`  - ${k}: ${v}${Object.prototype.hasOwnProperty.call(cascadeCounts, k) ? ' (cascade อัตโนมัติ)' : ''}`)
-      console.log('รันจริง: npm run db:purge-user --', forceGuard ? '--force-guard ' : '', '--yes', user.id)
-    }
+    const counts = await purgeUserInTransaction(prisma, user.id, { rollback: true })
+    console.log(`--dry-run: จะลบข้อมูลของ "${user.name}" (${user.email}) ดังนี้ (ไม่มีอะไรถูกลบจริง — transaction ถูก rollback):`)
+    const entries = Object.entries({ ...counts, ...cascadeCounts }).filter(([, v]) => v > 0)
+    if (entries.length === 0) console.log('  (ไม่มีข้อมูลผูกอยู่เลยนอกจากตัว user เอง)')
+    for (const [k, v] of entries) console.log(`  - ${k}: ${v}${Object.prototype.hasOwnProperty.call(cascadeCounts, k) ? ' (cascade อัตโนมัติ)' : ''}`)
+    console.log('รันจริง: npm run db:purge-user --', forceGuard ? '--force-guard ' : '', '--yes', user.id)
     return
   }
 
@@ -285,7 +373,7 @@ async function main() {
   }
 
   console.log('กำลังลบ... (Turso อาจใช้เวลาสักครู่)')
-  const counts = await purgeUser(prisma, user.id)
+  const counts = await purgeUserInTransaction(prisma, user.id, { rollback: false })
   console.log('ลบสำเร็จ:')
   for (const [k, v] of Object.entries(counts)) {
     if (v > 0) console.log(' ', k + ':', v)
@@ -293,7 +381,7 @@ async function main() {
   console.log('✓ ลบ user แล้ว —', user.email)
 }
 
-export { checkPurgeGuard }
+export { checkPurgeGuard, purgeUser, purgeUserInTransaction, DryRunAbort, shouldBlockPurge }
 
 // Running as a script (not imported for its exports, e.g. by tests) — skip
 // `main()` on import so requiring this module never touches the DB or exits
