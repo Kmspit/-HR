@@ -534,6 +534,7 @@ model User {
   bankAccounts        BankAccount[]
   employmentAssignments EmploymentAssignment[]
   faceLogs            AttendanceFaceLog[]
+  faceScans           AttendanceFaceScan[]
   chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
   leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
   outsideWorkStepActions   OutsideWorkApprovalStep[] @relation("OutsideStepActor")
@@ -654,9 +655,9 @@ model UserFaceProfile {
 }
 
 // ── BIOMETRIC CONSENT (PDPA — ใบหน้า) ──
-// Append-only log, ไม่มี @relation ไปที่ User โดยตั้งใจ (เหมือน AttendanceFaceScan) —
-// ต้องเก็บหลักฐานการยินยอม/เพิกถอนไว้แม้บัญชี user จะถูกลบไปแล้วจริง (purge-user.mjs
-// ไม่แตะตารางนี้เลย ดูคอมเมนต์ใน purgeUser())
+// Append-only log, ไม่มี @relation ไปที่ User โดยตั้งใจ (ต่างจาก AttendanceFaceScan
+// ที่มี FK+CASCADE จริง) — ต้องเก็บหลักฐานการยินยอม/เพิกถอนไว้แม้บัญชี user จะถูกลบไปแล้วจริง
+// (purge-user.mjs ไม่แตะตารางนี้เลย ดูคอมเมนต์ใน purgeUser())
 model BiometricConsent {
   id             String   @id @default(cuid())
   userId         String
@@ -980,6 +981,8 @@ model AttendanceFaceScan {
   longitude          Float?
   deviceInfo         String?
   createdAt          DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, scanTime])
   @@index([employeeId, scanTime])

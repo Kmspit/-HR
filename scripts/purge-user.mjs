@@ -183,9 +183,9 @@ async function purgeUser(db, userId) {
   await run('attendance_face_logs', () =>
     db.attendanceFaceLog.deleteMany({ where: { userId } }),
   )
-  await run('attendance_face_scans', () =>
-    db.attendanceFaceScan.deleteMany({ where: { userId } }),
-  )
+  // attendance_face_scans needs no explicit delete here — v900035 gave it a
+  // real FK + ON DELETE CASCADE (same fix as the 5 Phase 1 tables below), so
+  // the users delete at the end of this function removes it automatically.
   await run('attendance_line_notify_logs', () =>
     db.attendanceLineNotifyLog.deleteMany({ where: { employeeUserId: userId } }),
   )
@@ -277,11 +277,13 @@ async function purgeUser(db, userId) {
   )
 
   // employee_profiles/emergency_contacts/dependents/bank_accounts/
-  // employment_assignments need no explicit handling here — as of migration
-  // v900029 (Phase 1 closeout) they have a real FK + ON DELETE CASCADE, so
-  // the users delete below removes them automatically. Before v900029 this
-  // script would have left every one of those behind as a permanent orphan
-  // (confirmed the hard way — see that migration's own commit message).
+  // employment_assignments/attendance_face_scans need no explicit handling
+  // here — as of migrations v900029 (Phase 1 closeout) and v900035
+  // (attendance_face_scans) they have a real FK + ON DELETE CASCADE, so the
+  // users delete below removes them automatically. Before those migrations
+  // this script would have left every one of those behind as a permanent
+  // orphan (confirmed the hard way — see each migration's own commit
+  // message).
   //
   // biometric_consents is intentionally absent from this function too — see
   // the long comment on checkPurgeGuard() above. It has no FK to users.id,
@@ -356,18 +358,20 @@ async function main() {
   }
 
   if (dryRun) {
-    // These 5 (Phase 1) tables need no explicit delete call in purgeUser()
-    // any more — v900029 made them real ON DELETE CASCADE — so they never
-    // appear in its `counts` object even though the real run does remove
-    // them (silently, via the DB's own FK trigger the instant `users` is
-    // deleted). Queried here purely so --dry-run's report is a complete
-    // picture, not because the real deletion path needs them.
+    // These tables need no explicit delete call in purgeUser() any more —
+    // v900029 (the 5 Phase 1 tables) and v900035 (attendance_face_scans)
+    // made them real ON DELETE CASCADE — so they never appear in its
+    // `counts` object even though the real run does remove them (silently,
+    // via the DB's own FK trigger the instant `users` is deleted). Queried
+    // here purely so --dry-run's report is a complete picture, not because
+    // the real deletion path needs them.
     const cascadeCounts = {
       employee_profiles: await prisma.employeeProfile.count({ where: { userId: user.id } }),
       emergency_contacts: await prisma.emergencyContact.count({ where: { userId: user.id } }),
       dependents: await prisma.dependent.count({ where: { userId: user.id } }),
       bank_accounts: await prisma.bankAccount.count({ where: { userId: user.id } }),
       employment_assignments: await prisma.employmentAssignment.count({ where: { userId: user.id } }),
+      attendance_face_scans: await prisma.attendanceFaceScan.count({ where: { userId: user.id } }),
     }
 
     const counts = await purgeUserInTransaction(prisma, user.id, { rollback: true })

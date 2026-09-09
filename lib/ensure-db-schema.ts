@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900034
+export const CURRENT_SCHEMA_VERSION = 900035
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2237,9 +2237,11 @@ async function runEnsure(force = false): Promise<boolean> {
   }
 
   // v900034 — biometric consent (PDPA) log for face-recognition data. Append-only,
-  // no FK to users (mirrors attendance_face_scans) — must survive purge-user.mjs
-  // hard-deletes as compliance evidence. createdAt DESC per userId is the read
-  // pattern (lib/biometric-consent.ts's getLatestConsentAction()).
+  // no FK to users (deliberately, unlike attendance_face_scans below which DOES
+  // get one in v900035 — this table's whole point is to survive a user's hard
+  // deletion as compliance evidence, so it must NOT cascade-delete with them).
+  // createdAt DESC per userId is the read pattern (lib/biometric-consent.ts's
+  // getLatestConsentAction()).
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS biometric_consents (
       id TEXT NOT NULL PRIMARY KEY,
@@ -2258,6 +2260,126 @@ async function runEnsure(force = false): Promise<boolean> {
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS biometric_consents_user_created_idx ON biometric_consents (userId, createdAt)
   `)
+
+  // v900035 — retrofit real FK + ON DELETE CASCADE onto attendance_face_scans.
+  // userId, same class of gap as the 5 Phase 1 tables fixed in v900029
+  // (schema.prisma always declared this relation but the raw CREATE TABLE
+  // here never included a FOREIGN KEY clause — confirmed via
+  // PRAGMA foreign_key_list, 0 constraints despite `onDelete: Cascade`).
+  // Chosen as CASCADE (not SetNull, unlike login_attempts/security_events
+  // above): a face scan image with no known owner is meaningless — unlike an
+  // audit log, which is still useful institutional history even once its
+  // actor is gone — so once the user it belongs to is deleted, the scan row
+  // should go with it, not survive as an orphaned biometric image nobody can
+  // ever attribute again.
+  //
+  // SQLite can't ALTER a table to add a FK in place, so — same as v900029 —
+  // this rebuilds the table (data copied and row-count-verified before the
+  // old one is dropped), guarded by checking whether the FK already exists
+  // so a re-run after a successful pass is a no-op.
+  //
+  // Orphan handling: a live check (2026-09-09) found 5 of 46 existing rows
+  // whose userId no longer resolves to any users row (pre-dating the
+  // purge-user.mjs FK-gap hardening earlier this session) — a straight copy
+  // into the new FK-constrained table would fail on every one of them. Those
+  // 5 rows are deleted first, logged by id, before the rebuild — the same
+  // "orphan predates this fix" situation v900029's commit message describes
+  // for employment_assignments, just handled inside the migration itself
+  // here instead of as a separate manual pre-step.
+  {
+    const table = 'attendance_face_scans'
+    const fkRows = await prisma.$queryRawUnsafe<{ from: string }[]>(`PRAGMA foreign_key_list(${table})`)
+    const hasFk = fkRows.some((r) => r.from === 'userId')
+    if (hasFk) {
+      console.log(`[MIGRATION v900035] "${table}" already has FK, skipping rebuild`)
+    } else {
+      const orphans = await prisma.$queryRawUnsafe<{ id: string }[]>(`
+        SELECT id FROM ${table}
+        WHERE NOT EXISTS (SELECT 1 FROM users WHERE users.id = ${table}.userId)
+      `)
+      if (orphans.length > 0) {
+        console.log(
+          `[MIGRATION v900035] deleting ${orphans.length} orphaned "${table}" row(s) (userId no longer exists) before adding FK: ${orphans.map((o) => o.id).join(', ')}`,
+        )
+        await prisma.$executeRawUnsafe(`
+          DELETE FROM ${table}
+          WHERE NOT EXISTS (SELECT 1 FROM users WHERE users.id = ${table}.userId)
+        `)
+      }
+
+      const columns =
+        'id, userId, attendanceId, faceLogId, scanType, scanTime, confidenceScore, matchScore, ' +
+        'livenessScore, matched, imageMime, imageData, locationName, address, lat, lng, deviceInfo, ' +
+        'createdAt, storageProvider, objectKey, employeeId, companyId, branchId, cloudinaryPublicId, ' +
+        'imageUrl, secureUrl, format, fileSize, width, height, faceMatched, location, latitude, longitude'
+      const createExtra = `
+        id TEXT NOT NULL PRIMARY KEY,
+        userId TEXT NOT NULL,
+        attendanceId TEXT,
+        faceLogId TEXT,
+        scanType TEXT NOT NULL,
+        scanTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        confidenceScore REAL,
+        matchScore REAL,
+        livenessScore REAL,
+        matched INTEGER NOT NULL DEFAULT 1,
+        imageMime TEXT NOT NULL DEFAULT 'image/jpeg',
+        imageData TEXT NOT NULL,
+        locationName TEXT,
+        address TEXT,
+        lat REAL,
+        lng REAL,
+        deviceInfo TEXT,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        storageProvider TEXT NOT NULL DEFAULT 'db',
+        objectKey TEXT,
+        employeeId TEXT,
+        companyId TEXT,
+        branchId TEXT,
+        cloudinaryPublicId TEXT,
+        imageUrl TEXT,
+        secureUrl TEXT,
+        format TEXT,
+        fileSize INTEGER,
+        width INTEGER,
+        height INTEGER,
+        faceMatched INTEGER NOT NULL DEFAULT 1,
+        location TEXT,
+        latitude REAL,
+        longitude REAL,
+        FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
+      `
+
+      const tmpTable = `${table}_v900035`
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${tmpTable}`)
+      await prisma.$executeRawUnsafe(`CREATE TABLE ${tmpTable} (${createExtra})`)
+      await prisma.$executeRawUnsafe(`INSERT INTO ${tmpTable} (${columns}) SELECT ${columns} FROM ${table}`)
+
+      const oldCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM ${table}`)
+      const newCount = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(`SELECT COUNT(*) AS cnt FROM ${tmpTable}`)
+      if (Number(oldCount[0]?.cnt ?? 0) !== Number(newCount[0]?.cnt ?? -1)) {
+        throw new Error(
+          `[MIGRATION v900035 ABORT] row count mismatch after copy for "${table}" (old=${oldCount[0]?.cnt}, new=${newCount[0]?.cnt}) — refusing to drop`,
+        )
+      }
+
+      await prisma.$executeRawUnsafe(`DROP TABLE ${table}`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE ${tmpTable} RENAME TO ${table}`)
+      console.log(`[MIGRATION v900035] Rebuilt "${table}" with FK + ON DELETE CASCADE (${newCount[0]?.cnt} row(s) preserved)`)
+
+      // Recreate the indexes DROP TABLE also dropped — same names/definitions
+      // as where this table was first created above.
+      await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS attendance_face_scans_user_time_idx ON attendance_face_scans (userId, scanTime)
+      `)
+      await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS attendance_face_scans_type_time_idx ON attendance_face_scans (scanType, scanTime)
+      `)
+      await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS attendance_face_scans_attendance_idx ON attendance_face_scans (attendanceId)
+      `)
+    }
+  }
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
