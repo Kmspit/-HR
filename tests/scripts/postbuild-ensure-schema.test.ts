@@ -1,48 +1,41 @@
 import { describe, it, expect } from 'vitest'
 import { shouldRunSchemaSync } from '@/scripts/postbuild-ensure-schema'
 
-describe('shouldRunSchemaSync — explicit opt-in gate for the postbuild schema sync', () => {
-  it('returns false when ALLOW_PROD_SCHEMA_APPLY is missing entirely', () => {
+describe('shouldRunSchemaSync — auto-detects the main branch via VERCEL_GIT_COMMIT_REF', () => {
+  it('returns false when VERCEL_GIT_COMMIT_REF is missing entirely', () => {
     expect(shouldRunSchemaSync({})).toBe(false)
   })
 
   it('returns false when the value is an empty string', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: '' })).toBe(false)
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: '' })).toBe(false)
   })
 
-  it('returns false for "false"', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'false' })).toBe(false)
+  it('returns false for a different branch name', () => {
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'feature/biometric-consent' })).toBe(false)
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'test/prep-wipe-purge-script' })).toBe(false)
   })
 
-  it('returns false for "1" (not the exact string "true")', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: '1' })).toBe(false)
+  it('returns false for "Main" / "MAIN" (wrong case — comparison is case-sensitive)', () => {
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'Main' })).toBe(false)
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'MAIN' })).toBe(false)
   })
 
-  it('returns false for "TRUE" (wrong case — comparison is case-sensitive)', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'TRUE' })).toBe(false)
+  it('returns false for " main" / "main " (whitespace — not an exact match)', () => {
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: ' main' })).toBe(false)
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'main ' })).toBe(false)
   })
 
-  it('returns false for "True" (wrong case)', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'True' })).toBe(false)
-  })
-
-  it('returns false for " true" / "true " (whitespace — not an exact match)', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: ' true' })).toBe(false)
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'true ' })).toBe(false)
-  })
-
-  it('returns false for any unrelated truthy-looking value ("yes", "on")', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'yes' })).toBe(false)
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'on' })).toBe(false)
+  it('returns false for a ref-style value ("refs/heads/main"), only the bare branch name counts', () => {
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'refs/heads/main' })).toBe(false)
   })
 
   it('never keys off VERCEL_ENV — present or absent, it has no effect', () => {
     expect(shouldRunSchemaSync({ VERCEL_ENV: 'production' })).toBe(false)
     expect(shouldRunSchemaSync({ VERCEL_ENV: 'preview' })).toBe(false)
-    expect(shouldRunSchemaSync({ VERCEL_ENV: 'production', ALLOW_PROD_SCHEMA_APPLY: 'true' })).toBe(true)
+    expect(shouldRunSchemaSync({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' })).toBe(true)
   })
 
-  it('returns true only for the exact string "true"', () => {
-    expect(shouldRunSchemaSync({ ALLOW_PROD_SCHEMA_APPLY: 'true' })).toBe(true)
+  it('returns true only for the exact string "main"', () => {
+    expect(shouldRunSchemaSync({ VERCEL_GIT_COMMIT_REF: 'main' })).toBe(true)
   })
 })
