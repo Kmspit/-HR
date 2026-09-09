@@ -11,6 +11,7 @@ import {
 import { countRecentFaceMismatches, notifyFaceSecurityAlert } from '@/lib/face-security'
 import { hasCriticalSpoofFlags, parseSpoofFlags } from '@/lib/face-liveness'
 import { rateLimit } from '@/lib/rate-limit'
+import { hasValidFaceConsent } from '@/lib/biometric-consent'
 
 /** Rolling-window throttle against rapid/scripted verify attempts — independent of
  *  the client-side MAX_RETRIES/COOLDOWN_MS, which only lives in React state and is
@@ -60,6 +61,20 @@ export function isAttendanceFaceAction(action: string): action is AttendanceFace
 export async function userHasFaceProfile(userId: string): Promise<boolean> {
   const p = await prisma.userFaceProfile.findUnique({ where: { userId }, select: { id: true } })
   return !!p
+}
+
+/** The real gate to use before forcing method='face': a profile alone is not enough —
+ *  consent must also still be valid (not revoked, and not past the legacy grace period
+ *  with no consent recorded at all). When this is false, callers must accept
+ *  method='manual' instead of rejecting with FACE_REQUIRED — see
+ *  lib/face-checkin-guard.ts and the method==='manual' branch below. */
+export async function shouldRequireFaceVerification(userId: string): Promise<boolean> {
+  const profile = await prisma.userFaceProfile.findUnique({
+    where: { userId },
+    select: { registeredAt: true },
+  })
+  if (!profile) return false
+  return hasValidFaceConsent(userId, profile.registeredAt)
 }
 
 export async function getFaceRegistrationStatus(userId: string) {
@@ -212,8 +227,8 @@ export async function verifyFaceForAttendance(input: FaceVerifyInput) {
   } = input
 
   if (method === 'manual') {
-    const hasProfile = await userHasFaceProfile(userId)
-    if (hasProfile) {
+    const faceRequired = await shouldRequireFaceVerification(userId)
+    if (faceRequired) {
       const log = await logFaceEvent({
         userId,
         action,

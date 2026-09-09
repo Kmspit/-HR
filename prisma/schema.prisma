@@ -653,6 +653,27 @@ model UserFaceProfile {
   @@map("user_face_profiles")
 }
 
+// ── BIOMETRIC CONSENT (PDPA — ใบหน้า) ──
+// Append-only log, ไม่มี @relation ไปที่ User โดยตั้งใจ (เหมือน AttendanceFaceScan) —
+// ต้องเก็บหลักฐานการยินยอม/เพิกถอนไว้แม้บัญชี user จะถูกลบไปแล้วจริง (purge-user.mjs
+// ไม่แตะตารางนี้เลย ดูคอมเมนต์ใน purgeUser())
+model BiometricConsent {
+  id             String   @id @default(cuid())
+  userId         String
+  action         String // 'GRANTED' | 'REVOKED'
+  consentVersion String
+  consentText    String // snapshot ข้อความเต็ม ณ เวลานั้น ไม่ใช่ pointer ไปข้อความที่แก้ได้ทีหลัง
+  method         String // 'CHECKBOX' | 'DIGITAL_SIGNATURE' — เก็บเป็น String ไว้ก่อนเผื่อขยายภายหลัง
+  scrolledToEnd  Boolean  @default(false)
+  ipAddress      String?
+  userAgent      String?
+  deviceKey      String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("biometric_consents")
+}
+
 /// Phase 1 — เพิ่มเติมจาก User.address / User.addressIdCard (ยังคงอยู่เป็น cache
 /// สำหรับของเดิมที่ยังอ่านอยู่ ดู grep sweep ใน PR นี้) ด้วยที่อยู่แบบแยกฟิลด์
 /// สำหรับใช้งานจริง (เอกสารราชการ/ประกันสังคม) รวมถึงข้อมูลส่วนตัวเพิ่มเติมที่

@@ -4,9 +4,12 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation, ScanFace } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
 import CheckInPanel, { type CompanyGeofence } from '@/components/attendance/CheckInPanel'
 import FaceRegistrationCard from '@/components/attendance/FaceRegistrationCard'
-import { apiJson } from '@/lib/client-api'
+import BiometricConsentModal from '@/components/attendance/BiometricConsentModal'
+import { BIOMETRIC_CONSENT_TEXT } from '@/lib/biometric-consent-text'
+import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import RealtimeClock from '@/components/dashboard/RealtimeClock'
 import AttendanceTimeline from '@/components/dashboard/AttendanceTimeline'
 import AttendancePhotos from '@/components/dashboard/AttendancePhotos'
@@ -138,11 +141,44 @@ export default function AttendanceClient({
   const [justCompleted, setJustCompleted] = useState(false)
   const blockCheckIn = isPending || justCompleted
 
+  type ConsentStatus = {
+    latestAction: 'GRANTED' | 'REVOKED' | null
+    gracePeriod: { active: boolean; daysRemaining: number }
+  }
+  const [consentStatus, setConsentStatus] = useState<ConsentStatus | null>(null)
+  const [showConsentModal, setShowConsentModal] = useState(false)
+  const [consentSubmitting, setConsentSubmitting] = useState(false)
+  const consentGranted = consentStatus?.latestAction === 'GRANTED'
+
   useEffect(() => {
     apiJson<{ registered?: boolean }>('/api/face/status').then(({ ok, data }) => {
       if (ok && data.registered) setFaceRegistered(true)
     })
+    apiJson<ConsentStatus>('/api/biometric-consent').then(({ ok, data }) => {
+      if (ok) setConsentStatus(data)
+    })
   }, [refreshKey])
+
+  const submitConsent = async (action: 'GRANTED' | 'REVOKED') => {
+    setConsentSubmitting(true)
+    const { ok, data, status } = await apiJson('/api/biometric-consent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        method: 'CHECKBOX',
+        consentText: BIOMETRIC_CONSENT_TEXT,
+        scrolledToEnd: action === 'GRANTED',
+      }),
+    })
+    setConsentSubmitting(false)
+    if (!ok) {
+      toast.error(apiErrorMessage(data, 'บันทึกความยินยอมไม่สำเร็จ', status))
+      return
+    }
+    setShowConsentModal(false)
+    setRefreshKey((k) => k + 1)
+  }
 
   useEffect(() => {
     if (!isPending) setJustCompleted(false)
@@ -553,17 +589,55 @@ export default function AttendanceClient({
           )}
 
 
-          {(!faceRegistered || showFaceUpdate) && (
-            <FaceRegistrationCard
-              allowUpdate={faceRegistered}
-              onRegistered={() => {
-                setFaceRegistered(true)
-                setShowFaceUpdate(false)
-                setRefreshKey((k) => k + 1)
-              }}
-              onCancelUpdate={() => setShowFaceUpdate(false)}
-            />
+          {consentStatus?.gracePeriod.active && (
+            <div className="glass-card rounded-2xl p-4 border border-amber-500/30 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs dark:text-amber-300 light:text-amber-700">
+                กรุณายืนยันความยินยอมเก็บข้อมูลใบหน้า — เหลือเวลาอีก {consentStatus.gracePeriod.daysRemaining} วัน
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowConsentModal(true)}
+                className="text-xs font-semibold text-amber-400 hover:text-amber-300 underline flex-shrink-0"
+              >
+                ยืนยันตอนนี้
+              </button>
+            </div>
           )}
+
+          {(!faceRegistered || showFaceUpdate) && (
+            consentGranted ? (
+              <FaceRegistrationCard
+                allowUpdate={faceRegistered}
+                onRegistered={() => {
+                  setFaceRegistered(true)
+                  setShowFaceUpdate(false)
+                  setRefreshKey((k) => k + 1)
+                }}
+                onCancelUpdate={() => setShowFaceUpdate(false)}
+              />
+            ) : (
+              <div className="glass-card rounded-2xl p-4 md:p-5 border dark:border-green-500/25 light:border-green-200 space-y-3">
+                <p className="text-sm dark:text-slate-300 light:text-slate-700">
+                  ต้องยินยอมให้เก็บข้อมูลชีวมิติ (ใบหน้า) ก่อนลงทะเบียนสแกนใบหน้า
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowConsentModal(true)}
+                  className="btn-primary w-full py-2.5"
+                >
+                  อ่านและยินยอม
+                </button>
+              </div>
+            )
+          )}
+
+          <BiometricConsentModal
+            open={showConsentModal}
+            consentText={BIOMETRIC_CONSENT_TEXT}
+            submitting={consentSubmitting}
+            onAccept={() => void submitConsent('GRANTED')}
+            onDecline={() => void submitConsent('REVOKED')}
+          />
 
           {faceRegistered && !showFaceUpdate && (
             <div className="flex flex-wrap items-center gap-2 px-1">
