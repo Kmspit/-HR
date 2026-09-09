@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Clock, MapPin, Users, Calendar, CheckCircle, Building2, Navigation, ScanFace } from 'lucide-react'
+import { Clock, MapPin, Users, Calendar, Building2, Navigation, ScanFace } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import CheckInPanel, { type CompanyGeofence } from '@/components/attendance/CheckInPanel'
