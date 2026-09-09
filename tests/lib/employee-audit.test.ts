@@ -63,10 +63,11 @@ describe('snapshotEmployeeForAudit', () => {
     const expectedKeys = [
       'email', 'phone', 'name', 'nameEn', 'nickname', 'prefix', 'address',
       'addressIdCard', 'birthDate', 'nationalId', 'lineId', 'role', 'status',
-      'startDate', 'department', 'position', 'employeeType', 'managerId',
+      'startDate', 'department', 'position', 'jobLevel', 'socialSecurityNumber',
+      'employeeType', 'managerId',
       'teamLeaderId', 'baseSalary', 'socialSecurity', 'isCoworker',
       'divisionId', 'sectionId',
-      'nationality', 'maritalStatus', 'personalEmail',
+      'nationality', 'maritalStatus', 'personalEmail', 'religion', 'paymentMethod',
       'currentHouseNo', 'currentMoo', 'currentSoi', 'currentRoad',
       'currentTambon', 'currentAmphoe', 'currentProvince', 'currentPostalCode',
       'sameAsCurrentAddress',

@@ -13,6 +13,7 @@ import {
 } from '@/lib/employee-profile-validation'
 import { copyAddressIfSame, type RegisterAddress } from '@/lib/register-form-validation'
 import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
+import type { PaymentMethod } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
@@ -22,6 +23,8 @@ const PROFILE_SELECT = {
   nationality: true,
   maritalStatus: true,
   personalEmail: true,
+  religion: true,
+  paymentMethod: true,
   currentHouseNo: true,
   currentMoo: true,
   currentSoi: true,
@@ -52,6 +55,8 @@ function emptyProfileResponse(): EmployeeProfileForm {
     nationality: '',
     maritalStatus: '',
     personalEmail: '',
+    religion: '',
+    paymentMethod: '',
     currentAddress: { ...emptyAddress },
     registeredAddress: { ...emptyAddress },
     sameAsCurrentAddress: false,
@@ -79,6 +84,8 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
         nationality: profile.nationality ?? '',
         maritalStatus: profile.maritalStatus ?? '',
         personalEmail: profile.personalEmail ?? '',
+        religion: profile.religion ?? '',
+        paymentMethod: profile.paymentMethod ?? '',
         currentAddress: {
           houseNo: profile.currentHouseNo ?? '',
           moo: profile.currentMoo ?? '',
@@ -140,6 +147,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const effectiveRegistered = copyAddressIfSame(form.currentAddress, form.registeredAddress, form.sameAsCurrentAddress)
 
     const trimOrNull = (v: string) => v.trim() || null
+    // Already validated by validateEmployeeProfile() above (isValidPaymentMethod) —
+    // blank stays null, anything else is a known-good enum value at this point.
+    const paymentMethod = (form.paymentMethod.trim() || null) as PaymentMethod | null
 
     await prisma.$transaction([
       prisma.employeeProfile.upsert({
@@ -149,6 +159,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           nationality: trimOrNull(form.nationality),
           maritalStatus: trimOrNull(form.maritalStatus),
           personalEmail,
+          religion: trimOrNull(form.religion),
+          paymentMethod,
           currentHouseNo: trimOrNull(form.currentAddress.houseNo),
           currentMoo: trimOrNull(form.currentAddress.moo),
           currentSoi: trimOrNull(form.currentAddress.soi),
@@ -171,6 +183,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           nationality: trimOrNull(form.nationality),
           maritalStatus: trimOrNull(form.maritalStatus),
           personalEmail,
+          religion: trimOrNull(form.religion),
+          paymentMethod,
           currentHouseNo: trimOrNull(form.currentAddress.houseNo),
           currentMoo: trimOrNull(form.currentAddress.moo),
           currentSoi: trimOrNull(form.currentAddress.soi),

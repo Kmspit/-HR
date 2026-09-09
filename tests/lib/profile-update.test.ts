@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   isBlankProtectedField,
   PROTECTED_CLEAR_FIELDS,
+  SELF_PROFILE_FORBIDDEN,
   parseSelfProfileInput,
   isReasonableBirthDate,
   MIN_EMPLOYEE_AGE,
@@ -43,6 +44,13 @@ describe('PROTECTED_CLEAR_FIELDS / isBlankProtectedField', () => {
   it('is false for a protected field with a real value', () => {
     expect(isBlankProtectedField('nationalId', '1234567890123')).toBe(false)
     expect(isBlankProtectedField('startDate', '2024-01-15')).toBe(false)
+  })
+})
+
+describe('SELF_PROFILE_FORBIDDEN — employee-fields batch 1 (2026-09-09)', () => {
+  it('declares jobLevel and socialSecurityNumber as HR-only, not self-editable', () => {
+    expect(SELF_PROFILE_FORBIDDEN.has('jobLevel')).toBe(true)
+    expect(SELF_PROFILE_FORBIDDEN.has('socialSecurityNumber')).toBe(true)
   })
 })
 

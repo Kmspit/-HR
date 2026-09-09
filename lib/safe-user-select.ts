@@ -15,8 +15,10 @@ export const SAFE_USER_SELECT = {
   teamLeaderId: true,
   department: true,
   position: true,
+  jobLevel: true,
   baseSalary: true,
   socialSecurity: true,
+  socialSecurityNumber: true,
   isCoworker: true,
   startDate: true,
   phone: true,
@@ -41,7 +43,8 @@ export const SAFE_USER_SELECT_WITH_NATIONAL_ID = {
   nationalId: true,
 } as const
 
-/** Redacted select for MANAGER (no nationalId / baseSalary / addressIdCard). */
+/** Redacted select for MANAGER (no nationalId / baseSalary / addressIdCard /
+ *  socialSecurityNumber). */
 export const MANAGER_USER_SELECT = {
   id: true,
   name: true,
@@ -54,6 +57,7 @@ export const MANAGER_USER_SELECT = {
   teamLeaderId: true,
   department: true,
   position: true,
+  jobLevel: true,
   socialSecurity: true,
   isCoworker: true,
   startDate: true,

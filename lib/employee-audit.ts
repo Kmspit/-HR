@@ -2,6 +2,7 @@ import { maskNationalId, nationalIdFingerprint } from '@/lib/national-id'
 import { createAuditLog } from '@/lib/notifications'
 import { ROLE_LABELS } from '@/lib/access-control'
 import { USER_STATUS_LABEL } from '@/lib/status-labels'
+import { paymentMethodLabel } from '@/lib/payment-method'
 import type { Role } from '@prisma/client'
 
 /**
@@ -24,6 +25,8 @@ const EMPLOYEE_PROFILE_AUDIT_SELECT = {
   nationality: true,
   maritalStatus: true,
   personalEmail: true,
+  religion: true,
+  paymentMethod: true,
   currentHouseNo: true,
   currentMoo: true,
   currentSoi: true,
@@ -60,6 +63,8 @@ export const EMPLOYEE_AUDIT_SELECT = {
   startDate: true,
   department: true,
   position: true,
+  jobLevel: true,
+  socialSecurityNumber: true,
   employeeType: true,
   managerId: true,
   teamLeaderId: true,
@@ -75,6 +80,8 @@ type EmployeeProfileAuditRow = {
   nationality: string | null
   maritalStatus: string | null
   personalEmail: string | null
+  religion: string | null
+  paymentMethod: string | null
   currentHouseNo: string | null
   currentMoo: string | null
   currentSoi: string | null
@@ -111,6 +118,8 @@ type EmployeeAuditRow = {
   startDate: Date | null
   department: string | null
   position: string | null
+  jobLevel: string | null
+  socialSecurityNumber: string | null
   employeeType: string | null
   managerId: string | null
   teamLeaderId: string | null
@@ -161,6 +170,14 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     startDate: u.startDate?.toISOString().slice(0, 10) ?? null,
     department: u.department,
     position: u.position,
+    jobLevel: u.jobLevel,
+    // Plaintext, deliberately not masked (like baseSalary below) — this is
+    // an HR-edit-only field with no self-service surface, so the concern
+    // maskNationalId()/nationalIdFingerprint() exist for (an employee's own
+    // edit accidentally leaking their ID into a widely-viewed audit trail)
+    // doesn't apply the same way here. Revisit if this ever needs the same
+    // treatment as nationalId.
+    socialSecurityNumber: u.socialSecurityNumber,
     employeeType: u.employeeType,
     managerId: u.managerId,
     teamLeaderId: u.teamLeaderId,
@@ -177,6 +194,8 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     nationality: u.employeeProfile?.nationality ?? null,
     maritalStatus: u.employeeProfile?.maritalStatus ?? null,
     personalEmail: u.employeeProfile?.personalEmail ?? null,
+    religion: u.employeeProfile?.religion ?? null,
+    paymentMethod: u.employeeProfile?.paymentMethod ?? null,
     currentHouseNo: u.employeeProfile?.currentHouseNo ?? null,
     currentMoo: u.employeeProfile?.currentMoo ?? null,
     currentSoi: u.employeeProfile?.currentSoi ?? null,
@@ -246,6 +265,8 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   startDate: 'วันที่เริ่มงาน',
   department: 'แผนก',
   position: 'ตำแหน่ง',
+  jobLevel: 'ระดับตำแหน่ง',
+  socialSecurityNumber: 'เลขที่ประกันสังคม',
   employeeType: 'ประเภทพนักงาน',
   managerId: 'ผู้จัดการ',
   teamLeaderId: 'หัวหน้าทีม',
@@ -257,6 +278,8 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   nationality: 'สัญชาติ',
   maritalStatus: 'สถานภาพสมรส',
   personalEmail: 'อีเมลส่วนตัว',
+  religion: 'ศาสนา',
+  paymentMethod: 'วิธีจ่ายเงิน',
   currentHouseNo: 'บ้านเลขที่ (ที่อยู่ปัจจุบัน)',
   currentMoo: 'หมู่ (ที่อยู่ปัจจุบัน)',
   currentSoi: 'ซอย (ที่อยู่ปัจจุบัน)',
@@ -322,6 +345,7 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
     return v.masked
   }
   if (key === 'baseSalary') return currencyFmt(val as number)
+  if (key === 'paymentMethod') return paymentMethodLabel(val as string)
   if (key === 'role') return ROLE_LABELS[val as Role] ?? String(val)
   if (key === 'status') return USER_STATUS_LABEL[val as string] ?? String(val)
   if ((ID_REFERENCE_FIELDS as readonly string[]).includes(key)) {

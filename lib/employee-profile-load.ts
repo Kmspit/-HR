@@ -12,6 +12,8 @@ export type EmployeeProfileLoadData = {
   nationality: string
   maritalStatus: string
   personalEmail: string
+  religion: string
+  paymentMethod: string
   currentAddress: RegisterAddress
   registeredAddress: RegisterAddress
   sameAsCurrentAddress: boolean

@@ -84,6 +84,7 @@ async function main() {
       email: employee.email, phone: null, name: employee.name, nameEn: null, nickname: null, prefix: null,
       address: null, addressIdCard: null, birthDate: null, nationalId: null, lineId: null,
       role: 'EMPLOYEE', status: 'ACTIVE', startDate: null, department: null, position: 'Junior',
+      jobLevel: null, socialSecurityNumber: null,
       employeeType: null, managerId: manager.id, teamLeaderId: null, baseSalary: SALARY,
       socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null, employeeProfile: null,
     })

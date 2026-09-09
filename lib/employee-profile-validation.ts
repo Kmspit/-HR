@@ -1,5 +1,6 @@
 import { isValidEmailInput } from '@/lib/profile-validators-client'
 import { validateRegisterAddress, type RegisterAddress, type RegisterAddressErrors } from '@/lib/register-form-validation'
+import { isValidPaymentMethod } from '@/lib/payment-method'
 
 /**
  * Pure validation for the HR employee-edit "ข้อมูลส่วนตัวเพิ่มเติม" tab
@@ -20,6 +21,8 @@ export type EmployeeProfileForm = {
   nationality: string
   maritalStatus: string
   personalEmail: string
+  religion: string
+  paymentMethod: string
   currentAddress: RegisterAddress
   registeredAddress: RegisterAddress
   sameAsCurrentAddress: boolean
@@ -27,6 +30,7 @@ export type EmployeeProfileForm = {
 
 export type EmployeeProfileErrors = {
   personalEmail?: string
+  paymentMethod?: string
   currentAddress: RegisterAddressErrors
   registeredAddress: RegisterAddressErrors
 }
@@ -35,14 +39,21 @@ export function isAddressBlank(address: RegisterAddress): boolean {
   return Object.values(address).every((v) => !v.trim())
 }
 
-/** nationality/maritalStatus are free-choice with no format constraint (the
- *  register wizard treats them the same way — see app/api/register/route.ts's
- *  z.string().optional()) — nothing to validate beyond leaving them alone. */
+/** nationality/maritalStatus/religion are free-choice with no format
+ *  constraint (the register wizard treats them the same way — see
+ *  app/api/register/route.ts's z.string().optional()) — nothing to validate
+ *  beyond leaving them alone. paymentMethod is the one exception: it's a
+ *  closed set (the PaymentMethod enum), so an unrecognized value (a stale
+ *  client, a hand-crafted request) is rejected rather than silently stored. */
 export function validateEmployeeProfile(form: EmployeeProfileForm): EmployeeProfileErrors {
   const errors: EmployeeProfileErrors = { currentAddress: {}, registeredAddress: {} }
 
   if (form.personalEmail.trim() && !isValidEmailInput(form.personalEmail)) {
     errors.personalEmail = 'รูปแบบอีเมลไม่ถูกต้อง'
+  }
+
+  if (form.paymentMethod.trim() && !isValidPaymentMethod(form.paymentMethod)) {
+    errors.paymentMethod = 'วิธีจ่ายเงินไม่ถูกต้อง'
   }
 
   if (!isAddressBlank(form.currentAddress)) {
@@ -59,6 +70,7 @@ export function validateEmployeeProfile(form: EmployeeProfileForm): EmployeeProf
 export function employeeProfileHasErrors(errors: EmployeeProfileErrors): boolean {
   return (
     Boolean(errors.personalEmail) ||
+    Boolean(errors.paymentMethod) ||
     Object.keys(errors.currentAddress).length > 0 ||
     Object.keys(errors.registeredAddress).length > 0
   )
@@ -70,6 +82,7 @@ export function employeeProfileHasErrors(errors: EmployeeProfileErrors): boolean
  *  message. Same convention as app/api/register/route.ts's zodFirstError. */
 export function firstEmployeeProfileError(errors: EmployeeProfileErrors): string {
   if (errors.personalEmail) return errors.personalEmail
+  if (errors.paymentMethod) return errors.paymentMethod
   const first = Object.values(errors.currentAddress)[0] ?? Object.values(errors.registeredAddress)[0]
   return first ?? 'ข้อมูลไม่ถูกต้อง'
 }
@@ -101,6 +114,8 @@ export function coerceEmployeeProfileForm(body: unknown): EmployeeProfileForm {
     nationality: typeof o.nationality === 'string' ? o.nationality : '',
     maritalStatus: typeof o.maritalStatus === 'string' ? o.maritalStatus : '',
     personalEmail: typeof o.personalEmail === 'string' ? o.personalEmail : '',
+    religion: typeof o.religion === 'string' ? o.religion : '',
+    paymentMethod: typeof o.paymentMethod === 'string' ? o.paymentMethod : '',
     currentAddress: coerceAddress(o.currentAddress),
     registeredAddress: coerceAddress(o.registeredAddress),
     sameAsCurrentAddress: o.sameAsCurrentAddress === true,

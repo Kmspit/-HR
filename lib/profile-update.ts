@@ -15,6 +15,8 @@ export const SELF_PROFILE_FORBIDDEN = new Set([
   'socialSecurity',
   'isCoworker',
   'startDate',
+  'jobLevel',
+  'socialSecurityNumber',
   'lineUserId',
   'lineDisplayName',
   'password',

@@ -48,6 +48,8 @@ export type RegisterFormDraftFields = {
   nationalId: string
   nationality: string
   maritalStatus: string
+  religion: string
+  paymentMethod: string
   role: string
   branchId: string
   socialSecurity: boolean
