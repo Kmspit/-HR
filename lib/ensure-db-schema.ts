@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900033
+export const CURRENT_SCHEMA_VERSION = 900034
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -39,7 +39,7 @@ export const ALL_MAPPED_TABLES = [
   'case_debtor_activities', 'automation_rules', 'automation_execution_logs', 'recovery_payments',
   'case_financials', 'court_events', 'schema_migrations', 'employee_profiles',
   'emergency_contacts', 'dependents', 'bank_accounts', 'job_positions',
-  'employment_assignments',
+  'employment_assignments', 'biometric_consents',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -2235,6 +2235,29 @@ async function runEnsure(force = false): Promise<boolean> {
       create: { name, isActive: true, sortOrder: 0 },
     })
   }
+
+  // v900034 — biometric consent (PDPA) log for face-recognition data. Append-only,
+  // no FK to users (mirrors attendance_face_scans) — must survive purge-user.mjs
+  // hard-deletes as compliance evidence. createdAt DESC per userId is the read
+  // pattern (lib/biometric-consent.ts's getLatestConsentAction()).
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS biometric_consents (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      action TEXT NOT NULL,
+      consentVersion TEXT NOT NULL,
+      consentText TEXT NOT NULL,
+      method TEXT NOT NULL,
+      scrolledToEnd INTEGER NOT NULL DEFAULT 0,
+      ipAddress TEXT,
+      userAgent TEXT,
+      deviceKey TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS biometric_consents_user_created_idx ON biometric_consents (userId, createdAt)
+  `)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

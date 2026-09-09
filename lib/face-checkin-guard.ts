@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { parseDescriptorPayload } from '@/lib/face-match'
 import {
   isAttendanceFaceAction,
-  userHasFaceProfile,
+  shouldRequireFaceVerification,
   verifyFaceForAttendance,
 } from '@/lib/face-attendance'
 import { notifyHrFaceMismatchOnLine } from '@/lib/attendance-line-notify'
@@ -18,10 +18,10 @@ export async function guardAttendanceFace(
     return NextResponse.json({ error: 'action ไม่ถูกต้อง' }, { status: 400 })
   }
 
-  const registered = await userHasFaceProfile(userId)
+  const faceRequired = await shouldRequireFaceVerification(userId)
   const method = (formData.get('attendanceMethod') as string) || 'manual'
 
-  if (registered && method !== 'face') {
+  if (faceRequired && method !== 'face') {
     logAccessDenied('face_denied', { userId, action, code: 'FACE_REQUIRED' })
     return NextResponse.json(
       {
