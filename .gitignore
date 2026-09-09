@@ -27,6 +27,10 @@ prisma/*.db
 prisma/**/*.db
 prisma/**/*.db-journal
 
+# local data exports/backups — real PII (national IDs, encrypted bank
+# details, etc.), never commit
+backups/
+
 # uploads
 public/uploads/*.jpg
 public/uploads/*.png
