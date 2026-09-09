@@ -7,9 +7,13 @@ export type MaskedNationalId = {
 }
 
 /**
- * เลขบัตรประชาชนแบบ mask สำหรับแสดงผล เช่น x-xxxx-xxxxx-xx-3 (โชว์หลักสุดท้ายตัวเดียว)
- * โชว์แค่ 1 หลักท้าย ไม่ใช่ 3 — nationalIdPdfPassword() (lib/payslip-pdf-encrypt.ts) ใช้ 4
- * หลักท้ายเป็นรหัสเปิด PDF สลิปเงินเดือน โชว์ 3 หลักจะเหลือให้เดารหัสแค่หลักเดียว
+ * เลขบัตรประชาชนแบบ mask สำหรับแสดงผล เช่น x-xxxx-xxxx0-12-3 (โชว์ 4 หลักท้าย)
+ *
+ * เดิมโชว์แค่ 1 หลักท้าย เพราะ nationalIdPdfPassword() (lib/payslip-pdf-encrypt.ts)
+ * เคยใช้ 4 หลักท้ายเป็นรหัสเปิด PDF สลิปเงินเดือน — โชว์ 4 หลักตอนนั้นเท่ากับเฉลยรหัสสลิป
+ * เอง หลัง payslip-password-hmac (รหัสสลิปเปลี่ยนไปใช้ HMAC(secret, payrollId) แทน ไม่ผูก
+ * กับเลขบัตรอีกต่อไป) ข้อจำกัดนี้หมดไป จึงโชว์ 4 หลักท้ายได้ตามที่ HR ขอ เพื่อให้ตรวจสอบ/
+ * แยกแยะพนักงานที่เลขบัตรคล้ายกันได้ง่ายขึ้น โดยยังไม่เฉลยเลขบัตรเต็ม (9 หลักแรกยัง mask)
  */
 export function maskNationalId(nationalId: string | null | undefined): MaskedNationalId {
   const raw = String(nationalId ?? '').trim()
@@ -18,7 +22,10 @@ export function maskNationalId(nationalId: string | null | undefined): MaskedNat
   const digits = raw.replace(/\D/g, '')
   if (digits.length !== 13) return { status: 'INVALID', display: 'ข้อมูลไม่ถูกต้อง' }
 
-  return { status: 'MASKED', display: `x-xxxx-xxxxx-xx-${digits.slice(12)}` }
+  return {
+    status: 'MASKED',
+    display: `x-xxxx-xxxx${digits[9]}-${digits.slice(10, 12)}-${digits[12]}`,
+  }
 }
 
 /**

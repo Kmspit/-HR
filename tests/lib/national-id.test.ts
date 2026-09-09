@@ -2,18 +2,18 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { maskNationalId, nationalIdFingerprint, isValidThaiNationalIdChecksum, encryptedNationalIdFields } from '@/lib/national-id'
 import { decryptField, FIELD_SALTS } from '@/lib/field-crypto'
 
-describe('maskNationalId — never throws, reveals at most the last digit', () => {
-  it('masks a valid 13-digit id, keeping only the last digit', () => {
+describe('maskNationalId — never throws, reveals at most the last 4 digits', () => {
+  it('masks a valid 13-digit id, keeping only the last 4 digits', () => {
     expect(maskNationalId('1234567890123')).toEqual({
       status: 'MASKED',
-      display: 'x-xxxx-xxxxx-xx-3',
+      display: 'x-xxxx-xxxx0-12-3',
     })
   })
 
   it('strips non-digit formatting before masking', () => {
     expect(maskNationalId('1-2345-67890-12-3')).toEqual({
       status: 'MASKED',
-      display: 'x-xxxx-xxxxx-xx-3',
+      display: 'x-xxxx-xxxx0-12-3',
     })
   })
 
@@ -37,10 +37,10 @@ describe('maskNationalId — never throws, reveals at most the last digit', () =
 })
 
 describe('nationalIdFingerprint — distinguishes values that mask identically', () => {
-  it('two ids sharing a last digit produce the same masked display but different fingerprints', () => {
+  it('two ids sharing the last 4 digits produce the same masked display but different fingerprints', () => {
     const a = '1234567890123'
-    const b = '9999999999993'
-    expect(maskNationalId(a).display).toBe(maskNationalId(b).display) // both end in 3
+    const b = '9999999990123'
+    expect(maskNationalId(a).display).toBe(maskNationalId(b).display) // both end in 0123
     expect(nationalIdFingerprint(a)).not.toBe(nationalIdFingerprint(b))
   })
 

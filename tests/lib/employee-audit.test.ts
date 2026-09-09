@@ -119,10 +119,11 @@ describe('logEmployeeUpdateIfChanged', () => {
   })
 
   it('detects a nationalId change via the fingerprint even if two different IDs mask the same', async () => {
-    // Both end in the same last digit, so the masked display could look identical —
+    // Both end in the same last 4 digits ('1119'), so the masked display is identical —
     // the fingerprint must still catch the real change.
     const before = snapshotEmployeeForAudit(row({ nationalId: '1111111111119' }))
-    const after = snapshotEmployeeForAudit(row({ nationalId: '2222222222219' }))
+    const after = snapshotEmployeeForAudit(row({ nationalId: '2222222221119' }))
+    expect(before.nationalId.masked).toBe(after.nationalId.masked) // sanity: same mask, different id
 
     await logEmployeeUpdateIfChanged({ ...audit, before, after })
     expect(createAuditLog).toHaveBeenCalled()
