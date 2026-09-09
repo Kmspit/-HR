@@ -38,6 +38,7 @@ function mockDb(counts: Counts = {}) {
     },
     automationRule: { count: vi.fn().mockResolvedValue(counts.automationRule ?? 0) },
     $queryRawUnsafe: vi.fn().mockResolvedValue([{ cnt: counts.caseTemplates ?? 0 }]),
+    biometricConsent: { count: vi.fn() },
   }
 }
 
@@ -46,6 +47,12 @@ describe('checkPurgeGuard', () => {
     const db = mockDb({})
     const result = await checkPurgeGuard(db, 'user-1')
     expect(result).toEqual([])
+  })
+
+  it('never queries biometric_consents — it has no FK to users.id, so it is not a blocker (see purge-user.mjs comment)', async () => {
+    const db = mockDb({})
+    await checkPurgeGuard(db, 'user-1')
+    expect(db.biometricConsent.count).not.toHaveBeenCalled()
   })
 
   it('blocks on payroll history', async () => {

@@ -105,6 +105,23 @@ describe('purgeUser — 2026-09-09 FK-gap fix: the 2 nullable columns get cleare
   })
 })
 
+describe('purgeUser — biometric_consents (PDPA evidence) is deliberately left untouched', () => {
+  it('never calls any method on db.biometricConsent', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.biometricConsent.deleteMany).not.toHaveBeenCalled()
+    expect(db.biometricConsent.updateMany).not.toHaveBeenCalled()
+    expect(db.biometricConsent.delete).not.toHaveBeenCalled()
+  })
+
+  it('succeeds (and still deletes the user row) even when the user has existing consent rows — the orphaned row is left behind on purpose, not an accidental miss', async () => {
+    const db = makeFakeDb()
+    await expect(purgeUser(db, 'user-1')).resolves.toBeTruthy()
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+    expect(db.biometricConsent.deleteMany).not.toHaveBeenCalled()
+  })
+})
+
 describe('purgeUserInTransaction — DryRunAbort / transaction rollback wiring', () => {
   it('dry-run (rollback: true): returns purgeUser\'s counts, DryRunAbort never escapes to the caller', async () => {
     const tx = makeFakeDb()

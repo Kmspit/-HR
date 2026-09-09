@@ -79,6 +79,18 @@ async function findUser(ref) {
  * or main (the "case template" feature was removed from the schema while
  * the table + constraint were left behind) — there is no `db.caseTemplate`
  * to call at all.
+ *
+ * biometric_consents (added in v900034, feature/biometric-consent) is
+ * deliberately NOT a blocker here and NOT touched anywhere in purgeUser()
+ * below — unlike every table above, it has NO foreign key to users.id at
+ * all (confirmed via PRAGMA foreign_key_list against the exact CREATE TABLE
+ * DDL in lib/ensure-db-schema.ts — zero rows returned). That's intentional,
+ * not a gap: consent/revocation records are PDPA compliance evidence and
+ * must survive even a real user's hard deletion, so a purged user's
+ * biometric_consents rows are left behind on purpose with a userId that no
+ * longer resolves to any row in `users`. If a future migration ever adds a
+ * real FK to this table, that assumption breaks and this comment (plus the
+ * guard/purge logic) needs revisiting.
  */
 async function checkPurgeGuard(db, userId) {
   const [
@@ -270,6 +282,11 @@ async function purgeUser(db, userId) {
   // the users delete below removes them automatically. Before v900029 this
   // script would have left every one of those behind as a permanent orphan
   // (confirmed the hard way — see that migration's own commit message).
+  //
+  // biometric_consents is intentionally absent from this function too — see
+  // the long comment on checkPurgeGuard() above. It has no FK to users.id,
+  // so deleting the user below does not (and must not) touch it; those rows
+  // stay behind on purpose as PDPA compliance evidence.
   await run('users', () => db.user.delete({ where: { id: userId } }))
 
   return counts
