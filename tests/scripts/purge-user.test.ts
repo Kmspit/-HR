@@ -105,6 +105,20 @@ describe('purgeUser — 2026-09-09 FK-gap fix: the 2 nullable columns get cleare
   })
 })
 
+describe('purgeUser — attendance_face_scans now cascades via real FK (v900035), no manual delete needed', () => {
+  it('never calls db.attendanceFaceScan.deleteMany — the DB cascades it automatically on user delete', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.attendanceFaceScan.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it('still deletes the user row itself, which is what triggers the cascade', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+  })
+})
+
 describe('purgeUser — biometric_consents (PDPA evidence) is deliberately left untouched', () => {
   it('never calls any method on db.biometricConsent', async () => {
     const db = makeFakeDb()
