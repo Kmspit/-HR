@@ -14,6 +14,7 @@ import { lineIdHint } from '@/lib/line-id-client'
 import { englishOnlyFieldError, ENGLISH_ONLY_ERROR } from '@/lib/english-input'
 import { THAI_BANKS } from '@/lib/thai-banks'
 import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
+import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
 import { DEPENDENT_RELATION_LABELS } from '@/lib/dependent-relation-labels'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
@@ -74,6 +75,7 @@ type FormData = {
   prefix: string; firstName: string; lastName: string; nickname: string
   email: string; phone: string; lineId: string; birthDate: string
   nationalId: string; nationality: string; maritalStatus: string
+  religion: string; paymentMethod: string
   role: string; branchId: string; socialSecurity: boolean
   password: string; confirmPassword: string
 }
@@ -114,6 +116,7 @@ export default function RegisterForm() {
     prefix: 'นาย', firstName: '', lastName: '', nickname: '',
     email: '', phone: '', lineId: '', birthDate: '',
     nationalId: '', nationality: 'ไทย', maritalStatus: '',
+    religion: '', paymentMethod: '',
     role: '', branchId: '', socialSecurity: true,
     password: '', confirmPassword: '',
   })
@@ -137,6 +140,10 @@ export default function RegisterForm() {
       prefix: draft.prefix, firstName: draft.firstName, lastName: draft.lastName, nickname: draft.nickname,
       email: draft.email, phone: draft.phone, lineId: draft.lineId, birthDate: draft.birthDate,
       nationalId: draft.nationalId, nationality: draft.nationality, maritalStatus: draft.maritalStatus,
+      // ?? '' guards against a draft saved by an older version of this form
+      // (before these 2 fields existed) — same reasoning as the array-field
+      // checks in loadRegisterDraft(), just for scalars instead.
+      religion: draft.religion ?? '', paymentMethod: draft.paymentMethod ?? '',
       role: draft.role, branchId: draft.branchId, socialSecurity: draft.socialSecurity,
     }))
     setCurrentAddress({
@@ -166,6 +173,7 @@ export default function RegisterForm() {
         prefix: form.prefix, firstName: form.firstName, lastName: form.lastName, nickname: form.nickname,
         email: form.email, phone: form.phone, lineId: form.lineId, birthDate: form.birthDate,
         nationalId: form.nationalId, nationality: form.nationality, maritalStatus: form.maritalStatus,
+        religion: form.religion, paymentMethod: form.paymentMethod,
         role: form.role, branchId: form.branchId, socialSecurity: form.socialSecurity,
         currentHouseNo: currentAddress.houseNo, currentMoo: currentAddress.moo, currentSoi: currentAddress.soi,
         currentRoad: currentAddress.road, currentTambon: currentAddress.tambon, currentAmphoe: currentAddress.amphoe,
@@ -346,6 +354,8 @@ export default function RegisterForm() {
       nationalId: form.nationalId,
       nationality: form.nationality.trim() || undefined,
       maritalStatus: form.maritalStatus || undefined,
+      religion: form.religion.trim() || undefined,
+      paymentMethod: form.paymentMethod || undefined,
       role: form.role as 'EMPLOYEE' | 'LAWYER',
       branchId: form.branchId,
       socialSecurity: form.socialSecurity,
@@ -571,6 +581,20 @@ export default function RegisterForm() {
               <select id="field-14" value={form.maritalStatus} onChange={(e) => set('maritalStatus', e.target.value)} className={inputClass('maritalStatus')}>
                 <option value="">ไม่ระบุ</option>
                 {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label htmlFor="field-15" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">ศาสนา</label>
+              <input id="field-15" type="text" className={inputClass('religion')} value={form.religion} onChange={(e) => set('religion', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="field-16" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">วิธีจ่ายเงิน</label>
+              <select id="field-16" value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputClass('paymentMethod')}>
+                <option value="">ไม่ระบุ</option>
+                {PAYMENT_METHOD_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </div>
           </div>

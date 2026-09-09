@@ -23,6 +23,7 @@ const sampleDraft: RegisterFormDraftFields = {
   prefix: 'นาย', firstName: 'สมชาย', lastName: 'ใจดี', nickname: '',
   email: 'somchai@example.com', phone: '0812345678', lineId: '@somchai',
   birthDate: '', nationalId: '1234567890123', nationality: 'ไทย', maritalStatus: 'โสด',
+  religion: '', paymentMethod: '',
   role: 'EMPLOYEE', branchId: 'b1', socialSecurity: true,
   currentHouseNo: '123', currentMoo: '', currentSoi: '', currentRoad: '',
   currentTambon: '', currentAmphoe: '', currentProvince: '', currentPostalCode: '',

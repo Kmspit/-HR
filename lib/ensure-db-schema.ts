@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900032
+export const CURRENT_SCHEMA_VERSION = 900033
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -82,6 +82,9 @@ async function markSchemaVersionApplied(): Promise<void> {
 
 async function addUserColumnIfMissing(column: string, ddl: string) {
   await addColumnIfMissing('users', column, ddl)
+}
+async function addEmployeeProfileColumnIfMissing(column: string, ddl: string) {
+  await addColumnIfMissing('employee_profiles', column, ddl)
 }
 
 async function runEnsure(force = false): Promise<boolean> {
@@ -2201,6 +2204,17 @@ async function runEnsure(force = false): Promise<boolean> {
   await addUserColumnIfMissing('nationalIdEncrypted', `ALTER TABLE users ADD COLUMN nationalIdEncrypted TEXT`)
   await addUserColumnIfMissing('nationalIdFp', `ALTER TABLE users ADD COLUMN nationalIdFp TEXT`)
   await migrateUserNationalIdUniqueToFingerprint()
+
+  // v900033 — employee-fields batch 1 (2026-09-09 checklist): religion +
+  // paymentMethod on employee_profiles, jobLevel + socialSecurityNumber on
+  // users. All 4 additive/nullable — no backfill needed. paymentMethod is
+  // stored as plain TEXT (SQLite has no native enum type; Prisma's
+  // `PaymentMethod` enum is enforced at the Prisma Client layer only, same
+  // as every other enum column in this schema).
+  await addUserColumnIfMissing('jobLevel', `ALTER TABLE users ADD COLUMN jobLevel TEXT`)
+  await addUserColumnIfMissing('socialSecurityNumber', `ALTER TABLE users ADD COLUMN socialSecurityNumber TEXT`)
+  await addEmployeeProfileColumnIfMissing('religion', `ALTER TABLE employee_profiles ADD COLUMN religion TEXT`)
+  await addEmployeeProfileColumnIfMissing('paymentMethod', `ALTER TABLE employee_profiles ADD COLUMN paymentMethod TEXT`)
 
   // Seed job_positions from whatever User.position values are already in use
   // — purely so the table isn't empty in dev. Disposable: employee data gets

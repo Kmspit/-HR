@@ -218,6 +218,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    // socialSecurityNumber gets the same HR_ADMIN-only gate as baseSalary
+    // just above, for the same reason: MANAGER_USER_SELECT/the employee-edit
+    // page already hide this value from a MANAGER (it renders as a blank
+    // input, same as baseSalary showing 0), so without this gate a MANAGER
+    // could type a value into what looks like an empty field and have it
+    // silently written. Ignored rather than a hard error, same as baseSalary.
+    if ('socialSecurityNumber' in body && body.socialSecurityNumber !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.socialSecurityNumber = body.socialSecurityNumber
+      }
+    }
+
     const allowedFields = [
       'name',
       'nameEn',
@@ -227,6 +239,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       'addressIdCard',
       'department',
       'position',
+      'jobLevel',
       'employeeType',
       'managerId',
       'teamLeaderId',

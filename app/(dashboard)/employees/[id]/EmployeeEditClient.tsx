@@ -55,6 +55,8 @@ type Employee = {
   employeeType: string | null
   department: string | null
   position: string | null
+  jobLevel: string | null
+  socialSecurityNumber: string | null
   baseSalary: number
   socialSecurity: boolean
   isCoworker: boolean
@@ -138,6 +140,8 @@ export default function EmployeeEditClient({
     lineDisplayName: employee.lineDisplayName ?? '',
     department: employee.department ?? '',
     position: employee.position ?? '',
+    jobLevel: employee.jobLevel ?? '',
+    socialSecurityNumber: employee.socialSecurityNumber ?? '',
     role: employee.role,
     status: employee.status,
     employeeType: employee.employeeType ?? 'permanent_employee',
@@ -293,6 +297,8 @@ export default function EmployeeEditClient({
         lineDisplayName: () => form.lineDisplayName,
         department: () => form.department,
         position: () => form.position,
+        jobLevel: () => form.jobLevel,
+        socialSecurityNumber: () => form.socialSecurityNumber,
         employeeType: () => form.employeeType,
         baseSalary: () => form.baseSalary,
         socialSecurity: () => form.socialSecurity,
@@ -585,6 +591,27 @@ export default function EmployeeEditClient({
                   className={profileInputClass}
                 />
               </FormField>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="ระดับตำแหน่ง">
+                <input
+                  value={form.jobLevel}
+                  onChange={(e) => set('jobLevel', e.target.value)}
+                  className={profileInputClass}
+                />
+              </FormField>
+              {/* Same HR_ADMIN gate as the salary section below — a MANAGER
+                  never even sees this field, rather than seeing a blank
+                  input that looks editable but is silently ignored on save. */}
+              {canEditSalary && (
+                <FormField label="เลขที่ประกันสังคม">
+                  <input
+                    value={form.socialSecurityNumber}
+                    onChange={(e) => set('socialSecurityNumber', e.target.value)}
+                    className={profileInputClass}
+                  />
+                </FormField>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="วันเริ่มงาน">

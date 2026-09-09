@@ -7,6 +7,7 @@ import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import FormField from '@/components/profile/FormField'
 import { profileInputClass, profileInputErrorClass } from '@/lib/profile-validators-client'
 import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
+import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
 import type { RegisterAddress } from '@/lib/register-form-validation'
 import ThaiAddressFields, { type ThaiAddressValue } from '@/components/shared/ThaiAddressFields'
@@ -211,6 +212,21 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
               onChange={(e) => setField('personalEmail', e.target.value)}
               className={errors.personalEmail ? profileInputErrorClass : profileInputClass}
             />
+          </FormField>
+          <FormField label="ศาสนา">
+            <input value={form.religion} onChange={(e) => setField('religion', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <FormField label="วิธีจ่ายเงิน" error={errors.paymentMethod}>
+            <select
+              value={form.paymentMethod}
+              onChange={(e) => setField('paymentMethod', e.target.value)}
+              className={errors.paymentMethod ? profileInputErrorClass : profileInputClass}
+            >
+              <option value="" className="bg-slate-900">— ไม่ระบุ —</option>
+              {PAYMENT_METHOD_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value} className="bg-slate-900">{m.label}</option>
+              ))}
+            </select>
           </FormField>
         </div>
       </section>

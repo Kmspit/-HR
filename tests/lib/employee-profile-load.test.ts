@@ -14,6 +14,8 @@ function data(): EmployeeProfileLoadData {
     nationality: 'ไทย',
     maritalStatus: '',
     personalEmail: '',
+    religion: '',
+    paymentMethod: '',
     currentAddress: { houseNo: '', moo: '', soi: '', road: '', tambon: '', amphoe: '', province: '', postalCode: '' },
     registeredAddress: { houseNo: '', moo: '', soi: '', road: '', tambon: '', amphoe: '', province: '', postalCode: '' },
     sameAsCurrentAddress: false,

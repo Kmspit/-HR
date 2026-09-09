@@ -316,6 +316,13 @@ enum DependentRelationType {
   OTHER
 }
 
+/// Employee-fields batch 1 (2026-09-09 checklist) — EmployeeProfile.paymentMethod
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+}
+
 // ── COMPANY BRANCH ──────────────────────────────
 
 model CompanyBranch {
@@ -457,6 +464,14 @@ model User {
   profileCloudinaryPublicId String?
   profileSecureUrl          String?
   employeeType     String?    @default("permanent_employee")
+  // Employee-fields batch 1 (2026-09-09 checklist) — HR-only, not self-editable
+  // (see SELF_PROFILE_FORBIDDEN). jobLevel is deliberately free text on User
+  // directly rather than on JobPosition's catalog: User.position itself is
+  // already a free string with no real FK to JobPosition (only
+  // EmploymentAssignment.jobPositionId is a real relation), so this doesn't
+  // make anything less structured than it already is.
+  jobLevel             String?
+  socialSecurityNumber String?
   managerId        String?
   teamLeaderId     String?
   role             Role       @default(EMPLOYEE)
@@ -648,6 +663,15 @@ model EmployeeProfile {
   nationality   String?
   maritalStatus String?
   personalEmail String?
+  // Employee-fields batch 1 (2026-09-09 checklist) — grouped with
+  // nationality/maritalStatus above since it's the same kind of personal
+  // demographic add-on, not core auth/org data. Self-editable (same tab as
+  // nationality/maritalStatus, see EmployeeProfileTab.tsx).
+  religion      String?
+  // Employee's default pay method — a profile-level default, not recorded
+  // per payroll run (Payroll has no field for this; adding one there is a
+  // separate, larger change if ever needed).
+  paymentMethod PaymentMethod?
 
   // ที่อยู่ปัจจุบัน
   currentHouseNo    String?

@@ -310,6 +310,26 @@ describe('POST /api/register — full transaction: creates all related tables', 
     })
   })
 
+  it('defaults religion/paymentMethod to null on EmployeeProfile when not provided', async () => {
+    await POST(makeReq(fullBody))
+    const call = vi.mocked(prisma.employeeProfile.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.religion).toBeNull()
+    expect(call.data.paymentMethod).toBeNull()
+  })
+
+  it('passes religion/paymentMethod through to EmployeeProfile when provided', async () => {
+    await POST(makeReq({ ...fullBody, religion: 'พุทธ', paymentMethod: 'BANK_TRANSFER' }))
+    const call = vi.mocked(prisma.employeeProfile.create).mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data.religion).toBe('พุทธ')
+    expect(call.data.paymentMethod).toBe('BANK_TRANSFER')
+  })
+
+  it('rejects an unrecognized paymentMethod value with 400, before the transaction ever runs', async () => {
+    const res = await POST(makeReq({ ...fullBody, paymentMethod: 'BITCOIN' }))
+    expect(res.status).toBe(400)
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
   it('skips dependent/bankAccount table creation entirely when those steps were skipped', async () => {
     const res = await POST(makeReq(validBody)) // validBody has empty dependents/bankAccounts
     expect(res.status).toBe(200)

@@ -119,6 +119,42 @@ describe('GET /api/users/[id]/profile', () => {
     expect(data.profile.currentAddress).toEqual(FULL_ADDRESS)
     expect(data.profile.sameAsCurrentAddress).toBe(true)
   })
+
+  it('defaults religion/paymentMethod to blank when the stored row has never set them', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(hrSession as never)
+    vi.mocked(requireOrgScope).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.employeeProfile.findUnique).mockResolvedValue({
+      nationality: null, maritalStatus: null, personalEmail: null, religion: null, paymentMethod: null,
+      currentHouseNo: null, currentMoo: null, currentSoi: null, currentRoad: null,
+      currentTambon: null, currentAmphoe: null, currentProvince: null, currentPostalCode: null,
+      sameAsCurrentAddress: false,
+      regHouseNo: null, regMoo: null, regSoi: null, regRoad: null,
+      regTambon: null, regAmphoe: null, regProvince: null, regPostalCode: null,
+    } as never)
+
+    const res = await GET(makeGet('emp-9'), { params: params('emp-9') })
+    const data = await res.json()
+    expect(data.profile.religion).toBe('')
+    expect(data.profile.paymentMethod).toBe('')
+  })
+
+  it('maps stored religion/paymentMethod through unchanged', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(hrSession as never)
+    vi.mocked(requireOrgScope).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.employeeProfile.findUnique).mockResolvedValue({
+      nationality: null, maritalStatus: null, personalEmail: null, religion: 'พุทธ', paymentMethod: 'BANK_TRANSFER',
+      currentHouseNo: null, currentMoo: null, currentSoi: null, currentRoad: null,
+      currentTambon: null, currentAmphoe: null, currentProvince: null, currentPostalCode: null,
+      sameAsCurrentAddress: false,
+      regHouseNo: null, regMoo: null, regSoi: null, regRoad: null,
+      regTambon: null, regAmphoe: null, regProvince: null, regPostalCode: null,
+    } as never)
+
+    const res = await GET(makeGet('emp-9'), { params: params('emp-9') })
+    const data = await res.json()
+    expect(data.profile.religion).toBe('พุทธ')
+    expect(data.profile.paymentMethod).toBe('BANK_TRANSFER')
+  })
 })
 
 describe('PUT /api/users/[id]/profile', () => {
@@ -158,13 +194,35 @@ describe('PUT /api/users/[id]/profile', () => {
     expect(res.status).toBe(400)
   })
 
+  it('400s an unrecognized paymentMethod value and never writes', async () => {
+    const res = await PUT(makePut('emp-9', { paymentMethod: 'BITCOIN' }), { params: params('emp-9') })
+    expect(res.status).toBe(400)
+    expect(prisma.employeeProfile.upsert).not.toHaveBeenCalled()
+  })
+
+  it('accepts a blank paymentMethod ("ไม่ระบุ") same as any other optional field', async () => {
+    const res = await PUT(makePut('emp-9', { paymentMethod: '' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+  })
+
   it('accepts an entirely blank submission (first-time tab open, nothing filled in yet)', async () => {
     const res = await PUT(makePut('emp-9', {}), { params: params('emp-9') })
     expect(res.status).toBe(200)
     expect(prisma.employeeProfile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'emp-9' },
-        create: expect.objectContaining({ userId: 'emp-9', nationality: null, currentHouseNo: null }),
+        create: expect.objectContaining({ userId: 'emp-9', nationality: null, currentHouseNo: null, religion: null, paymentMethod: null }),
+      }),
+    )
+  })
+
+  it('writes religion and paymentMethod when both are provided', async () => {
+    const res = await PUT(makePut('emp-9', { religion: 'พุทธ', paymentMethod: 'CASH' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    expect(prisma.employeeProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ religion: 'พุทธ', paymentMethod: 'CASH' }),
+        update: expect.objectContaining({ religion: 'พุทธ', paymentMethod: 'CASH' }),
       }),
     )
   })

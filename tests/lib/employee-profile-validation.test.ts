@@ -22,6 +22,8 @@ function form(overrides: Partial<EmployeeProfileForm> = {}): EmployeeProfileForm
     nationality: 'ไทย',
     maritalStatus: 'โสด',
     personalEmail: '',
+    religion: '',
+    paymentMethod: '',
     currentAddress: { ...EMPTY_ADDRESS },
     registeredAddress: { ...EMPTY_ADDRESS },
     sameAsCurrentAddress: false,
@@ -97,6 +99,29 @@ describe('validateEmployeeProfile', () => {
     const errors = validateEmployeeProfile(form({ nationality: '', maritalStatus: '' }))
     expect(employeeProfileHasErrors(errors)).toBe(false)
   })
+
+  it('never validates religion — free-choice, same as nationality/maritalStatus', () => {
+    const errors = validateEmployeeProfile(form({ religion: 'anything at all' }))
+    expect(errors.paymentMethod).toBeUndefined()
+    expect(employeeProfileHasErrors(errors)).toBe(false)
+  })
+
+  it('rejects an unrecognized paymentMethod — unlike religion/nationality, this is a closed set', () => {
+    const errors = validateEmployeeProfile(form({ paymentMethod: 'BITCOIN' }))
+    expect(errors.paymentMethod).toBeTruthy()
+    expect(employeeProfileHasErrors(errors)).toBe(true)
+  })
+
+  it('allows a blank paymentMethod — it is optional', () => {
+    const errors = validateEmployeeProfile(form({ paymentMethod: '' }))
+    expect(errors.paymentMethod).toBeUndefined()
+  })
+
+  it('accepts every real paymentMethod enum value', () => {
+    for (const value of ['BANK_TRANSFER', 'CASH', 'CHEQUE']) {
+      expect(validateEmployeeProfile(form({ paymentMethod: value })).paymentMethod).toBeUndefined()
+    }
+  })
 })
 
 describe('firstEmployeeProfileError', () => {
@@ -129,12 +154,16 @@ describe('coerceEmployeeProfileForm', () => {
       nationality: 'ไทย',
       maritalStatus: 'สมรส',
       personalEmail: 'a@b.com',
+      religion: 'พุทธ',
+      paymentMethod: 'BANK_TRANSFER',
       currentAddress: FULL_ADDRESS,
       registeredAddress: EMPTY_ADDRESS,
       sameAsCurrentAddress: true,
     }
     const result = coerceEmployeeProfileForm(body)
     expect(result.nationality).toBe('ไทย')
+    expect(result.religion).toBe('พุทธ')
+    expect(result.paymentMethod).toBe('BANK_TRANSFER')
     expect(result.currentAddress).toEqual(FULL_ADDRESS)
     expect(result.sameAsCurrentAddress).toBe(true)
   })

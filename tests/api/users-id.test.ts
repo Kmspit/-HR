@@ -433,3 +433,66 @@ describe('PATCH /api/users/[id] — baseSalary restricted to HR_ADMIN (Phase 1 s
     expect(createAuditLog).not.toHaveBeenCalled()
   })
 })
+
+describe('PATCH /api/users/[id] — employee-fields batch 1 (2026-09-09): jobLevel / socialSecurityNumber', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: 'report-1' } as never)
+  })
+
+  function updateData() {
+    return vi.mocked(prisma.user.update).mock.calls[0][0].data as Record<string, unknown>
+  }
+
+  it('rejects a self-edit of jobLevel with 403 — SELF_PROFILE_FORBIDDEN, HR-only field', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    const res = await PATCH(makePatch('hr-1', { jobLevel: 'ระดับ 5' }), { params: params('hr-1') })
+    expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a self-edit of socialSecurityNumber with 403 — SELF_PROFILE_FORBIDDEN, HR-only field', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    const res = await PATCH(makePatch('hr-1', { socialSecurityNumber: '1234567890123' }), { params: params('hr-1') })
+    expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('lets HR set jobLevel for another employee (not HR_ADMIN-gated, unlike socialSecurityNumber)', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ branchId: 'b1', managerId: null, teamLeaderId: null } as never)
+      .mockResolvedValueOnce(null as never)
+
+    const res = await PATCH(makePatch('emp-9', { jobLevel: 'ระดับ 3' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    expect(updateData()).toMatchObject({ jobLevel: 'ระดับ 3' })
+  })
+
+  it('silently ignores socialSecurityNumber from MANAGER (same HR_ADMIN gate as baseSalary)', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }] as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never)
+
+    const res = await PATCH(
+      makePatch('report-1', { socialSecurityNumber: '9999999999999', position: 'Senior Dev' }),
+      { params: params('report-1') },
+    )
+
+    expect(res.status).toBe(200)
+    expect(updateData()).not.toHaveProperty('socialSecurityNumber')
+    expect(updateData()).toMatchObject({ position: 'Senior Dev' })
+  })
+
+  it('allows HR to set socialSecurityNumber for another employee', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ branchId: 'b1', managerId: null, teamLeaderId: null } as never)
+      .mockResolvedValueOnce(null as never)
+
+    const res = await PATCH(makePatch('emp-9', { socialSecurityNumber: '1234567890123' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    expect(updateData()).toMatchObject({ socialSecurityNumber: '1234567890123' })
+  })
+})
