@@ -24,6 +24,7 @@ type SecurityEvent = {
   severity: string
   description: string
   ip: string | null
+  userAgent: string | null
   createdAt: string
   user: { name: string; email: string } | null
 }
@@ -360,11 +361,12 @@ export default function SecurityClient() {
                   <th className="px-3 py-2 text-left">ประเภท</th>
                   <th className="px-3 py-2 text-left">ระดับ</th>
                   <th className="px-3 py-2 text-left">รายละเอียด</th>
+                  <th className="px-3 py-2 text-left">อุปกรณ์ / IP</th>
                 </tr>
               </thead>
               <tbody>
                 {events.length === 0 && (
-                  <tr><td colSpan={5} className="text-center py-6 dark:text-slate-500">ไม่มีเหตุการณ์</td></tr>
+                  <tr><td colSpan={6} className="text-center py-6 dark:text-slate-500">ไม่มีเหตุการณ์</td></tr>
                 )}
                 {events.map(ev => (
                   <tr key={ev.id} className="border-b dark:border-white/5 dark:hover:bg-white/5">
@@ -377,6 +379,12 @@ export default function SecurityClient() {
                       </span>
                     </td>
                     <td className="px-3 py-2 dark:text-slate-400 max-w-xs truncate">{ev.description}</td>
+                    <td className="px-3 py-2 dark:text-slate-500 max-w-[220px]">
+                      <div className="whitespace-nowrap">{ev.ip ?? '-'}</div>
+                      {ev.userAgent && (
+                        <div className="truncate" title={ev.userAgent}>{ev.userAgent}</div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

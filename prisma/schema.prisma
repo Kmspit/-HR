@@ -1018,6 +1018,11 @@ model UserDevice {
   registeredAt     DateTime     @default(now())
   lastSeenAt       DateTime     @default(now())
   resetRequestedAt DateTime?
+  // Comparison baseline only (last known values), not a history log — the
+  // actual anomaly log lives in SecurityEvent, written only when these
+  // change in a way lib/device-anomaly.ts considers worth flagging.
+  lastUserAgent    String?
+  lastIpAddress    String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
