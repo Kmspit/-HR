@@ -1,5 +1,6 @@
-import { PDFDocument, rgb } from 'pdf-lib'
-import fontkit from '@pdf-lib/fontkit'
+import PDFDocument from 'pdfkit'
+import { rgb } from 'pdf-lib'
+import { drawRect, drawHLine, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 import { formatLateMinutes } from '@/lib/utils'
 
@@ -42,41 +43,39 @@ function fmt(n: number) {
 }
 
 export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buffer> {
-  const pdf = await PDFDocument.create()
-  pdf.registerFontkit(fontkit)
   const thaiBytes = await loadThaiPdfFontBytes()
-  const font = await pdf.embedFont(thaiBytes)
 
   const W = 595
   const H = 842
-  const page = pdf.addPage([W, H])
+  const doc = new PDFDocument({ size: [W, H], margin: 0 })
+  doc.font(thaiBytes)
   const c = { dark: rgb(0.1, 0.1, 0.15), mid: rgb(0.35, 0.35, 0.4), light: rgb(0.6, 0.6, 0.65), green: rgb(0.1, 0.55, 0.3), red: rgb(0.75, 0.15, 0.15), accent: rgb(0.1, 0.35, 0.7), white: rgb(1, 1, 1), line: rgb(0.85, 0.85, 0.9) }
 
   const drawText = (text: string, x: number, y: number, size: number, color = c.dark) => {
-    page.drawText(text, { x, y, size, font, color })
+    drawPdfText(doc, text, x, y, { size, color })
   }
 
   const drawLine = (y: number, x1 = 40, x2 = W - 40) => {
-    page.drawLine({ start: { x: x1, y }, end: { x: x2, y }, thickness: 0.5, color: c.line })
+    drawHLine(doc, y, x1, x2, { thickness: 0.5, color: c.line })
   }
 
   const row = (label: string, value: string, y: number, valueColor = c.dark) => {
     drawText(label, 60, y, 10, c.mid)
-    drawText(value, W - 60 - font.widthOfTextAtSize(value, 10), y, 10, valueColor)
+    drawText(value, W - 60 - widthOf(doc, value, 10), y, 10, valueColor)
   }
 
   // Header bar
-  page.drawRectangle({ x: 0, y: H - 70, width: W, height: 70, color: c.accent })
+  drawRect(doc, 0, H - 70, W, 70, { fill: c.accent })
   drawText(input.companyName, 40, H - 38, 13, c.white)
   drawText('สลิปเงินเดือน (Salary Slip)', 40, H - 58, 10, rgb(0.75, 0.85, 1))
 
   const periodLabel = `${MONTH_TH[input.month]} ${input.year + 543}`
-  const periodW = font.widthOfTextAtSize(periodLabel, 12)
+  const periodW = widthOf(doc, periodLabel, 12)
   drawText(periodLabel, W - 40 - periodW, H - 44, 12, c.white)
 
   // Employee info box
   let y = H - 100
-  page.drawRectangle({ x: 40, y: y - 54, width: W - 80, height: 64, color: rgb(0.97, 0.97, 1) })
+  drawRect(doc, 40, y - 54, W - 80, 64, { fill: rgb(0.97, 0.97, 1) })
   drawText('ข้อมูลพนักงาน', 52, y - 4, 9, c.accent)
   drawText(input.employeeName, 52, y - 20, 12, c.dark)
   const empMeta = [input.employeeId ? `รหัส: ${input.employeeId}` : null, input.department ?? null, input.position ?? null].filter(Boolean).join('  ·  ')
@@ -131,7 +130,7 @@ export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buf
   // Tax detail box
   if (input.taxDetail && input.taxDeduction > 0) {
     y -= 10
-    page.drawRectangle({ x: 40, y: y - 56, width: W - 80, height: 66, color: rgb(0.96, 0.98, 1) })
+    drawRect(doc, 40, y - 56, W - 80, 66, { fill: rgb(0.96, 0.98, 1) })
     drawText('รายละเอียดภาษี (ภงด1)', 52, y - 4, 9, c.accent)
     const td = input.taxDetail
     if (td.annualGross) { drawText(`รายได้รวมปีละ: ฿${fmt(td.annualGross)}`, 52, y - 18, 9, c.mid); }
@@ -144,10 +143,10 @@ export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buf
   // Net salary
   y -= 14
   drawLine(y + 10)
-  page.drawRectangle({ x: 40, y: y - 32, width: W - 80, height: 42, color: rgb(0.94, 0.99, 0.96) })
+  drawRect(doc, 40, y - 32, W - 80, 42, { fill: rgb(0.94, 0.99, 0.96) })
   drawText('เงินเดือนสุทธิ (Net Salary)', 60, y - 4, 11, c.dark)
   const netStr = `฿${fmt(input.netSalary)}`
-  const netW = font.widthOfTextAtSize(netStr, 16)
+  const netW = widthOf(doc, netStr, 16)
   drawText(netStr, W - 60 - netW, y - 6, 16, c.green)
 
   // Footer
@@ -155,8 +154,8 @@ export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buf
   drawLine(footerY + 18)
   drawText('เอกสารนี้ออกโดยระบบ HRFlow — โปรดเก็บรักษาไว้เป็นหลักฐาน', 40, footerY + 4, 8, c.light)
   const dateStr = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
-  drawText(`วันที่พิมพ์: ${dateStr}`, W - 40 - font.widthOfTextAtSize(`วันที่พิมพ์: ${dateStr}`, 8), footerY + 4, 8, c.light)
+  const printedLabel = `วันที่พิมพ์: ${dateStr}`
+  drawText(printedLabel, W - 40 - widthOf(doc, printedLabel, 8), footerY + 4, 8, c.light)
 
-  const bytes = await pdf.save()
-  return Buffer.from(bytes)
+  return finalizePdfKitDocument(doc)
 }
