@@ -10,6 +10,7 @@ import {
 } from '@/lib/org-scope'
 import type { Role, Prisma } from '@prisma/client'
 import { parseNonNegativeNumber } from '@/lib/utils'
+import { isValidLatLng } from '@/lib/google-maps-url'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -25,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,
         chainConfigId: true, currentStepOrder: true, createdAt: true,
-        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        googleMapsUrl: true, lat: true, lng: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
@@ -110,6 +111,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       timeSlot?: string; caseNumber?: string; productWork?: string; productCategory?: string; productType?: string; workBranch?: string
       caseCount?: number | string; adminChecked?: string; supervisedBy?: string
       clientCompanyId?: string
+      lat?: number | string | null; lng?: number | string | null
       assigneeIds?: string[]
     }
 
@@ -125,6 +127,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
     if (body.distanceLimit && parseNonNegativeNumber(body.distanceLimit) == null) {
       return NextResponse.json({ error: 'ระยะทางจำกัดต้องไม่ติดลบ' }, { status: 400 })
+    }
+    if (
+      (body.lat !== undefined && body.lat != null) ||
+      (body.lng !== undefined && body.lng != null)
+    ) {
+      if (!isValidLatLng(Number(body.lat), Number(body.lng))) {
+        return NextResponse.json({ error: 'พิกัด GPS ไม่ถูกต้อง' }, { status: 400 })
+      }
     }
 
     if (!isHR && (body.approvalStatus !== undefined || body.status !== undefined)) {
@@ -158,6 +168,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.adminChecked !== undefined) updateData.adminChecked = body.adminChecked?.trim() || null
     if (body.supervisedBy !== undefined) updateData.supervisedBy = body.supervisedBy?.trim() || null
     if (body.clientCompanyId !== undefined) updateData.clientCompanyId = body.clientCompanyId || null
+    if (body.lat !== undefined) updateData.lat = body.lat != null ? Number(body.lat) : null
+    if (body.lng !== undefined) updateData.lng = body.lng != null ? Number(body.lng) : null
 
     if (isHR) {
       // Status changes only via approval chain — not direct PATCH

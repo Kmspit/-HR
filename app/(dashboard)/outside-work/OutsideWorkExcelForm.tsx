@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, useRef, Fragment } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle, Pencil, Printer, Trash2, FileDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Send, CheckCircle2, XCircle, Pencil, Printer, Trash2, FileDown, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
+import { parseGoogleMapsCoords } from '@/lib/google-maps-url'
 import { canUserActOnStep, type ApprovalStepRow } from '@/lib/approval-chain-shared'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import type { Role } from '@prisma/client'
@@ -33,6 +34,9 @@ export type OWRequest = {
   timeSlot?: string | null
   place: string
   purpose: string
+  lat?: number | null
+  lng?: number | null
+  googleMapsUrl?: string | null
   caseNumber?: string | null
   productWork?: string | null
   productCategory?: string | null
@@ -59,6 +63,9 @@ type SlotData = {
   userId?: string
   place: string
   purpose: string
+  lat: string
+  lng: string
+  googleMapsUrl: string
   caseNumber: string
   productWork: string
   productCategory: string
@@ -137,7 +144,7 @@ function sKey(ymd: string, slot: 'เช้า' | 'บ่าย'): string {
 }
 
 function emptySlot(): SlotData {
-  return { place:'', purpose:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'', clientCompanyId:'', assigneeIds:[] }
+  return { place:'', purpose:'', lat:'', lng:'', googleMapsUrl:'', caseNumber:'', productWork:'', productCategory:'', productType:'', workBranch:'', caseCount:'', adminChecked:'', supervisedBy:'', note:'', clientCompanyId:'', assigneeIds:[] }
 }
 
 function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
@@ -151,6 +158,9 @@ function buildWeekData(requests: OWRequest[], weekDays: string[]): WeekData {
       id: r.id, userId: r.userId,
       place:        r.place          ?? '',
       purpose:      r.purpose        ?? '',
+      lat:          r.lat  != null ? String(r.lat) : '',
+      lng:          r.lng  != null ? String(r.lng) : '',
+      googleMapsUrl: r.googleMapsUrl ?? '',
       caseNumber:   r.caseNumber     ?? '',
       productWork:  r.productWork    ?? '',
       productCategory: r.productCategory ?? '',
@@ -195,6 +205,72 @@ function canUserApproveRequest(
     )
   }
   return false
+}
+
+// ── Place cell (text input + GPS capture button + optional Google Maps link parse) ──
+
+function PlaceGpsCell({
+  place, googleMapsUrl, lat, lng, readOnly, capturing, inputClassName,
+  onPlaceChange, onMapsUrlChange, onCaptureGps, onClearGps,
+}: {
+  place: string
+  googleMapsUrl: string
+  lat: string
+  lng: string
+  readOnly: boolean
+  capturing: boolean
+  inputClassName: string
+  onPlaceChange: (value: string) => void
+  onMapsUrlChange: (value: string) => void
+  onCaptureGps: () => void
+  onClearGps: () => void
+}) {
+  const hasGps = lat !== '' && lng !== ''
+  const showParseError = googleMapsUrl.trim() !== '' && parseGoogleMapsCoords(googleMapsUrl) === null
+
+  return (
+    <div className="space-y-1">
+      <input value={place} readOnly={readOnly} placeholder="สถานที่..."
+        onChange={e => onPlaceChange(e.target.value)}
+        className={inputClassName} />
+
+      {!readOnly && (
+        <>
+          <input value={googleMapsUrl} placeholder="ลิงก์ Google Maps (ถ้ามี)..."
+            onChange={e => onMapsUrlChange(e.target.value)}
+            className={`${inputClassName} !text-[11px]`} />
+
+          {showParseError && (
+            <p className="text-[10px] text-amber-700 leading-tight print:hidden">
+              ไม่พบพิกัดในลิงก์นี้ — วางลิงก์แบบเต็มที่มี @lat,lng หรือกด 📍 จับ GPS แทน
+            </p>
+          )}
+
+          <div className="flex items-center gap-1.5 print:hidden">
+            {hasGps ? (
+              <>
+                <span className="inline-flex items-center gap-1 rounded bg-green-50 border border-green-200 px-1.5 py-0.5 text-[10px] text-green-700 font-mono">
+                  <MapPin className="w-2.5 h-2.5" /> {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}
+                </span>
+                <button type="button" onClick={onClearGps} className="text-[10px] text-gray-400 hover:text-red-600">
+                  ลบ GPS
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={capturing}
+                onClick={onCaptureGps}
+                className="text-[10px] text-green-700 hover:underline disabled:opacity-50"
+              >
+                {capturing ? 'กำลังจับ GPS...' : '📍 จับ GPS'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 // ── Product work cell (cascading category → type popover) ─────────────────────
@@ -520,6 +596,7 @@ export default function OutsideWorkExcelForm({
   const [saving, setSaving]       = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [todayYmd]                = useState(() => toYmd(new Date()))
+  const [capturingGpsKey, setCapturingGpsKey] = useState<string | null>(null)
 
   // ── Client company filter ("ทุกบริษัท" = '' = no filter, backward compatible) ──
   const [viewCompanyId, setViewCompanyId] = useState('')
@@ -610,6 +687,43 @@ export default function OutsideWorkExcelForm({
     setWeekData(prev => ({ ...prev, [key]: { ...prev[key], assigneeIds: ids, dirty: true } }))
   }, [])
 
+  const updateSlotFields = useCallback((key: string, patch: Partial<SlotData>) => {
+    setWeekData(prev => ({ ...prev, [key]: { ...prev[key], ...patch, dirty: true } }))
+  }, [])
+
+  // "📍 จับ GPS" — same navigator.geolocation pattern as WeeklyPlanPanel.tsx's
+  // captureGps(). Primary way to set a slot's lat/lng; pasting a full Google
+  // Maps link (parsed on change below, no network) is the optional secondary
+  // path in the same cell.
+  const captureGps = (key: string) => {
+    if (!navigator.geolocation) { toast.error('Browser ไม่รองรับ GPS'); return }
+    setCapturingGpsKey(key)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        updateSlotFields(key, { lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) })
+        setCapturingGpsKey(null)
+      },
+      () => {
+        toast.error('ไม่สามารถอ่านพิกัด GPS ได้ — กรุณาอนุญาตการเข้าถึงตำแหน่ง')
+        setCapturingGpsKey(null)
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    )
+  }
+
+  const clearGps = (key: string) => {
+    updateSlotFields(key, { lat: '', lng: '' })
+  }
+
+  const updateMapsUrl = (key: string, value: string) => {
+    const parsed = parseGoogleMapsCoords(value)
+    if (parsed) {
+      updateSlotFields(key, { googleMapsUrl: value, lat: String(parsed.lat), lng: String(parsed.lng) })
+    } else {
+      updateSlot(key, 'googleMapsUrl', value)
+    }
+  }
+
   const employees = useMemo(() => {
     const map = new Map<string, string>([[userId, userName]])
     reqs.forEach(r => map.set(r.userId, r.userName))
@@ -641,6 +755,9 @@ export default function OutsideWorkExcelForm({
           date: ymd, timeSlot: timeSlot || null,
           place:        slot.place,
           purpose:      slot.purpose,
+          lat:          slot.lat ? Number(slot.lat) : null,
+          lng:          slot.lng ? Number(slot.lng) : null,
+          googleMapsUrl: slot.googleMapsUrl || null,
           caseNumber:   slot.caseNumber   || null,
           productWork:  slot.productWork  || null,
           productCategory: slot.productCategory || null,
@@ -929,9 +1046,16 @@ export default function OutsideWorkExcelForm({
 
                         {/* สถานที่ */}
                         <td className={`${TD} ${stripe}`}>
-                          <input value={morn.place} readOnly={mLock} placeholder="สถานที่..."
-                            onChange={e => updateSlot(kM, 'place', e.target.value)}
-                            className={`${INP} ${mLock ? INP_RO : ''}`} />
+                          <PlaceGpsCell
+                            place={morn.place} googleMapsUrl={morn.googleMapsUrl}
+                            lat={morn.lat} lng={morn.lng}
+                            readOnly={mLock} capturing={capturingGpsKey === kM}
+                            inputClassName={`${INP} ${mLock ? INP_RO : ''}`}
+                            onPlaceChange={v => updateSlot(kM, 'place', v)}
+                            onMapsUrlChange={v => updateMapsUrl(kM, v)}
+                            onCaptureGps={() => captureGps(kM)}
+                            onClearGps={() => clearGps(kM)}
+                          />
                         </td>
 
                         {/* สิ่งที่ไปดำเนินการ */}
@@ -1063,9 +1187,16 @@ export default function OutsideWorkExcelForm({
                         </td>
 
                         <td className={`${TD} ${stripe}`}>
-                          <input value={aftn.place} readOnly={aLock} placeholder="สถานที่..."
-                            onChange={e => updateSlot(kA, 'place', e.target.value)}
-                            className={`${INP} ${aLock ? INP_RO : ''}`} />
+                          <PlaceGpsCell
+                            place={aftn.place} googleMapsUrl={aftn.googleMapsUrl}
+                            lat={aftn.lat} lng={aftn.lng}
+                            readOnly={aLock} capturing={capturingGpsKey === kA}
+                            inputClassName={`${INP} ${aLock ? INP_RO : ''}`}
+                            onPlaceChange={v => updateSlot(kA, 'place', v)}
+                            onMapsUrlChange={v => updateMapsUrl(kA, v)}
+                            onCaptureGps={() => captureGps(kA)}
+                            onClearGps={() => clearGps(kA)}
+                          />
                         </td>
 
                         <td className={`${TD} ${stripe}`}>

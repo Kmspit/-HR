@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900036
+export const CURRENT_SCHEMA_VERSION = 900037
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2389,6 +2389,14 @@ async function runEnsure(force = false): Promise<boolean> {
   // nullable — no backfill needed.
   await addColumnIfMissing('user_devices', 'lastUserAgent', `ALTER TABLE user_devices ADD COLUMN lastUserAgent TEXT`)
   await addColumnIfMissing('user_devices', 'lastIpAddress', `ALTER TABLE user_devices ADD COLUMN lastIpAddress TEXT`)
+
+  // v900037 — GPS coordinates on outside_work_requests (lat/lng), so the
+  // checkin GPS-distance check can cover approved outside-work locations the
+  // same way it already covers WeeklyPlanDay. Additive, nullable — old rows
+  // (all 14 today, none with coordinates) fall through to the existing
+  // locationStatus = 'no_plan' path unchanged, no backfill needed.
+  await addColumnIfMissing('outside_work_requests', 'lat', `ALTER TABLE outside_work_requests ADD COLUMN lat REAL`)
+  await addColumnIfMissing('outside_work_requests', 'lng', `ALTER TABLE outside_work_requests ADD COLUMN lng REAL`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
