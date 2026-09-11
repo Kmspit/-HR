@@ -610,7 +610,18 @@ export default function AttendanceClient({
                 allowUpdate={faceRegistered}
                 onRegistered={() => {
                   setFaceRegistered(true)
-                  setShowFaceUpdate(false)
+                  // Deliberately NOT setShowFaceUpdate(false) here — that used to
+                  // unmount FaceRegistrationCard the instant an update succeeded,
+                  // before its own persistent "อัปเดตใบหน้าเรียบร้อย" card could
+                  // ever render (React batches this callback's state updates
+                  // together with the card's own setPhase('done')). The user was
+                  // left looking at the exact same "ลงทะเบียนใบหน้าแล้ว" line they
+                  // saw before clicking "อัปเดตใบหน้า", with no visible sign
+                  // anything happened — which is why it looked broken even though
+                  // every update was saved correctly. The card now stays mounted
+                  // and its own "เสร็จสิ้น" button (onCancelUpdate below) is what
+                  // closes it. This line is a no-op for first-time registration
+                  // (showFaceUpdate is never true there), so don't re-add it.
                   setRefreshKey((k) => k + 1)
                 }}
                 onCancelUpdate={() => setShowFaceUpdate(false)}

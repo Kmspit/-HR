@@ -2,6 +2,13 @@ import { defineConfig } from 'vitest/config'
 import path from 'path'
 
 export default defineConfig({
+  // Automatic JSX runtime for the handful of .tsx component tests (e.g.
+  // tests/components/*) — without this, esbuild defaults to the classic
+  // transform, which needs `React` in scope even though Next.js's own
+  // compiler (SWC) never requires that in app code.
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     environment: 'node',
     globals: true,
