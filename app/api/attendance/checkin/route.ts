@@ -34,7 +34,10 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const deviceCheck = await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'))
+    const deviceCheck = await assertDeviceAllowed(session.user.id, req.headers.get('X-Device-Key'), {
+      userAgent: req.headers.get('user-agent'),
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    })
     if (!deviceCheck.ok) {
       return NextResponse.json({ error: deviceCheck.error, code: deviceCheck.code }, { status: 403 })
     }

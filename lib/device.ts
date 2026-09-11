@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import type { DeviceStatus } from '@prisma/client'
+import { classifyDeviceAnomaly } from '@/lib/device-anomaly'
+import { logSecurityEvent } from '@/lib/security-events'
 
 export type DeviceAllowResult =
   | { ok: true }
@@ -9,14 +11,29 @@ export type DeviceAllowResult =
       error: string
     }
 
+export type DeviceRequestContext = {
+  userAgent?: string | null
+  ip?: string | null
+}
+
 /**
  * ตรวจ/ผูกเครื่องสำหรับลงเวลา — ครั้งแรกลงทะเบียนอัตโนมัติ, ครั้งถัดไปต้องตรง key และ ACTIVE
+ *
+ * `context` (userAgent/ip) is for anomaly logging only (see
+ * lib/device-anomaly.ts) — this is NOT a hard-block gate, face match +
+ * liveness remain the primary defense. Logging is fire-and-forget
+ * (logSecurityEvent never throws, and we deliberately don't await it) so it
+ * never adds latency to the checkin/checkout/lunch response.
  */
 export async function assertDeviceAllowed(
   userId: string,
   deviceKey: string | null,
+  context?: DeviceRequestContext,
 ): Promise<DeviceAllowResult> {
   const key = deviceKey?.trim()
+  const userAgent = context?.userAgent?.trim().slice(0, 500) || null
+  const ip = context?.ip?.trim() || null
+
   if (!key) {
     return {
       ok: false,
@@ -29,7 +46,14 @@ export async function assertDeviceAllowed(
 
   if (!existing) {
     await prisma.userDevice.create({
-      data: { userId, deviceKey: key, deviceLabel: 'Mobile', status: 'ACTIVE' },
+      data: {
+        userId,
+        deviceKey: key,
+        deviceLabel: 'Mobile',
+        status: 'ACTIVE',
+        lastUserAgent: userAgent,
+        lastIpAddress: ip,
+      },
     })
     return { ok: true }
   }
@@ -43,6 +67,18 @@ export async function assertDeviceAllowed(
   }
 
   if (existing.deviceKey !== key) {
+    void logSecurityEvent({
+      userId,
+      eventType: 'DEVICE_MISMATCH',
+      severity: 'WARNING',
+      description: 'พยายามลงเวลาด้วยรหัสอุปกรณ์ที่ไม่ตรงกับที่ลงทะเบียนไว้',
+      ip: ip ?? undefined,
+      userAgent: userAgent ?? undefined,
+      metadata: {
+        registeredDeviceKeyPrefix: existing.deviceKey.slice(0, 8),
+        attemptedDeviceKeyPrefix: key.slice(0, 8),
+      },
+    })
     return {
       ok: false,
       code: 'DEVICE_MISMATCH',
@@ -50,9 +86,32 @@ export async function assertDeviceAllowed(
     }
   }
 
+  const anomaly = classifyDeviceAnomaly({
+    lastUserAgent: existing.lastUserAgent,
+    lastIpAddress: existing.lastIpAddress,
+    newUserAgent: userAgent,
+    newIpAddress: ip,
+  })
+  if (anomaly.anomaly) {
+    void logSecurityEvent({
+      userId,
+      eventType: 'DEVICE_ANOMALY',
+      severity: anomaly.severity,
+      description: anomaly.reason,
+      ip: ip ?? undefined,
+      userAgent: userAgent ?? undefined,
+      metadata: {
+        lastUserAgent: existing.lastUserAgent,
+        newUserAgent: userAgent,
+        lastIpAddress: existing.lastIpAddress,
+        newIpAddress: ip,
+      },
+    })
+  }
+
   await prisma.userDevice.update({
     where: { userId },
-    data: { lastSeenAt: new Date() },
+    data: { lastSeenAt: new Date(), lastUserAgent: userAgent, lastIpAddress: ip },
   })
 
   return { ok: true }

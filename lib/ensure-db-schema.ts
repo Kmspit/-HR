@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900035
+export const CURRENT_SCHEMA_VERSION = 900036
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2380,6 +2380,15 @@ async function runEnsure(force = false): Promise<boolean> {
       `)
     }
   }
+
+  // v900036 — device-binding anomaly logging (see lib/device-anomaly.ts).
+  // lastUserAgent/lastIpAddress on user_devices are a comparison baseline
+  // only (last known values) — the actual anomaly log lives in
+  // SecurityEvent (DEVICE_MISMATCH / DEVICE_ANOMALY), written only when
+  // assertDeviceAllowed() considers a change worth flagging. Additive,
+  // nullable — no backfill needed.
+  await addColumnIfMissing('user_devices', 'lastUserAgent', `ALTER TABLE user_devices ADD COLUMN lastUserAgent TEXT`)
+  await addColumnIfMissing('user_devices', 'lastIpAddress', `ALTER TABLE user_devices ADD COLUMN lastIpAddress TEXT`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
