@@ -50,31 +50,12 @@ const nextConfig: NextConfig = {
       './assets/fonts/**/*',
       './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
     ],
-    // Every other route that reaches lib/thai-pdf-font.ts (via payroll-pdf.ts
-    // or warning-pdf-generate.ts) needs its own entry here too — this key is
-    // per-route, not per-imported-module, so having it on one route does
-    // nothing for another. Found 2026-09-11: these 3 were missing the whole
-    // time since lib/payroll-pdf.ts started using the shared font loader
-    // (2026-06-04, commit 13de765) — /api/payslip/send-line threw "ไม่พบไฟล์
-    // ฟอนต์ไทยในระบบ" in real production despite the font being copied
-    // successfully at build time, because it was never bundled into that
-    // specific serverless function.
-    '/api/payslip/send-line': [
-      './assets/fonts/**/*',
-      './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
-    ],
-    '/api/payslip/[id]/pdf': [
-      './assets/fonts/**/*',
-      './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
-    ],
-    '/api/warnings': [
-      './assets/fonts/**/*',
-      './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
-    ],
-    '/api/warnings/[id]/send': [
-      './assets/fonts/**/*',
-      './node_modules/@expo-google-fonts/noto-sans-thai/**/*',
-    ],
+    // __FONT_DIAG_TEMP__ NEGATIVE CONTROL: the 4 entries below are
+    // deliberately removed for one throwaway Preview deploy, to prove the
+    // outputFileTracingIncludes entries are what fixes this — not something
+    // else (matches the geothai precedent's lesson: don't assume a
+    // config-shaped fix works without testing it). Restored in the very next
+    // commit on this branch.
     // NOTE for whoever touches this next: an entry for /api/thai-address/*
     // (including geothai's data files) was tried here first for the same
     // reason as the font entry above, but it did not fix the deployed
