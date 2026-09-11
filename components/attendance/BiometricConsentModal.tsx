@@ -28,8 +28,18 @@ export default function BiometricConsentModal({ open, consentText, submitting, o
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-      <div className="glass-card w-full max-w-lg rounded-2xl p-5 space-y-4 border dark:border-green-500/25 light:border-green-200 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4">
+      {/* max-h-[90vh] is a fallback for browsers with no dvh support — on mobile,
+          vh includes the area the browser's address/toolbar chrome covers, so a
+          modal sized against it can render taller than what's actually visible
+          and push its buttons off-screen with no way to scroll to them. dvh
+          (dynamic viewport height) tracks the real visible area as browser
+          chrome shows/hides. Listed after vh so it wins the cascade in browsers
+          that understand it; unsupported browsers simply ignore the dvh rule
+          and keep the vh fallback. The outer overlay above also scrolls
+          (overflow-y-auto) as a second safety net in case this box is still
+          taller than the viewport for any reason. */}
+      <div className="glass-card w-full max-w-lg rounded-2xl p-5 space-y-4 border dark:border-green-500/25 light:border-green-200 max-h-[90vh] max-h-[90dvh] my-auto flex flex-col">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/15 flex-shrink-0">
             <ShieldCheck className="w-5 h-5 text-green-400" />
@@ -47,7 +57,15 @@ export default function BiometricConsentModal({ open, consentText, submitting, o
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto rounded-xl border dark:border-white/10 light:border-slate-200 p-3 text-xs leading-relaxed whitespace-pre-wrap dark:text-slate-300 light:text-slate-700"
+          // min-h-0 is a defensive override of a flex item's default
+          // min-height:auto, which can stop it from shrinking below its own
+          // content height inside a column flex container — spec says this
+          // shouldn't be needed once overflow-y isn't 'visible' (verified:
+          // Chromium already handles it correctly without this class), but
+          // it's cheap insurance against older/other engines that get this
+          // edge case wrong, so flex-1/overflow-y-auto reliably engage
+          // instead of letting the whole card spill past its own max-h.
+          className="flex-1 min-h-0 overflow-y-auto rounded-xl border dark:border-white/10 light:border-slate-200 p-3 text-xs leading-relaxed whitespace-pre-wrap dark:text-slate-300 light:text-slate-700"
         >
           {consentText}
         </div>
