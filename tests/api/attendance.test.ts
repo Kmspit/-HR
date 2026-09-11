@@ -78,7 +78,7 @@ vi.mock('@/lib/outside-work', () => ({
 
 vi.mock('@/lib/weekly-plan-attendance', () => ({
   findApprovedWeeklyPlanDayForDate:    vi.fn().mockResolvedValue(null),
-  WEEKLY_PLAN_LOCATION_TOLERANCE_METERS: 500,
+  SHARED_LOCATION_TOLERANCE_METERS: 500,
 }))
 
 vi.mock('@/lib/utils', () => ({
@@ -104,6 +104,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formHasFaceImage } from '@/lib/attendance-face-scan'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
+import { haversineDistanceMeters } from '@/lib/gps-fence'
+import { findApprovedOutsideWorkForDate } from '@/lib/outside-work'
 import { POST as checkinPost } from '@/app/api/attendance/checkin/route'
 import { POST as checkoutPost } from '@/app/api/attendance/checkout/route'
 
@@ -157,6 +159,78 @@ describe('POST /api/attendance/checkin', () => {
     )
     // Route may return 200 or 201 on success
     expect([200, 201]).toContain(res.status)
+  })
+
+  describe('outside-work GPS check (OutsideWorkRequest.lat/lng)', () => {
+    function setUpOutsideCheckinMocks() {
+      vi.mocked(auth).mockResolvedValue(mockSession as never)
+      vi.mocked(formHasFaceImage).mockReturnValue(true)
+      vi.mocked(prisma.companySettings.findUnique).mockResolvedValue({
+        id: 'singleton',
+        workStartTime: '08:30', lunchStartTime: '12:00', lunchReturnTime: '13:00',
+        lateGraceMin: 5, geofenceLat: null, geofenceLng: null, geofenceRadius: 200,
+      } as never)
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(
+        { id: 'user-1', name: 'Employee', role: 'EMPLOYEE', branchId: null, branch: null } as never,
+      )
+      vi.mocked(prisma.attendance.create).mockResolvedValue({
+        id: 'att-1', userId: 'user-1', date: new Date(), checkIn: new Date(), sessionIndex: 1,
+      } as never)
+      vi.mocked(finalizeAttendanceRecord).mockResolvedValue({ id: 'att-1' } as never)
+    }
+
+    const outsideFormFields = {
+      lat: '13.999', lng: '100.999', address: 'ที่ลูกค้า', locationType: 'outside',
+    }
+
+    it('locationStatus="matched" when within the shared tolerance', async () => {
+      setUpOutsideCheckinMocks()
+      vi.mocked(findApprovedOutsideWorkForDate).mockResolvedValue({
+        id: 'ow-1', place: 'บริษัทลูกค้า A', startTime: '09:00', endTime: '17:00', date: new Date(),
+        lat: 13.75, lng: 100.50,
+      } as never)
+      vi.mocked(haversineDistanceMeters).mockReturnValue(100) // within 500m tolerance
+
+      const res = await checkinPost(makeFormReq('http://localhost/api/attendance/checkin', outsideFormFields))
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.locationStatus).toBe('matched')
+      expect(data.plannedPlace).toBe('บริษัทลูกค้า A')
+      expect(data.weeklyPlanWarning).toBeNull()
+    })
+
+    it('locationStatus="mismatch" with source-aware wording (ใบขออนุมัตินอกสถานที่, not แผนงาน) when beyond tolerance', async () => {
+      setUpOutsideCheckinMocks()
+      vi.mocked(findApprovedOutsideWorkForDate).mockResolvedValue({
+        id: 'ow-1', place: 'บริษัทลูกค้า A', startTime: '09:00', endTime: '17:00', date: new Date(),
+        lat: 13.75, lng: 100.50,
+      } as never)
+      vi.mocked(haversineDistanceMeters).mockReturnValue(900) // beyond 500m tolerance
+
+      const res = await checkinPost(makeFormReq('http://localhost/api/attendance/checkin', outsideFormFields))
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.locationStatus).toBe('mismatch')
+      expect(data.locationDistance).toBe(900)
+      expect(data.weeklyPlanWarning).toContain('ใบขออนุมัตินอกสถานที่')
+      expect(data.weeklyPlanWarning).not.toContain('แผนงาน')
+      expect(data.weeklyPlanWarning).toContain('บริษัทลูกค้า A')
+    })
+
+    it('an approved OutsideWorkRequest with no coordinates (old record) falls back to locationStatus="no_plan", unchanged from before', async () => {
+      setUpOutsideCheckinMocks()
+      vi.mocked(findApprovedOutsideWorkForDate).mockResolvedValue({
+        id: 'ow-2', place: 'บริษัทลูกค้า B', startTime: '09:00', endTime: '17:00', date: new Date(),
+        lat: null, lng: null,
+      } as never)
+
+      const res = await checkinPost(makeFormReq('http://localhost/api/attendance/checkin', outsideFormFields))
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.locationStatus).toBe('no_plan')
+      expect(data.weeklyPlanWarning).toBeNull()
+      expect(haversineDistanceMeters).not.toHaveBeenCalled()
+    })
   })
 })
 

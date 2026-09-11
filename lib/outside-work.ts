@@ -10,6 +10,8 @@ export type ApprovedOutsideWork = {
   startTime: string
   endTime: string
   date: Date
+  lat: number | null
+  lng: number | null
 }
 
 /**
@@ -34,7 +36,7 @@ export async function findApprovedOutsideWorkForDate(
       deletedAt: null,
     },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, place: true, startTime: true, endTime: true, date: true },
+    select: { id: true, place: true, startTime: true, endTime: true, date: true, lat: true, lng: true },
   })
 
   return req

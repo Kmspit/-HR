@@ -25,7 +25,7 @@ import {
 } from '@/lib/attendance-session'
 import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
 import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
-import { findApprovedWeeklyPlanDayForDate, WEEKLY_PLAN_LOCATION_TOLERANCE_METERS } from '@/lib/weekly-plan-attendance'
+import { findApprovedWeeklyPlanDayForDate, SHARED_LOCATION_TOLERANCE_METERS } from '@/lib/weekly-plan-attendance'
 import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 import { getCachedCompanySettings, clearCompanySettingsCache } from '@/lib/company-settings-cache'
 
@@ -179,6 +179,10 @@ export async function POST(req: NextRequest) {
     let plannedPlace: string | null = null
     let locationDistance: number | null = null
     let locationStatus: string | null = null
+    // Which approval source the GPS check ran against — only meaningful when
+    // locationStatus is 'mismatch'/'matched', used to word the mismatch
+    // notification/warning correctly instead of always saying "แผนงาน".
+    let locationSource: 'weekly_plan' | 'outside_work' | null = null
 
     if (forceOutside) {
       approvedOutsideWork = await findApprovedOutsideWorkForDate(session.user.id, today)
@@ -198,21 +202,33 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // GPS location validation against weekly plan day
+      // GPS location validation — weekly plan day takes priority when both exist
+      // (unchanged behavior), OutsideWorkRequest coordinates are the fallback.
       if (approvedPlanDay) {
         weeklyPlanDayId = approvedPlanDay.id
         plannedPlace = approvedPlanDay.place
+        locationSource = 'weekly_plan'
 
         if (approvedPlanDay.lat != null && approvedPlanDay.lng != null && lat != null && lng != null) {
           plannedLat = approvedPlanDay.lat
           plannedLng = approvedPlanDay.lng
           locationDistance = haversineDistanceMeters(lat, lng, plannedLat, plannedLng)
-          locationStatus = locationDistance > WEEKLY_PLAN_LOCATION_TOLERANCE_METERS ? 'mismatch' : 'matched'
+          locationStatus = locationDistance > SHARED_LOCATION_TOLERANCE_METERS ? 'mismatch' : 'matched'
         } else {
           locationStatus = 'no_gps_plan'
         }
-      } else if (outsideWorkRequestId) {
-        locationStatus = 'no_plan'
+      } else if (outsideWorkRequestId && approvedOutsideWork) {
+        plannedPlace = approvedOutsideWork.place
+        locationSource = 'outside_work'
+
+        if (approvedOutsideWork.lat != null && approvedOutsideWork.lng != null && lat != null && lng != null) {
+          plannedLat = approvedOutsideWork.lat
+          plannedLng = approvedOutsideWork.lng
+          locationDistance = haversineDistanceMeters(lat, lng, plannedLat, plannedLng)
+          locationStatus = locationDistance > SHARED_LOCATION_TOLERANCE_METERS ? 'mismatch' : 'matched'
+        } else {
+          locationStatus = 'no_plan'
+        }
       }
     }
 
@@ -340,12 +356,13 @@ export async function POST(req: NextRequest) {
     if (locationStatus === 'mismatch' && locationDistance != null) {
       const employeeName = session.user.name ?? 'พนักงาน'
       const distM = Math.round(locationDistance)
-      const mismatchMsg = `${employeeName} เช็คอินนอกสถานที่ — GPS ห่างจากแผนงาน ${distM} เมตร (ได้รับอนุญาต ${WEEKLY_PLAN_LOCATION_TOLERANCE_METERS} ม.) | สถานที่วางแผน: ${plannedPlace ?? '—'}`
+      const sourceLabel = locationSource === 'outside_work' ? 'ใบขออนุมัตินอกสถานที่' : 'แผนงาน'
+      const mismatchMsg = `${employeeName} เช็คอินนอกสถานที่ — GPS ห่างจาก${sourceLabel} ${distM} เมตร (ได้รับอนุญาต ${SHARED_LOCATION_TOLERANCE_METERS} ม.) | สถานที่: ${plannedPlace ?? '—'}`
       after(async () => {
         try {
           const { notifyRole: _notifyRole } = await import('@/lib/notifications')
-          await _notifyRole('MANAGER_HR', 'SYSTEM', '⚠️ GPS ไม่ตรงแผนงาน', mismatchMsg, '/attendance')
-          await _notifyRole('CEO', 'SYSTEM', '⚠️ GPS ไม่ตรงแผนงาน', mismatchMsg, '/attendance')
+          await _notifyRole('MANAGER_HR', 'SYSTEM', `⚠️ GPS ไม่ตรง${sourceLabel}`, mismatchMsg, '/attendance')
+          await _notifyRole('CEO', 'SYSTEM', `⚠️ GPS ไม่ตรง${sourceLabel}`, mismatchMsg, '/attendance')
         } catch (err) {
           console.error('[mismatch-notify]', err)
         }
@@ -373,7 +390,7 @@ export async function POST(req: NextRequest) {
     }
 
     const weeklyPlanWarning = locationStatus === 'mismatch' && locationDistance != null
-      ? `⚠️ GPS ไม่ตรงแผนงาน — ห่าง ${Math.round(locationDistance)} เมตร จาก "${plannedPlace ?? '—'}" (อนุญาต ${WEEKLY_PLAN_LOCATION_TOLERANCE_METERS} ม.)`
+      ? `⚠️ GPS ไม่ตรง${locationSource === 'outside_work' ? 'ใบขออนุมัตินอกสถานที่' : 'แผนงาน'} — ห่าง ${Math.round(locationDistance)} เมตร จาก "${plannedPlace ?? '—'}" (อนุญาต ${SHARED_LOCATION_TOLERANCE_METERS} ม.)`
       : null
 
     return NextResponse.json({

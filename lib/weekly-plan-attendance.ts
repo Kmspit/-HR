@@ -1,7 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { bangkokDateKey } from '@/lib/datetime-bangkok'
 
-export const WEEKLY_PLAN_LOCATION_TOLERANCE_METERS = 500
+/** Shared GPS-mismatch tolerance for BOTH WeeklyPlanDay and OutsideWorkRequest
+ *  checkin location checks — same class of "approved external location,
+ *  allow for GPS drift + building footprint" use case, so one consistent
+ *  number rather than two arbitrary ones. Lives here for now (kept where it
+ *  was originally defined) even though outside-work also imports it. */
+export const SHARED_LOCATION_TOLERANCE_METERS = 500
 
 export type ApprovedPlanDay = {
   id: string

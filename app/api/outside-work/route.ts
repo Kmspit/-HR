@@ -11,6 +11,7 @@ import {
 } from '@/lib/org-scope'
 import type { Role } from '@prisma/client'
 import { parseNonNegativeNumber } from '@/lib/utils'
+import { isValidLatLng } from '@/lib/google-maps-url'
 
 export async function GET(req: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,
         chainConfigId: true, currentStepOrder: true, createdAt: true,
-        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        googleMapsUrl: true, lat: true, lng: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       attachmentUrl, attachmentName,
       employeeName, ownerName, workType, distance, distanceLimit, routeType,
       timeSlot, caseNumber, productWork, productCategory, productType, workBranch, caseCount, adminChecked, supervisedBy,
-      clientCompanyId,
+      clientCompanyId, lat, lng,
     } = body
     const assigneeIds: string[] | undefined = body.assigneeIds
 
@@ -115,6 +116,9 @@ export async function POST(req: NextRequest) {
     }
     if (distanceLimit && parseNonNegativeNumber(distanceLimit) == null) {
       return NextResponse.json({ error: 'ระยะทางจำกัดต้องไม่ติดลบ' }, { status: 400 })
+    }
+    if ((lat != null || lng != null) && !isValidLatLng(Number(lat), Number(lng))) {
+      return NextResponse.json({ error: 'พิกัด GPS ไม่ถูกต้อง' }, { status: 400 })
     }
 
     const year = new Date().getFullYear() + 543
@@ -146,6 +150,8 @@ export async function POST(req: NextRequest) {
       adminChecked:   adminChecked  || null,
       supervisedBy:   supervisedBy  || null,
       clientCompanyId: clientCompanyId || null,
+      lat: lat != null ? Number(lat) : null,
+      lng: lng != null ? Number(lng) : null,
     }
 
     // Retry once or twice on a document_number collision (e.g. a second concurrent
@@ -187,7 +193,7 @@ export async function POST(req: NextRequest) {
         id: true, userId: true, date: true, startTime: true, endTime: true,
         place: true, purpose: true, client: true, note: true, status: true,
         chainConfigId: true, currentStepOrder: true, createdAt: true,
-        googleMapsUrl: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
+        googleMapsUrl: true, lat: true, lng: true, attachmentUrl: true, attachmentName: true, approvalStatus: true,
         employeeName: true, ownerName: true, workType: true, distance: true, distanceLimit: true, routeType: true,
         timeSlot: true, caseNumber: true, productWork: true, productCategory: true, productType: true,
         workBranch: true, caseCount: true, adminChecked: true, supervisedBy: true, documentNumber: true,
