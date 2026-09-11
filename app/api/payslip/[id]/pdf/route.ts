@@ -14,20 +14,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // __FONT_DIAG_TEMP__ — temporary, remove before merge. See send-line/route.ts.
-    if (req.nextUrl.searchParams.get('__fontdiag') === 'x7k2m9qz') {
-      try {
-        const { loadThaiPdfFontBytes } = await import('@/lib/thai-pdf-font')
-        const bytes = await loadThaiPdfFontBytes()
-        return NextResponse.json({ diag: true, ok: true, fontBytes: bytes.length })
-      } catch (err) {
-        return NextResponse.json(
-          { diag: true, ok: false, error: err instanceof Error ? err.message : String(err) },
-          { status: 500 },
-        )
-      }
-    }
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

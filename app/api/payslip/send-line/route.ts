@@ -30,22 +30,6 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // __FONT_DIAG_TEMP__ — temporary, remove before merge. Proves this exact
-    // route's serverless bundle (not just `next build`'s output dir) can
-    // actually load the thai font at runtime, without touching DB/LINE/Cloudinary.
-    if (req.nextUrl.searchParams.get('__fontdiag') === 'x7k2m9qz') {
-      try {
-        const { loadThaiPdfFontBytes } = await import('@/lib/thai-pdf-font')
-        const bytes = await loadThaiPdfFontBytes()
-        return NextResponse.json({ diag: true, ok: true, fontBytes: bytes.length })
-      } catch (err) {
-        return NextResponse.json(
-          { diag: true, ok: false, error: err instanceof Error ? err.message : String(err) },
-          { status: 500 },
-        )
-      }
-    }
-
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -40,14 +40,6 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.next()
   }
 
-  // __FONT_DIAG_TEMP__ — temporary, remove before merge (see the matching
-  // comment in each route file this unblocks). Middleware's own session gate
-  // below runs before any route handler's code, so a diagnostic branch
-  // inside the handler alone can never be reached without this.
-  if (pathname.startsWith('/api/') && req.nextUrl.searchParams.get('__fontdiag') === 'x7k2m9qz') {
-    return NextResponse.next()
-  }
-
   // API — deploy profile gate + session required unless public
   if (pathname.startsWith('/api/')) {
     if (!isApiDeployProfileExempt(pathname) && isPathHiddenByDeployProfile(pathname)) {
