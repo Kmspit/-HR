@@ -1,5 +1,6 @@
-import { PDFDocument, rgb } from 'pdf-lib'
-import fontkit from '@pdf-lib/fontkit'
+import PDFDocument from 'pdfkit'
+import { rgb } from 'pdf-lib'
+import { drawText, finalizePdfKitDocument } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 
 export type WarningPdfInput = {
@@ -16,12 +17,9 @@ export type WarningPdfInput = {
 }
 
 export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<Buffer> {
-  const pdf = await PDFDocument.create()
-  pdf.registerFontkit(fontkit)
   const thaiBytes = await loadThaiPdfFontBytes()
-  const font = await pdf.embedFont(thaiBytes)
-  const fontBold = font
-  const page = pdf.addPage([595, 842])
+  const doc = new PDFDocument({ size: [595, 842], margin: 0 })
+  doc.font(thaiBytes)
 
   const dateStr = input.issuedAt.toLocaleDateString('th-TH', {
     year: 'numeric',
@@ -33,33 +31,27 @@ export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<
   const bodyColor = rgb(0.1, 0.1, 0.15)
 
   let y = 780
-  const draw = (text: string, size = 12, bold = false, color = bodyColor) => {
+  const draw = (text: string, size = 12, color = bodyColor) => {
     const lines = wrapText(text, 70)
     for (const line of lines) {
-      page.drawText(line, {
-        x: 50,
-        y,
-        size,
-        font: bold ? fontBold : font,
-        color,
-      })
+      drawText(doc, line, 50, y, { size, color })
       y -= size + 8
     }
   }
 
-  draw(input.companyName, 16, true, green)
+  draw(input.companyName, 16, green)
   y -= 4
-  draw('เอกสารใบเตือนพนักงาน (Warning Letter)', 14, true, green)
+  draw('เอกสารใบเตือนพนักงาน (Warning Letter)', 14, green)
   y -= 12
   draw(`วันที่ออกเอกสาร: ${dateStr}`)
   draw(`ครั้งที่: ${input.warningNumber}  |  ระดับ: ${input.level}`)
   y -= 8
-  draw('ข้อมูลพนักงาน', 12, true, green)
+  draw('ข้อมูลพนักงาน', 12, green)
   draw(`ชื่อ: ${input.employeeName}`)
   if (input.employeeId) draw(`รหัสพนักงาน: ${input.employeeId}`)
   if (input.department) draw(`แผนก/ฝ่าย: ${input.department}`)
   y -= 8
-  draw('รายละเอียดการเตือน', 12, true, green)
+  draw('รายละเอียดการเตือน', 12, green)
   draw(`สาเหตุ: ${input.reason}`)
   if (input.description?.trim()) draw(`หมายเหตุ: ${input.description.trim()}`)
   y -= 12
@@ -70,8 +62,7 @@ export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<
     10,
   )
 
-  const bytes = await pdf.save()
-  return Buffer.from(bytes)
+  return finalizePdfKitDocument(doc)
 }
 
 function wrapText(text: string, maxChars: number): string[] {

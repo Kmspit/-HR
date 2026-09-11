@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs'
-import { PDFDocument, rgb, type PDFPage, type PDFFont, type RGB } from 'pdf-lib'
-import fontkit from '@pdf-lib/fontkit'
+import PDFDocument from 'pdfkit'
+import { rgb, type RGB } from 'pdf-lib'
+import { drawRect, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import type { AttendanceWorkLogRow } from '@/lib/attendance-work-log'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 type Align = 'left' | 'center' | 'right'
@@ -284,8 +285,7 @@ function pdfStatusBg(status: string): RGB | undefined {
   return undefined
 }
 type PdfTableCtx = {
-  page: PDFPage
-  font: PDFFont
+  doc: PDFKit.PDFDocument
   margin: number
   colWidths: number[]
   cols: ExportColDef[]
@@ -298,44 +298,28 @@ function drawPdfGridRow(
   values: string[],
   opts: { header?: boolean; fill?: RGB },
 ) {
-  const { page, font, rowH, headerH } = ctx
+  const { doc, rowH, headerH } = ctx
   const h = opts.header ? headerH : rowH
   const yBottom = ctx.y - h
   let x = ctx.margin
   for (let i = 0; i < ctx.cols.length; i++) {
     const w = ctx.colWidths[i]
     if (opts.fill && !opts.header) {
-      page.drawRectangle({ x, y: yBottom, width: w, height: h, color: opts.fill })
+      drawRect(doc, x, yBottom, w, h, { fill: opts.fill })
     }
     if (opts.header) {
-      page.drawRectangle({
-        x,
-        y: yBottom,
-        width: w,
-        height: h,
-        color: rgb(0.11, 0.31, 0.78),
-      })
+      drawRect(doc, x, yBottom, w, h, { fill: rgb(0.11, 0.31, 0.78) })
     }
-    page.drawRectangle({
-      x,
-      y: yBottom,
-      width: w,
-      height: h,
-      borderColor: rgb(0.75, 0.8, 0.86),
-      borderWidth: 0.5,
-    })
+    drawRect(doc, x, yBottom, w, h, { borderColor: rgb(0.75, 0.8, 0.86), borderWidth: 0.5 })
     const text = safePdfText(values[i] ?? '-', opts.header ? 18 : 36)
     const size = opts.header ? 6.5 : 6
-    const tw = font.widthOfTextAtSize(text, size)
+    const tw = widthOf(doc, text, size)
     const col = ctx.cols[i]
     let tx = x + 3
     if (col.align === 'center') tx = x + Math.max(3, (w - tw) / 2)
     else if (col.align === 'right') tx = x + Math.max(3, w - tw - 3)
-    page.drawText(text, {
-      x: tx,
-      y: yBottom + (h - size) / 2 - 1,
+    drawPdfText(doc, text, tx, yBottom + (h - size) / 2 - 1, {
       size,
-      font,
       color: opts.header ? rgb(1, 1, 1) : rgb(0.1, 0.12, 0.16),
     })
     x += w
@@ -352,7 +336,7 @@ function drawPdfGroupRow(ctx: PdfTableCtx) {
     const nextG = i + 1 < ctx.cols.length ? (ctx.cols[i + 1].group ?? ctx.cols[i + 1].header) : null
     if (nextG !== g || i === ctx.cols.length - 1) {
       const segW = ctx.colWidths.slice(gStart, i + 1).reduce((a, b) => a + b, 0)
-      pageDrawGroupCell(ctx.page, x, yBottom, segW, h, g, ctx.font)
+      pageDrawGroupCell(ctx.doc, x, yBottom, segW, h, g)
       x += segW
       gStart = i + 1
     }
@@ -360,26 +344,19 @@ function drawPdfGroupRow(ctx: PdfTableCtx) {
   ctx.y = yBottom - 2
 }
 function pageDrawGroupCell(
-  page: PDFPage,
+  doc: PDFKit.PDFDocument,
   x: number,
   y: number,
   w: number,
   h: number,
   label: string,
-  font: PDFFont,
 ) {
-  page.drawRectangle({ x, y, width: w, height: h, color: rgb(0.86, 0.92, 0.98) })
-  page.drawRectangle({ x, y, width: w, height: h, borderColor: rgb(0.7, 0.78, 0.88), borderWidth: 0.5 })
+  drawRect(doc, x, y, w, h, { fill: rgb(0.86, 0.92, 0.98) })
+  drawRect(doc, x, y, w, h, { borderColor: rgb(0.7, 0.78, 0.88), borderWidth: 0.5 })
   const text = safePdfText(label, 20)
   const size = 6
-  const tw = font.widthOfTextAtSize(text, size)
-  page.drawText(text, {
-    x: x + (w - tw) / 2,
-    y: y + (h - size) / 2,
-    size,
-    font,
-    color: rgb(0.12, 0.23, 0.55),
-  })
+  const tw = widthOf(doc, text, size)
+  drawPdfText(doc, text, x + (w - tw) / 2, y + (h - size) / 2, { size, color: rgb(0.12, 0.23, 0.55) })
 }
 export async function buildWorkLogPdf(
   rows: ExportRow[],
@@ -389,51 +366,45 @@ export async function buildWorkLogPdf(
   const includeEmployee =
     options?.includeEmployeeColumn ?? rows.some((r) => !!r.employeeName)
   const cols = getColumns(includeEmployee)
-  const pdf = await PDFDocument.create()
-  pdf.registerFontkit(fontkit)
   const fontBytes = await loadThaiPdfFontBytes()
-  const font = await pdf.embedFont(fontBytes)
   const pageW = 1684
   const pageH = 1190
   const margin = 28
+  const doc = new PDFDocument({ size: [pageW, pageH], margin: 0 })
+  doc.font(fontBytes)
   const tableW = pageW - margin * 2
   const colWidths = pdfColWidths(cols, tableW)
   const rowH = 16
   const headerH = 20
-  let page = pdf.addPage([pageW, pageH])
   let y = pageH - margin
-  const drawTitle = (p: PDFPage, yy: number) => {
-    p.drawText(safePdfText(`${meta.companyName ?? 'HRFlow'} — บันทึกลงเวลารายเดือน`, 80), {
-      x: margin,
-      y: yy,
+  const drawTitle = (yy: number) => {
+    drawPdfText(doc, safePdfText(`${meta.companyName ?? 'HRFlow'} — บันทึกลงเวลารายเดือน`, 80), margin, yy, {
       size: 13,
-      font,
       color: rgb(0.06, 0.09, 0.16),
     })
   }
-  drawTitle(page, y)
+  drawTitle(y)
   y -= 18
-  page.drawText(
+  drawPdfText(
+    doc,
     safePdfText(
       `${meta.employeeName}${meta.employeeId ? ` (${meta.employeeId})` : ''} · ${meta.monthLabel} ${meta.year}`,
       100,
     ),
-    { x: margin, y, size: 10, font, color: rgb(0.25, 0.3, 0.35) },
+    margin,
+    y,
+    { size: 10, color: rgb(0.25, 0.3, 0.35) },
   )
   y -= meta.department ? 26 : 16
   if (meta.department) {
-    page.drawText(safePdfText(`แผนก: ${meta.department}`, 60), {
-      x: margin,
-      y: y + 10,
+    drawPdfText(doc, safePdfText(`แผนก: ${meta.department}`, 60), margin, y + 10, {
       size: 9,
-      font,
       color: rgb(0.45, 0.5, 0.55),
     })
   }
   y -= 8
   const makeCtx = (): PdfTableCtx => ({
-    page,
-    font,
+    doc,
     margin,
     colWidths,
     cols,
@@ -450,9 +421,9 @@ export async function buildWorkLogPdf(
   )
   y = ctx.y
   const startTableOnNewPage = () => {
-    page = pdf.addPage([pageW, pageH])
+    doc.addPage()
     y = pageH - margin - 8
-    ctx = { ...makeCtx(), page, y }
+    ctx = { ...makeCtx(), y }
     drawPdfGroupRow(ctx)
     drawPdfGridRow(ctx, cols.map((c) => c.header), { header: true })
     y = ctx.y
@@ -474,28 +445,20 @@ export async function buildWorkLogPdf(
   if (rows.length === 0) {
     const emptyH = 28
     const yBottom = y - emptyH
-    page.drawRectangle({
-      x: margin,
-      y: yBottom,
-      width: tableW,
-      height: emptyH,
-      color: rgb(0.98, 0.99, 1),
+    drawRect(doc, margin, yBottom, tableW, emptyH, {
+      fill: rgb(0.98, 0.99, 1),
       borderColor: rgb(0.75, 0.8, 0.86),
       borderWidth: 0.5,
     })
     const msg = safePdfText('ไม่มีข้อมูลในเดือนนี้', 40)
     const size = 10
-    const tw = font.widthOfTextAtSize(msg, size)
-    page.drawText(msg, {
-      x: margin + (tableW - tw) / 2,
-      y: yBottom + (emptyH - size) / 2,
+    const tw = widthOf(doc, msg, size)
+    drawPdfText(doc, msg, margin + (tableW - tw) / 2, yBottom + (emptyH - size) / 2, {
       size,
-      font,
       color: rgb(0.55, 0.6, 0.65),
     })
   }
-  const bytes = await pdf.save()
-  const buf = Buffer.from(bytes)
+  const buf = await finalizePdfKitDocument(doc)
   if (buf.length < 100 || buf.subarray(0, 4).toString() !== '%PDF') {
     throw new Error('สร้าง PDF ไม่สมบูรณ์')
   }
