@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ScanFace,
   Loader2,
-  CheckCircle,
   AlertCircle,
   ChevronRight,
   ArrowLeft,
@@ -20,6 +19,7 @@ import {
 import { useCameraStream } from '@/hooks/useCameraStream'
 import { CameraPreviewVideoWithRef } from '@/components/attendance/CameraPreviewVideo'
 import FaceStepGuide, { REGISTER_GUIDE_STEPS } from '@/components/attendance/FaceStepGuide'
+import FaceRegistrationDoneCard from '@/components/attendance/FaceRegistrationDoneCard'
 
 type Props = {
   onRegistered: () => void
@@ -192,17 +192,16 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
     setScanError('')
   }
 
-  if (phase === 'done' && !allowUpdate) {
+  if (phase === 'done') {
     return (
-      <div className="glass-card rounded-2xl p-4 border border-green-500/30 flex items-center gap-3">
-        <CheckCircle className="w-8 h-8 text-green-400 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold dark:text-white light:text-slate-900">ลงทะเบียนใบหน้าแล้ว</p>
-          <p className="text-xs dark:text-slate-400 light:text-slate-600">
-            ลงเวลาทุกครั้งต้องสแกนใบหน้าให้ตรงกับที่ลงทะเบียน
-          </p>
-        </div>
-      </div>
+      <FaceRegistrationDoneCard
+        allowUpdate={allowUpdate}
+        onUpdateAgain={() => {
+          resetScan()
+          setPhase('intro')
+        }}
+        onDone={onCancelUpdate}
+      />
     )
   }
 
