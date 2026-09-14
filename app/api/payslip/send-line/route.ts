@@ -30,45 +30,6 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // __PDFKIT_ENC_DIAG_TEMP__ — temporary, remove before merge. Proves
-    // generate+encrypt works for real inside this route's serverless
-    // bundle. CLOUDINARY_URL is Production-only (not set on Preview), so
-    // this returns the encrypted PDF as base64 instead of uploading —
-    // upload+fetch-back is verified separately, locally, with real
-    // Cloudinary credentials.
-    if (req.nextUrl.searchParams.get('__pdfkitencdiag') === 'q7v2k9tz') {
-      try {
-        const { generateSalarySlipPdf } = await import('@/lib/payroll-pdf')
-        const { payslipPdfPassword } = await import('@/lib/payslip-pdf-encrypt')
-
-        const testId = `diag-${Date.now()}`
-        const password = payslipPdfPassword(testId)
-        const buffer = await generateSalarySlipPdf(
-          {
-            companyName: 'ทดสอบ', employeeName: 'ทดสอบ เข้ารหัส', employeeId: null, department: null,
-            position: null, month: 1, year: 2026, baseSalary: 1000, lateDeduction: 0,
-            absentDeduction: 0, unpaidLeave: 0, socialSecurity: 0, taxDeduction: 0,
-            otherDeduction: 0, otherAddition: 0, netSalary: 1000, lateDays: 0, absentDays: 0,
-            lateMinutes: 0, taxDetail: null,
-          },
-          password,
-        )
-
-        return NextResponse.json({
-          diag: true,
-          ok: true,
-          password,
-          bytes: buffer.length,
-          pdfBase64: buffer.toString('base64'),
-        })
-      } catch (err) {
-        return NextResponse.json(
-          { diag: true, ok: false, error: err instanceof Error ? err.message : String(err) },
-          { status: 500 },
-        )
-      }
-    }
-
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
