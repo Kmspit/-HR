@@ -320,7 +320,7 @@ describe('POST /api/payroll/generate — DAILY pay type', () => {
     expect(payload.dailyRateUsed).toBe(300)
     expect(payload.payType).toBe('DAILY')
     expect(payload.baseSalary).toBe(1050) // 3.5 × 300
-    expect(payload.socialSecurity).toBe(52.5) // min(1050 × 0.05, 750)
+    expect(payload.socialSecurity).toBe(52.5) // min(1050 × 0.05, 875)
     expect(payload.taxDeduction).toBe(20)
     expect(payload.netSalary).toBe(977.5) // 1050 - 52.5 - 20
   })
@@ -356,7 +356,7 @@ describe('POST /api/payroll/generate — DAILY pay type', () => {
 
     await POST(makeReq({ month: 1, year: 2025 }))
 
-    expect(computeMonthlyTax).toHaveBeenCalledWith(300) // 1 day × 300 dailyRate
+    expect(computeMonthlyTax).toHaveBeenCalledWith(300, 15) // 1 day × 300 dailyRate, SS = min(300×0.05, 875) = 15
   })
 
   it('skips SS deduction when the employee has social security disabled, same as MONTHLY', async () => {
@@ -452,6 +452,65 @@ describe('POST /api/payroll/generate — MONTHLY unaffected by the payType field
     expect(computeLateDeduction).toHaveBeenCalledWith(
       expect.objectContaining({ baseSalary: 26000 }),
     )
-    expect(computeMonthlyTax).toHaveBeenCalledWith(26000)
+    expect(computeMonthlyTax).toHaveBeenCalledWith(26000, 875) // SS = min(26000×0.05, 875) = 875 (capped)
+  })
+})
+
+describe('POST /api/payroll/generate — SS ceiling raised 750 → 875 (effective 2026-01-01)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
+  })
+
+  it('caps SS at the new 875 ceiling for a salary that would have hit the old 750 cap', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน สอง หมื่น', baseSalary: 20000, payType: 'MONTHLY', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    // min(20000 × 5%, 875) = min(1000, 875) = 875 — was 750 before the ceiling raise
+    expect(payload.socialSecurity).toBe(875)
+    expect(computeMonthlyTax).toHaveBeenCalledWith(20000, 875)
+  })
+
+  it('leaves SS unchanged for a salary below the cap either way', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-2', name: 'พนักงาน หมื่น', baseSalary: 10000, payType: 'MONTHLY', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    // min(10000 × 5%, 875) = min(500, 875) = 500 — below either cap, unaffected by the raise
+    expect(payload.socialSecurity).toBe(500)
+    expect(computeMonthlyTax).toHaveBeenCalledWith(10000, 500)
+  })
+
+  it('applies the same raised ceiling to a DAILY employee whose period earnings exceed it', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-3', name: 'พนักงาน รายวัน สูง', baseSalary: null, dailyRate: 6000, payType: 'DAILY', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([
+      { userId: 'emp-3', date: new Date('2025-01-05'), lateMinutes: 0, status: 'NORMAL', earlyLeaveMinutes: 0, workMinutes: 0, leaveType: null, checkIn: new Date('2025-01-05T08:00:00Z') },
+      { userId: 'emp-3', date: new Date('2025-01-06'), lateMinutes: 0, status: 'NORMAL', earlyLeaveMinutes: 0, workMinutes: 0, leaveType: null, checkIn: new Date('2025-01-06T08:00:00Z') },
+      { userId: 'emp-3', date: new Date('2025-01-07'), lateMinutes: 0, status: 'NORMAL', earlyLeaveMinutes: 0, workMinutes: 0, leaveType: null, checkIn: new Date('2025-01-07T08:00:00Z') },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    // periodEarnings = 3 × 6000 = 18000 → min(18000 × 5%, 875) = min(900, 875) = 875 (hits the new cap)
+    expect(payload.baseSalary).toBe(18000)
+    expect(payload.socialSecurity).toBe(875)
   })
 })

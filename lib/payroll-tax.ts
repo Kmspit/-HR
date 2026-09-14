@@ -7,6 +7,7 @@ export type TaxDetail = {
   annualGross: number
   incomeDeduction: number       // 50% of income, max 100,000 baht
   personalAllowance: number     // 60,000 baht personal exemption
+  annualSocialSecurity: number  // this month's SS deduction × 12
   taxableIncome: number
   annualTax: number
   monthlyWithholding: number
@@ -39,13 +40,18 @@ function progressiveTax(taxableIncome: number): number {
 /**
  * คำนวณภาษีหัก ณ ที่จ่าย รายเดือน (ภงด1)
  * ใช้เงินเดือนฐานรายเดือน → ประมาณรายปี → คำนวณภาษี → หาร 12
+ *
+ * @param socialSecurity เงินสมทบประกันสังคมที่หักของเดือนนี้ (หลังหักเพดาน
+ *   SS_MAX แล้ว) — คูณ 12 แล้วหักออกจากเงินได้สุทธิร่วมกับ personalAllowance
+ *   ก่อนคำนวณภาษี ตามหลักเงินสมทบประกันสังคมเป็นค่าลดหย่อนได้ตามกฎหมาย
  */
-export function computeMonthlyTax(baseSalary: number): TaxDetail {
+export function computeMonthlyTax(baseSalary: number, socialSecurity: number = 0): TaxDetail {
   if (baseSalary <= 0) {
     return {
       annualGross: 0,
       incomeDeduction: 0,
       personalAllowance: 60_000,
+      annualSocialSecurity: 0,
       taxableIncome: 0,
       annualTax: 0,
       monthlyWithholding: 0,
@@ -55,7 +61,11 @@ export function computeMonthlyTax(baseSalary: number): TaxDetail {
   const annualGross = baseSalary * 12
   const incomeDeduction = Math.min(annualGross * 0.5, 100_000)
   const personalAllowance = 60_000
-  const taxableIncome = Math.max(0, annualGross - incomeDeduction - personalAllowance)
+  const annualSocialSecurity = socialSecurity * 12
+  const taxableIncome = Math.max(
+    0,
+    annualGross - incomeDeduction - personalAllowance - annualSocialSecurity,
+  )
   const annualTax = progressiveTax(taxableIncome)
   const monthlyWithholding = Math.round((annualTax / 12) * 100) / 100
 
@@ -63,6 +73,7 @@ export function computeMonthlyTax(baseSalary: number): TaxDetail {
     annualGross,
     incomeDeduction,
     personalAllowance,
+    annualSocialSecurity,
     taxableIncome,
     annualTax,
     monthlyWithholding,
