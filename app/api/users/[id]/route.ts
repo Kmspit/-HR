@@ -230,6 +230,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    // payType/dailyRate get the same HR_ADMIN-only gate as baseSalary —
+    // they directly determine how this employee's pay is calculated, same
+    // sensitivity as baseSalary itself. Ignored rather than a hard error,
+    // same as socialSecurityNumber above.
+    if ('payType' in body && body.payType !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.payType = body.payType
+      }
+    }
+    if ('dailyRate' in body && body.dailyRate !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.dailyRate = body.dailyRate
+      }
+    }
+
     const allowedFields = [
       'name',
       'nameEn',

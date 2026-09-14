@@ -80,6 +80,9 @@ export async function GET(
       lateDays: payroll.lateDays,
       absentDays: payroll.absentDays,
       lateMinutes: payroll.lateBillableMinutes ?? payroll.lateMinutes,
+      payType: payroll.payType,
+      daysWorked: payroll.daysWorked,
+      dailyRateUsed: payroll.dailyRateUsed,
       taxDetail: taxDetail
         ? {
             annualGross: taxDetail.annualGross,

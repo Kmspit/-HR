@@ -234,6 +234,21 @@ export const EMPLOYEE_TYPES = [
   { value: 'daily_employee',     label: 'พนักงานรายวัน' },
 ]
 
+// PayType (2026-09, daily-wage payroll) — separate from EMPLOYEE_TYPE_LABELS
+// above on purpose: employeeType is a loose HR classification label, PayType
+// is the actual payroll calculation switch (MONTHLY = existing salary-based
+// formula, DAILY = days-worked × dailyRate). See User.payType's schema
+// comment for why this doesn't reuse employeeType/employmentType.
+export const PAY_TYPE_LABELS: Record<string, string> = {
+  MONTHLY: 'รายเดือน',
+  DAILY:   'รายวัน',
+}
+
+export const PAY_TYPES = [
+  { value: 'MONTHLY', label: 'รายเดือน' },
+  { value: 'DAILY',   label: 'รายวัน' },
+]
+
 // Permissions are static (ROLE_PERMISSIONS). No DB table — see docs/deploy-profiles.md RBAC note.
 
 // ── Route permissions (Phase 1 — tightened module gates) ───────────────────────

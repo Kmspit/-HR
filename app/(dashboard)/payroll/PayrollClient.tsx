@@ -20,6 +20,9 @@ type PayrollRow = {
   position: string
   socialSecurity: boolean
   baseSalary: number
+  payType?: string
+  daysWorked?: number | null
+  dailyRateUsed?: number | null
   lateDeduction: number
   absentDeduction: number
   unpaidLeave: number
@@ -161,6 +164,8 @@ export default function PayrollClient({
       'ประกันสังคม',
       'รับสุทธิ',
       'สถานะ',
+      'รูปแบบจ่าย',
+      'จำนวนวันทำงาน (รายวันเท่านั้น)',
     ]
     const rows = payrolls.map((p) => [
       p.name,
@@ -174,6 +179,8 @@ export default function PayrollClient({
       p.ssDeduction.toFixed(2),
       p.netSalary.toFixed(2),
       p.status,
+      p.payType === 'DAILY' ? 'รายวัน' : 'รายเดือน',
+      p.payType === 'DAILY' ? String(p.daysWorked ?? 0) : '',
     ])
     const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -608,10 +615,17 @@ export default function PayrollClient({
 
               <div className="flex items-baseline justify-between">
                 <div>
-                  <p className="text-[11px] text-slate-400 dark:text-white/40">ฐาน</p>
+                  <p className="text-[11px] text-slate-400 dark:text-white/40">
+                    {p.payType === 'DAILY' ? 'รายวัน' : 'ฐาน'}
+                  </p>
                   <p className="text-slate-700 dark:text-white/70 text-sm">
                     {p.hasPayroll ? `฿${p.baseSalary.toLocaleString()}` : '—'}
                   </p>
+                  {p.hasPayroll && p.payType === 'DAILY' && (
+                    <p className="text-[11px] text-slate-400 dark:text-white/40">
+                      {p.daysWorked ?? 0} วัน × ฿{(p.dailyRateUsed ?? 0).toLocaleString()}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] text-slate-400 dark:text-white/40">สุทธิ</p>
@@ -728,6 +742,11 @@ export default function PayrollClient({
                     </td>
                     <td className="p-3 text-right text-white/70">
                       {p.hasPayroll ? `฿${p.baseSalary.toLocaleString()}` : '—'}
+                      {p.hasPayroll && p.payType === 'DAILY' && (
+                        <p className="text-[11px] text-white/40">
+                          {p.daysWorked ?? 0} วัน × ฿{(p.dailyRateUsed ?? 0).toLocaleString()}
+                        </p>
+                      )}
                     </td>
                     <td className="p-3 text-right">
                       {p.lateDeduction > 0 ? (

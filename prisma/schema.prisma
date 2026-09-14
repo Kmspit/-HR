@@ -482,6 +482,12 @@ model User {
   sectionId        String?
   position         String?
   baseSalary       Float?
+  /// เงินรายวัน (payroll feature, 2026-09) — เฉพาะพนักงาน payType=DAILY ใช้
+  /// baseSalary/dailyRate แยกกันเด็ดขาด ไม่ตีความ baseSalary ต่างกันตาม
+  /// payType เพราะ baseSalary ถูกใช้เป็นฐานคำนวณประกันสังคม/ภาษีของพนักงาน
+  /// รายเดือนอยู่แล้วในหลายจุด — เพิ่ม field ใหม่แทนตีความซ้อนจะปลอดภัยกว่า
+  payType          PayType    @default(MONTHLY)
+  dailyRate        Float?
   startDate        DateTime?
   socialSecurity   Boolean    @default(true)
   lineId               String?
@@ -887,6 +893,18 @@ enum EmploymentType {
   PART_TIME
   DAILY
   INTERN
+}
+
+/// Payroll calculation mode (2026-09) — deliberately separate from both
+/// User.employeeType (a loose string cache, edited directly with no audit
+/// trail requirement) and EmploymentAssignment.employmentType (position-
+/// history enum, never reliably synced to User.employeeType — see
+/// lib/employment-assignment.ts's mapEmploymentTypeToLegacy() comment).
+/// Payroll math must not depend on either: this is its own HR_ADMIN-gated
+/// field, same write-gate pattern as baseSalary.
+enum PayType {
+  MONTHLY
+  DAILY
 }
 
 enum TerminationType {
@@ -1426,6 +1444,15 @@ model Payroll {
   lateDeductionDetail String?
   taxDeduction    Float     @default(0)
   taxDetail       String?   // JSON: { annualGross, taxableIncome, annualTax, monthlyWithholding }
+  /// เงินรายวัน (2026-09) — snapshot ไว้ที่แถว Payroll เอง ไม่ derive จาก
+  /// User.payType/dailyRate ตอนแสดงผล เพราะพนักงานอาจเปลี่ยน payType/
+  /// dailyRate ภายหลัง แต่สลิปเดือนที่ผ่านมาต้องแสดงค่า ณ ตอนคำนวณเดือนนั้น
+  /// เสมอ — payType เป็น String? (ไม่ใช่ enum PayType) ตั้งใจ เพื่อไม่ผูก
+  /// FK/ตรวจสอบกับ enum ที่อาจเปลี่ยนได้ในอนาคต ตรงกับที่ Payroll.status
+  /// เองก็เป็น String ไม่ใช่ enum เช่นกัน
+  payType         String?
+  daysWorked      Float?
+  dailyRateUsed   Float?
   status          String    @default("DRAFT")
   slipSentAt      DateTime?
   payslipSentAt     DateTime?

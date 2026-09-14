@@ -9,6 +9,9 @@ const PAYSLIP_PAYROLL_SELECT = {
   month: true,
   year: true,
   baseSalary: true,
+  payType: true,
+  daysWorked: true,
+  dailyRateUsed: true,
   lateDeduction: true,
   absentDeduction: true,
   unpaidLeave: true,
@@ -28,6 +31,9 @@ type PayslipPayrollRow = {
   month: number
   year: number
   baseSalary: number
+  payType: string | null
+  daysWorked: number | null
+  dailyRateUsed: number | null
   lateDeduction: number
   absentDeduction: number
   unpaidLeave: number
@@ -48,6 +54,9 @@ function mapPayrolls(payrolls: PayslipPayrollRow[]) {
     month: p.month,
     year: p.year,
     baseSalary: p.baseSalary,
+    payType: p.payType,
+    daysWorked: p.daysWorked,
+    dailyRateUsed: p.dailyRateUsed,
     lateDeduction: p.lateDeduction,
     absentDeduction: p.absentDeduction,
     unpaidLeave: p.unpaidLeave,

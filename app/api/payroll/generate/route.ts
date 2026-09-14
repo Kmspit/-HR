@@ -11,6 +11,7 @@ import {
   roundMoney,
 } from '@/lib/payroll-late-deduction'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
+import { computeDaysWorked } from '@/lib/payroll-daily-wage'
 import type { HolidayRecord } from '@/lib/company-holidays'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
       }),
       select: {
         id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true,
-        startDate: true, status: true, updatedAt: true,
+        startDate: true, status: true, updatedAt: true, payType: true, dailyRate: true,
       },
     })
 
@@ -170,101 +171,183 @@ export async function POST(req: NextRequest) {
     // deletedAt-still-set data with fresh DRAFT numbers.
     const deletedSkippedNames: string[] = []
 
+    type PendingEmployee = (typeof pendingEmployees)[number]
+    type AttendanceRow = (typeof allAttendances)[number]
+    type ApprovedLeaveRow = (typeof allApprovedLeaves)[number]
+    type UnpaidLeaveRow = (typeof allUnpaidLeaves)[number]
+
+    // Unchanged from before payType existed — every MONTHLY employee (the
+    // default, and the only formula that existed until now) gets exactly the
+    // same numbers as before this feature. Closures over startDate/endDate/
+    // holidays/absentRate from the outer scope, same as the original inline
+    // per-employee code this was extracted from.
+    function buildMonthlyPayload(
+      emp: PendingEmployee,
+      attendances: AttendanceRow[],
+      approvedLeaves: ApprovedLeaveRow[],
+      unpaidLeaves: UnpaidLeaveRow[],
+    ) {
+      const baseSalary = emp.baseSalary ?? 0
+
+      // Proration for employees hired partway through this period. Deduction
+      // sub-calculations below (late/absent/unpaid/SS/tax) deliberately keep
+      // using the full nominal `baseSalary` unchanged — attendance/leave rows
+      // simply don't exist before the hire date, so they're naturally unaffected,
+      // and SS/tax already aren't adjusted for partial months even for absences
+      // today. Only the starting base-salary figure is prorated.
+      let periodBaseSalary = baseSalary
+      let prorationNote: string | undefined
+      if (emp.startDate && emp.startDate > startDate && emp.startDate <= endDate) {
+        const totalDays = daysBetweenInclusive(startDate, endDate)
+        const workedDays = daysBetweenInclusive(emp.startDate, endDate)
+        periodBaseSalary = roundMoney(baseSalary * workedDays / totalDays)
+        prorationNote = `Prorated: เริ่มงาน ${emp.startDate.toLocaleDateString('th-TH')} — ทำงาน ${workedDays}/${totalDays} วันของเดือนนี้`
+      }
+
+      // Deactivated this month (see the query comment above for why there's
+      // no reliable last-working-day to prorate against) — include at the
+      // FULL nominal amount rather than guess, and flag loudly so HR checks
+      // and adjusts the number down before approving instead of it silently
+      // paying out a full month for a partial one.
+      if (emp.status === 'DISABLED') {
+        const disabledNote =
+          `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) ` +
+          `— ระบบไม่ทราบวันทำงานสุดท้ายที่แน่นอน จึงคำนวณเป็นเงินเดือนเต็มจำนวน กรุณาตรวจสอบและปรับยอดก่อนอนุมัติ`
+        prorationNote = prorationNote ? `${prorationNote} | ${disabledNote}` : disabledNote
+      }
+
+      const leaveDateKeys = buildApprovedLeaveDateSet(approvedLeaves, startDate, endDate)
+
+      const late = computeLateDeduction({
+        baseSalary,
+        attendances,
+        leaveDateKeys,
+        holidays,
+        branchId: emp.branchId,
+      })
+
+      const absentDays = attendances.filter((a) => a.status === 'ABSENT').length
+      const earlyLeaveDays = attendances.filter(
+        (a) => a.status === 'EARLY_LEAVE' || (a.earlyLeaveMinutes ?? 0) > 0,
+      ).length
+
+      const unpaidDays = unpaidLeaves.reduce((s, l) => s + l.days, 0)
+
+      const dailyRate = baseSalary / 26
+      const lateDeduction = late.lateDeduction
+      const absentDeduction = roundMoney(
+        absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0),
+      )
+      const unpaidLeaveDeduction = roundMoney(unpaidDays * dailyRate)
+      const earlyLeaveDeduction = roundMoney(earlyLeaveDays * dailyRate * 0.5)
+
+      let ssDeduction = 0
+      if (emp.socialSecurity && baseSalary > 0) {
+        ssDeduction = roundMoney(Math.min(baseSalary * SS_RATE, SS_MAX))
+      }
+
+      const taxResult = computeMonthlyTax(baseSalary)
+      const taxDeduction = taxResult.monthlyWithholding
+
+      const netSalary = roundMoney(
+        periodBaseSalary -
+        lateDeduction -
+        absentDeduction -
+        unpaidLeaveDeduction -
+        earlyLeaveDeduction -
+        ssDeduction -
+        taxDeduction,
+      )
+
+      return {
+        baseSalary: periodBaseSalary,
+        lateDeduction,
+        absentDeduction,
+        unpaidLeave: unpaidLeaveDeduction,
+        socialSecurity: ssDeduction,
+        taxDeduction,
+        taxDetail: JSON.stringify(taxResult),
+        netSalary,
+        lateDays: late.lateDays,
+        absentDays,
+        lateMinutes: late.billableLateMinutes,
+        lateBillableMinutes: late.billableLateMinutes,
+        lateDeductionDetail: serializeLateDeductionDetail(late.lines),
+        payType: 'MONTHLY',
+        daysWorked: null,
+        dailyRateUsed: null,
+        status: 'DRAFT',
+        ...(prorationNote ? { note: prorationNote } : {}),
+      }
+    }
+
+    // DAILY/INTERN — pay = days actually worked × dailyRate. No late/absent/
+    // unpaid-leave deduction (paid per day already — a day not worked simply
+    // isn't counted, so there's nothing left to deduct twice for). No holiday
+    // pay for days not attended, including public/company holidays — a
+    // deliberate policy decision (confirmed 2026-09; the company accepts the
+    // labor-law tradeoff on ม.29's paid-traditional-holiday requirement).
+    // SS/tax reuse the exact same formulas as MONTHLY, just fed this period's
+    // actual earnings (daysWorked × dailyRate) in place of baseSalary — the
+    // SS 5%/750-cap rule and the withholding-tax estimate both apply to
+    // actual monthly wages regardless of pay structure.
+    function buildDailyPayload(emp: PendingEmployee, attendances: AttendanceRow[]) {
+      const dailyRateUsed = emp.dailyRate ?? 0
+      const daysWorked = computeDaysWorked(attendances)
+      const periodEarnings = roundMoney(daysWorked * dailyRateUsed)
+
+      // Same "flag, don't guess" treatment as MONTHLY's disabled-mid-month
+      // case, worded for the fact that DAILY pay already naturally reflects
+      // however many days this employee actually showed up before being
+      // disabled — there's no full-nominal-amount overpayment to warn about,
+      // just a nudge to double-check the numbers before approving.
+      const disabledNote =
+        emp.status === 'DISABLED'
+          ? `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) — กรุณาตรวจสอบก่อนอนุมัติ`
+          : undefined
+
+      let ssDeduction = 0
+      if (emp.socialSecurity && periodEarnings > 0) {
+        ssDeduction = roundMoney(Math.min(periodEarnings * SS_RATE, SS_MAX))
+      }
+
+      const taxResult = computeMonthlyTax(periodEarnings)
+      const taxDeduction = taxResult.monthlyWithholding
+
+      const netSalary = roundMoney(periodEarnings - ssDeduction - taxDeduction)
+
+      return {
+        baseSalary: periodEarnings,
+        lateDeduction: 0,
+        absentDeduction: 0,
+        unpaidLeave: 0,
+        socialSecurity: ssDeduction,
+        taxDeduction,
+        taxDetail: JSON.stringify(taxResult),
+        netSalary,
+        lateDays: 0,
+        absentDays: 0,
+        lateMinutes: 0,
+        lateBillableMinutes: 0,
+        lateDeductionDetail: null,
+        payType: 'DAILY',
+        daysWorked,
+        dailyRateUsed,
+        status: 'DRAFT',
+        ...(disabledNote ? { note: disabledNote } : {}),
+      }
+    }
+
     const results = await Promise.all(
       pendingEmployees.map(async (emp) => {
-        const baseSalary = emp.baseSalary ?? 0
-
-        // Proration for employees hired partway through this period. Deduction
-        // sub-calculations below (late/absent/unpaid/SS/tax) deliberately keep
-        // using the full nominal `baseSalary` unchanged — attendance/leave rows
-        // simply don't exist before the hire date, so they're naturally unaffected,
-        // and SS/tax already aren't adjusted for partial months even for absences
-        // today. Only the starting base-salary figure is prorated.
-        let periodBaseSalary = baseSalary
-        let prorationNote: string | undefined
-        if (emp.startDate && emp.startDate > startDate && emp.startDate <= endDate) {
-          const totalDays = daysBetweenInclusive(startDate, endDate)
-          const workedDays = daysBetweenInclusive(emp.startDate, endDate)
-          periodBaseSalary = roundMoney(baseSalary * workedDays / totalDays)
-          prorationNote = `Prorated: เริ่มงาน ${emp.startDate.toLocaleDateString('th-TH')} — ทำงาน ${workedDays}/${totalDays} วันของเดือนนี้`
-        }
-
-        // Deactivated this month (see the query comment above for why there's
-        // no reliable last-working-day to prorate against) — include at the
-        // FULL nominal amount rather than guess, and flag loudly so HR checks
-        // and adjusts the number down before approving instead of it silently
-        // paying out a full month for a partial one.
-        if (emp.status === 'DISABLED') {
-          const disabledNote =
-            `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) ` +
-            `— ระบบไม่ทราบวันทำงานสุดท้ายที่แน่นอน จึงคำนวณเป็นเงินเดือนเต็มจำนวน กรุณาตรวจสอบและปรับยอดก่อนอนุมัติ`
-          prorationNote = prorationNote ? `${prorationNote} | ${disabledNote}` : disabledNote
-        }
-
         const attendances = attendancesByUser.get(emp.id) ?? []
         const approvedLeaves = approvedLeavesByUser.get(emp.id) ?? []
         const unpaidLeaves = unpaidLeavesByUser.get(emp.id) ?? []
 
-        const leaveDateKeys = buildApprovedLeaveDateSet(approvedLeaves, startDate, endDate)
-
-        const late = computeLateDeduction({
-          baseSalary,
-          attendances,
-          leaveDateKeys,
-          holidays,
-          branchId: emp.branchId,
-        })
-
-        const absentDays = attendances.filter((a) => a.status === 'ABSENT').length
-        const earlyLeaveDays = attendances.filter(
-          (a) => a.status === 'EARLY_LEAVE' || (a.earlyLeaveMinutes ?? 0) > 0,
-        ).length
-
-        const unpaidDays = unpaidLeaves.reduce((s, l) => s + l.days, 0)
-
-        const dailyRate = baseSalary / 26
-        const lateDeduction = late.lateDeduction
-        const absentDeduction = roundMoney(
-          absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0),
-        )
-        const unpaidLeaveDeduction = roundMoney(unpaidDays * dailyRate)
-        const earlyLeaveDeduction = roundMoney(earlyLeaveDays * dailyRate * 0.5)
-
-        let ssDeduction = 0
-        if (emp.socialSecurity && baseSalary > 0) {
-          ssDeduction = roundMoney(Math.min(baseSalary * SS_RATE, SS_MAX))
-        }
-
-        const taxResult = computeMonthlyTax(baseSalary)
-        const taxDeduction = taxResult.monthlyWithholding
-
-        const netSalary = roundMoney(
-          periodBaseSalary -
-          lateDeduction -
-          absentDeduction -
-          unpaidLeaveDeduction -
-          earlyLeaveDeduction -
-          ssDeduction -
-          taxDeduction,
-        )
-
-        const payload = {
-          baseSalary: periodBaseSalary,
-          lateDeduction,
-          absentDeduction,
-          unpaidLeave: unpaidLeaveDeduction,
-          socialSecurity: ssDeduction,
-          taxDeduction,
-          taxDetail: JSON.stringify(taxResult),
-          netSalary,
-          lateDays: late.lateDays,
-          absentDays,
-          lateMinutes: late.billableLateMinutes,
-          lateBillableMinutes: late.billableLateMinutes,
-          lateDeductionDetail: serializeLateDeductionDetail(late.lines),
-          status: 'DRAFT',
-          ...(prorationNote ? { note: prorationNote } : {}),
-        }
+        const payload =
+          emp.payType === 'DAILY'
+            ? buildDailyPayload(emp, attendances)
+            : buildMonthlyPayload(emp, attendances, approvedLeaves, unpaidLeaves)
 
         // Re-check status inside the transaction, right before writing — closes
         // the window where someone approves this employee's payroll between the
@@ -297,6 +380,25 @@ export async function POST(req: NextRequest) {
     ]
 
     const disabledIncluded = pendingEmployees.filter((e) => e.status === 'DISABLED')
+    // "ยอดเต็มเดือน (ยังไม่ prorate)" only actually describes MONTHLY —
+    // a DAILY employee's pay already only reflects days actually worked
+    // before they were disabled, so it gets its own accurate wording rather
+    // than a single blended message that's wrong for one of the two groups.
+    const disabledMonthly = disabledIncluded.filter((e) => e.payType !== 'DAILY')
+    const disabledDaily = disabledIncluded.filter((e) => e.payType === 'DAILY')
+    const disabledWarningParts: string[] = []
+    if (disabledMonthly.length > 0) {
+      disabledWarningParts.push(
+        `⚠️ รวม ${disabledMonthly.length} พนักงานรายเดือนที่ปิดบัญชีเดือนนี้ด้วยยอดเต็มเดือน (ยังไม่ prorate ให้อัตโนมัติ) ` +
+        `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledMonthly.map((e) => e.name).join(', ')}`,
+      )
+    }
+    if (disabledDaily.length > 0) {
+      disabledWarningParts.push(
+        `⚠️ รวม ${disabledDaily.length} พนักงานรายวันที่ปิดบัญชีเดือนนี้ (ยอดคำนวณจากจำนวนวันที่มาทำงานจริงก่อนปิดบัญชีอยู่แล้ว) ` +
+        `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledDaily.map((e) => e.name).join(', ')}`,
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -310,10 +412,8 @@ export async function POST(req: NextRequest) {
         deletedSkipped: deletedSkippedNames,
         deletedWarning: `ต้องกู้คืนก่อนถึงจะคำนวณใหม่ได้ — ${deletedSkippedNames.length} รายการถูกลบไปแล้ว: ${deletedSkippedNames.join(', ')}`,
       }),
-      ...(disabledIncluded.length > 0 && {
-        disabledWarning:
-          `⚠️ รวม ${disabledIncluded.length} พนักงานที่ปิดบัญชีเดือนนี้ด้วยยอดเต็มเดือน (ยังไม่ prorate ให้อัตโนมัติ) ` +
-          `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledIncluded.map((e) => e.name).join(', ')}`,
+      ...(disabledWarningParts.length > 0 && {
+        disabledWarning: disabledWarningParts.join(' | '),
       }),
     })
   } catch (err) {
