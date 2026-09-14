@@ -380,6 +380,25 @@ export async function POST(req: NextRequest) {
     ]
 
     const disabledIncluded = pendingEmployees.filter((e) => e.status === 'DISABLED')
+    // "ยอดเต็มเดือน (ยังไม่ prorate)" only actually describes MONTHLY —
+    // a DAILY employee's pay already only reflects days actually worked
+    // before they were disabled, so it gets its own accurate wording rather
+    // than a single blended message that's wrong for one of the two groups.
+    const disabledMonthly = disabledIncluded.filter((e) => e.payType !== 'DAILY')
+    const disabledDaily = disabledIncluded.filter((e) => e.payType === 'DAILY')
+    const disabledWarningParts: string[] = []
+    if (disabledMonthly.length > 0) {
+      disabledWarningParts.push(
+        `⚠️ รวม ${disabledMonthly.length} พนักงานรายเดือนที่ปิดบัญชีเดือนนี้ด้วยยอดเต็มเดือน (ยังไม่ prorate ให้อัตโนมัติ) ` +
+        `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledMonthly.map((e) => e.name).join(', ')}`,
+      )
+    }
+    if (disabledDaily.length > 0) {
+      disabledWarningParts.push(
+        `⚠️ รวม ${disabledDaily.length} พนักงานรายวันที่ปิดบัญชีเดือนนี้ (ยอดคำนวณจากจำนวนวันที่มาทำงานจริงก่อนปิดบัญชีอยู่แล้ว) ` +
+        `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledDaily.map((e) => e.name).join(', ')}`,
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -393,10 +412,8 @@ export async function POST(req: NextRequest) {
         deletedSkipped: deletedSkippedNames,
         deletedWarning: `ต้องกู้คืนก่อนถึงจะคำนวณใหม่ได้ — ${deletedSkippedNames.length} รายการถูกลบไปแล้ว: ${deletedSkippedNames.join(', ')}`,
       }),
-      ...(disabledIncluded.length > 0 && {
-        disabledWarning:
-          `⚠️ รวม ${disabledIncluded.length} พนักงานที่ปิดบัญชีเดือนนี้ด้วยยอดเต็มเดือน (ยังไม่ prorate ให้อัตโนมัติ) ` +
-          `กรุณาตรวจสอบก่อนอนุมัติ: ${disabledIncluded.map((e) => e.name).join(', ')}`,
+      ...(disabledWarningParts.length > 0 && {
+        disabledWarning: disabledWarningParts.join(' | '),
       }),
     })
   } catch (err) {

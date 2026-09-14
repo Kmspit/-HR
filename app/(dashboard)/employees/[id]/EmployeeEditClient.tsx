@@ -41,7 +41,7 @@ import {
   profileInputClass,
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
-import { EMPLOYEE_TYPES } from '@/lib/access-control'
+import { EMPLOYEE_TYPES, PAY_TYPES } from '@/lib/access-control'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
@@ -58,6 +58,8 @@ type Employee = {
   jobLevel: string | null
   socialSecurityNumber: string | null
   baseSalary: number
+  payType: string
+  dailyRate: number | null
   socialSecurity: boolean
   isCoworker: boolean
   startDate: string | null
@@ -146,6 +148,8 @@ export default function EmployeeEditClient({
     status: employee.status,
     employeeType: employee.employeeType ?? 'permanent_employee',
     baseSalary: employee.baseSalary,
+    payType: employee.payType ?? 'MONTHLY',
+    dailyRate: employee.dailyRate ?? 0,
     socialSecurity: employee.socialSecurity,
     isCoworker: employee.isCoworker,
     startDate: employee.startDate ? employee.startDate.substring(0, 10) : '',
@@ -301,6 +305,8 @@ export default function EmployeeEditClient({
         socialSecurityNumber: () => form.socialSecurityNumber,
         employeeType: () => form.employeeType,
         baseSalary: () => form.baseSalary,
+        payType: () => form.payType,
+        dailyRate: () => form.dailyRate,
         socialSecurity: () => form.socialSecurity,
         isCoworker: () => form.isCoworker,
         startDate: () => form.startDate || null,
@@ -664,15 +670,44 @@ export default function EmployeeEditClient({
                 <DollarSign className="w-4 h-4 text-green-400" /> เงินเดือน
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="เงินเดือนฐาน (บาท/เดือน)">
-                  <input
-                    type="number"
-                    value={form.baseSalary}
-                    onChange={(e) => set('baseSalary', parseFloat(e.target.value) || 0)}
+                <FormField label="รูปแบบการจ่ายเงิน">
+                  <select
+                    value={form.payType}
+                    onChange={(e) => set('payType', e.target.value)}
                     className={profileInputClass}
-                  />
+                  >
+                    {PAY_TYPES.map((t) => (
+                      <option key={t.value} value={t.value} className="bg-slate-900">
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
                 </FormField>
-                {form.socialSecurity && (
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {form.payType === 'DAILY' ? (
+                  <FormField label="ค่าจ้างต่อวัน (บาท/วัน)">
+                    <input
+                      type="number"
+                      value={form.dailyRate}
+                      onChange={(e) => set('dailyRate', parseFloat(e.target.value) || 0)}
+                      className={profileInputClass}
+                    />
+                  </FormField>
+                ) : (
+                  <FormField label="เงินเดือนฐาน (บาท/เดือน)">
+                    <input
+                      type="number"
+                      value={form.baseSalary}
+                      onChange={(e) => set('baseSalary', parseFloat(e.target.value) || 0)}
+                      className={profileInputClass}
+                    />
+                  </FormField>
+                )}
+                {/* ประกันสังคมของพนักงานรายวันคำนวณจากจำนวนวันที่มาทำงานจริง
+                    × ค่าจ้างต่อวัน ณ ตอน generate payroll แต่ละเดือน — ไม่มี
+                    ตัวเลขคงที่ให้ preview ล่วงหน้าแบบนี้ได้ */}
+                {form.payType === 'MONTHLY' && form.socialSecurity && (
                   <div className="flex items-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
                     ประกันสังคม: ฿{Math.min(form.baseSalary * 0.05, 750).toFixed(0)}/เดือน
                   </div>

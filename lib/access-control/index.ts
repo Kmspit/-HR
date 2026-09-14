@@ -244,6 +244,11 @@ export const PAY_TYPE_LABELS: Record<string, string> = {
   DAILY:   'รายวัน',
 }
 
+export const PAY_TYPES = [
+  { value: 'MONTHLY', label: 'รายเดือน' },
+  { value: 'DAILY',   label: 'รายวัน' },
+]
+
 // Permissions are static (ROLE_PERMISSIONS). No DB table — see docs/deploy-profiles.md RBAC note.
 
 // ── Route permissions (Phase 1 — tightened module gates) ───────────────────────

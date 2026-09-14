@@ -23,6 +23,12 @@ export type SalarySlipInput = {
   lateDays: number
   absentDays: number
   lateMinutes: number
+  /** เงินรายวัน (payType='DAILY') — เมื่อมีค่า จะแสดง "จำนวนวันทำงาน ×
+   *  ค่าจ้างต่อวัน" แทนแถว "เงินเดือนฐาน" ปกติ ไม่มีค่า/undefined = รายเดือน
+   *  (พฤติกรรมเดิมทุกประการ) */
+  payType?: string | null
+  daysWorked?: number | null
+  dailyRateUsed?: number | null
   taxDetail?: {
     annualGross?: number
     taxableIncome?: number
@@ -80,12 +86,22 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   const empMeta = [input.employeeId ? `รหัส: ${input.employeeId}` : null, input.department ?? null, input.position ?? null].filter(Boolean).join('  ·  ')
   if (empMeta) drawText(empMeta, 52, y - 36, 9, c.mid)
 
+  const isDaily = input.payType === 'DAILY'
+
   // Section: รายได้
   y = H - 182
   drawText('รายได้', 60, y, 11, c.accent)
   drawLine(y - 6)
   y -= 20
-  row('เงินเดือนฐาน', `฿${fmt(input.baseSalary)}`, y)
+  if (isDaily) {
+    row(
+      `ค่าจ้างรายวัน (${fmt(input.daysWorked ?? 0)} วัน × ฿${fmt(input.dailyRateUsed ?? 0)})`,
+      `฿${fmt(input.baseSalary)}`,
+      y,
+    )
+  } else {
+    row('เงินเดือนฐาน', `฿${fmt(input.baseSalary)}`, y)
+  }
   if (input.otherAddition > 0) {
     y -= 16
     row('รายได้อื่นๆ', `+฿${fmt(input.otherAddition)}`, y, c.green)

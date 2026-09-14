@@ -10,6 +10,9 @@ type Payslip = {
   month: number
   year: number
   baseSalary: number
+  payType?: string | null
+  daysWorked?: number | null
+  dailyRateUsed?: number | null
   lateDeduction: number
   absentDeduction: number
   unpaidLeave: number
@@ -122,7 +125,14 @@ export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
 
               {isOpen && (
                 <div className="border-t border-white/10 p-4 space-y-2">
-                  <Row label="เงินเดือนฐาน" value={`฿${p.baseSalary.toLocaleString()}`} />
+                  {p.payType === 'DAILY' ? (
+                    <Row
+                      label={`ค่าจ้างรายวัน (${p.daysWorked ?? 0} วัน × ฿${(p.dailyRateUsed ?? 0).toLocaleString()})`}
+                      value={`฿${p.baseSalary.toLocaleString()}`}
+                    />
+                  ) : (
+                    <Row label="เงินเดือนฐาน" value={`฿${p.baseSalary.toLocaleString()}`} />
+                  )}
                   <div className="border-t border-white/5 pt-2 space-y-2">
                     <p className="text-xs text-white/30 font-medium uppercase tracking-wider">รายการหัก</p>
                     {p.lateDeduction > 0 && (

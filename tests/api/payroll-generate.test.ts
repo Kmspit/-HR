@@ -237,6 +237,42 @@ describe('POST /api/payroll/generate — includes employees deactivated this mon
     expect(data.disabledIncluded).toEqual([])
     expect(data.disabledWarning).toBeUndefined()
   })
+
+  it('splits disabledWarning into separate MONTHLY- and DAILY-worded messages when both pay types are disabled this month', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-3', name: 'พนักงาน เดือน', baseSalary: 20000, socialSecurity: true, branchId: 'b1',
+        status: 'DISABLED', updatedAt: new Date('2025-01-20'), payType: 'MONTHLY',
+      },
+      {
+        id: 'emp-4', name: 'พนักงาน วัน', baseSalary: null, dailyRate: 300, socialSecurity: true, branchId: 'b1',
+        status: 'DISABLED', updatedAt: new Date('2025-01-15'), payType: 'DAILY',
+      },
+    ] as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.disabledIncluded).toEqual([
+      { userId: 'emp-3', name: 'พนักงาน เดือน' },
+      { userId: 'emp-4', name: 'พนักงาน วัน' },
+    ])
+    // Two distinct messages joined by ' | ' — MONTHLY's "ยอดเต็มเดือน (ยังไม่
+    // prorate)" wording must not bleed onto the DAILY employee, whose pay
+    // already only reflects days actually worked before being disabled.
+    const parts = data.disabledWarning.split(' | ')
+    expect(parts).toHaveLength(2)
+    expect(parts[0]).toContain('พนักงานรายเดือน')
+    expect(parts[0]).toContain('ยอดเต็มเดือน')
+    expect(parts[0]).toContain('พนักงาน เดือน')
+    expect(parts[0]).not.toContain('พนักงาน วัน')
+    expect(parts[1]).toContain('พนักงานรายวัน')
+    expect(parts[1]).toContain('จำนวนวันที่มาทำงานจริง')
+    expect(parts[1]).toContain('พนักงาน วัน')
+    expect(parts[1]).not.toContain('พนักงาน เดือน')
+  })
 })
 
 describe('POST /api/payroll/generate — DAILY pay type', () => {

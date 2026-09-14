@@ -33,7 +33,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       id: true, name: true, email: true, employeeId: true, role: true, status: true,
       employeeType: true,
       department: true, position: true, jobLevel: true, socialSecurityNumber: true,
-      baseSalary: true, socialSecurity: true,
+      baseSalary: true, payType: true, dailyRate: true, socialSecurity: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
       lineUserId: true, lineDisplayName: true, branchId: true,
       prefix: true, nickname: true, birthDate: true, address: true, addressIdCard: true,
@@ -63,6 +63,10 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
         // Same reasoning as baseSalary just above — a sensitive HR-only
         // field, filtered at the source rather than just hidden by the UI.
         socialSecurityNumber: canViewSalary ? user.socialSecurityNumber : null,
+        // payType itself isn't a money figure (same treatment as
+        // employeeType below — not filtered), but dailyRate is exactly as
+        // sensitive as baseSalary and gets the same source-level filter.
+        dailyRate: canViewSalary ? user.dailyRate : null,
         startDate: user.startDate?.toISOString() ?? null,
         birthDate: user.birthDate?.toISOString() ?? null,
         employeeType: user.employeeType ?? 'permanent_employee',
