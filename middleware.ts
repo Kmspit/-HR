@@ -40,12 +40,6 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.next()
   }
 
-  // __SCHEMA_MIGRATE_DIAG_TEMP__ — temporary, remove before merge (see matching
-  // comment in app/api/diag-schema-migrate/route.ts).
-  if (pathname === '/api/diag-schema-migrate' && req.nextUrl.searchParams.get('__schemadiag') === '1f3dd67b010c') {
-    return NextResponse.next()
-  }
-
   // API — deploy profile gate + session required unless public
   if (pathname.startsWith('/api/')) {
     if (!isApiDeployProfileExempt(pathname) && isPathHiddenByDeployProfile(pathname)) {
