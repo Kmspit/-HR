@@ -1,3 +1,4 @@
+import PDFDocument from 'pdfkit'
 import type { RGB } from 'pdf-lib'
 
 /**
@@ -7,6 +8,26 @@ import type { RGB } from 'pdf-lib'
  * (การคำนวณ y แบบ "ลดจากบนลงล่าง" ในทั้ง 3 ไฟล์) ไม่ต้องแก้เลย
  * เปลี่ยนแค่ชื่อฟังก์ชันที่เรียก primitive วาดจริง
  */
+
+/**
+ * สร้าง pdfkit document — ใช้แทน `new PDFDocument({...})` ตรงๆ ทุกจุด
+ * pdfkit's constructor เรียก initFonts(options.font) เสมอ ถ้าไม่ระบุ font
+ * จะ default เป็น 'Helvetica' แล้วโหลดผ่าน Node subpath import
+ * (#standard-fonts/Helvetica) ทันที — Vercel ไม่ trace ไฟล์นี้เข้า
+ * serverless bundle ทำให้ throw "Cannot find module '#standard-fonts/
+ * Helvetica'" ตอน runtime จริง (ยืนยันผ่าน HTTP call จริงบน Preview
+ * deployment 2026-09-14) เราไม่เคยใช้ standard font จริง (เรียก
+ * doc.font(thaiBytes) ทันทีหลังสร้างเสมอ) จึงส่ง font: null เพื่อข้าม
+ * การโหลด Helvetica ไปเลย — @types/pdfkit ยังไม่รองรับค่านี้ในชนิดข้อมูล
+ * จึงต้อง cast เฉพาะจุดนี้จุดเดียว
+ */
+export function createPdfKitDocument(size: [number, number]): PDFKit.PDFDocument {
+  return new PDFDocument({
+    size,
+    margin: 0,
+    font: null as unknown as string,
+  })
+}
 
 function rgbToPdfKit(color: RGB): [number, number, number] {
   return [Math.round(color.red * 255), Math.round(color.green * 255), Math.round(color.blue * 255)]

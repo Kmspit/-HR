@@ -1,6 +1,5 @@
-import PDFDocument from 'pdfkit'
 import { rgb } from 'pdf-lib'
-import { drawRect, drawHLine, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
+import { createPdfKitDocument, drawRect, drawHLine, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 import { formatLateMinutes } from '@/lib/utils'
 
@@ -47,7 +46,7 @@ export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buf
 
   const W = 595
   const H = 842
-  const doc = new PDFDocument({ size: [W, H], margin: 0 })
+  const doc = createPdfKitDocument([W, H])
   doc.font(thaiBytes)
   const c = { dark: rgb(0.1, 0.1, 0.15), mid: rgb(0.35, 0.35, 0.4), light: rgb(0.6, 0.6, 0.65), green: rgb(0.1, 0.55, 0.3), red: rgb(0.75, 0.15, 0.15), accent: rgb(0.1, 0.35, 0.7), white: rgb(1, 1, 1), line: rgb(0.85, 0.85, 0.9) }
 
