@@ -1,6 +1,6 @@
 import { maskNationalId, nationalIdFingerprint } from '@/lib/national-id'
 import { createAuditLog } from '@/lib/notifications'
-import { ROLE_LABELS } from '@/lib/access-control'
+import { ROLE_LABELS, PAY_TYPE_LABELS } from '@/lib/access-control'
 import { USER_STATUS_LABEL } from '@/lib/status-labels'
 import { paymentMethodLabel } from '@/lib/payment-method'
 import type { Role } from '@prisma/client'
@@ -69,6 +69,8 @@ export const EMPLOYEE_AUDIT_SELECT = {
   managerId: true,
   teamLeaderId: true,
   baseSalary: true,
+  payType: true,
+  dailyRate: true,
   socialSecurity: true,
   isCoworker: true,
   divisionId: true,
@@ -124,6 +126,8 @@ type EmployeeAuditRow = {
   managerId: string | null
   teamLeaderId: string | null
   baseSalary: number | null
+  payType: string
+  dailyRate: number | null
   socialSecurity: boolean
   isCoworker: boolean
   divisionId: string | null
@@ -187,6 +191,10 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     // reviewable in actual figures: the point is being able to check who
     // changed whose pay and by how much, not to hide the number.
     baseSalary: u.baseSalary,
+    // Same treatment as baseSalary just above — plain number, not masked, so
+    // "who changed whose daily rate and by how much" stays reviewable.
+    payType: u.payType,
+    dailyRate: u.dailyRate,
     socialSecurity: u.socialSecurity,
     isCoworker: u.isCoworker,
     divisionId: u.divisionId,
@@ -271,6 +279,8 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   managerId: 'ผู้จัดการ',
   teamLeaderId: 'หัวหน้าทีม',
   baseSalary: 'เงินเดือนฐาน',
+  payType: 'รูปแบบการจ่ายเงิน',
+  dailyRate: 'ค่าจ้างต่อวัน',
   socialSecurity: 'ประกันสังคม',
   isCoworker: 'พนักงานร่วมงาน',
   divisionId: 'ฝ่าย',
@@ -344,7 +354,8 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
     const v = val as EmployeeAuditSnapshot['nationalId']
     return v.masked
   }
-  if (key === 'baseSalary') return currencyFmt(val as number)
+  if (key === 'baseSalary' || key === 'dailyRate') return currencyFmt(val as number)
+  if (key === 'payType') return PAY_TYPE_LABELS[val as string] ?? String(val)
   if (key === 'paymentMethod') return paymentMethodLabel(val as string)
   if (key === 'role') return ROLE_LABELS[val as Role] ?? String(val)
   if (key === 'status') return USER_STATUS_LABEL[val as string] ?? String(val)
@@ -396,7 +407,9 @@ export function summarizeEmployeeChanges(
     // backlog 4.3 — same HR_ADMIN gate as the employee's own salary field;
     // this edit-history diff would otherwise print a plain "เงินเดือนฐาน:
     // 25,000 → 30,000" line for a MANAGER viewing their report's history.
-    if (key === 'baseSalary' && !canViewSalary) continue
+    // dailyRate gets the same gate (same sensitivity as baseSalary) —
+    // payType does not, same reasoning as employeeType staying visible.
+    if ((key === 'baseSalary' || key === 'dailyRate') && !canViewSalary) continue
 
     const b = before[key]
     const a = after[key]

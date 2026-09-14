@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900037
+export const CURRENT_SCHEMA_VERSION = 900038
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2397,6 +2397,23 @@ async function runEnsure(force = false): Promise<boolean> {
   // locationStatus = 'no_plan' path unchanged, no backfill needed.
   await addColumnIfMissing('outside_work_requests', 'lat', `ALTER TABLE outside_work_requests ADD COLUMN lat REAL`)
   await addColumnIfMissing('outside_work_requests', 'lng', `ALTER TABLE outside_work_requests ADD COLUMN lng REAL`)
+
+  // v900038 — daily-wage payroll (DAILY/INTERN pay by days-worked × rate
+  // instead of the monthly-salary formula). users.payType is deliberately
+  // separate from employeeType (loose string cache, no audit-required write
+  // gate) and EmploymentAssignment.employmentType (position-history enum,
+  // not reliably synced to employeeType — see mapEmploymentTypeToLegacy()'s
+  // comment in lib/employment-assignment.ts) — payroll math must not depend
+  // on either. Additive, nullable/defaulted — existing employees default to
+  // payType='MONTHLY' (today's only formula), no backfill needed.
+  // payrolls.payType/daysWorked/dailyRateUsed snapshot the values used for
+  // that specific month's calculation, so a past payslip keeps showing what
+  // was actually used even if the employee's payType/dailyRate changes later.
+  await addUserColumnIfMissing('payType', `ALTER TABLE users ADD COLUMN payType TEXT NOT NULL DEFAULT 'MONTHLY'`)
+  await addUserColumnIfMissing('dailyRate', `ALTER TABLE users ADD COLUMN dailyRate REAL`)
+  await addPayrollColumnIfMissing('payType', `ALTER TABLE payrolls ADD COLUMN payType TEXT`)
+  await addPayrollColumnIfMissing('daysWorked', `ALTER TABLE payrolls ADD COLUMN daysWorked REAL`)
+  await addPayrollColumnIfMissing('dailyRateUsed', `ALTER TABLE payrolls ADD COLUMN dailyRateUsed REAL`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
