@@ -1,6 +1,5 @@
-import PDFDocument from 'pdfkit'
 import { rgb } from 'pdf-lib'
-import { drawText, finalizePdfKitDocument } from '@/lib/pdfkit-compat'
+import { createPdfKitDocument, drawText, finalizePdfKitDocument } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 
 export type WarningPdfInput = {
@@ -18,7 +17,7 @@ export type WarningPdfInput = {
 
 export async function generateWarningPdfBuffer(input: WarningPdfInput): Promise<Buffer> {
   const thaiBytes = await loadThaiPdfFontBytes()
-  const doc = new PDFDocument({ size: [595, 842], margin: 0 })
+  const doc = createPdfKitDocument([595, 842])
   doc.font(thaiBytes)
 
   const dateStr = input.issuedAt.toLocaleDateString('th-TH', {

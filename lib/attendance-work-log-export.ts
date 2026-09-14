@@ -1,7 +1,6 @@
 import ExcelJS from 'exceljs'
-import PDFDocument from 'pdfkit'
 import { rgb, type RGB } from 'pdf-lib'
-import { drawRect, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
+import { createPdfKitDocument, drawRect, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import type { AttendanceWorkLogRow } from '@/lib/attendance-work-log'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 type Align = 'left' | 'center' | 'right'
@@ -370,7 +369,7 @@ export async function buildWorkLogPdf(
   const pageW = 1684
   const pageH = 1190
   const margin = 28
-  const doc = new PDFDocument({ size: [pageW, pageH], margin: 0 })
+  const doc = createPdfKitDocument([pageW, pageH])
   doc.font(fontBytes)
   const tableW = pageW - margin * 2
   const colWidths = pdfColWidths(cols, tableW)
