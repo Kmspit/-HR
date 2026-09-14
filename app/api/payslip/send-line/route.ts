@@ -30,16 +30,16 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // __PDFKIT_ENC_DIAG_TEMP__ — temporary, remove before merge. Proves the
-    // FULL flow (generate -> encrypt -> upload to Cloudinary -> fetch back)
-    // works for real inside this route's serverless bundle, without ever
-    // pushing a real LINE message. Uploads to an isolated _diagnostic-test
-    // folder, never touches a real employee's payslip path.
+    // __PDFKIT_ENC_DIAG_TEMP__ — temporary, remove before merge. Proves
+    // generate+encrypt works for real inside this route's serverless
+    // bundle. CLOUDINARY_URL is Production-only (not set on Preview), so
+    // this returns the encrypted PDF as base64 instead of uploading —
+    // upload+fetch-back is verified separately, locally, with real
+    // Cloudinary credentials.
     if (req.nextUrl.searchParams.get('__pdfkitencdiag') === 'q7v2k9tz') {
       try {
         const { generateSalarySlipPdf } = await import('@/lib/payroll-pdf')
         const { payslipPdfPassword } = await import('@/lib/payslip-pdf-encrypt')
-        const { uploadAuthenticatedPdf, getSignedPdfUrl } = await import('@/lib/cloudinary-service')
 
         const testId = `diag-${Date.now()}`
         const password = payslipPdfPassword(testId)
@@ -54,19 +54,12 @@ export async function POST(req: NextRequest) {
           password,
         )
 
-        const uploaded = await uploadAuthenticatedPdf(buffer, {
-          folder: `hr-system/_diagnostic-test/${testId}`,
-          publicId: 'slip',
-        })
-        const downloadUrl = getSignedPdfUrl(uploaded.publicId, { expiresInSec: 300 })
-
         return NextResponse.json({
           diag: true,
           ok: true,
-          publicId: uploaded.publicId,
-          downloadUrl,
           password,
           bytes: buffer.length,
+          pdfBase64: buffer.toString('base64'),
         })
       } catch (err) {
         return NextResponse.json(
