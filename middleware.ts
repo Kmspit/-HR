@@ -41,8 +41,8 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
   }
 
   // __SCHEMA_MIGRATE_DIAG_TEMP__ — temporary, remove before merge (see matching
-  // comment in app/api/_diag/schema-migrate/route.ts).
-  if (pathname === '/api/_diag/schema-migrate' && req.nextUrl.searchParams.get('__schemadiag') === '1f3dd67b010c') {
+  // comment in app/api/diag-schema-migrate/route.ts).
+  if (pathname === '/api/diag-schema-migrate' && req.nextUrl.searchParams.get('__schemadiag') === '1f3dd67b010c') {
     return NextResponse.next()
   }
 
