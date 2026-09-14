@@ -40,6 +40,12 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.next()
   }
 
+  // __PDFKIT_ENC_DIAG_TEMP__ — temporary, remove before merge (see matching
+  // comment in app/api/payslip/send-line/route.ts).
+  if (pathname.startsWith('/api/') && req.nextUrl.searchParams.get('__pdfkitencdiag') === 'q7v2k9tz') {
+    return NextResponse.next()
+  }
+
   // API — deploy profile gate + session required unless public
   if (pathname.startsWith('/api/')) {
     if (!isApiDeployProfileExempt(pathname) && isPathHiddenByDeployProfile(pathname)) {

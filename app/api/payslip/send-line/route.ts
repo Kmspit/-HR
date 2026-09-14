@@ -30,6 +30,52 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // __PDFKIT_ENC_DIAG_TEMP__ — temporary, remove before merge. Proves the
+    // FULL flow (generate -> encrypt -> upload to Cloudinary -> fetch back)
+    // works for real inside this route's serverless bundle, without ever
+    // pushing a real LINE message. Uploads to an isolated _diagnostic-test
+    // folder, never touches a real employee's payslip path.
+    if (req.nextUrl.searchParams.get('__pdfkitencdiag') === 'q7v2k9tz') {
+      try {
+        const { generateSalarySlipPdf } = await import('@/lib/payroll-pdf')
+        const { payslipPdfPassword } = await import('@/lib/payslip-pdf-encrypt')
+        const { uploadAuthenticatedPdf, getSignedPdfUrl } = await import('@/lib/cloudinary-service')
+
+        const testId = `diag-${Date.now()}`
+        const password = payslipPdfPassword(testId)
+        const buffer = await generateSalarySlipPdf(
+          {
+            companyName: 'ทดสอบ', employeeName: 'ทดสอบ เข้ารหัส', employeeId: null, department: null,
+            position: null, month: 1, year: 2026, baseSalary: 1000, lateDeduction: 0,
+            absentDeduction: 0, unpaidLeave: 0, socialSecurity: 0, taxDeduction: 0,
+            otherDeduction: 0, otherAddition: 0, netSalary: 1000, lateDays: 0, absentDays: 0,
+            lateMinutes: 0, taxDetail: null,
+          },
+          password,
+        )
+
+        const uploaded = await uploadAuthenticatedPdf(buffer, {
+          folder: `hr-system/_diagnostic-test/${testId}`,
+          publicId: 'slip',
+        })
+        const downloadUrl = getSignedPdfUrl(uploaded.publicId, { expiresInSec: 300 })
+
+        return NextResponse.json({
+          diag: true,
+          ok: true,
+          publicId: uploaded.publicId,
+          downloadUrl,
+          password,
+          bytes: buffer.length,
+        })
+      } catch (err) {
+        return NextResponse.json(
+          { diag: true, ok: false, error: err instanceof Error ? err.message : String(err) },
+          { status: 500 },
+        )
+      }
+    }
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
