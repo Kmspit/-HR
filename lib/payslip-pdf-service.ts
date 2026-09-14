@@ -28,7 +28,10 @@ export async function loadPayrollForSlip(payrollId: string) {
   return payroll?.deletedAt ? null : payroll
 }
 
-export async function buildPayrollSlipPdfBuffer(payroll: NonNullable<PayrollSlipRecord>): Promise<{
+export async function buildPayrollSlipPdfBuffer(
+  payroll: NonNullable<PayrollSlipRecord>,
+  password?: string,
+): Promise<{
   buffer: Buffer
   filename: string
 }> {
@@ -36,35 +39,38 @@ export async function buildPayrollSlipPdfBuffer(payroll: NonNullable<PayrollSlip
   const companyName = settings?.companyName?.trim() || DEFAULT_COMPANY
   const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
 
-  const buffer = await generateSalarySlipPdf({
-    companyName,
-    employeeName: payroll.user.name,
-    employeeId: payroll.user.employeeId ?? null,
-    department: payroll.user.department ?? null,
-    position: payroll.user.position ?? null,
-    month: payroll.month,
-    year: payroll.year,
-    baseSalary: payroll.baseSalary,
-    lateDeduction: payroll.lateDeduction,
-    absentDeduction: payroll.absentDeduction,
-    unpaidLeave: payroll.unpaidLeave,
-    socialSecurity: payroll.socialSecurity,
-    taxDeduction: payroll.taxDeduction ?? 0,
-    otherDeduction: payroll.otherDeduction,
-    otherAddition: payroll.otherAddition,
-    netSalary: payroll.netSalary,
-    lateDays: payroll.lateDays,
-    absentDays: payroll.absentDays,
-    lateMinutes: payroll.lateBillableMinutes ?? payroll.lateMinutes,
-    taxDetail: taxDetail
-      ? {
-          annualGross: taxDetail.annualGross,
-          taxableIncome: taxDetail.taxableIncome,
-          annualTax: taxDetail.annualTax,
-          monthlyWithholding: taxDetail.monthlyWithholding,
-        }
-      : null,
-  })
+  const buffer = await generateSalarySlipPdf(
+    {
+      companyName,
+      employeeName: payroll.user.name,
+      employeeId: payroll.user.employeeId ?? null,
+      department: payroll.user.department ?? null,
+      position: payroll.user.position ?? null,
+      month: payroll.month,
+      year: payroll.year,
+      baseSalary: payroll.baseSalary,
+      lateDeduction: payroll.lateDeduction,
+      absentDeduction: payroll.absentDeduction,
+      unpaidLeave: payroll.unpaidLeave,
+      socialSecurity: payroll.socialSecurity,
+      taxDeduction: payroll.taxDeduction ?? 0,
+      otherDeduction: payroll.otherDeduction,
+      otherAddition: payroll.otherAddition,
+      netSalary: payroll.netSalary,
+      lateDays: payroll.lateDays,
+      absentDays: payroll.absentDays,
+      lateMinutes: payroll.lateBillableMinutes ?? payroll.lateMinutes,
+      taxDetail: taxDetail
+        ? {
+            annualGross: taxDetail.annualGross,
+            taxableIncome: taxDetail.taxableIncome,
+            annualTax: taxDetail.annualTax,
+            monthlyWithholding: taxDetail.monthlyWithholding,
+          }
+        : null,
+    },
+    password,
+  )
 
   const filename = payslipPdfFilename({
     year: payroll.year,

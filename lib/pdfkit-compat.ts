@@ -20,12 +20,44 @@ import type { RGB } from 'pdf-lib'
  * doc.font(thaiBytes) ทันทีหลังสร้างเสมอ) จึงส่ง font: null เพื่อข้าม
  * การโหลด Helvetica ไปเลย — @types/pdfkit ยังไม่รองรับค่านี้ในชนิดข้อมูล
  * จึงต้อง cast เฉพาะจุดนี้จุดเดียว
+ *
+ * ส่ง password เพื่อเข้ารหัสไฟล์ตั้งแต่ตอนสร้าง — ใช้ pdfkit's native
+ * PDFSecurity (RC4 128-bit, ตรงกับที่เคยใช้ @pdfsmaller/pdf-encrypt-lite)
+ * แทนการเข้ารหัสแยกทีหลังด้วย library ภายนอก ซึ่ง reparse ทั้งไฟล์ผ่าน
+ * pdf-lib's parser ใหม่หมด (เห็นจาก source: `PDFDocument.load()` จาก
+ * pdf-lib) — ไฟล์ที่ pdfkit สร้าง (CID TrueType font, object streams)
+ * ตีความผิดเมื่อ round-trip ผ่าน parser ของอีก library ทำให้ font stream
+ * เสียหายขณะที่ content stream (รูปทรง/เส้น) รอด ยืนยันจากไฟล์ที่เก็บจริง
+ * บน Cloudinary ที่ทุกกล่อง/เส้นถูกตำแหน่งแต่ข้อความหายหมด (2026-09-14)
+ * — เข้ารหัสในตัว pdfkit เองตัดปัญหานี้ที่ต้นตอ ไม่มี library อื่นมา
+ * ตีความไฟล์ซ้ำอีกที
+ *
+ * permissions ระบุครบทุกอย่าง (ไม่ใช่ปล่อย default) เพราะ pdfkit's
+ * default เมื่อไม่ระบุ permissions คือปิดเกือบทุกสิทธิ์ (พิมพ์/copy/
+ * แก้ไขไม่ได้) ต่างจาก @pdfsmaller/pdf-encrypt-lite เดิมที่เปิดให้หมด
+ * (permissions = 0xFFFFFFFC) — ถ้าไม่ระบุจะกลายเป็น regression
  */
-export function createPdfKitDocument(size: [number, number]): PDFKit.PDFDocument {
+export function createPdfKitDocument(size: [number, number], password?: string): PDFKit.PDFDocument {
   return new PDFDocument({
     size,
     margin: 0,
     font: null as unknown as string,
+    ...(password
+      ? {
+          userPassword: password,
+          ownerPassword: password,
+          pdfVersion: '1.4',
+          permissions: {
+            printing: 'highResolution',
+            modifying: true,
+            copying: true,
+            annotating: true,
+            fillingForms: true,
+            contentAccessibility: true,
+            documentAssembly: true,
+          },
+        }
+      : {}),
   })
 }
 
