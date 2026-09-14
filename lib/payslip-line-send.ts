@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { pushLineMessages } from '@/lib/line-api'
 import { buildPayrollSlipPdfBuffer } from '@/lib/payslip-pdf-service'
-import { encryptPayslipPdfBuffer, payslipPdfPassword } from '@/lib/payslip-pdf-encrypt'
+import { payslipPdfPassword } from '@/lib/payslip-pdf-encrypt'
 import {
   isCloudinaryConfigured,
   loadUserImageContext,
@@ -259,10 +259,9 @@ export async function sendPayslipViaLineForPayroll(
     })
     if (!fullPayroll) throw new Error('ไม่พบข้อมูล payroll')
 
-    const { buffer, filename } = await buildPayrollSlipPdfBuffer(fullPayroll)
-    const encrypted = await encryptPayslipPdfBuffer(buffer, password)
+    const { buffer, filename } = await buildPayrollSlipPdfBuffer(fullPayroll, password)
 
-    const upload = await uploadEncryptedPayslipPdf(payrollId, payroll.userId, encrypted, filename)
+    const upload = await uploadEncryptedPayslipPdf(payrollId, payroll.userId, buffer, filename)
     if (!upload.ok) {
       await markPayslipSendStatus(payrollId, 'FAILED', upload.error)
       return {

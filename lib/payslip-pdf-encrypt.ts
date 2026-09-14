@@ -1,5 +1,4 @@
 import { createHmac } from 'crypto'
-import { encryptPDF } from '@pdfsmaller/pdf-encrypt-lite'
 import { payslipSecretRaw } from '@/lib/payslip-pdf-access'
 
 const PASSWORD_HMAC_CONTEXT = 'payslip-pdf-password-v1'
@@ -28,9 +27,4 @@ export function payslipPdfPassword(payrollId: string): string {
     .digest()
   const n = digest.readUInt32BE(0) % 100_000_000
   return String(n).padStart(8, '0')
-}
-
-export async function encryptPayslipPdfBuffer(pdfBuffer: Buffer, password: string): Promise<Buffer> {
-  const encrypted = await encryptPDF(new Uint8Array(pdfBuffer), password, password)
-  return Buffer.from(encrypted)
 }

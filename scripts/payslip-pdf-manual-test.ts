@@ -1,8 +1,10 @@
 /**
  * Manual QA for the payslip-password-hmac change: builds and encrypts a REAL
  * payslip PDF for one real, approved Payroll row using the exact same
- * production call chain (buildPayrollSlipPdfBuffer + encryptPayslipPdfBuffer
- * + payslipPdfPassword), then writes the encrypted PDF to local disk.
+ * production call chain (buildPayrollSlipPdfBuffer + payslipPdfPassword —
+ * encryption now happens inside pdfkit itself via the password argument,
+ * not as a separate post-processing step), then writes the encrypted PDF to
+ * local disk.
  *
  * This exists because no library in this project can programmatically verify
  * that a real PDF reader will accept the password on an RC4-encrypted PDF
@@ -29,7 +31,7 @@ config({ path: resolve(process.cwd(), '.env') })
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { loadPayrollForSlip, buildPayrollSlipPdfBuffer } from '../lib/payslip-pdf-service'
-import { payslipPdfPassword, encryptPayslipPdfBuffer } from '../lib/payslip-pdf-encrypt'
+import { payslipPdfPassword } from '../lib/payslip-pdf-encrypt'
 
 const url = process.env.TURSO_DATABASE_URL
 const token = process.env.TURSO_AUTH_TOKEN
@@ -66,12 +68,11 @@ async function main() {
 
   console.log(`Building real payslip PDF for payrollId=${payrollId} (${payroll.user.name}, ${payroll.month}/${payroll.year})...`)
 
-  const { buffer, filename } = await buildPayrollSlipPdfBuffer(payroll)
   const password = payslipPdfPassword(payrollId)
-  const encrypted = await encryptPayslipPdfBuffer(buffer, password)
+  const { buffer, filename } = await buildPayrollSlipPdfBuffer(payroll, password)
 
   const outPath = resolve(process.cwd(), `manual-test-${filename}`)
-  await writeFile(outPath, encrypted)
+  await writeFile(outPath, buffer)
 
   console.log('')
   console.log('=== DONE — nothing was sent, uploaded, or written to the DB ===')

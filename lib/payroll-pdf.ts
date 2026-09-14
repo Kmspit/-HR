@@ -41,12 +41,12 @@ function fmt(n: number) {
   return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export async function generateSalarySlipPdf(input: SalarySlipInput): Promise<Buffer> {
+export async function generateSalarySlipPdf(input: SalarySlipInput, password?: string): Promise<Buffer> {
   const thaiBytes = await loadThaiPdfFontBytes()
 
   const W = 595
   const H = 842
-  const doc = createPdfKitDocument([W, H])
+  const doc = createPdfKitDocument([W, H], password)
   doc.font(thaiBytes)
   const c = { dark: rgb(0.1, 0.1, 0.15), mid: rgb(0.35, 0.35, 0.4), light: rgb(0.6, 0.6, 0.65), green: rgb(0.1, 0.55, 0.3), red: rgb(0.75, 0.15, 0.15), accent: rgb(0.1, 0.35, 0.7), white: rgb(1, 1, 1), line: rgb(0.85, 0.85, 0.9) }
 

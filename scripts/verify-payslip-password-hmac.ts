@@ -70,17 +70,16 @@ async function main() {
 
   // ── 4. Full real PDF-encryption call chain runs end to end with the new
   //    password (proves no runtime error in the integration; the RC4
-  //    password-gate itself is pdf-encrypt-lite's own pre-existing,
-  //    unchanged behavior — not something a password-blind tool like
-  //    pdf-lib can re-verify from this sandbox, see the written report).
-  const { PDFDocument } = await import('pdf-lib')
-  const { encryptPayslipPdfBuffer } = await import('../lib/payslip-pdf-encrypt')
-  const doc = await PDFDocument.create()
-  doc.addPage([200, 200])
-  const plainBytes = Buffer.from(await doc.save())
+  //    password-gate itself is pdfkit's own native PDFSecurity, not
+  //    something a password-blind tool like pdf-lib can re-verify from
+  //    this sandbox — see scripts/payslip-pdf-manual-test.ts for that).
+  const { createPdfKitDocument, finalizePdfKitDocument } = await import('../lib/pdfkit-compat')
   const password = payslipPdfPassword('live-verify-fake-payroll-id')
   try {
-    const encrypted = await encryptPayslipPdfBuffer(plainBytes, password)
+    const doc = createPdfKitDocument([200, 200], password)
+    doc.font(resolve(process.cwd(), 'assets/fonts/NotoSansThai-Regular.ttf'))
+    doc.text('verify', 10, 10)
+    const encrypted = await finalizePdfKitDocument(doc)
     check('real PDF successfully encrypted with the HMAC-derived password (no runtime error)', encrypted.length > 0, encrypted.length)
   } catch (err) {
     check('real PDF successfully encrypted with the HMAC-derived password (no runtime error)', false, err)

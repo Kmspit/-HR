@@ -140,8 +140,6 @@ vi.mock('@/lib/payslip-pdf-encrypt', () => ({
 
   payslipPdfPassword: vi.fn((payrollId: string) => `pw-${payrollId}`),
 
-  encryptPayslipPdfBuffer: vi.fn().mockResolvedValue(Buffer.from('%PDF-encrypted')),
-
 }))
 
 
@@ -214,7 +212,7 @@ import { POST } from '@/app/api/payslip/send-line/route'
 
 import { sendPayslipViaLineForPayroll } from '@/lib/payslip-line-send'
 
-import { encryptPayslipPdfBuffer, payslipPdfPassword } from '@/lib/payslip-pdf-encrypt'
+import { payslipPdfPassword } from '@/lib/payslip-pdf-encrypt'
 
 import { pushLineMessages } from '@/lib/line-api'
 
@@ -782,7 +780,7 @@ describe('sendPayslipViaLineForPayroll', () => {
     expect(result.ok).toBe(true)
 
     expect(payslipPdfPassword).toHaveBeenCalledWith('pay-1')
-    expect(encryptPayslipPdfBuffer).toHaveBeenCalledWith(expect.any(Buffer), 'pw-pay-1')
+    expect(buildPayrollSlipPdfBuffer).toHaveBeenCalledWith(expect.anything(), 'pw-pay-1')
 
     expect(prisma.payroll.update).toHaveBeenCalledWith(
 
