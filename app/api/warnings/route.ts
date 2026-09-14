@@ -88,24 +88,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // __PDFKIT_FIX_DIAG_TEMP__ — temporary, remove before merge.
-    if (req.nextUrl.searchParams.get('__pdfkitfixdiag') === 'f9k2m5xw') {
-      try {
-        const { generateWarningPdfBuffer } = await import('@/lib/warning-pdf-generate')
-        const buf = await generateWarningPdfBuffer({
-          companyName: 'ทดสอบ', employeeName: 'ทดสอบ', employeeId: null, department: null,
-          warningNumber: 1, level: 1, reason: 'ทดสอบ', description: null,
-          issuedAt: new Date(), issuedByName: 'ทดสอบ',
-        })
-        return NextResponse.json({ diag: true, ok: true, bytes: buf.length })
-      } catch (err) {
-        return NextResponse.json(
-          { diag: true, ok: false, error: err instanceof Error ? err.message : String(err) },
-          { status: 500 },
-        )
-      }
-    }
-
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
