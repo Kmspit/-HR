@@ -14,6 +14,25 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    // __PDFKIT_FIX_DIAG_TEMP__ — temporary, remove before merge.
+    if (req.nextUrl.searchParams.get('__pdfkitfixdiag') === 'f9k2m5xw') {
+      try {
+        const buf = await generateSalarySlipPdf({
+          companyName: 'ทดสอบ', employeeName: 'ทดสอบ', employeeId: null, department: null,
+          position: null, month: 1, year: 2026, baseSalary: 1000, lateDeduction: 0,
+          absentDeduction: 0, unpaidLeave: 0, socialSecurity: 0, taxDeduction: 0,
+          otherDeduction: 0, otherAddition: 0, netSalary: 1000, lateDays: 0, absentDays: 0,
+          lateMinutes: 0, taxDetail: null,
+        })
+        return NextResponse.json({ diag: true, ok: true, bytes: buf.length })
+      } catch (err) {
+        return NextResponse.json(
+          { diag: true, ok: false, error: err instanceof Error ? err.message : String(err) },
+          { status: 500 },
+        )
+      }
+    }
+
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
