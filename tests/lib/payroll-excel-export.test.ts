@@ -113,4 +113,71 @@ describe('buildPayrollExcel', () => {
     const buffer = await buildPayrollExcel(rowsByBranch, { month: 1, year: 2569, monthLabel: 'มกราคม' })
     expect(buffer.length).toBeGreaterThan(0)
   })
+
+  it('gives every money column enough width for an 8-digit total with decimals/commas (no more "#####")', async () => {
+    const rowsByBranch = new Map<string, PayrollExportRow[]>([
+      ['สาขานครราชสีมา', [makeRow({ baseSalary: 12_345_678.9 })]],
+    ])
+    const buffer = await buildPayrollExcel(rowsByBranch, { month: 8, year: 2569, monthLabel: 'สิงหาคม' })
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as any)
+    const ws = wb.getWorksheet('สาขานครราชสีมา')!
+
+    // "99,999,999.99" is 13 characters — every money column (everything
+    // except ที่/name/position/note) must be wide enough to show it in full,
+    // never truncated to "#####" by Excel.
+    const textColumns = new Set([1, 2, 3, 23]) // ที่, name, position, note
+    for (let col = 1; col <= 23; col++) {
+      if (textColumns.has(col)) continue
+      const width = ws.getColumn(col).width ?? 0
+      expect(width).toBeGreaterThanOrEqual(13)
+    }
+  })
+
+  it('sets landscape A4 print setup with fit-to-width-1-page', async () => {
+    const rowsByBranch = new Map<string, PayrollExportRow[]>([
+      ['สาขานครราชสีมา', [makeRow()]],
+    ])
+    const buffer = await buildPayrollExcel(rowsByBranch, { month: 8, year: 2569, monthLabel: 'สิงหาคม' })
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as any)
+    const ws = wb.getWorksheet('สาขานครราชสีมา')!
+
+    expect(ws.pageSetup.orientation).toBe('landscape')
+    expect(ws.pageSetup.fitToPage).toBe(true)
+    expect(ws.pageSetup.fitToWidth).toBe(1)
+    expect(ws.pageSetup.fitToHeight).toBe(0)
+    expect(ws.pageSetup.paperSize).toBe(9) // A4
+  })
+
+  it('freezes the header rows (title/period/group/header) so they stay visible when scrolling', async () => {
+    const rowsByBranch = new Map<string, PayrollExportRow[]>([
+      ['สาขานครราชสีมา', [makeRow()]],
+    ])
+    const buffer = await buildPayrollExcel(rowsByBranch, { month: 8, year: 2569, monthLabel: 'สิงหาคม' })
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as any)
+    const ws = wb.getWorksheet('สาขานครราชสีมา')!
+
+    const view = ws.views[0] as { state?: string; ySplit?: number }
+    expect(view.state).toBe('frozen')
+    expect(view.ySplit).toBe(4) // header row is row 4 (title=1, period=2, group=3, header=4)
+  })
+
+  it('every worksheet (one per branch) gets its own print setup and frozen header, not just the first', async () => {
+    const rowsByBranch = new Map<string, PayrollExportRow[]>([
+      ['สาขานครราชสีมา', [makeRow()]],
+      ['สาขาอุบลราชธานี', [makeRow({ branchName: 'สาขาอุบลราชธานี' })]],
+    ])
+    const buffer = await buildPayrollExcel(rowsByBranch, { month: 8, year: 2569, monthLabel: 'สิงหาคม' })
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as any)
+
+    for (const name of ['สาขานครราชสีมา', 'สาขาอุบลราชธานี']) {
+      const ws = wb.getWorksheet(name)!
+      expect(ws.pageSetup.orientation).toBe('landscape')
+      const view = ws.views[0] as { state?: string }
+      expect(view.state).toBe('frozen')
+    }
+  })
 })

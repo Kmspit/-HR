@@ -58,29 +58,34 @@ const EXCEL_BORDER_HEADER = {
 
 type ColDef = { key: string; header: string; group: string; width: number; align: 'left' | 'center' | 'right' }
 
+/** เผื่อความกว้างพอสำหรับตัวเลข 8 หลักขึ้นไปพร้อมทศนิยม+comma แยกหลักพัน
+ *  เช่น "99,999,999.99" (13 ตัวอักษร) — ใช้กับทุกคอลัมน์ตัวเลขเงิน เพื่อไม่ให้
+ *  ขึ้น "#####" เมื่อยอดรวมสาขา/แผนกใหญ่เกินเงินเดือนคนเดียว */
+const MONEY_COL_WIDTH = 15
+
 const COLUMNS: ColDef[] = [
   { key: 'no', header: 'ที่', group: 'ที่', width: 5, align: 'center' },
   { key: 'name', header: 'ชื่อ - สกุลพนักงาน', group: 'ชื่อ - สกุลพนักงาน', width: 26, align: 'left' },
   { key: 'position', header: 'ตำแหน่ง', group: 'รายได้', width: 18, align: 'left' },
-  { key: 'baseSalary', header: 'เงินเดือน', group: 'รายได้', width: 11, align: 'right' },
-  { key: 'positionAllowance', header: 'ค่าตำแหน่ง', group: 'รายได้', width: 11, align: 'right' },
-  { key: 'diligenceAllowance', header: 'เบี้ยขยัน', group: 'รายได้', width: 10, align: 'right' },
-  { key: 'backPay', header: 'ตกเบิกเงินเดือน', group: 'รายได้', width: 12, align: 'right' },
-  { key: 'otherAddition', header: 'เงินได้อื่นๆ', group: 'รายได้', width: 10, align: 'right' },
-  { key: 'professionalFee', header: 'ค่าวิชาชีพ', group: 'รายได้', width: 11, align: 'right' },
-  { key: 'commission', header: 'คอมมิชชั่น', group: 'รายได้', width: 11, align: 'right' },
-  { key: 'totalIncome', header: 'ยอดรวมรายได้', group: 'รายได้', width: 12, align: 'right' },
-  { key: 'ss', header: 'สปส.', group: 'รายการหัก', width: 9, align: 'right' },
-  { key: 'tax40_1', header: 'ภงด.1 40(1)', group: 'รายการหัก', width: 11, align: 'right' },
-  { key: 'tax40_2', header: 'ภงด.1 40(2)', group: 'รายการหัก', width: 11, align: 'right' },
-  { key: 'tax40_6', header: 'ภงด.3 40(6)', group: 'รายการหัก', width: 11, align: 'right' },
-  { key: 'attendanceDeduction', header: 'ขาด/ลา/มาสาย', group: 'รายการหัก', width: 11, align: 'right' },
-  { key: 'otherDeduction', header: 'อื่นๆ', group: 'รายการหัก', width: 9, align: 'right' },
-  { key: 'totalDeduction', header: 'รวมหัก', group: 'รายการหัก', width: 11, align: 'right' },
-  { key: 'monthlyNet', header: 'รวมเดือน', group: 'รวมเดือน', width: 11, align: 'right' },
-  { key: 'securityDeposit', header: 'ประกันงาน', group: 'ประกันงาน', width: 10, align: 'right' },
-  { key: 'studentLoan', header: 'กยศ', group: 'กยศ', width: 9, align: 'right' },
-  { key: 'netSalary', header: 'จ่ายสุทธิ', group: 'จ่ายสุทธิ', width: 12, align: 'right' },
+  { key: 'baseSalary', header: 'เงินเดือน', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'positionAllowance', header: 'ค่าตำแหน่ง', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'diligenceAllowance', header: 'เบี้ยขยัน', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'backPay', header: 'ตกเบิกเงินเดือน', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'otherAddition', header: 'เงินได้อื่นๆ', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'professionalFee', header: 'ค่าวิชาชีพ', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'commission', header: 'คอมมิชชั่น', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'totalIncome', header: 'ยอดรวมรายได้', group: 'รายได้', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'ss', header: 'สปส.', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'tax40_1', header: 'ภงด.1 40(1)', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'tax40_2', header: 'ภงด.1 40(2)', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'tax40_6', header: 'ภงด.3 40(6)', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'attendanceDeduction', header: 'ขาด/ลา/มาสาย', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'otherDeduction', header: 'อื่นๆ', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'totalDeduction', header: 'รวมหัก', group: 'รายการหัก', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'monthlyNet', header: 'รวมเดือน', group: 'รวมเดือน', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'securityDeposit', header: 'ประกันงาน', group: 'ประกันงาน', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'studentLoan', header: 'กยศ', group: 'กยศ', width: MONEY_COL_WIDTH, align: 'right' },
+  { key: 'netSalary', header: 'จ่ายสุทธิ', group: 'จ่ายสุทธิ', width: MONEY_COL_WIDTH, align: 'right' },
   { key: 'note', header: 'หมายเหตุ', group: 'หมายเหตุ', width: 18, align: 'left' },
 ]
 
@@ -211,7 +216,19 @@ export async function buildPayrollExcel(
     })
 
     const sheetName = branchName.replace(/[\\/*?[\]:]/g, '').slice(0, 31) || 'สาขา'
-    const ws = wb.addWorksheet(sheetName, { properties: { defaultRowHeight: 18 } })
+    const ws = wb.addWorksheet(sheetName, {
+      properties: { defaultRowHeight: 18 },
+      // แนวนอน, บีบให้พอดี 1 หน้ากว้าง (สูงกี่หน้าก็ได้ — fitToHeight: 0),
+      // A4, margin แคบพอไม่ให้เสียเนื้อที่แต่ยังพิมพ์ครบ
+      pageSetup: {
+        orientation: 'landscape',
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        paperSize: 9, // A4
+        margins: { top: 0.5, bottom: 0.5, left: 0.3, right: 0.3, header: 0.2, footer: 0.2 },
+      },
+    })
     COLUMNS.forEach((c, i) => { ws.getColumn(i + 1).width = c.width })
 
     const titleRow = 1
@@ -219,6 +236,10 @@ export async function buildPayrollExcel(
     const groupRow = 3
     const headerRow = 4
     let dataRow = 5
+
+    // Freeze แถวหัวตารางทั้งหมด (title/period/group/header = แถว 1-4) ไว้
+    // บนจอเสมอเวลาเลื่อนดูรายชื่อยาวๆ
+    ws.views = [{ state: 'frozen', ySplit: headerRow, activeCell: `A${dataRow}` }]
 
     ws.mergeCells(titleRow, 1, titleRow, colCount)
     const titleCell = ws.getCell(titleRow, 1)
