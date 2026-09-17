@@ -21,6 +21,7 @@ import { bumpSessionEpoch } from '@/lib/session-epoch'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
 import { createAuditLog } from '@/lib/notifications'
+import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import type { Role, UserStatus } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
@@ -61,6 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const session = await requireAuth()
     if (isGuardResponse(session)) return session
+    await ensurePayrollFieldsBatch2()
 
     const { id } = await params
     if (id !== session.user.id) {
@@ -242,6 +244,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ('dailyRate' in body && body.dailyRate !== undefined) {
       if (HR_ADMIN.includes(session.user.role as Role)) {
         data.dailyRate = body.dailyRate
+      }
+    }
+
+    // Payroll fields batch 2 (2026-09) — positionAllowance/diligenceAllowanceDefault/
+    // studentLoanDeduction get the same HR_ADMIN-only gate as baseSalary/dailyRate
+    // just above: all three feed directly into payroll calculations (ค่าตำแหน่ง
+    // เข้าฐาน SS, เบี้ยขยัน default ใช้เติมอัตโนมัติตอน generate, กยศ. เป็นข้อมูล
+    // การเงินส่วนบุคคลที่ต้องจำกัดคนเห็น/แก้เหมือน dailyRate)
+    if ('positionAllowance' in body && body.positionAllowance !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.positionAllowance = body.positionAllowance
+      }
+    }
+    if ('diligenceAllowanceDefault' in body && body.diligenceAllowanceDefault !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.diligenceAllowanceDefault = body.diligenceAllowanceDefault
+      }
+    }
+    if ('studentLoanDeduction' in body && body.studentLoanDeduction !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.studentLoanDeduction = body.studentLoanDeduction
       }
     }
 

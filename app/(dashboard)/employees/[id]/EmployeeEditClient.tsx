@@ -33,6 +33,7 @@ import EmployeeEditHistoryTab from '@/components/employees/EmployeeEditHistoryTa
 import EmployeeProfileTab from '@/components/employees/EmployeeProfileTab'
 import EmployeeContactsBankTab from '@/components/employees/EmployeeContactsBankTab'
 import EmploymentAssignmentHistoryTab from '@/components/employees/EmploymentAssignmentHistoryTab'
+import SecurityDepositSection, { type SecurityDepositPlan } from '@/components/employees/SecurityDepositSection'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
   isValidEmailInput,
@@ -61,6 +62,9 @@ type Employee = {
   baseSalary: number
   payType: string
   dailyRate: number | null
+  positionAllowance: number | null
+  diligenceAllowanceDefault: number | null
+  studentLoanDeduction: number | null
   socialSecurity: boolean
   isCoworker: boolean
   startDate: string | null
@@ -112,6 +116,7 @@ export default function EmployeeEditClient({
   canEditSalary,
   canViewSensitive,
   canManageEmploymentHistory,
+  securityDepositPlan: initialSecurityDepositPlan,
 }: {
   employee: Employee
   currentUserId: string
@@ -128,6 +133,10 @@ export default function EmployeeEditClient({
   /** Same literal role list again — Phase 1 step 8c — gates the "สร้าง
    *  ประวัติใหม่" button on the employment-history tab. */
   canManageEmploymentHistory: boolean
+  /** เงินประกัน 6 งวด (payroll fields batch 2, 2026-09) — null ถ้ายังไม่เคย
+   *  สร้างแผนให้พนักงานคนนี้ หรือถ้า canEditSalary เป็น false (filtered ที่
+   *  source ใน page.tsx เหมือน baseSalary/dailyRate) */
+  securityDepositPlan: SecurityDepositPlan | null
 }) {
   const router = useRouter()
   const isSelf = employee.id === currentUserId
@@ -151,6 +160,9 @@ export default function EmployeeEditClient({
     baseSalary: employee.baseSalary,
     payType: employee.payType ?? 'MONTHLY',
     dailyRate: employee.dailyRate ?? 0,
+    positionAllowance: employee.positionAllowance ?? 0,
+    diligenceAllowanceDefault: employee.diligenceAllowanceDefault ?? 0,
+    studentLoanDeduction: employee.studentLoanDeduction ?? 0,
     socialSecurity: employee.socialSecurity,
     isCoworker: employee.isCoworker,
     startDate: employee.startDate ? employee.startDate.substring(0, 10) : '',
@@ -308,6 +320,9 @@ export default function EmployeeEditClient({
         baseSalary: () => form.baseSalary,
         payType: () => form.payType,
         dailyRate: () => form.dailyRate,
+        positionAllowance: () => form.positionAllowance,
+        diligenceAllowanceDefault: () => form.diligenceAllowanceDefault,
+        studentLoanDeduction: () => form.studentLoanDeduction,
         socialSecurity: () => form.socialSecurity,
         isCoworker: () => form.isCoworker,
         startDate: () => form.startDate || null,
@@ -714,7 +729,43 @@ export default function EmployeeEditClient({
                   </div>
                 )}
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <FormField label="ค่าตำแหน่ง (บาท/เดือน)">
+                  <input
+                    type="number"
+                    value={form.positionAllowance}
+                    onChange={(e) => set('positionAllowance', parseFloat(e.target.value) || 0)}
+                    className={profileInputClass}
+                  />
+                </FormField>
+                <FormField label="เบี้ยขยัน default (บาท/เดือน)">
+                  <input
+                    type="number"
+                    value={form.diligenceAllowanceDefault}
+                    onChange={(e) => set('diligenceAllowanceDefault', parseFloat(e.target.value) || 0)}
+                    className={profileInputClass}
+                  />
+                  <p className="text-[11px] text-white/40 mt-1">
+                    ยอดที่ generate payroll ใช้เติมอัตโนมัติ — ตัดทั้งจำนวนถ้าเดือนนั้นมีขาด/ลา/สาย (ยกเว้นลาพักร้อน)
+                  </p>
+                </FormField>
+                <FormField label="กยศ. หักต่อเดือน (บาท)">
+                  <input
+                    type="number"
+                    value={form.studentLoanDeduction}
+                    onChange={(e) => set('studentLoanDeduction', parseFloat(e.target.value) || 0)}
+                    className={profileInputClass}
+                  />
+                  <p className="text-[11px] text-white/40 mt-1">
+                    กรอกตามยอดที่ กยศ. แจ้งเป็นลายลักษณ์อักษรเท่านั้น
+                  </p>
+                </FormField>
+              </div>
             </section>
+          )}
+
+          {canEditSalary && (
+            <SecurityDepositSection userId={employee.id} initialPlan={initialSecurityDepositPlan} />
           )}
         </div>
       )}

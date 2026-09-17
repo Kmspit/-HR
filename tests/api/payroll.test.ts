@@ -33,6 +33,10 @@ vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
+  ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/payroll-late-deduction', () => ({
   buildApprovedLeaveDateSet:       vi.fn().mockReturnValue(new Set()),
   computeLateDeduction:            vi.fn().mockReturnValue({ totalDeduction: 0, details: [] }),

@@ -17,6 +17,11 @@ export const SELF_PROFILE_FORBIDDEN = new Set([
   'startDate',
   'jobLevel',
   'socialSecurityNumber',
+  // Payroll fields batch 2 (2026-09) — same self-edit ban as baseSalary/
+  // socialSecurityNumber above: these feed payroll calculations directly.
+  'positionAllowance',
+  'diligenceAllowanceDefault',
+  'studentLoanDeduction',
   'lineUserId',
   'lineDisplayName',
   'password',

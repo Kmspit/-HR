@@ -7,6 +7,7 @@ import EmployeeEditClient from './EmployeeEditClient'
 import { canManageUserProfile } from '@/lib/role-assignment'
 import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { HR_ADMIN } from '@/lib/module-gates'
+import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 
 export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -27,6 +28,8 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
     redirect(`/employees/${id}/timeline`)
   }
 
+  await ensurePayrollFieldsBatch2()
+
   const user = await prisma.user.findUnique({
     where: { id },
     select: {
@@ -34,6 +37,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       employeeType: true,
       department: true, position: true, jobLevel: true, socialSecurityNumber: true,
       baseSalary: true, payType: true, dailyRate: true, socialSecurity: true,
+      positionAllowance: true, diligenceAllowanceDefault: true, studentLoanDeduction: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
       lineUserId: true, lineDisplayName: true, branchId: true,
       prefix: true, nickname: true, birthDate: true, address: true, addressIdCard: true,
@@ -49,6 +53,10 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
   // via page source / React DevTools). Filtered at the source here instead.
   const canViewSalary = HR_ADMIN.includes(role)
 
+  const securityDepositPlan = canViewSalary
+    ? await prisma.securityDepositPlan.findUnique({ where: { userId: id } })
+    : null
+
   return (
     <div className="flex flex-col min-h-0">
       <Topbar title="แก้ไขข้อมูลพนักงาน" subtitle={user.name} />
@@ -57,6 +65,15 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       canEditSalary={canViewSalary}
       canViewSensitive={HR_ADMIN.includes(role)}
       canManageEmploymentHistory={HR_ADMIN.includes(role)}
+      securityDepositPlan={
+        securityDepositPlan
+          ? {
+              ...securityDepositPlan,
+              createdAt: securityDepositPlan.createdAt.toISOString(),
+              updatedAt: securityDepositPlan.updatedAt.toISOString(),
+            }
+          : null
+      }
       employee={{
         ...user,
         baseSalary: canViewSalary ? (user.baseSalary ?? 0) : 0,
@@ -67,6 +84,11 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
         // employeeType below — not filtered), but dailyRate is exactly as
         // sensitive as baseSalary and gets the same source-level filter.
         dailyRate: canViewSalary ? user.dailyRate : null,
+        // Payroll fields batch 2 (2026-09) — same source-level filter as
+        // dailyRate/baseSalary above (HR_ADMIN-only financial fields).
+        positionAllowance: canViewSalary ? user.positionAllowance : null,
+        diligenceAllowanceDefault: canViewSalary ? user.diligenceAllowanceDefault : null,
+        studentLoanDeduction: canViewSalary ? user.studentLoanDeduction : null,
         startDate: user.startDate?.toISOString() ?? null,
         birthDate: user.birthDate?.toISOString() ?? null,
         employeeType: user.employeeType ?? 'permanent_employee',

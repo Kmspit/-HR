@@ -7,6 +7,10 @@ vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
+  ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/api-handler', () => ({
   apiError: (err: unknown) => new Response(JSON.stringify({ error: String(err) }), { status: 500 }),
 }))

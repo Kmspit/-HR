@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900038
+export const CURRENT_SCHEMA_VERSION = 900039
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -40,6 +40,7 @@ export const ALL_MAPPED_TABLES = [
   'case_financials', 'court_events', 'schema_migrations', 'employee_profiles',
   'emergency_contacts', 'dependents', 'bank_accounts', 'job_positions',
   'employment_assignments', 'biometric_consents',
+  'security_deposit_plans', 'professional_fee_payments', 'professional_fee_related_persons',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -2414,6 +2415,66 @@ async function runEnsure(force = false): Promise<boolean> {
   await addPayrollColumnIfMissing('payType', `ALTER TABLE payrolls ADD COLUMN payType TEXT`)
   await addPayrollColumnIfMissing('daysWorked', `ALTER TABLE payrolls ADD COLUMN daysWorked REAL`)
   await addPayrollColumnIfMissing('dailyRateUsed', `ALTER TABLE payrolls ADD COLUMN dailyRateUsed REAL`)
+
+  // v900039 — payroll fields batch 2 (2026-09): ค่าตำแหน่ง/เบี้ยขยัน/ตกเบิก/
+  // คอมมิชชั่น/กยศ./เงินประกัน 6 งวด/ค่าวิชาชีพ 40(6). DDL เดียวกับที่
+  // lib/ensure-payroll-fields-batch-2.ts รันตอน request-time อยู่แล้ว (เขียนซ้ำ
+  // ที่นี่ตามข้อ 1 ของ CONTRIBUTING.md เพื่อให้ postbuild/cron sync ด้วย —
+  // ทั้งสองจุดเป็น additive/idempotent เหมือนกัน รันซ้ำได้ไม่มีผลเสีย)
+  await addUserColumnIfMissing('positionAllowance', `ALTER TABLE users ADD COLUMN positionAllowance REAL`)
+  await addUserColumnIfMissing('diligenceAllowanceDefault', `ALTER TABLE users ADD COLUMN diligenceAllowanceDefault REAL`)
+  await addUserColumnIfMissing('studentLoanDeduction', `ALTER TABLE users ADD COLUMN studentLoanDeduction REAL`)
+  await addPayrollColumnIfMissing('positionAllowance', `ALTER TABLE payrolls ADD COLUMN positionAllowance REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('diligenceAllowance', `ALTER TABLE payrolls ADD COLUMN diligenceAllowance REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('backPay', `ALTER TABLE payrolls ADD COLUMN backPay REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('commission', `ALTER TABLE payrolls ADD COLUMN commission REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('studentLoanDeduction', `ALTER TABLE payrolls ADD COLUMN studentLoanDeduction REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('securityDepositDeduction', `ALTER TABLE payrolls ADD COLUMN securityDepositDeduction REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('securityDepositInstallmentNo', `ALTER TABLE payrolls ADD COLUMN securityDepositInstallmentNo INTEGER`)
+  await addPayrollColumnIfMissing('professionalFee', `ALTER TABLE payrolls ADD COLUMN professionalFee REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('professionalFeeTax', `ALTER TABLE payrolls ADD COLUMN professionalFeeTax REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('earlyLeaveDeduction', `ALTER TABLE payrolls ADD COLUMN earlyLeaveDeduction REAL NOT NULL DEFAULT 0`)
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS security_deposit_plans (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      totalAmount REAL NOT NULL,
+      totalInstallments INTEGER NOT NULL DEFAULT 6,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      startMonth INTEGER NOT NULL,
+      startYear INTEGER NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS professional_fee_payments (
+      id TEXT NOT NULL PRIMARY KEY,
+      payrollId TEXT NOT NULL,
+      hiringCompany TEXT NOT NULL,
+      jobType TEXT NOT NULL,
+      amount REAL NOT NULL,
+      paidAt DATETIME NOT NULL,
+      taxWithheld REAL NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS professional_fee_payments_payrollId_idx ON professional_fee_payments (payrollId)`,
+  )
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS professional_fee_related_persons (
+      id TEXT NOT NULL PRIMARY KEY,
+      professionalFeePaymentId TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL
+    )
+  `)
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS professional_fee_related_persons_professionalFeePaymentId_idx ON professional_fee_related_persons (professionalFeePaymentId)`,
+  )
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

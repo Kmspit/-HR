@@ -28,6 +28,10 @@ vi.mock('@/lib/notifications', () => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
+  ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
+}))
+
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'
@@ -494,5 +498,74 @@ describe('PATCH /api/users/[id] — employee-fields batch 1 (2026-09-09): jobLev
     const res = await PATCH(makePatch('emp-9', { socialSecurityNumber: '1234567890123' }), { params: params('emp-9') })
     expect(res.status).toBe(200)
     expect(updateData()).toMatchObject({ socialSecurityNumber: '1234567890123' })
+  })
+})
+
+describe('PATCH /api/users/[id] — payroll fields batch 2 (2026-09): positionAllowance / diligenceAllowanceDefault / studentLoanDeduction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: 'report-1' } as never)
+  })
+
+  function updateData() {
+    return vi.mocked(prisma.user.update).mock.calls[0][0].data as Record<string, unknown>
+  }
+
+  it('silently ignores all three fields from MANAGER (same HR_ADMIN gate as baseSalary)', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }] as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never)
+
+    const res = await PATCH(
+      makePatch('report-1', {
+        positionAllowance: 999, diligenceAllowanceDefault: 500, studentLoanDeduction: 2000,
+        position: 'Senior Dev',
+      }),
+      { params: params('report-1') },
+    )
+
+    expect(res.status).toBe(200)
+    expect(updateData()).not.toHaveProperty('positionAllowance')
+    expect(updateData()).not.toHaveProperty('diligenceAllowanceDefault')
+    expect(updateData()).not.toHaveProperty('studentLoanDeduction')
+    expect(updateData()).toMatchObject({ position: 'Senior Dev' })
+  })
+
+  it('allows HR to set all three fields for another employee', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ branchId: 'b1', managerId: null, teamLeaderId: null } as never)
+      .mockResolvedValueOnce(null as never)
+
+    const res = await PATCH(
+      makePatch('emp-9', { positionAllowance: 1000, diligenceAllowanceDefault: 300, studentLoanDeduction: 1500 }),
+      { params: params('emp-9') },
+    )
+    expect(res.status).toBe(200)
+    expect(updateData()).toMatchObject({
+      positionAllowance: 1000, diligenceAllowanceDefault: 300, studentLoanDeduction: 1500,
+    })
+  })
+
+  it('rejects a self-edit of positionAllowance with 403 (SELF_PROFILE_FORBIDDEN)', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    const res = await PATCH(makePatch('hr-1', { positionAllowance: 1000 }), { params: params('hr-1') })
+    expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a self-edit of diligenceAllowanceDefault with 403 (SELF_PROFILE_FORBIDDEN)', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    const res = await PATCH(makePatch('hr-1', { diligenceAllowanceDefault: 300 }), { params: params('hr-1') })
+    expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a self-edit of studentLoanDeduction with 403 (SELF_PROFILE_FORBIDDEN)', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    const res = await PATCH(makePatch('hr-1', { studentLoanDeduction: 1500 }), { params: params('hr-1') })
+    expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
   })
 })

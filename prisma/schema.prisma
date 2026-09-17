@@ -488,6 +488,17 @@ model User {
   /// รายเดือนอยู่แล้วในหลายจุด — เพิ่ม field ใหม่แทนตีความซ้อนจะปลอดภัยกว่า
   payType          PayType    @default(MONTHLY)
   dailyRate        Float?
+  /// ค่าตำแหน่ง (payroll feature, 2026-09) — recurring config ต่อตำแหน่งงาน
+  /// ไม่เปลี่ยนบ่อย เหมือน baseSalary, snapshot ทุกเดือนที่ Payroll.positionAllowance
+  /// gate เดียวกับ baseSalary/dailyRate (HR_ADMIN แก้เท่านั้น)
+  positionAllowance         Float?
+  /// ยอดเบี้ยขยัน default ที่ generate ใช้เติมอัตโนมัติ — ยอดจริงของแต่ละเดือน
+  /// (หลังตัดกรณีขาด/ลา/สาย) อยู่ที่ Payroll.diligenceAllowance แทน ไม่ gate
+  /// แบบ HR_ADMIN-only เหมือน baseSalary เพราะไม่ใช่ข้อมูลการเงินส่วนบุคคล
+  diligenceAllowanceDefault Float?
+  /// กยศ. ยอดหักต่อเดือนตามหนังสือแจ้งจาก กยศ. — gate เดียวกับ baseSalary/
+  /// dailyRate (ข้อมูลการเงินส่วนบุคคลที่ควรจำกัดคนเห็น/แก้)
+  studentLoanDeduction      Float?
   startDate        DateTime?
   socialSecurity   Boolean    @default(true)
   lineId               String?
@@ -632,6 +643,9 @@ model User {
   // Phase 14 — Court Calendar
   courtEventsCreated        CourtEvent[]         @relation("CourtEventCreator")
   courtEventsAssigned       CourtEvent[]         @relation("CourtEventLawyer")
+  // Payroll fields batch 2 (2026-09) — position allowance / diligence /
+  // back pay / student loan / security deposit / commission / professional fee
+  securityDepositPlan       SecurityDepositPlan?
 
   @@map("users")
 }
@@ -1433,6 +1447,11 @@ model Payroll {
   lateDeduction   Float     @default(0)
   absentDeduction Float     @default(0)
   unpaidLeave     Float     @default(0)
+  /// หักลากลับก่อน (early leave) — เดิมคำนวณแล้วบวกลบเข้า netSalary ทันที
+  /// โดยไม่เคย persist (2026-09 ก่อนหน้านี้); ต้องเก็บแยกตั้งแต่ payroll
+  /// fields batch 2 เพราะ PATCH /api/payroll/[id] ต้อง recompute netSalary
+  /// ใหม่ (ตอนแก้ backPay/commission) โดยไม่รื้อคำนวณจาก attendance ใหม่ทั้งหมด
+  earlyLeaveDeduction Float @default(0)
   socialSecurity  Float     @default(0)
   otherDeduction  Float     @default(0)
   otherAddition   Float     @default(0)
@@ -1453,6 +1472,22 @@ model Payroll {
   payType         String?
   daysWorked      Float?
   dailyRateUsed   Float?
+  // Payroll fields batch 2 (2026-09) — all editable only while status is
+  // DRAFT via PATCH /api/payroll/[id]; server always recomputes SS/tax/
+  // netSalary from these, never trusts client-sent totals. See
+  // computeMonthlyTax's grossIncome param (renamed from baseSalary) for how
+  // positionAllowance/diligenceAllowance/backPay/commission feed one shared
+  // 40(1)+40(2) tax calc so the 100,000-baht incomeDeduction ceiling isn't
+  // applied twice.
+  positionAllowance    Float @default(0) // ค่าตำแหน่ง — snapshot จาก User.positionAllowance, เข้าฐาน SS
+  diligenceAllowance   Float @default(0) // เบี้ยขยัน — ตัดทั้งจำนวนถ้าขาด/ลา/สาย (ยกเว้นลาพักร้อน), ไม่เข้าฐาน SS
+  backPay              Float @default(0) // ตกเบิก — ยอดครั้งเดียวเฉพาะเดือนที่จ่ายจริง (cash basis, ม.50), เข้าฐาน SS
+  commission           Float @default(0) // คอมมิชชั่น — ไม่เข้าฐาน SS
+  studentLoanDeduction Float @default(0) // กยศ. — snapshot จาก User.studentLoanDeduction, หักหลังภาษี ไม่ลดหย่อน ไม่กระทบ taxableIncome
+  securityDepositDeduction     Float @default(0) // เงินประกัน 6 งวด (หรือตามแผน) — หักหนี้ตรงๆ ไม่เกี่ยวภาษี/SS
+  securityDepositInstallmentNo Int?              // งวดที่เท่าไหร่ (เช่น 3/6) — derive ตอน generate จากการนับ Payroll เดิม ไม่ใช่ mutable counter
+  professionalFee    Float @default(0) // ค่าวิชาชีพ 40(6) รวมของเดือนนี้ = sum(ProfessionalFeePayment.amount)
+  professionalFeeTax Float @default(0) // ภาษีหัก ณ ที่จ่าย 40(6) รวม = sum(ProfessionalFeePayment.taxWithheld); 3% flat ต่อรายการที่ >= 1,000 บาท, แยกก้อนจาก 40(1)/40(2)
   status          String    @default("DRAFT")
   slipSentAt      DateTime?
   payslipSentAt     DateTime?
@@ -1471,10 +1506,71 @@ model Payroll {
   user       User        @relation("PayrollUser", fields: [userId], references: [id])
   deletedBy  User?       @relation("PayrollDeletedBy", fields: [deletedById], references: [id])
   salarySlip SalarySlip?
+  professionalFeePayments ProfessionalFeePayment[]
 
   @@unique([userId, month, year])
   @@index([deletedAt])
   @@map("payrolls")
+}
+
+// ── PAYROLL FIELDS BATCH 2 (2026-09) ─────────────
+
+/// เงินประกัน 6 งวด (หรือจำนวนงวดที่ตกลง) — จ่ายแล้วกี่งวดไม่เก็บเป็น mutable
+/// counter (เสี่ยง sync พลาดถ้า regenerate/soft-delete) แต่ derive ตอน
+/// generate จากการนับ Payroll จริงที่ securityDepositDeduction > 0 มาก่อน
+/// หน้านี้ (deletedAt null, status ไม่ใช่ REJECTED)
+model SecurityDepositPlan {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  totalAmount       Float
+  totalInstallments Int      @default(6)
+  status            String   @default("ACTIVE") // ACTIVE | COMPLETED | CANCELLED
+  startMonth        Int
+  startYear         Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("security_deposit_plans")
+}
+
+/// ค่าวิชาชีพ 40(6) — รายการจ่ายแต่ละครั้ง (freelance อาจเบิกหลายครั้ง/เดือน)
+/// เกณฑ์ 1,000 บาทเช็กเป็นรายครั้ง ไม่ใช่ยอดรวมทั้งเดือน — taxWithheld คำนวณ
+/// ต่อ record นี้ตอนบันทึก (amount >= 1000 ? amount*0.03 : 0), 3% flat แยกก้อน
+/// จากภาษี 40(1)/40(2) โดยสิ้นเชิง (ไม่รวมเข้า grossIncome ของ computeMonthlyTax)
+model ProfessionalFeePayment {
+  id            String   @id @default(cuid())
+  payrollId     String
+  hiringCompany String   // บริษัทผู้ว่าจ้าง
+  jobType       String   // ประเภทงาน (free text)
+  amount        Float    // จำนวนเงินที่ส่งเบิก
+  paidAt        DateTime
+  taxWithheld   Float    // amount >= 1000 ? amount*0.03 : 0
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  payroll        Payroll                        @relation(fields: [payrollId], references: [id])
+  relatedPersons ProfessionalFeeRelatedPerson[]
+
+  @@index([payrollId])
+  @@map("professional_fee_payments")
+}
+
+/// บุคคลที่เกี่ยวข้องกับงานที่เบิก 40(6) แต่ละรายการ — เช่น ผู้กู้/ผู้ค้ำ
+/// ประกัน/ทายาทโดยธรรม role เป็น free text (ไม่ใช่ enum) เพราะบทบาทที่พบ
+/// ในทางปฏิบัติเปลี่ยน/เพิ่มได้ (ยืนยันแล้วว่ามีมากกว่าผู้กู้/ผู้ค้ำ 2 แบบ)
+/// — 1 รายการเบิกมีผู้ค้ำประกันได้มากกว่า 1 คน จึงเป็น relation แบบ 1-to-many
+model ProfessionalFeeRelatedPerson {
+  id                       String @id @default(cuid())
+  professionalFeePaymentId String
+  name                     String // ชื่อบุคคล
+  role                     String // free text พร้อม preset: ผู้กู้/ผู้ค้ำประกัน/ทายาทโดยธรรม/อื่นๆ
+
+  professionalFeePayment ProfessionalFeePayment @relation(fields: [professionalFeePaymentId], references: [id], onDelete: Cascade)
+
+  @@index([professionalFeePaymentId])
+  @@map("professional_fee_related_persons")
 }
 
 // ── SALARY SLIPS ────────────────────────────────

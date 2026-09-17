@@ -5,6 +5,7 @@ import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQu
 import { createAuditLog } from '@/lib/notifications'
 import { canManagePayroll, canApprovePayroll } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
   const nestedUser = branchNestedUserWhere(scope)
 
   await ensurePayrollPayslipColumns()
+  await ensurePayrollFieldsBatch2()
 
   const role = session.user.role
   const isPayrollAdmin = canManagePayroll(role)

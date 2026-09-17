@@ -12,7 +12,8 @@ vi.mock('@/lib/prisma', () => {
     user:            { findMany: vi.fn() },
     attendance:      { findMany: vi.fn().mockResolvedValue([]) },
     leaveRequest:    { findMany: vi.fn().mockResolvedValue([]) },
-    payroll:         { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
+    securityDepositPlan: { findMany: vi.fn().mockResolvedValue([]) },
+    payroll:         { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), count: vi.fn().mockResolvedValue(0) },
     $transaction:    vi.fn((cb: any) => cb(prisma)),
   }
   return { prisma }
@@ -24,6 +25,10 @@ vi.mock('@/lib/api-handler', () => ({
 
 vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
+  ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/lib/utils', () => ({

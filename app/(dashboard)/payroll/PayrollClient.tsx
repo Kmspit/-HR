@@ -7,6 +7,7 @@ import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
+import PayrollEditModal from '@/components/payroll/PayrollEditModal'
 import { ManualButton } from '@/components/ui/ManualButton'
 import PortalModal from '@/components/ui/PortalModal'
 import { getPayslipBlockers, isPayslipSendReady, partitionPayslipBatch } from '@/lib/payslip-preflight'
@@ -92,6 +93,7 @@ export default function PayrollClient({
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [detailRow, setDetailRow] = useState<PayrollRow | null>(null)
+  const [editRow, setEditRow] = useState<PayrollRow | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [sendingBatch, setSendingBatch] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
@@ -473,6 +475,14 @@ export default function PayrollClient({
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
+          {canApprove && (
+            <a
+              href={`/api/payroll/export?month=${month}&year=${year}${filterBranchId ? `&branchId=${encodeURIComponent(filterBranchId)}` : ''}`}
+              className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl text-sm transition"
+            >
+              <Download className="w-4 h-4" /> Export Excel (สรุปจ่าย)
+            </a>
+          )}
           <button
             onClick={sendAllSlipsLine}
             disabled={sendingBatch || loading}
@@ -670,6 +680,15 @@ export default function PayrollClient({
               {showApprove && (
                 <button
                   type="button"
+                  onClick={() => setEditRow(p)}
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl text-sm font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition"
+                >
+                  แก้ไขตกเบิก/คอมมิชชั่น/ค่าวิชาชีพ
+                </button>
+              )}
+              {showApprove && (
+                <button
+                  type="button"
                   onClick={() => approvePayroll(p)}
                   disabled={approvingId === p.id || approvingBatch}
                   className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl text-sm font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition"
@@ -723,11 +742,12 @@ export default function PayrollClient({
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">LINE</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium">ส่งสลิป LINE</th>
                 <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>
+                <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>
                 {canDelete && <th className="text-center p-3 text-slate-400 dark:text-white/40 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
-              {loading && <TableSkeletonRows rows={6} cols={canDelete ? 13 : 12} />}
+              {loading && <TableSkeletonRows rows={6} cols={canDelete ? 14 : 13} />}
               {!loading &&
                 payrolls.map((p) => (
                   <tr key={p.id} className={`table-row-hover ${!p.hasPayroll ? 'opacity-70' : ''}`}>
@@ -840,6 +860,20 @@ export default function PayrollClient({
                         <span className="text-white/20 text-xs">—</span>
                       )}
                     </td>
+                    <td className="p-3 text-center">
+                      {canApprove && p.hasPayroll && p.status === 'DRAFT' ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditRow(p)}
+                          title="แก้ไขตกเบิก/คอมมิชชั่น/ค่าวิชาชีพ"
+                          className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition"
+                        >
+                          แก้ไข
+                        </button>
+                      ) : (
+                        <span className="text-white/20 text-xs">—</span>
+                      )}
+                    </td>
                     {canDelete && (
                       <td className="p-3 text-center">
                         {p.hasPayroll ? (
@@ -866,7 +900,7 @@ export default function PayrollClient({
                 ))}
               {!loading && payrolls.length === 0 && (
                 <tr>
-                  <td colSpan={canDelete ? 13 : 12} className="p-8 text-center text-white/30">
+                  <td colSpan={canDelete ? 14 : 13} className="p-8 text-center text-white/30">
                     ยังไม่มีข้อมูล กด &quot;คำนวณ&quot; เพื่อสร้าง payroll
                   </td>
                 </tr>
@@ -905,6 +939,15 @@ export default function PayrollClient({
               lateDeductionDetail={detailRow.lateDeductionDetail}
             />
         </PortalModal>
+      )}
+
+      {editRow && editRow.hasPayroll && (
+        <PayrollEditModal
+          payrollId={editRow.id}
+          employeeName={editRow.name}
+          onClose={() => setEditRow(null)}
+          onSaved={() => loadPayrolls(month, year)}
+        />
       )}
 
       {showSendAllModal && (

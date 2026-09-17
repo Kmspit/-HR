@@ -10,11 +10,13 @@ import {
   serializeLateDeductionDetail,
   roundMoney,
 } from '@/lib/payroll-late-deduction'
-import { computeMonthlyTax } from '@/lib/payroll-tax'
 import { computeDaysWorked } from '@/lib/payroll-daily-wage'
-import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
+import { computeDiligenceAllowance } from '@/lib/payroll-diligence'
+import { computeSecurityDepositInstallment } from '@/lib/payroll-security-deposit'
+import { computePayrollTotals } from '@/lib/payroll-totals'
 import type { HolidayRecord } from '@/lib/company-holidays'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -35,6 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     await ensurePayrollPayslipColumns()
+    await ensurePayrollFieldsBatch2()
 
     const { month, year, branchId: filterBranchId } = await req.json()
     if (!month || !year) {
@@ -86,6 +89,7 @@ export async function POST(req: NextRequest) {
       select: {
         id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true,
         startDate: true, status: true, updatedAt: true, payType: true, dailyRate: true,
+        positionAllowance: true, diligenceAllowanceDefault: true, studentLoanDeduction: true,
       },
     })
 
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
     // findMany results, just sourced from a Map instead of a fresh query).
     const pendingIds = pendingEmployees.map((e) => e.id)
 
-    const [allAttendances, allApprovedLeaves, allUnpaidLeaves] = await Promise.all([
+    const [allAttendances, allApprovedLeaves, allUnpaidLeaves, activeDepositPlans] = await Promise.all([
       prisma.attendance.findMany({
         where: { userId: { in: pendingIds }, date: { gte: startDate, lte: endDate } },
         select: {
@@ -130,7 +134,7 @@ export async function POST(req: NextRequest) {
           startDate: { lte: endDate },
           endDate: { gte: startDate },
         },
-        select: { userId: true, startDate: true, endDate: true, status: true },
+        select: { userId: true, startDate: true, endDate: true, status: true, type: true },
       }),
       prisma.leaveRequest.findMany({
         where: {
@@ -141,6 +145,10 @@ export async function POST(req: NextRequest) {
           endDate: { gte: startDate },
         },
         select: { userId: true, days: true },
+      }),
+      // เงินประกัน 6 งวด — ดึงเฉพาะพนักงานที่มีแผน ACTIVE อยู่ (ส่วนใหญ่ไม่มี)
+      prisma.securityDepositPlan.findMany({
+        where: { userId: { in: pendingIds }, status: 'ACTIVE' },
       }),
     ])
 
@@ -159,6 +167,23 @@ export async function POST(req: NextRequest) {
       const list = unpaidLeavesByUser.get(l.userId)
       if (list) list.push(l); else unpaidLeavesByUser.set(l.userId, [l])
     }
+    const depositPlanByUser = new Map<string, (typeof activeDepositPlans)[number]>()
+    for (const p of activeDepositPlans) depositPlanByUser.set(p.userId, p)
+
+    /** จำนวนงวดเงินประกันที่หักไปแล้วก่อนหน้าเดือนนี้ (ไม่รวมเดือนนี้เอง) —
+     * นับสดทุกครั้งจาก Payroll จริง ไม่ใช่ mutable counter (ดู
+     * lib/payroll-security-deposit.ts) */
+    async function countPriorSecurityDepositInstallments(userId: string): Promise<number> {
+      return prisma.payroll.count({
+        where: {
+          userId,
+          deletedAt: null,
+          status: { not: 'REJECTED' },
+          securityDepositDeduction: { gt: 0 },
+          OR: [{ year: { lt: year } }, { year, month: { lt: month } }],
+        },
+      })
+    }
 
     // Employees whose payroll got APPROVED by someone else between the
     // `existingApproved` read above and this employee's write below — caught
@@ -174,6 +199,27 @@ export async function POST(req: NextRequest) {
     type ApprovedLeaveRow = (typeof allApprovedLeaves)[number]
     type UnpaidLeaveRow = (typeof allUnpaidLeaves)[number]
 
+    // Payroll fields batch 2 (2026-09) — fields this generate step computes
+    // itself every time (deterministic from User/attendance/security-deposit
+    // plan, safe to recompute on regenerate) vs. fields only ever written by
+    // HR through PATCH /api/payroll/[id] (backPay/commission/professionalFee*
+    // — generate must NEVER overwrite these on regenerate, only read their
+    // current value to fold into this month's tax/SS/net calc; see the
+    // preservedManual read right before buildMonthlyPayload/buildDailyPayload
+    // is called inside the per-employee transaction below).
+    type ComputedExtraFields = {
+      positionAllowance: number
+      studentLoanDeduction: number
+      securityDepositDeduction: number
+      securityDepositInstallmentNo: number | null
+    }
+    type PreservedManualFields = {
+      backPay: number
+      commission: number
+      professionalFee: number
+      professionalFeeTax: number
+    }
+
     // Unchanged from before payType existed — every MONTHLY employee (the
     // default, and the only formula that existed until now) gets exactly the
     // same numbers as before this feature. Closures over startDate/endDate/
@@ -184,6 +230,8 @@ export async function POST(req: NextRequest) {
       attendances: AttendanceRow[],
       approvedLeaves: ApprovedLeaveRow[],
       unpaidLeaves: UnpaidLeaveRow[],
+      extra: ComputedExtraFields,
+      preservedManual: PreservedManualFields,
     ) {
       const baseSalary = emp.baseSalary ?? 0
 
@@ -231,6 +279,14 @@ export async function POST(req: NextRequest) {
 
       const unpaidDays = unpaidLeaves.reduce((s, l) => s + l.days, 0)
 
+      // เบี้ยขยัน (ยืนยัน 2026-09) — ตัดทั้งจำนวนถ้ามีสาย/ขาด หรือมีวันลาที่ไม่ใช่
+      // ลาพักร้อน; ใช้ late.lateDays/absentDays ที่คำนวณไว้แล้วข้างบนนี้เอง
+      const diligence = computeDiligenceAllowance(emp.diligenceAllowanceDefault, {
+        lateDays: late.lateDays,
+        absentDays,
+        approvedLeaves,
+      })
+
       const dailyRate = baseSalary / 26
       const lateDeduction = late.lateDeduction
       const absentDeduction = roundMoney(
@@ -239,32 +295,41 @@ export async function POST(req: NextRequest) {
       const unpaidLeaveDeduction = roundMoney(unpaidDays * dailyRate)
       const earlyLeaveDeduction = roundMoney(earlyLeaveDays * dailyRate * 0.5)
 
-      let ssDeduction = 0
-      if (emp.socialSecurity && baseSalary > 0) {
-        ssDeduction = roundMoney(Math.min(baseSalary * SS_RATE, SS_MAX))
-      }
-
-      const taxResult = computeMonthlyTax(baseSalary, ssDeduction)
-      const taxDeduction = taxResult.monthlyWithholding
-
-      const netSalary = roundMoney(
-        periodBaseSalary -
-        lateDeduction -
-        absentDeduction -
-        unpaidLeaveDeduction -
-        earlyLeaveDeduction -
-        ssDeduction -
-        taxDeduction,
-      )
+      // ฐาน SS/ภาษี ใช้ baseSalary เต็มจำนวน (ไม่ prorate) — พฤติกรรมเดิมของ
+      // ระบบที่ไม่ปรับ SS/ภาษีตามสัดส่วนวันทำงานแม้เดือนนี้ prorate; netSalary
+      // ใช้ periodBaseSalary (prorate แล้ว) เป็นตัวจ่ายจริง — ดู
+      // lib/payroll-totals.ts สำหรับเหตุผลที่แยก 2 ค่านี้
+      const totals = computePayrollTotals({
+        taxSsBaseSalary: baseSalary,
+        payoutBaseSalary: periodBaseSalary,
+        positionAllowance: extra.positionAllowance,
+        diligenceAllowance: diligence.amount,
+        backPay: preservedManual.backPay,
+        commission: preservedManual.commission,
+        professionalFee: preservedManual.professionalFee,
+        professionalFeeTax: preservedManual.professionalFeeTax,
+        studentLoanDeduction: extra.studentLoanDeduction,
+        securityDepositDeduction: extra.securityDepositDeduction,
+        lateDeduction,
+        absentDeduction,
+        unpaidLeaveDeduction,
+        earlyLeaveDeduction,
+        socialSecurityEnabled: emp.socialSecurity,
+      })
+      const ssDeduction = totals.socialSecurity
+      const taxDeduction = totals.taxDeduction
+      const taxDetailJson = totals.taxDetail
+      const netSalary = totals.netSalary
 
       return {
         baseSalary: periodBaseSalary,
         lateDeduction,
         absentDeduction,
         unpaidLeave: unpaidLeaveDeduction,
+        earlyLeaveDeduction,
         socialSecurity: ssDeduction,
         taxDeduction,
-        taxDetail: JSON.stringify(taxResult),
+        taxDetail: taxDetailJson,
         netSalary,
         lateDays: late.lateDays,
         absentDays,
@@ -274,6 +339,11 @@ export async function POST(req: NextRequest) {
         payType: 'MONTHLY',
         daysWorked: null,
         dailyRateUsed: null,
+        positionAllowance: extra.positionAllowance,
+        diligenceAllowance: diligence.amount,
+        studentLoanDeduction: extra.studentLoanDeduction,
+        securityDepositDeduction: extra.securityDepositDeduction,
+        securityDepositInstallmentNo: extra.securityDepositInstallmentNo,
         status: 'DRAFT',
         ...(prorationNote ? { note: prorationNote } : {}),
       }
@@ -289,7 +359,23 @@ export async function POST(req: NextRequest) {
     // actual earnings (daysWorked × dailyRate) in place of baseSalary — the
     // SS rate/cap rule and the withholding-tax estimate both apply to
     // actual monthly wages regardless of pay structure.
-    function buildDailyPayload(emp: PendingEmployee, attendances: AttendanceRow[]) {
+    //
+    // NOTE (assumption, flagged 2026-09): positionAllowance/diligenceAllowance/
+    // studentLoanDeduction/securityDeposit are User-level snapshots that apply
+    // regardless of payType — the confirmed decisions never distinguished
+    // MONTHLY vs DAILY for these, so they're applied here identically. Same
+    // for the diligence-cut check: DAILY has no per-minute late deduction,
+    // but "late" (status LATE) / "absent" (status ABSENT) / non-vacation leave
+    // still count for cutting the diligence allowance, using simple status
+    // counts (no rate-based amount needed since DAILY has no late deduction
+    // to compute a billable-minutes rate from).
+    function buildDailyPayload(
+      emp: PendingEmployee,
+      attendances: AttendanceRow[],
+      approvedLeaves: ApprovedLeaveRow[],
+      extra: ComputedExtraFields,
+      preservedManual: PreservedManualFields,
+    ) {
       const dailyRateUsed = emp.dailyRate ?? 0
       const daysWorked = computeDaysWorked(attendances)
       const periodEarnings = roundMoney(daysWorked * dailyRateUsed)
@@ -304,30 +390,61 @@ export async function POST(req: NextRequest) {
           ? `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) — กรุณาตรวจสอบก่อนอนุมัติ`
           : undefined
 
-      let ssDeduction = 0
-      if (emp.socialSecurity && periodEarnings > 0) {
-        ssDeduction = roundMoney(Math.min(periodEarnings * SS_RATE, SS_MAX))
-      }
+      // เบี้ยขยัน — DAILY ไม่มี computeLateDeduction (ไม่หักละเอียดเป็นนาที)
+      // จึงนับ late/absent แบบง่ายจาก status ตรงๆ พอสำหรับตัดสินใจตัด/ไม่ตัด
+      const dailyLateDays = attendances.filter(
+        (a) => a.status === 'LATE' || (a.lateMinutes ?? 0) > 0,
+      ).length
+      const dailyAbsentDays = attendances.filter((a) => a.status === 'ABSENT').length
+      const diligence = computeDiligenceAllowance(emp.diligenceAllowanceDefault, {
+        lateDays: dailyLateDays,
+        absentDays: dailyAbsentDays,
+        approvedLeaves,
+      })
 
-      const taxResult = computeMonthlyTax(periodEarnings, ssDeduction)
-      const taxDeduction = taxResult.monthlyWithholding
-
-      const netSalary = roundMoney(periodEarnings - ssDeduction - taxDeduction)
+      // DAILY ไม่มีแนวคิด proration แยก — taxSsBaseSalary/payoutBaseSalary
+      // เท่ากันทั้งคู่ (periodEarnings)
+      const totals = computePayrollTotals({
+        taxSsBaseSalary: periodEarnings,
+        payoutBaseSalary: periodEarnings,
+        positionAllowance: extra.positionAllowance,
+        diligenceAllowance: diligence.amount,
+        backPay: preservedManual.backPay,
+        commission: preservedManual.commission,
+        professionalFee: preservedManual.professionalFee,
+        professionalFeeTax: preservedManual.professionalFeeTax,
+        studentLoanDeduction: extra.studentLoanDeduction,
+        securityDepositDeduction: extra.securityDepositDeduction,
+        lateDeduction: 0,
+        absentDeduction: 0,
+        unpaidLeaveDeduction: 0,
+        earlyLeaveDeduction: 0,
+        socialSecurityEnabled: emp.socialSecurity,
+      })
+      const ssDeduction = totals.socialSecurity
+      const taxDeduction = totals.taxDeduction
+      const netSalary = totals.netSalary
 
       return {
         baseSalary: periodEarnings,
         lateDeduction: 0,
         absentDeduction: 0,
         unpaidLeave: 0,
+        earlyLeaveDeduction: 0,
         socialSecurity: ssDeduction,
         taxDeduction,
-        taxDetail: JSON.stringify(taxResult),
+        taxDetail: totals.taxDetail,
         netSalary,
         lateDays: 0,
         absentDays: 0,
         lateMinutes: 0,
         lateBillableMinutes: 0,
         lateDeductionDetail: null,
+        positionAllowance: extra.positionAllowance,
+        diligenceAllowance: diligence.amount,
+        studentLoanDeduction: extra.studentLoanDeduction,
+        securityDepositDeduction: extra.securityDepositDeduction,
+        securityDepositInstallmentNo: extra.securityDepositInstallmentNo,
         payType: 'DAILY',
         daysWorked,
         dailyRateUsed,
@@ -342,18 +459,33 @@ export async function POST(req: NextRequest) {
         const approvedLeaves = approvedLeavesByUser.get(emp.id) ?? []
         const unpaidLeaves = unpaidLeavesByUser.get(emp.id) ?? []
 
-        const payload =
-          emp.payType === 'DAILY'
-            ? buildDailyPayload(emp, attendances)
-            : buildMonthlyPayload(emp, attendances, approvedLeaves, unpaidLeaves)
+        const plan = depositPlanByUser.get(emp.id) ?? null
+        const priorInstallments = plan ? await countPriorSecurityDepositInstallments(emp.id) : 0
+        const depositResult = computeSecurityDepositInstallment(plan, priorInstallments)
+
+        const extra: ComputedExtraFields = {
+          positionAllowance: emp.positionAllowance ?? 0,
+          studentLoanDeduction: emp.studentLoanDeduction ?? 0,
+          securityDepositDeduction: depositResult.amount,
+          securityDepositInstallmentNo: depositResult.installmentNo,
+        }
 
         // Re-check status inside the transaction, right before writing — closes
         // the window where someone approves this employee's payroll between the
         // `existingApproved` read at the top of this request and this write.
+        // Also reads backPay/commission/professionalFee* here (manual-only
+        // fields HR enters via PATCH /api/payroll/[id]) so a regenerate can
+        // fold them into this month's SS/tax/net calc WITHOUT the upsert's
+        // `update` data ever containing — and therefore ever overwriting —
+        // those keys. See ComputedExtraFields/PreservedManualFields comment
+        // above buildMonthlyPayload for the full rationale.
         return prisma.$transaction(async (tx) => {
           const current = await tx.payroll.findUnique({
             where: { userId_month_year: { userId: emp.id, month, year } },
-            select: { status: true, deletedAt: true },
+            select: {
+              status: true, deletedAt: true,
+              backPay: true, commission: true, professionalFee: true, professionalFeeTax: true,
+            },
           })
           if (current?.deletedAt) {
             deletedSkippedNames.push(emp.name)
@@ -363,6 +495,22 @@ export async function POST(req: NextRequest) {
             raceSkippedNames.push(emp.name)
             return null
           }
+
+          const preservedManual: PreservedManualFields = {
+            backPay: current?.backPay ?? 0,
+            commission: current?.commission ?? 0,
+            professionalFee: current?.professionalFee ?? 0,
+            professionalFeeTax: current?.professionalFeeTax ?? 0,
+          }
+
+          const payload =
+            emp.payType === 'DAILY'
+              ? buildDailyPayload(emp, attendances, approvedLeaves, extra, preservedManual)
+              : buildMonthlyPayload(emp, attendances, approvedLeaves, unpaidLeaves, extra, preservedManual)
+
+          // payload ไม่มี key backPay/commission/professionalFee/professionalFeeTax
+          // เลย (ดู buildMonthlyPayload/buildDailyPayload) — ตอน update จึงไม่
+          // เขียนทับ, ตอน create ปล่อยให้ schema @default(0) ทำหน้าที่แทน
           return tx.payroll.upsert({
             where: { userId_month_year: { userId: emp.id, month, year } },
             update: payload,
