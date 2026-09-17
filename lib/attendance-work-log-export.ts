@@ -161,6 +161,14 @@ export async function buildWorkLogXlsx(
   const ws = wb.addWorksheet('บันทึกลงเวลา', {
     views: [{ state: 'frozen', ySplit: 6, activeCell: 'A7' }],
     properties: { defaultRowHeight: 18 },
+    pageSetup: {
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      paperSize: 9, // A4
+      margins: { top: 0.5, bottom: 0.5, left: 0.3, right: 0.3, header: 0.2, footer: 0.2 },
+    },
   })
   const titleRow = 1
   const metaRow2 = 2

@@ -118,6 +118,14 @@ function buildEmployeeSheet(
   planTitle: string,
 ) {
   ws.columns = COLS.map(c => ({ key: c.key, width: c.width }))
+  ws.pageSetup = {
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    paperSize: 9, // A4
+    margins: { top: 0.5, bottom: 0.5, left: 0.3, right: 0.3, header: 0.2, footer: 0.2 },
+  }
 
   // ── Rows 1–4: blank area (logo / letterhead space) ──────────────────────
   for (let i = 0; i < 4; i++) {
