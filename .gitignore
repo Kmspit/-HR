@@ -59,3 +59,8 @@ next-env.d.ts
 # data written to local disk for manual PDF-reader verification. Must never
 # be committed.
 manual-test-*.pdf
+
+prisma/db
+prisma/db-wal
+db
+db-wal
