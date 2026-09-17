@@ -12,13 +12,11 @@ import {
 } from '@/lib/payroll-late-deduction'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
 import { computeDaysWorked } from '@/lib/payroll-daily-wage'
+import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
 import type { HolidayRecord } from '@/lib/company-holidays'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
-
-const SS_RATE = 0.05
-const SS_MAX = 750
 
 const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN', 'HR'] as const
 
@@ -246,7 +244,7 @@ export async function POST(req: NextRequest) {
         ssDeduction = roundMoney(Math.min(baseSalary * SS_RATE, SS_MAX))
       }
 
-      const taxResult = computeMonthlyTax(baseSalary)
+      const taxResult = computeMonthlyTax(baseSalary, ssDeduction)
       const taxDeduction = taxResult.monthlyWithholding
 
       const netSalary = roundMoney(
@@ -289,7 +287,7 @@ export async function POST(req: NextRequest) {
     // labor-law tradeoff on ม.29's paid-traditional-holiday requirement).
     // SS/tax reuse the exact same formulas as MONTHLY, just fed this period's
     // actual earnings (daysWorked × dailyRate) in place of baseSalary — the
-    // SS 5%/750-cap rule and the withholding-tax estimate both apply to
+    // SS rate/cap rule and the withholding-tax estimate both apply to
     // actual monthly wages regardless of pay structure.
     function buildDailyPayload(emp: PendingEmployee, attendances: AttendanceRow[]) {
       const dailyRateUsed = emp.dailyRate ?? 0
@@ -311,7 +309,7 @@ export async function POST(req: NextRequest) {
         ssDeduction = roundMoney(Math.min(periodEarnings * SS_RATE, SS_MAX))
       }
 
-      const taxResult = computeMonthlyTax(periodEarnings)
+      const taxResult = computeMonthlyTax(periodEarnings, ssDeduction)
       const taxDeduction = taxResult.monthlyWithholding
 
       const netSalary = roundMoney(periodEarnings - ssDeduction - taxDeduction)

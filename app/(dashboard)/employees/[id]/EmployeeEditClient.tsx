@@ -42,6 +42,7 @@ import {
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
 import { EMPLOYEE_TYPES, PAY_TYPES } from '@/lib/access-control'
+import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
@@ -709,7 +710,7 @@ export default function EmployeeEditClient({
                     ตัวเลขคงที่ให้ preview ล่วงหน้าแบบนี้ได้ */}
                 {form.payType === 'MONTHLY' && form.socialSecurity && (
                   <div className="flex items-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
-                    ประกันสังคม: ฿{Math.min(form.baseSalary * 0.05, 750).toFixed(0)}/เดือน
+                    ประกันสังคม: ฿{Math.min(form.baseSalary * SS_RATE, SS_MAX).toFixed(0)}/เดือน
                   </div>
                 )}
               </div>
