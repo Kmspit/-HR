@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
-import { monthDateRange } from '@/lib/utils'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import {
   buildApprovedLeaveDateSet,
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     })
     const absentRate = settings?.absentDeductRate ?? 0
 
-    const { start: startDate, end: endDate } = monthDateRange(month, year)
+    const { start: startDate, end: endDate } = payrollPeriodRange(month, year)
 
     const holidayRows = await prisma.companyHoliday.findMany({
       orderBy: [{ holidayDate: 'asc' }],
@@ -69,14 +69,16 @@ export async function POST(req: NextRequest) {
       branchId: h.branchId,
     }))
 
-    // Also include employees deactivated during this exact month, so an
-    // employee whose account HR disables on their last working day still gets
-    // a payroll row generated automatically instead of silently falling out
-    // of every future run once their status leaves ACTIVE. User has no
-    // dedicated "deactivatedAt" field (confirmed — no route ever writes one,
-    // and PATCH /api/users/[id] doesn't audit-log status changes either), so
+    // Also include employees deactivated during this exact payroll period
+    // (21st of the previous month through the 20th of this one — see
+    // lib/payroll-period.ts — NOT the calendar month), so an employee whose
+    // account HR disables on their last working day still gets a payroll row
+    // generated automatically instead of silently falling out of every future
+    // run once their status leaves ACTIVE. User has no dedicated
+    // "deactivatedAt" field (confirmed — no route ever writes one, and PATCH
+    // /api/users/[id] doesn't audit-log status changes either), so
     // `updatedAt` is used only to decide WHICH disabled employees are
-    // plausibly relevant to this month — not to prorate their pay (see the
+    // plausibly relevant to this period — not to prorate their pay (see the
     // per-employee note below for why).
     const employees = await prisma.user.findMany({
       where: branchUserWhere(scope, {

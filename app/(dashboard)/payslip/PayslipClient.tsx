@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { FileText, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
 import { formatLateMinutes } from '@/lib/utils'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 
 type Payslip = {
   id: string
@@ -28,6 +29,15 @@ type Payslip = {
 }
 
 const MONTH_NAMES = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
+
+/** "เดือนกันยายน" ยังหมายถึงเดือนปิดยอด/จ่ายเงินเหมือนเดิม — แค่บอกช่วงวันที่
+ *  นับมาสาย/ขาด/ลาจริง (21 ของเดือนก่อน - 20 ของเดือนนี้) กันสับสนตอนเปิดดูสลิป */
+function formatPayrollPeriodCaption(month: number, year: number): string {
+  const { start, end } = payrollPeriodRange(month, year)
+  const startLabel = `${start.getDate()} ${MONTH_NAMES[start.getMonth() + 1]}`
+  const endLabel = `${end.getDate()} ${MONTH_NAMES[end.getMonth() + 1]} ${end.getFullYear() + 543}`
+  return `นับเวลาทำงาน ${startLabel} - ${endLabel}`
+}
 
 export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
   const currentYear = new Date().getFullYear()
@@ -125,6 +135,7 @@ export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
 
               {isOpen && (
                 <div className="border-t border-white/10 p-4 space-y-2">
+                  <p className="text-xs text-white/40">{formatPayrollPeriodCaption(p.month, p.year)}</p>
                   {p.payType === 'DAILY' ? (
                     <Row
                       label={`ค่าจ้างรายวัน (${p.daysWorked ?? 0} วัน × ฿${(p.dailyRateUsed ?? 0).toLocaleString()})`}

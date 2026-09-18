@@ -11,6 +11,7 @@ import PayrollEditModal from '@/components/payroll/PayrollEditModal'
 import { ManualButton } from '@/components/ui/ManualButton'
 import PortalModal from '@/components/ui/PortalModal'
 import { getPayslipBlockers, isPayslipSendReady, partitionPayslipBatch } from '@/lib/payslip-preflight'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 
 type PayrollRow = {
   id: string
@@ -75,6 +76,15 @@ const MONTH_NAMES = [
   'พ.ย.',
   'ธ.ค.',
 ]
+
+/** "เดือนกันยายน" ยังหมายถึงเดือนปิดยอด/จ่ายเงินเหมือนเดิม — แค่บอกช่วงวันที่
+ *  นับมาสาย/ขาด/ลาจริง (21 ของเดือนก่อน - 20 ของเดือนนี้) กันสับสนตอน generate */
+function formatPayrollPeriodCaption(month: number, year: number): string {
+  const { start, end } = payrollPeriodRange(month, year)
+  const startLabel = `${start.getDate()} ${MONTH_NAMES[start.getMonth() + 1]}`
+  const endLabel = `${end.getDate()} ${MONTH_NAMES[end.getMonth() + 1]} ${end.getFullYear() + 543}`
+  return `นับเวลาทำงานจริง ${startLabel} - ${endLabel}`
+}
 
 export default function PayrollClient({
   month: initMonth,
@@ -493,6 +503,10 @@ export default function PayrollClient({
           </button>
         </div>
       </div>
+
+      <p className="text-xs text-slate-500 dark:text-white/40 -mt-2">
+        {formatPayrollPeriodCaption(month, year)}
+      </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card-hover smooth-transition bg-green-500/10 border border-green-500/20 rounded-2xl p-4 text-center">

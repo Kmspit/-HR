@@ -2,6 +2,7 @@ import { rgb } from 'pdf-lib'
 import { createPdfKitDocument, drawRect, drawHLine, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
 import { formatLateMinutes } from '@/lib/utils'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 
 export type SalarySlipInput = {
   companyName: string
@@ -43,8 +44,24 @@ const MONTH_TH = [
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
 ]
 
+const MONTH_TH_SHORT = [
+  '',
+  'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
+]
+
 function fmt(n: number) {
   return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** "เดือนกันยายน" ในสลิปยังหมายถึงเดือนปิดยอด/จ่ายเงินเหมือนเดิม — บรรทัดนี้
+ *  บอกช่วงวันที่นับมาสาย/ขาด/ลาจริง (21 ของเดือนก่อน - 20 ของเดือนนี้)
+ *  กันพนักงาน/HR สับสนว่าทำไมยอดไม่ตรงกับปฏิทินเต็มเดือน */
+function formatPayrollPeriodCaption(month: number, year: number): string {
+  const { start, end } = payrollPeriodRange(month, year)
+  const startLabel = `${start.getDate()} ${MONTH_TH_SHORT[start.getMonth() + 1]}`
+  const endLabel = `${end.getDate()} ${MONTH_TH_SHORT[end.getMonth() + 1]} ${end.getFullYear() + 543}`
+  return `(นับเวลาทำงาน ${startLabel} - ${endLabel})`
 }
 
 export async function generateSalarySlipPdf(input: SalarySlipInput, password?: string): Promise<Buffer> {
@@ -77,6 +94,10 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   const periodLabel = `${MONTH_TH[input.month]} ${input.year + 543}`
   const periodW = widthOf(doc, periodLabel, 12)
   drawText(periodLabel, W - 40 - periodW, H - 44, 12, c.white)
+
+  const periodCaption = formatPayrollPeriodCaption(input.month, input.year)
+  const periodCaptionW = widthOf(doc, periodCaption, 8)
+  drawText(periodCaption, W - 40 - periodCaptionW, H - 58, 8, rgb(0.75, 0.85, 1))
 
   // Employee info box
   let y = H - 100

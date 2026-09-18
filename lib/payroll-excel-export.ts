@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import { parseTaxDetail } from '@/lib/payroll-tax'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 
 export type PayrollExportRow = {
   employeeId: string | null
@@ -91,6 +92,23 @@ const COLUMNS: ColDef[] = [
 
 function n(v: number): number {
   return Math.round(v * 100) / 100
+}
+
+const MONTH_TH_SHORT = [
+  '',
+  'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
+]
+
+/** "ประจำเดือน [ชื่อเดือน] [ปี]" ยังหมายถึงเดือนปิดยอด/จ่ายเงินเหมือนเดิม —
+ *  แค่บอกช่วงวันที่นับมาสาย/ขาด/ลาจริง (21 ของเดือนก่อน - 20 ของเดือนนี้)
+ *  กันสับสน — ใช้ปี ค.ศ. ตรงๆ ไม่ใส่ +543 ให้สอดคล้องกับ meta.year ข้างบน
+ *  ที่ไฟล์นี้แสดงเป็น ค.ศ. อยู่แล้ว (ไม่เหมือนสลิป/PayrollClient ที่ใช้ พ.ศ.) */
+function formatPayrollPeriodCaption(month: number, year: number): string {
+  const { start, end } = payrollPeriodRange(month, year)
+  const startLabel = `${start.getDate()} ${MONTH_TH_SHORT[start.getMonth() + 1]}`
+  const endLabel = `${end.getDate()} ${MONTH_TH_SHORT[end.getMonth() + 1]} ${end.getFullYear()}`
+  return `(นับเวลาทำงาน ${startLabel} - ${endLabel})`
 }
 
 function excelAlign(a: ColDef['align']): Partial<ExcelJS.Alignment> {
@@ -250,7 +268,7 @@ export async function buildPayrollExcel(
 
     ws.mergeCells(periodRow, 1, periodRow, colCount)
     const periodCell = ws.getCell(periodRow, 1)
-    periodCell.value = `ประจำเดือน ${meta.monthLabel} ${meta.year}`
+    periodCell.value = `ประจำเดือน ${meta.monthLabel} ${meta.year} ${formatPayrollPeriodCaption(meta.month, meta.year)}`
     periodCell.font = { size: 11, color: { argb: 'FF334155' } }
     periodCell.alignment = { horizontal: 'center' }
 
