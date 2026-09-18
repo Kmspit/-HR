@@ -31,8 +31,18 @@ vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/utils', () => ({
-  monthDateRange: vi.fn().mockReturnValue({ start: new Date('2025-01-01'), end: new Date('2025-01-31') }),
+// Static mock matching the REAL payrollPeriodRange(1, 2025) result — 21 Dec
+// 2024 through 20 Jan 2025, not calendar-month Jan 1-31. Every existing test
+// in this file requests {month:1, year:2025} and uses attendance/updatedAt
+// fixtures already comfortably inside this window (see payroll-period.test.ts
+// for the function's own dedicated edge-case tests, incl. this exact
+// year-rollover case) — only the one test asserting the literal query
+// boundary (below) needed updating for the new dates.
+vi.mock('@/lib/payroll-period', () => ({
+  payrollPeriodRange: vi.fn().mockReturnValue({
+    start: new Date(2024, 11, 21),
+    end: new Date(2025, 0, 20, 23, 59, 59, 999),
+  }),
 }))
 
 vi.mock('@/lib/branch-scope', () => ({
@@ -61,6 +71,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { computeLateDeduction } from '@/lib/payroll-late-deduction'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 import { POST } from '@/app/api/payroll/generate/route'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -196,14 +207,17 @@ describe('POST /api/payroll/generate — includes employees deactivated this mon
     vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
   })
 
-  it('queries with an OR of ACTIVE and (DISABLED + updatedAt in this month)', async () => {
+  it('queries with an OR of ACTIVE and (DISABLED + updatedAt in this PAYROLL PERIOD, 21 Dec – 20 Jan — not calendar-month Jan 1-31)', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
     await POST(makeReq({ month: 1, year: 2025 }))
 
     const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
     expect(call.where.OR).toEqual([
       { status: 'ACTIVE' },
-      { status: 'DISABLED', updatedAt: { gte: new Date('2025-01-01'), lte: new Date('2025-01-31') } },
+      {
+        status: 'DISABLED',
+        updatedAt: { gte: new Date(2024, 11, 21), lte: new Date(2025, 0, 20, 23, 59, 59, 999) },
+      },
     ])
   })
 
@@ -277,6 +291,40 @@ describe('POST /api/payroll/generate — includes employees deactivated this mon
     expect(parts[1]).toContain('จำนวนวันที่มาทำงานจริง')
     expect(parts[1]).toContain('พนักงาน วัน')
     expect(parts[1]).not.toContain('พนักงาน เดือน')
+  })
+})
+
+describe('POST /api/payroll/generate — wires payrollPeriodRange (21-20) into the attendance/leave queries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+  })
+
+  it('calls payrollPeriodRange(month, year) — not the calendar-month helper — and passes its start/end straight into every date-scoped query', async () => {
+    // Distinct from the file's default static mock value, so a match here
+    // proves the route actually used THIS call's return value, not some
+    // coincidentally-equal hardcoded range.
+    const customStart = new Date(2026, 7, 21) // 21 Aug 2026
+    const customEnd = new Date(2026, 8, 20, 23, 59, 59, 999) // 20 Sep 2026
+    vi.mocked(payrollPeriodRange).mockReturnValueOnce({ start: customStart, end: customEnd })
+
+    await POST(makeReq({ month: 9, year: 2026 }))
+
+    expect(payrollPeriodRange).toHaveBeenCalledWith(9, 2026)
+
+    const userCall = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
+    expect(userCall.where.OR[1]).toEqual({ status: 'DISABLED', updatedAt: { gte: customStart, lte: customEnd } })
+
+    const attendanceCall = vi.mocked(prisma.attendance.findMany).mock.calls[0][0] as any
+    expect(attendanceCall.where.date).toEqual({ gte: customStart, lte: customEnd })
+
+    const leaveCalls = vi.mocked(prisma.leaveRequest.findMany).mock.calls
+    for (const [call] of leaveCalls) {
+      expect((call as any).where.startDate).toEqual({ lte: customEnd })
+      expect((call as any).where.endDate).toEqual({ gte: customStart })
+    }
   })
 })
 

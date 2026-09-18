@@ -1,14 +1,18 @@
 import { prisma } from '@/lib/prisma'
 import { LEAVE_TYPE_LABELS } from '@/lib/leave-types'
-import { monthDateRange } from '@/lib/utils'
+import { payrollPeriodRange } from '@/lib/payroll-period'
 import type { HolidayRecord } from '@/lib/company-holidays'
 import { buildApprovedLeaveDateSet, computeLateDeduction } from '@/lib/payroll-late-deduction'
 
 /** พนักงานที่แสดงในรายงานรายเดือน */
 const REPORT_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
+// ใช้ payrollPeriodRange (21 เดือนก่อน - 20 เดือนนี้) แทน monthDateRange ปฏิทิน
+// เต็มเดือน — รายงานนี้ใช้ computeLateDeduction สูตรเดียวกับ payroll generate
+// เป๊ะ (estimatedLateDeduction) จึงต้องนับช่วงวันเดียวกันทุกประการ ไม่งั้นตัวเลข
+// พรีวิวที่ HR เห็นก่อนกด generate จะไม่ตรงกับที่คำนวณจริง
 export async function buildMonthlyReport(month: number, year: number, filterBranchId?: string) {
-  const { start: startDate, end: endDate } = monthDateRange(month, year)
+  const { start: startDate, end: endDate } = payrollPeriodRange(month, year)
 
   const holidayRows = await prisma.companyHoliday.findMany({
     orderBy: [{ holidayDate: 'asc' }],
