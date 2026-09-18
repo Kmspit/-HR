@@ -52,34 +52,43 @@ migrate หลายแถว ฯลฯ) แม้ผู้ใช้จะอน
 ตอนจบ — เหตุผล: ถ้าเกิดปัญหากลางทาง ความเสียหายจะจำกัดอยู่แค่รายการที่ทำไป
 แล้ว ไม่ใช่ทั้งชุด และผู้ใช้ยังมีจังหวะ interrupt ได้ทันเวลาจริง
 
-## สถานะการล้างข้อมูลก่อน pilot (บันทึกล่าสุด: 2026-09-07, หยุดรอทดสอบ)
+## สถานะการล้างข้อมูลก่อน pilot (บันทึกล่าสุด: 2026-09-18, หยุดรอทดสอบ)
 
 **อย่าถือว่าล้างข้อมูลเสร็จ — งานค้างอยู่ ห้ามรันรอบ 2 ต่อจนกว่าผู้ใช้จะสั่ง**
 
-ลบไปแล้ว 8 คน (รอบที่ 1 ทั้งหมด + รอบที่ 2 บางส่วน):
+ลบไปแล้ว 9 คน (รอบที่ 1 ทั้งหมด + รอบที่ 2 บางส่วน):
 - nachapon.mee@gmail.com, test1779770684490@test.com,
   nodefetch1779770698654@test.com, newuser1779771698941@test.com,
   api1779771196420@test.com (รอบที่ 1 — guard ไม่บล็อก)
 - test@gmail.com, bank@gmail.com, pek1111@gmail.com (รอบที่ 2 — ใช้ --force-guard)
+- chaloe@gmail.com (รอบที่ 2 ต่อ — ลบไปแล้วก่อนหน้านี้ ⚠️ เคยคนละบัญชีกับ
+  ceo@kmsp.com ที่ชื่อซ้ำ "เฉลิมชัย คำผุย" ต้องระบุด้วย email เท่านั้น)
 
-เหลือต้องลบอีก 12 คน (รอบที่ 2 ต่อ ตามลำดับเดิม ใช้ --force-guard ทุกคน):
-chaloe@gmail.com (⚠️ คนละบัญชีกับ ceo@kmsp.com — ชื่อซ้ำ "เฉลิมชัย คำผุย"
-ต้องระบุด้วย email เท่านั้น ห้ามใช้ชื่อ), isrwd.bml@gmail.com,
-ornwaranamkham@gmail.com, admin@demo.com, to@gmail.com, somnuek@gmail.com,
-ping@gmail.com, ksonammarin@gmail.com, lawyer@demo.com, toghbk@gmail.com,
-employee@demo.com, porramatsoksombat@gmail.com
+เหลือต้องลบอีก 10 คน (รอบที่ 2 ต่อ ตามลำดับเดิม ใช้ --force-guard ทุกคน):
+isrwd.bml@gmail.com, ornwaranamkham@gmail.com, admin@demo.com,
+to@gmail.com, somnuek@gmail.com, ping@gmail.com, ksonammarin@gmail.com,
+lawyer@demo.com, toghbk@gmail.com, employee@demo.com
 
-เก็บไว้ 2 บัญชี (ห้ามลบ): ceo@kmsp.com (id `cmq7gcrdu0000i4f8algtmmlz`),
-manager@demo.com (id `cmpl7m7rj0000i4ik6snaglwz`)
+เก็บไว้ 3 บัญชี (ห้ามลบ): ceo@kmsp.com (id `cmq7gcrdu0000i4f8algtmmlz`),
+manager@demo.com (id `cmpl7m7rj0000i4ik6snaglwz`),
+**porramatsoksombat@gmail.com** (id `cmpuxe8qi0001k304hnfmq7tk`, นายปรมัตถ์
+สุขสมบัติ — ⚠️ แก้ไข 2026-09-18: บันทึกก่อนหน้านี้ (2026-09-07) ใส่บัญชีนี้
+ผิดพลาดไว้ในลิสต์รอลบ — ยืนยันแล้วว่าเป็น**พนักงาน IT จริง** ใช้ทดสอบส่งสลิป
+LINE/ลงทะเบียนใบหน้ามาตลอด **ห้ามลบเด็ดขาด**)
 
 ทรัพยากรที่ยังต้องใช้ต่อ:
 - Backup: `backups/pre-wipe-20260906/` ในเครื่อง (3.92MB, 20 ไฟล์ — ครอบคลุม
-  ทั้ง 20 คนตั้งแต่ต้น รวม 8 คนที่ลบไปแล้ว) + JSON backup บน Cloudinary
+  ทั้ง 20 คนตั้งแต่ต้น รวม 9 คนที่ลบไปแล้ว) + JSON backup บน Cloudinary
   (BackupRecord id `cmtl91p3b0000i4bsxq0wurwd`)
-- Branch `test/prep-wipe-purge-script` (มี purge-user.mjs ที่แก้แล้ว:
-  เพิ่ม login_attempts/security_events/calendar_events, เพิ่ม
-  `--force-guard` flag, dry-run ใหม่รันโค้ดจริงใน transaction แล้ว
-  rollback) — **ยังไม่ merge เข้า main** ตั้งใจ ห้าม merge จนกว่าจะลบครบ
-- Dry-run ของทั้ง 12 คนที่เหลือเคยรันและ verify กับ export ไว้แล้วในรอบก่อน
-  (18/20 ตรง 100%, อีก 2 คนต่างกัน ±1-2 แถวจาก Turso read-timing แต่ export
-  ได้แถวเยอะกว่าเสมอ ไม่เคยน้อยกว่า — ปลอดภัยสำหรับ backup)
+- `scripts/purge-user.mjs` (เพิ่ม login_attempts/security_events/
+  calendar_events, `--force-guard` flag, dry-run รันโค้ดจริงใน transaction
+  แล้ว rollback เสมอ) **merge เข้า main แล้ว** ตั้งแต่ก่อน 2026-09-18 (บันทึก
+  เดิมที่บอกว่า "ยังไม่ merge" ล้าสมัยแล้ว) — ล่าสุด 2026-09-18 เพิ่มการจัดการ
+  security_deposit_plans/professional_fee_payments/
+  professional_fee_related_persons (3 ตารางจาก payroll fields batch 2) เข้า
+  ไปด้วย อยู่ระหว่าง review บน branch `fix/purge-user-payroll-batch2-audit-gap`
+- Dry-run ของ 10 คนที่เหลือ (ไม่รวม porramatsoksombat@gmail.com ที่แก้ไข
+  ออกจากลิสต์แล้ว) เคยรันและ verify กับ export ไว้แล้วในรอบก่อน (18/20 ตรง
+  100%, อีก 2 คนต่างกัน ±1-2 แถวจาก Turso read-timing แต่ export ได้แถวเยอะ
+  กว่าเสมอ ไม่เคยน้อยกว่า — ปลอดภัยสำหรับ backup) — ควร re-verify ตัวเลขซ้ำ
+  ก่อนลบจริง เพราะเวลาผ่านมาพอสมควรแล้วตั้งแต่ dry-run รอบนั้น

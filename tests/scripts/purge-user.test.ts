@@ -119,6 +119,99 @@ describe('purgeUser — attendance_face_scans now cascades via real FK (v900035)
   })
 })
 
+describe('purgeUser — security_deposit_plans (1:1, no real FK) deleted wholesale', () => {
+  it('deletes the plan for this user', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.securityDepositPlan.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } })
+  })
+
+  it('still deletes the user row itself', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+  })
+})
+
+describe('purgeUser — professional_fee_payments/related_persons (hang off payrollId, not userId, no real FK)', () => {
+  it('does nothing when this user has no payrolls at all', async () => {
+    const db = makeFakeDb()
+    db.payroll.findMany.mockResolvedValue([])
+    await purgeUser(db, 'user-1')
+    expect(db.professionalFeePayment.findMany).not.toHaveBeenCalled()
+    expect(db.professionalFeePayment.deleteMany).not.toHaveBeenCalled()
+    expect(db.professionalFeeRelatedPerson.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it('does nothing when this user has payrolls but none carry professional-fee payments', async () => {
+    const db = makeFakeDb()
+    db.payroll.findMany.mockResolvedValue([{ id: 'payroll-1' }])
+    db.professionalFeePayment.findMany.mockResolvedValue([])
+    await purgeUser(db, 'user-1')
+    expect(db.professionalFeePayment.findMany).toHaveBeenCalledWith({
+      where: { payrollId: { in: ['payroll-1'] } },
+      select: { id: true },
+    })
+    expect(db.professionalFeePayment.deleteMany).not.toHaveBeenCalled()
+    expect(db.professionalFeeRelatedPerson.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it('resolves this user\'s own payroll IDs first, then deletes related_persons and payments scoped to exactly those payment IDs', async () => {
+    const db = makeFakeDb()
+    db.payroll.findMany.mockResolvedValue([{ id: 'payroll-1' }, { id: 'payroll-2' }])
+    db.professionalFeePayment.findMany.mockResolvedValue([{ id: 'fee-1' }, { id: 'fee-2' }])
+
+    await purgeUser(db, 'user-1')
+
+    expect(db.payroll.findMany).toHaveBeenCalledWith({ where: { userId: 'user-1' }, select: { id: true } })
+    expect(db.professionalFeePayment.findMany).toHaveBeenCalledWith({
+      where: { payrollId: { in: ['payroll-1', 'payroll-2'] } },
+      select: { id: true },
+    })
+    expect(db.professionalFeeRelatedPerson.deleteMany).toHaveBeenCalledWith({
+      where: { professionalFeePaymentId: { in: ['fee-1', 'fee-2'] } },
+    })
+    expect(db.professionalFeePayment.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['fee-1', 'fee-2'] } },
+    })
+  })
+
+  it('deletes in strict child-before-parent order: related_persons, then payments, then payrolls', async () => {
+    const db = makeFakeDb()
+    const order: string[] = []
+    db.payroll.findMany.mockResolvedValue([{ id: 'payroll-1' }])
+    db.professionalFeePayment.findMany.mockResolvedValue([{ id: 'fee-1' }])
+    db.professionalFeeRelatedPerson.deleteMany.mockImplementation(async () => {
+      order.push('related_persons')
+      return { count: 0 }
+    })
+    db.professionalFeePayment.deleteMany.mockImplementation(async () => {
+      order.push('payments')
+      return { count: 0 }
+    })
+    db.payroll.deleteMany.mockImplementation(async () => {
+      order.push('payrolls')
+      return { count: 0 }
+    })
+
+    await purgeUser(db, 'user-1')
+
+    expect(order).toEqual(['related_persons', 'payments', 'payrolls'])
+  })
+
+  it('never leaves an orphaned professional_fee_payment or related_person behind — both get a deleteMany call whenever this user has any payroll with fee records', async () => {
+    const db = makeFakeDb()
+    db.payroll.findMany.mockResolvedValue([{ id: 'payroll-1' }])
+    db.professionalFeePayment.findMany.mockResolvedValue([{ id: 'fee-1' }])
+
+    await purgeUser(db, 'user-1')
+
+    expect(db.professionalFeeRelatedPerson.deleteMany).toHaveBeenCalledTimes(1)
+    expect(db.professionalFeePayment.deleteMany).toHaveBeenCalledTimes(1)
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+  })
+})
+
 describe('purgeUser — biometric_consents (PDPA evidence) is deliberately left untouched', () => {
   it('never calls any method on db.biometricConsent', async () => {
     const db = makeFakeDb()
