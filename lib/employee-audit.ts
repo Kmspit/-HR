@@ -71,6 +71,9 @@ export const EMPLOYEE_AUDIT_SELECT = {
   baseSalary: true,
   payType: true,
   dailyRate: true,
+  positionAllowance: true,
+  diligenceAllowanceDefault: true,
+  studentLoanDeduction: true,
   socialSecurity: true,
   isCoworker: true,
   divisionId: true,
@@ -128,6 +131,9 @@ type EmployeeAuditRow = {
   baseSalary: number | null
   payType: string
   dailyRate: number | null
+  positionAllowance: number | null
+  diligenceAllowanceDefault: number | null
+  studentLoanDeduction: number | null
   socialSecurity: boolean
   isCoworker: boolean
   divisionId: string | null
@@ -195,6 +201,14 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     // "who changed whose daily rate and by how much" stays reviewable.
     payType: u.payType,
     dailyRate: u.dailyRate,
+    // Same gate/treatment as baseSalary/dailyRate (payroll fields batch 2,
+    // 2026-09) — plain numbers, not masked. diligenceAllowanceDefault is the
+    // per-employee DEFAULT generate() pre-fills each month, not the actual
+    // amount paid that month (that's a Payroll-row snapshot, out of scope
+    // for this User-level trail).
+    positionAllowance: u.positionAllowance,
+    diligenceAllowanceDefault: u.diligenceAllowanceDefault,
+    studentLoanDeduction: u.studentLoanDeduction,
     socialSecurity: u.socialSecurity,
     isCoworker: u.isCoworker,
     divisionId: u.divisionId,
@@ -281,6 +295,9 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   baseSalary: 'เงินเดือนฐาน',
   payType: 'รูปแบบการจ่ายเงิน',
   dailyRate: 'ค่าจ้างต่อวัน',
+  positionAllowance: 'ค่าตำแหน่ง',
+  diligenceAllowanceDefault: 'เบี้ยขยัน (ค่าเริ่มต้น)',
+  studentLoanDeduction: 'ยอดหัก กยศ. ต่อเดือน',
   socialSecurity: 'ประกันสังคม',
   isCoworker: 'พนักงานร่วมงาน',
   divisionId: 'ฝ่าย',
@@ -354,7 +371,10 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
     const v = val as EmployeeAuditSnapshot['nationalId']
     return v.masked
   }
-  if (key === 'baseSalary' || key === 'dailyRate') return currencyFmt(val as number)
+  if (
+    key === 'baseSalary' || key === 'dailyRate' ||
+    key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction'
+  ) return currencyFmt(val as number)
   if (key === 'payType') return PAY_TYPE_LABELS[val as string] ?? String(val)
   if (key === 'paymentMethod') return paymentMethodLabel(val as string)
   if (key === 'role') return ROLE_LABELS[val as Role] ?? String(val)
@@ -409,7 +429,13 @@ export function summarizeEmployeeChanges(
     // 25,000 → 30,000" line for a MANAGER viewing their report's history.
     // dailyRate gets the same gate (same sensitivity as baseSalary) —
     // payType does not, same reasoning as employeeType staying visible.
-    if ((key === 'baseSalary' || key === 'dailyRate') && !canViewSalary) continue
+    // positionAllowance/diligenceAllowanceDefault/studentLoanDeduction
+    // (payroll fields batch 2, 2026-09) are real money figures too, same gate.
+    if (
+      (key === 'baseSalary' || key === 'dailyRate' ||
+       key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction') &&
+      !canViewSalary
+    ) continue
 
     const b = before[key]
     const a = after[key]

@@ -35,6 +35,7 @@ function row(overrides: Record<string, unknown> = {}) {
     department: null, position: null, employeeType: null,
     managerId: null, teamLeaderId: null, baseSalary: 30000,
     payType: 'MONTHLY', dailyRate: null,
+    positionAllowance: null, diligenceAllowanceDefault: null, studentLoanDeduction: null,
     socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null,
     employeeProfile: null,
     ...overrides,
@@ -54,6 +55,15 @@ describe('snapshotEmployeeForAudit', () => {
     expect(snap.baseSalary).toBe(42000)
   })
 
+  it('keeps positionAllowance/diligenceAllowanceDefault/studentLoanDeduction as plain numbers (payroll fields batch 2)', () => {
+    const snap = snapshotEmployeeForAudit(row({
+      positionAllowance: 1500, diligenceAllowanceDefault: 500, studentLoanDeduction: 1200,
+    }))
+    expect(snap.positionAllowance).toBe(1500)
+    expect(snap.diligenceAllowanceDefault).toBe(500)
+    expect(snap.studentLoanDeduction).toBe(1200)
+  })
+
   it('null nationalId masks to a non-crashing value', () => {
     const snap = snapshotEmployeeForAudit(row({ nationalId: null }))
     expect(() => JSON.stringify(snap)).not.toThrow()
@@ -66,7 +76,9 @@ describe('snapshotEmployeeForAudit', () => {
       'addressIdCard', 'birthDate', 'nationalId', 'lineId', 'role', 'status',
       'startDate', 'department', 'position', 'jobLevel', 'socialSecurityNumber',
       'employeeType', 'managerId',
-      'teamLeaderId', 'baseSalary', 'payType', 'dailyRate', 'socialSecurity', 'isCoworker',
+      'teamLeaderId', 'baseSalary', 'payType', 'dailyRate',
+      'positionAllowance', 'diligenceAllowanceDefault', 'studentLoanDeduction',
+      'socialSecurity', 'isCoworker',
       'divisionId', 'sectionId',
       'nationality', 'maritalStatus', 'personalEmail', 'religion', 'paymentMethod',
       'currentHouseNo', 'currentMoo', 'currentSoi', 'currentRoad',
@@ -238,6 +250,32 @@ describe('summarizeEmployeeChanges', () => {
     const after = snapshotEmployeeForAudit(row({ baseSalary: 35000, position: 'Senior' }))
     const lines = summarizeEmployeeChanges(before, after, emptyLookup(), false)
     expect(lines.some((l) => l.includes('฿30,000') || l.includes('฿35,000'))).toBe(false)
+    expect(lines.some((l) => l.includes('Junior') && l.includes('Senior'))).toBe(true)
+  })
+
+  it('formats a positionAllowance/diligenceAllowanceDefault/studentLoanDeduction change in Thai currency (same gate as baseSalary/dailyRate)', () => {
+    const before = snapshotEmployeeForAudit(row({ positionAllowance: 1000, diligenceAllowanceDefault: 300, studentLoanDeduction: 800 }))
+    const after = snapshotEmployeeForAudit(row({ positionAllowance: 1500, diligenceAllowanceDefault: 500, studentLoanDeduction: 1200 }))
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), true)
+    expect(lines).toContainEqual(expect.stringContaining('฿1,000'))
+    expect(lines).toContainEqual(expect.stringContaining('฿1,500'))
+    expect(lines).toContainEqual(expect.stringContaining('฿300'))
+    expect(lines).toContainEqual(expect.stringContaining('฿500'))
+    expect(lines).toContainEqual(expect.stringContaining('฿800'))
+    expect(lines).toContainEqual(expect.stringContaining('฿1,200'))
+  })
+
+  it('payroll fields batch 2 — omits positionAllowance/diligenceAllowanceDefault/studentLoanDeduction lines when canViewSalary is false, keeping other changes (same gate as baseSalary/dailyRate)', () => {
+    const before = snapshotEmployeeForAudit(row({
+      positionAllowance: 1000, diligenceAllowanceDefault: 300, studentLoanDeduction: 800, position: 'Junior',
+    }))
+    const after = snapshotEmployeeForAudit(row({
+      positionAllowance: 1500, diligenceAllowanceDefault: 500, studentLoanDeduction: 1200, position: 'Senior',
+    }))
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), false)
+    expect(lines.some((l) => l.startsWith('ค่าตำแหน่ง'))).toBe(false)
+    expect(lines.some((l) => l.startsWith('เบี้ยขยัน'))).toBe(false)
+    expect(lines.some((l) => l.startsWith('ยอดหัก กยศ.'))).toBe(false)
     expect(lines.some((l) => l.includes('Junior') && l.includes('Senior'))).toBe(true)
   })
 })

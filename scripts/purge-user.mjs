@@ -91,6 +91,19 @@ async function findUser(ref) {
  * longer resolves to any row in `users`. If a future migration ever adds a
  * real FK to this table, that assumption breaks and this comment (plus the
  * guard/purge logic) needs revisiting.
+ *
+ * security_deposit_plans / professional_fee_payments /
+ * professional_fee_related_persons (payroll fields batch 2, 2026-09) are the
+ * opposite of biometric_consents: found by a full-system health audit to
+ * ALSO have no real FK (confirmed the same way), but with no compliance
+ * reason to survive deletion — a deposit plan or a freelance fee record is
+ * just this person's own data, not evidence anyone else needs kept. None of
+ * the three is a checkPurgeGuard() blocker; all three ARE deleted in
+ * purgeUser() below (security_deposit_plans wholesale by userId;
+ * professional_fee_payments/related_persons via this user's own payroll
+ * IDs, in child-before-parent order, since payrollId has no direct link to
+ * userId). In practice only reachable via --force-guard, since any payroll
+ * row already blocks purge by default.
  */
 async function checkPurgeGuard(db, userId) {
   const [
@@ -158,6 +171,23 @@ async function purgeUser(db, userId) {
   const planIds = (
     await db.weeklyLawyerPlan.findMany({ where: { lawyerId: userId }, select: { id: true } })
   ).map((r) => r.id)
+  // professional_fee_payments hangs off payrollId, not userId directly, and
+  // has no real FK either (same class of gap as everything else in this
+  // file's hand-maintained migration history) — must be resolved via this
+  // user's own payroll IDs BEFORE those payrolls get deleted below, or the
+  // fee rows (and their related-persons children) are orphaned permanently
+  // with no error to catch it, exactly like the 2026-09 audit found.
+  const payrollIds = (
+    await db.payroll.findMany({ where: { userId }, select: { id: true } })
+  ).map((r) => r.id)
+  const professionalFeePaymentIds = payrollIds.length
+    ? (
+        await db.professionalFeePayment.findMany({
+          where: { payrollId: { in: payrollIds } },
+          select: { id: true },
+        })
+      ).map((r) => r.id)
+    : []
 
   const counts = {}
 
@@ -192,6 +222,12 @@ async function purgeUser(db, userId) {
   await run('user_face_profiles', () => db.userFaceProfile.deleteMany({ where: { userId } }))
   await run('saved_work_places', () => db.savedWorkPlace.deleteMany({ where: { userId } }))
   await run('user_devices', () => db.userDevice.deleteMany({ where: { userId } }))
+  // 1:1 with the user (unique userId, no real FK either) — a deposit plan
+  // has no meaning once its person is gone, same "owned record, delete
+  // wholesale" treatment as saved_work_places/user_devices just above.
+  await run('security_deposit_plans', () =>
+    db.securityDepositPlan.deleteMany({ where: { userId } }),
+  )
 
   if (planIds.length) {
     await run('weekly_plan_days', () =>
@@ -230,6 +266,25 @@ async function purgeUser(db, userId) {
   await run('audit_logs (target)', () => db.auditLog.deleteMany({ where: { targetId: userId } }))
   await run('warnings (subject)', () => db.warning.deleteMany({ where: { userId } }))
   await run('warnings (issued)', () => db.warning.deleteMany({ where: { issuedById: userId } }))
+
+  // Children before parent, in strict order, even though none of these 3
+  // tables has a real SQL-level FK to enforce it (confirmed via
+  // PRAGMA foreign_key_list — zero rows for all three, same as most of this
+  // file's other hand-migrated tables): related_persons -> payments ->
+  // payrolls. Only reachable in practice via --force-guard, since a payroll
+  // count > 0 already blocks purge by default (see checkPurgeGuard above).
+  if (professionalFeePaymentIds.length) {
+    await run('professional_fee_related_persons', () =>
+      db.professionalFeeRelatedPerson.deleteMany({
+        where: { professionalFeePaymentId: { in: professionalFeePaymentIds } },
+      }),
+    )
+    await run('professional_fee_payments', () =>
+      db.professionalFeePayment.deleteMany({
+        where: { id: { in: professionalFeePaymentIds } },
+      }),
+    )
+  }
   await run('payrolls', () => db.payroll.deleteMany({ where: { userId } }))
   await run('salary_slips', () => db.salarySlip.deleteMany({ where: { userId } }))
   await run('tax_histories', () => db.taxHistory.deleteMany({ where: { userId } }))
