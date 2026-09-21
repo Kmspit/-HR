@@ -240,15 +240,17 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   }
 
   // YTD box (2026-09) — 4 ยอดสะสมสำหรับออกใบรับรองหักภาษี ณ ที่จ่าย 50 ทวิ
+  // เรียงคอลัมน์เดียว 4 แถวเรียงบนลงล่าง (แก้ไข 2026-09-21 — เดิมเป็น grid
+  // 2x2): รายได้สะสม → ภาษีสะสม → WHT สะสม → ประกันสังคมสะสม ตามลำดับที่ยืนยัน
   if (input.ytd) {
     y -= 10
-    drawRect(doc, 40, y - 56, W - 80, 66, { fill: rgb(0.98, 0.97, 0.94) })
+    drawRect(doc, 40, y - 88, W - 80, 98, { fill: rgb(0.98, 0.97, 0.94) })
     drawText(`ยอดสะสมตั้งแต่ต้นปี (สำหรับ 50 ทวิ) — ถึงเดือน${MONTH_TH[input.month]} ${input.year + 543}`, 52, y - 4, 9, c.accent)
     drawText(`รายได้สะสม: ฿${fmt(input.ytd.income)}`, 52, y - 18, 9, c.mid)
-    drawText(`ประกันสังคมสะสม: ฿${fmt(input.ytd.socialSecurity)}`, 300, y - 18, 9, c.mid)
     drawText(`ภาษีสะสม: ฿${fmt(input.ytd.taxNormal)}`, 52, y - 34, 9, c.mid)
-    drawText(`WHT สะสม: ฿${fmt(input.ytd.taxOffSystemWht)}`, 300, y - 34, 9, c.mid)
-    y -= 66
+    drawText(`WHT สะสม: ฿${fmt(input.ytd.taxOffSystemWht)}`, 52, y - 50, 9, c.mid)
+    drawText(`ประกันสังคมสะสม: ฿${fmt(input.ytd.socialSecurity)}`, 52, y - 66, 9, c.mid)
+    y -= 98
   }
 
   // Net salary
