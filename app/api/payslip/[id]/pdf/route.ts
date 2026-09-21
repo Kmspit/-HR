@@ -63,6 +63,12 @@ export async function GET(
 
     const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
     const ytd = await computePayrollYtd(payroll.userId, payroll.year, payroll.month)
+    // totalInstallments ไม่ได้ snapshot ไว้ที่ Payroll (มีแค่ installmentNo ของ
+    // เดือนนี้) ต้องดึงจากแผนของ user โดยตรง — ไม่มีแผน (เช่นผ่อนครบ/ถูกลบแผน
+    // ไปแล้ว) ก็ยังโชว์ยอดเงินประกันได้ปกติ แค่ไม่มี "(งวด n/total)" ต่อท้าย
+    const securityDepositPlan = payroll.securityDepositDeduction > 0
+      ? await prisma.securityDepositPlan.findUnique({ where: { userId: payroll.userId }, select: { totalInstallments: true } })
+      : null
 
     const pdfBuffer = await generateSalarySlipPdf({
       companyName,
@@ -80,8 +86,15 @@ export async function GET(
       taxDeduction: payroll.taxDeduction ?? 0,
       otherDeduction: payroll.otherDeduction,
       otherAddition: payroll.otherAddition,
+      positionAllowance: payroll.positionAllowance,
+      diligenceAllowance: payroll.diligenceAllowance,
+      commission: payroll.commission,
       overtimePay: payroll.overtimePay,
       bonus: payroll.bonus,
+      studentLoanDeduction: payroll.studentLoanDeduction,
+      securityDepositDeduction: payroll.securityDepositDeduction,
+      securityDepositInstallmentNo: payroll.securityDepositInstallmentNo,
+      securityDepositTotalInstallments: securityDepositPlan?.totalInstallments ?? null,
       netSalary: payroll.netSalary,
       lateDays: payroll.lateDays,
       absentDays: payroll.absentDays,

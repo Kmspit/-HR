@@ -40,6 +40,11 @@ export async function buildPayrollSlipPdfBuffer(
   const companyName = settings?.companyName?.trim() || DEFAULT_COMPANY
   const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
   const ytd = await computePayrollYtd(payroll.userId, payroll.year, payroll.month)
+  // totalInstallments ไม่ได้ snapshot ไว้ที่ Payroll ต้องดึงจากแผนของ user
+  // โดยตรง — เดียวกับเหตุผลใน app/api/payslip/[id]/pdf/route.ts
+  const securityDepositPlan = payroll.securityDepositDeduction > 0
+    ? await prisma.securityDepositPlan.findUnique({ where: { userId: payroll.userId }, select: { totalInstallments: true } })
+    : null
 
   const buffer = await generateSalarySlipPdf(
     {
@@ -58,8 +63,15 @@ export async function buildPayrollSlipPdfBuffer(
       taxDeduction: payroll.taxDeduction ?? 0,
       otherDeduction: payroll.otherDeduction,
       otherAddition: payroll.otherAddition,
+      positionAllowance: payroll.positionAllowance,
+      diligenceAllowance: payroll.diligenceAllowance,
+      commission: payroll.commission,
       overtimePay: payroll.overtimePay,
       bonus: payroll.bonus,
+      studentLoanDeduction: payroll.studentLoanDeduction,
+      securityDepositDeduction: payroll.securityDepositDeduction,
+      securityDepositInstallmentNo: payroll.securityDepositInstallmentNo,
+      securityDepositTotalInstallments: securityDepositPlan?.totalInstallments ?? null,
       netSalary: payroll.netSalary,
       lateDays: payroll.lateDays,
       absentDays: payroll.absentDays,
