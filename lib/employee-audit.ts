@@ -1,6 +1,6 @@
 import { maskNationalId, nationalIdFingerprint } from '@/lib/national-id'
 import { createAuditLog } from '@/lib/notifications'
-import { ROLE_LABELS, PAY_TYPE_LABELS } from '@/lib/access-control'
+import { ROLE_LABELS, PAY_TYPE_LABELS, TAX_SCHEME_LABELS } from '@/lib/access-control'
 import { USER_STATUS_LABEL } from '@/lib/status-labels'
 import { paymentMethodLabel } from '@/lib/payment-method'
 import type { Role } from '@prisma/client'
@@ -70,6 +70,7 @@ export const EMPLOYEE_AUDIT_SELECT = {
   teamLeaderId: true,
   baseSalary: true,
   payType: true,
+  taxScheme: true,
   dailyRate: true,
   positionAllowance: true,
   diligenceAllowanceDefault: true,
@@ -130,6 +131,7 @@ type EmployeeAuditRow = {
   teamLeaderId: string | null
   baseSalary: number | null
   payType: string
+  taxScheme: string
   dailyRate: number | null
   positionAllowance: number | null
   diligenceAllowanceDefault: number | null
@@ -200,6 +202,9 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     // Same treatment as baseSalary just above — plain number, not masked, so
     // "who changed whose daily rate and by how much" stays reviewable.
     payType: u.payType,
+    // taxScheme (2026-09) — independent of payType, same non-gated treatment
+    // as payType above (a classification, not a money figure).
+    taxScheme: u.taxScheme,
     dailyRate: u.dailyRate,
     // Same gate/treatment as baseSalary/dailyRate (payroll fields batch 2,
     // 2026-09) — plain numbers, not masked. diligenceAllowanceDefault is the
@@ -294,6 +299,7 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   teamLeaderId: 'หัวหน้าทีม',
   baseSalary: 'เงินเดือนฐาน',
   payType: 'รูปแบบการจ่ายเงิน',
+  taxScheme: 'วิธีคิดภาษี/ประกันสังคม',
   dailyRate: 'ค่าจ้างต่อวัน',
   positionAllowance: 'ค่าตำแหน่ง',
   diligenceAllowanceDefault: 'เบี้ยขยัน (ค่าเริ่มต้น)',
@@ -376,6 +382,7 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
     key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction'
   ) return currencyFmt(val as number)
   if (key === 'payType') return PAY_TYPE_LABELS[val as string] ?? String(val)
+  if (key === 'taxScheme') return TAX_SCHEME_LABELS[val as string] ?? String(val)
   if (key === 'paymentMethod') return paymentMethodLabel(val as string)
   if (key === 'role') return ROLE_LABELS[val as Role] ?? String(val)
   if (key === 'status') return USER_STATUS_LABEL[val as string] ?? String(val)

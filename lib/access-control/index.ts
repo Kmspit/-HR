@@ -249,6 +249,19 @@ export const PAY_TYPES = [
   { value: 'DAILY',   label: 'รายวัน' },
 ]
 
+// TaxScheme (2026-09) — แกนอิสระจาก PayType โดยสิ้นเชิง (ดูคอมเมนต์ enum
+// TaxScheme ใน schema.prisma) คุม "วิธีคิดภาษี/ประกันสังคม" ผสมกับ PayType
+// ได้ทั้ง 4 แบบ ไม่ผูกกัน
+export const TAX_SCHEME_LABELS: Record<string, string> = {
+  NORMAL:         'ปกติ (ภาษีขั้นบันได + SS)',
+  OFF_SYSTEM_WHT: 'นอกระบบ (หัก ณ ที่จ่าย 3%, ไม่มี SS)',
+}
+
+export const TAX_SCHEMES = [
+  { value: 'NORMAL',         label: 'ปกติ (ภาษีขั้นบันได + SS)' },
+  { value: 'OFF_SYSTEM_WHT', label: 'นอกระบบ (หัก ณ ที่จ่าย 3%, ไม่มี SS)' },
+]
+
 // Permissions are static (ROLE_PERMISSIONS). No DB table — see docs/deploy-profiles.md RBAC note.
 
 // ── Route permissions (Phase 1 — tightened module gates) ───────────────────────

@@ -8,6 +8,8 @@ import { HR_ROLES } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
+import { computePayrollYtd } from '@/lib/payroll-ytd'
 
 export async function GET(
   req: NextRequest,
@@ -18,6 +20,7 @@ export async function GET(
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await ensurePayrollPayslipColumns()
+    await ensurePayrollFieldsBatch3()
 
     const { id } = await params
 
@@ -59,6 +62,7 @@ export async function GET(
     const companyName = settings?.companyName ?? 'บริษัท'
 
     const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
+    const ytd = await computePayrollYtd(payroll.userId, payroll.year, payroll.month)
 
     const pdfBuffer = await generateSalarySlipPdf({
       companyName,
@@ -76,6 +80,8 @@ export async function GET(
       taxDeduction: payroll.taxDeduction ?? 0,
       otherDeduction: payroll.otherDeduction,
       otherAddition: payroll.otherAddition,
+      overtimePay: payroll.overtimePay,
+      bonus: payroll.bonus,
       netSalary: payroll.netSalary,
       lateDays: payroll.lateDays,
       absentDays: payroll.absentDays,
@@ -91,6 +97,7 @@ export async function GET(
             monthlyWithholding: taxDetail.monthlyWithholding,
           }
         : null,
+      ytd,
     })
 
     const filename = `slip_${payroll.year}_${String(payroll.month).padStart(2, '0')}_${payroll.user.employeeId ?? payroll.userId.slice(0, 6)}.pdf`

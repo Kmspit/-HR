@@ -18,6 +18,14 @@ vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
+  ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/lib/payroll-ytd', () => ({
+  computePayrollYtd: vi.fn().mockResolvedValue({ income: 0, taxNormal: 0, taxOffSystemWht: 0, socialSecurity: 0 }),
+}))
+
 vi.mock('@/lib/access-control', () => ({
   HR_ROLES: ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'],
 }))

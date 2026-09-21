@@ -6,6 +6,7 @@ import { HR_ROLES, canApprovePayroll, PAYROLL_DELETE_ROLES } from '@/lib/access-
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 import { createAuditLog } from '@/lib/notifications'
 import { softDelete } from '@/lib/soft-delete'
 import { computePayrollTotals } from '@/lib/payroll-totals'
@@ -24,6 +25,7 @@ export async function GET(
 
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { id } = await params
     const isHR = (HR_ROLES as readonly string[]).includes(session.user.role)
@@ -80,6 +82,7 @@ export async function PATCH(
 
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { id } = await params
     const body = await req.json() as {
@@ -87,6 +90,8 @@ export async function PATCH(
       note?: string
       backPay?: number
       commission?: number
+      overtimePay?: number
+      bonus?: number
     }
 
     const payroll = await prisma.payroll.findUnique({
@@ -110,15 +115,18 @@ export async function PATCH(
       updateData.approvedAt = new Date()
     }
 
-    // ตกเบิก/คอมมิชชั่น (payroll fields batch 2, 2026-09) — HR กรอกมือเท่านั้น
-    // แก้ได้เฉพาะแถวที่ยังเป็น DRAFT (ล็อกทันทีที่ approve เหมือน field การเงิน
-    // อื่นทั้งหมดในระบบนี้) เพื่อไม่ให้ตัวเลขที่อนุมัติ/จ่ายจริงไปแล้วเปลี่ยนย้อนหลัง
+    // ตกเบิก/คอมมิชชั่น/OT/โบนัส (payroll fields batch 2+3, 2026-09) — HR กรอก
+    // มือเท่านั้น แก้ได้เฉพาะแถวที่ยังเป็น DRAFT (ล็อกทันทีที่ approve เหมือน
+    // field การเงินอื่นทั้งหมดในระบบนี้) เพื่อไม่ให้ตัวเลขที่อนุมัติ/จ่ายจริงไป
+    // แล้วเปลี่ยนย้อนหลัง
     const editingBackPay = body.backPay !== undefined
     const editingCommission = body.commission !== undefined
-    if (editingBackPay || editingCommission) {
+    const editingOvertimePay = body.overtimePay !== undefined
+    const editingBonus = body.bonus !== undefined
+    if (editingBackPay || editingCommission || editingOvertimePay || editingBonus) {
       if (payroll.status !== 'DRAFT') {
         return NextResponse.json(
-          { error: 'แก้ไขตกเบิก/คอมมิชชั่นได้เฉพาะ payroll สถานะร่าง (DRAFT) เท่านั้น' },
+          { error: 'แก้ไขตกเบิก/คอมมิชชั่น/OT/โบนัสได้เฉพาะ payroll สถานะร่าง (DRAFT) เท่านั้น' },
           { status: 400 },
         )
       }
@@ -128,9 +136,17 @@ export async function PATCH(
       if (editingCommission && (typeof body.commission !== 'number' || body.commission < 0 || !Number.isFinite(body.commission))) {
         return NextResponse.json({ error: 'commission ต้องเป็นตัวเลขไม่ติดลบ' }, { status: 400 })
       }
+      if (editingOvertimePay && (typeof body.overtimePay !== 'number' || body.overtimePay < 0 || !Number.isFinite(body.overtimePay))) {
+        return NextResponse.json({ error: 'overtimePay ต้องเป็นตัวเลขไม่ติดลบ' }, { status: 400 })
+      }
+      if (editingBonus && (typeof body.bonus !== 'number' || body.bonus < 0 || !Number.isFinite(body.bonus))) {
+        return NextResponse.json({ error: 'bonus ต้องเป็นตัวเลขไม่ติดลบ' }, { status: 400 })
+      }
 
       const newBackPay = editingBackPay ? body.backPay! : payroll.backPay
       const newCommission = editingCommission ? body.commission! : payroll.commission
+      const newOvertimePay = editingOvertimePay ? body.overtimePay! : payroll.overtimePay
+      const newBonus = editingBonus ? body.bonus! : payroll.bonus
 
       // Server คำนวณ SS/ภาษี/netSalary ใหม่เองเสมอ — ไม่เชื่อค่าที่ client ส่งมา
       // เลย ใช้ payroll.baseSalary ที่ snapshot ไว้ตอน generate ทั้งเป็นฐาน SS/
@@ -138,7 +154,10 @@ export async function PATCH(
       // baseSalary เต็มจำนวนคำนวณ SS/ภาษีแต่ payout เป็นค่า prorate — PATCH นี้
       // ไม่ทราบค่าดิบก่อน prorate จึงใช้ค่า snapshot เดียวกันทั้งคู่ คลาดเคลื่อน
       // ได้เฉพาะกรณี "เข้างานกลางเดือนนี้ + แก้ backPay/commission เดือนเดียวกัน"
-      // ซึ่งจะถูกต้องอีกครั้งทันทีที่ generate/regenerate รอบถัดไป)
+      // ซึ่งจะถูกต้องอีกครั้งทันทีที่ generate/regenerate รอบถัดไป) taxScheme
+      // ใช้ค่าที่ snapshot ไว้ตอน generate เดือนนี้เสมอ ไม่อ่าน User.taxScheme
+      // ปัจจุบันซ้ำ — กัน edge case ที่ HR แก้ taxScheme ของ user หลัง generate
+      // ไปแล้วแต่ก่อน approve เดือนนี้
       const totals = computePayrollTotals({
         taxSsBaseSalary: payroll.baseSalary,
         payoutBaseSalary: payroll.baseSalary,
@@ -146,6 +165,8 @@ export async function PATCH(
         diligenceAllowance: payroll.diligenceAllowance,
         backPay: newBackPay,
         commission: newCommission,
+        overtimePay: newOvertimePay,
+        bonus: newBonus,
         professionalFee: payroll.professionalFee,
         professionalFeeTax: payroll.professionalFeeTax,
         studentLoanDeduction: payroll.studentLoanDeduction,
@@ -154,11 +175,14 @@ export async function PATCH(
         absentDeduction: payroll.absentDeduction,
         unpaidLeaveDeduction: payroll.unpaidLeave,
         earlyLeaveDeduction: payroll.earlyLeaveDeduction,
+        taxScheme: payroll.taxScheme,
         socialSecurityEnabled: payroll.user.socialSecurity,
       })
 
       updateData.backPay = newBackPay
       updateData.commission = newCommission
+      updateData.overtimePay = newOvertimePay
+      updateData.bonus = newBonus
       updateData.socialSecurity = totals.socialSecurity
       updateData.taxDeduction = totals.taxDeduction
       updateData.taxDetail = totals.taxDetail
@@ -167,14 +191,26 @@ export async function PATCH(
 
     const updated = await prisma.payroll.update({ where: { id }, data: updateData })
 
-    if (editingBackPay || editingCommission) {
+    if (editingBackPay || editingCommission || editingOvertimePay || editingBonus) {
       await createAuditLog({
         actorId: session.user.id,
         targetId: payroll.userId,
         targetType: 'Payroll',
         action: 'UPDATE',
-        before: { backPay: payroll.backPay, commission: payroll.commission, netSalary: payroll.netSalary },
-        after: { backPay: updated.backPay, commission: updated.commission, netSalary: updated.netSalary },
+        before: {
+          backPay: payroll.backPay,
+          commission: payroll.commission,
+          overtimePay: payroll.overtimePay,
+          bonus: payroll.bonus,
+          netSalary: payroll.netSalary,
+        },
+        after: {
+          backPay: updated.backPay,
+          commission: updated.commission,
+          overtimePay: updated.overtimePay,
+          bonus: updated.bonus,
+          netSalary: updated.netSalary,
+        },
         ip: requestIp(req),
         userAgent: req.headers.get('user-agent') ?? undefined,
       })
@@ -217,6 +253,7 @@ export async function DELETE(
 
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const existing = await prisma.payroll.findUnique({
       where: { id },

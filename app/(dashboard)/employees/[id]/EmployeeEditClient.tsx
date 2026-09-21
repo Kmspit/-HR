@@ -42,7 +42,7 @@ import {
   profileInputClass,
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
-import { EMPLOYEE_TYPES, PAY_TYPES } from '@/lib/access-control'
+import { EMPLOYEE_TYPES, PAY_TYPES, TAX_SCHEMES } from '@/lib/access-control'
 import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
@@ -61,6 +61,7 @@ type Employee = {
   socialSecurityNumber: string | null
   baseSalary: number
   payType: string
+  taxScheme: string
   dailyRate: number | null
   positionAllowance: number | null
   diligenceAllowanceDefault: number | null
@@ -159,6 +160,7 @@ export default function EmployeeEditClient({
     employeeType: employee.employeeType ?? 'permanent_employee',
     baseSalary: employee.baseSalary,
     payType: employee.payType ?? 'MONTHLY',
+    taxScheme: employee.taxScheme ?? 'NORMAL',
     dailyRate: employee.dailyRate ?? 0,
     positionAllowance: employee.positionAllowance ?? 0,
     diligenceAllowanceDefault: employee.diligenceAllowanceDefault ?? 0,
@@ -319,6 +321,7 @@ export default function EmployeeEditClient({
         employeeType: () => form.employeeType,
         baseSalary: () => form.baseSalary,
         payType: () => form.payType,
+        taxScheme: () => form.taxScheme,
         dailyRate: () => form.dailyRate,
         positionAllowance: () => form.positionAllowance,
         diligenceAllowanceDefault: () => form.diligenceAllowanceDefault,
@@ -693,6 +696,21 @@ export default function EmployeeEditClient({
                     className={profileInputClass}
                   >
                     {PAY_TYPES.map((t) => (
+                      <option key={t.value} value={t.value} className="bg-slate-900">
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                {/* วิธีคิดภาษี/SS — อิสระจาก payType เด็ดขาด (2026-09) ผสมกันได้
+                    ทั้ง 4 แบบ เช่น รายวัน+นอกระบบ WHT 3% ก็ได้ */}
+                <FormField label="วิธีคิดภาษี/ประกันสังคม">
+                  <select
+                    value={form.taxScheme}
+                    onChange={(e) => set('taxScheme', e.target.value)}
+                    className={profileInputClass}
+                  >
+                    {TAX_SCHEMES.map((t) => (
                       <option key={t.value} value={t.value} className="bg-slate-900">
                         {t.label}
                       </option>

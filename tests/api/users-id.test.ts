@@ -32,6 +32,10 @@ vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
+  ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
+}))
+
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { auth } from '@/lib/auth'

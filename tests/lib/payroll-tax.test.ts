@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeMonthlyTax } from '@/lib/payroll-tax'
+import { computeMonthlyTax, computeFlatWithholdingTax, computeOffSystemWht } from '@/lib/payroll-tax'
 
 describe('computeMonthlyTax', () => {
   it('returns all zeros for baseSalary <= 0, regardless of socialSecurity', () => {
@@ -56,5 +56,39 @@ describe('computeMonthlyTax', () => {
     expect(result.taxableIncome).toBe(0)
     expect(result.annualTax).toBe(0)
     expect(result.monthlyWithholding).toBe(0)
+  })
+})
+
+describe('computeFlatWithholdingTax — taxScheme=OFF_SYSTEM_WHT formula (same as ค่าวิชาชีพ 40(6))', () => {
+  it('withholds nothing below the 1,000-baht threshold', () => {
+    expect(computeFlatWithholdingTax(999)).toBe(0)
+    expect(computeFlatWithholdingTax(0)).toBe(0)
+  })
+
+  it('withholds flat 3% at and above 1,000 baht', () => {
+    expect(computeFlatWithholdingTax(1_000)).toBe(30)
+    expect(computeFlatWithholdingTax(30_000)).toBe(900)
+  })
+
+  it('rounds to 2 decimal places', () => {
+    expect(computeFlatWithholdingTax(1_001)).toBe(30.03)
+  })
+})
+
+describe('computeOffSystemWht — TaxDetail-shaped wrapper around the flat 3% formula', () => {
+  it('mirrors computeFlatWithholdingTax for monthlyWithholding, annualized elsewhere left at 0', () => {
+    const result = computeOffSystemWht(30_000)
+    expect(result.monthlyWithholding).toBe(900)
+    expect(result.annualGross).toBe(360_000)
+    expect(result.annualTax).toBe(10_800)
+    expect(result.incomeDeduction).toBe(0)
+    expect(result.personalAllowance).toBe(0)
+    expect(result.annualSocialSecurity).toBe(0)
+  })
+
+  it('below threshold: no withholding at all', () => {
+    const result = computeOffSystemWht(500)
+    expect(result.monthlyWithholding).toBe(0)
+    expect(result.annualTax).toBe(0)
   })
 })

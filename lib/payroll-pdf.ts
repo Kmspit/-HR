@@ -20,6 +20,11 @@ export type SalarySlipInput = {
   taxDeduction: number
   otherDeduction: number
   otherAddition: number
+  /** ค่าล่วงเวลา (OT, 2026-09) — HR กรอกยอดก้อนเดียวเอง แสดงเมื่อ >0 เท่านั้น
+   * เดียวกับ otherAddition */
+  overtimePay?: number
+  /** โบนัส (2026-09) — แยกจาก otherAddition แสดงเมื่อ >0 เท่านั้น */
+  bonus?: number
   netSalary: number
   lateDays: number
   absentDays: number
@@ -35,6 +40,16 @@ export type SalarySlipInput = {
     taxableIncome?: number
     annualTax?: number
     monthlyWithholding?: number
+  } | null
+  /** ยอดสะสมรายปี (2026-09) — สำหรับออกใบรับรองหักภาษี ณ ที่จ่าย 50 ทวิ,
+   * derive สดจาก lib/payroll-ytd.ts (ไม่ใช่ค่า mutable) รวมทุกเดือนของปีนี้
+   * จนถึงเดือนของสลิปนี้เอง ไม่มีค่า = ไม่แสดงกล่องนี้ (backward-compat กับ
+   * สลิปเก่าก่อน feature นี้) */
+  ytd?: {
+    income: number
+    taxNormal: number
+    taxOffSystemWht: number
+    socialSecurity: number
   } | null
 }
 
@@ -123,6 +138,14 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   } else {
     row('เงินเดือนฐาน', `฿${fmt(input.baseSalary)}`, y)
   }
+  if ((input.overtimePay ?? 0) > 0) {
+    y -= 16
+    row('ค่าล่วงเวลา (OT)', `+฿${fmt(input.overtimePay ?? 0)}`, y, c.green)
+  }
+  if ((input.bonus ?? 0) > 0) {
+    y -= 16
+    row('โบนัส', `+฿${fmt(input.bonus ?? 0)}`, y, c.green)
+  }
   if (input.otherAddition > 0) {
     y -= 16
     row('รายได้อื่นๆ', `+฿${fmt(input.otherAddition)}`, y, c.green)
@@ -173,6 +196,18 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
     if (td.taxableIncome) { drawText(`เงินได้สุทธิ: ฿${fmt(td.taxableIncome)}`, 200, y - 18, 9, c.mid); }
     if (td.annualTax) { drawText(`ภาษีรายปี: ฿${fmt(td.annualTax)}`, 350, y - 18, 9, c.mid); }
     drawText(`ภาษีรายเดือน (หัก ณ ที่จ่าย): ฿${fmt(input.taxDeduction)}`, 52, y - 34, 9, c.mid)
+    y -= 66
+  }
+
+  // YTD box (2026-09) — 4 ยอดสะสมสำหรับออกใบรับรองหักภาษี ณ ที่จ่าย 50 ทวิ
+  if (input.ytd) {
+    y -= 10
+    drawRect(doc, 40, y - 56, W - 80, 66, { fill: rgb(0.98, 0.97, 0.94) })
+    drawText(`ยอดสะสมตั้งแต่ต้นปี (สำหรับ 50 ทวิ) — ถึงเดือน${MONTH_TH[input.month]} ${input.year + 543}`, 52, y - 4, 9, c.accent)
+    drawText(`รายได้สะสม: ฿${fmt(input.ytd.income)}`, 52, y - 18, 9, c.mid)
+    drawText(`ประกันสังคมสะสม: ฿${fmt(input.ytd.socialSecurity)}`, 300, y - 18, 9, c.mid)
+    drawText(`ภาษีสะสม: ฿${fmt(input.ytd.taxNormal)}`, 52, y - 34, 9, c.mid)
+    drawText(`WHT สะสม: ฿${fmt(input.ytd.taxOffSystemWht)}`, 300, y - 34, 9, c.mid)
     y -= 66
   }
 

@@ -8,6 +8,7 @@ import { canManageUserProfile } from '@/lib/role-assignment'
 import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 
 export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -29,6 +30,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
   }
 
   await ensurePayrollFieldsBatch2()
+  await ensurePayrollFieldsBatch3()
 
   const user = await prisma.user.findUnique({
     where: { id },
@@ -36,7 +38,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       id: true, name: true, email: true, employeeId: true, role: true, status: true,
       employeeType: true,
       department: true, position: true, jobLevel: true, socialSecurityNumber: true,
-      baseSalary: true, payType: true, dailyRate: true, socialSecurity: true,
+      baseSalary: true, payType: true, taxScheme: true, dailyRate: true, socialSecurity: true,
       positionAllowance: true, diligenceAllowanceDefault: true, studentLoanDeduction: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
       lineUserId: true, lineDisplayName: true, branchId: true,

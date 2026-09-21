@@ -1,5 +1,5 @@
 import { roundMoney } from '@/lib/payroll-late-deduction'
-import { computeMonthlyTax } from '@/lib/payroll-tax'
+import { computeMonthlyTax, computeOffSystemWht } from '@/lib/payroll-tax'
 import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
 
 /**
@@ -13,11 +13,18 @@ import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
  * เป็น 0 สำหรับ DAILY (ระบบไม่หักพวกนี้แยกสำหรับพนักงานรายวันอยู่แล้ว)
  *
  * ฐาน SS (ยืนยัน 2026-09): baseSalary + positionAllowance + backPay เข้าฐาน,
- * diligenceAllowance/commission ไม่เข้า
+ * diligenceAllowance/commission/overtimePay/bonus ไม่เข้า (OT/โบนัส ไม่เข้า
+ * ฐาน SS เลย ไม่ว่า taxScheme ไหน — ยืนยัน 2026-09)
  * ฐานภาษี 40(1)+40(2) (ยืนยัน 2026-09): baseSalary + positionAllowance +
- * diligenceAllowance + backPay + commission รวมก้อนเดียวเข้า computeMonthlyTax
- * — ไม่รวมค่าวิชาชีพ 40(6) (professionalFee, คำนวณภาษีคนละระบบ 3% flat แยกต่างหาก)
- * กยศ./เงินประกันหักหลังภาษี ไม่กระทบ taxableIncome
+ * diligenceAllowance + backPay + commission + overtimePay + bonus รวมก้อน
+ * เดียวเข้าคำนวณภาษีตาม taxScheme — ไม่รวมค่าวิชาชีพ 40(6) (professionalFee,
+ * คำนวณภาษีคนละระบบ 3% flat แยกต่างหาก) กยศ./เงินประกันหักหลังภาษี ไม่กระทบ
+ * taxableIncome
+ *
+ * taxScheme (2026-09) — แกนอิสระจาก payType โดยสิ้นเชิง คุม "วิธีคิดภาษี/SS":
+ * - NORMAL: ภาษีขั้นบันได (computeMonthlyTax) + SS ตามปกติ (เดิม)
+ * - OFF_SYSTEM_WHT: ไม่มี SS เลย (บังคับ 0 ไม่สนใจ socialSecurityEnabled),
+ *   หัก ณ ที่จ่ายแบบเหมา 3% เหมือนค่าวิชาชีพ 40(6) (computeOffSystemWht)
  */
 export type PayrollTotalsInput = {
   /** ใช้คำนวณฐาน SS และ grossIncome ภาษี — เป็นเงินเดือน "เต็มจำนวน" ไม่ prorate
@@ -31,6 +38,10 @@ export type PayrollTotalsInput = {
   diligenceAllowance: number
   backPay: number
   commission: number
+  /** ค่าล่วงเวลา (OT) — ยอดก้อนเดียว HR กรอกเอง เข้าฐานภาษีแต่ไม่เข้าฐาน SS */
+  overtimePay: number
+  /** โบนัส — แยกจาก otherAddition เข้าฐานภาษีแต่ไม่เข้าฐาน SS เหมือน OT */
+  bonus: number
   professionalFee: number
   professionalFeeTax: number
   studentLoanDeduction: number
@@ -40,6 +51,8 @@ export type PayrollTotalsInput = {
   unpaidLeaveDeduction: number
   earlyLeaveDeduction: number
   socialSecurityEnabled: boolean
+  /** 'NORMAL' | 'OFF_SYSTEM_WHT' — ค่าเริ่มต้น 'NORMAL' ถ้าไม่ส่งมา (backward-compat) */
+  taxScheme?: string | null
 }
 
 export type PayrollTotalsResult = {
@@ -50,16 +63,20 @@ export type PayrollTotalsResult = {
 }
 
 export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsResult {
+  const isOffSystemWht = input.taxScheme === 'OFF_SYSTEM_WHT'
+
   const ssBase = input.taxSsBaseSalary + input.positionAllowance + input.backPay
   let socialSecurity = 0
-  if (input.socialSecurityEnabled && ssBase > 0) {
+  if (!isOffSystemWht && input.socialSecurityEnabled && ssBase > 0) {
     socialSecurity = roundMoney(Math.min(ssBase * SS_RATE, SS_MAX))
   }
 
   const grossIncome =
     input.taxSsBaseSalary + input.positionAllowance + input.diligenceAllowance +
-    input.backPay + input.commission
-  const taxResult = computeMonthlyTax(grossIncome, socialSecurity)
+    input.backPay + input.commission + input.overtimePay + input.bonus
+  const taxResult = isOffSystemWht
+    ? computeOffSystemWht(grossIncome)
+    : computeMonthlyTax(grossIncome, socialSecurity)
   const taxDeduction = taxResult.monthlyWithholding
 
   // แยกยอดภาษีที่หักไว้เป็นส่วนของ 40(1) (เงินเดือน/ค่าตำแหน่ง/เบี้ยขยัน/
@@ -85,6 +102,8 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
     input.diligenceAllowance +
     input.backPay +
     input.commission +
+    input.overtimePay +
+    input.bonus +
     input.professionalFee -
     input.professionalFeeTax -
     input.lateDeduction -
