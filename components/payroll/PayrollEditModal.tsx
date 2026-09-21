@@ -23,6 +23,8 @@ type FullPayroll = {
   status: string
   backPay: number
   commission: number
+  overtimePay: number
+  bonus: number
   professionalFee: number
   professionalFeeTax: number
   netSalary: number
@@ -48,6 +50,8 @@ export default function PayrollEditModal({ payrollId, employeeName, onClose, onS
 
   const [backPay, setBackPay] = useState('0')
   const [commission, setCommission] = useState('0')
+  const [overtimePay, setOvertimePay] = useState('0')
+  const [bonus, setBonus] = useState('0')
   const [savingBasic, setSavingBasic] = useState(false)
 
   const [showAddForm, setShowAddForm] = useState(false)
@@ -74,6 +78,8 @@ export default function PayrollEditModal({ payrollId, employeeName, onClose, onS
         setPayroll(payrollRes.data.payroll)
         setBackPay(String(payrollRes.data.payroll.backPay ?? 0))
         setCommission(String(payrollRes.data.payroll.commission ?? 0))
+        setOvertimePay(String(payrollRes.data.payroll.overtimePay ?? 0))
+        setBonus(String(payrollRes.data.payroll.bonus ?? 0))
       } else {
         toast.error(apiErrorMessage(payrollRes.data, 'โหลดข้อมูล payroll ไม่สำเร็จ', payrollRes.status))
       }
@@ -89,6 +95,8 @@ export default function PayrollEditModal({ payrollId, employeeName, onClose, onS
   const saveBasic = async () => {
     const backPayNum = Number(backPay)
     const commissionNum = Number(commission)
+    const overtimePayNum = Number(overtimePay)
+    const bonusNum = Number(bonus)
     if (!Number.isFinite(backPayNum) || backPayNum < 0) {
       toast.error('ตกเบิกต้องเป็นตัวเลขไม่ติดลบ')
       return
@@ -97,15 +105,28 @@ export default function PayrollEditModal({ payrollId, employeeName, onClose, onS
       toast.error('คอมมิชชั่นต้องเป็นตัวเลขไม่ติดลบ')
       return
     }
+    if (!Number.isFinite(overtimePayNum) || overtimePayNum < 0) {
+      toast.error('ค่าล่วงเวลาต้องเป็นตัวเลขไม่ติดลบ')
+      return
+    }
+    if (!Number.isFinite(bonusNum) || bonusNum < 0) {
+      toast.error('โบนัสต้องเป็นตัวเลขไม่ติดลบ')
+      return
+    }
     setSavingBasic(true)
     const { ok, data, status } = await apiJson<{ payroll?: FullPayroll }>(`/api/payroll/${payrollId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ backPay: backPayNum, commission: commissionNum }),
+      body: JSON.stringify({
+        backPay: backPayNum,
+        commission: commissionNum,
+        overtimePay: overtimePayNum,
+        bonus: bonusNum,
+      }),
     })
     if (ok && data.payroll) {
       setPayroll(data.payroll)
-      toast.success('บันทึกตกเบิก/คอมมิชชั่นแล้ว')
+      toast.success('บันทึกตกเบิก/คอมมิชชั่น/OT/โบนัสแล้ว')
       onSaved()
     } else {
       toast.error(apiErrorMessage(data, 'บันทึกไม่สำเร็จ', status))
@@ -210,7 +231,7 @@ export default function PayrollEditModal({ payrollId, employeeName, onClose, onS
         </div>
       ) : !isDraft ? (
         <p className="text-amber-400 text-sm py-4">
-          payroll นี้ไม่ใช่สถานะร่าง (DRAFT) แล้ว — แก้ไขตกเบิก/คอมมิชชั่น/ค่าวิชาชีพไม่ได้อีกต่อไป
+          payroll นี้ไม่ใช่สถานะร่าง (DRAFT) แล้ว — แก้ไขตกเบิก/คอมมิชชั่น/OT/โบนัส/ค่าวิชาชีพไม่ได้อีกต่อไป
         </p>
       ) : (
         <div className="space-y-6">
@@ -229,13 +250,27 @@ export default function PayrollEditModal({ payrollId, employeeName, onClose, onS
                 className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
               />
             </label>
+            <label className="text-sm text-white/70">
+              ค่าล่วงเวลา (OT) (บาท)
+              <input
+                type="number" min={0} value={overtimePay} onChange={(e) => setOvertimePay(e.target.value)}
+                className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+              />
+            </label>
+            <label className="text-sm text-white/70">
+              โบนัส (บาท)
+              <input
+                type="number" min={0} value={bonus} onChange={(e) => setBonus(e.target.value)}
+                className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-white"
+              />
+            </label>
           </div>
           <button
             type="button" onClick={saveBasic} disabled={savingBasic}
             className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50"
           >
             {savingBasic && <Loader2 className="w-4 h-4 animate-spin" />}
-            บันทึกตกเบิก/คอมมิชชั่น
+            บันทึกตกเบิก/คอมมิชชั่น/OT/โบนัส
           </button>
 
           <div className="border-t border-white/10 pt-4">

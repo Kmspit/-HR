@@ -22,6 +22,7 @@ import { HR_ADMIN } from '@/lib/module-gates'
 import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
 import { createAuditLog } from '@/lib/notifications'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 import type { Role, UserStatus } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
@@ -63,6 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const session = await requireAuth()
     if (isGuardResponse(session)) return session
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { id } = await params
     if (id !== session.user.id) {
@@ -244,6 +246,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ('dailyRate' in body && body.dailyRate !== undefined) {
       if (HR_ADMIN.includes(session.user.role as Role)) {
         data.dailyRate = body.dailyRate
+      }
+    }
+
+    // taxScheme (2026-09) — วิธีคิดภาษี/SS แกนอิสระจาก payType เด็ดขาด แต่
+    // ได้ gate เดียวกันด้วยเหตุผลเดียวกัน: กำหนดวิธีคำนวณภาษี/ประกันสังคมของ
+    // พนักงานคนนี้โดยตรง
+    if ('taxScheme' in body && body.taxScheme !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        data.taxScheme = body.taxScheme
       }
     }
 

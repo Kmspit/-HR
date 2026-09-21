@@ -18,6 +18,7 @@ export const SAFE_USER_SELECT = {
   jobLevel: true,
   baseSalary: true,
   payType: true,
+  taxScheme: true,
   dailyRate: true,
   positionAllowance: true,
   diligenceAllowanceDefault: true,
@@ -50,9 +51,9 @@ export const SAFE_USER_SELECT_WITH_NATIONAL_ID = {
 
 /** Redacted select for MANAGER (no nationalId / baseSalary / dailyRate /
  *  addressIdCard / socialSecurityNumber / positionAllowance /
- *  diligenceAllowanceDefault / studentLoanDeduction). payType stays visible
- *  (like employeeType) — it's a classification, not a pay figure; the
- *  actual rates/amounts (dailyRate, baseSalary, and the 3 payroll-batch-2
+ *  diligenceAllowanceDefault / studentLoanDeduction). payType/taxScheme stay
+ *  visible (like employeeType) — they're classifications, not pay figures;
+ *  the actual rates/amounts (dailyRate, baseSalary, and the 3 payroll-batch-2
  *  fields above) are what's sensitive. */
 export const MANAGER_USER_SELECT = {
   id: true,
@@ -63,6 +64,7 @@ export const MANAGER_USER_SELECT = {
   status: true,
   employeeType: true,
   payType: true,
+  taxScheme: true,
   managerId: true,
   teamLeaderId: true,
   department: true,

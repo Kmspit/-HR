@@ -94,6 +94,35 @@ export function computeMonthlyTax(grossIncome: number, socialSecurity: number = 
   }
 }
 
+/** หัก ณ ที่จ่ายแบบเหมา 3% — สูตรเดียวกับค่าวิชาชีพ 40(6) เป๊ะ (ยืนยัน 2026-09
+ * ให้ taxScheme=OFF_SYSTEM_WHT ใช้สูตรเดียวกันนี้): ยอด <1,000 ไม่หัก,
+ * ≥1,000 หัก 3% แบบเหมา. เดิมเป็น private function ในหน้า professional-fee
+ * route เท่านั้น — ย้ายมาไว้ที่นี่ให้ทั้งสองจุดเรียกใช้สูตรเดียวกันจริงๆ */
+export function computeFlatWithholdingTax(amount: number): number {
+  if (amount < 1000) return 0
+  return Math.round(amount * 0.03 * 100) / 100
+}
+
+/**
+ * taxScheme=OFF_SYSTEM_WHT (2026-09) — ไม่มี SS เลย, หัก ณ ที่จ่ายแบบเหมา 3%
+ * แทนภาษีขั้นบันไดของ computeMonthlyTax คืนค่าเป็น TaxDetail รูปแบบเดียวกัน
+ * เพื่อให้ payrolls.taxDetail (JSON) ใช้โครงสร้างเดิมได้โดยไม่ต้องแตกสาขา
+ * ตอนอ่าน/แสดงผล — ฟิลด์ที่ไม่เกี่ยวกับสูตรนี้ (incomeDeduction/
+ * personalAllowance/annualSocialSecurity) เป็น 0 เพราะไม่มีในสูตรเหมา 3%
+ */
+export function computeOffSystemWht(grossIncome: number): TaxDetail {
+  const monthlyWithholding = computeFlatWithholdingTax(grossIncome)
+  return {
+    annualGross: grossIncome * 12,
+    incomeDeduction: 0,
+    personalAllowance: 0,
+    annualSocialSecurity: 0,
+    taxableIncome: grossIncome,
+    annualTax: monthlyWithholding * 12,
+    monthlyWithholding,
+  }
+}
+
 export function parseTaxDetail(raw: string | null | undefined): TaxDetail | null {
   if (!raw) return null
   try {

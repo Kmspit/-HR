@@ -17,6 +17,7 @@ import { computePayrollTotals } from '@/lib/payroll-totals'
 import type { HolidayRecord } from '@/lib/company-holidays'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
 
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { month, year, branchId: filterBranchId } = await req.json()
     if (!month || !year) {
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
         id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true,
         startDate: true, status: true, updatedAt: true, payType: true, dailyRate: true,
         positionAllowance: true, diligenceAllowanceDefault: true, studentLoanDeduction: true,
+        taxScheme: true,
       },
     })
 
@@ -201,14 +204,14 @@ export async function POST(req: NextRequest) {
     type ApprovedLeaveRow = (typeof allApprovedLeaves)[number]
     type UnpaidLeaveRow = (typeof allUnpaidLeaves)[number]
 
-    // Payroll fields batch 2 (2026-09) — fields this generate step computes
+    // Payroll fields batch 2/3 (2026-09) — fields this generate step computes
     // itself every time (deterministic from User/attendance/security-deposit
     // plan, safe to recompute on regenerate) vs. fields only ever written by
-    // HR through PATCH /api/payroll/[id] (backPay/commission/professionalFee*
-    // — generate must NEVER overwrite these on regenerate, only read their
-    // current value to fold into this month's tax/SS/net calc; see the
-    // preservedManual read right before buildMonthlyPayload/buildDailyPayload
-    // is called inside the per-employee transaction below).
+    // HR through PATCH /api/payroll/[id] (backPay/commission/professionalFee*/
+    // overtimePay/bonus — generate must NEVER overwrite these on regenerate,
+    // only read their current value to fold into this month's tax/SS/net calc;
+    // see the preservedManual read right before buildMonthlyPayload/
+    // buildDailyPayload is called inside the per-employee transaction below).
     type ComputedExtraFields = {
       positionAllowance: number
       studentLoanDeduction: number
@@ -220,6 +223,8 @@ export async function POST(req: NextRequest) {
       commission: number
       professionalFee: number
       professionalFeeTax: number
+      overtimePay: number
+      bonus: number
     }
 
     // Unchanged from before payType existed — every MONTHLY employee (the
@@ -308,6 +313,8 @@ export async function POST(req: NextRequest) {
         diligenceAllowance: diligence.amount,
         backPay: preservedManual.backPay,
         commission: preservedManual.commission,
+        overtimePay: preservedManual.overtimePay,
+        bonus: preservedManual.bonus,
         professionalFee: preservedManual.professionalFee,
         professionalFeeTax: preservedManual.professionalFeeTax,
         studentLoanDeduction: extra.studentLoanDeduction,
@@ -316,6 +323,7 @@ export async function POST(req: NextRequest) {
         absentDeduction,
         unpaidLeaveDeduction,
         earlyLeaveDeduction,
+        taxScheme: emp.taxScheme,
         socialSecurityEnabled: emp.socialSecurity,
       })
       const ssDeduction = totals.socialSecurity
@@ -339,6 +347,7 @@ export async function POST(req: NextRequest) {
         lateBillableMinutes: late.billableLateMinutes,
         lateDeductionDetail: serializeLateDeductionDetail(late.lines),
         payType: 'MONTHLY',
+        taxScheme: emp.taxScheme,
         daysWorked: null,
         dailyRateUsed: null,
         positionAllowance: extra.positionAllowance,
@@ -413,6 +422,8 @@ export async function POST(req: NextRequest) {
         diligenceAllowance: diligence.amount,
         backPay: preservedManual.backPay,
         commission: preservedManual.commission,
+        overtimePay: preservedManual.overtimePay,
+        bonus: preservedManual.bonus,
         professionalFee: preservedManual.professionalFee,
         professionalFeeTax: preservedManual.professionalFeeTax,
         studentLoanDeduction: extra.studentLoanDeduction,
@@ -421,6 +432,7 @@ export async function POST(req: NextRequest) {
         absentDeduction: 0,
         unpaidLeaveDeduction: 0,
         earlyLeaveDeduction: 0,
+        taxScheme: emp.taxScheme,
         socialSecurityEnabled: emp.socialSecurity,
       })
       const ssDeduction = totals.socialSecurity
@@ -448,6 +460,7 @@ export async function POST(req: NextRequest) {
         securityDepositDeduction: extra.securityDepositDeduction,
         securityDepositInstallmentNo: extra.securityDepositInstallmentNo,
         payType: 'DAILY',
+        taxScheme: emp.taxScheme,
         daysWorked,
         dailyRateUsed,
         status: 'DRAFT',
@@ -487,6 +500,7 @@ export async function POST(req: NextRequest) {
             select: {
               status: true, deletedAt: true,
               backPay: true, commission: true, professionalFee: true, professionalFeeTax: true,
+              overtimePay: true, bonus: true,
             },
           })
           if (current?.deletedAt) {
@@ -503,6 +517,8 @@ export async function POST(req: NextRequest) {
             commission: current?.commission ?? 0,
             professionalFee: current?.professionalFee ?? 0,
             professionalFeeTax: current?.professionalFeeTax ?? 0,
+            overtimePay: current?.overtimePay ?? 0,
+            bonus: current?.bonus ?? 0,
           }
 
           const payload =
@@ -510,9 +526,9 @@ export async function POST(req: NextRequest) {
               ? buildDailyPayload(emp, attendances, approvedLeaves, extra, preservedManual)
               : buildMonthlyPayload(emp, attendances, approvedLeaves, unpaidLeaves, extra, preservedManual)
 
-          // payload ไม่มี key backPay/commission/professionalFee/professionalFeeTax
-          // เลย (ดู buildMonthlyPayload/buildDailyPayload) — ตอน update จึงไม่
-          // เขียนทับ, ตอน create ปล่อยให้ schema @default(0) ทำหน้าที่แทน
+          // payload ไม่มี key backPay/commission/professionalFee/professionalFeeTax/
+          // overtimePay/bonus เลย (ดู buildMonthlyPayload/buildDailyPayload) —
+          // ตอน update จึงไม่เขียนทับ, ตอน create ปล่อยให้ schema @default(0) ทำหน้าที่แทน
           return tx.payroll.upsert({
             where: { userId_month_year: { userId: emp.id, month, year } },
             update: payload,

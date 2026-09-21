@@ -499,6 +499,11 @@ model User {
   /// กยศ. ยอดหักต่อเดือนตามหนังสือแจ้งจาก กยศ. — gate เดียวกับ baseSalary/
   /// dailyRate (ข้อมูลการเงินส่วนบุคคลที่ควรจำกัดคนเห็น/แก้)
   studentLoanDeduction      Float?
+  /// วิธีคิดภาษี/SS (2026-09) — อิสระจาก payType เด็ดขาด (ดูคอมเมนต์ enum
+  /// TaxScheme) เป็นการจัดประเภทพนักงาน ไม่ใช่ตัวเลขเงิน จึงมองเห็นได้ระดับ
+  /// เดียวกับ payType (MANAGER เห็นได้) แต่แก้ได้เฉพาะ HR_ADMIN เหมือน
+  /// baseSalary/dailyRate/studentLoanDeduction
+  taxScheme        TaxScheme  @default(NORMAL)
   startDate        DateTime?
   socialSecurity   Boolean    @default(true)
   lineId               String?
@@ -919,6 +924,15 @@ enum EmploymentType {
 enum PayType {
   MONTHLY
   DAILY
+}
+
+/// วิธีคิดภาษี/ประกันสังคม (2026-09) — แกนอิสระจาก PayType โดยสิ้นเชิง:
+/// PayType คุมแค่ "วิธีคำนวณเงินฐาน" (รายเดือน/รายวัน) ส่วนแกนนี้คุม "วิธีคิด
+/// ภาษี/SS" ผสมกันได้ทั้ง 4 แบบ (เช่น DAILY+OFF_SYSTEM_WHT ของพนักงานที่จ่าย
+/// เป็นรายวันแต่ไม่อยู่ในระบบประกันสังคม ใช้ WHT 3% แบบเดียวกับค่าวิชาชีพ 40(6))
+enum TaxScheme {
+  NORMAL          // ภาษีขั้นบันได + ประกันสังคมตามปกติ
+  OFF_SYSTEM_WHT  // ไม่มี SS เลย, หัก ณ ที่จ่ายแบบเหมา 3% (สูตรเดียวกับค่าวิชาชีพ 40(6))
 }
 
 enum TerminationType {
@@ -1488,6 +1502,19 @@ model Payroll {
   securityDepositInstallmentNo Int?              // งวดที่เท่าไหร่ (เช่น 3/6) — derive ตอน generate จากการนับ Payroll เดิม ไม่ใช่ mutable counter
   professionalFee    Float @default(0) // ค่าวิชาชีพ 40(6) รวมของเดือนนี้ = sum(ProfessionalFeePayment.amount)
   professionalFeeTax Float @default(0) // ภาษีหัก ณ ที่จ่าย 40(6) รวม = sum(ProfessionalFeePayment.taxWithheld); 3% flat ต่อรายการที่ >= 1,000 บาท, แยกก้อนจาก 40(1)/40(2)
+  /// taxScheme (2026-09) — snapshot ค่า User.taxScheme ที่ใช้จริงตอนคำนวณ
+  /// เดือนนี้ เป็น String? (ไม่ใช่ enum TaxScheme) ตั้งใจ ด้วยเหตุผลเดียวกับ
+  /// payType ด้านบน: ห้ามผูก FK/enum กับ snapshot ประวัติ และยังใช้เป็น
+  /// ตัวกรองสำหรับ SUM ยอดสะสมภาษี/WHT รายปีแยกตาม scheme จริงของแต่ละเดือน
+  /// (คนที่เปลี่ยน taxScheme กลางปีต้องนับยอดสะสมถูกช่วง ไม่ใช่ตาม taxScheme
+  /// ปัจจุบันของ user)
+  taxScheme  String? // 'NORMAL' | 'OFF_SYSTEM_WHT'
+  /// ค่าล่วงเวลา (OT) — HR กรอกยอดก้อนเดียวเอง ไม่มีสูตรอัตรา (2026-09)
+  /// เข้าฐานภาษีตาม taxScheme ของเดือนนั้น แต่ไม่เข้าฐาน SS เลย
+  overtimePay Float @default(0)
+  /// โบนัส — แยกจาก otherAddition โดยเจตนา (2026-09) เข้าฐานภาษีเหมือน OT
+  /// แต่ไม่เข้าฐาน SS เหมือนกัน
+  bonus       Float @default(0)
   status          String    @default("DRAFT")
   slipSentAt      DateTime?
   payslipSentAt     DateTime?

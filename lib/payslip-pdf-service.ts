@@ -3,6 +3,7 @@ import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
 import { parseTaxDetail } from '@/lib/payroll-tax'
 import { payslipPdfFilename } from '@/lib/payslip-cloudinary-path'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
+import { computePayrollYtd } from '@/lib/payroll-ytd'
 
 const DEFAULT_COMPANY = 'บริษัท เค เอ็ม เซอร์วิสพลัส จำกัด'
 
@@ -38,6 +39,7 @@ export async function buildPayrollSlipPdfBuffer(
   const settings = await getCachedCompanySettings()
   const companyName = settings?.companyName?.trim() || DEFAULT_COMPANY
   const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
+  const ytd = await computePayrollYtd(payroll.userId, payroll.year, payroll.month)
 
   const buffer = await generateSalarySlipPdf(
     {
@@ -56,6 +58,8 @@ export async function buildPayrollSlipPdfBuffer(
       taxDeduction: payroll.taxDeduction ?? 0,
       otherDeduction: payroll.otherDeduction,
       otherAddition: payroll.otherAddition,
+      overtimePay: payroll.overtimePay,
+      bonus: payroll.bonus,
       netSalary: payroll.netSalary,
       lateDays: payroll.lateDays,
       absentDays: payroll.absentDays,
@@ -71,6 +75,7 @@ export async function buildPayrollSlipPdfBuffer(
             monthlyWithholding: taxDetail.monthlyWithholding,
           }
         : null,
+      ytd,
     },
     password,
   )

@@ -31,6 +31,10 @@ vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
+  ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Static mock matching the REAL payrollPeriodRange(1, 2025) result — 21 Dec
 // 2024 through 20 Jan 2025, not calendar-month Jan 1-31. Every existing test
 // in this file requests {month:1, year:2025} and uses attendance/updatedAt
@@ -63,6 +67,7 @@ vi.mock('@/lib/payroll-late-deduction', () => ({
 
 vi.mock('@/lib/payroll-tax', () => ({
   computeMonthlyTax: vi.fn().mockReturnValue({ monthlyWithholding: 0 }),
+  computeOffSystemWht: vi.fn().mockReturnValue({ monthlyWithholding: 0 }),
 }))
 
 // ── Imports (after mocks) ──────────────────────────────────────────────────────
@@ -565,5 +570,76 @@ describe('POST /api/payroll/generate — SS ceiling raised 750 → 875 (effectiv
     // periodEarnings = 3 × 6000 = 18000 → min(18000 × 5%, 875) = min(900, 875) = 875 (hits the new cap)
     expect(payload.baseSalary).toBe(18000)
     expect(payload.socialSecurity).toBe(875)
+  })
+})
+
+describe('POST /api/payroll/generate — taxScheme snapshot + OT/bonus preserved-manual-field pattern (2026-09)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
+  })
+
+  it('snapshots User.taxScheme onto the payroll payload, same treatment as payType', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', taxScheme: 'OFF_SYSTEM_WHT', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    expect(payload.taxScheme).toBe('OFF_SYSTEM_WHT')
+  })
+
+  it('defaults taxScheme to undefined→NORMAL behavior when the user fixture omits it entirely (legacy-shaped fixture)', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    expect(payload.taxScheme).toBeUndefined()
+    expect(payload.socialSecurity).toBeGreaterThan(0) // NORMAL behavior — SS still computed, not forced to 0
+  })
+
+  it('regenerate preserves the DRAFT row\'s existing overtimePay/bonus — never overwrites them with 0', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({
+      status: 'DRAFT', backPay: 0, commission: 0, professionalFee: 0, professionalFeeTax: 0,
+      overtimePay: 3000, bonus: 8000,
+    } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', taxScheme: 'NORMAL', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    // The payload itself must never carry these keys — so `update` can't clobber them
+    expect(payload).not.toHaveProperty('overtimePay')
+    expect(payload).not.toHaveProperty('bonus')
+    // ...but they must still have been folded into this month's tax/net calc
+    expect(computeMonthlyTax).toHaveBeenCalledWith(26000 + 3000 + 8000, expect.any(Number))
+  })
+
+  it('a brand-new employee (no existing DRAFT row) starts overtimePay/bonus at 0 for this calc, and the payload still omits the keys (schema @default(0) applies on create)', async () => {
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue(null as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', taxScheme: 'NORMAL', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload).not.toHaveProperty('overtimePay')
+    expect(payload).not.toHaveProperty('bonus')
+    expect(computeMonthlyTax).toHaveBeenCalledWith(26000, expect.any(Number))
   })
 })

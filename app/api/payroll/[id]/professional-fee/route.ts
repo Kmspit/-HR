@@ -5,20 +5,14 @@ import { apiError } from '@/lib/api-handler'
 import { canApprovePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { computePayrollTotals } from '@/lib/payroll-totals'
+import { computeFlatWithholdingTax } from '@/lib/payroll-tax'
 import { createAuditLog } from '@/lib/notifications'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 
 function requestIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-}
-
-/** ค่าวิชาชีพ 40(6) (2026-09) — เกณฑ์ยืนยันแล้ว: ต่ำกว่า 1,000 บาท/รายการ
- * ไม่หักภาษี, ตั้งแต่ 1,000 ขึ้นไปหัก 3% แบบเหมา (flat) แยกก้อนจากภาษี
- * 40(1)/40(2) โดยสิ้นเชิง (ดู lib/payroll-totals.ts) */
-function computeProfessionalFeeTax(amount: number): number {
-  if (amount < 1000) return 0
-  return Math.round(amount * 0.03 * 100) / 100
 }
 
 type RelatedPersonInput = { name?: string; role?: string }
@@ -32,6 +26,7 @@ export async function GET(
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { id } = await params
     const payroll = await prisma.payroll.findUnique({ where: { id }, select: { id: true, userId: true, deletedAt: true } })
@@ -64,6 +59,7 @@ export async function POST(
     }
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { id } = await params
     const body = await req.json() as {
@@ -121,7 +117,7 @@ export async function POST(
       )
     }
 
-    const taxWithheld = computeProfessionalFeeTax(amount)
+    const taxWithheld = computeFlatWithholdingTax(amount)
 
     const created = await prisma.$transaction(async (tx) => {
       const payment = await tx.professionalFeePayment.create({
@@ -169,6 +165,9 @@ export async function POST(
         absentDeduction: current.absentDeduction,
         unpaidLeaveDeduction: current.unpaidLeave,
         earlyLeaveDeduction: current.earlyLeaveDeduction,
+        overtimePay: current.overtimePay,
+        bonus: current.bonus,
+        taxScheme: current.taxScheme,
         socialSecurityEnabled: current.user.socialSecurity,
       })
 

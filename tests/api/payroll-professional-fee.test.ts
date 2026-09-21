@@ -40,6 +40,10 @@ vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
+  ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/payroll-totals', () => ({
   computePayrollTotals: vi.fn().mockReturnValue({
     socialSecurity: 100, taxDeduction: 10, taxDetail: '{}', netSalary: 5000,
@@ -57,6 +61,7 @@ const hrSession = { user: { id: 'hr-1', name: 'HR', role: 'HR', branchId: null }
 const draftPayroll = {
   id: 'pay-1', userId: 'emp-1', status: 'DRAFT', deletedAt: null,
   baseSalary: 30000, positionAllowance: 0, diligenceAllowance: 0, backPay: 0, commission: 0,
+  overtimePay: 0, bonus: 0, taxScheme: 'NORMAL',
   studentLoanDeduction: 0, securityDepositDeduction: 0, lateDeduction: 0, absentDeduction: 0,
   unpaidLeave: 0, earlyLeaveDeduction: 0,
   user: { socialSecurity: true },

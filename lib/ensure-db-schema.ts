@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900039
+export const CURRENT_SCHEMA_VERSION = 900040
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2434,6 +2434,18 @@ async function runEnsure(force = false): Promise<boolean> {
   await addPayrollColumnIfMissing('professionalFee', `ALTER TABLE payrolls ADD COLUMN professionalFee REAL NOT NULL DEFAULT 0`)
   await addPayrollColumnIfMissing('professionalFeeTax', `ALTER TABLE payrolls ADD COLUMN professionalFeeTax REAL NOT NULL DEFAULT 0`)
   await addPayrollColumnIfMissing('earlyLeaveDeduction', `ALTER TABLE payrolls ADD COLUMN earlyLeaveDeduction REAL NOT NULL DEFAULT 0`)
+
+  // v900040 — taxScheme (แกนวิธีคิดภาษี/SS อิสระจาก payType) + OT + โบนัส
+  // (2026-09): DDL เดียวกับที่ lib/ensure-payroll-fields-batch-3.ts รันตอน
+  // request-time อยู่แล้ว. users.taxScheme เป็น enum จริง NOT NULL DEFAULT
+  // 'NORMAL' (พนักงานเดิมทุกคนตกเป็นสูตรเดิมอัตโนมัติ); payrolls.taxScheme
+  // เป็น String? (snapshot, ไม่ใช่ enum) แบบเดียวกับ payrolls.payType —
+  // ห้ามผูก FK/enum กับ snapshot ประวัติ และใช้กรอง SUM ยอดสะสมภาษี/WHT
+  // รายปีแยกตาม scheme จริงของแต่ละเดือน (เผื่อเปลี่ยน taxScheme กลางปี)
+  await addUserColumnIfMissing('taxScheme', `ALTER TABLE users ADD COLUMN taxScheme TEXT NOT NULL DEFAULT 'NORMAL'`)
+  await addPayrollColumnIfMissing('taxScheme', `ALTER TABLE payrolls ADD COLUMN taxScheme TEXT`)
+  await addPayrollColumnIfMissing('overtimePay', `ALTER TABLE payrolls ADD COLUMN overtimePay REAL NOT NULL DEFAULT 0`)
+  await addPayrollColumnIfMissing('bonus', `ALTER TABLE payrolls ADD COLUMN bonus REAL NOT NULL DEFAULT 0`)
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS security_deposit_plans (

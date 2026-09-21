@@ -22,6 +22,10 @@ vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
+  ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/access-control', () => ({
   HR_ROLES: ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'],
   canApprovePayroll: vi.fn((role: string) => ['HR', 'MANAGER_HR', 'ADMIN', 'SUPER_ADMIN', 'CEO'].includes(role)),
@@ -65,6 +69,7 @@ const deletedPayroll = {
 const draftPayroll = {
   id: 'pay-2', userId: 'emp-1', month: 1, year: 2025, status: 'DRAFT', deletedAt: null,
   baseSalary: 30000, positionAllowance: 0, diligenceAllowance: 0, backPay: 0, commission: 0,
+  overtimePay: 0, bonus: 0, taxScheme: 'NORMAL',
   professionalFee: 0, professionalFeeTax: 0, studentLoanDeduction: 0, securityDepositDeduction: 0,
   lateDeduction: 0, absentDeduction: 0, unpaidLeave: 0, earlyLeaveDeduction: 0,
   netSalary: 30000,
@@ -191,6 +196,97 @@ describe('PATCH /api/payroll/[id]', () => {
 
     expect(computePayrollTotals).toHaveBeenCalledWith(
       expect.objectContaining({ backPay: 1000, commission: 777 }),
+    )
+  })
+
+  it('rejects editing overtimePay/bonus on a non-DRAFT payroll (same lock as backPay/commission)', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue(approvedPayroll as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'emp-1' } as any)
+
+    const req = new NextRequest('http://localhost/api/payroll/pay-3', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ overtimePay: 2000 }),
+    })
+    const res = await PATCH(req, ctx('pay-3'))
+    expect(res.status).toBe(400)
+    expect(prisma.payroll.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a negative overtimePay/bonus value', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue(draftPayroll as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'emp-1' } as any)
+
+    const reqOt = new NextRequest('http://localhost/api/payroll/pay-2', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ overtimePay: -1 }),
+    })
+    expect((await PATCH(reqOt, ctx('pay-2'))).status).toBe(400)
+
+    const reqBonus = new NextRequest('http://localhost/api/payroll/pay-2', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ bonus: -1 }),
+    })
+    expect((await PATCH(reqBonus, ctx('pay-2'))).status).toBe(400)
+    expect(prisma.payroll.update).not.toHaveBeenCalled()
+  })
+
+  it('accepts overtimePay/bonus edit on a DRAFT payroll, feeds computePayrollTotals, and audit-logs before/after', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ ...draftPayroll, overtimePay: 0, bonus: 0 } as any)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'emp-1' } as any)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({
+      ...draftPayroll, overtimePay: 3000, bonus: 6000, netSalary: 9999, socialSecurity: 111, taxDeduction: 22,
+    } as any)
+
+    const req = new NextRequest('http://localhost/api/payroll/pay-2', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ overtimePay: 3000, bonus: 6000 }),
+    })
+    const res = await PATCH(req, ctx('pay-2'))
+    expect(res.status).toBe(200)
+
+    expect(computePayrollTotals).toHaveBeenCalledWith(
+      expect.objectContaining({ overtimePay: 3000, bonus: 6000, backPay: 0, commission: 0 }),
+    )
+    const updateArg = vi.mocked(prisma.payroll.update).mock.calls[0][0] as any
+    expect(updateArg.data.overtimePay).toBe(3000)
+    expect(updateArg.data.bonus).toBe(6000)
+    // Server always recomputes via the (mocked) computePayrollTotals — never
+    // trusts a client-sent total, same principle as the backPay test above.
+    expect(updateArg.data.netSalary).toBe(9999)
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: 'emp-1', targetType: 'Payroll', action: 'UPDATE',
+        before: expect.objectContaining({ overtimePay: 0, bonus: 0 }),
+        after: expect.objectContaining({ overtimePay: 3000, bonus: 6000 }),
+      }),
+    )
+  })
+
+  it('leaves overtimePay/bonus untouched (uses existing value) when only backPay is sent', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue(
+      { ...draftPayroll, overtimePay: 1500, bonus: 2500 } as any,
+    )
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: 'emp-1' } as any)
+    vi.mocked(prisma.payroll.update).mockResolvedValue({ ...draftPayroll } as any)
+
+    const req = new NextRequest('http://localhost/api/payroll/pay-2', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ backPay: 1000 }),
+    })
+    await PATCH(req, ctx('pay-2'))
+
+    expect(computePayrollTotals).toHaveBeenCalledWith(
+      expect.objectContaining({ overtimePay: 1500, bonus: 2500 }),
     )
   })
 })

@@ -8,6 +8,7 @@ import { computePayrollTotals } from '@/lib/payroll-totals'
 import { createAuditLog } from '@/lib/notifications'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
+import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 
 function requestIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
@@ -24,6 +25,7 @@ export async function DELETE(
     }
     await ensurePayrollPayslipColumns()
     await ensurePayrollFieldsBatch2()
+    await ensurePayrollFieldsBatch3()
 
     const { id, paymentId } = await params
 
@@ -85,6 +87,9 @@ export async function DELETE(
         absentDeduction: current.absentDeduction,
         unpaidLeaveDeduction: current.unpaidLeave,
         earlyLeaveDeduction: current.earlyLeaveDeduction,
+        overtimePay: current.overtimePay,
+        bonus: current.bonus,
+        taxScheme: current.taxScheme,
         socialSecurityEnabled: current.user.socialSecurity,
       })
 

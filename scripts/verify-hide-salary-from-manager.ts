@@ -86,7 +86,7 @@ async function main() {
       role: 'EMPLOYEE', status: 'ACTIVE', startDate: null, department: null, position: 'Junior',
       jobLevel: null, socialSecurityNumber: null,
       employeeType: null, managerId: manager.id, teamLeaderId: null, baseSalary: SALARY,
-      payType: 'MONTHLY', dailyRate: null,
+      payType: 'MONTHLY', taxScheme: 'NORMAL', dailyRate: null,
       positionAllowance: null, diligenceAllowanceDefault: null, studentLoanDeduction: null,
       socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null, employeeProfile: null,
     })
