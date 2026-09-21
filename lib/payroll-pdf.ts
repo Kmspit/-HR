@@ -20,11 +20,24 @@ export type SalarySlipInput = {
   taxDeduction: number
   otherDeduction: number
   otherAddition: number
+  /** ค่าตำแหน่ง (payroll fields batch 2, 2026-09) — snapshot จาก Payroll แสดงเมื่อ >0 เท่านั้น */
+  positionAllowance?: number
+  /** เบี้ยขยัน (payroll fields batch 2, 2026-09) — ยอดจริงหลังตัดกรณีขาด/ลา/สาย แสดงเมื่อ >0 เท่านั้น */
+  diligenceAllowance?: number
+  /** คอมมิชชั่น (payroll fields batch 2, 2026-09) — แสดงเมื่อ >0 เท่านั้น */
+  commission?: number
   /** ค่าล่วงเวลา (OT, 2026-09) — HR กรอกยอดก้อนเดียวเอง แสดงเมื่อ >0 เท่านั้น
    * เดียวกับ otherAddition */
   overtimePay?: number
   /** โบนัส (2026-09) — แยกจาก otherAddition แสดงเมื่อ >0 เท่านั้น */
   bonus?: number
+  /** กยศ. (payroll fields batch 2, 2026-09) — หักหลังภาษี แสดงเมื่อ >0 เท่านั้น */
+  studentLoanDeduction?: number
+  /** เงินประกันเข้างาน (payroll fields batch 2, 2026-09) — แสดงเมื่อ >0 เท่านั้น
+   * ถ้ามี securityDepositInstallmentNo จะต่อท้ายเป็น "(งวด n/total)" */
+  securityDepositDeduction?: number
+  securityDepositInstallmentNo?: number | null
+  securityDepositTotalInstallments?: number | null
   netSalary: number
   lateDays: number
   absentDays: number
@@ -138,6 +151,18 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   } else {
     row('เงินเดือนฐาน', `฿${fmt(input.baseSalary)}`, y)
   }
+  if ((input.positionAllowance ?? 0) > 0) {
+    y -= 16
+    row('ค่าตำแหน่ง', `+฿${fmt(input.positionAllowance ?? 0)}`, y, c.green)
+  }
+  if ((input.diligenceAllowance ?? 0) > 0) {
+    y -= 16
+    row('เบี้ยขยัน', `+฿${fmt(input.diligenceAllowance ?? 0)}`, y, c.green)
+  }
+  if ((input.commission ?? 0) > 0) {
+    y -= 16
+    row('คอมมิชชั่น', `+฿${fmt(input.commission ?? 0)}`, y, c.green)
+  }
   if ((input.overtimePay ?? 0) > 0) {
     y -= 16
     row('ค่าล่วงเวลา (OT)', `+฿${fmt(input.overtimePay ?? 0)}`, y, c.green)
@@ -181,7 +206,22 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
     row('หักอื่นๆ', `-฿${fmt(input.otherDeduction)}`, y, c.red)
     y -= 16
   }
-  if (input.lateDeduction === 0 && input.absentDeduction === 0 && input.unpaidLeave === 0 && input.socialSecurity === 0 && input.taxDeduction === 0 && input.otherDeduction === 0) {
+  if ((input.studentLoanDeduction ?? 0) > 0) {
+    row('กยศ.', `-฿${fmt(input.studentLoanDeduction ?? 0)}`, y, c.red)
+    y -= 16
+  }
+  if ((input.securityDepositDeduction ?? 0) > 0) {
+    const installmentLabel = input.securityDepositInstallmentNo
+      ? ` (งวด ${input.securityDepositInstallmentNo}${input.securityDepositTotalInstallments ? `/${input.securityDepositTotalInstallments}` : ''})`
+      : ''
+    row(`เงินประกันเข้างาน${installmentLabel}`, `-฿${fmt(input.securityDepositDeduction ?? 0)}`, y, c.red)
+    y -= 16
+  }
+  if (
+    input.lateDeduction === 0 && input.absentDeduction === 0 && input.unpaidLeave === 0 &&
+    input.socialSecurity === 0 && input.taxDeduction === 0 && input.otherDeduction === 0 &&
+    (input.studentLoanDeduction ?? 0) === 0 && (input.securityDepositDeduction ?? 0) === 0
+  ) {
     drawText('ไม่มีรายการหัก', 60, y, 10, c.light)
     y -= 16
   }
