@@ -43,7 +43,7 @@ import {
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
 import { EMPLOYEE_TYPES, PAY_TYPES, TAX_SCHEMES } from '@/lib/access-control'
-import { SS_RATE, SS_MAX } from '@/lib/payroll-constants'
+import { socialSecurityPreview } from '@/lib/payroll-constants'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 
@@ -741,11 +741,27 @@ export default function EmployeeEditClient({
                 {/* ประกันสังคมของพนักงานรายวันคำนวณจากจำนวนวันที่มาทำงานจริง
                     × ค่าจ้างต่อวัน ณ ตอน generate payroll แต่ละเดือน — ไม่มี
                     ตัวเลขคงที่ให้ preview ล่วงหน้าแบบนี้ได้ */}
-                {form.payType === 'MONTHLY' && form.socialSecurity && (
-                  <div className="flex items-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
-                    ประกันสังคม: ฿{Math.min(form.baseSalary * SS_RATE, SS_MAX).toFixed(0)}/เดือน
-                  </div>
-                )}
+                {(() => {
+                  const ssPreview = socialSecurityPreview({
+                    payType: form.payType,
+                    socialSecurityEnabled: form.socialSecurity,
+                    taxScheme: form.taxScheme,
+                    baseSalary: form.baseSalary,
+                  })
+                  if (ssPreview.kind === 'hidden') return null
+                  if (ssPreview.kind === 'off-system') {
+                    return (
+                      <div className="flex items-center p-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white/50">
+                        ไม่มีประกันสังคม (นอกระบบ)
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="flex items-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-sm text-green-400">
+                      ประกันสังคม: ฿{ssPreview.amount.toFixed(0)}/เดือน
+                    </div>
+                  )
+                })()}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <FormField label="ค่าตำแหน่ง (บาท/เดือน)">
