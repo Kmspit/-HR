@@ -144,7 +144,7 @@ export default function ForgotPasswordPage() {
                 <p className="mt-1 text-sm text-slate-400 light:text-slate-600">กรอกรหัส 6 หลักที่ส่งไปยัง<br /><span className="text-green-400">{email}</span></p>
               </div>
               <form onSubmit={handleVerifyOTP} className="space-y-4">
-                <input type="text" placeholder="000000" maxLength={6} className={`${inputCls} text-center text-2xl tracking-[0.5em] font-bold`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required />
+                <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="000000" maxLength={6} className={`${inputCls} text-center text-2xl tracking-[0.5em] font-bold`} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required />
                 <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white hover:bg-green-500 transition-all">
                   ยืนยัน OTP
                 </button>

@@ -399,7 +399,7 @@ function ProductWorkCell({
 
 // ── Assignee picker (multi-select popover — พนักงานที่รับผิดชอบ) ──────────────
 
-function AssigneeCell({
+export function AssigneeCell({
   value, options, readOnly, onChange,
 }: {
   value: string[]
@@ -451,21 +451,30 @@ function AssigneeCell({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/30 p-4"
           onClick={() => setOpen(false)}
         >
+          {/* max-h-[80vh] is a fallback for browsers with no dvh support — on
+              mobile, vh includes the area the browser's address/toolbar chrome
+              covers, so a panel sized against it can render taller than what's
+              actually visible and push "ยกเลิก/ตกลง" off-screen with no way to
+              reach them. dvh (dynamic viewport height) tracks the real visible
+              area as browser chrome shows/hides. Listed after vh so it wins the
+              cascade in browsers that understand it. my-auto centers the panel
+              when it's shorter than the viewport, but still lets it scroll into
+              view (via the outer overflow-y-auto) if it's ever taller. */}
           <div
             ref={panelRef}
             role="dialog"
             aria-modal
             aria-label="เลือกพนักงานที่รับผิดชอบ"
             tabIndex={-1}
-            className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 max-h-[80vh] flex flex-col"
+            className="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 max-h-[80vh] max-h-[80dvh] my-auto flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-sm font-bold text-gray-900 mb-3">เลือกพนักงานที่รับผิดชอบ</h3>
 
-            <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100 mb-4">
+            <div className="flex-1 min-h-0 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100 mb-4">
               {options.length === 0 && (
                 <div className="px-3 py-2 text-sm text-gray-500">ไม่มีรายชื่อพนักงาน</div>
               )}
