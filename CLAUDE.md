@@ -69,8 +69,21 @@ isrwd.bml@gmail.com, ornwaranamkham@gmail.com, admin@demo.com,
 to@gmail.com, somnuek@gmail.com, ping@gmail.com, ksonammarin@gmail.com,
 lawyer@demo.com, toghbk@gmail.com, employee@demo.com
 
+⚠️ **name-collision hazard (ยืนยัน 2026-09-22):** `somnuek@gmail.com`
+(id `cmpwav0qv0003la04dnqc74fc`, role EMPLOYEE) มีชื่อ "นายสมนึก
+วงศ์เสริมทรัพย์" ซ้ำกับ `vongsomnuek081@gmail.com` (id
+`cmpl7m7rj0000i4ik6snaglwz`, role MANAGER_HR — ดู "เก็บไว้ 3 บัญชี" ด้านล่าง)
+เป็นคนละบัญชีกันจริง — เหมือนกรณี chaloe@gmail.com/ceo@kmsp.com ด้านบน
+ต้องระบุด้วย email เท่านั้นตอนลบ ห้ามใช้ชื่อเป็นตัวระบุเด็ดขาด
+
 เก็บไว้ 3 บัญชี (ห้ามลบ): ceo@kmsp.com (id `cmq7gcrdu0000i4f8algtmmlz`),
-manager@demo.com (id `cmpl7m7rj0000i4ik6snaglwz`),
+**vongsomnuek081@gmail.com** (id `cmpl7m7rj0000i4ik6snaglwz`, นายสมนึก
+วงศ์เสริมทรัพย์, role MANAGER_HR — ⚠️ แก้ไข 2026-09-22: บันทึกเดิมเรียกบัญชีนี้
+ว่า `manager@demo.com` ล้าสมัยแล้ว อีเมลถูกเปลี่ยนเป็นอีเมลจริงของ HR คนนี้
+ไปแล้วตั้งแต่ก่อน 2026-09-22 — id เดิมยังถูกต้อง ใช้ email ปัจจุบันนี้อ้างอิง
+จากนี้ไป — ดู name-collision hazard ด้านบนด้วย, นี่คือบัญชี HR
+ตัวเดียวที่กำลังจะถูก gate ให้เป็นคนเดียวที่กรอกฟอร์มรับพนักงานใหม่ได้
+(งานที่วางแผนไว้ 2026-09-22 ยังไม่เขียนโค้ด))**,
 **porramatsoksombat@gmail.com** (id `cmpuxe8qi0001k304hnfmq7tk`, นายปรมัตถ์
 สุขสมบัติ — ⚠️ แก้ไข 2026-09-18: บันทึกก่อนหน้านี้ (2026-09-07) ใส่บัญชีนี้
 ผิดพลาดไว้ในลิสต์รอลบ — ยืนยันแล้วว่าเป็น**พนักงาน IT จริง** ใช้ทดสอบส่งสลิป
