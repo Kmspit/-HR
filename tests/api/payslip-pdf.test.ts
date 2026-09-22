@@ -43,10 +43,6 @@ vi.mock('@/lib/payroll-pdf', () => ({
   generateSalarySlipPdf: vi.fn().mockResolvedValue(Buffer.from('%PDF-mock')),
 }))
 
-vi.mock('@/lib/payroll-tax', () => ({
-  parseTaxDetail: vi.fn().mockReturnValue(null),
-}))
-
 vi.mock('@/lib/payslip-pdf-access', () => ({
   verifyPayslipPdfAccessToken: vi.fn(),
 }))

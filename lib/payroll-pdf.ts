@@ -48,12 +48,6 @@ export type SalarySlipInput = {
   payType?: string | null
   daysWorked?: number | null
   dailyRateUsed?: number | null
-  taxDetail?: {
-    annualGross?: number
-    taxableIncome?: number
-    annualTax?: number
-    monthlyWithholding?: number
-  } | null
   /** ยอดสะสมรายปี (2026-09) — สำหรับออกใบรับรองหักภาษี ณ ที่จ่าย 50 ทวิ,
    * derive สดจาก lib/payroll-ytd.ts (ไม่ใช่ค่า mutable) รวมทุกเดือนของปีนี้
    * จนถึงเดือนของสลิปนี้เอง ไม่มีค่า = ไม่แสดงกล่องนี้ (backward-compat กับ
@@ -224,19 +218,6 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   ) {
     drawText('ไม่มีรายการหัก', 60, y, 10, c.light)
     y -= 16
-  }
-
-  // Tax detail box
-  if (input.taxDetail && input.taxDeduction > 0) {
-    y -= 10
-    drawRect(doc, 40, y - 56, W - 80, 66, { fill: rgb(0.96, 0.98, 1) })
-    drawText('รายละเอียดภาษี (ภงด1)', 52, y - 4, 9, c.accent)
-    const td = input.taxDetail
-    if (td.annualGross) { drawText(`รายได้รวมปีละ: ฿${fmt(td.annualGross)}`, 52, y - 18, 9, c.mid); }
-    if (td.taxableIncome) { drawText(`เงินได้สุทธิ: ฿${fmt(td.taxableIncome)}`, 200, y - 18, 9, c.mid); }
-    if (td.annualTax) { drawText(`ภาษีรายปี: ฿${fmt(td.annualTax)}`, 350, y - 18, 9, c.mid); }
-    drawText(`ภาษีรายเดือน (หัก ณ ที่จ่าย): ฿${fmt(input.taxDeduction)}`, 52, y - 34, 9, c.mid)
-    y -= 66
   }
 
   // YTD box (2026-09) — 4 ยอดสะสมสำหรับออกใบรับรองหักภาษี ณ ที่จ่าย 50 ทวิ
