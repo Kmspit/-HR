@@ -470,13 +470,13 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
           <p className="text-xs text-red-400 text-center flex items-center justify-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" /> {cameraError}
           </p>
-          <button type="button" onClick={retry} className="btn-secondary w-full py-2 text-xs">
+          <button type="button" onClick={retry} className="btn-secondary w-full min-h-[44px] py-2 text-xs">
             <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
             ลองเปิดกล้องอีกครั้ง
           </button>
         </div>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn-secondary w-full py-2 text-xs">
+          <button type="button" onClick={onCancel} className="btn-secondary w-full min-h-[44px] py-2 text-xs">
             ยกเลิก
           </button>
         )}
@@ -510,7 +510,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-50"
+              className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-50"
               aria-label="ยกเลิก"
             >
               <X className="w-5 h-5" />
@@ -569,7 +569,7 @@ export default function FaceAttendanceScan({ action, onVerified, onCancel }: Pro
         <button
           type="button"
           onClick={onCancel}
-          className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 z-[91] flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"
+          className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 z-[91] flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white"
           aria-label="ยกเลิก"
         >
           <X className="w-5 h-5" />

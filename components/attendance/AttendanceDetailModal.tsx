@@ -146,9 +146,14 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
           aria-label="รายละเอียดการลงเวลา"
           className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4 pointer-events-none"
         >
+          {/* md:max-h-[88vh] on its own regresses the dvh fix once the md
+              breakpoint (768px) kicks in — a phone in landscape is often
+              wider than that while still showing browser toolbar chrome.
+              md:max-h-[88dvh] listed after it wins the cascade where
+              supported. */}
           <motion.div
             {...panelAnim}
-            className="relative w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[88vh] md:border md:border-slate-200 md:dark:border-white/[0.07] pointer-events-auto"
+            className="relative w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[88vh] md:max-h-[88dvh] md:border md:border-slate-200 md:dark:border-white/[0.07] pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
           {/* Mobile drag handle */}
@@ -361,8 +366,12 @@ export default function AttendanceDetailModal({ recordId, onClose }: Props) {
             )}
           </div>
 
-          {/* Footer close button */}
-          <div className="flex-shrink-0 px-5 pb-5 pt-3 border-t border-slate-100 dark:border-white/[0.06]">
+          {/* Footer close button — pb-[max(env(safe-area-inset-bottom),1.25rem)]
+              because this footer sits flush against the bottom of the screen
+              on the mobile bottom-sheet layout (fixed inset-x-0 bottom-0
+              above), so a plain pb-5 let the "ปิด" button crowd or partially
+              sit under the iPhone home-indicator/Android gesture bar. */}
+          <div className="flex-shrink-0 px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 border-t border-slate-100 dark:border-white/[0.06]">
             <button
               type="button"
               onClick={onClose}

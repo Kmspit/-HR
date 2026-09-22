@@ -324,7 +324,15 @@ export default function NewAssignmentModal({
               {canEditSalary && (
                 <div>
                   <label htmlFor="new-salary-field" className="text-xs text-slate-500">เงินเดือน *</label>
-                  <input id="new-salary-field" type="number" min="0" value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white" />
+                  {/* Not NumericInput here — form.baseSalary is deliberately
+                      '' (not 0) until HR types something, so the placeholder
+                      hint below shows; routing this through NumericInput's
+                      number contract would collapse that empty state into a
+                      literal displayed "0". type="text" + inputMode="decimal"
+                      gets the same mobile-keyboard fix without that regression
+                      (and, same as NumericInput, sidesteps the scroll-wheel
+                      quirk entirely since that's a type="number"-only bug). */}
+                  <input id="new-salary-field" type="text" inputMode="decimal" value={form.baseSalary} onChange={(e) => { if (/^\d*\.?\d*$/.test(e.target.value)) set('baseSalary', e.target.value) }} className="mt-1 w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white" />
                   {errors.baseSalary && <p className="mt-1 text-[12px] text-red-400">{errors.baseSalary}</p>}
                 </div>
               )}

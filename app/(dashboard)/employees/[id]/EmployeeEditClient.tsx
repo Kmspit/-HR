@@ -46,6 +46,7 @@ import { EMPLOYEE_TYPES, PAY_TYPES, TAX_SCHEMES } from '@/lib/access-control'
 import { socialSecurityPreview } from '@/lib/payroll-constants'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
+import NumericInput from '@/components/ui/NumericInput'
 
 type Employee = {
   id: string
@@ -721,19 +722,19 @@ export default function EmployeeEditClient({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {form.payType === 'DAILY' ? (
                   <FormField label="ค่าจ้างต่อวัน (บาท/วัน)">
-                    <input
-                      type="number"
+                    <NumericInput
                       value={form.dailyRate}
-                      onChange={(e) => set('dailyRate', parseFloat(e.target.value) || 0)}
+                      onChange={(v) => set('dailyRate', v)}
+                      min={0}
                       className={profileInputClass}
                     />
                   </FormField>
                 ) : (
                   <FormField label="เงินเดือนฐาน (บาท/เดือน)">
-                    <input
-                      type="number"
+                    <NumericInput
                       value={form.baseSalary}
-                      onChange={(e) => set('baseSalary', parseFloat(e.target.value) || 0)}
+                      onChange={(v) => set('baseSalary', v)}
+                      min={0}
                       className={profileInputClass}
                     />
                   </FormField>

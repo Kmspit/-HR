@@ -254,7 +254,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
 
           {phase === 'camera' && (
             <div className="flex gap-2">
-              <button type="button" onClick={() => setPhase('intro')} className="btn-secondary flex-1 py-2.5">
+              <button type="button" onClick={() => setPhase('intro')} className="btn-secondary flex-1 min-h-[44px] py-2.5">
                 <ArrowLeft className="w-4 h-4 inline mr-1" />
                 ย้อนกลับ
               </button>
@@ -265,7 +265,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
                   resetScan()
                   setPhase('scan')
                 }}
-                className="btn-primary flex-1 py-2.5"
+                className="btn-primary flex-1 min-h-[44px] py-2.5"
               >
                 เริ่มสแกนอัตโนมัติ
               </button>
@@ -318,7 +318,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
                     setPhase('camera')
                   }}
                   disabled={saving}
-                  className="btn-secondary flex-1 py-2 text-xs"
+                  className="btn-secondary flex-1 min-h-[44px] py-2 text-xs"
                 >
                   เริ่มใหม่
                 </button>
@@ -331,7 +331,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
               <p className="text-xs text-red-400 flex items-center justify-center gap-1 text-center">
                 <AlertCircle className="w-3.5 h-3.5" /> {cameraError}
               </p>
-              <button type="button" onClick={retry} className="btn-secondary w-full py-2 text-xs">
+              <button type="button" onClick={retry} className="btn-secondary w-full min-h-[44px] py-2 text-xs">
                 <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
                 ลองเปิดกล้องอีกครั้ง
               </button>
@@ -349,7 +349,7 @@ export default function FaceRegistrationCard({ onRegistered, allowUpdate, onCanc
                   resetScan()
                   setPhase('camera')
                 }}
-                className="btn-secondary w-full py-2 text-xs"
+                className="btn-secondary w-full min-h-[44px] py-2 text-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
                 เริ่มใหม่
