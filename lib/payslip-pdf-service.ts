@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
-import { parseTaxDetail } from '@/lib/payroll-tax'
 import { payslipPdfFilename } from '@/lib/payslip-cloudinary-path'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
 import { computePayrollYtd } from '@/lib/payroll-ytd'
@@ -38,7 +37,6 @@ export async function buildPayrollSlipPdfBuffer(
 }> {
   const settings = await getCachedCompanySettings()
   const companyName = settings?.companyName?.trim() || DEFAULT_COMPANY
-  const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
   const ytd = await computePayrollYtd(payroll.userId, payroll.year, payroll.month)
   // totalInstallments ไม่ได้ snapshot ไว้ที่ Payroll ต้องดึงจากแผนของ user
   // โดยตรง — เดียวกับเหตุผลใน app/api/payslip/[id]/pdf/route.ts
@@ -79,14 +77,6 @@ export async function buildPayrollSlipPdfBuffer(
       payType: payroll.payType,
       daysWorked: payroll.daysWorked,
       dailyRateUsed: payroll.dailyRateUsed,
-      taxDetail: taxDetail
-        ? {
-            annualGross: taxDetail.annualGross,
-            taxableIncome: taxDetail.taxableIncome,
-            annualTax: taxDetail.annualTax,
-            monthlyWithholding: taxDetail.monthlyWithholding,
-          }
-        : null,
       ytd,
     },
     password,

@@ -3,7 +3,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { generateSalarySlipPdf } from '@/lib/payroll-pdf'
-import { parseTaxDetail } from '@/lib/payroll-tax'
 import { HR_ROLES } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
@@ -61,7 +60,6 @@ export async function GET(
     const settings = await getCachedCompanySettings()
     const companyName = settings?.companyName ?? 'บริษัท'
 
-    const taxDetail = parseTaxDetail(payroll.taxDetail ?? null)
     const ytd = await computePayrollYtd(payroll.userId, payroll.year, payroll.month)
     // totalInstallments ไม่ได้ snapshot ไว้ที่ Payroll (มีแค่ installmentNo ของ
     // เดือนนี้) ต้องดึงจากแผนของ user โดยตรง — ไม่มีแผน (เช่นผ่อนครบ/ถูกลบแผน
@@ -102,14 +100,6 @@ export async function GET(
       payType: payroll.payType,
       daysWorked: payroll.daysWorked,
       dailyRateUsed: payroll.dailyRateUsed,
-      taxDetail: taxDetail
-        ? {
-            annualGross: taxDetail.annualGross,
-            taxableIncome: taxDetail.taxableIncome,
-            annualTax: taxDetail.annualTax,
-            monthlyWithholding: taxDetail.monthlyWithholding,
-          }
-        : null,
       ytd,
     })
 
