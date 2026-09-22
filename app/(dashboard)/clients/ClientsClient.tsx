@@ -356,7 +356,14 @@ export default function ClientsClient({ userRole }: Props) {
 
       {/* ── Link Task Modal ── */}
       {showLinkTask && (
-        <PortalModal onClose={() => setShowLinkTask(false)} ariaLabel="เลือกคดีที่จะเชื่อม" panelClassName={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh]`}>
+        // max-h-[80vh] is a fallback for browsers with no dvh support — on
+        // mobile, vh includes the area the browser's address/toolbar chrome
+        // covers, so the panel can render taller than what's actually visible.
+        // dvh (dynamic viewport height) tracks the real visible area as
+        // browser chrome shows/hides. Listed after vh so it wins the cascade
+        // in browsers that understand it; PortalModal's own backdrop already
+        // scrolls (overflow-y-auto) as a second safety net.
+        <PortalModal onClose={() => setShowLinkTask(false)} ariaLabel="เลือกคดีที่จะเชื่อม" panelClassName={`${dashboardDialogPanel} w-full max-w-md p-6 flex flex-col gap-4 max-h-[80vh] max-h-[80dvh]`}>
             <h2 className="font-semibold text-white">เลือกคดีที่จะเชื่อม</h2>
             <div className="flex gap-2">
               <input value={taskSearchQ} onChange={(e) => setTaskSearchQ(e.target.value)}
@@ -365,7 +372,7 @@ export default function ClientsClient({ userRole }: Props) {
                 className={`flex-1 ${modalFieldInput}`} />
               <button onClick={() => fetchAvailableTasks(taskSearchQ)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm">ค้นหา</button>
             </div>
-            <div className="flex-1 overflow-y-auto flex flex-col gap-1.5">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5">
               {availableTasks.map((t) => (
                 <button key={t.id} onClick={() => handleLinkTask(t.id)}
                   className="text-left border border-gray-200 rounded-lg p-2.5 hover:border-green-400 hover:bg-green-50 transition-colors">

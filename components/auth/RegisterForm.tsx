@@ -566,7 +566,7 @@ export default function RegisterForm() {
             </div>
             <div className="space-y-1.5">
               <label htmlFor="field-9" className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เลขบัตรประชาชน *</label>
-              <input id="field-9" type="text" placeholder="1234567890123" maxLength={13} className={inputClass('nationalId')} value={form.nationalId} onChange={(e) => set('nationalId', e.target.value.replace(/\D/g, '').slice(0, 13))} />
+              <input id="field-9" type="text" inputMode="numeric" placeholder="1234567890123" maxLength={13} className={inputClass('nationalId')} value={form.nationalId} onChange={(e) => set('nationalId', e.target.value.replace(/\D/g, '').slice(0, 13))} />
               {errors.nationalId && <p className="text-xs text-red-400">{errors.nationalId}</p>}
             </div>
           </div>

@@ -532,9 +532,18 @@ export default function SecurityClient() {
       )}
 
       {/* Restore modal */}
+      {/* max-h-[85vh] is a fallback for browsers with no dvh support — on
+          mobile, vh includes the area the browser's address/toolbar chrome
+          covers, so the panel can render taller than what's actually visible.
+          dvh (dynamic viewport height) tracks the real visible area as
+          browser chrome shows/hides. Listed after vh so it wins the cascade
+          in browsers that understand it; the panel's own overflow-y-auto
+          already scrolls its whole content (including the footer buttons)
+          as one unit, and PortalModal's backdrop scrolls too as a second
+          safety net. */}
       {restoreModalOpen && restoreTarget && (
         <PortalModal onClose={closeRestore} ariaLabel="กู้คืนข้อมูลจาก backup" backdropClassName="bg-black/60"
-          panelClassName="glass-card w-full max-w-lg rounded-2xl border dark:border-white/10 p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+          panelClassName="glass-card w-full max-w-lg rounded-2xl border dark:border-white/10 p-5 space-y-4 max-h-[85vh] max-h-[85dvh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold dark:text-white flex items-center gap-2">
