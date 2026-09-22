@@ -13,7 +13,7 @@ import {
 } from '@/lib/employee-profile-validation'
 import { copyAddressIfSame, type RegisterAddress } from '@/lib/register-form-validation'
 import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfChanged } from '@/lib/employee-audit'
-import type { PaymentMethod } from '@prisma/client'
+import type { PaymentMethod, BloodType, EducationLevel } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
@@ -42,6 +42,19 @@ const PROFILE_SELECT = {
   regAmphoe: true,
   regProvince: true,
   regPostalCode: true,
+  bloodType: true,
+  fatherName: true,
+  fatherOccupation: true,
+  motherName: true,
+  motherOccupation: true,
+  siblingsTotal: true,
+  siblingsOrder: true,
+  educationLevel: true,
+  educationInstitution: true,
+  educationMajor: true,
+  educationGraduationYear: true,
+  specialSkills: true,
+  workHistoryText: true,
 } as const
 
 /** Every field defaults to '' / false — a legacy employee (pre step 5/6)
@@ -60,6 +73,19 @@ function emptyProfileResponse(): EmployeeProfileForm {
     currentAddress: { ...emptyAddress },
     registeredAddress: { ...emptyAddress },
     sameAsCurrentAddress: false,
+    bloodType: '',
+    fatherName: '',
+    fatherOccupation: '',
+    motherName: '',
+    motherOccupation: '',
+    siblingsTotal: 0,
+    siblingsOrder: 0,
+    educationLevel: '',
+    educationInstitution: '',
+    educationMajor: '',
+    educationGraduationYear: 0,
+    specialSkills: '',
+    workHistoryText: '',
   }
 }
 
@@ -107,6 +133,19 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
           postalCode: profile.regPostalCode ?? '',
         },
         sameAsCurrentAddress: profile.sameAsCurrentAddress,
+        bloodType: profile.bloodType ?? '',
+        fatherName: profile.fatherName ?? '',
+        fatherOccupation: profile.fatherOccupation ?? '',
+        motherName: profile.motherName ?? '',
+        motherOccupation: profile.motherOccupation ?? '',
+        siblingsTotal: profile.siblingsTotal ?? 0,
+        siblingsOrder: profile.siblingsOrder ?? 0,
+        educationLevel: profile.educationLevel ?? '',
+        educationInstitution: profile.educationInstitution ?? '',
+        educationMajor: profile.educationMajor ?? '',
+        educationGraduationYear: profile.educationGraduationYear ?? 0,
+        specialSkills: profile.specialSkills ?? '',
+        workHistoryText: profile.workHistoryText ?? '',
       } satisfies EmployeeProfileForm,
     })
   } catch (err) {
@@ -150,6 +189,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Already validated by validateEmployeeProfile() above (isValidPaymentMethod) —
     // blank stays null, anything else is a known-good enum value at this point.
     const paymentMethod = (form.paymentMethod.trim() || null) as PaymentMethod | null
+    // Same reasoning — already validated by isValidBloodType/isValidEducationLevel.
+    const bloodType = (form.bloodType.trim() || null) as BloodType | null
+    const educationLevel = (form.educationLevel.trim() || null) as EducationLevel | null
+    // HR-editable employee-fields batch (2026-09-22) — 0 means "not entered"
+    // for these 3 numeric fields (same convention as EmployeeProfileForm's
+    // comment), so it's stored as null rather than a literal 0.
+    const numberOrNull = (n: number) => (n > 0 ? n : null)
 
     await prisma.$transaction([
       prisma.employeeProfile.upsert({
@@ -178,6 +224,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           regAmphoe: trimOrNull(effectiveRegistered.amphoe),
           regProvince: trimOrNull(effectiveRegistered.province),
           regPostalCode: trimOrNull(effectiveRegistered.postalCode),
+          bloodType,
+          fatherName: trimOrNull(form.fatherName),
+          fatherOccupation: trimOrNull(form.fatherOccupation),
+          motherName: trimOrNull(form.motherName),
+          motherOccupation: trimOrNull(form.motherOccupation),
+          siblingsTotal: numberOrNull(form.siblingsTotal),
+          siblingsOrder: numberOrNull(form.siblingsOrder),
+          educationLevel,
+          educationInstitution: trimOrNull(form.educationInstitution),
+          educationMajor: trimOrNull(form.educationMajor),
+          educationGraduationYear: numberOrNull(form.educationGraduationYear),
+          specialSkills: trimOrNull(form.specialSkills),
+          workHistoryText: trimOrNull(form.workHistoryText),
         },
         update: {
           nationality: trimOrNull(form.nationality),
@@ -202,6 +261,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           regAmphoe: trimOrNull(effectiveRegistered.amphoe),
           regProvince: trimOrNull(effectiveRegistered.province),
           regPostalCode: trimOrNull(effectiveRegistered.postalCode),
+          bloodType,
+          fatherName: trimOrNull(form.fatherName),
+          fatherOccupation: trimOrNull(form.fatherOccupation),
+          motherName: trimOrNull(form.motherName),
+          motherOccupation: trimOrNull(form.motherOccupation),
+          siblingsTotal: numberOrNull(form.siblingsTotal),
+          siblingsOrder: numberOrNull(form.siblingsOrder),
+          educationLevel,
+          educationInstitution: trimOrNull(form.educationInstitution),
+          educationMajor: trimOrNull(form.educationMajor),
+          educationGraduationYear: numberOrNull(form.educationGraduationYear),
+          specialSkills: trimOrNull(form.specialSkills),
+          workHistoryText: trimOrNull(form.workHistoryText),
         },
       }),
       // Legacy free-text cache — still read directly by the employee edit

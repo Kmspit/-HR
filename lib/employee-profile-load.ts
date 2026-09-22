@@ -17,6 +17,21 @@ export type EmployeeProfileLoadData = {
   currentAddress: RegisterAddress
   registeredAddress: RegisterAddress
   sameAsCurrentAddress: boolean
+  // HR-editable employee-fields batch (2026-09-22) — see
+  // lib/employee-profile-validation.ts's EmployeeProfileForm (same shape).
+  bloodType: string
+  fatherName: string
+  fatherOccupation: string
+  motherName: string
+  motherOccupation: string
+  siblingsTotal: number
+  siblingsOrder: number
+  educationLevel: string
+  educationInstitution: string
+  educationMajor: string
+  educationGraduationYear: number
+  specialSkills: string
+  workHistoryText: string
 }
 
 export type EmployeeProfileLoadState =

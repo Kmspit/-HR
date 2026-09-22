@@ -1,6 +1,8 @@
 import { isValidEmailInput } from '@/lib/profile-validators-client'
 import { validateRegisterAddress, type RegisterAddress, type RegisterAddressErrors } from '@/lib/register-form-validation'
 import { isValidPaymentMethod } from '@/lib/payment-method'
+import { isValidBloodType } from '@/lib/blood-type'
+import { isValidEducationLevel } from '@/lib/education-level'
 
 /**
  * Pure validation for the HR employee-edit "ข้อมูลส่วนตัวเพิ่มเติม" tab
@@ -26,11 +28,32 @@ export type EmployeeProfileForm = {
   currentAddress: RegisterAddress
   registeredAddress: RegisterAddress
   sameAsCurrentAddress: boolean
+  // HR-editable employee-fields batch (2026-09-22) — blood group,
+  // parents/siblings summary, highest education, special skills, prior work
+  // history as free text. siblingsTotal/siblingsOrder/educationGraduationYear
+  // are 0 when unset (same "0 means not entered" convention as the payroll
+  // allowance fields on EmployeeEditClient's NumericInput usage) — the PUT
+  // route below converts 0 to null before writing.
+  bloodType: string
+  fatherName: string
+  fatherOccupation: string
+  motherName: string
+  motherOccupation: string
+  siblingsTotal: number
+  siblingsOrder: number
+  educationLevel: string
+  educationInstitution: string
+  educationMajor: string
+  educationGraduationYear: number
+  specialSkills: string
+  workHistoryText: string
 }
 
 export type EmployeeProfileErrors = {
   personalEmail?: string
   paymentMethod?: string
+  bloodType?: string
+  educationLevel?: string
   currentAddress: RegisterAddressErrors
   registeredAddress: RegisterAddressErrors
 }
@@ -56,6 +79,14 @@ export function validateEmployeeProfile(form: EmployeeProfileForm): EmployeeProf
     errors.paymentMethod = 'วิธีจ่ายเงินไม่ถูกต้อง'
   }
 
+  if (form.bloodType.trim() && !isValidBloodType(form.bloodType)) {
+    errors.bloodType = 'กรุ๊ปเลือดไม่ถูกต้อง'
+  }
+
+  if (form.educationLevel.trim() && !isValidEducationLevel(form.educationLevel)) {
+    errors.educationLevel = 'วุฒิการศึกษาไม่ถูกต้อง'
+  }
+
   if (!isAddressBlank(form.currentAddress)) {
     errors.currentAddress = validateRegisterAddress(form.currentAddress)
   }
@@ -71,6 +102,8 @@ export function employeeProfileHasErrors(errors: EmployeeProfileErrors): boolean
   return (
     Boolean(errors.personalEmail) ||
     Boolean(errors.paymentMethod) ||
+    Boolean(errors.bloodType) ||
+    Boolean(errors.educationLevel) ||
     Object.keys(errors.currentAddress).length > 0 ||
     Object.keys(errors.registeredAddress).length > 0
   )
@@ -83,6 +116,8 @@ export function employeeProfileHasErrors(errors: EmployeeProfileErrors): boolean
 export function firstEmployeeProfileError(errors: EmployeeProfileErrors): string {
   if (errors.personalEmail) return errors.personalEmail
   if (errors.paymentMethod) return errors.paymentMethod
+  if (errors.bloodType) return errors.bloodType
+  if (errors.educationLevel) return errors.educationLevel
   const first = Object.values(errors.currentAddress)[0] ?? Object.values(errors.registeredAddress)[0]
   return first ?? 'ข้อมูลไม่ถูกต้อง'
 }
@@ -108,6 +143,11 @@ function coerceAddress(v: unknown): RegisterAddress {
  * exact same validateEmployeeProfile() rather than two hand-written checks
  * that could quietly drift apart across 20 fields.
  */
+function coerceNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
 export function coerceEmployeeProfileForm(body: unknown): EmployeeProfileForm {
   const o = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
   return {
@@ -119,5 +159,18 @@ export function coerceEmployeeProfileForm(body: unknown): EmployeeProfileForm {
     currentAddress: coerceAddress(o.currentAddress),
     registeredAddress: coerceAddress(o.registeredAddress),
     sameAsCurrentAddress: o.sameAsCurrentAddress === true,
+    bloodType: typeof o.bloodType === 'string' ? o.bloodType : '',
+    fatherName: typeof o.fatherName === 'string' ? o.fatherName : '',
+    fatherOccupation: typeof o.fatherOccupation === 'string' ? o.fatherOccupation : '',
+    motherName: typeof o.motherName === 'string' ? o.motherName : '',
+    motherOccupation: typeof o.motherOccupation === 'string' ? o.motherOccupation : '',
+    siblingsTotal: coerceNumber(o.siblingsTotal),
+    siblingsOrder: coerceNumber(o.siblingsOrder),
+    educationLevel: typeof o.educationLevel === 'string' ? o.educationLevel : '',
+    educationInstitution: typeof o.educationInstitution === 'string' ? o.educationInstitution : '',
+    educationMajor: typeof o.educationMajor === 'string' ? o.educationMajor : '',
+    educationGraduationYear: coerceNumber(o.educationGraduationYear),
+    specialSkills: typeof o.specialSkills === 'string' ? o.specialSkills : '',
+    workHistoryText: typeof o.workHistoryText === 'string' ? o.workHistoryText : '',
   }
 }
