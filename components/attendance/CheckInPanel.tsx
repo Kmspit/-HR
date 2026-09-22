@@ -648,7 +648,7 @@ export default function CheckInPanel({
                 type="button"
                 onClick={getGps}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 style={{ background: accentGradient }}
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -746,7 +746,7 @@ export default function CheckInPanel({
               <button
                 type="button"
                 onClick={retryCamera}
-                className="btn-secondary w-full py-2 text-xs"
+                className="btn-secondary w-full min-h-[44px] py-2 text-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5 inline mr-1" />
                 ลองเปิดกล้องอีกครั้ง
@@ -804,7 +804,7 @@ export default function CheckInPanel({
                 setCapturedPhoto(null)
                 if (faceRequired) setFacePayload(null)
               }}
-              className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm"
+              className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-white/10 text-slate-400 text-sm"
             >
               <RotateCcw className="w-3.5 h-3.5 inline mr-1" /> ถ่ายใหม่
             </button>

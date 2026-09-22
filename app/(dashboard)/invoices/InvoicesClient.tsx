@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import PortalModal from '@/components/ui/PortalModal'
+import NumericInput from '@/components/ui/NumericInput'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -402,7 +403,7 @@ function PaymentsTab({ invoice, onRefresh, canManage }: { invoice: Invoice; onRe
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="field-1" className="text-xs text-gray-500 mb-1 block">จำนวนเงิน (บาท) *</label>
-              <input id="field-1" type="number" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <NumericInput id="field-1" min={0} value={Number(form.amount) || 0} onChange={v => setForm(f => ({...f, amount: String(v)}))} className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
             <div>
               <label htmlFor="field-2" className="text-xs text-gray-500 mb-1 block">วันที่รับชำระ *</label>
@@ -607,8 +608,13 @@ function InvoiceModal({ userId, onClose, onSave }: { userId: string; onClose: ()
                 {lineItems.map((l, i) => (
                   <div key={l._key} className="grid grid-cols-12 gap-2">
                     <input value={l.description} onChange={e => updateLine(i, 'description', e.target.value)} placeholder="รายการ" className="col-span-6 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                    <input type="number" value={l.qty} onChange={e => updateLine(i, 'qty', e.target.value)} placeholder="จำนวน" className="col-span-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                    <input type="number" value={l.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} placeholder="ราคา" className="col-span-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    <NumericInput mode="integer" min={0} value={Number(l.qty) || 0} onChange={v => updateLine(i, 'qty', String(v))} placeholder="จำนวน" className="col-span-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    {/* Not NumericInput — unitPrice deliberately starts '' (not
+                        0) on a new line so the "ราคา" placeholder shows; routing
+                        it through NumericInput's number contract would collapse
+                        that into a literal displayed "0". Same reasoning as the
+                        salary fields above. */}
+                    <input type="text" inputMode="decimal" value={l.unitPrice} onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) updateLine(i, 'unitPrice', e.target.value) }} placeholder="ราคา" className="col-span-3 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                     <button onClick={() => removeLine(i)} disabled={lineItems.length === 1} aria-label="ลบรายการ" className="col-span-1 text-red-400 hover:text-red-600 text-lg disabled:opacity-30">×</button>
                   </div>
                 ))}

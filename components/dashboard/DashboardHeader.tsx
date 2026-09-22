@@ -14,7 +14,15 @@ type Props = {
 export default function DashboardHeader({ user, unreadCount = 0 }: Props) {
   return (
     <header
-      className="sticky top-0 z-40 flex h-16 items-center gap-3 px-4 md:px-6
+      // pt-[env(safe-area-inset-top,0px)] — sticky top-0 otherwise renders
+      // its content flush against the very top of the screen, under the
+      // phone's status bar/notch on devices that report a safe-area inset
+      // (confirmed via a real screenshot, 2026-09-22). min-h-16 (not h-16)
+      // so the extra top padding grows the header instead of squeezing its
+      // already-centered content into a fixed height. Same env()-with-
+      // fallback pattern Sidebar.tsx already uses for its bottom edge.
+      className="sticky top-0 z-40 flex min-h-16 items-center gap-3 px-4 md:px-6
+        pt-[env(safe-area-inset-top,0px)]
         bg-white dark:bg-[rgba(7,11,20,0.98)] border-b border-slate-200 shadow-sm
         md:bg-white/95 md:backdrop-blur-[20px] md:dark:bg-[rgba(7,11,20,0.90)]
         dark:border-[rgba(255,255,255,0.06)] dark:shadow-none"

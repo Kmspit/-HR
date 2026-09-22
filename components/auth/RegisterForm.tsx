@@ -710,7 +710,14 @@ export default function RegisterForm() {
                   </div>
                   <div className="space-y-1.5">
                     <label htmlFor={`dep-${i}-nid`} className="text-xs font-semibold uppercase tracking-wider text-slate-400 light:text-slate-600">เลขบัตรประชาชน</label>
-                    <input id={`dep-${i}-nid`} type="text" placeholder="ไม่บังคับ" className={addressInputClass()} value={dep.nationalId} onChange={(e) => setDependentField(i, 'nationalId', e.target.value)} />
+                    {/* Not NumericInput — a 13-digit ID is a fixed-length
+                        digit CODE, not an arithmetic quantity; routing it
+                        through NumericInput's number contract would strip
+                        a meaningful leading zero (Number("0123...") loses
+                        the leading 0). Same inputMode="numeric" fix already
+                        used for the main nationalId field above and for
+                        DependentSection.tsx's equivalent field. */}
+                    <input id={`dep-${i}-nid`} type="text" inputMode="numeric" placeholder="ไม่บังคับ" className={addressInputClass()} value={dep.nationalId} onChange={(e) => setDependentField(i, 'nationalId', e.target.value)} />
                   </div>
                 </div>
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-300">

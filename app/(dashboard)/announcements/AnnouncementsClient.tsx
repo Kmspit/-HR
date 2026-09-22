@@ -719,10 +719,15 @@ export default function AnnouncementsClient({
       )}
 
       {/* ── Archive Modal ── */}
+      {/* sm:max-h-[70vh] on its own regresses the dvh fix above once the sm:
+          breakpoint (640px) kicks in — a phone in landscape is often wider
+          than that while still showing browser toolbar chrome, so vh
+          overstates the actually visible height there too. sm:max-h-[70dvh]
+          listed after it wins the cascade where supported. */}
       {showArchive && (
         <PortalModal onClose={() => setShowArchive(false)} ariaLabel="ประกาศ Archive" dismissOnBackdrop
           backdropClassName="bg-black/60 backdrop-blur-sm" wrapperClassName="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4"
-          panelClassName="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col">
+          panelClassName="w-full sm:max-w-lg max-h-[80dvh] sm:max-h-[70vh] sm:max-h-[70dvh] rounded-t-2xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
                 <Archive size={15} /> ประกาศ Archive

@@ -517,7 +517,12 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
     <>
       <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div role="dialog" aria-modal aria-label={task.title} className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
-        <div ref={panelRef} tabIndex={-1} className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[90vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
+        {/* md:max-h-[90vh] on its own regresses the dvh fix once the md
+            breakpoint (768px) kicks in — a phone in landscape is often
+            wider than that while still showing browser toolbar chrome.
+            md:max-h-[90dvh] listed after it wins the cascade where
+            supported. */}
+        <div ref={panelRef} tabIndex={-1} className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[90vh] md:max-h-[90dvh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
           onClick={(e) => e.stopPropagation()}>
 
           <div className="flex-shrink-0 flex justify-center pt-3 pb-1 md:hidden">
@@ -979,7 +984,12 @@ export function TaskDetailModal({ task, role, userId, onClose, onUpdated }: Deta
             </>}
           </div>
 
-          <div className="flex-shrink-0 px-5 pb-5 pt-3 border-t border-slate-100 dark:border-white/[0.06]">
+          {/* pb-[max(env(safe-area-inset-bottom),1.25rem)] — this footer sits
+              flush against the bottom of the screen on the mobile bottom-sheet
+              layout (fixed inset-x-0 bottom-0 above), so a plain pb-5 lets the
+              "ปิด" button crowd or partially sit under the iPhone home-indicator/
+              Android gesture bar. Same pattern Sidebar.tsx already uses. */}
+          <div className="flex-shrink-0 px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 border-t border-slate-100 dark:border-white/[0.06]">
             <button type="button" onClick={onClose}
               className="w-full rounded-xl py-3 text-[14px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.10] transition-colors">
               ปิด
@@ -1098,8 +1108,12 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, w
   return (
     <>
       <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      {/* md:max-h-[92vh] on its own regresses the dvh fix once the md
+          breakpoint (768px) kicks in — same reasoning as the sibling edit
+          modal above. md:max-h-[92dvh] listed after it wins the cascade
+          where supported. */}
       <div role="dialog" aria-modal aria-label="สร้างงาน / รับเรื่อง" className="fixed z-60 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
-        <div ref={panelRef} tabIndex={-1} className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[92vh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
+        <div ref={panelRef} tabIndex={-1} className="relative w-full md:max-w-xl bg-white dark:bg-slate-900 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[92vh] md:max-h-[92dvh] md:border md:border-slate-200 md:dark:border-white/[0.07]"
           onClick={(e) => e.stopPropagation()}>
 
           <div className="flex-shrink-0 flex justify-center pt-3 pb-1 md:hidden">
@@ -1307,7 +1321,9 @@ export function CreateTaskModal({ employees, assignerName, onClose, onCreated, w
               {error && <p className="rounded-xl text-[13px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2">{error}</p>}
             </div>
 
-            <div className="sticky bottom-0 px-5 pb-5 pt-3 border-t border-slate-100 dark:border-white/[0.06] bg-white dark:bg-slate-900">
+            {/* pb-[max(env(safe-area-inset-bottom),1.25rem)] — same reasoning
+                as the sibling edit-task modal's footer above. */}
+            <div className="sticky bottom-0 px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 border-t border-slate-100 dark:border-white/[0.06] bg-white dark:bg-slate-900">
               <button type="submit" disabled={isSubmitting}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold text-white shadow-sm transition-all disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#22c55e,#6366f1)' }}>

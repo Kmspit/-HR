@@ -329,8 +329,14 @@ export default function ExpenseClaimClient({ userId, userRole }: Props) {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label htmlFor="field-3" className="text-xs font-medium text-gray-700">จำนวนเงิน (บาท) *</label>
-                  <input id="field-3" required type="number" min="0" step="0.01" value={form.amount}
-                    onChange={e => setForm({...form,amount:e.target.value})} className={modalFieldInput} placeholder="0.00" />
+                  {/* Not NumericInput — form.amount deliberately starts ''
+                      (not 0) so the "0.00" placeholder shows; routing it
+                      through NumericInput's number contract would collapse
+                      that empty state into a literal displayed "0".
+                      type="text" + inputMode="decimal" gets the same mobile-
+                      keyboard fix without that regression. */}
+                  <input id="field-3" required type="text" inputMode="decimal" value={form.amount}
+                    onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setForm({...form,amount:e.target.value}) }} className={modalFieldInput} placeholder="0.00" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
