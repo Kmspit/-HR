@@ -121,37 +121,72 @@ export type ParsedAttendanceImportWorkbook =
   | { ok: true; rows: AttendanceImportRawRow[] }
   | { ok: false; headerError: string }
 
+/** How many leading rows to scan for the real header row before giving up.
+ *  The real work-log export (lib/attendance-work-log-export.ts) isn't a
+ *  plain "header on row 1" file — it has a title row, employee/department
+ *  meta rows, and a merged group-header row before the actual column-header
+ *  row (which lands on row 5 or 6 depending on whether a department line is
+ *  present). A hand-built simple file may still legitimately have its
+ *  header on row 1. 10 rows is comfortably more than either real shape needs. */
+const MAX_HEADER_SCAN_ROWS = 10
+
+function matchHeaderRow(sheet: ExcelJS.Worksheet, rowNumber: number): Partial<Record<keyof typeof REQUIRED_HEADERS, number>> {
+  const colIndex: Partial<Record<keyof typeof REQUIRED_HEADERS, number>> = {}
+  sheet.getRow(rowNumber).eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    const text = cellString(cell).trim()
+    for (const [key, label] of Object.entries(REQUIRED_HEADERS)) {
+      if (text === label) colIndex[key as keyof typeof REQUIRED_HEADERS] = colNumber
+    }
+  })
+  return colIndex
+}
+
 /** Reads the uploaded .xlsx buffer and returns one AttendanceImportRawRow per
- *  data row (row 2 onward) — pure parsing, no DB access. Column order is NOT
- *  assumed to match the export exactly; columns are located by matching each
- *  required header's Thai text (case/whitespace-tolerant), so a file with
- *  extra/reordered non-required columns (as long as the 6 required headers
- *  are all present somewhere in row 1) still parses. */
+ *  data row (the row right after the located header row onward) — pure
+ *  parsing, no DB access. Neither the header row's POSITION nor the column
+ *  ORDER is assumed to match the export exactly: the first of the leading
+ *  MAX_HEADER_SCAN_ROWS rows whose cells contain all 6 required headers'
+ *  Thai text (case/whitespace-tolerant, any column order) is used as the
+ *  header row, so both the real work-log export's multi-row title/meta/
+ *  group-header preamble and a plain hand-built "header on row 1" file
+ *  parse correctly. */
 export async function parseAttendanceImportWorkbook(buffer: ArrayBuffer | Buffer): Promise<ParsedAttendanceImportWorkbook> {
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(buffer as ArrayBuffer)
   const sheet = workbook.worksheets[0]
   if (!sheet) return { ok: false, headerError: 'ไม่พบชีทข้อมูลในไฟล์ที่อัปโหลด' }
 
-  const headerRow = sheet.getRow(1)
-  const colIndex: Partial<Record<keyof typeof REQUIRED_HEADERS, number>> = {}
-  headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    const text = cellString(cell).trim()
-    for (const [key, label] of Object.entries(REQUIRED_HEADERS)) {
-      if (text === label) colIndex[key as keyof typeof REQUIRED_HEADERS] = colNumber
-    }
-  })
+  const requiredCount = Object.keys(REQUIRED_HEADERS).length
+  const scanLimit = Math.min(MAX_HEADER_SCAN_ROWS, sheet.rowCount)
+  let headerRowNumber: number | null = null
+  let colIndex: Partial<Record<keyof typeof REQUIRED_HEADERS, number>> = {}
+  let bestColIndex: Partial<Record<keyof typeof REQUIRED_HEADERS, number>> = {}
+  let bestMissingCount = Infinity
 
-  const missing = Object.entries(REQUIRED_HEADERS)
-    .filter(([key]) => colIndex[key as keyof typeof REQUIRED_HEADERS] == null)
-    .map(([, label]) => label)
-  if (missing.length > 0) {
+  for (let r = 1; r <= scanLimit; r++) {
+    const candidate = matchHeaderRow(sheet, r)
+    const missingCount = requiredCount - Object.keys(candidate).length
+    if (missingCount === 0) {
+      headerRowNumber = r
+      colIndex = candidate
+      break
+    }
+    if (missingCount < bestMissingCount) {
+      bestMissingCount = missingCount
+      bestColIndex = candidate
+    }
+  }
+
+  if (headerRowNumber == null) {
+    const missing = Object.entries(REQUIRED_HEADERS)
+      .filter(([key]) => bestColIndex[key as keyof typeof REQUIRED_HEADERS] == null)
+      .map(([, label]) => label)
     return { ok: false, headerError: `ไม่พบคอลัมน์ที่จำเป็นในแถวหัวตาราง: ${missing.join(', ')}` }
   }
 
   const rows: AttendanceImportRawRow[] = []
   const lastRow = sheet.rowCount
-  for (let rowNumber = 2; rowNumber <= lastRow; rowNumber++) {
+  for (let rowNumber = headerRowNumber + 1; rowNumber <= lastRow; rowNumber++) {
     const row = sheet.getRow(rowNumber)
     const getCell = (key: keyof typeof REQUIRED_HEADERS) => row.getCell(colIndex[key]!)
     const employeeCellRaw = getCell('employee')
