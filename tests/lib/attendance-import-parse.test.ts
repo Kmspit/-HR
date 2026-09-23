@@ -6,6 +6,8 @@ import {
   parseImportTimeCell,
   parseAttendanceImportWorkbook,
 } from '@/lib/attendance-import-parse'
+import { buildWorkLogXlsx, type WorkLogExportMeta } from '@/lib/attendance-work-log-export'
+import type { AttendanceWorkLogRow } from '@/lib/attendance-work-log'
 
 describe('parseEmployeeCell', () => {
   it('splits "name (CODE)" into name + code, matching the export format exactly', () => {
@@ -197,5 +199,133 @@ describe('parseAttendanceImportWorkbook', () => {
     expect(result.rows[0].employeeCode).toBe('E001')
     expect(result.rows[0].checkIn).not.toBeNull()
     expect(result.rows[0].checkOut).not.toBeNull()
+  })
+})
+
+// ── Real round-trip against the ACTUAL export (lib/attendance-work-log-export.ts) ──
+//
+// Bug fixed 2026-09-23: the real export is NOT "header on row 1" — it has a
+// title row, employee/department meta rows, a blank spacer, and a merged
+// group-header row before the real column-header row (which lands on row 5
+// or row 6 depending on whether a department line is present). A user
+// re-uploading a file the system itself exported got "ไม่พบคอลัมน์ที่จำเป็น
+// ในแถวหัวตาราง" every time. These tests call buildWorkLogXlsx() for real
+// (not a hand-built fixture) and feed its actual output straight into
+// parseAttendanceImportWorkbook(), for both real header-row positions.
+
+function fixtureWorkLogRow(overrides: Partial<AttendanceWorkLogRow & { employeeName: string; employeeCode: string | null }> = {}) {
+  return {
+    id: 'att1',
+    date: '2026-09-23',
+    dateLabel: '23/09/2026',
+    sessionIndex: 1,
+    sessionLabel: 'รอบที่ 1',
+    dayOfWeek: 3,
+    dayLabel: 'พุธ',
+    checkIn: '2026-09-23T01:05:00.000Z',
+    checkInTime: '08:05',
+    checkInPlace: 'สำนักงานใหญ่',
+    checkInLat: null,
+    checkInLng: null,
+    lunchOut: null,
+    lunchOutTime: '-',
+    lunchIn: null,
+    lunchInTime: '-',
+    checkOut: '2026-09-23T10:30:00.000Z',
+    checkOutTime: '17:30',
+    checkOutPlace: 'สำนักงานใหญ่',
+    checkOutLat: null,
+    checkOutLng: null,
+    lateMinutes: 0,
+    earlyLeaveMinutes: 0,
+    lunchOverMinutes: 0,
+    workMinutes: 480,
+    workHoursLabel: '8 ชม.',
+    status: 'NORMAL' as const,
+    statusDisplay: 'ปกติ',
+    leaveType: null,
+    leaveTypeLabel: null,
+    note: null,
+    isOutside: false,
+    employeeName: 'สมชาย ใจดี',
+    employeeCode: 'E001',
+    ...overrides,
+  }
+}
+
+describe('parseAttendanceImportWorkbook — real round-trip against buildWorkLogXlsx()', () => {
+  it('parses a real export with NO department line (title/employee/blank/group-header/real-header = rows 1-5, data from row 6... real header lands on row 5)', async () => {
+    const meta: WorkLogExportMeta = {
+      employeeName: 'ทุกคน (1 คน)',
+      employeeId: null,
+      department: null,
+      month: 9,
+      year: 2026,
+      monthLabel: 'กันยายน',
+      companyName: 'HRFlow Test Co.',
+    }
+    const buf = await buildWorkLogXlsx([fixtureWorkLogRow()], meta)
+    const result = await parseAttendanceImportWorkbook(buf)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.rows).toHaveLength(1)
+    // groupRowNum=4, headerRowNum=5 (no department) — first data row is 6
+    expect(result.rows[0].rowNumber).toBe(6)
+    expect(result.rows[0].employeeName).toBe('สมชาย ใจดี')
+    expect(result.rows[0].employeeCode).toBe('E001')
+    expect(result.rows[0].date).not.toBeNull()
+    expect(result.rows[0].checkIn).not.toBeNull()
+    expect(result.rows[0].checkOut).not.toBeNull()
+    expect(result.rows[0].parseErrors).toEqual([])
+  })
+
+  it('parses a real export WITH a department line (real header lands one row later, on row 6)', async () => {
+    const meta: WorkLogExportMeta = {
+      employeeName: 'สมชาย ใจดี',
+      employeeId: 'E001',
+      department: 'ฝ่ายบุคคล',
+      month: 9,
+      year: 2026,
+      monthLabel: 'กันยายน',
+      companyName: 'HRFlow Test Co.',
+    }
+    const buf = await buildWorkLogXlsx(
+      [fixtureWorkLogRow({ employeeName: 'สมชาย ใจดี', employeeCode: 'E001' })],
+      meta,
+      { includeEmployeeColumn: true },
+    )
+    const result = await parseAttendanceImportWorkbook(buf)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.rows).toHaveLength(1)
+    // groupRowNum=5, headerRowNum=6 (department present) — first data row is 7
+    expect(result.rows[0].rowNumber).toBe(7)
+    expect(result.rows[0].employeeCode).toBe('E001')
+    expect(result.rows[0].checkIn).not.toBeNull()
+    expect(result.rows[0].checkOut).not.toBeNull()
+    expect(result.rows[0].parseErrors).toEqual([])
+  })
+
+  it('parses multiple real employees from a real company-wide export (the actual "บันทึกรายเดือน" all-employees download HR would re-upload)', async () => {
+    const meta: WorkLogExportMeta = {
+      employeeName: 'ทุกคน (2 คน)',
+      employeeId: null,
+      department: null,
+      month: 9,
+      year: 2026,
+      monthLabel: 'กันยายน',
+      companyName: 'HRFlow Test Co.',
+    }
+    const rows = [
+      fixtureWorkLogRow({ id: 'att1', employeeName: 'สมชาย ใจดี', employeeCode: 'E001' }),
+      fixtureWorkLogRow({ id: 'att2', employeeName: 'สมหญิง มีสุข', employeeCode: 'E002', dateLabel: '24/09/2026' }),
+    ]
+    const buf = await buildWorkLogXlsx(rows, meta, { includeEmployeeColumn: true })
+    const result = await parseAttendanceImportWorkbook(buf)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.rows).toHaveLength(2)
+    expect(result.rows.map((r) => r.employeeCode)).toEqual(['E001', 'E002'])
+    expect(result.rows.every((r) => r.parseErrors.length === 0)).toBe(true)
   })
 })
