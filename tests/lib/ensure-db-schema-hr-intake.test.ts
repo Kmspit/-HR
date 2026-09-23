@@ -64,6 +64,26 @@ describe('v900042 cleanup — drop the orphan mustChangePassword column + work_h
     expect(source).toMatch(/ALTER TABLE users DROP COLUMN mustChangePassword/)
   })
 
+  it('checks users.mustChangePassword exists via PRAGMA before ever querying it (fixed 2026-09-23 — used to query it directly and rely on .catch() to hide the resulting "no such column" prisma:error log, which fired on every deploy forever once the column was actually dropped)', () => {
+    expect(source).toMatch(/PRAGMA table_info\(users\)/)
+    expect(source).toMatch(/hasMustChangePassword/)
+    expect(source).not.toMatch(/\.catch\(\(\) => \[\{ cnt: 0 \}\]\)/)
+
+    const pragmaPos = source.indexOf('PRAGMA table_info(users)')
+    const countCheckPos = source.indexOf('SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword')
+    expect(pragmaPos).toBeGreaterThan(-1)
+    expect(countCheckPos).toBeGreaterThan(-1)
+    expect(pragmaPos).toBeLessThan(countCheckPos)
+
+    // Same structural pattern as work_histories: an existence check gates
+    // an if/else, where the count-check + DROP only run in the "exists" branch.
+    const mustChangePasswordBlock = source.slice(pragmaPos, source.indexOf('v900043 — Excel'))
+    expect(mustChangePasswordBlock).toMatch(/if \(!hasMustChangePassword\)/)
+    expect(mustChangePasswordBlock.indexOf('if (!hasMustChangePassword)')).toBeLessThan(
+      mustChangePasswordBlock.indexOf('SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword'),
+    )
+  })
+
   it('neither orphan-cleanup statement ever touches a table/column with real (non-default) rows', () => {
     // Both blocks must gate the destructive statement behind a `if (count > 0)`
     // early-return/warn — i.e. the DROP only runs in the `else` branch.

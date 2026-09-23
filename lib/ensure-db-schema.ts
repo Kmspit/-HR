@@ -2539,23 +2539,27 @@ async function runEnsure(force = false): Promise<boolean> {
     }
   }
   {
-    const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
-      `SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword != 0`,
-    ).catch(() => [{ cnt: 0 }])
-    const count = Number(rows[0]?.cnt ?? 0)
-    if (count > 0) {
-      console.warn(`[MIGRATION v900042] "users.mustChangePassword" is true for ${count} row(s) — refusing to drop, needs a manual path instead`)
+    // Same existence-check-first pattern as work_histories above (fixed
+    // 2026-09-23 — this used to query mustChangePassword directly and rely
+    // on a .catch() to paper over it being already dropped, but the
+    // underlying raw query still logs a "no such column" prisma:error line
+    // on every single deploy forever after the column is gone, since the
+    // DB adapter logs before the .catch() ever runs. Checking PRAGMA
+    // table_info first avoids ever issuing the doomed query at all.)
+    const userColumns = pragmaColumnNames(await prisma.$queryRawUnsafe<unknown[]>(`PRAGMA table_info(users)`))
+    const hasMustChangePassword = userColumns.includes('mustChangePassword')
+    if (!hasMustChangePassword) {
+      console.log('[MIGRATION v900042] "users.mustChangePassword" already gone, skipping')
     } else {
-      try {
+      const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+        `SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword != 0`,
+      )
+      const count = Number(rows[0]?.cnt ?? 0)
+      if (count > 0) {
+        console.warn(`[MIGRATION v900042] "users.mustChangePassword" is true for ${count} row(s) — refusing to drop, needs a manual path instead`)
+      } else {
         await prisma.$executeRawUnsafe(`ALTER TABLE users DROP COLUMN mustChangePassword`)
         console.log('[MIGRATION v900042] Dropped orphan column "users.mustChangePassword" (all rows were false)')
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes('no such column') || msg.includes('no such table')) {
-          console.log('[MIGRATION v900042] "users.mustChangePassword" already gone, skipping')
-        } else {
-          throw err
-        }
       }
     }
   }
