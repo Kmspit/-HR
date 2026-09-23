@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { clearCompanySettingsCache } from '@/lib/company-settings-cache'
 
@@ -13,6 +13,7 @@ vi.mock('@/lib/prisma', () => ({
       findFirst:  vi.fn(),
       findMany:   vi.fn(),
       update:     vi.fn(),
+      updateMany: vi.fn(),
     },
     user:            { findUnique: vi.fn() },
     companySettings: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -161,6 +162,63 @@ describe('POST /api/attendance/checkin', () => {
     expect([200, 201]).toContain(res.status)
   })
 
+  describe('lateness (computeCheckInLateness extraction, 2026-09-23)', () => {
+    // bangkokDateKey is mocked to '2026-06-23' above — fake the wall clock to a
+    // known time on that same date so the workStartTime+lateGraceMin deadline
+    // comparison inside the route is deterministic, not dependent on when the
+    // test suite happens to run.
+    afterEach(() => vi.useRealTimers())
+
+    function setUpCheckinMocks() {
+      vi.mocked(auth).mockResolvedValue(mockSession as never)
+      vi.mocked(formHasFaceImage).mockReturnValue(true)
+      vi.mocked(prisma.companySettings.findUnique).mockResolvedValue({
+        id: 'singleton',
+        workStartTime: '08:30', lunchStartTime: '12:00', lunchReturnTime: '13:00',
+        lateGraceMin: 5, geofenceLat: null, geofenceLng: null, geofenceRadius: 200,
+      } as never)
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(
+        { id: 'user-1', name: 'Employee', role: 'EMPLOYEE', branchId: null, branch: null } as never,
+      )
+      vi.mocked(prisma.attendance.create).mockResolvedValue({
+        id: 'att-1', userId: 'user-1', date: new Date(), checkIn: new Date(), sessionIndex: 1,
+      } as never)
+      vi.mocked(finalizeAttendanceRecord).mockResolvedValue({ id: 'att-1' } as never)
+    }
+
+    it('is on-time (lateMinutes: 0) checking in before the grace-period deadline (08:35)', async () => {
+      setUpCheckinMocks()
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-23T08:20:00+07:00'))
+
+      const res = await checkinPost(
+        makeFormReq('http://localhost/api/attendance/checkin', { lat: '13.83', lng: '100.68', address: 'สำนักงาน', locationType: 'company' }),
+      )
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.lateMinutes).toBe(0)
+      expect(vi.mocked(prisma.attendance.create).mock.calls[0][0]).toMatchObject({
+        data: expect.objectContaining({ status: 'NORMAL', lateMinutes: 0 }),
+      })
+    })
+
+    it('is LATE with the correct minute count checking in past the grace-period deadline', async () => {
+      setUpCheckinMocks()
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-23T09:05:00+07:00')) // 30 min past the 08:35 deadline
+
+      const res = await checkinPost(
+        makeFormReq('http://localhost/api/attendance/checkin', { lat: '13.83', lng: '100.68', address: 'สำนักงาน', locationType: 'company' }),
+      )
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.lateMinutes).toBe(30)
+      expect(vi.mocked(prisma.attendance.create).mock.calls[0][0]).toMatchObject({
+        data: expect.objectContaining({ status: 'LATE', lateMinutes: 30 }),
+      })
+    })
+  })
+
   describe('outside-work GPS check (OutsideWorkRequest.lat/lng)', () => {
     function setUpOutsideCheckinMocks() {
       vi.mocked(auth).mockResolvedValue(mockSession as never)
@@ -256,5 +314,57 @@ describe('POST /api/attendance/checkout', () => {
     )
     // 400 = no active session, or 404
     expect([400, 404]).toContain(res.status)
+  })
+
+  describe('early-leave (computeCheckOutEarlyLeave extraction, 2026-09-23)', () => {
+    afterEach(() => vi.useRealTimers())
+
+    async function setUpCheckoutMocks() {
+      vi.mocked(auth).mockResolvedValue(mockSession as never)
+      vi.mocked(formHasFaceImage).mockReturnValue(true)
+      const { findActiveAttendanceSession } = await import('@/lib/attendance-session')
+      vi.mocked(findActiveAttendanceSession).mockResolvedValue({
+        id: 'att-1', userId: 'user-1', status: 'NORMAL', checkIn: new Date('2026-06-23T08:20:00+07:00'), checkOut: null,
+      } as never)
+      vi.mocked(prisma.companySettings.findUnique).mockResolvedValue({
+        id: 'singleton', workStartTime: '08:30', workEndTime: '17:00',
+        lunchStartTime: '12:00', lunchReturnTime: '13:00', lateGraceMin: 5,
+        geofenceLat: null, geofenceLng: null, geofenceRadius: 200,
+      } as never)
+      vi.mocked(prisma.attendance.updateMany).mockResolvedValue({ count: 1 } as never)
+      vi.mocked(finalizeAttendanceRecord).mockResolvedValue({ id: 'att-1', lateMinutes: 0, lunchOverMinutes: 0 } as never)
+    }
+
+    it('is NORMAL (earlyLeaveMinutes: 0) checking out at/after workEndTime (17:00)', async () => {
+      await setUpCheckoutMocks()
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-23T17:05:00+07:00'))
+
+      const res = await checkoutPost(
+        makeFormReq('http://localhost/api/attendance/checkout', { lat: '13.83', lng: '100.68', address: 'สำนักงาน' }),
+      )
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.earlyLeaveMinutes).toBe(0)
+      expect(vi.mocked(prisma.attendance.updateMany).mock.calls[0][0]).toMatchObject({
+        data: expect.objectContaining({ status: 'NORMAL', earlyLeaveMinutes: 0 }),
+      })
+    })
+
+    it('is EARLY_LEAVE with the correct minute count checking out before workEndTime', async () => {
+      await setUpCheckoutMocks()
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-23T16:30:00+07:00')) // 30 min before 17:00
+
+      const res = await checkoutPost(
+        makeFormReq('http://localhost/api/attendance/checkout', { lat: '13.83', lng: '100.68', address: 'สำนักงาน' }),
+      )
+      expect([200, 201]).toContain(res.status)
+      const data = await res.json()
+      expect(data.earlyLeaveMinutes).toBe(30)
+      expect(vi.mocked(prisma.attendance.updateMany).mock.calls[0][0]).toMatchObject({
+        data: expect.objectContaining({ status: 'EARLY_LEAVE', earlyLeaveMinutes: 30 }),
+      })
+    })
   })
 })

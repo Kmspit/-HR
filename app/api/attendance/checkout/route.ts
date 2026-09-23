@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
-import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
@@ -21,6 +20,8 @@ import {
 } from '@/lib/attendance-flow'
 import { findActiveAttendanceSession } from '@/lib/attendance-session'
 import { getCachedCompanySettings } from '@/lib/company-settings-cache'
+import { computeCheckOutEarlyLeave } from '@/lib/attendance-time-calc'
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -65,17 +66,11 @@ export async function POST(req: NextRequest) {
     }
 
     const settings = await getCachedCompanySettings()
-    let earlyLeaveMinutes = 0
-    let status = attendance.status
-    if (settings?.workEndTime) {
-      // สร้าง workEnd ในเวลาไทย (Asia/Bangkok, UTC+7) — ป้องกัน server timezone ผิด
-      const dateKey = bangkokDateKey(now)
-      const workEnd = new Date(`${dateKey}T${settings.workEndTime}:00+07:00`)
-      if (now < workEnd) {
-        earlyLeaveMinutes = Math.floor((workEnd.getTime() - now.getTime()) / 60000)
-        status = 'EARLY_LEAVE'
-      }
-    }
+    const { earlyLeaveMinutes, status } = computeCheckOutEarlyLeave({
+      now,
+      currentStatus: attendance.status,
+      settings,
+    })
 
     const approvedLeave = await findApprovedLeaveOnDate(session.user.id, today)
 
