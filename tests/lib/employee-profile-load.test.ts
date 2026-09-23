@@ -19,6 +19,19 @@ function data(): EmployeeProfileLoadData {
     currentAddress: { houseNo: '', moo: '', soi: '', road: '', tambon: '', amphoe: '', province: '', postalCode: '' },
     registeredAddress: { houseNo: '', moo: '', soi: '', road: '', tambon: '', amphoe: '', province: '', postalCode: '' },
     sameAsCurrentAddress: false,
+    bloodType: '',
+    fatherName: '',
+    fatherOccupation: '',
+    motherName: '',
+    motherOccupation: '',
+    siblingsTotal: 0,
+    siblingsOrder: 0,
+    educationLevel: '',
+    educationInstitution: '',
+    educationMajor: '',
+    educationGraduationYear: 0,
+    specialSkills: '',
+    workHistoryText: '',
   }
 }
 

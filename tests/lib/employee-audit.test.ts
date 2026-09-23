@@ -22,6 +22,11 @@ function profileRow(overrides: Record<string, unknown> = {}) {
     sameAsCurrentAddress: false,
     regHouseNo: null, regMoo: null, regSoi: null, regRoad: null,
     regTambon: null, regAmphoe: null, regProvince: null, regPostalCode: null,
+    bloodType: null, fatherName: null, fatherOccupation: null,
+    motherName: null, motherOccupation: null,
+    siblingsTotal: null, siblingsOrder: null,
+    educationLevel: null, educationInstitution: null, educationMajor: null, educationGraduationYear: null,
+    specialSkills: null, workHistoryText: null,
     ...overrides,
   }
 }
@@ -86,6 +91,9 @@ describe('snapshotEmployeeForAudit', () => {
       'sameAsCurrentAddress',
       'regHouseNo', 'regMoo', 'regSoi', 'regRoad',
       'regTambon', 'regAmphoe', 'regProvince', 'regPostalCode',
+      'bloodType', 'fatherName', 'fatherOccupation', 'motherName', 'motherOccupation',
+      'siblingsTotal', 'siblingsOrder', 'educationLevel', 'educationInstitution',
+      'educationMajor', 'educationGraduationYear', 'specialSkills', 'workHistoryText',
     ]
     expect(Object.keys(snap).sort()).toEqual(expectedKeys.sort())
   })
@@ -104,6 +112,24 @@ describe('snapshotEmployeeForAudit', () => {
     expect(snap.nationality).toBe('ไทย')
     expect(snap.currentProvince).toBe('กรุงเทพมหานคร')
     expect(snap.sameAsCurrentAddress).toBe(true)
+  })
+
+  it('reads the HR-editable employee-fields batch (2026-09-22) through the nested relation', () => {
+    const snap = snapshotEmployeeForAudit(row({
+      employeeProfile: profileRow({
+        bloodType: 'A', fatherName: 'สมชาย', siblingsTotal: 3, siblingsOrder: 1,
+        educationLevel: 'BACHELOR', educationGraduationYear: 2560,
+        specialSkills: 'พิมพ์ดีด', workHistoryText: 'บริษัท ABC (2563-2565)',
+      }),
+    }))
+    expect(snap.bloodType).toBe('A')
+    expect(snap.fatherName).toBe('สมชาย')
+    expect(snap.siblingsTotal).toBe(3)
+    expect(snap.siblingsOrder).toBe(1)
+    expect(snap.educationLevel).toBe('BACHELOR')
+    expect(snap.educationGraduationYear).toBe(2560)
+    expect(snap.specialSkills).toBe('พิมพ์ดีด')
+    expect(snap.workHistoryText).toBe('บริษัท ABC (2563-2565)')
   })
 })
 

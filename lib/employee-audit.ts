@@ -3,6 +3,8 @@ import { createAuditLog } from '@/lib/notifications'
 import { ROLE_LABELS, PAY_TYPE_LABELS, TAX_SCHEME_LABELS } from '@/lib/access-control'
 import { USER_STATUS_LABEL } from '@/lib/status-labels'
 import { paymentMethodLabel } from '@/lib/payment-method'
+import { bloodTypeLabel } from '@/lib/blood-type'
+import { educationLevelLabel } from '@/lib/education-level'
 import type { Role } from '@prisma/client'
 
 /**
@@ -44,6 +46,19 @@ const EMPLOYEE_PROFILE_AUDIT_SELECT = {
   regAmphoe: true,
   regProvince: true,
   regPostalCode: true,
+  bloodType: true,
+  fatherName: true,
+  fatherOccupation: true,
+  motherName: true,
+  motherOccupation: true,
+  siblingsTotal: true,
+  siblingsOrder: true,
+  educationLevel: true,
+  educationInstitution: true,
+  educationMajor: true,
+  educationGraduationYear: true,
+  specialSkills: true,
+  workHistoryText: true,
 } as const
 
 export const EMPLOYEE_AUDIT_SELECT = {
@@ -105,6 +120,19 @@ type EmployeeProfileAuditRow = {
   regAmphoe: string | null
   regProvince: string | null
   regPostalCode: string | null
+  bloodType: string | null
+  fatherName: string | null
+  fatherOccupation: string | null
+  motherName: string | null
+  motherOccupation: string | null
+  siblingsTotal: number | null
+  siblingsOrder: number | null
+  educationLevel: string | null
+  educationInstitution: string | null
+  educationMajor: string | null
+  educationGraduationYear: number | null
+  specialSkills: string | null
+  workHistoryText: string | null
 }
 
 type EmployeeAuditRow = {
@@ -240,6 +268,19 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     regAmphoe: u.employeeProfile?.regAmphoe ?? null,
     regProvince: u.employeeProfile?.regProvince ?? null,
     regPostalCode: u.employeeProfile?.regPostalCode ?? null,
+    bloodType: u.employeeProfile?.bloodType ?? null,
+    fatherName: u.employeeProfile?.fatherName ?? null,
+    fatherOccupation: u.employeeProfile?.fatherOccupation ?? null,
+    motherName: u.employeeProfile?.motherName ?? null,
+    motherOccupation: u.employeeProfile?.motherOccupation ?? null,
+    siblingsTotal: u.employeeProfile?.siblingsTotal ?? null,
+    siblingsOrder: u.employeeProfile?.siblingsOrder ?? null,
+    educationLevel: u.employeeProfile?.educationLevel ?? null,
+    educationInstitution: u.employeeProfile?.educationInstitution ?? null,
+    educationMajor: u.employeeProfile?.educationMajor ?? null,
+    educationGraduationYear: u.employeeProfile?.educationGraduationYear ?? null,
+    specialSkills: u.employeeProfile?.specialSkills ?? null,
+    workHistoryText: u.employeeProfile?.workHistoryText ?? null,
   }
 }
 
@@ -330,6 +371,19 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   regAmphoe: 'อำเภอ/เขต (ทะเบียนบ้าน)',
   regProvince: 'จังหวัด (ทะเบียนบ้าน)',
   regPostalCode: 'รหัสไปรษณีย์ (ทะเบียนบ้าน)',
+  bloodType: 'กรุ๊ปเลือด',
+  fatherName: 'ชื่อบิดา',
+  fatherOccupation: 'อาชีพบิดา',
+  motherName: 'ชื่อมารดา',
+  motherOccupation: 'อาชีพมารดา',
+  siblingsTotal: 'จำนวนพี่น้องทั้งหมด',
+  siblingsOrder: 'เป็นบุตรคนที่',
+  educationLevel: 'วุฒิการศึกษา',
+  educationInstitution: 'สถาบันการศึกษา',
+  educationMajor: 'สาขาวิชา',
+  educationGraduationYear: 'ปีที่จบการศึกษา',
+  specialSkills: 'ความสามารถพิเศษ',
+  workHistoryText: 'ประวัติการทำงาน (ที่เคยทำมาก่อน)',
 }
 
 /** Field keys whose value is an id referencing another row (User/Division/
@@ -384,6 +438,8 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
   if (key === 'payType') return PAY_TYPE_LABELS[val as string] ?? String(val)
   if (key === 'taxScheme') return TAX_SCHEME_LABELS[val as string] ?? String(val)
   if (key === 'paymentMethod') return paymentMethodLabel(val as string)
+  if (key === 'bloodType') return bloodTypeLabel(val as string)
+  if (key === 'educationLevel') return educationLevelLabel(val as string)
   if (key === 'role') return ROLE_LABELS[val as Role] ?? String(val)
   if (key === 'status') return USER_STATUS_LABEL[val as string] ?? String(val)
   if ((ID_REFERENCE_FIELDS as readonly string[]).includes(key)) {

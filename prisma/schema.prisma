@@ -17,17 +17,17 @@ datasource db {
 // ── ENUMS ───────────────────────────────────────
 
 enum Role {
-  SUPER_ADMIN  // highest privilege — can do everything
-  CEO          // chief executive — highest business authority
-  MANAGER_HR   // legacy HR manager (backward compat)
-  HR           // HR administrator
-  MANAGER      // department manager — can approve leave/warnings
-  TEAM_LEADER  // team lead — limited approvals
-  ADMIN        // system admin
-  EMPLOYEE     // regular employee
-  LAWYER       // legal / weekly plans
-  ENFORCEMENT  // enforcement officer — can issue warnings
-  CLIENT       // Phase 5 — external client portal access
+  SUPER_ADMIN // highest privilege — can do everything
+  CEO // chief executive — highest business authority
+  MANAGER_HR // legacy HR manager (backward compat)
+  HR // HR administrator
+  MANAGER // department manager — can approve leave/warnings
+  TEAM_LEADER // team lead — limited approvals
+  ADMIN // system admin
+  EMPLOYEE // regular employee
+  LAWYER // legal / weekly plans
+  ENFORCEMENT // enforcement officer — can issue warnings
+  CLIENT // Phase 5 — external client portal access
 }
 
 enum ApprovalStepStatus {
@@ -323,23 +323,46 @@ enum PaymentMethod {
   CHEQUE
 }
 
+/// HR-only employee intake (2026-09-22) — EmployeeProfile.bloodType
+enum BloodType {
+  A
+  B
+  AB
+  O
+  UNKNOWN
+}
+
+/// HR-only employee intake (2026-09-22) — EmployeeProfile.educationLevel.
+/// Stores only the highest/latest level, not a full education history
+/// (deliberate scope decision — see plan approval 2026-09-22).
+enum EducationLevel {
+  PRIMARY // ประถมศึกษา
+  SECONDARY // มัธยมศึกษา
+  VOCATIONAL_CERT // ปวช.
+  VOCATIONAL_DIPLOMA // ปวส.
+  BACHELOR // ปริญญาตรี
+  MASTER // ปริญญาโท
+  DOCTORATE // ปริญญาเอก
+  OTHER
+}
+
 // ── COMPANY BRANCH ──────────────────────────────
 
 model CompanyBranch {
-  id           String   @id @default(cuid())
-  code         String   @unique
-  name         String
-  nameEn       String?
-  address      String?
-  phone        String?
-  isActive     Boolean  @default(true)
-  isDefault    Boolean  @default(false)
-  lat             Float?
-  lng             Float?
-  radiusMeters    Float    @default(100)
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  nameEn           String?
+  address          String?
+  phone            String?
+  isActive         Boolean  @default(true)
+  isDefault        Boolean  @default(false)
+  lat              Float?
+  lng              Float?
+  radiusMeters     Float    @default(100)
   googleMapPlaceId String?
-  createdAt       DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   users       User[]
   divisions   Division[]
@@ -437,18 +460,18 @@ model Section {
 // ── USER ────────────────────────────────────────
 
 model User {
-  id               String     @id @default(cuid())
-  email            String     @unique
-  employeeId       String?    @unique
-  passwordHash     String
-  name             String
-  nameEn           String?
-  nickname         String?
-  prefix           String?
-  phone            String?    @unique
-  birthDate        DateTime?
-  address          String?
-  addressIdCard    String?
+  id                        String     @id @default(cuid())
+  email                     String     @unique
+  employeeId                String?    @unique
+  passwordHash              String
+  name                      String
+  nameEn                    String?
+  nickname                  String?
+  prefix                    String?
+  phone                     String?    @unique
+  birthDate                 DateTime?
+  address                   String?
+  addressIdCard             String?
   // nationalId-encryption Phase 1 (dual-write) — nationalId itself stays
   // plaintext and populated for now (Phase 2, a separate deploy, removes it
   // once Phase 1 has run cleanly in production for a while). @unique moved
@@ -456,38 +479,38 @@ model User {
   // per encryption, so two equal plaintexts never produce equal ciphertext —
   // only the deterministic fingerprint can still catch a duplicate. See
   // lib/national-id.ts's encryptedNationalIdFields().
-  nationalId       String?
-  nationalIdEncrypted String? // AES-256-GCM via lib/field-crypto.ts, FIELD_SALTS.USER_NATIONAL_ID
-  nationalIdFp     String?    @unique // sha256 fingerprint via nationalIdFingerprint()
+  nationalId                String?
+  nationalIdEncrypted       String? // AES-256-GCM via lib/field-crypto.ts, FIELD_SALTS.USER_NATIONAL_ID
+  nationalIdFp              String?    @unique // sha256 fingerprint via nationalIdFingerprint()
   profileImage              String?
   profileImageBase64        String? // deprecated — migrate to Cloudinary
   profileCloudinaryPublicId String?
   profileSecureUrl          String?
-  employeeType     String?    @default("permanent_employee")
+  employeeType              String?    @default("permanent_employee")
   // Employee-fields batch 1 (2026-09-09 checklist) — HR-only, not self-editable
   // (see SELF_PROFILE_FORBIDDEN). jobLevel is deliberately free text on User
   // directly rather than on JobPosition's catalog: User.position itself is
   // already a free string with no real FK to JobPosition (only
   // EmploymentAssignment.jobPositionId is a real relation), so this doesn't
   // make anything less structured than it already is.
-  jobLevel             String?
-  socialSecurityNumber String?
-  managerId        String?
-  teamLeaderId     String?
-  role             Role       @default(EMPLOYEE)
-  status           UserStatus @default(PENDING)
-  department       String?
-  divisionId       String?
-  departmentId     String?
-  sectionId        String?
-  position         String?
-  baseSalary       Float?
+  jobLevel                  String?
+  socialSecurityNumber      String?
+  managerId                 String?
+  teamLeaderId              String?
+  role                      Role       @default(EMPLOYEE)
+  status                    UserStatus @default(PENDING)
+  department                String?
+  divisionId                String?
+  departmentId              String?
+  sectionId                 String?
+  position                  String?
+  baseSalary                Float?
   /// เงินรายวัน (payroll feature, 2026-09) — เฉพาะพนักงาน payType=DAILY ใช้
   /// baseSalary/dailyRate แยกกันเด็ดขาด ไม่ตีความ baseSalary ต่างกันตาม
   /// payType เพราะ baseSalary ถูกใช้เป็นฐานคำนวณประกันสังคม/ภาษีของพนักงาน
   /// รายเดือนอยู่แล้วในหลายจุด — เพิ่ม field ใหม่แทนตีความซ้อนจะปลอดภัยกว่า
-  payType          PayType    @default(MONTHLY)
-  dailyRate        Float?
+  payType                   PayType    @default(MONTHLY)
+  dailyRate                 Float?
   /// ค่าตำแหน่ง (payroll feature, 2026-09) — recurring config ต่อตำแหน่งงาน
   /// ไม่เปลี่ยนบ่อย เหมือน baseSalary, snapshot ทุกเดือนที่ Payroll.positionAllowance
   /// gate เดียวกับ baseSalary/dailyRate (HR_ADMIN แก้เท่านั้น)
@@ -503,154 +526,154 @@ model User {
   /// TaxScheme) เป็นการจัดประเภทพนักงาน ไม่ใช่ตัวเลขเงิน จึงมองเห็นได้ระดับ
   /// เดียวกับ payType (MANAGER เห็นได้) แต่แก้ได้เฉพาะ HR_ADMIN เหมือน
   /// baseSalary/dailyRate/studentLoanDeduction
-  taxScheme        TaxScheme  @default(NORMAL)
-  startDate        DateTime?
-  socialSecurity   Boolean    @default(true)
-  lineId               String?
-  lineUserId           String?    @unique
-  lineDisplayName      String?
-  lineNotifSettings    String?    @map("line_notif_settings")
+  taxScheme                 TaxScheme  @default(NORMAL)
+  startDate                 DateTime?
+  socialSecurity            Boolean    @default(true)
+  lineId                    String?
+  lineUserId                String?    @unique
+  lineDisplayName           String?
+  lineNotifSettings         String?    @map("line_notif_settings")
   // Phase 15 — Security
-  lockedUntil          DateTime?  @map("locked_until")
-  passwordChangedAt    DateTime?  @map("password_changed_at")
-  isCoworker           Boolean    @default(false)
-  approvedById     String?
-  approvedAt       DateTime?
-  branchId         String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  lockedUntil               DateTime?  @map("locked_until")
+  passwordChangedAt         DateTime?  @map("password_changed_at")
+  isCoworker                Boolean    @default(false)
+  approvedById              String?
+  approvedAt                DateTime?
+  branchId                  String?
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
 
-  branch          CompanyBranch?      @relation(fields: [branchId], references: [id])
-  division        Division?           @relation(fields: [divisionId], references: [id])
-  orgDepartment   Department?         @relation(fields: [departmentId], references: [id])
-  section         Section?            @relation(fields: [sectionId], references: [id])
-  approvedBy      User?               @relation("UserApproval", fields: [approvedById], references: [id])
-  approvedUsers   User[]              @relation("UserApproval")
-  manager         User?               @relation("UserManager", fields: [managerId], references: [id])
-  managedUsers    User[]              @relation("UserManager")
-  teamLeader      User?               @relation("UserTeamLeader", fields: [teamLeaderId], references: [id])
-  teamMembers     User[]              @relation("UserTeamLeader")
-  attendances     Attendance[]
-  leaveRequests   LeaveRequest[]
-  outsideRequests OutsideWorkRequest[]
-  outsideRequestsDeleted OutsideWorkRequest[] @relation("OutsideWorkDeletedBy")
-  outsideWorkAssignments OutsideWorkAssignee[] @relation("OutsideWorkAssignee")
-  weeklyPlans     WeeklyLawyerPlan[]
-  approvalActions ApprovalHistory[]   @relation("ApprovedBy")
-  notifications   Notification[]
-  auditActions    AuditLog[]          @relation("AuditActor")
-  leaveBalances   LeaveBalance[]
-  warnings         Warning[]
-  warningsIssued   Warning[]           @relation("WarningsIssued")
-  warningsApproved Warning[]           @relation("WarningApprovedBy")
-  warningsRejected Warning[]           @relation("WarningRejectedBy")
-  payrolls        Payroll[]           @relation("PayrollUser")
-  payrollsDeleted Payroll[]           @relation("PayrollDeletedBy")
-  holidaysCreated CompanyHoliday[]  @relation("HolidayCreator")
-  savedWorkPlaces     SavedWorkPlace[]
-  device              UserDevice?
-  faceProfile         UserFaceProfile?
-  employeeProfile     EmployeeProfile?
-  emergencyContacts   EmergencyContact[]
-  dependents          Dependent[]
-  bankAccounts        BankAccount[]
-  employmentAssignments EmploymentAssignment[]
-  faceLogs            AttendanceFaceLog[]
-  faceScans           AttendanceFaceScan[]
-  chainStepsAssigned       ApprovalChainStep[]       @relation("ChainStepApprover")
-  leaveStepActions         LeaveApprovalStep[]       @relation("LeaveStepActor")
-  outsideWorkStepActions   OutsideWorkApprovalStep[] @relation("OutsideStepActor")
-  weeklyPlanStepActions    WeeklyPlanApprovalStep[]  @relation("WeeklyPlanStepActor")
-  forgotScanStepActions    ForgotScanApprovalStep[]  @relation("ForgotScanStepActor")
-  salarySlips         SalarySlip[]        @relation("SalarySlipUser")
-  salarySlipsDeleted  SalarySlip[]        @relation("SalarySlipDeletedBy")
-  taxHistories        TaxHistory[]
-  probationEvaluation      ProbationEvaluation?
-  probationEvaluationsGiven ProbationEvaluation[] @relation("ProbationEvaluator")
-  documentRequests         DocumentRequest[]
-  documentRequestsHandled  DocumentRequest[]      @relation("DocumentHandler")
-  forgotScanRequests        ForgotScanRequest[]   @relation("ForgotScanUser")
-  forgotScanSupervisedReqs  ForgotScanRequest[]   @relation("ForgotScanSupervisor")
-  forgotScanApprovedHR      ForgotScanRequest[]   @relation("ForgotScanHR")
-  assignedTasks             TaskAssignment[]       @relation("TaskAssignee")
-  createdTasks              TaskAssignment[]       @relation("TaskAssigner")
-  reviewedTasks             TaskAssignment[]       @relation("TaskReviewer")
-  taskAttachments           TaskAttachment[]       @relation("TaskAttachmentUploader")
-  taskComments              TaskComment[]          @relation("TaskCommentAuthor")
-  completedChecklistItems   TaskChecklist[]        @relation("TaskChecklistCompleter")
-  taskTimelines             TaskTimeline[]         @relation("TaskTimelineActor")
+  branch                     CompanyBranch?            @relation(fields: [branchId], references: [id])
+  division                   Division?                 @relation(fields: [divisionId], references: [id])
+  orgDepartment              Department?               @relation(fields: [departmentId], references: [id])
+  section                    Section?                  @relation(fields: [sectionId], references: [id])
+  approvedBy                 User?                     @relation("UserApproval", fields: [approvedById], references: [id])
+  approvedUsers              User[]                    @relation("UserApproval")
+  manager                    User?                     @relation("UserManager", fields: [managerId], references: [id])
+  managedUsers               User[]                    @relation("UserManager")
+  teamLeader                 User?                     @relation("UserTeamLeader", fields: [teamLeaderId], references: [id])
+  teamMembers                User[]                    @relation("UserTeamLeader")
+  attendances                Attendance[]
+  leaveRequests              LeaveRequest[]
+  outsideRequests            OutsideWorkRequest[]
+  outsideRequestsDeleted     OutsideWorkRequest[]      @relation("OutsideWorkDeletedBy")
+  outsideWorkAssignments     OutsideWorkAssignee[]     @relation("OutsideWorkAssignee")
+  weeklyPlans                WeeklyLawyerPlan[]
+  approvalActions            ApprovalHistory[]         @relation("ApprovedBy")
+  notifications              Notification[]
+  auditActions               AuditLog[]                @relation("AuditActor")
+  leaveBalances              LeaveBalance[]
+  warnings                   Warning[]
+  warningsIssued             Warning[]                 @relation("WarningsIssued")
+  warningsApproved           Warning[]                 @relation("WarningApprovedBy")
+  warningsRejected           Warning[]                 @relation("WarningRejectedBy")
+  payrolls                   Payroll[]                 @relation("PayrollUser")
+  payrollsDeleted            Payroll[]                 @relation("PayrollDeletedBy")
+  holidaysCreated            CompanyHoliday[]          @relation("HolidayCreator")
+  savedWorkPlaces            SavedWorkPlace[]
+  device                     UserDevice?
+  faceProfile                UserFaceProfile?
+  employeeProfile            EmployeeProfile?
+  emergencyContacts          EmergencyContact[]
+  dependents                 Dependent[]
+  bankAccounts               BankAccount[]
+  employmentAssignments      EmploymentAssignment[]
+  faceLogs                   AttendanceFaceLog[]
+  faceScans                  AttendanceFaceScan[]
+  chainStepsAssigned         ApprovalChainStep[]       @relation("ChainStepApprover")
+  leaveStepActions           LeaveApprovalStep[]       @relation("LeaveStepActor")
+  outsideWorkStepActions     OutsideWorkApprovalStep[] @relation("OutsideStepActor")
+  weeklyPlanStepActions      WeeklyPlanApprovalStep[]  @relation("WeeklyPlanStepActor")
+  forgotScanStepActions      ForgotScanApprovalStep[]  @relation("ForgotScanStepActor")
+  salarySlips                SalarySlip[]              @relation("SalarySlipUser")
+  salarySlipsDeleted         SalarySlip[]              @relation("SalarySlipDeletedBy")
+  taxHistories               TaxHistory[]
+  probationEvaluation        ProbationEvaluation?
+  probationEvaluationsGiven  ProbationEvaluation[]     @relation("ProbationEvaluator")
+  documentRequests           DocumentRequest[]
+  documentRequestsHandled    DocumentRequest[]         @relation("DocumentHandler")
+  forgotScanRequests         ForgotScanRequest[]       @relation("ForgotScanUser")
+  forgotScanSupervisedReqs   ForgotScanRequest[]       @relation("ForgotScanSupervisor")
+  forgotScanApprovedHR       ForgotScanRequest[]       @relation("ForgotScanHR")
+  assignedTasks              TaskAssignment[]          @relation("TaskAssignee")
+  createdTasks               TaskAssignment[]          @relation("TaskAssigner")
+  reviewedTasks              TaskAssignment[]          @relation("TaskReviewer")
+  taskAttachments            TaskAttachment[]          @relation("TaskAttachmentUploader")
+  taskComments               TaskComment[]             @relation("TaskCommentAuthor")
+  completedChecklistItems    TaskChecklist[]           @relation("TaskChecklistCompleter")
+  taskTimelines              TaskTimeline[]            @relation("TaskTimelineActor")
   // Phase 4 — Case Document Center
-  caseDocsUploaded          CaseDocument[]         @relation("CaseDocUploader")
-  caseDocsAssigned          CaseDocument[]         @relation("CaseDocAssignee")
-  caseDocFiles              CaseDocumentFile[]     @relation("CaseDocFileUploader")
-  caseDocSigns              CaseDocumentSignature[] @relation("CaseDocSigner")
-  caseDocVersions           CaseDocumentVersion[]  @relation("CaseDocVersioner")
+  caseDocsUploaded           CaseDocument[]            @relation("CaseDocUploader")
+  caseDocsAssigned           CaseDocument[]            @relation("CaseDocAssignee")
+  caseDocFiles               CaseDocumentFile[]        @relation("CaseDocFileUploader")
+  caseDocSigns               CaseDocumentSignature[]   @relation("CaseDocSigner")
+  caseDocVersions            CaseDocumentVersion[]     @relation("CaseDocVersioner")
   // Phase 5 — Client Portal
-  clientTasks               TaskAssignment[]       @relation("TaskClient")
-  clientDocs                CaseDocument[]         @relation("DocClient")
-  clientMsgsAsClient        ClientMessage[]        @relation("ClientMessages")
-  clientMsgsAsSender        ClientMessage[]        @relation("MessageSender")
-  caseStatusChanges         CaseStatusHistory[]    @relation("StatusHistoryChanger")
+  clientTasks                TaskAssignment[]          @relation("TaskClient")
+  clientDocs                 CaseDocument[]            @relation("DocClient")
+  clientMsgsAsClient         ClientMessage[]           @relation("ClientMessages")
+  clientMsgsAsSender         ClientMessage[]           @relation("MessageSender")
+  caseStatusChanges          CaseStatusHistory[]       @relation("StatusHistoryChanger")
   // Phase 7 — Case Finance
-  caseIncomesCreated        CaseIncome[]           @relation("CaseIncomeCreator")
-  caseExpensesAsEmp         CaseExpense[]          @relation("CaseExpenseEmployee")
-  caseExpensesCreated       CaseExpense[]          @relation("CaseExpenseCreator")
-  expenseClaimsSubmitted    ExpenseClaim[]         @relation("ClaimSubmitter")
+  caseIncomesCreated         CaseIncome[]              @relation("CaseIncomeCreator")
+  caseExpensesAsEmp          CaseExpense[]             @relation("CaseExpenseEmployee")
+  caseExpensesCreated        CaseExpense[]             @relation("CaseExpenseCreator")
+  expenseClaimsSubmitted     ExpenseClaim[]            @relation("ClaimSubmitter")
   // Phase 8 — Debt Collection CRM
-  debtorsAssigned           Debtor[]               @relation("DebtorAssignee")
-  debtorsCreated            Debtor[]               @relation("DebtorCreator")
-  debtorsDeleted            Debtor[]               @relation("DebtorDeletedBy")
-  debtFollowUps             DebtFollowUp[]         @relation("FollowUpPerformer")
-  debtPaymentsReceived      DebtPayment[]          @relation("PaymentReceiver")
-  debtPaymentsCreated       DebtPayment[]          @relation("PaymentCreator")
-  paymentAppointmentsCreated PaymentAppointment[]  @relation("AppointmentCreator")
-  debtorFilesCreated        DebtorFile[]           @relation("DebtorFileCreator")
-  debtorContactsPerformed   DebtorContact[]        @relation("ContactPerformer")
-  promisesCreated           PromiseToPay[]         @relation("PromiseCreator")
+  debtorsAssigned            Debtor[]                  @relation("DebtorAssignee")
+  debtorsCreated             Debtor[]                  @relation("DebtorCreator")
+  debtorsDeleted             Debtor[]                  @relation("DebtorDeletedBy")
+  debtFollowUps              DebtFollowUp[]            @relation("FollowUpPerformer")
+  debtPaymentsReceived       DebtPayment[]             @relation("PaymentReceiver")
+  debtPaymentsCreated        DebtPayment[]             @relation("PaymentCreator")
+  paymentAppointmentsCreated PaymentAppointment[]      @relation("AppointmentCreator")
+  debtorFilesCreated         DebtorFile[]              @relation("DebtorFileCreator")
+  debtorContactsPerformed    DebtorContact[]           @relation("ContactPerformer")
+  promisesCreated            PromiseToPay[]            @relation("PromiseCreator")
   // Phase 12 — Recovery
-  recoveryPaymentsCollected RecoveryPayment[]      @relation("RecoveryCollector")
-  recoveryPaymentsCreated   RecoveryPayment[]      @relation("RecoveryCreator")
+  recoveryPaymentsCollected  RecoveryPayment[]         @relation("RecoveryCollector")
+  recoveryPaymentsCreated    RecoveryPayment[]         @relation("RecoveryCreator")
   // Phase 13 — Automation
-  automationRulesCreated    AutomationRule[]       @relation("AutomationRuleCreator")
+  automationRulesCreated     AutomationRule[]          @relation("AutomationRuleCreator")
   // Phase 9 — Client CRM
-  clientCompaniesCreated    ClientCompany[]        @relation("ClientCompanyCreator")
-  clientContractsCreated    ClientContract[]       @relation("ClientContractCreator")
-  clientSlaRecords          ClientSlaRecord[]      @relation("SlaRecordCreator")
-  clientCompanyFilesCreated ClientCompanyFile[]    @relation("ClientCompanyFileCreator")
+  clientCompaniesCreated     ClientCompany[]           @relation("ClientCompanyCreator")
+  clientContractsCreated     ClientContract[]          @relation("ClientContractCreator")
+  clientSlaRecords           ClientSlaRecord[]         @relation("SlaRecordCreator")
+  clientCompanyFilesCreated  ClientCompanyFile[]       @relation("ClientCompanyFileCreator")
   // Phase 10 — Billing
-  invoicesCreated           BillingInvoice[]       @relation("InvoiceCreator")
-  invoicesApproved          BillingInvoice[]       @relation("InvoiceApprover")
-  billingPaymentsReceived   BillingPayment[]       @relation("BillingPaymentReceiver")
-  billingPaymentsCreated    BillingPayment[]       @relation("BillingPaymentCreator")
-  billingReceiptsCreated    BillingReceipt[]       @relation("BillingReceiptCreator")
+  invoicesCreated            BillingInvoice[]          @relation("InvoiceCreator")
+  invoicesApproved           BillingInvoice[]          @relation("InvoiceApprover")
+  billingPaymentsReceived    BillingPayment[]          @relation("BillingPaymentReceiver")
+  billingPaymentsCreated     BillingPayment[]          @relation("BillingPaymentCreator")
+  billingReceiptsCreated     BillingReceipt[]          @relation("BillingReceiptCreator")
   // Phase 11 — Approval 2.0
-  activityLogs              ActivityLog[]          @relation("ActivityLogActor")
-  digitalSignatures         DigitalSignature[]     @relation("DigitalSignatureUser")
-  approvalRequestsMade      ApprovalRequest[]      @relation("ApprovalRequester")
-  approvalStepsAssigned     ApprovalRequestStep[]  @relation("StepApprover")
-  approvalStepActions       ApprovalRequestStep[]  @relation("StepActor")
+  activityLogs               ActivityLog[]             @relation("ActivityLogActor")
+  digitalSignatures          DigitalSignature[]        @relation("DigitalSignatureUser")
+  approvalRequestsMade       ApprovalRequest[]         @relation("ApprovalRequester")
+  approvalStepsAssigned      ApprovalRequestStep[]     @relation("StepApprover")
+  approvalStepActions        ApprovalRequestStep[]     @relation("StepActor")
   // Phase 13 — Calendar
-  calendarEvents            CalendarEvent[]        @relation("CalendarEventCreator")
+  calendarEvents             CalendarEvent[]           @relation("CalendarEventCreator")
   // Phase 15 — Security
-  loginAttempts             LoginAttempt[]
-  securityEvents            SecurityEvent[]
-  deviceSessions            DeviceSession[]
-  otpCodes                  OtpCode[]
-  twoFactorSetup            TwoFactorSetup?
+  loginAttempts              LoginAttempt[]
+  securityEvents             SecurityEvent[]
+  deviceSessions             DeviceSession[]
+  otpCodes                   OtpCode[]
+  twoFactorSetup             TwoFactorSetup?
   // Case Management
-  casesCreated              Case[]               @relation("CaseCreator")
-  casesAssigned             Case[]               @relation("CaseAssignee")
-  caseCourtItems            CaseCourt[]          @relation("CaseCourtCreator")
-  caseTimelines             CaseTimeline[]       @relation("CaseTimelineActor")
-  caseChecklistDone         CaseChecklist[]      @relation("CaseChecklistDoneBy")
-  caseDebtorActivities      CaseDebtorActivity[] @relation("CaseDebtorActivityActor")
-  caseFinancialUpdates      CaseFinancial[]      @relation("CaseFinancialUpdater")
+  casesCreated               Case[]                    @relation("CaseCreator")
+  casesAssigned              Case[]                    @relation("CaseAssignee")
+  caseCourtItems             CaseCourt[]               @relation("CaseCourtCreator")
+  caseTimelines              CaseTimeline[]            @relation("CaseTimelineActor")
+  caseChecklistDone          CaseChecklist[]           @relation("CaseChecklistDoneBy")
+  caseDebtorActivities       CaseDebtorActivity[]      @relation("CaseDebtorActivityActor")
+  caseFinancialUpdates       CaseFinancial[]           @relation("CaseFinancialUpdater")
   // Phase 14 — Court Calendar
-  courtEventsCreated        CourtEvent[]         @relation("CourtEventCreator")
-  courtEventsAssigned       CourtEvent[]         @relation("CourtEventLawyer")
+  courtEventsCreated         CourtEvent[]              @relation("CourtEventCreator")
+  courtEventsAssigned        CourtEvent[]              @relation("CourtEventLawyer")
   // Payroll fields batch 2 (2026-09) — position allowance / diligence /
   // back pay / student loan / security deposit / commission / professional fee
-  securityDepositPlan       SecurityDepositPlan?
+  securityDepositPlan        SecurityDepositPlan?
 
   @@map("users")
 }
@@ -705,8 +728,8 @@ model BiometricConsent {
 /// สำหรับใช้งานจริง (เอกสารราชการ/ประกันสังคม) รวมถึงข้อมูลส่วนตัวเพิ่มเติมที่
 /// ฟอร์มสมัครงานเดิมไม่เคยเก็บ
 model EmployeeProfile {
-  id            String  @id @default(cuid())
-  userId        String  @unique
+  id            String         @id @default(cuid())
+  userId        String         @unique
   nationality   String?
   maritalStatus String?
   personalEmail String?
@@ -743,6 +766,25 @@ model EmployeeProfile {
   /// true = คัดลอกที่อยู่ปัจจุบันไปเป็นที่อยู่ทะเบียนบ้าน (UI เท่านั้น — reg* fields
   /// ยังถูกเขียนค่าซ้ำตอน save เพื่อให้ query ง่าย ไม่ต้อง join เงื่อนไขนี้ทุกที่)
   sameAsCurrentAddress Boolean @default(false)
+
+  // HR-only employee intake (2026-09-22 checklist) — blood group, parents/
+  // siblings summary, highest education, special skills. All optional/
+  // additive, no backfill for existing rows.
+  bloodType               BloodType?
+  fatherName              String?
+  fatherOccupation        String?
+  motherName              String?
+  motherOccupation        String?
+  siblingsTotal           Int?
+  siblingsOrder           Int?
+  educationLevel          EducationLevel?
+  educationInstitution    String?
+  educationMajor          String?
+  educationGraduationYear Int?
+  specialSkills           String?
+  /// ประวัติการทำงาน (ที่เคยทำมาก่อน) — free text แทน structured list ตามที่
+  /// อนุมัติไว้ 2026-09-22 (ง่ายกว่า CRUD เต็มรูปแบบ, พอสำหรับ HR สรุปเป็นย่อหน้า)
+  workHistoryText         String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -783,17 +825,17 @@ model EmergencyContact {
 /// แยกไว้แบบ plain สำหรับแสดงผลโดยไม่ต้องถอดรหัสทุกครั้ง. ยังไม่ validate รูปแบบ
 /// 13 หลักเพราะบางกรณี (บุตรต่างชาติ) อาจไม่มีเลขบัตรไทย
 model Dependent {
-  id               String                @id @default(cuid())
-  userId           String
-  name             String
-  relationType     DependentRelationType
-  nationalIdEnc    String?
-  nationalIdLast4  String?
-  birthDate        DateTime?
+  id              String                @id @default(cuid())
+  userId          String
+  name            String
+  relationType    DependentRelationType
+  nationalIdEnc   String?
+  nationalIdLast4 String?
+  birthDate       DateTime?
   /// ใช้สิทธิลดหย่อนภาษีของพนักงานได้หรือไม่ (กฎหมายอนุญาตเฉพาะบางความสัมพันธ์/เงื่อนไข)
-  isTaxAllowance   Boolean               @default(false)
-  note             String?
-  sortOrder        Int                   @default(0)
+  isTaxAllowance  Boolean               @default(false)
+  note            String?
+  sortOrder       Int                   @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -812,16 +854,16 @@ model Dependent {
 /// — set isActive = false แทน เพราะ payslip ย้อนหลังอาจอ้างอิงบัญชีเดิม และ
 /// เป็นหลักฐานว่าเคยโอนเข้าบัญชีไหน
 model BankAccount {
-  id                  String  @id @default(cuid())
-  userId              String
-  bankCode            String
-  accountNameEnc      String
-  accountNumberEnc    String
-  accountNumberLast4  String
-  accountType         String?
-  isPrimary           Boolean @default(false)
-  isActive            Boolean @default(true)
-  sortOrder           Int     @default(0)
+  id                 String  @id @default(cuid())
+  userId             String
+  bankCode           String
+  accountNameEnc     String
+  accountNumberEnc   String
+  accountNumberLast4 String
+  accountType        String?
+  isPrimary          Boolean @default(false)
+  isActive           Boolean @default(true)
+  sortOrder          Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -858,19 +900,19 @@ model JobPosition {
 /// effectiveFrom ล่าสุดที่ <= วันนั้น (ดู lib/employment-assignment.ts) แทนที่
 /// จะเก็บ effectiveTo ซ้ำซ้อน ซึ่งจะเพี้ยนได้ถ้าแก้ประวัติย้อนหลัง
 model EmploymentAssignment {
-  id             String                 @id @default(cuid())
+  id             String               @id @default(cuid())
   userId         String
   effectiveFrom  DateTime
   changeType     EmploymentChangeType
   employmentType EmploymentType
 
-  divisionId   String?
-  departmentId String?
-  sectionId    String?
+  divisionId    String?
+  departmentId  String?
+  sectionId     String?
   jobPositionId String
-  branchId     String?
-  managerId    String?
-  teamLeaderId String?
+  branchId      String?
+  managerId     String?
+  teamLeaderId  String?
 
   /// ค่า ณ เวลาที่ assignment นี้มีผล — ไม่ใช่ค่าปัจจุบัน. Nullable โดยตั้งใจ (Phase 1
   /// step 7): ผู้ที่ไม่มีสิทธิ์แก้เงินเดือน (ไม่ใช่ HR_ADMIN) ยังอนุมัติ+สร้าง
@@ -931,8 +973,8 @@ enum PayType {
 /// ภาษี/SS" ผสมกันได้ทั้ง 4 แบบ (เช่น DAILY+OFF_SYSTEM_WHT ของพนักงานที่จ่าย
 /// เป็นรายวันแต่ไม่อยู่ในระบบประกันสังคม ใช้ WHT 3% แบบเดียวกับค่าวิชาชีพ 40(6))
 enum TaxScheme {
-  NORMAL          // ภาษีขั้นบันได + ประกันสังคมตามปกติ
-  OFF_SYSTEM_WHT  // ไม่มี SS เลย, หัก ณ ที่จ่ายแบบเหมา 3% (สูตรเดียวกับค่าวิชาชีพ 40(6))
+  NORMAL // ภาษีขั้นบันได + ประกันสังคมตามปกติ
+  OFF_SYSTEM_WHT // ไม่มี SS เลย, หัก ณ ที่จ่ายแบบเหมา 3% (สูตรเดียวกับค่าวิชาชีพ 40(6))
 }
 
 enum TerminationType {
@@ -944,17 +986,17 @@ enum TerminationType {
 }
 
 model AttendanceFaceLog {
-  id              String   @id @default(cuid())
-  userId          String
-  attendanceId    String?
-  action          String
-  method          String
-  matched         Boolean  @default(false)
-  matchScore      Float?
-  livenessScore   Float?
-  spoofFlags      String?
-  failureReason   String?
-  createdAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  attendanceId  String?
+  action        String
+  method        String
+  matched       Boolean  @default(false)
+  matchScore    Float?
+  livenessScore Float?
+  spoofFlags    String?
+  failureReason String?
+  createdAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -967,16 +1009,16 @@ model AttendanceFaceLog {
 model AttendanceLineNotifyLog {
   id             String    @id @default(cuid())
   employeeUserId String
-  employeeId     String?   // รหัสพนักงาน (EMP001)
+  employeeId     String? // รหัสพนักงาน (EMP001)
   hrLineUserId   String
   eventType      String
-  scanType       String?   // checkin | checkout | lunch-out | lunch-in
+  scanType       String? // checkin | checkout | lunch-out | lunch-in
   attendanceId   String?
   faceLogId      String?
   faceScanId     String?
   messageText    String
-  photoUrl       String?   // secure Cloudinary URL สำหรับ LINE image (legacy)
-  imageUrl       String?   // secure Cloudinary URL สำหรับ LINE image
+  photoUrl       String? // secure Cloudinary URL สำหรับ LINE image (legacy)
+  imageUrl       String? // secure Cloudinary URL สำหรับ LINE image
   status         String    @default("pending") // lineStatus: pending | sent | failed
   failedReason   String?
   retryCount     Int       @default(0)
@@ -1078,67 +1120,73 @@ model UserDevice {
 // ── ATTENDANCE ──────────────────────────────────
 
 model Attendance {
-  id          String           @id @default(cuid())
-  userId      String
-  date        DateTime
-  /** รอบการทำงานในวันเดียวกัน (1 = เข้างานครั้งแรก, 2 = ออกไปลูกค้าแล้วกลับมา ฯลฯ) */
-  sessionIndex Int             @default(1)
-  checkIn     DateTime?
-  checkOut    DateTime?
-  lunchOut    DateTime?
-  lunchIn     DateTime?
-  lat         Float?
-  lng         Float?
-  address          String?
-  workPlaceName    String?
-  checkInLat           Float?
-  checkInLng           Float?
-  checkInAddress       String?
-  checkInWorkPlaceName String?
+  id                    String           @id @default(cuid())
+  userId                String
+  date                  DateTime
+  /**
+   * รอบการทำงานในวันเดียวกัน (1 = เข้างานครั้งแรก, 2 = ออกไปลูกค้าแล้วกลับมา ฯลฯ)
+   */
+  sessionIndex          Int              @default(1)
+  checkIn               DateTime?
+  checkOut              DateTime?
+  lunchOut              DateTime?
+  lunchIn               DateTime?
+  lat                   Float?
+  lng                   Float?
+  address               String?
+  workPlaceName         String?
+  checkInLat            Float?
+  checkInLng            Float?
+  checkInAddress        String?
+  checkInWorkPlaceName  String?
   checkOutLat           Float?
   checkOutLng           Float?
   checkOutAddress       String?
   checkOutWorkPlaceName String?
-  photoUrl         String?
-  checkOutPhotoUrl String?
-  lunchOutPhotoUrl String?
-  lunchInPhotoUrl  String?
+  photoUrl              String?
+  checkOutPhotoUrl      String?
+  lunchOutPhotoUrl      String?
+  lunchInPhotoUrl       String?
   /// Cloudinary public_id of the latest attendance photo (checkin by default)
-  imagePublicId    String? @map("image_public_id")
+  imagePublicId         String?          @map("image_public_id")
   /// Cloudinary secure_url of the latest attendance photo
-  imageUrl         String? @map("image_url")
-  isOutside        Boolean          @default(false)
-  status           AttendanceStatus @default(NORMAL)
-  /** อนุมัติอัตโนมัติหลังสแกนใบหน้าสำเร็จ — ไม่ต้องรอ HR */
-  approved         Boolean          @default(true)
-  /** completed = บันทึกลงเวลาแล้วทันที */
-  attendanceStatus String           @default("completed")
-  dayOfWeek        Int?
-  workMinutes      Int              @default(0)
-  leaveType        LeaveType?
-  lateMinutes      Int              @default(0)
-  earlyLeaveMinutes Int             @default(0)
-  lunchOverMinutes  Int              @default(0)
-  checkInDistanceM     Float?   // distance from company geofence center at check-in (meters)
-  gpsAccuracy          Float?   // GPS accuracy in meters as reported by device
-  gpsFlags             String?  // comma-separated spoof/quality flags for HR review
-  deviceInfo           String?  // JSON { ua, platform, isMobile }
-  outsideWorkRequestId String?  // approved OutsideWorkRequest that authorized this outside check-in
-  weeklyPlanDayId      String?  @map("weekly_plan_day_id")   // WeeklyPlanDay that authorized/matched this outside check-in
-  plannedLat           Float?   @map("planned_lat")
-  plannedLng           Float?   @map("planned_lng")
-  plannedPlace         String?  @map("planned_place")
-  locationDistance     Float?   @map("location_distance")    // meters between planned and actual GPS
-  locationStatus       String?  @map("location_status")      // matched | mismatch | no_gps_plan | no_plan
-  branchId             String?  // สาขาที่ใช้เช็คอิน
-  note             String?
-  editedById       String?
-  autoCheckout     Boolean          @default(false) // ระบบ auto checkout หลัง 22:00
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  imageUrl              String?          @map("image_url")
+  isOutside             Boolean          @default(false)
+  status                AttendanceStatus @default(NORMAL)
+  /**
+   * อนุมัติอัตโนมัติหลังสแกนใบหน้าสำเร็จ — ไม่ต้องรอ HR
+   */
+  approved              Boolean          @default(true)
+  /**
+   * completed = บันทึกลงเวลาแล้วทันที
+   */
+  attendanceStatus      String           @default("completed")
+  dayOfWeek             Int?
+  workMinutes           Int              @default(0)
+  leaveType             LeaveType?
+  lateMinutes           Int              @default(0)
+  earlyLeaveMinutes     Int              @default(0)
+  lunchOverMinutes      Int              @default(0)
+  checkInDistanceM      Float? // distance from company geofence center at check-in (meters)
+  gpsAccuracy           Float? // GPS accuracy in meters as reported by device
+  gpsFlags              String? // comma-separated spoof/quality flags for HR review
+  deviceInfo            String? // JSON { ua, platform, isMobile }
+  outsideWorkRequestId  String? // approved OutsideWorkRequest that authorized this outside check-in
+  weeklyPlanDayId       String?          @map("weekly_plan_day_id") // WeeklyPlanDay that authorized/matched this outside check-in
+  plannedLat            Float?           @map("planned_lat")
+  plannedLng            Float?           @map("planned_lng")
+  plannedPlace          String?          @map("planned_place")
+  locationDistance      Float?           @map("location_distance") // meters between planned and actual GPS
+  locationStatus        String?          @map("location_status") // matched | mismatch | no_gps_plan | no_plan
+  branchId              String? // สาขาที่ใช้เช็คอิน
+  note                  String?
+  editedById            String?
+  autoCheckout          Boolean          @default(false) // ระบบ auto checkout หลัง 22:00
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
-  user   User            @relation(fields: [userId], references: [id])
-  branch CompanyBranch?  @relation(fields: [branchId], references: [id])
+  user   User           @relation(fields: [userId], references: [id])
+  branch CompanyBranch? @relation(fields: [branchId], references: [id])
 
   @@unique([userId, date, sessionIndex])
   @@index([userId, date])
@@ -1158,15 +1206,15 @@ model LeaveRequest {
   reason           String
   attachmentUrl    String?
   status           RequestStatus @default(PENDING)
-  chainConfigId    String?       // null = legacy 2-step flow
+  chainConfigId    String? // null = legacy 2-step flow
   currentStepOrder Int           @default(0) // 0 = legacy, 1+ = active chain step
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user         User                @relation(fields: [userId], references: [id])
-  approvals    ApprovalHistory[]
-  chainConfig  ApprovalChainConfig? @relation("LeaveChain", fields: [chainConfigId], references: [id])
-  stepLogs     LeaveApprovalStep[]
+  user        User                 @relation(fields: [userId], references: [id])
+  approvals   ApprovalHistory[]
+  chainConfig ApprovalChainConfig? @relation("LeaveChain", fields: [chainConfigId], references: [id])
+  stepLogs    LeaveApprovalStep[]
 
   @@index([userId])
   @@index([status])
@@ -1193,48 +1241,48 @@ model LeaveBalance {
 // ── OUTSIDE WORK ────────────────────────────────
 
 model OutsideWorkRequest {
-  id             String        @id @default(cuid())
-  userId         String
-  date           DateTime
-  startTime      String
-  endTime        String
-  place          String
-  purpose        String
-  client         String?
-  note           String?
-  googleMapsUrl  String?       @map("google_maps_url")
+  id               String        @id @default(cuid())
+  userId           String
+  date             DateTime
+  startTime        String
+  endTime          String
+  place            String
+  purpose          String
+  client           String?
+  note             String?
+  googleMapsUrl    String?       @map("google_maps_url")
   // GPS coordinates for the approved location — nullable, optional. Old rows
   // (and any new one where the user skips both the GPS-capture button and
   // the Google Maps link) stay null; the checkin GPS-distance check simply
   // skips checking when either is null (locationStatus = 'no_plan'), same
   // as it already does today for a WeeklyPlanDay with no coordinates.
-  lat            Float?
-  lng            Float?
-  attachmentUrl  String?       @map("attachment_url")
-  attachmentName String?       @map("attachment_name")
-  approvalStatus String?       @map("approval_status")
-  employeeName   String?       @map("employee_name")
-  ownerName      String?       @map("owner_name")
-  workType       String?       @map("work_type")
-  distance       Float?
-  distanceLimit  Float?        @map("distance_limit")
-  routeType      String?       @map("route_type")
+  lat              Float?
+  lng              Float?
+  attachmentUrl    String?       @map("attachment_url")
+  attachmentName   String?       @map("attachment_name")
+  approvalStatus   String?       @map("approval_status")
+  employeeName     String?       @map("employee_name")
+  ownerName        String?       @map("owner_name")
+  workType         String?       @map("work_type")
+  distance         Float?
+  distanceLimit    Float?        @map("distance_limit")
+  routeType        String?       @map("route_type")
   // ── ฟอร์มบริษัท (ฉ.2) ───────────────────────────────────────
-  timeSlot       String?       @map("time_slot")      // เช้า / บ่าย / เต็มวัน
-  caseNumber     String?       @map("case_number")    // หมายเลขคดีดำ
-  productWork    String?       @map("product_work")   // งานโปรดักส์ (legacy free-text)
-  productCategory String?      @map("product_category") // หมวดหมู่หลัก เช่น เช่าซื้อรถยนต์
-  productType    String?       @map("product_type")   // ประเภทย่อย เช่น รถยนต์มือสอง
-  workBranch     String?       @map("work_branch")    // งานของสาขาไหน
-  caseCount      Int?          @map("case_count")     // จำนวนคดีที่ไปดำเนินการ
-  adminChecked   String?       @map("admin_checked")   // มี / ไม่มี
-  supervisedBy   String?       @map("supervised_by")   // ผู้สั่งงาน
-  documentNumber String?       @unique @map("document_number") // OW-2567-001
-  clientCompanyId String?      @map("client_company_id") // เลือกจาก ClientCompany CRM ผ่าน dropdown กรองในตาราง Excel-grid (optional — record เก่าไม่มีค่านี้)
+  timeSlot         String?       @map("time_slot") // เช้า / บ่าย / เต็มวัน
+  caseNumber       String?       @map("case_number") // หมายเลขคดีดำ
+  productWork      String?       @map("product_work") // งานโปรดักส์ (legacy free-text)
+  productCategory  String?       @map("product_category") // หมวดหมู่หลัก เช่น เช่าซื้อรถยนต์
+  productType      String?       @map("product_type") // ประเภทย่อย เช่น รถยนต์มือสอง
+  workBranch       String?       @map("work_branch") // งานของสาขาไหน
+  caseCount        Int?          @map("case_count") // จำนวนคดีที่ไปดำเนินการ
+  adminChecked     String?       @map("admin_checked") // มี / ไม่มี
+  supervisedBy     String?       @map("supervised_by") // ผู้สั่งงาน
+  documentNumber   String?       @unique @map("document_number") // OW-2567-001
+  clientCompanyId  String?       @map("client_company_id") // เลือกจาก ClientCompany CRM ผ่าน dropdown กรองในตาราง Excel-grid (optional — record เก่าไม่มีค่านี้)
   status           RequestStatus @default(PENDING)
   chainConfigId    String?
   currentStepOrder Int           @default(0)
-  deletedAt        DateTime?     @map("deleted_at")    // soft-delete — เก็บร่องรอยไว้ตรวจสอบย้อนหลัง (ข้อมูลงานคดี)
+  deletedAt        DateTime?     @map("deleted_at") // soft-delete — เก็บร่องรอยไว้ตรวจสอบย้อนหลัง (ข้อมูลงานคดี)
   deletedById      String?       @map("deleted_by_id") // ใครเป็นคนลบ (audit)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
@@ -1254,7 +1302,9 @@ model OutsideWorkRequest {
   @@map("outside_work_requests")
 }
 
-/** พนักงานที่รับผิดชอบงานโปรดักส์ (หลายคนต่อ 1 คำขอออกนอกสถานที่) */
+/**
+ * พนักงานที่รับผิดชอบงานโปรดักส์ (หลายคนต่อ 1 คำขอออกนอกสถานที่)
+ */
 model OutsideWorkAssignee {
   id                   String   @id @default(cuid())
   outsideWorkRequestId String   @map("outside_work_request_id")
@@ -1272,26 +1322,26 @@ model OutsideWorkAssignee {
 // ── WEEKLY LAWYER PLAN ──────────────────────────
 
 model WeeklyLawyerPlan {
-  id        String        @id @default(cuid())
-  lawyerId  String
-  weekStart DateTime
-  weekEnd   DateTime
-  deadline  DateTime
-  status         RequestStatus @default(PENDING)
-  approvalStatus String?       @map("approval_status")   // null = legacy record
-  supervisorComment String?    @map("supervisor_comment")
-  executiveComment  String?    @map("executive_comment")
-  chainConfigId     String?    @map("chain_config_id")
-  currentStepOrder  Int        @default(0) @map("current_step_order")
-  note      String?
-  isLate    Boolean       @default(false)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id                String        @id @default(cuid())
+  lawyerId          String
+  weekStart         DateTime
+  weekEnd           DateTime
+  deadline          DateTime
+  status            RequestStatus @default(PENDING)
+  approvalStatus    String?       @map("approval_status") // null = legacy record
+  supervisorComment String?       @map("supervisor_comment")
+  executiveComment  String?       @map("executive_comment")
+  chainConfigId     String?       @map("chain_config_id")
+  currentStepOrder  Int           @default(0) @map("current_step_order")
+  note              String?
+  isLate            Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  lawyer    User              @relation(fields: [lawyerId], references: [id])
+  lawyer    User                     @relation(fields: [lawyerId], references: [id])
   days      WeeklyPlanDay[]
   approvals ApprovalHistory[]
-  chain     ApprovalChainConfig? @relation("WeeklyPlanChain", fields: [chainConfigId], references: [id])
+  chain     ApprovalChainConfig?     @relation("WeeklyPlanChain", fields: [chainConfigId], references: [id])
   stepLogs  WeeklyPlanApprovalStep[]
 
   @@map("weekly_lawyer_plans")
@@ -1387,7 +1437,7 @@ model AuditLog {
   userAgent  String?
   createdAt  DateTime    @default(now())
 
-  actor  User?  @relation("AuditActor", fields: [actorId], references: [id])
+  actor User? @relation("AuditActor", fields: [actorId], references: [id])
 
   @@index([actorId, createdAt])
   @@index([targetId, createdAt])
@@ -1397,38 +1447,38 @@ model AuditLog {
 // ── WARNINGS ────────────────────────────────────
 
 model Warning {
-  id          String   @id @default(cuid())
-  userId      String
-  issuedById  String
-  level       Int      @default(1)
-  reason      String
-  description String?
-  fileUrl     String?
-  pdfBase64   String?
-  sentToLine           Boolean   @default(false)
-  lineDeliveryStatus   String?   // pending | sent | failed
-  lineSentAt           DateTime?
-  lineUserId           String?
-  lineErrorMessage     String?
-  isAuto               Boolean   @default(false)
-  month       Int?
-  year        Int?
+  id                 String    @id @default(cuid())
+  userId             String
+  issuedById         String
+  level              Int       @default(1)
+  reason             String
+  description        String?
+  fileUrl            String?
+  pdfBase64          String?
+  sentToLine         Boolean   @default(false)
+  lineDeliveryStatus String? // pending | sent | failed
+  lineSentAt         DateTime?
+  lineUserId         String?
+  lineErrorMessage   String?
+  isAuto             Boolean   @default(false)
+  month              Int?
+  year               Int?
   // ── approval flow ────────────────────────────────
   // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | ARCHIVED
-  status         String    @default("APPROVED")
-  expiredAt      DateTime?  // auto: createdAt + 12 months
-  approvedById   String?
-  approvedAt     DateTime?
-  rejectedById   String?
-  rejectedAt     DateTime?
-  rejectedReason String?
-  archivedAt     DateTime?
-  approvalNote   String?
-  lateCount      Int?       // late occurrences that triggered this auto-warning
-  createdAt   DateTime @default(now())
+  status             String    @default("APPROVED")
+  expiredAt          DateTime? // auto: createdAt + 12 months
+  approvedById       String?
+  approvedAt         DateTime?
+  rejectedById       String?
+  rejectedAt         DateTime?
+  rejectedReason     String?
+  archivedAt         DateTime?
+  approvalNote       String?
+  lateCount          Int? // late occurrences that triggered this auto-warning
+  createdAt          DateTime  @default(now())
 
   user       User  @relation(fields: [userId], references: [id])
-  issuedBy   User  @relation("WarningsIssued",    fields: [issuedById],   references: [id])
+  issuedBy   User  @relation("WarningsIssued", fields: [issuedById], references: [id])
   approvedBy User? @relation("WarningApprovedBy", fields: [approvedById], references: [id])
   rejectedBy User? @relation("WarningRejectedBy", fields: [rejectedById], references: [id])
 
@@ -1453,39 +1503,39 @@ model WarningRule {
 // ── PAYROLL ─────────────────────────────────────
 
 model Payroll {
-  id              String    @id @default(cuid())
-  userId          String
-  month           Int
-  year            Int
-  baseSalary      Float
-  lateDeduction   Float     @default(0)
-  absentDeduction Float     @default(0)
-  unpaidLeave     Float     @default(0)
+  id                           String    @id @default(cuid())
+  userId                       String
+  month                        Int
+  year                         Int
+  baseSalary                   Float
+  lateDeduction                Float     @default(0)
+  absentDeduction              Float     @default(0)
+  unpaidLeave                  Float     @default(0)
   /// หักลากลับก่อน (early leave) — เดิมคำนวณแล้วบวกลบเข้า netSalary ทันที
   /// โดยไม่เคย persist (2026-09 ก่อนหน้านี้); ต้องเก็บแยกตั้งแต่ payroll
   /// fields batch 2 เพราะ PATCH /api/payroll/[id] ต้อง recompute netSalary
   /// ใหม่ (ตอนแก้ backPay/commission) โดยไม่รื้อคำนวณจาก attendance ใหม่ทั้งหมด
-  earlyLeaveDeduction Float @default(0)
-  socialSecurity  Float     @default(0)
-  otherDeduction  Float     @default(0)
-  otherAddition   Float     @default(0)
-  netSalary       Float
-  lateDays        Int       @default(0)
-  absentDays      Int       @default(0)
-  lateMinutes     Int       @default(0)
-  lateBillableMinutes Int   @default(0)
-  lateDeductionDetail String?
-  taxDeduction    Float     @default(0)
-  taxDetail       String?   // JSON: { annualGross, taxableIncome, annualTax, monthlyWithholding }
+  earlyLeaveDeduction          Float     @default(0)
+  socialSecurity               Float     @default(0)
+  otherDeduction               Float     @default(0)
+  otherAddition                Float     @default(0)
+  netSalary                    Float
+  lateDays                     Int       @default(0)
+  absentDays                   Int       @default(0)
+  lateMinutes                  Int       @default(0)
+  lateBillableMinutes          Int       @default(0)
+  lateDeductionDetail          String?
+  taxDeduction                 Float     @default(0)
+  taxDetail                    String? // JSON: { annualGross, taxableIncome, annualTax, monthlyWithholding }
   /// เงินรายวัน (2026-09) — snapshot ไว้ที่แถว Payroll เอง ไม่ derive จาก
   /// User.payType/dailyRate ตอนแสดงผล เพราะพนักงานอาจเปลี่ยน payType/
   /// dailyRate ภายหลัง แต่สลิปเดือนที่ผ่านมาต้องแสดงค่า ณ ตอนคำนวณเดือนนั้น
   /// เสมอ — payType เป็น String? (ไม่ใช่ enum PayType) ตั้งใจ เพื่อไม่ผูก
   /// FK/ตรวจสอบกับ enum ที่อาจเปลี่ยนได้ในอนาคต ตรงกับที่ Payroll.status
   /// เองก็เป็น String ไม่ใช่ enum เช่นกัน
-  payType         String?
-  daysWorked      Float?
-  dailyRateUsed   Float?
+  payType                      String?
+  daysWorked                   Float?
+  dailyRateUsed                Float?
   // Payroll fields batch 2 (2026-09) — all editable only while status is
   // DRAFT via PATCH /api/payroll/[id]; server always recomputes SS/tax/
   // netSalary from these, never trusts client-sent totals. See
@@ -1493,46 +1543,46 @@ model Payroll {
   // positionAllowance/diligenceAllowance/backPay/commission feed one shared
   // 40(1)+40(2) tax calc so the 100,000-baht incomeDeduction ceiling isn't
   // applied twice.
-  positionAllowance    Float @default(0) // ค่าตำแหน่ง — snapshot จาก User.positionAllowance, เข้าฐาน SS
-  diligenceAllowance   Float @default(0) // เบี้ยขยัน — ตัดทั้งจำนวนถ้าขาด/ลา/สาย (ยกเว้นลาพักร้อน), ไม่เข้าฐาน SS
-  backPay              Float @default(0) // ตกเบิก — ยอดครั้งเดียวเฉพาะเดือนที่จ่ายจริง (cash basis, ม.50), เข้าฐาน SS
-  commission           Float @default(0) // คอมมิชชั่น — ไม่เข้าฐาน SS
-  studentLoanDeduction Float @default(0) // กยศ. — snapshot จาก User.studentLoanDeduction, หักหลังภาษี ไม่ลดหย่อน ไม่กระทบ taxableIncome
-  securityDepositDeduction     Float @default(0) // เงินประกัน 6 งวด (หรือตามแผน) — หักหนี้ตรงๆ ไม่เกี่ยวภาษี/SS
-  securityDepositInstallmentNo Int?              // งวดที่เท่าไหร่ (เช่น 3/6) — derive ตอน generate จากการนับ Payroll เดิม ไม่ใช่ mutable counter
-  professionalFee    Float @default(0) // ค่าวิชาชีพ 40(6) รวมของเดือนนี้ = sum(ProfessionalFeePayment.amount)
-  professionalFeeTax Float @default(0) // ภาษีหัก ณ ที่จ่าย 40(6) รวม = sum(ProfessionalFeePayment.taxWithheld); 3% flat ต่อรายการที่ >= 1,000 บาท, แยกก้อนจาก 40(1)/40(2)
+  positionAllowance            Float     @default(0) // ค่าตำแหน่ง — snapshot จาก User.positionAllowance, เข้าฐาน SS
+  diligenceAllowance           Float     @default(0) // เบี้ยขยัน — ตัดทั้งจำนวนถ้าขาด/ลา/สาย (ยกเว้นลาพักร้อน), ไม่เข้าฐาน SS
+  backPay                      Float     @default(0) // ตกเบิก — ยอดครั้งเดียวเฉพาะเดือนที่จ่ายจริง (cash basis, ม.50), เข้าฐาน SS
+  commission                   Float     @default(0) // คอมมิชชั่น — ไม่เข้าฐาน SS
+  studentLoanDeduction         Float     @default(0) // กยศ. — snapshot จาก User.studentLoanDeduction, หักหลังภาษี ไม่ลดหย่อน ไม่กระทบ taxableIncome
+  securityDepositDeduction     Float     @default(0) // เงินประกัน 6 งวด (หรือตามแผน) — หักหนี้ตรงๆ ไม่เกี่ยวภาษี/SS
+  securityDepositInstallmentNo Int? // งวดที่เท่าไหร่ (เช่น 3/6) — derive ตอน generate จากการนับ Payroll เดิม ไม่ใช่ mutable counter
+  professionalFee              Float     @default(0) // ค่าวิชาชีพ 40(6) รวมของเดือนนี้ = sum(ProfessionalFeePayment.amount)
+  professionalFeeTax           Float     @default(0) // ภาษีหัก ณ ที่จ่าย 40(6) รวม = sum(ProfessionalFeePayment.taxWithheld); 3% flat ต่อรายการที่ >= 1,000 บาท, แยกก้อนจาก 40(1)/40(2)
   /// taxScheme (2026-09) — snapshot ค่า User.taxScheme ที่ใช้จริงตอนคำนวณ
   /// เดือนนี้ เป็น String? (ไม่ใช่ enum TaxScheme) ตั้งใจ ด้วยเหตุผลเดียวกับ
   /// payType ด้านบน: ห้ามผูก FK/enum กับ snapshot ประวัติ และยังใช้เป็น
   /// ตัวกรองสำหรับ SUM ยอดสะสมภาษี/WHT รายปีแยกตาม scheme จริงของแต่ละเดือน
   /// (คนที่เปลี่ยน taxScheme กลางปีต้องนับยอดสะสมถูกช่วง ไม่ใช่ตาม taxScheme
   /// ปัจจุบันของ user)
-  taxScheme  String? // 'NORMAL' | 'OFF_SYSTEM_WHT'
+  taxScheme                    String? // 'NORMAL' | 'OFF_SYSTEM_WHT'
   /// ค่าล่วงเวลา (OT) — HR กรอกยอดก้อนเดียวเอง ไม่มีสูตรอัตรา (2026-09)
   /// เข้าฐานภาษีตาม taxScheme ของเดือนนั้น แต่ไม่เข้าฐาน SS เลย
-  overtimePay Float @default(0)
+  overtimePay                  Float     @default(0)
   /// โบนัส — แยกจาก otherAddition โดยเจตนา (2026-09) เข้าฐานภาษีเหมือน OT
   /// แต่ไม่เข้าฐาน SS เหมือนกัน
-  bonus       Float @default(0)
-  status          String    @default("DRAFT")
-  slipSentAt      DateTime?
-  payslipSentAt     DateTime?
-  payslipSentVia    String?   // 'LINE' | 'EMAIL'
-  payslipSentStatus String?   // 'SUCCESS' | 'FAILED' | 'PENDING'
-  payslipSentError  String?
-  payslipCloudinaryPublicId String?
-  approvedById    String?
-  approvedAt      DateTime?
-  note            String?
-  deletedAt       DateTime? @map("deleted_at")    // soft-delete — สลิปเงินเดือนต้องเก็บตามกฎหมายแรงงานอย่างน้อย 2 ปี ห้าม hard delete
-  deletedById     String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  bonus                        Float     @default(0)
+  status                       String    @default("DRAFT")
+  slipSentAt                   DateTime?
+  payslipSentAt                DateTime?
+  payslipSentVia               String? // 'LINE' | 'EMAIL'
+  payslipSentStatus            String? // 'SUCCESS' | 'FAILED' | 'PENDING'
+  payslipSentError             String?
+  payslipCloudinaryPublicId    String?
+  approvedById                 String?
+  approvedAt                   DateTime?
+  note                         String?
+  deletedAt                    DateTime? @map("deleted_at") // soft-delete — สลิปเงินเดือนต้องเก็บตามกฎหมายแรงงานอย่างน้อย 2 ปี ห้าม hard delete
+  deletedById                  String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
-  user       User        @relation("PayrollUser", fields: [userId], references: [id])
-  deletedBy  User?       @relation("PayrollDeletedBy", fields: [deletedById], references: [id])
-  salarySlip SalarySlip?
+  user                    User                     @relation("PayrollUser", fields: [userId], references: [id])
+  deletedBy               User?                    @relation("PayrollDeletedBy", fields: [deletedById], references: [id])
+  salarySlip              SalarySlip?
   professionalFeePayments ProfessionalFeePayment[]
 
   @@unique([userId, month, year])
@@ -1569,11 +1619,11 @@ model SecurityDepositPlan {
 model ProfessionalFeePayment {
   id            String   @id @default(cuid())
   payrollId     String
-  hiringCompany String   // บริษัทผู้ว่าจ้าง
-  jobType       String   // ประเภทงาน (free text)
-  amount        Float    // จำนวนเงินที่ส่งเบิก
+  hiringCompany String // บริษัทผู้ว่าจ้าง
+  jobType       String // ประเภทงาน (free text)
+  amount        Float // จำนวนเงินที่ส่งเบิก
   paidAt        DateTime
-  taxWithheld   Float    // amount >= 1000 ? amount*0.03 : 0
+  taxWithheld   Float // amount >= 1000 ? amount*0.03 : 0
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1610,7 +1660,7 @@ model SalarySlip {
   year        Int
   pdfBase64   String?
   issuedAt    DateTime  @default(now())
-  deletedAt   DateTime? @map("deleted_at")    // soft-delete — เก็บคู่กับ Payroll ที่ลบ (ไม่ใช้ onDelete: Cascade ของ payroll เพราะ cascade ทำงานเฉพาะ hard delete)
+  deletedAt   DateTime? @map("deleted_at") // soft-delete — เก็บคู่กับ Payroll ที่ลบ (ไม่ใช้ onDelete: Cascade ของ payroll เพราะ cascade ทำงานเฉพาะ hard delete)
   deletedById String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1739,11 +1789,11 @@ model ApprovalChainConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  steps           ApprovalChainStep[]
-  leaveRequests   LeaveRequest[]         @relation("LeaveChain")
-  outsideRequests OutsideWorkRequest[] @relation("OutsideChain")
-  weeklyPlans     WeeklyLawyerPlan[]     @relation("WeeklyPlanChain")
-  forgotScanRequests ForgotScanRequest[] @relation("ForgotScanChain")
+  steps              ApprovalChainStep[]
+  leaveRequests      LeaveRequest[]       @relation("LeaveChain")
+  outsideRequests    OutsideWorkRequest[] @relation("OutsideChain")
+  weeklyPlans        WeeklyLawyerPlan[]   @relation("WeeklyPlanChain")
+  forgotScanRequests ForgotScanRequest[]  @relation("ForgotScanChain")
 
   @@map("approval_chain_configs")
 }
@@ -1751,19 +1801,19 @@ model ApprovalChainConfig {
 model ApprovalChainStep {
   id           String   @id @default(cuid())
   chainId      String
-  stepOrder    Int      // 1, 2, 3 …
-  stepName     String   // "หัวหน้าทีม", "ผู้จัดการ", "HR อนุมัติ"
-  approverRole Role?    // role ที่มีสิทธิ์อนุมัติขั้นนี้ (null = ใช้ approverId แทน)
-  approverId   String?  // ระบุ user เฉพาะเจาะจง (optional override)
+  stepOrder    Int // 1, 2, 3 …
+  stepName     String // "หัวหน้าทีม", "ผู้จัดการ", "HR อนุมัติ"
+  approverRole Role? // role ที่มีสิทธิ์อนุมัติขั้นนี้ (null = ใช้ approverId แทน)
+  approverId   String? // ระบุ user เฉพาะเจาะจง (optional override)
   canSkip      Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  chain            ApprovalChainConfig       @relation(fields: [chainId], references: [id], onDelete: Cascade)
-  approver         User?                     @relation("ChainStepApprover", fields: [approverId], references: [id])
-  stepLogs         LeaveApprovalStep[]
-  outsideStepLogs  OutsideWorkApprovalStep[]
-  weeklyStepLogs   WeeklyPlanApprovalStep[]
+  chain              ApprovalChainConfig       @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  approver           User?                     @relation("ChainStepApprover", fields: [approverId], references: [id])
+  stepLogs           LeaveApprovalStep[]
+  outsideStepLogs    OutsideWorkApprovalStep[]
+  weeklyStepLogs     WeeklyPlanApprovalStep[]
   forgotScanStepLogs ForgotScanApprovalStep[]
 
   @@unique([chainId, stepOrder])
@@ -1772,23 +1822,23 @@ model ApprovalChainStep {
 
 // approval_steps table — instance per leave request (tracks status per step)
 model LeaveApprovalStep {
-  id              String             @id @default(cuid())
-  leaveRequestId  String
-  chainStepId     String
-  stepOrder       Int
-  stepName        String
-  approverRole    Role?
-  approverId      String?
-  status          ApprovalStepStatus @default(PENDING)
-  actorId         String?            // user who acted
-  comment         String?
-  ip              String?
-  actedAt         DateTime?
-  createdAt       DateTime           @default(now())
+  id             String             @id @default(cuid())
+  leaveRequestId String
+  chainStepId    String
+  stepOrder      Int
+  stepName       String
+  approverRole   Role?
+  approverId     String?
+  status         ApprovalStepStatus @default(PENDING)
+  actorId        String? // user who acted
+  comment        String?
+  ip             String?
+  actedAt        DateTime?
+  createdAt      DateTime           @default(now())
 
-  leaveRequest  LeaveRequest      @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
-  chainStep     ApprovalChainStep @relation(fields: [chainStepId], references: [id])
-  actor         User?             @relation("LeaveStepActor", fields: [actorId], references: [id])
+  leaveRequest LeaveRequest      @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  chainStep    ApprovalChainStep @relation(fields: [chainStepId], references: [id])
+  actor        User?             @relation("LeaveStepActor", fields: [actorId], references: [id])
 
   @@index([leaveRequestId])
   @@map("leave_approval_steps")
@@ -1866,30 +1916,30 @@ model ForgotScanApprovalStep {
 // ── COMPANY SETTINGS ────────────────────────────
 
 model CompanySettings {
-  id               String   @id @default("singleton")
-  companyName      String   @default("บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด")
-  companyNameEn    String?
-  officeAddress    String?
-  logoUrl          String?
-  workStartTime    String   @default("08:30")
-  workEndTime      String   @default("17:30")
-  lunchReturnTime  String   @default("13:00")
-  lateGraceMin     Int      @default(5)
-  sickDaysYear     Int      @default(30)
-  vacationDaysYear Int      @default(6)
-  personalDaysYear Int      @default(3)
-  lineChannelId    String?
-  lineChannelSecret String?
-  lineAccessToken  String?
-  geofenceLat      Float?
-  geofenceLng      Float?
-  geofenceRadius      Float    @default(200)
-  lateDeductRate      Float    @default(0)
-  absentDeductRate    Float    @default(0)
-  imageRetentionDays  Int      @default(90)
-  probationMonths     Int      @default(3) // ช่วงทดลองงาน (เดือน) — ไม่มีพักร้อน
-  outsideWorkPlanTitle String? @default("แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท") @map("outside_work_plan_title")
-  updatedAt           DateTime @updatedAt
+  id                   String   @id @default("singleton")
+  companyName          String   @default("บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด")
+  companyNameEn        String?
+  officeAddress        String?
+  logoUrl              String?
+  workStartTime        String   @default("08:30")
+  workEndTime          String   @default("17:30")
+  lunchReturnTime      String   @default("13:00")
+  lateGraceMin         Int      @default(5)
+  sickDaysYear         Int      @default(30)
+  vacationDaysYear     Int      @default(6)
+  personalDaysYear     Int      @default(3)
+  lineChannelId        String?
+  lineChannelSecret    String?
+  lineAccessToken      String?
+  geofenceLat          Float?
+  geofenceLng          Float?
+  geofenceRadius       Float    @default(200)
+  lateDeductRate       Float    @default(0)
+  absentDeductRate     Float    @default(0)
+  imageRetentionDays   Int      @default(90)
+  probationMonths      Int      @default(3) // ช่วงทดลองงาน (เดือน) — ไม่มีพักร้อน
+  outsideWorkPlanTitle String?  @default("แผนการดำเนินงานของบังคับคดีและทนายความประจำบริษัท") @map("outside_work_plan_title")
+  updatedAt            DateTime @updatedAt
 
   @@map("company_settings")
 }
@@ -1897,15 +1947,15 @@ model CompanySettings {
 // ── LEAVE POLICY (กำหนดวันลาตามตำแหน่ง/role) ────────
 
 model LeavePolicy {
-  id            String  @id @default(cuid())
-  name          String
-  role          Role?   // null = default policy ใช้กับทุก role ที่ไม่มี policy เฉพาะ
-  isDefault     Boolean @default(false)
-  sickDays      Int     @default(30)
-  vacationDays  Int     @default(6)
-  personalDays  Int     @default(3)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  role         Role? // null = default policy ใช้กับทุก role ที่ไม่มี policy เฉพาะ
+  isDefault    Boolean  @default(false)
+  sickDays     Int      @default(30)
+  vacationDays Int      @default(6)
+  personalDays Int      @default(3)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("leave_policies")
 }
@@ -1913,37 +1963,37 @@ model LeavePolicy {
 // ── FORGOT SCAN REQUEST ─────────────────────────
 
 model ForgotScanRequest {
-  id            String        @id @default(cuid())
-  userId        String
-  date          DateTime      // วันที่ลืมสแกน (เก็บเป็น midnight Bangkok)
-  scanType      String        // checkin | lunch-out | lunch-in | checkout
-  correctTime   DateTime      // เวลาที่ถูกต้อง
-  reason        String
-  evidenceUrl   String?       // ไฟล์หลักฐาน (optional)
-  status        RequestStatus @default(PENDING)
+  id          String        @id @default(cuid())
+  userId      String
+  date        DateTime // วันที่ลืมสแกน (เก็บเป็น midnight Bangkok)
+  scanType    String // checkin | lunch-out | lunch-in | checkout
+  correctTime DateTime // เวลาที่ถูกต้อง
+  reason      String
+  evidenceUrl String? // ไฟล์หลักฐาน (optional)
+  status      RequestStatus @default(PENDING)
 
   chainConfigId    String? @map("chain_config_id")
   currentStepOrder Int     @default(0) @map("current_step_order")
 
-  supervisorId  String?       // legacy step 1
+  supervisorId   String? // legacy step 1
   supervisorNote String?
-  supervisorAt  DateTime?
+  supervisorAt   DateTime?
 
-  hrId          String?       // ผู้อนุมัติขั้น 2 (HR)
-  hrNote        String?
-  hrAt          DateTime?
+  hrId   String? // ผู้อนุมัติขั้น 2 (HR)
+  hrNote String?
+  hrAt   DateTime?
 
-  originalTime  DateTime?     // เวลาเดิมก่อนแก้ (audit log)
-  attendanceId  String?       // อ้างอิง Attendance row ที่ถูกแก้
-  appliedAt     DateTime?     // เวลาที่ระบบ apply แล้ว
+  originalTime DateTime? // เวลาเดิมก่อนแก้ (audit log)
+  attendanceId String? // อ้างอิง Attendance row ที่ถูกแก้
+  appliedAt    DateTime? // เวลาที่ระบบ apply แล้ว
 
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user          User          @relation("ForgotScanUser", fields: [userId], references: [id])
-  supervisorRel User?         @relation("ForgotScanSupervisor", fields: [supervisorId], references: [id])
-  hrRel         User?         @relation("ForgotScanHR", fields: [hrId], references: [id])
-  chainConfig   ApprovalChainConfig? @relation("ForgotScanChain", fields: [chainConfigId], references: [id])
+  user          User                     @relation("ForgotScanUser", fields: [userId], references: [id])
+  supervisorRel User?                    @relation("ForgotScanSupervisor", fields: [supervisorId], references: [id])
+  hrRel         User?                    @relation("ForgotScanHR", fields: [hrId], references: [id])
+  chainConfig   ApprovalChainConfig?     @relation("ForgotScanChain", fields: [chainConfigId], references: [id])
   stepLogs      ForgotScanApprovalStep[]
 
   @@map("forgot_scan_requests")
@@ -1952,32 +2002,32 @@ model ForgotScanRequest {
 // ── TASK ASSIGNMENT ──────────────────────────────
 
 model TaskAssignment {
-  id           String       @id @default(cuid())
-  title        String
-  description  String?
-  type         TaskType     @default(OFFICE)
-  priority     TaskPriority @default(MEDIUM)
-  status       TaskStatus   @default(PENDING)
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  type        TaskType     @default(OFFICE)
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(PENDING)
 
-  assigneeId   String       @map("assignee_id")
-  assignedById String       @map("assigned_by_id")
+  assigneeId   String @map("assignee_id")
+  assignedById String @map("assigned_by_id")
 
-  startDate    DateTime?    @map("start_date")
-  dueDate      DateTime?    @map("due_date")
+  startDate DateTime? @map("start_date")
+  dueDate   DateTime? @map("due_date")
 
-  notes        String?
-  attachmentUrl String?     @map("attachment_url")
+  notes         String?
+  attachmentUrl String? @map("attachment_url")
 
-  resultNote   String?      @map("result_note")
-  resultUrl    String?      @map("result_url")
-  submittedAt  DateTime?    @map("submitted_at")
+  resultNote  String?   @map("result_note")
+  resultUrl   String?   @map("result_url")
+  submittedAt DateTime? @map("submitted_at")
 
-  reviewNote   String?      @map("review_note")
-  reviewedAt   DateTime?    @map("reviewed_at")
-  reviewedById String?      @map("reviewed_by_id")
+  reviewNote   String?   @map("review_note")
+  reviewedAt   DateTime? @map("reviewed_at")
+  reviewedById String?   @map("reviewed_by_id")
 
-  taskLinks     String?      @map("task_links")
-  progressNotes String?      @map("progress_notes")
+  taskLinks     String? @map("task_links")
+  progressNotes String? @map("progress_notes")
 
   // Phase 1 — department workflow fields
   caseNumber       String?   @map("case_number")
@@ -1988,32 +2038,32 @@ model TaskAssignment {
   appointmentPlace String?   @map("appointment_place")
 
   // Phase 5 — client portal link
-  clientId         String?   @map("client_id")
+  clientId        String? @map("client_id")
   // Phase 9 — Client CRM
-  clientCompanyId  String?   @map("client_company_id")
+  clientCompanyId String? @map("client_company_id")
 
   // Phase 2 — Deadline & SLA
-  dueTime      String?   @map("due_time")      // HH:MM for reminder targeting
-  slaHours     Int?      @map("sla_hours")     // SLA target hours from creation
-  slaDeadline  DateTime? @map("sla_deadline")  // computed: createdAt + slaHours
+  dueTime     String?   @map("due_time") // HH:MM for reminder targeting
+  slaHours    Int?      @map("sla_hours") // SLA target hours from creation
+  slaDeadline DateTime? @map("sla_deadline") // computed: createdAt + slaHours
 
   // Phase 3 — Template, Case Relation & Automation
-  templateId    String? @map("template_id")    // historical: which task_templates row generated this task (template feature removed, plain ref, no FK constraint)
-  debtorId      String? @map("debtor_id")      // primary debtor link (plain ref, no FK constraint)
+  templateId    String? @map("template_id") // historical: which task_templates row generated this task (template feature removed, plain ref, no FK constraint)
+  debtorId      String? @map("debtor_id") // primary debtor link (plain ref, no FK constraint)
   rejectedCount Int     @default(0) @map("rejected_count") // times rejected — triggers CEO alert at 3+
 
   // Case Management — FK to Case entity
-  caseId        String? @map("case_id")
+  caseId String? @map("case_id")
 
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  assignee        User              @relation("TaskAssignee", fields: [assigneeId],   references: [id])
-  assignedBy      User              @relation("TaskAssigner", fields: [assignedById], references: [id])
-  reviewedBy      User?             @relation("TaskReviewer", fields: [reviewedById], references: [id])
-  client          User?             @relation("TaskClient",   fields: [clientId],     references: [id])
-  clientCompany   ClientCompany?    @relation(fields: [clientCompanyId], references: [id])
-  case            Case?             @relation(fields: [caseId],     references: [id])
+  assignee        User                @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignedBy      User                @relation("TaskAssigner", fields: [assignedById], references: [id])
+  reviewedBy      User?               @relation("TaskReviewer", fields: [reviewedById], references: [id])
+  client          User?               @relation("TaskClient", fields: [clientId], references: [id])
+  clientCompany   ClientCompany?      @relation(fields: [clientCompanyId], references: [id])
+  case            Case?               @relation(fields: [caseId], references: [id])
   attachments     TaskAttachment[]
   statusHistories CaseStatusHistory[]
   clientMessages  ClientMessage[]
@@ -2026,8 +2076,8 @@ model TaskAssignment {
   comments        TaskComment[]
   checklist       TaskChecklist[]
   timeline        TaskTimeline[]
-  dependencies    TaskDependency[]  @relation("TaskDeps")
-  dependents      TaskDependency[]  @relation("TaskBlockedBy")
+  dependencies    TaskDependency[]    @relation("TaskDeps")
+  dependents      TaskDependency[]    @relation("TaskBlockedBy")
 
   @@index([assigneeId])
   @@index([assignedById])
@@ -2051,8 +2101,8 @@ model TaskAttachment {
   uploadedById String   @map("uploaded_by_id")
   createdAt    DateTime @default(now())
 
-  task         TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  uploadedBy   User           @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id])
+  task       TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User           @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id])
 
   @@map("task_attachments")
 }
@@ -2060,13 +2110,13 @@ model TaskAttachment {
 // ── TASK COMMENTS (Phase 2) ──────────────────────────
 
 model TaskComment {
-  id           String   @id @default(cuid())
-  taskId       String   @map("task_id")
-  userId       String   @map("user_id")
-  content      String
-  parentId     String?  @map("parent_id")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  content   String
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   task    TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user    User           @relation("TaskCommentAuthor", fields: [userId], references: [id])
@@ -2101,9 +2151,9 @@ model TaskTimeline {
   id          String   @id @default(cuid())
   taskId      String   @map("task_id")
   userId      String   @map("user_id")
-  action      String   // created | status_changed | edited | commented | checklist_completed | attachment_uploaded | escalated
+  action      String // created | status_changed | edited | commented | checklist_completed | attachment_uploaded | escalated
   description String
-  meta        String?  // JSON: { oldStatus, newStatus, field, oldValue, newValue }
+  meta        String? // JSON: { oldStatus, newStatus, field, oldValue, newValue }
   createdAt   DateTime @default(now()) @map("created_at")
 
   task TaskAssignment @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -2121,7 +2171,7 @@ model TaskDependency {
   dependsOnId String   @map("depends_on_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  task      TaskAssignment @relation("TaskDeps",      fields: [taskId],      references: [id], onDelete: Cascade)
+  task      TaskAssignment @relation("TaskDeps", fields: [taskId], references: [id], onDelete: Cascade)
   dependsOn TaskAssignment @relation("TaskBlockedBy", fields: [dependsOnId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, dependsOnId])
@@ -2133,31 +2183,31 @@ model TaskDependency {
 // ── CASE DOCUMENT CENTER (Phase 4) ──────────────────
 
 model CaseDocument {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   title        String
   description  String?
-  docType      String    @default("OTHER") @map("doc_type")
-  category     String    @default("OTHER")
-  caseNumber   String?   @map("case_number")
-  clientName   String?   @map("client_name")
+  docType      String   @default("OTHER") @map("doc_type")
+  category     String   @default("OTHER")
+  caseNumber   String?  @map("case_number")
+  clientName   String?  @map("client_name")
   department   String?
-  taskId       String?   @map("task_id")
-  assignedToId String?   @map("assigned_to_id")
-  uploadedById String    @map("uploaded_by_id")
+  taskId       String?  @map("task_id")
+  assignedToId String?  @map("assigned_to_id")
+  uploadedById String   @map("uploaded_by_id")
   // Phase 5 — client portal link
-  clientId     String?   @map("client_id")
-  status       String    @default("ACTIVE")
+  clientId     String?  @map("client_id")
+  status       String   @default("ACTIVE")
   tags         String?
-  isArchived   Boolean   @default(false) @map("is_archived")
+  isArchived   Boolean  @default(false) @map("is_archived")
   // Document Center Phase 1 — FK to Case + Debtor
-  caseId       String?   @map("case_id")
-  debtorId     String?   @map("debtor_id")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt      @map("updated_at")
+  caseId       String?  @map("case_id")
+  debtorId     String?  @map("debtor_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  uploadedBy User                    @relation("CaseDocUploader",  fields: [uploadedById],  references: [id])
-  assignedTo User?                   @relation("CaseDocAssignee",  fields: [assignedToId],  references: [id])
-  client     User?                   @relation("DocClient",         fields: [clientId],      references: [id])
+  uploadedBy User                    @relation("CaseDocUploader", fields: [uploadedById], references: [id])
+  assignedTo User?                   @relation("CaseDocAssignee", fields: [assignedToId], references: [id])
+  client     User?                   @relation("DocClient", fields: [clientId], references: [id])
   case       Case?                   @relation(fields: [caseId], references: [id], onDelete: SetNull)
   files      CaseDocumentFile[]
   signatures CaseDocumentSignature[]
@@ -2185,7 +2235,7 @@ model CaseDocumentFile {
   uploadedById String   @map("uploaded_by_id")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  document   CaseDocument @relation(fields: [documentId],   references: [id], onDelete: Cascade)
+  document   CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
   uploadedBy User         @relation("CaseDocFileUploader", fields: [uploadedById], references: [id])
 
   @@map("case_document_files")
@@ -2216,7 +2266,7 @@ model CaseDocumentSignature {
   docVersion     String   @default("") @map("doc_version")
 
   document CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  signedBy User         @relation("CaseDocSigner",    fields: [signedById], references: [id])
+  signedBy User         @relation("CaseDocSigner", fields: [signedById], references: [id])
 
   @@map("case_document_signatures")
 }
@@ -2230,7 +2280,7 @@ model CaseDocumentVersion {
   changedByName String   @map("changed_by_name")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  document  CaseDocument @relation(fields: [documentId],  references: [id], onDelete: Cascade)
+  document  CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
   changedBy User         @relation("CaseDocVersioner", fields: [changedById], references: [id])
 
   @@map("case_document_versions")
@@ -2265,8 +2315,8 @@ model ClientMessage {
   createdAt    DateTime  @default(now()) @map("created_at")
 
   client User            @relation("ClientMessages", fields: [clientId], references: [id])
-  sender User?           @relation("MessageSender",  fields: [senderId],  references: [id])
-  task   TaskAssignment? @relation(fields: [taskId],   references: [id])
+  sender User?           @relation("MessageSender", fields: [senderId], references: [id])
+  task   TaskAssignment? @relation(fields: [taskId], references: [id])
 
   @@map("client_messages")
 }
@@ -2287,8 +2337,8 @@ model CaseIncome {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  task      TaskAssignment? @relation(fields: [taskId],      references: [id])
-  createdBy User            @relation("CaseIncomeCreator",   fields: [createdById], references: [id])
+  task      TaskAssignment? @relation(fields: [taskId], references: [id])
+  createdBy User            @relation("CaseIncomeCreator", fields: [createdById], references: [id])
 
   @@map("case_incomes")
 }
@@ -2308,9 +2358,9 @@ model CaseExpense {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  task      TaskAssignment? @relation(fields: [taskId],        references: [id])
-  employee  User            @relation("CaseExpenseEmployee",   fields: [employeeId],  references: [id])
-  createdBy User            @relation("CaseExpenseCreator",    fields: [createdById], references: [id])
+  task      TaskAssignment? @relation(fields: [taskId], references: [id])
+  employee  User            @relation("CaseExpenseEmployee", fields: [employeeId], references: [id])
+  createdBy User            @relation("CaseExpenseCreator", fields: [createdById], references: [id])
 
   @@map("case_expenses")
 }
@@ -2333,8 +2383,8 @@ model ExpenseClaim {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  task        TaskAssignment?   @relation(fields: [taskId],        references: [id])
-  submittedBy User              @relation("ClaimSubmitter",        fields: [submittedById], references: [id])
+  task        TaskAssignment?    @relation(fields: [taskId], references: [id])
+  submittedBy User               @relation("ClaimSubmitter", fields: [submittedById], references: [id])
   files       ExpenseClaimFile[]
 
   @@map("expense_claims")
@@ -2396,17 +2446,17 @@ model Debtor {
   registeredAddress    String?   @map("registered_address")
   assetAddress         String?   @map("asset_address")
   lastContactAt        DateTime? @map("last_contact_at")
-  deletedAt            DateTime? @map("deleted_at")    // soft-delete — เก็บร่องรอยไว้ตรวจสอบย้อนหลัง (ข้อมูลลูกหนี้)
+  deletedAt            DateTime? @map("deleted_at") // soft-delete — เก็บร่องรอยไว้ตรวจสอบย้อนหลัง (ข้อมูลลูกหนี้)
   deletedById          String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
 
-  task         TaskAssignment?      @relation(fields: [taskId],      references: [id])
-  assignedTo   User?                @relation("DebtorAssignee",      fields: [assignedToId], references: [id])
-  createdBy    User                 @relation("DebtorCreator",       fields: [createdById],  references: [id])
-  deletedBy    User?                @relation("DebtorDeletedBy",     fields: [deletedById],  references: [id])
-  followUps    DebtFollowUp[]
-  payments     DebtPayment[]
-  appointments PaymentAppointment[]
-  files        DebtorFile[]
+  task             TaskAssignment?      @relation(fields: [taskId], references: [id])
+  assignedTo       User?                @relation("DebtorAssignee", fields: [assignedToId], references: [id])
+  createdBy        User                 @relation("DebtorCreator", fields: [createdById], references: [id])
+  deletedBy        User?                @relation("DebtorDeletedBy", fields: [deletedById], references: [id])
+  followUps        DebtFollowUp[]
+  payments         DebtPayment[]
+  appointments     PaymentAppointment[]
+  files            DebtorFile[]
   contacts         DebtorContact[]
   promises         PromiseToPay[]
   recoveryPayments RecoveryPayment[]
@@ -2429,8 +2479,8 @@ model DebtFollowUp {
   performedById String    @map("performed_by_id")
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  debtor      Debtor @relation(fields: [debtorId],      references: [id], onDelete: Cascade)
-  performedBy User   @relation("FollowUpPerformer",     fields: [performedById], references: [id])
+  debtor      Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  performedBy User   @relation("FollowUpPerformer", fields: [performedById], references: [id])
 
   @@index([debtorId])
   @@index([followedAt])
@@ -2450,9 +2500,9 @@ model DebtPayment {
   createdById  String   @map("created_by_id")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  debtor     Debtor @relation(fields: [debtorId],    references: [id], onDelete: Cascade)
-  receivedBy User?  @relation("PaymentReceiver",     fields: [receivedById], references: [id])
-  createdBy  User   @relation("PaymentCreator",      fields: [createdById],  references: [id])
+  debtor     Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  receivedBy User?  @relation("PaymentReceiver", fields: [receivedById], references: [id])
+  createdBy  User   @relation("PaymentCreator", fields: [createdById], references: [id])
 
   @@index([debtorId])
   @@map("debt_payments")
@@ -2470,7 +2520,7 @@ model PaymentAppointment {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  debtor    Debtor @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
+  debtor    Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
   createdBy User   @relation("AppointmentCreator", fields: [createdById], references: [id])
 
   @@index([debtorId])
@@ -2490,8 +2540,8 @@ model DebtorFile {
   createdById String   @map("created_by_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  debtor    Debtor @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
-  createdBy User   @relation("DebtorFileCreator",  fields: [createdById], references: [id])
+  debtor    Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("DebtorFileCreator", fields: [createdById], references: [id])
 
   @@index([debtorId])
   @@map("debtor_files")
@@ -2502,19 +2552,19 @@ model DebtorFile {
 model DebtorContact {
   id             String    @id @default(cuid())
   debtorId       String    @map("debtor_id")
-  channel        String    // PHONE, LINE, SMS, EMAIL, VISIT
+  channel        String // PHONE, LINE, SMS, EMAIL, VISIT
   direction      String    @default("OUTBOUND") // OUTBOUND, INBOUND
-  result         String    // REACHED, NO_ANSWER, WRONG_NUMBER, DISCONNECTED, REFUSED, LEFT_MESSAGE
+  result         String // REACHED, NO_ANSWER, WRONG_NUMBER, DISCONNECTED, REFUSED, LEFT_MESSAGE
   note           String?
-  duration       Int?      // seconds (for calls)
+  duration       Int? // seconds (for calls)
   promisedAt     DateTime? @map("promised_at")
   promisedAmount Float?    @map("promised_amount")
   nextContactAt  DateTime? @map("next_contact_at")
   performedById  String    @map("performed_by_id")
   createdAt      DateTime  @default(now()) @map("created_at")
 
-  debtor      Debtor @relation(fields: [debtorId],      references: [id], onDelete: Cascade)
-  performedBy User   @relation("ContactPerformer",      fields: [performedById], references: [id])
+  debtor      Debtor @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  performedBy User   @relation("ContactPerformer", fields: [performedById], references: [id])
 
   @@index([debtorId])
   @@index([createdAt])
@@ -2534,8 +2584,8 @@ model PromiseToPay {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  debtor           Debtor            @relation(fields: [debtorId],   references: [id], onDelete: Cascade)
-  createdBy        User              @relation("PromiseCreator",     fields: [createdById], references: [id])
+  debtor           Debtor            @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  createdBy        User              @relation("PromiseCreator", fields: [createdById], references: [id])
   recoveryPayments RecoveryPayment[]
 
   @@index([debtorId])
@@ -2563,9 +2613,9 @@ model ClientCompany {
   note        String?
   createdById String    @map("created_by_id")
   createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt      @map("updated_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  createdBy           User                    @relation("ClientCompanyCreator", fields: [createdById], references: [id])
+  createdBy           User                 @relation("ClientCompanyCreator", fields: [createdById], references: [id])
   contracts           ClientContract[]
   slaRecords          ClientSlaRecord[]
   files               ClientCompanyFile[]
@@ -2593,7 +2643,7 @@ model ClientPortalUser {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  clientCompany ClientCompany      @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  clientCompany ClientCompany     @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
   logs          ClientPortalLog[]
 
   @@index([clientCompanyId])
@@ -2602,15 +2652,15 @@ model ClientPortalUser {
 }
 
 model ClientPortalLog {
-  id             String   @id @default(cuid())
-  portalUserId   String   @map("portal_user_id")
-  action         String
-  resourceType   String?  @map("resource_type")
-  resourceId     String?  @map("resource_id")
-  meta           String?
-  ipAddress      String?  @map("ip_address")
-  userAgent      String?  @map("user_agent")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  portalUserId String   @map("portal_user_id")
+  action       String
+  resourceType String?  @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  meta         String?
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   portalUser ClientPortalUser @relation(fields: [portalUserId], references: [id], onDelete: Cascade)
 
@@ -2634,10 +2684,10 @@ model ClientContract {
   renewedFromId   String?  @unique @map("renewed_from_id") // สัญญาก่อนหน้าที่ฉบับนี้ต่ออายุมา — @unique กันสัญญาสองฉบับ renew มาจากต้นเดียวกัน; ตั้งค่านี้แล้วสัญญาเดิมจะถูกเปลี่ยนเป็น SUPERSEDED ใน transaction เดียวกัน (ดู POST /api/client-companies/[id]/contracts)
   createdById     String   @map("created_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt      @map("updated_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   clientCompany ClientCompany       @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
-  createdBy     User                @relation("ClientContractCreator",  fields: [createdById], references: [id])
+  createdBy     User                @relation("ClientContractCreator", fields: [createdById], references: [id])
   files         ClientCompanyFile[]
   slaRecords    ClientSlaRecord[]
   renewedFrom   ClientContract?     @relation("ContractRenewal", fields: [renewedFromId], references: [id])
@@ -2663,9 +2713,9 @@ model ClientSlaRecord {
   resolvedAt      DateTime? @map("resolved_at")
 
   clientCompany ClientCompany   @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
-  contract      ClientContract? @relation(fields: [contractId],      references: [id])
-  task          TaskAssignment? @relation(fields: [taskId],          references: [id])
-  createdBy     User            @relation("SlaRecordCreator",        fields: [createdById], references: [id])
+  contract      ClientContract? @relation(fields: [contractId], references: [id])
+  task          TaskAssignment? @relation(fields: [taskId], references: [id])
+  createdBy     User            @relation("SlaRecordCreator", fields: [createdById], references: [id])
 
   @@index([clientCompanyId])
   @@map("client_sla_records")
@@ -2685,7 +2735,7 @@ model ClientCompanyFile {
   createdAt       DateTime @default(now()) @map("created_at")
 
   clientCompany ClientCompany   @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
-  contract      ClientContract? @relation(fields: [contractId],      references: [id])
+  contract      ClientContract? @relation(fields: [contractId], references: [id])
   createdBy     User            @relation("ClientCompanyFileCreator", fields: [createdById], references: [id])
 
   @@index([clientCompanyId])
@@ -2723,8 +2773,8 @@ model BillingInvoice {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   clientCompany ClientCompany?   @relation(fields: [clientCompanyId], references: [id])
-  task          TaskAssignment?  @relation(fields: [taskId],          references: [id])
-  createdBy     User             @relation("InvoiceCreator",  fields: [createdById],  references: [id])
+  task          TaskAssignment?  @relation(fields: [taskId], references: [id])
+  createdBy     User             @relation("InvoiceCreator", fields: [createdById], references: [id])
   approvedBy    User?            @relation("InvoiceApprover", fields: [approvedById], references: [id])
   payments      BillingPayment[]
   receipts      BillingReceipt[]
@@ -2753,9 +2803,9 @@ model BillingPayment {
   createdById    String   @map("created_by_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  invoice    BillingInvoice @relation(fields: [invoiceId],    references: [id], onDelete: Cascade)
-  receivedBy User?          @relation("BillingPaymentReceiver", fields: [receivedById], references: [id])
-  createdBy  User           @relation("BillingPaymentCreator",  fields: [createdById],  references: [id])
+  invoice    BillingInvoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  receivedBy User?            @relation("BillingPaymentReceiver", fields: [receivedById], references: [id])
+  createdBy  User             @relation("BillingPaymentCreator", fields: [createdById], references: [id])
   receipts   BillingReceipt[]
 
   @@index([invoiceId])
@@ -2829,9 +2879,9 @@ model ApprovalRequestStep {
   actedAt      DateTime? @map("acted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  request  ApprovalRequest @relation(fields: [requestId],  references: [id], onDelete: Cascade)
-  approver User?           @relation("StepApprover",       fields: [approverId], references: [id])
-  actor    User?           @relation("StepActor",          fields: [actorId],    references: [id])
+  request  ApprovalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver User?           @relation("StepApprover", fields: [approverId], references: [id])
+  actor    User?           @relation("StepActor", fields: [actorId], references: [id])
 
   @@index([requestId])
   @@map("approval_request_steps")
@@ -2897,8 +2947,8 @@ model CalendarEvent {
   eventType          String    @default("OTHER") @map("event_type")
   startAt            DateTime  @map("start_at")
   endAt              DateTime? @map("end_at")
-  startTime          String?   @map("start_time")    // HH:MM
-  endTime            String?   @map("end_time")      // HH:MM
+  startTime          String?   @map("start_time") // HH:MM
+  endTime            String?   @map("end_time") // HH:MM
   allDay             Boolean   @default(false) @map("all_day")
   location           String?
   locationLat        Float?    @map("location_lat")
@@ -2927,8 +2977,8 @@ model CalendarEvent {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  createdBy User   @relation("CalendarEventCreator", fields: [createdById], references: [id])
-  case      Case?  @relation("CalendarEventCase", fields: [caseId], references: [id], onDelete: SetNull)
+  createdBy User  @relation("CalendarEventCreator", fields: [createdById], references: [id])
+  case      Case? @relation("CalendarEventCase", fields: [caseId], references: [id], onDelete: SetNull)
 
   @@index([startAt])
   @@index([eventType])
@@ -2942,14 +2992,14 @@ model CalendarEvent {
 // ── PHASE 15 — ENTERPRISE SECURITY ─────────────
 
 model LoginAttempt {
-  id         String   @id @default(cuid())
-  email      String
-  ip         String?
-  userAgent  String?
-  success    Boolean  @default(false)
-  userId     String?
-  reason     String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  userAgent String?
+  success   Boolean  @default(false)
+  userId    String?
+  reason    String?
+  createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -2978,18 +3028,18 @@ model SecurityEvent {
 }
 
 model DeviceSession {
-  id          String   @id @default(cuid())
-  userId      String
-  sessionId   String   @unique
-  ip          String?
-  userAgent   String?
-  browser     String?
-  os          String?
-  deviceType  String?
-  country     String?
-  isRevoked   Boolean  @default(false)
-  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  sessionId  String   @unique
+  ip         String?
+  userAgent  String?
+  browser    String?
+  os         String?
+  deviceType String?
+  country    String?
+  isRevoked  Boolean  @default(false)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2999,16 +3049,16 @@ model DeviceSession {
 }
 
 model OtpCode {
-  id         String   @id @default(cuid())
-  userId     String
-  challenge  String   @unique
-  code       String
-  channel    String   @default("LINE")
-  purpose    String   @default("TWO_FA_LOGIN")
-  attempts   Int      @default(0)
-  used       Boolean  @default(false)
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  challenge String   @unique
+  code      String
+  channel   String   @default("LINE")
+  purpose   String   @default("TWO_FA_LOGIN")
+  attempts  Int      @default(0)
+  used      Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -3019,13 +3069,13 @@ model OtpCode {
 }
 
 model TwoFactorSetup {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  enabled    Boolean  @default(false)
-  channel    String   @default("LINE")
-  totpSecret String?  @map("totp_secret")
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  enabled    Boolean   @default(false)
+  channel    String    @default("LINE")
+  totpSecret String?   @map("totp_secret")
   enabledAt  DateTime? @map("enabled_at")
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -3039,7 +3089,7 @@ model BackupRecord {
   tables          String
   status          String   @default("COMPLETED")
   storagePublicId String?  @map("storage_public_id") // Cloudinary raw-resource public_id holding the actual JSON payload
-  errorDetail     String?  @map("error_detail")       // table:reason pairs for any table that failed during creation
+  errorDetail     String?  @map("error_detail") // table:reason pairs for any table that failed during creation
   createdById     String?  @map("created_by_id")
   createdAt       DateTime @default(now())
   note            String?
@@ -3067,7 +3117,7 @@ model Case {
   description        String?
   debtAmount         Float?       @map("debt_amount")
   department         String?
-  mainCourt          String?      @map("main_court")  // ศาลหลักที่คดีขึ้นอยู่ (เช่น "ศาลแพ่งกรุงเทพงานเหนือ") — ไม่ใช่นัดศาล, ดู CaseCourt/CourtEvent สำหรับนัดแต่ละครั้ง
+  mainCourt          String?      @map("main_court") // ศาลหลักที่คดีขึ้นอยู่ (เช่น "ศาลแพ่งกรุงเทพงานเหนือ") — ไม่ใช่นัดศาล, ดู CaseCourt/CourtEvent สำหรับนัดแต่ละครั้ง
   assignedEmployeeId String?      @map("assigned_employee_id")
   createdById        String       @map("created_by_id")
   openedAt           DateTime     @default(now()) @map("opened_at")
@@ -3077,16 +3127,16 @@ model Case {
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
   // Phase 2 fields
-  riskLevel        String    @default("MEDIUM") @map("risk_level")
-  slaDeadline      DateTime? @map("sla_deadline")
-  templateId       String?   @map("template_id")    // historical: which case_templates row generated this case (template feature removed, plain ref, no FK constraint)
-  collectedAmount  Float     @default(0) @map("collected_amount")
-  legalFee         Float     @default(0) @map("legal_fee")
-  courtFee         Float     @default(0) @map("court_fee")
-  enforcementFee   Float     @default(0) @map("enforcement_fee")
+  riskLevel       String    @default("MEDIUM") @map("risk_level")
+  slaDeadline     DateTime? @map("sla_deadline")
+  templateId      String?   @map("template_id") // historical: which case_templates row generated this case (template feature removed, plain ref, no FK constraint)
+  collectedAmount Float     @default(0) @map("collected_amount")
+  legalFee        Float     @default(0) @map("legal_fee")
+  courtFee        Float     @default(0) @map("court_fee")
+  enforcementFee  Float     @default(0) @map("enforcement_fee")
 
-  assignedEmployee User?          @relation("CaseAssignee",  fields: [assignedEmployeeId], references: [id])
-  createdBy        User           @relation("CaseCreator",   fields: [createdById],        references: [id])
+  assignedEmployee User?                @relation("CaseAssignee", fields: [assignedEmployeeId], references: [id])
+  createdBy        User                 @relation("CaseCreator", fields: [createdById], references: [id])
   client           CaseClient?
   debtor           CaseDebtor?
   courts           CaseCourt[]
@@ -3097,7 +3147,7 @@ model Case {
   financial        CaseFinancial?
   documents        CaseDocument[]
   recoveryPayments RecoveryPayment[]
-  calendarEvents   CalendarEvent[] @relation("CalendarEventCase")
+  calendarEvents   CalendarEvent[]      @relation("CalendarEventCase")
   courtEvents      CourtEvent[]
 
   @@index([status])
@@ -3151,20 +3201,20 @@ model CaseDebtor {
 }
 
 model CaseCourt {
-  id              String    @id @default(cuid())
-  caseId          String    @map("case_id")
-  courtName       String    @map("court_name")
-  courtDate       DateTime  @map("court_date")
-  appointmentTime String?   @map("appointment_time")
-  judgeName       String?   @map("judge_name")
+  id              String   @id @default(cuid())
+  caseId          String   @map("case_id")
+  courtName       String   @map("court_name")
+  courtDate       DateTime @map("court_date")
+  appointmentTime String?  @map("appointment_time")
+  judgeName       String?  @map("judge_name")
   result          String?
   note            String?
-  createdById     String    @map("created_by_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  case      Case @relation(fields: [caseId],      references: [id], onDelete: Cascade)
-  createdBy User @relation("CaseCourtCreator",     fields: [createdById], references: [id])
+  case      Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy User @relation("CaseCourtCreator", fields: [createdById], references: [id])
 
   @@index([caseId])
   @@index([courtDate])
@@ -3230,19 +3280,19 @@ model AutomationRule {
   id           String    @id @default(cuid())
   name         String
   description  String?
-  trigger      String    // CASE_CREATED | PAYMENT_CONFIRMED | PROMISE_BROKEN | etc.
-  conditions   String    @default("[]")  // JSON: Condition[]
-  actions      String    @default("[]")  // JSON: Action[]
-  isActive     Boolean   @default(true)  @map("is_active")
+  trigger      String // CASE_CREATED | PAYMENT_CONFIRMED | PROMISE_BROKEN | etc.
+  conditions   String    @default("[]") // JSON: Condition[]
+  actions      String    @default("[]") // JSON: Action[]
+  isActive     Boolean   @default(true) @map("is_active")
   priority     Int       @default(0)
   testMode     Boolean   @default(false) @map("test_mode")
   lastRunAt    DateTime? @map("last_run_at")
-  runCount     Int       @default(0)     @map("run_count")
-  successCount Int       @default(0)     @map("success_count")
-  failCount    Int       @default(0)     @map("fail_count")
+  runCount     Int       @default(0) @map("run_count")
+  successCount Int       @default(0) @map("success_count")
+  failCount    Int       @default(0) @map("fail_count")
   createdById  String    @map("created_by_id")
   createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt      @map("updated_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   createdBy  User                     @relation("AutomationRuleCreator", fields: [createdById], references: [id])
   executions AutomationExecutionLog[]
@@ -3275,31 +3325,31 @@ model AutomationExecutionLog {
 // ── PHASE 12 — RECOVERY & BILLING SYSTEM ────────────────────────────────────
 
 model RecoveryPayment {
-  id              String    @id @default(cuid())
-  caseId          String?   @map("case_id")
-  debtorId        String    @map("debtor_id")
-  clientId        String?   @map("client_id")
-  promiseId       String?   @map("promise_id")
-  paymentType     String    @map("payment_type")
+  id              String   @id @default(cuid())
+  caseId          String?  @map("case_id")
+  debtorId        String   @map("debtor_id")
+  clientId        String?  @map("client_id")
+  promiseId       String?  @map("promise_id")
+  paymentType     String   @map("payment_type")
   amount          Float
-  paymentDate     DateTime  @map("payment_date")
-  paymentMethod   String    @map("payment_method")
-  referenceNumber String?   @map("reference_number")
-  proofUrl        String?   @map("proof_url")
-  proofPublicId   String?   @map("proof_public_id")
-  collectorId     String    @map("collector_id")
-  status          String    @default("PENDING")
+  paymentDate     DateTime @map("payment_date")
+  paymentMethod   String   @map("payment_method")
+  referenceNumber String?  @map("reference_number")
+  proofUrl        String?  @map("proof_url")
+  proofPublicId   String?  @map("proof_public_id")
+  collectorId     String   @map("collector_id")
+  status          String   @default("PENDING")
   note            String?
-  createdById     String    @map("created_by_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  case      Case?          @relation(fields: [caseId],    references: [id])
-  debtor    Debtor         @relation(fields: [debtorId],  references: [id], onDelete: Cascade)
-  client    ClientCompany? @relation(fields: [clientId],  references: [id])
+  case      Case?          @relation(fields: [caseId], references: [id])
+  debtor    Debtor         @relation(fields: [debtorId], references: [id], onDelete: Cascade)
+  client    ClientCompany? @relation(fields: [clientId], references: [id])
   promise   PromiseToPay?  @relation(fields: [promiseId], references: [id])
-  collector User           @relation("RecoveryCollector", fields: [collectorId],  references: [id])
-  createdBy User           @relation("RecoveryCreator",   fields: [createdById],  references: [id])
+  collector User           @relation("RecoveryCollector", fields: [collectorId], references: [id])
+  createdBy User           @relation("RecoveryCreator", fields: [createdById], references: [id])
 
   @@index([debtorId])
   @@index([caseId])
@@ -3352,9 +3402,9 @@ model CourtEvent {
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
 
-  case           Case  @relation(fields: [caseId],           references: [id], onDelete: Cascade)
-  assignedLawyer User? @relation("CourtEventLawyer",  fields: [assignedLawyerId], references: [id])
-  createdBy      User  @relation("CourtEventCreator", fields: [createdById],      references: [id])
+  case           Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignedLawyer User? @relation("CourtEventLawyer", fields: [assignedLawyerId], references: [id])
+  createdBy      User  @relation("CourtEventCreator", fields: [createdById], references: [id])
 
   @@index([caseId])
   @@index([appointmentDate])

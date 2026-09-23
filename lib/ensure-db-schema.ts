@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900040
+export const CURRENT_SCHEMA_VERSION = 900042
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2487,6 +2487,77 @@ async function runEnsure(force = false): Promise<boolean> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS professional_fee_related_persons_professionalFeePaymentId_idx ON professional_fee_related_persons (professionalFeePaymentId)`,
   )
+
+  // v900041 — HR-editable employee-fields batch (2026-09-22 plan): 13 new
+  // employee_profiles columns (blood group, parents/siblings summary, highest
+  // education, prior work history as free text, special skills — all
+  // TEXT/INTEGER, enums enforced at the Prisma Client layer only, same as
+  // paymentMethod above). Self-editable via EmployeeProfileTab.tsx, the same
+  // shared component/gate as nationality/maritalStatus/religion above (used
+  // by both ProfileClient.tsx self-service and EmployeeEditClient.tsx).
+  await addEmployeeProfileColumnIfMissing('bloodType', `ALTER TABLE employee_profiles ADD COLUMN bloodType TEXT`)
+  await addEmployeeProfileColumnIfMissing('fatherName', `ALTER TABLE employee_profiles ADD COLUMN fatherName TEXT`)
+  await addEmployeeProfileColumnIfMissing('fatherOccupation', `ALTER TABLE employee_profiles ADD COLUMN fatherOccupation TEXT`)
+  await addEmployeeProfileColumnIfMissing('motherName', `ALTER TABLE employee_profiles ADD COLUMN motherName TEXT`)
+  await addEmployeeProfileColumnIfMissing('motherOccupation', `ALTER TABLE employee_profiles ADD COLUMN motherOccupation TEXT`)
+  await addEmployeeProfileColumnIfMissing('siblingsTotal', `ALTER TABLE employee_profiles ADD COLUMN siblingsTotal INTEGER`)
+  await addEmployeeProfileColumnIfMissing('siblingsOrder', `ALTER TABLE employee_profiles ADD COLUMN siblingsOrder INTEGER`)
+  await addEmployeeProfileColumnIfMissing('educationLevel', `ALTER TABLE employee_profiles ADD COLUMN educationLevel TEXT`)
+  await addEmployeeProfileColumnIfMissing('educationInstitution', `ALTER TABLE employee_profiles ADD COLUMN educationInstitution TEXT`)
+  await addEmployeeProfileColumnIfMissing('educationMajor', `ALTER TABLE employee_profiles ADD COLUMN educationMajor TEXT`)
+  await addEmployeeProfileColumnIfMissing('educationGraduationYear', `ALTER TABLE employee_profiles ADD COLUMN educationGraduationYear INTEGER`)
+  await addEmployeeProfileColumnIfMissing('specialSkills', `ALTER TABLE employee_profiles ADD COLUMN specialSkills TEXT`)
+  await addEmployeeProfileColumnIfMissing('workHistoryText', `ALTER TABLE employee_profiles ADD COLUMN workHistoryText TEXT`)
+
+  // v900042 — cleanup: users.mustChangePassword + the work_histories table
+  // were both created against production by a throwaway verification script
+  // run against the FIRST draft of the v900041 batch above (temp password +
+  // structured work-history list), before review feedback dropped the temp-
+  // password flow and changed work history to a single free-text field
+  // instead (workHistoryText, added above). Neither one ever shipped behind
+  // any API/UI, so no real row ever had a reason to use either — same
+  // "throwaway script got there first" situation as v900024's comment, same
+  // row-count safety check before removing anything.
+  {
+    const existing = await prisma.$queryRawUnsafe<{ name: string }[]>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'work_histories'`,
+    )
+    if (existing.length === 0) {
+      console.log('[MIGRATION v900042] "work_histories" already gone, skipping')
+    } else {
+      const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+        `SELECT COUNT(*) AS cnt FROM work_histories`,
+      )
+      const count = Number(rows[0]?.cnt ?? 0)
+      if (count > 0) {
+        console.warn(`[MIGRATION v900042] "work_histories" has ${count} row(s) — refusing to drop, needs a manual path instead`)
+      } else {
+        await prisma.$executeRawUnsafe(`DROP TABLE "work_histories"`)
+        console.log('[MIGRATION v900042] Dropped orphan table "work_histories" (0 rows)')
+      }
+    }
+  }
+  {
+    const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+      `SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword != 0`,
+    ).catch(() => [{ cnt: 0 }])
+    const count = Number(rows[0]?.cnt ?? 0)
+    if (count > 0) {
+      console.warn(`[MIGRATION v900042] "users.mustChangePassword" is true for ${count} row(s) — refusing to drop, needs a manual path instead`)
+    } else {
+      try {
+        await prisma.$executeRawUnsafe(`ALTER TABLE users DROP COLUMN mustChangePassword`)
+        console.log('[MIGRATION v900042] Dropped orphan column "users.mustChangePassword" (all rows were false)')
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('no such column') || msg.includes('no such table')) {
+          console.log('[MIGRATION v900042] "users.mustChangePassword" already gone, skipping')
+        } else {
+          throw err
+        }
+      }
+    }
+  }
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

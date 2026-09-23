@@ -334,6 +334,18 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
                   ปฏิเสธ
                 </button>
               </div>
+              {/* Fixed 2026-09-22 — every other tab's mobile card already links
+                  to /employees/[id] (see the "all" tab card above); this tab
+                  was the one exception, leaving HR with no way on mobile to
+                  review/edit a pending employee's submitted info before
+                  approving (desktop's table already had this via the
+                  unconditional "แก้ไข" link a few rows below). */}
+              <Link
+                href={`/employees/${u.id}`}
+                className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 text-[13px] font-semibold text-slate-700 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/10 touch-manipulation"
+              >
+                <Pencil size={12} /> แก้ไขข้อมูล
+              </Link>
             </div>
           ))}
         </div>

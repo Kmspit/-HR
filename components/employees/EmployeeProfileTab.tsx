@@ -1,13 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { Loader2, MapPin, AlertTriangle, RotateCcw, Save, Copy } from 'lucide-react'
+import { Loader2, MapPin, AlertTriangle, RotateCcw, Save, Copy, Heart } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
 import FormField from '@/components/profile/FormField'
+import NumericInput from '@/components/ui/NumericInput'
 import { profileInputClass, profileInputErrorClass } from '@/lib/profile-validators-client'
 import { MARITAL_STATUS_OPTIONS } from '@/lib/marital-status'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
+import { BLOOD_TYPE_OPTIONS } from '@/lib/blood-type'
+import { EDUCATION_LEVEL_OPTIONS } from '@/lib/education-level'
 import { ADDRESS_FIELD_LABELS } from '@/lib/address-field-labels'
 import type { RegisterAddress } from '@/lib/register-form-validation'
 import ThaiAddressFields, { type ThaiAddressValue } from '@/components/shared/ThaiAddressFields'
@@ -71,7 +74,7 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
     void load()
   }, [active, employeeId, load])
 
-  const setField = (key: keyof EmployeeProfileForm, value: string | boolean) => {
+  const setField = (key: keyof EmployeeProfileForm, value: string | boolean | number) => {
     setForm((f) => (f ? { ...f, [key]: value } : f))
   }
   const setCurrentAddressField = (key: keyof RegisterAddress, value: string) => {
@@ -227,6 +230,73 @@ export default function EmployeeProfileTab({ employeeId, active }: { employeeId:
                 <option key={m.value} value={m.value} className="bg-slate-900">{m.label}</option>
               ))}
             </select>
+          </FormField>
+        </div>
+      </section>
+
+      <section className="glass-card rounded-2xl p-5 space-y-4">
+        <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
+          <Heart className="w-4 h-4 text-pink-400" /> ข้อมูลเพิ่มเติม
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <FormField label="กรุ๊ปเลือด" error={errors.bloodType}>
+            <select
+              value={form.bloodType}
+              onChange={(e) => setField('bloodType', e.target.value)}
+              className={errors.bloodType ? profileInputErrorClass : profileInputClass}
+            >
+              <option value="" className="bg-slate-900">— ไม่ระบุ —</option>
+              {BLOOD_TYPE_OPTIONS.map((b) => (
+                <option key={b.value} value={b.value} className="bg-slate-900">{b.label}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="จำนวนพี่น้องทั้งหมด">
+            <NumericInput mode="integer" min={0} value={form.siblingsTotal} onChange={(v) => setField('siblingsTotal', v)} className={profileInputClass} />
+          </FormField>
+          <FormField label="เป็นบุตรคนที่">
+            <NumericInput mode="integer" min={0} value={form.siblingsOrder} onChange={(v) => setField('siblingsOrder', v)} className={profileInputClass} />
+          </FormField>
+          <FormField label="ชื่อบิดา">
+            <input value={form.fatherName} onChange={(e) => setField('fatherName', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <FormField label="อาชีพบิดา">
+            <input value={form.fatherOccupation} onChange={(e) => setField('fatherOccupation', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <div />
+          <FormField label="ชื่อมารดา">
+            <input value={form.motherName} onChange={(e) => setField('motherName', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <FormField label="อาชีพมารดา">
+            <input value={form.motherOccupation} onChange={(e) => setField('motherOccupation', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <div />
+          <FormField label="วุฒิการศึกษา" error={errors.educationLevel}>
+            <select
+              value={form.educationLevel}
+              onChange={(e) => setField('educationLevel', e.target.value)}
+              className={errors.educationLevel ? profileInputErrorClass : profileInputClass}
+            >
+              <option value="" className="bg-slate-900">— ไม่ระบุ —</option>
+              {EDUCATION_LEVEL_OPTIONS.map((ed) => (
+                <option key={ed.value} value={ed.value} className="bg-slate-900">{ed.label}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="สถาบันการศึกษา">
+            <input value={form.educationInstitution} onChange={(e) => setField('educationInstitution', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <FormField label="สาขาวิชา">
+            <input value={form.educationMajor} onChange={(e) => setField('educationMajor', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <FormField label="ปีที่จบการศึกษา">
+            <NumericInput mode="integer" min={0} value={form.educationGraduationYear} onChange={(v) => setField('educationGraduationYear', v)} className={profileInputClass} />
+          </FormField>
+          <FormField label="ความสามารถพิเศษ" className="sm:col-span-3">
+            <textarea rows={2} value={form.specialSkills} onChange={(e) => setField('specialSkills', e.target.value)} className={profileInputClass} />
+          </FormField>
+          <FormField label="ประวัติการทำงาน (ที่เคยทำมาก่อน)" className="sm:col-span-3">
+            <textarea rows={3} value={form.workHistoryText} onChange={(e) => setField('workHistoryText', e.target.value)} className={profileInputClass} />
           </FormField>
         </div>
       </section>
