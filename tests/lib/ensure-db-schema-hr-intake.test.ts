@@ -45,3 +45,46 @@ describe('HR-editable employee-fields batch (2026-09-22) — Phase 0 schema', ()
     }
   })
 })
+
+describe('v900042 cleanup — drop the orphan mustChangePassword column + work_histories table', () => {
+  it('bumps CURRENT_SCHEMA_VERSION to v900042', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(900042)
+  })
+
+  it('drops work_histories only when it has 0 rows, otherwise warns and skips', () => {
+    expect(source).toMatch(/SELECT COUNT\(\*\) AS cnt FROM work_histories/)
+    expect(source).toMatch(/DROP TABLE IF EXISTS "work_histories"/)
+    expect(source).toMatch(/refusing to drop, needs a manual path instead/)
+  })
+
+  it('drops users.mustChangePassword only when every row is false, otherwise warns and skips', () => {
+    expect(source).toMatch(/SELECT COUNT\(\*\) AS cnt FROM users WHERE mustChangePassword != 0/)
+    expect(source).toMatch(/ALTER TABLE users DROP COLUMN mustChangePassword/)
+  })
+
+  it('neither orphan-cleanup statement ever touches a table/column with real (non-default) rows', () => {
+    // Both blocks must gate the destructive statement behind a `if (count > 0)`
+    // early-return/warn — i.e. the DROP only runs in the `else` branch.
+    const workHistoriesBlock = source.slice(
+      source.indexOf('SELECT COUNT(*) AS cnt FROM work_histories'),
+      source.indexOf('SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword'),
+    )
+    expect(workHistoriesBlock).toMatch(/if \(count > 0\)/)
+    expect(workHistoriesBlock.indexOf('if (count > 0)')).toBeLessThan(workHistoriesBlock.indexOf('DROP TABLE IF EXISTS'))
+  })
+
+  it('runs the v900042 cleanup before markSchemaVersionApplied (part of every ensure run)', () => {
+    const cleanupPos = source.indexOf('v900042 — cleanup')
+    const markAppliedPos = source.indexOf('await markSchemaVersionApplied()')
+    expect(cleanupPos).toBeGreaterThan(-1)
+    expect(markAppliedPos).toBeGreaterThan(-1)
+    expect(cleanupPos).toBeLessThan(markAppliedPos)
+  })
+
+  it('schema.prisma no longer declares User.mustChangePassword or model WorkHistory', () => {
+    const userModel = schema.match(/model User \{[\s\S]*?\n\}/)
+    expect(userModel, 'User model not found in schema.prisma').not.toBeNull()
+    expect(userModel![0]).not.toMatch(/\bmustChangePassword\b/)
+    expect(schema).not.toMatch(/model WorkHistory/)
+  })
+})

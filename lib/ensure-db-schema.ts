@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900041
+export const CURRENT_SCHEMA_VERSION = 900042
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2508,6 +2508,49 @@ async function runEnsure(force = false): Promise<boolean> {
   await addEmployeeProfileColumnIfMissing('educationGraduationYear', `ALTER TABLE employee_profiles ADD COLUMN educationGraduationYear INTEGER`)
   await addEmployeeProfileColumnIfMissing('specialSkills', `ALTER TABLE employee_profiles ADD COLUMN specialSkills TEXT`)
   await addEmployeeProfileColumnIfMissing('workHistoryText', `ALTER TABLE employee_profiles ADD COLUMN workHistoryText TEXT`)
+
+  // v900042 — cleanup: users.mustChangePassword + the work_histories table
+  // were both created against production by a throwaway verification script
+  // run against the FIRST draft of the v900041 batch above (temp password +
+  // structured work-history list), before review feedback dropped the temp-
+  // password flow and changed work history to a single free-text field
+  // instead (workHistoryText, added above). Neither one ever shipped behind
+  // any API/UI, so no real row ever had a reason to use either — same
+  // "throwaway script got there first" situation as v900024's comment, same
+  // row-count safety check before removing anything.
+  {
+    const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+      `SELECT COUNT(*) AS cnt FROM work_histories`,
+    ).catch(() => [{ cnt: 0 }])
+    const count = Number(rows[0]?.cnt ?? 0)
+    if (count > 0) {
+      console.warn(`[MIGRATION v900042] "work_histories" has ${count} row(s) — refusing to drop, needs a manual path instead`)
+    } else {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "work_histories"`)
+      console.log('[MIGRATION v900042] Dropped orphan table "work_histories" (0 rows)')
+    }
+  }
+  {
+    const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+      `SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword != 0`,
+    ).catch(() => [{ cnt: 0 }])
+    const count = Number(rows[0]?.cnt ?? 0)
+    if (count > 0) {
+      console.warn(`[MIGRATION v900042] "users.mustChangePassword" is true for ${count} row(s) — refusing to drop, needs a manual path instead`)
+    } else {
+      try {
+        await prisma.$executeRawUnsafe(`ALTER TABLE users DROP COLUMN mustChangePassword`)
+        console.log('[MIGRATION v900042] Dropped orphan column "users.mustChangePassword" (all rows were false)')
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('no such column') || msg.includes('no such table')) {
+          console.log('[MIGRATION v900042] "users.mustChangePassword" already gone, skipping')
+        } else {
+          throw err
+        }
+      }
+    }
+  }
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
