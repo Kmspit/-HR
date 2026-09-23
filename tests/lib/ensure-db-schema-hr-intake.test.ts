@@ -51,9 +51,11 @@ describe('v900042 cleanup — drop the orphan mustChangePassword column + work_h
     expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(900042)
   })
 
-  it('drops work_histories only when it has 0 rows, otherwise warns and skips', () => {
+  it('checks work_histories exists before doing anything, then drops only when it has 0 rows, otherwise warns and skips', () => {
+    expect(source).toMatch(/SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'work_histories'/)
+    expect(source).toMatch(/"work_histories" already gone, skipping/)
     expect(source).toMatch(/SELECT COUNT\(\*\) AS cnt FROM work_histories/)
-    expect(source).toMatch(/DROP TABLE IF EXISTS "work_histories"/)
+    expect(source).toMatch(/DROP TABLE "work_histories"/)
     expect(source).toMatch(/refusing to drop, needs a manual path instead/)
   })
 
@@ -66,11 +68,11 @@ describe('v900042 cleanup — drop the orphan mustChangePassword column + work_h
     // Both blocks must gate the destructive statement behind a `if (count > 0)`
     // early-return/warn — i.e. the DROP only runs in the `else` branch.
     const workHistoriesBlock = source.slice(
-      source.indexOf('SELECT COUNT(*) AS cnt FROM work_histories'),
+      source.indexOf("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'work_histories'"),
       source.indexOf('SELECT COUNT(*) AS cnt FROM users WHERE mustChangePassword'),
     )
     expect(workHistoriesBlock).toMatch(/if \(count > 0\)/)
-    expect(workHistoriesBlock.indexOf('if (count > 0)')).toBeLessThan(workHistoriesBlock.indexOf('DROP TABLE IF EXISTS'))
+    expect(workHistoriesBlock.indexOf('if (count > 0)')).toBeLessThan(workHistoriesBlock.indexOf('DROP TABLE "work_histories"'))
   })
 
   it('runs the v900042 cleanup before markSchemaVersionApplied (part of every ensure run)', () => {

@@ -2519,15 +2519,22 @@ async function runEnsure(force = false): Promise<boolean> {
   // "throwaway script got there first" situation as v900024's comment, same
   // row-count safety check before removing anything.
   {
-    const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
-      `SELECT COUNT(*) AS cnt FROM work_histories`,
-    ).catch(() => [{ cnt: 0 }])
-    const count = Number(rows[0]?.cnt ?? 0)
-    if (count > 0) {
-      console.warn(`[MIGRATION v900042] "work_histories" has ${count} row(s) — refusing to drop, needs a manual path instead`)
+    const existing = await prisma.$queryRawUnsafe<{ name: string }[]>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'work_histories'`,
+    )
+    if (existing.length === 0) {
+      console.log('[MIGRATION v900042] "work_histories" already gone, skipping')
     } else {
-      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "work_histories"`)
-      console.log('[MIGRATION v900042] Dropped orphan table "work_histories" (0 rows)')
+      const rows = await prisma.$queryRawUnsafe<{ cnt: number | bigint }[]>(
+        `SELECT COUNT(*) AS cnt FROM work_histories`,
+      )
+      const count = Number(rows[0]?.cnt ?? 0)
+      if (count > 0) {
+        console.warn(`[MIGRATION v900042] "work_histories" has ${count} row(s) — refusing to drop, needs a manual path instead`)
+      } else {
+        await prisma.$executeRawUnsafe(`DROP TABLE "work_histories"`)
+        console.log('[MIGRATION v900042] Dropped orphan table "work_histories" (0 rows)')
+      }
     }
   }
   {
