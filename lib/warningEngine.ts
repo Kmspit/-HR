@@ -46,6 +46,7 @@ export async function runWarningCheck(options?: { userIds?: string[] }): Promise
   for (const emp of employees) {
     const attendances = await prisma.attendance.findMany({
       where: { userId: emp.id, date: { gte: startDate, lte: endDate } },
+      select: { status: true },
     })
 
     const lateCount = attendances.filter((a) => a.status === 'LATE').length

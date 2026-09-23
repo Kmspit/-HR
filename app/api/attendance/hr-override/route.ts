@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
           dayOfWeek: getDayOfWeekIndex(today),
           note: overrideNote,
         },
+        select: { id: true },
       })
       const finalized = await finalizeAttendanceRecord(created.id)
       attendanceId = finalized.id
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
       const updated = await prisma.attendance.update({
         where: { id: active.id },
         data: { ...ATTENDANCE_COMPLETED_PATCH, ...patch },
+        select: { id: true },
       })
       const finalized = await finalizeAttendanceRecord(updated.id)
       attendanceId = finalized.id

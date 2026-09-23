@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { assertDeviceAllowed } from '@/lib/device'
 import { parseCoord, startOfTodayLocal } from '@/lib/utils'
-import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import { guardAttendanceFace } from '@/lib/face-checkin-guard'
 import { finalizeAttendanceRecord, getDayOfWeekIndex } from '@/lib/attendance-work-log'
 import { findApprovedLeaveOnDate } from '@/lib/attendance-leave-sync'
@@ -24,10 +23,11 @@ import {
   getNextSessionIndex,
 } from '@/lib/attendance-session'
 import { haversineDistanceMeters, detectGpsSpoofFlags } from '@/lib/gps-fence'
-import { findApprovedOutsideWorkForDate, OUTSIDE_WORK_LATE_TIME } from '@/lib/outside-work'
+import { findApprovedOutsideWorkForDate } from '@/lib/outside-work'
 import { findApprovedWeeklyPlanDayForDate, SHARED_LOCATION_TOLERANCE_METERS } from '@/lib/weekly-plan-attendance'
 import type { ApprovedPlanDay } from '@/lib/weekly-plan-attendance'
 import { getCachedCompanySettings, clearCompanySettingsCache } from '@/lib/company-settings-cache'
+import { computeCheckInLateness } from '@/lib/attendance-time-calc'
 
 export async function POST(req: NextRequest) {
   try {
@@ -232,27 +232,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const dateKey = bangkokDateKey(now)
-    let lateMinutes = 0
-    let status: 'NORMAL' | 'LATE' = 'NORMAL'
-
-    if (forceOutside && outsideWorkRequestId) {
-      // งานนอกสถานที่: สายหลัง 09:00
-      const outsideDeadline = new Date(`${dateKey}T${OUTSIDE_WORK_LATE_TIME}:00+07:00`)
-      if (now > outsideDeadline) {
-        lateMinutes = Math.floor((now.getTime() - outsideDeadline.getTime()) / 60000)
-        status = 'LATE'
-      }
-    } else if (!forceOutside && settings?.workStartTime) {
-      // เช็คอินในบริษัท: สายหลัง workStartTime + grace period (เช่น 08:30 + 5 น. = 08:35)
-      const graceMin = settings.lateGraceMin ?? 5
-      const baseDeadline = new Date(`${dateKey}T${settings.workStartTime}:00+07:00`)
-      const effectiveDeadline = new Date(baseDeadline.getTime() + graceMin * 60_000)
-      if (now > effectiveDeadline) {
-        lateMinutes = Math.floor((now.getTime() - effectiveDeadline.getTime()) / 60000)
-        status = 'LATE'
-      }
-    }
+    const { lateMinutes, status } = computeCheckInLateness({
+      now,
+      forceOutside,
+      hasOutsideWorkApproval: !!outsideWorkRequestId,
+      settings,
+    })
 
     const activeSession = await findActiveAttendanceSession(session.user.id, today)
 

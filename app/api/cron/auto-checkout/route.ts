@@ -35,7 +35,13 @@ export async function GET(req: NextRequest) {
       checkOut:     null,
       autoCheckout: false,
     },
-    include: { user: { select: { id: true, name: true } } },
+    select: {
+      id: true,
+      checkIn: true,
+      lunchOut: true,
+      lunchIn: true,
+      user: { select: { id: true, name: true } },
+    },
   })
 
   if (openSessions.length === 0) {
@@ -63,6 +69,7 @@ export async function GET(req: NextRequest) {
           attendanceStatus: 'completed',
           note: AUTO_CHECKOUT_NOTE,
         },
+        select: { id: true },
       })
 
       // Notify employee

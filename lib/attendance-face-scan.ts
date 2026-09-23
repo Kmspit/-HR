@@ -427,6 +427,7 @@ export async function syncAttendancePhotoFromFaceScan(
   await prisma.attendance.update({
     where: { id: attendanceId },
     data: updateData,
+    select: { id: true },
   })
   return proxyUrl
 }

@@ -49,6 +49,14 @@ export async function buildMonthlyReport(month: number, year: number, filterBran
       const attendances = await prisma.attendance.findMany({
         where: { userId: emp.id, date: { gte: startDate, lte: endDate } },
         orderBy: { date: 'asc' },
+        // 2026-09-23 (CONTRIBUTING.md — explicit select) — every field read
+        // below (directly, or via computeLateDeduction's own narrower
+        // { date, lateMinutes, status } requirement).
+        select: {
+          date: true, checkIn: true, checkOut: true, lunchOut: true, lunchIn: true,
+          status: true, lateMinutes: true, earlyLeaveMinutes: true,
+          workPlaceName: true, workMinutes: true, leaveType: true, lat: true, lng: true,
+        },
       })
 
       const leaves = await prisma.leaveRequest.findMany({

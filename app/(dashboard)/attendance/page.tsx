@@ -1,3 +1,4 @@
+import type { Attendance } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { KM_COMPANY } from '@/lib/company-defaults'
@@ -67,6 +68,13 @@ export default async function AttendancePage({
       where: { userId: session.user.id, checkIn: { not: null } },
       orderBy: [{ date: 'desc' }, { sessionIndex: 'desc' }],
       take: 20,
+      // 2026-09-23 (CONTRIBUTING.md — explicit select on every prisma.attendance
+      // query) — exactly the fields mapped into `recentRecords` below.
+      select: {
+        id: true, date: true, sessionIndex: true, checkIn: true, checkOut: true,
+        lunchOut: true, lunchIn: true, status: true, lateMinutes: true,
+        isOutside: true, workPlaceName: true, lat: true, lng: true, autoCheckout: true,
+      },
     }),
     prisma.leaveBalance.findUnique({
       where: { userId_year: { userId: session.user.id, year: new Date().getFullYear() } },
@@ -113,9 +121,15 @@ export default async function AttendancePage({
       }),
       prisma.attendance.findMany({
         where: { date: today },
+        // 2026-09-23 — only .userId (grouping)/.status/.checkIn are ever read
+        // off these rows (via pickDisplaySessionForDay below + the `a?.status`/
+        // `a?.checkIn` reads further down); sessionIndex/checkOut are needed
+        // by pickDisplaySessionForDay's own internal logic.
+        select: { userId: true, sessionIndex: true, checkIn: true, checkOut: true, status: true },
       }),
     ])
-    const attByUser = new Map<string, ReturnType<typeof pickDisplaySessionForDay>>()
+    type DisplaySessionRow = Pick<Attendance, 'userId' | 'sessionIndex' | 'checkIn' | 'checkOut' | 'status'>
+    const attByUser = new Map<string, DisplaySessionRow | null>()
     for (const uid of new Set(records.map((r) => r.userId))) {
       const userSessions = records.filter((r) => r.userId === uid)
       attByUser.set(uid, pickDisplaySessionForDay(userSessions))

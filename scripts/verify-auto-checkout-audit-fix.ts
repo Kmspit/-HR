@@ -53,6 +53,7 @@ async function main() {
     const checkIn = new Date(Date.now() - 3 * 60 * 60 * 1000)
     const attendance = await prisma.attendance.create({
       data: { userId: user.id, date: checkIn, checkIn, checkOut: null, autoCheckout: false, attendanceStatus: 'in_progress' },
+      select: { id: true },
     })
     console.log(`created throwaway user=${user.id} attendance=${attendance.id} (checkIn=${checkIn.toISOString()})`)
 
@@ -66,7 +67,10 @@ async function main() {
     check('route responded 200', res.status === 200, res.status)
     check(`this throwaway session was included in applied count (applied=${body.applied})`, (body.applied ?? 0) >= 1, body)
 
-    const updated = await prisma.attendance.findUnique({ where: { id: attendance.id } })
+    const updated = await prisma.attendance.findUnique({
+      where: { id: attendance.id },
+      select: { autoCheckout: true, checkOut: true },
+    })
     check('Attendance row was closed by the cron (checkOut set, autoCheckout=true)', updated?.autoCheckout === true && updated?.checkOut !== null)
 
     const auditRows = await prisma.auditLog.findMany({ where: { targetId: attendance.id, targetType: 'Attendance' } })

@@ -61,9 +61,13 @@ export async function applyToAttendance(
 
   const editedById = options?.actorId ?? req.hrId ?? undefined
 
+  // 2026-09-23: explicit select (CONTRIBUTING.md) — `att[field]` below reads
+  // one of these 4 time columns dynamically (only known at runtime), plus
+  // `att.id`; nothing else off this row is ever touched.
   let att = await prisma.attendance.findFirst({
     where: { userId: req.userId, date: req.date },
     orderBy: { sessionIndex: 'desc' },
+    select: { id: true, checkIn: true, lunchOut: true, lunchIn: true, checkOut: true },
   })
 
   if (req.scanType === 'checkin' && !att) {
@@ -82,6 +86,7 @@ export async function applyToAttendance(
         note:              `แก้ไขโดยระบบ forgot-scan #${req.id}`,
         editedById,
       },
+      select: { id: true, checkIn: true, lunchOut: true, lunchIn: true, checkOut: true },
     })
 
     await prisma.forgotScanRequest.update({
@@ -119,6 +124,7 @@ export async function applyToAttendance(
       note:       `แก้ไขโดยระบบ forgot-scan #${req.id}`,
       editedById,
     },
+    select: { id: true },
   })
 
   await prisma.forgotScanRequest.update({

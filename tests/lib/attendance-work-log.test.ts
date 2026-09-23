@@ -133,12 +133,12 @@ describe('buildMonthlyWorkLog — batched finalize replaces the N+1 loop, output
 
     await buildMonthlyWorkLog('user-1', 6, 2026)
 
-    expect(attendanceUpdate).toHaveBeenCalledWith({
+    expect(attendanceUpdate).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 'gps-1' },
       data: expect.objectContaining({
         checkInLat: 13.75, checkInLng: 100.5, checkInAddress: 'BKK', checkInWorkPlaceName: 'HQ',
       }),
-    })
+    }))
   })
 
   it('does NOT overwrite checkInLat when it is already set', async () => {
@@ -165,10 +165,10 @@ describe('buildMonthlyWorkLog — batched finalize replaces the N+1 loop, output
 
     const result = await buildMonthlyWorkLog('user-1', 6, 2026)
 
-    expect(attendanceUpdate).toHaveBeenCalledWith({
+    expect(attendanceUpdate).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 'leave-1' },
       data: expect.objectContaining({ status: 'LEAVE', leaveType: 'VACATION' }),
-    })
+    }))
     expect(result.rows[0].status).toBe('LEAVE')
     expect(result.rows[0].leaveType).toBe('VACATION')
     expect(result.summary.leave).toBe(1)
@@ -389,10 +389,66 @@ describe('finalizeAttendanceRecord — single-record path used by checkin/checko
 
     await finalizeAttendanceRecord('single-1')
 
-    expect(attendanceFindUnique).toHaveBeenCalledWith({ where: { id: 'single-1' } })
+    expect(attendanceFindUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'single-1' } }))
     expect(leaveRequestFindFirst).toHaveBeenCalled()
     expect(attendanceUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'single-1' } }),
     )
+  })
+})
+
+describe('explicit select completeness (CONTRIBUTING.md rule: no bare/full-select prisma.attendance calls)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setLeaveRequestMock([])
+  })
+
+  it('finalizeAttendanceRecord\'s findUnique selects every field computeFinalizedFields/finalizedFieldsDiffer read, plus userId', async () => {
+    const att = baseAttendance({ id: 'single-1' })
+    attendanceFindUnique.mockResolvedValue(att)
+    leaveRequestFindFirst.mockResolvedValue(null)
+    attendanceUpdate.mockResolvedValue({ id: 'single-1', workPlaceName: null, isOutside: false, lateMinutes: 0, lunchOverMinutes: 0 })
+
+    await finalizeAttendanceRecord('single-1')
+
+    const call = attendanceFindUnique.mock.calls[0][0] as { select: Record<string, boolean> }
+    for (const field of [
+      'userId', 'date', 'checkIn', 'checkOut', 'lunchOut', 'lunchIn', 'leaveType', 'status',
+      'checkInLat', 'lat', 'lng', 'address', 'workPlaceName',
+    ]) {
+      expect(call.select[field], `expected findUnique select to include "${field}"`).toBe(true)
+    }
+  })
+
+  it('finalizeAttendanceRecord\'s update selects exactly the fields real callers (checkin/checkout/lunch/hr-override) read off the result', async () => {
+    const att = baseAttendance({ id: 'single-1' })
+    attendanceFindUnique.mockResolvedValue(att)
+    leaveRequestFindFirst.mockResolvedValue(null)
+    attendanceUpdate.mockResolvedValue({ id: 'single-1', workPlaceName: null, isOutside: false, lateMinutes: 0, lunchOverMinutes: 0 })
+
+    await finalizeAttendanceRecord('single-1')
+
+    const call = attendanceUpdate.mock.calls[0][0] as { select: Record<string, boolean> }
+    for (const field of ['id', 'workPlaceName', 'isOutside', 'lateMinutes', 'lunchOverMinutes']) {
+      expect(call.select[field], `expected update select to include "${field}"`).toBe(true)
+    }
+  })
+
+  it('the batched findMany (buildMonthlyWorkLog) selects every field attendanceToWorkLogRow/summarizeWorkLogRows read', async () => {
+    attendanceFindMany.mockResolvedValue([baseAttendance()])
+    await buildMonthlyWorkLog('user-1', 6, 2026)
+
+    const call = attendanceFindMany.mock.calls[0][0] as { select: Record<string, boolean> }
+    for (const field of [
+      'id', 'userId', 'date', 'sessionIndex', 'checkIn', 'checkOut', 'lunchOut', 'lunchIn',
+      'checkInLat', 'checkInLng', 'checkInAddress', 'checkInWorkPlaceName',
+      'checkOutLat', 'checkOutLng', 'checkOutAddress', 'checkOutWorkPlaceName',
+      'lat', 'lng', 'address', 'workPlaceName',
+      'lateMinutes', 'earlyLeaveMinutes', 'lunchOverMinutes', 'workMinutes',
+      'status', 'leaveType', 'note', 'isOutside',
+      'approved', 'attendanceStatus', 'dayOfWeek',
+    ]) {
+      expect(call.select[field], `expected batched findMany select to include "${field}"`).toBe(true)
+    }
   })
 })

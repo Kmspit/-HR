@@ -16,7 +16,21 @@ export async function GET(
 
   const record = await prisma.attendance.findUnique({
     where: { id },
-    include: {
+    // 2026-09-23 (CONTRIBUTING.md — explicit select, `include` alone still
+    // full-selects the base Attendance columns) — every field the JSON
+    // response below actually reads, plus userId/outsideWorkRequestId used
+    // only for the permission check / outside-work lookup above it.
+    select: {
+      id: true, userId: true, date: true, sessionIndex: true,
+      checkIn: true, checkOut: true, lunchOut: true, lunchIn: true,
+      status: true, lateMinutes: true, earlyLeaveMinutes: true, isOutside: true,
+      workPlaceName: true, address: true,
+      checkInLat: true, checkInLng: true, checkInAddress: true,
+      checkOutLat: true, checkOutLng: true, checkOutAddress: true,
+      lat: true, lng: true,
+      autoCheckout: true, note: true, gpsAccuracy: true,
+      photoUrl: true, checkOutPhotoUrl: true, lunchOutPhotoUrl: true, lunchInPhotoUrl: true,
+      outsideWorkRequestId: true,
       user: { select: { name: true, department: true, employeeId: true } },
       branch: { select: { name: true, address: true } },
     },

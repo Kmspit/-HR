@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Clock, MapPin, Users, Calendar, Building2, Navigation, ScanFace } from 'lucide-react'
+import Link from 'next/link'
+import { Clock, MapPin, Users, Calendar, Building2, Navigation, ScanFace, FileSpreadsheet } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
+import { HR_ADMIN } from '@/lib/module-gates'
+import type { Role } from '@prisma/client'
 import CheckInPanel, { type CompanyGeofence } from '@/components/attendance/CheckInPanel'
 import FaceRegistrationCard from '@/components/attendance/FaceRegistrationCard'
 import BiometricConsentModal from '@/components/attendance/BiometricConsentModal'
@@ -185,6 +188,7 @@ export default function AttendanceClient({
   }, [todayRecord?.id, todayRecord?.checkIn, todayRecord?.lunchOut, todayRecord?.lunchIn, todayRecord?.checkOut, isPending])
 
   const isManager = ['MANAGER_HR', 'ADMIN'].includes(role)
+  const canImportAttendance = HR_ADMIN.includes(role as Role)
   const progress = getAttendanceProgress(
     todayRecord
       ? {
@@ -292,6 +296,15 @@ export default function AttendanceClient({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-lg font-bold text-slate-900 dark:text-white">ลงเวลางาน</h1>
         <div className="flex items-center gap-2 ml-auto">
+          {canImportAttendance && (
+            <Link
+              href="/attendance/import"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white/80 border border-slate-200 dark:border-white/10 transition"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">นำเข้าจาก Excel</span>
+            </Link>
+          )}
           <ManualButton section="attendance" />
           <div className="flex gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
           {[

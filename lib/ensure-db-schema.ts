@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900042
+export const CURRENT_SCHEMA_VERSION = 900043
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -41,6 +41,7 @@ export const ALL_MAPPED_TABLES = [
   'emergency_contacts', 'dependents', 'bank_accounts', 'job_positions',
   'employment_assignments', 'biometric_consents',
   'security_deposit_plans', 'professional_fee_payments', 'professional_fee_related_persons',
+  'attendance_import_batches',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -2558,6 +2559,32 @@ async function runEnsure(force = false): Promise<boolean> {
       }
     }
   }
+
+  // v900043 — Excel backdated-attendance import feature (2026-09-23 plan):
+  // attendances.importBatchId (nullable FK, null for every real scan/
+  // hr-override/forgot-scan record — payroll generate deliberately does not
+  // filter on it, see app/api/payroll/generate/route.ts) + the new
+  // attendance_import_batches table (one row per upload, tracks who
+  // imported what + the per-row skip report).
+  await addAttendanceColumnIfMissing('importBatchId', `ALTER TABLE attendances ADD COLUMN importBatchId TEXT`)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS attendance_import_batches (
+      id TEXT NOT NULL PRIMARY KEY,
+      uploadedById TEXT NOT NULL,
+      fileName TEXT NOT NULL,
+      totalRows INTEGER NOT NULL,
+      createdCount INTEGER NOT NULL,
+      skippedCount INTEGER NOT NULL,
+      skippedRows TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS attendance_import_batches_uploadedById_idx ON attendance_import_batches (uploadedById)`,
+  )
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS attendances_importBatchId_idx ON attendances (importBatchId)`,
+  )
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
