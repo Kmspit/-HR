@@ -554,6 +554,7 @@ model User {
   teamLeader                 User?                     @relation("UserTeamLeader", fields: [teamLeaderId], references: [id])
   teamMembers                User[]                    @relation("UserTeamLeader")
   attendances                Attendance[]
+  attendanceImportBatches    AttendanceImportBatch[]
   leaveRequests              LeaveRequest[]
   outsideRequests            OutsideWorkRequest[]
   outsideRequestsDeleted     OutsideWorkRequest[]      @relation("OutsideWorkDeletedBy")
@@ -1182,16 +1183,48 @@ model Attendance {
   note                  String?
   editedById            String?
   autoCheckout          Boolean          @default(false) // ระบบ auto checkout หลัง 22:00
+  /// Excel backdated-attendance import (2026-09-23) — set only for rows
+  /// created via that feature; null for every real face-scan/hr-override/
+  /// forgot-scan record. Payroll generate deliberately does NOT filter on
+  /// this (see app/api/payroll/generate/route.ts) — an imported row must be
+  /// picked up for deduction calc exactly like a real scan.
+  importBatchId         String?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
-  user   User           @relation(fields: [userId], references: [id])
-  branch CompanyBranch? @relation(fields: [branchId], references: [id])
+  user        User                   @relation(fields: [userId], references: [id])
+  branch      CompanyBranch?         @relation(fields: [branchId], references: [id])
+  importBatch AttendanceImportBatch? @relation(fields: [importBatchId], references: [id])
 
   @@unique([userId, date, sessionIndex])
   @@index([userId, date])
   @@index([branchId, date])
+  @@index([importBatchId])
   @@map("attendances")
+}
+
+/// Excel backdated-attendance import (2026-09-23) — one row per upload,
+/// tracks who imported what and the per-row skip report so HR can review it
+/// later without needing to still have the browser tab open (the preview
+/// itself is client-side only, per the approved plan — this is the
+/// server-side durable record of what actually got written).
+model AttendanceImportBatch {
+  id           String   @id @default(cuid())
+  uploadedById String
+  fileName     String
+  totalRows    Int
+  createdCount Int
+  skippedCount Int
+  /// JSON array of { row: number, name: string, reason: string } — one entry
+  /// per skipped row (duplicate date, employee code not found, etc.)
+  skippedRows  String?
+  createdAt    DateTime @default(now())
+
+  uploadedBy  User         @relation(fields: [uploadedById], references: [id])
+  attendances Attendance[]
+
+  @@index([uploadedById])
+  @@map("attendance_import_batches")
 }
 
 // ── LEAVE ───────────────────────────────────────
