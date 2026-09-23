@@ -13,6 +13,62 @@ import {
   startOfDayBangkok,
 } from '@/lib/datetime-bangkok'
 
+/**
+ * Explicit select (2026-09-23, part of the Attendance.importBatchId schema
+ * change) — covers every field computeFinalizedFields()/finalizedFieldsDiffer()/
+ * attendanceToWorkLogRow() below actually read, audited call-by-call across
+ * both the single-record path (finalizeAttendanceRecord) and the batched path
+ * (fetchAndFinalizeAttendanceForUsers → buildMonthlyWorkLog/-ForTeam →
+ * MonthlyAttendanceClient.tsx). One shared select/type for both paths since
+ * the single-record read is a strict subset of what the batched path needs.
+ */
+const ATTENDANCE_FINALIZE_SELECT = {
+  id: true,
+  userId: true,
+  date: true,
+  sessionIndex: true,
+  checkIn: true,
+  checkOut: true,
+  lunchOut: true,
+  lunchIn: true,
+  leaveType: true,
+  status: true,
+  checkInLat: true,
+  checkInLng: true,
+  checkInAddress: true,
+  checkInWorkPlaceName: true,
+  checkOutLat: true,
+  checkOutLng: true,
+  checkOutAddress: true,
+  checkOutWorkPlaceName: true,
+  lat: true,
+  lng: true,
+  address: true,
+  workPlaceName: true,
+  approved: true,
+  attendanceStatus: true,
+  dayOfWeek: true,
+  workMinutes: true,
+  lateMinutes: true,
+  earlyLeaveMinutes: true,
+  lunchOverMinutes: true,
+  note: true,
+  isOutside: true,
+} as const
+
+type AttendanceFinalizeRow = Pick<Attendance, keyof typeof ATTENDANCE_FINALIZE_SELECT>
+
+/** Narrower select for finalizeAttendanceRecord's RETURN value only — this is
+ *  what actually reaches checkin/checkout/lunch/hr-override callers and (for
+ *  the first 3) the JSON response body, audited to read only these 5 fields. */
+const ATTENDANCE_FINALIZE_RESULT_SELECT = {
+  id: true,
+  workPlaceName: true,
+  isOutside: true,
+  lateMinutes: true,
+  lunchOverMinutes: true,
+} as const
+
 /** 0 = อาทิตย์ … 6 = เสาร์ (ตรงกับ Date.getDay()) */
 export const THAI_WEEKDAY_LABELS = [
   'อาทิตย์',
@@ -138,7 +194,7 @@ export type AttendanceWorkLogRowWithEmployee = AttendanceWorkLogRow & {
   userStatus?: string
 }
 
-export function attendanceToWorkLogRow(a: Attendance): AttendanceWorkLogRow {
+export function attendanceToWorkLogRow(a: AttendanceFinalizeRow): AttendanceWorkLogRow {
   const date = a.date
   const checkInPlace =
     a.checkInWorkPlaceName ?? a.workPlaceName ?? a.checkInAddress ?? a.address ?? null
@@ -236,7 +292,7 @@ function computeFinalizedFields(
 
 /** true = ค่าที่คำนวณได้ต่างจากที่บันทึกไว้จริง (จึงต้อง write) — ใช้ข้าม write
  * ที่เป็น no-op เมื่อ finalize ซ้ำข้อมูลเดิม (เช่น เปิดหน้าเดิมซ้ำ) */
-function finalizedFieldsDiffer(att: Attendance, f: FinalizedAttendanceFields): boolean {
+function finalizedFieldsDiffer(att: AttendanceFinalizeRow, f: FinalizedAttendanceFields): boolean {
   if (att.approved !== true) return true
   if (att.attendanceStatus !== 'completed') return true
   if (att.dayOfWeek !== f.dayOfWeek) return true
@@ -253,8 +309,13 @@ function finalizedFieldsDiffer(att: Attendance, f: FinalizedAttendanceFields): b
 }
 
 /** คำนวณและบันทึกฟิลด์ work log — ไม่ทับ check-in/out ที่มีอยู่ */
-export async function finalizeAttendanceRecord(attendanceId: string): Promise<Attendance> {
-  const att = await prisma.attendance.findUnique({ where: { id: attendanceId } })
+export async function finalizeAttendanceRecord(
+  attendanceId: string,
+): Promise<Pick<Attendance, keyof typeof ATTENDANCE_FINALIZE_RESULT_SELECT>> {
+  const att = await prisma.attendance.findUnique({
+    where: { id: attendanceId },
+    select: ATTENDANCE_FINALIZE_SELECT,
+  })
   if (!att) throw new Error('Attendance not found')
 
   const approvedLeave = await findApprovedLeaveOnDate(att.userId, att.date)
@@ -263,6 +324,7 @@ export async function finalizeAttendanceRecord(attendanceId: string): Promise<At
   return prisma.attendance.update({
     where: { id: attendanceId },
     data: { ...ATTENDANCE_COMPLETED_PATCH, ...computed },
+    select: ATTENDANCE_FINALIZE_RESULT_SELECT,
   })
 }
 
@@ -328,11 +390,12 @@ async function fetchAndFinalizeAttendanceForUsers(
   userIds: string[],
   startDate: Date,
   endDate: Date,
-): Promise<Attendance[]> {
+): Promise<AttendanceFinalizeRow[]> {
   const [records, leaves] = await Promise.all([
     prisma.attendance.findMany({
       where: { userId: { in: userIds }, date: { gte: startDate, lte: endDate } },
       orderBy: [{ date: 'asc' }, { sessionIndex: 'asc' }],
+      select: ATTENDANCE_FINALIZE_SELECT,
     }),
     prisma.leaveRequest.findMany({
       where: {
@@ -352,8 +415,8 @@ async function fetchAndFinalizeAttendanceForUsers(
     leavesByUser.set(l.userId, list)
   }
 
-  const finalRecords: Attendance[] = new Array(records.length)
-  const pendingUpdates: { index: number; original: Attendance; data: FinalizedAttendanceFields }[] = []
+  const finalRecords: AttendanceFinalizeRow[] = new Array(records.length)
+  const pendingUpdates: { index: number; original: AttendanceFinalizeRow; data: FinalizedAttendanceFields }[] = []
 
   records.forEach((r, index) => {
     const approvedLeave = pickApprovedLeaveForDate(leavesByUser.get(r.userId) ?? [], r.date)
@@ -374,6 +437,7 @@ async function fetchAndFinalizeAttendanceForUsers(
           return await prisma.attendance.update({
             where: { id: u.original.id },
             data: { ...ATTENDANCE_COMPLETED_PATCH, ...u.data },
+            select: ATTENDANCE_FINALIZE_SELECT,
           })
         } catch {
           return u.original
@@ -411,23 +475,27 @@ export async function syncApprovedLeaveAttendance(
     for (let day = startDay; day.getTime() <= endDay.getTime(); day = new Date(day.getTime() + 86_400_000)) {
       const hasCheckIn = await prisma.attendance.findFirst({
         where: { userId, date: day, checkIn: { not: null } },
+        select: { id: true, leaveType: true },
       })
       if (hasCheckIn) {
         if (!hasCheckIn.leaveType) {
           await prisma.attendance.update({
             where: { id: hasCheckIn.id },
             data: { leaveType: leave.type },
+            select: { id: true },
           })
         }
         continue
       }
       const leaveRow = await prisma.attendance.findFirst({
         where: { userId, date: day, sessionIndex: 1, checkIn: null },
+        select: { id: true },
       })
       if (leaveRow) {
         await prisma.attendance.update({
           where: { id: leaveRow.id },
           data: { status: 'LEAVE', leaveType: leave.type, dayOfWeek: getDayOfWeekIndex(day) },
+          select: { id: true },
         })
         continue
       }
