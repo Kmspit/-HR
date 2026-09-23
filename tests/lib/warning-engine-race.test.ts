@@ -62,6 +62,13 @@ describe('runWarningCheck — race with the checkin-triggered auto-warning path'
       expect.objectContaining({ data: expect.objectContaining({ status: 'PENDING_APPROVAL' }) }),
     )
   })
+
+  it('the attendance.findMany select includes status (CONTRIBUTING.md — no bare/full-select query; this is the only field runWarningCheck reads)', async () => {
+    vi.mocked(prisma.warning.create).mockResolvedValue({ id: 'w-1', createdAt: new Date() } as never)
+    await runWarningCheck({ userIds: ['user-1'] })
+    const call = vi.mocked(prisma.attendance.findMany).mock.calls[0][0] as { select: Record<string, boolean> }
+    expect(call.select.status).toBe(true)
+  })
 })
 
 describe('runWarningCheck — upgrading an existing same-month warning to a higher level', () => {

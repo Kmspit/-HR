@@ -86,10 +86,15 @@ export async function getNextSessionIndex(userId: string, date: Date): Promise<n
   return (agg._max.sessionIndex ?? 0) + 1
 }
 
-/** เลือกแถวที่แสดงในรายการทีม — รอบที่กำลังทำงาน หรือรอบล่าสุดของวัน
- *  (ยังไม่แก้เป็น narrow select — ผู้เรียกใช้จริงตอนนี้คือ
- *  app/(dashboard)/attendance/page.tsx ซึ่งอยู่ในกลุ่ม 2 ที่ยังไม่ได้แก้) */
-export function pickDisplaySessionForDay(sessions: Attendance[]): Attendance | null {
+/** เลือกแถวที่แสดงในรายการทีม — รอบที่กำลังทำงาน หรือรอบล่าสุดของวัน.
+ *  Generic (2026-09-23, กลุ่ม 2) — ผู้เรียกใช้จริงตอนนี้คือ
+ *  app/(dashboard)/attendance/page.tsx ซึ่งเลือก select ของตัวเองตามที่ใช้จริง
+ *  (userId/sessionIndex/checkIn/checkOut/status) ฟังก์ชันนี้เองใช้แค่
+ *  sessionIndex/checkIn/checkOut ภายใน แต่ generic ไว้เพื่อคง field อื่นที่
+ *  ผู้เรียกต้องใช้ต่อ (เช่น status) ไม่ให้หายไปตอน narrow select — ระวัง: ห้าม
+ *  ใช้ `ReturnType<typeof pickDisplaySessionForDay>` แบบไม่ระบุ type argument
+ *  (จะ resolve เป็นแค่ constraint 3 field ไม่ใช่ type จริงที่ caller ใช้) */
+export function pickDisplaySessionForDay<T extends Pick<Attendance, 'sessionIndex' | 'checkIn' | 'checkOut'>>(sessions: T[]): T | null {
   if (!sessions.length) return null
   const active = sessions.find((s) => s.checkIn && !s.checkOut)
   if (active) return active
