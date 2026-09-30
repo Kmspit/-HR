@@ -60,6 +60,18 @@ export type PayrollTotalsResult = {
   taxDeduction: number
   taxDetail: string
   netSalary: number
+  /** How much the raw calculation fell below 0 before being clamped here
+   *  (0 when it didn't go negative) — 2026-09-30 fix, see CONTRIBUTING-
+   *  adjacent history: netSalary was never clamped anywhere in the codebase,
+   *  so a heavy deduction (most commonly a mid-period new hire's prorated
+   *  pay overwhelmed by full-rate absence/unpaid/early-leave deductions)
+   *  could produce a negative payslip with no guard rail. Every caller
+   *  (generate route, PATCH /api/payroll/[id] — both funnel through this
+   *  one function per the file-level comment above) gets the clamp for
+   *  free; this field lets each caller build its own "docked over what
+   *  they were actually owed" review-me note/warning without recomputing
+   *  anything. */
+  negativeClampAmount: number
 }
 
 export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsResult {
@@ -96,7 +108,7 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
     tax40_2,
   })
 
-  const netSalary = roundMoney(
+  const rawNetSalary = roundMoney(
     input.payoutBaseSalary +
     input.positionAllowance +
     input.diligenceAllowance +
@@ -115,11 +127,14 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
     input.studentLoanDeduction -
     input.securityDepositDeduction,
   )
+  const netSalary = Math.max(0, rawNetSalary)
+  const negativeClampAmount = rawNetSalary < 0 ? roundMoney(-rawNetSalary) : 0
 
   return {
     socialSecurity,
     taxDeduction,
     taxDetail: taxDetailWithBreakdown,
     netSalary,
+    negativeClampAmount,
   }
 }

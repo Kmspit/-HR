@@ -200,6 +200,10 @@ export async function POST(req: NextRequest) {
     // cancelled) — the upsert must never silently resurrect it by overwriting
     // deletedAt-still-set data with fresh DRAFT numbers.
     const deletedSkippedNames: string[] = []
+    // Employees whose deductions this period exceeded what they were owed —
+    // computePayrollTotals() already clamps netSalary at 0 (2026-09-30 fix),
+    // this just collects who it happened to for a response-level warning.
+    const negativeNetClampedNames: string[] = []
 
     type PendingEmployee = (typeof pendingEmployees)[number]
     type AttendanceRow = (typeof allAttendances)[number]
@@ -322,7 +326,17 @@ export async function POST(req: NextRequest) {
         approvedLeaves,
       })
 
-      const dailyRate = baseSalary / 26
+      // 2026-09-30 fix: was `baseSalary / 26` (the full nominal salary,
+      // pre-proration). For an employee hired partway through this period,
+      // that let absent/unpaid-leave/early-leave deductions be computed
+      // against a FULL month's daily rate while payoutBaseSalary below was
+      // only the prorated slice they're actually owed — a few missing-data
+      // days (see lib/payroll-unrecorded-absence.ts) could then deduct more
+      // than their entire prorated pay, before computePayrollTotals()'s
+      // clamp existed to catch it. periodBaseSalary === baseSalary whenever
+      // proration didn't apply (full-period employees, the overwhelming
+      // majority), so this changes nothing for them.
+      const dailyRate = periodBaseSalary / 26
       const lateDeduction = late.lateDeduction
       const absentDeduction = roundMoney(
         absentDays * dailyRate + (absentRate > 0 ? absentDays * absentRate : 0),
@@ -358,6 +372,12 @@ export async function POST(req: NextRequest) {
       const taxDeduction = totals.taxDeduction
       const taxDetailJson = totals.taxDetail
       const netSalary = totals.netSalary
+
+      if (totals.negativeClampAmount > 0) {
+        negativeNetClampedNames.push(`${emp.name} (เกิน ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท)`)
+        const negativeNote = `⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ`
+        prorationNote = prorationNote ? `${prorationNote} | ${negativeNote}` : negativeNote
+      }
 
       return {
         baseSalary: periodBaseSalary,
@@ -424,7 +444,7 @@ export async function POST(req: NextRequest) {
       // however many days this employee actually showed up before being
       // disabled — there's no full-nominal-amount overpayment to warn about,
       // just a nudge to double-check the numbers before approving.
-      const disabledNote =
+      let dailyNote =
         emp.status === 'DISABLED'
           ? `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) — กรุณาตรวจสอบก่อนอนุมัติ`
           : undefined
@@ -467,6 +487,12 @@ export async function POST(req: NextRequest) {
       const taxDeduction = totals.taxDeduction
       const netSalary = totals.netSalary
 
+      if (totals.negativeClampAmount > 0) {
+        negativeNetClampedNames.push(`${emp.name} (เกิน ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท)`)
+        const negativeNote = `⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ`
+        dailyNote = dailyNote ? `${dailyNote} | ${negativeNote}` : negativeNote
+      }
+
       return {
         baseSalary: periodEarnings,
         lateDeduction: 0,
@@ -492,7 +518,7 @@ export async function POST(req: NextRequest) {
         daysWorked,
         dailyRateUsed,
         status: 'DRAFT',
-        ...(disabledNote ? { note: disabledNote } : {}),
+        ...(dailyNote ? { note: dailyNote } : {}),
       }
     }
 
@@ -606,6 +632,11 @@ export async function POST(req: NextRequest) {
       }),
       ...(disabledWarningParts.length > 0 && {
         disabledWarning: disabledWarningParts.join(' | '),
+      }),
+      ...(negativeNetClampedNames.length > 0 && {
+        negativeNetSalaryWarning:
+          `⚠️ รวม ${negativeNetClampedNames.length} รายการที่หักเกินเงินเดือนที่พึงได้รับในงวดนี้ (ปรับเป็น 0 แล้ว) ` +
+          `กรุณาตรวจสอบก่อนอนุมัติ: ${negativeNetClampedNames.join(', ')}`,
       }),
     })
   } catch (err) {
