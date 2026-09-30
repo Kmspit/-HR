@@ -163,6 +163,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: '/rules',           icon: 'rules',       label: 'กฎระเบียบ' },
       { href: '/branches',        icon: 'settings',    label: 'จัดการสาขา',          roles: HR_ADMIN },
       { href: '/organization',    icon: 'employees',   label: 'ฝ่าย/แผนก/ส่วนงาน',  roles: HR_ADMIN },
+      { href: '/settings/approval-chains', icon: 'approvals', label: 'สายอนุมัติ', roles: HR_ADMIN },
       { href: '/outside-work/deleted', icon: 'outside', label: 'รายการที่ถูกลบ (นอกสถานที่)', roles: HR_CORE },
       { href: '/debtors/deleted',      icon: 'debt',    label: 'ลูกหนี้ที่ถูกลบ',            roles: DEBTOR_DELETE_ROLES as Role[] },
       { href: '/payroll/deleted',      icon: 'payroll', label: 'payroll ที่ถูกลบ',           roles: PAYROLL_DELETE_ROLES as Role[] },
