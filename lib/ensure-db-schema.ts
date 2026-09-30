@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900043
+export const CURRENT_SCHEMA_VERSION = 900044
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2589,6 +2589,19 @@ async function runEnsure(force = false): Promise<boolean> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS attendances_importBatchId_idx ON attendances (importBatchId)`,
   )
+
+  // v900044 — payroll note/warning severity separation (2026-09-30 UX fix):
+  // Payroll.note used to carry proration/disabled-account info AND the
+  // negative-netSalary-clamp warning all `|`-joined into one string, so the
+  // frontend showed the exact same icon/color for "just an FYI" and "we
+  // just clamped this person's pay to 0 — please check" — real risk of HR
+  // alarm fatigue on the harmless case masking the one that matters.
+  // criticalWarning is a new, separate column: only ever set by
+  // app/api/payroll/generate/route.ts's negative-clamp check, always
+  // written (even explicitly null) on every generate/regenerate so a
+  // stale warning from a prior run can never linger once the underlying
+  // numbers no longer clamp.
+  await addPayrollColumnIfMissing('criticalWarning', `ALTER TABLE payrolls ADD COLUMN criticalWarning TEXT`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

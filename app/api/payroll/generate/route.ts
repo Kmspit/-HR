@@ -373,10 +373,15 @@ export async function POST(req: NextRequest) {
       const taxDetailJson = totals.taxDetail
       const netSalary = totals.netSalary
 
+      // criticalWarning is a SEPARATE column from note (2026-09-30 fix — see
+      // prisma/schema.prisma's comment on Payroll.criticalWarning). Always
+      // included (never conditionally spread like note above) so a stale
+      // warning from a prior clamp can never linger once a regenerate's
+      // fresh numbers no longer clamp.
+      let criticalWarning: string | null = null
       if (totals.negativeClampAmount > 0) {
         negativeNetClampedNames.push(`${emp.name} (เกิน ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท)`)
-        const negativeNote = `⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ`
-        prorationNote = prorationNote ? `${prorationNote} | ${negativeNote}` : negativeNote
+        criticalWarning = `⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ`
       }
 
       return {
@@ -405,6 +410,7 @@ export async function POST(req: NextRequest) {
         securityDepositInstallmentNo: extra.securityDepositInstallmentNo,
         status: 'DRAFT',
         ...(prorationNote ? { note: prorationNote } : {}),
+        criticalWarning,
       }
     }
 
@@ -444,7 +450,7 @@ export async function POST(req: NextRequest) {
       // however many days this employee actually showed up before being
       // disabled — there's no full-nominal-amount overpayment to warn about,
       // just a nudge to double-check the numbers before approving.
-      let dailyNote =
+      const dailyNote =
         emp.status === 'DISABLED'
           ? `⚠️ บัญชีถูกปิดใช้งานในเดือนนี้ (แก้ไขล่าสุด ${emp.updatedAt.toLocaleDateString('th-TH')}) — กรุณาตรวจสอบก่อนอนุมัติ`
           : undefined
@@ -487,10 +493,13 @@ export async function POST(req: NextRequest) {
       const taxDeduction = totals.taxDeduction
       const netSalary = totals.netSalary
 
+      // See buildMonthlyPayload's identical comment — criticalWarning is a
+      // separate column from note, always included so a stale warning
+      // never lingers past the run that actually caused it.
+      let criticalWarning: string | null = null
       if (totals.negativeClampAmount > 0) {
         negativeNetClampedNames.push(`${emp.name} (เกิน ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท)`)
-        const negativeNote = `⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ`
-        dailyNote = dailyNote ? `${dailyNote} | ${negativeNote}` : negativeNote
+        criticalWarning = `⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ ${totals.negativeClampAmount.toLocaleString('th-TH')} บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ`
       }
 
       return {
@@ -519,6 +528,7 @@ export async function POST(req: NextRequest) {
         dailyRateUsed,
         status: 'DRAFT',
         ...(dailyNote ? { note: dailyNote } : {}),
+        criticalWarning,
       }
     }
 

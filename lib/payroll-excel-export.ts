@@ -32,6 +32,7 @@ export type PayrollExportRow = {
   studentLoanDeduction: number
   netSalary: number
   note: string | null
+  criticalWarning: string | null
 }
 
 export type PayrollExportMeta = {
@@ -132,10 +133,16 @@ function textCell(cell: ExcelJS.Cell, value: string, col: ColDef, opts: { bold?:
   if (opts.zebra) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }
 }
 
-/** งวดเงินประกัน แสดงเป็น "(เงินประกัน 3/6)" ต่อท้ายหมายเหตุเดิม ถ้ามี */
+/** งวดเงินประกัน แสดงเป็น "(เงินประกัน 3/6)" ต่อท้ายหมายเหตุเดิม ถ้ามี — รวม
+ *  criticalWarning (2026-09-30, คนละ column กับ note ใน DB — ดูคอมเมนต์บน
+ *  Payroll.criticalWarning ใน schema.prisma) เข้าคอลัมน์ "หมายเหตุ" เดียวกัน
+ *  ที่นี่โดยตั้งใจ: ไฟล์ Excel/สิ่งพิมพ์ไม่มีสี/ไอคอนแยกระดับความร้ายแรงแบบ
+ *  หน้าเว็บ HR (ดู PayrollClient.tsx) จึงต้องรวมข้อความไว้ที่เดียวไม่ให้
+ *  ข้อมูลหายไปจากรายงาน */
 function buildNote(row: PayrollExportRow): string {
   const parts: string[] = []
   if (row.note) parts.push(row.note)
+  if (row.criticalWarning) parts.push(row.criticalWarning)
   if (row.securityDepositInstallmentNo && row.securityDepositTotalInstallments) {
     parts.push(`(เงินประกัน ${row.securityDepositInstallmentNo}/${row.securityDepositTotalInstallments})`)
   }

@@ -814,7 +814,7 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     expect(payload.absentDeduction).toBe(1000)
   })
 
-  it('clamps netSalary at 0 and writes a review-me note when deductions exceed what the employee is owed this period', async () => {
+  it('clamps netSalary at 0 and writes the review-me text to criticalWarning — NEVER to note (2026-09-30 severity-separation fix)', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
     ] as any)
@@ -828,8 +828,9 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     const data = await res.json()
 
     expect(payload.netSalary).toBe(0)
-    expect(payload.note).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
-    expect(payload.note).toContain('875')
+    expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
+    expect(payload.criticalWarning).toContain('875')
+    expect(payload.note).toBeUndefined() // no proration/disabled condition applies here — note must stay untouched, not carry the clamp text
     expect(data.negativeNetSalaryWarning).toContain('พนักงาน หนึ่ง')
     expect(data.negativeNetSalaryWarning).toContain('875')
   })
@@ -845,7 +846,7 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     expect(data.negativeNetSalaryWarning).toBeUndefined()
   })
 
-  it('a DAILY employee whose deductions somehow exceed periodEarnings is also clamped and noted (shared computePayrollTotals path)', async () => {
+  it('a DAILY employee whose deductions somehow exceed periodEarnings is also clamped, with criticalWarning (shared computePayrollTotals path)', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       {
         id: 'emp-d1', name: 'พนักงาน รายวัน', baseSalary: null, dailyRate: 300,
@@ -868,7 +869,82 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     // periodEarnings = 1 × 300 = 300; SS = min(300×0.05, 875) = 15; net would
     // be 300 - 15 - 400 (tax) = -115 → clamped
     expect(payload.netSalary).toBe(0)
-    expect(payload.note).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
+    expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
     expect(data.negativeNetSalaryWarning).toContain('พนักงาน รายวัน')
+  })
+
+  it('regenerating with no clamp condition anymore explicitly clears criticalWarning (writes null, never omits the key) — no stale warning can linger', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0)
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect('criticalWarning' in payload).toBe(true)
+    expect(payload.criticalWarning).toBeNull()
+  })
+
+  it('a proration-only note (mid-period hire, no clamp) stays in note and criticalWarning is null — the two fields never bleed into each other', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 25000, payType: 'MONTHLY', status: 'ACTIVE',
+        startDate: new Date(2025, 0, 16), socialSecurity: true, branchId: 'b1',
+      },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(1) // small — nowhere near enough to clamp
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    const data = await res.json()
+
+    expect(payload.netSalary).toBeGreaterThan(0)
+    expect(payload.note).toContain('Prorated: เริ่มงาน')
+    expect(payload.criticalWarning).toBeNull()
+    expect(data.negativeNetSalaryWarning).toBeUndefined()
+  })
+
+  it('a clamp-only case (full-period employee, no proration/disabled) has criticalWarning set and note absent — the two fields never bleed into each other', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(26)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    const data = await res.json()
+
+    expect(payload.netSalary).toBe(0)
+    expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
+    expect(payload.note).toBeUndefined()
+    expect(data.negativeNetSalaryWarning).toBeDefined()
+  })
+
+  it('BOTH a proration note AND a clamp warning at once are each still their own distinct field, never concatenated together', async () => {
+    // Hired with only 1 of 31 period days worked — a tiny prorated base
+    // that a handful of unrecorded-absence days can easily overwhelm.
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE',
+        startDate: new Date(2025, 0, 20), socialSecurity: true, branchId: 'b1',
+      },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0) // no unrecorded absence needed — SS alone (875) already exceeds the tiny prorated base
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    const data = await res.json()
+
+    // periodBaseSalary = round(26,000 × 1/31) = 838.71 — SS = min(26,000×0.05, 875) = 875 alone clamps it.
+    expect(payload.baseSalary).toBe(838.71)
+    expect(payload.netSalary).toBe(0)
+    // note carries ONLY the proration text — never the clamp warning appended onto it.
+    expect(payload.note).toContain('Prorated: เริ่มงาน')
+    expect(payload.note).not.toContain('หักเกินเงินเดือนที่พึงได้รับ')
+    // criticalWarning carries ONLY the clamp text — never the proration text folded in.
+    expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
+    expect(payload.criticalWarning).not.toContain('Prorated')
+    expect(data.negativeNetSalaryWarning).toContain('พนักงาน หนึ่ง')
   })
 })
