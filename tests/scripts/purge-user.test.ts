@@ -229,6 +229,82 @@ describe('purgeUser — biometric_consents (PDPA evidence) is deliberately left 
   })
 })
 
+describe('purgeUser — attendance_import_batches (2026-09-30 bug-scan finding)', () => {
+  it('does nothing when this user uploaded no batches at all', async () => {
+    const db = makeFakeDb()
+    db.attendanceImportBatch.findMany.mockResolvedValue([])
+    await purgeUser(db, 'user-1')
+    expect(db.attendanceImportBatch.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it('deletes a batch this user uploaded once no Attendance row references it any more', async () => {
+    const db = makeFakeDb()
+    db.attendanceImportBatch.findMany.mockResolvedValue([{ id: 'batch-1' }])
+    // The `attendances` model mock is shared by both this user's own
+    // deleteMany call AND the "who still references batch-1" findMany
+    // below — an empty array simulates zero remaining dependents.
+    db.attendance.findMany.mockResolvedValue([])
+
+    await purgeUser(db, 'user-1')
+
+    expect(db.attendance.findMany).toHaveBeenCalledWith({
+      where: { importBatchId: { in: ['batch-1'] } },
+      select: { importBatchId: true },
+      distinct: ['importBatchId'],
+    })
+    expect(db.attendanceImportBatch.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['batch-1'] } },
+    })
+  })
+
+  it('leaves a batch behind (does NOT delete it) when another employee\'s Attendance row still references it', async () => {
+    const db = makeFakeDb()
+    db.attendanceImportBatch.findMany.mockResolvedValue([{ id: 'batch-1' }])
+    db.attendance.findMany.mockResolvedValue([{ importBatchId: 'batch-1' }])
+
+    await purgeUser(db, 'user-1')
+
+    expect(db.attendanceImportBatch.deleteMany).not.toHaveBeenCalled()
+    // The purge itself must still succeed and delete the user row —
+    // a dependent batch is not a mid-purge failure, just a row left behind.
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+  })
+
+  it('deletes only the batches with zero remaining dependents, keeping the rest, when this user uploaded more than one', async () => {
+    const db = makeFakeDb()
+    db.attendanceImportBatch.findMany.mockResolvedValue([{ id: 'batch-1' }, { id: 'batch-2' }])
+    // batch-1 still has a dependent, batch-2 does not.
+    db.attendance.findMany.mockResolvedValue([{ importBatchId: 'batch-1' }])
+
+    await purgeUser(db, 'user-1')
+
+    expect(db.attendanceImportBatch.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['batch-2'] } },
+    })
+  })
+
+  it('resolves uploadedBatchIds up front, before this user\'s own attendance rows are deleted — so a batch that only ever covered this user\'s own attendance is still found and correctly deleted', async () => {
+    const db = makeFakeDb()
+    db.attendanceImportBatch.findMany.mockResolvedValue([{ id: 'batch-1' }])
+    // This user's own attendance (the only thing ever referencing batch-1)
+    // has already been wiped by the earlier `attendances` deleteMany by the
+    // time the dependents check runs — simulated here by the shared
+    // `attendance.findMany` mock returning empty, exactly like the "zero
+    // remaining dependents" case above.
+    db.attendance.findMany.mockResolvedValue([])
+
+    await purgeUser(db, 'user-1')
+
+    expect(db.attendanceImportBatch.findMany).toHaveBeenCalledWith({
+      where: { uploadedById: 'user-1' },
+      select: { id: true },
+    })
+    expect(db.attendanceImportBatch.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['batch-1'] } },
+    })
+  })
+})
+
 describe('purgeUserInTransaction — DryRunAbort / transaction rollback wiring', () => {
   it('dry-run (rollback: true): returns purgeUser\'s counts, DryRunAbort never escapes to the caller', async () => {
     const tx = makeFakeDb()

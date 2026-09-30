@@ -104,6 +104,27 @@ async function findUser(ref) {
  * IDs, in child-before-parent order, since payrollId has no direct link to
  * userId). In practice only reachable via --force-guard, since any payroll
  * row already blocks purge by default.
+ *
+ * attendance_import_batches (Excel backdated-attendance import feature,
+ * 2026-09-23) is a DIFFERENT shape from all three above: confirmed via
+ * PRAGMA foreign_key_list — zero real FK, same gap class — but unlike a
+ * deposit plan or a fee record, a batch is NOT purely "this person's own
+ * data": one HR upload's `uploadedById` batch row is referenced (via
+ * Attendance.importBatchId) by potentially MANY OTHER employees' real
+ * attendance rows, not just the uploader's own. Deleting the batch
+ * unconditionally the way security_deposit_plans is deleted would leave
+ * those other employees' Attendance.importBatchId pointing at nothing —
+ * a second orphan created while fixing the first. So this is neither a
+ * flat blocker nor a flat delete: checkPurgeGuard() below blocks only
+ * when a batch this user uploaded STILL has at least one Attendance row
+ * (anyone's) pointing at it; purgeUser() then deletes a batch only once
+ * zero Attendance rows reference it any more (which the same
+ * transaction's own `attendances` deleteMany a few lines below can
+ * itself bring about, if this uploader's own attendance was the only
+ * thing ever using that batch). A batch that still has real dependents
+ * even under --force-guard is deliberately left behind rather than
+ * force-deleted — orphaning someone else's real attendance history is
+ * worse than leaving one extra row with a dangling uploadedById.
  */
 async function checkPurgeGuard(db, userId) {
   const [
@@ -111,7 +132,7 @@ async function checkPurgeGuard(db, userId) {
     billingInvoicesCreated, billingPaymentsCreated, billingReceiptsCreated,
     caseCourtsCreated, caseTimelines, caseDebtorActivities,
     debtorContacts, promisesToPay, recoveryPaymentsCreated, recoveryPaymentsCollected,
-    automationRules, caseTemplatesRaw,
+    automationRules, caseTemplatesRaw, attendanceImportBatchesWithDependents,
   ] = await Promise.all([
     db.payroll.count({ where: { userId } }),
     db.warning.count({ where: { userId } }),
@@ -129,6 +150,10 @@ async function checkPurgeGuard(db, userId) {
     db.recoveryPayment.count({ where: { collectorId: userId } }),
     db.automationRule.count({ where: { createdById: userId } }),
     db.$queryRawUnsafe('SELECT COUNT(*) as cnt FROM case_templates WHERE created_by_id = ?', userId),
+    // Only a blocker while real dependents remain — see the long comment
+    // above this function. A batch this user uploaded that nothing points
+    // to any more is NOT counted here (purgeUser() deletes those safely).
+    db.attendanceImportBatch.count({ where: { uploadedById: userId, attendances: { some: {} } } }),
   ])
   const caseTemplates = Number(caseTemplatesRaw?.[0]?.cnt ?? 0)
 
@@ -149,6 +174,12 @@ async function checkPurgeGuard(db, userId) {
   if (recoveryPaymentsCollected > 0) found.push({ label: 'recovery_payments (ผู้เก็บเงิน)', count: recoveryPaymentsCollected })
   if (automationRules > 0) found.push({ label: 'automation_rules (ผู้สร้าง)', count: automationRules })
   if (caseTemplates > 0) found.push({ label: 'case_templates (ผู้สร้าง, ไม่มี Prisma model)', count: caseTemplates })
+  if (attendanceImportBatchesWithDependents > 0) {
+    found.push({
+      label: 'attendance_import_batches (ผู้ upload, ยังมี attendance คนอื่นผูกอยู่)',
+      count: attendanceImportBatchesWithDependents,
+    })
+  }
 
   return found
 }
@@ -188,6 +219,13 @@ async function purgeUser(db, userId) {
         })
       ).map((r) => r.id)
     : []
+  // Batches THIS user uploaded — resolved up front (same reason as the IDs
+  // above) so they can be checked for remaining dependents after this
+  // user's own `attendances` rows are deleted below. See the long comment
+  // on checkPurgeGuard() for why this can't just be an unconditional delete.
+  const uploadedBatchIds = (
+    await db.attendanceImportBatch.findMany({ where: { uploadedById: userId }, select: { id: true } })
+  ).map((r) => r.id)
 
   const counts = {}
 
@@ -290,6 +328,35 @@ async function purgeUser(db, userId) {
   await run('tax_histories', () => db.taxHistory.deleteMany({ where: { userId } }))
   await run('forgot_scan_requests', () => db.forgotScanRequest.deleteMany({ where: { userId } }))
   await run('attendances', () => db.attendance.deleteMany({ where: { userId } }))
+
+  // Delete a batch this user uploaded only once nothing references it any
+  // more — checked freshly here (after this user's own attendances were
+  // just deleted above), not assumed from the earlier uploadedBatchIds
+  // snapshot, since deleting this user's own attendance may be exactly
+  // what brings a batch's dependent count to zero. A batch some OTHER
+  // employee's real attendance still points to is deliberately left
+  // behind (reachable at all only via --force-guard, since checkPurgeGuard
+  // blocks this by default) — see the long comment above checkPurgeGuard().
+  if (uploadedBatchIds.length) {
+    const stillReferenced = await db.attendance.findMany({
+      where: { importBatchId: { in: uploadedBatchIds } },
+      select: { importBatchId: true },
+      distinct: ['importBatchId'],
+    })
+    const stillReferencedIds = new Set(stillReferenced.map((a) => a.importBatchId))
+    const deletableBatchIds = uploadedBatchIds.filter((id) => !stillReferencedIds.has(id))
+    if (deletableBatchIds.length) {
+      await run('attendance_import_batches', () =>
+        db.attendanceImportBatch.deleteMany({ where: { id: { in: deletableBatchIds } } }),
+      )
+    }
+    if (stillReferencedIds.size) {
+      console.log(
+        `  ⚠ เก็บ attendance_import_batches ${stillReferencedIds.size} รายการไว้ — ยังมี attendance ของคนอื่นผูกอยู่`,
+      )
+    }
+  }
+
   await run('leave_balances', () => db.leaveBalance.deleteMany({ where: { userId } }))
 
   await run('task_assignments', () =>
