@@ -14,6 +14,8 @@ import { computeDaysWorked } from '@/lib/payroll-daily-wage'
 import { computeDiligenceAllowance } from '@/lib/payroll-diligence'
 import { computeSecurityDepositInstallment } from '@/lib/payroll-security-deposit'
 import { computePayrollTotals } from '@/lib/payroll-totals'
+import { countUnrecordedAbsenceDays } from '@/lib/payroll-unrecorded-absence'
+import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import type { HolidayRecord } from '@/lib/company-holidays'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
@@ -279,7 +281,33 @@ export async function POST(req: NextRequest) {
         branchId: emp.branchId,
       })
 
-      const absentDays = attendances.filter((a) => a.status === 'ABSENT').length
+      // Explicit ABSENT-status rows (nothing in the codebase writes this
+      // automatically — it only ever comes from a manual HR override) plus
+      // days with NO Attendance row at all and no approved leave covering
+      // them (2026-09-30 fix — previously such days were silently skipped
+      // from this calculation entirely, not counted as 0, so genuine
+      // unauthorized absence with zero data was never deducted). The two
+      // counts are mutually exclusive by construction: a day can't both
+      // have an ABSENT row (counted in the first term) and have zero rows
+      // (counted in the second), so this is a straight sum, never a double-
+      // count. Only for ACTIVE employees — a DISABLED employee has no
+      // reliable "last working day" signal (see the disabled-note above),
+      // so guessing here risks wrongly docking pay from someone who already
+      // left; the existing disabled-note/manual-review path covers them.
+      const explicitAbsentDays = attendances.filter((a) => a.status === 'ABSENT').length
+      const unrecordedAbsentDays = emp.status === 'ACTIVE'
+        ? countUnrecordedAbsenceDays({
+            periodStart: startDate,
+            periodEnd: endDate,
+            today: new Date(),
+            attendanceDateKeys: new Set(attendances.map((a) => bangkokDateKey(a.date))),
+            leaveDateKeys,
+            holidays,
+            branchId: emp.branchId,
+            employeeStartDate: emp.startDate,
+          })
+        : 0
+      const absentDays = explicitAbsentDays + unrecordedAbsentDays
       const earlyLeaveDays = attendances.filter(
         (a) => a.status === 'EARLY_LEAVE' || (a.earlyLeaveMinutes ?? 0) > 0,
       ).length
