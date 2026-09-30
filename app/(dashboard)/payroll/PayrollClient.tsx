@@ -168,10 +168,26 @@ export default function PayrollClient({
         message?: string
         skippedApproved?: { userId: string; name: string }[]
         negativeNetSalaryWarning?: string
+        // deletedWarning/disabledWarning: backend has computed these since
+        // before today (deletedWarning) and since the DISABLED-employee
+        // handling was added — bug-scan finding 2026-09-30: both were
+        // returned in this same response all along but never declared here
+        // or shown anywhere, exactly the same dead-field pattern already
+        // fixed for negativeNetSalaryWarning above. disabledWarning in
+        // particular flags a real "paid full salary despite being disabled
+        // mid-period, please double-check" case HR needs to see.
+        deletedWarning?: string
+        disabledWarning?: string
       }
       toast.success(`สร้าง payroll สำเร็จ ${result.count ?? 0} คน`)
       if (result.skippedApproved && result.skippedApproved.length > 0) {
         toast.warning(result.message ?? `ข้าม ${result.skippedApproved.length} รายการที่อนุมัติแล้ว`)
+      }
+      if (result.deletedWarning) {
+        toast.warning(result.deletedWarning)
+      }
+      if (result.disabledWarning) {
+        toast.warning(result.disabledWarning)
       }
       if (result.negativeNetSalaryWarning) {
         toast.warning(result.negativeNetSalaryWarning)

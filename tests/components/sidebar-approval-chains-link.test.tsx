@@ -55,3 +55,62 @@ describe('Sidebar — Approval Chain menu link', () => {
     }
   })
 })
+
+/**
+ * Same bug class, found by the 2026-09-30 bug-scan sweep: /settings/leave-policies
+ * (gated server-side by canManageUsers, same as approval-chains) also had
+ * zero sidebar entry. Fixed alongside approval-chains in "บุคคล & HR".
+ */
+describe('Sidebar — Leave Policies menu link', () => {
+  it('shows "นโยบายวันลา" linking to /settings/leave-policies for an HR_ADMIN role', () => {
+    render(<Sidebar user={baseUser('MANAGER_HR')} />)
+    const links = screen.getAllByRole('link', { name: /นโยบายวันลา/ })
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) {
+      expect(link.getAttribute('href')).toBe('/settings/leave-policies')
+    }
+  })
+
+  it('shows it for every HR_ADMIN role (SUPER_ADMIN, CEO, HR, ADMIN)', () => {
+    for (const role of ['SUPER_ADMIN', 'CEO', 'HR', 'ADMIN']) {
+      cleanup()
+      render(<Sidebar user={baseUser(role)} />)
+      expect(screen.getAllByRole('link', { name: /นโยบายวันลา/ }).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('hides it for a plain EMPLOYEE — same population the page itself redirects away', () => {
+    render(<Sidebar user={baseUser('EMPLOYEE')} />)
+    expect(screen.queryAllByRole('link', { name: /นโยบายวันลา/ })).toHaveLength(0)
+  })
+})
+
+/**
+ * Same bug class again: /system-logs (gated server-side by its own
+ * ALLOWED_ROLES = ['SUPER_ADMIN','CEO','MANAGER_HR','HR','ADMIN'] — the exact
+ * same 5 roles as the HR_ADMIN array) also had zero sidebar entry. Fixed in
+ * the "ระบบ" section alongside /settings, /security, /line-oa.
+ */
+describe('Sidebar — System Logs menu link', () => {
+  it('shows "System Logs" linking to /system-logs for an HR_ADMIN role', () => {
+    render(<Sidebar user={baseUser('MANAGER_HR')} />)
+    const links = screen.getAllByRole('link', { name: /System Logs/ })
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) {
+      expect(link.getAttribute('href')).toBe('/system-logs')
+    }
+  })
+
+  it('shows it for every role the page itself allows (SUPER_ADMIN, CEO, HR, ADMIN)', () => {
+    for (const role of ['SUPER_ADMIN', 'CEO', 'HR', 'ADMIN']) {
+      cleanup()
+      render(<Sidebar user={baseUser(role)} />)
+      expect(screen.getAllByRole('link', { name: /System Logs/ }).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('hides it for a plain EMPLOYEE — same population the page itself redirects away', () => {
+    render(<Sidebar user={baseUser('EMPLOYEE')} />)
+    expect(screen.queryAllByRole('link', { name: /System Logs/ })).toHaveLength(0)
+  })
+})

@@ -8,6 +8,7 @@ type Counts = {
   debtorContact?: number; promiseToPay?: number
   recoveryPaymentCreated?: number; recoveryPaymentCollected?: number
   automationRule?: number; caseTemplates?: number
+  attendanceImportBatch?: number
 }
 
 // recovery_payments is checked twice (createdById, collectorId) via the same
@@ -38,6 +39,7 @@ function mockDb(counts: Counts = {}) {
     },
     automationRule: { count: vi.fn().mockResolvedValue(counts.automationRule ?? 0) },
     $queryRawUnsafe: vi.fn().mockResolvedValue([{ cnt: counts.caseTemplates ?? 0 }]),
+    attendanceImportBatch: { count: vi.fn().mockResolvedValue(counts.attendanceImportBatch ?? 0) },
     biometricConsent: { count: vi.fn() },
   }
 }
@@ -180,7 +182,32 @@ describe('checkPurgeGuard — 2026-09-09 wipe review: 12 required-FK tables + ca
     )
   })
 
-  it('a genuinely clean account still reports zero blockers across all 16 checks', async () => {
+  it('a genuinely clean account still reports zero blockers across all 17 checks', async () => {
+    const db = mockDb({})
+    const result = await checkPurgeGuard(db, 'user-1')
+    expect(result).toEqual([])
+  })
+})
+
+describe('checkPurgeGuard — attendance_import_batches (2026-09-30 bug-scan finding)', () => {
+  it('blocks when a batch this user uploaded still has at least one Attendance row pointing at it', async () => {
+    const db = mockDb({ attendanceImportBatch: 1 })
+    const result = await checkPurgeGuard(db, 'user-1')
+    expect(result).toEqual([
+      { label: 'attendance_import_batches (ผู้ upload, ยังมี attendance คนอื่นผูกอยู่)', count: 1 },
+    ])
+    expect(db.attendanceImportBatch.count).toHaveBeenCalledWith({
+      where: { uploadedById: 'user-1', attendances: { some: {} } },
+    })
+  })
+
+  it('does NOT block on a batch this user uploaded that nothing references any more — purgeUser() deletes those safely instead', async () => {
+    // The mock's `attendances: { some: {} } ` filter is baked into the where
+    // clause itself (Prisma evaluates it server-side) — this test's count
+    // stays 0 by default, i.e. simulating "no batch currently has a
+    // dependent", which is the only shape checkPurgeGuard() ever sees for
+    // batches with zero remaining dependents (they're excluded by the
+    // `some: {}` filter before the count is even taken).
     const db = mockDb({})
     const result = await checkPurgeGuard(db, 'user-1')
     expect(result).toEqual([])
