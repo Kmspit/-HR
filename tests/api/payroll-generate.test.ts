@@ -763,3 +763,112 @@ describe('POST /api/payroll/generate — unrecorded-absence days (no data + no a
     expect(payload.absentDeduction).toBe(0)
   })
 })
+
+describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2026-09-30 fix)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0)
+  })
+
+  it('a mid-period new hire\'s absentDeduction is no longer computed off the FULL nominal baseSalary — it uses the prorated periodBaseSalary instead, and no longer goes negative', async () => {
+    // Real numbers from the 2026-09-30 production investigation: baseSalary
+    // 25,000, hired with only 5 of the period's 31 days worked, giving
+    // periodBaseSalary = round(25,000 × 5/31) = 4,032.26 exactly.
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 25000, payType: 'MONTHLY', status: 'ACTIVE',
+        startDate: new Date(2025, 0, 16), socialSecurity: true, branchId: 'b1',
+      },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(4)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload.baseSalary).toBe(4032.26) // periodBaseSalary, confirms the proration itself is unchanged
+    // dailyRate = periodBaseSalary / 26 = 4032.26 / 26 = 155.0869... → absentDeduction = 4 × that, rounded
+    expect(payload.absentDeduction).toBe(620.35)
+    // Old formula (baseSalary/26 = 961.54/day × 4 = 3,846.16) + SS (875) would have been -688.89 (negative).
+    // Fixed formula: 4,032.26 - 620.35 - 875 (SS) = 2,536.91 (positive).
+    expect(payload.netSalary).toBeGreaterThan(0)
+    expect(payload.netSalary).toBe(2536.91)
+  })
+
+  it('a full-period (non-prorated) employee sees no change at all from the dailyRate fix — periodBaseSalary === baseSalary for them', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(1)
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    // 26,000 / 26 = 1,000/day × 1 day — identical whether dailyRate is
+    // derived from baseSalary or periodBaseSalary, since they're equal here.
+    expect(payload.absentDeduction).toBe(1000)
+  })
+
+  it('clamps netSalary at 0 and writes a review-me note when deductions exceed what the employee is owed this period', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    // 26 unrecorded-absence days × (26,000/26 = 1,000/day) = 26,000 absentDeduction alone,
+    // plus SS (min(26,000×0.05, 875) = 875) — exceeds the full 26,000 base by 875.
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(26)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    const data = await res.json()
+
+    expect(payload.netSalary).toBe(0)
+    expect(payload.note).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
+    expect(payload.note).toContain('875')
+    expect(data.negativeNetSalaryWarning).toContain('พนักงาน หนึ่ง')
+    expect(data.negativeNetSalaryWarning).toContain('875')
+  })
+
+  it('does not report a negativeNetSalaryWarning at all when nobody was clamped', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const data = await res.json()
+
+    expect(data.negativeNetSalaryWarning).toBeUndefined()
+  })
+
+  it('a DAILY employee whose deductions somehow exceed periodEarnings is also clamped and noted (shared computePayrollTotals path)', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-d1', name: 'พนักงาน รายวัน', baseSalary: null, dailyRate: 300,
+        payType: 'DAILY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1',
+      },
+    ] as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([
+      { userId: 'emp-d1', date: new Date('2025-01-05'), lateMinutes: 0, status: 'NORMAL', earlyLeaveMinutes: 0, workMinutes: 0, leaveType: null, checkIn: new Date('2025-01-05T08:00:00Z') },
+    ] as any)
+    // No preserved-manual fields (findUnique's default DRAFT-with-no-fields
+    // mock from this block's beforeEach) — an artificially large tax mock is
+    // the only thing pushing this negative, isolating the clamp mechanism.
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 400 } as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    const data = await res.json()
+
+    // periodEarnings = 1 × 300 = 300; SS = min(300×0.05, 875) = 15; net would
+    // be 300 - 15 - 400 (tax) = -115 → clamped
+    expect(payload.netSalary).toBe(0)
+    expect(payload.note).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
+    expect(data.negativeNetSalaryWarning).toContain('พนักงาน รายวัน')
+  })
+})

@@ -42,6 +42,10 @@ type PayrollRow = {
   payslipSentStatus?: string | null
   payslipSentError?: string | null
   lineLinked?: boolean
+  /** Proration/disabled-account/negative-net-clamp review-me notes, `|`-joined
+   *  when more than one applies — already returned by the backend
+   *  (app/api/payroll/report/route.ts) but never previously read here. */
+  note?: string | null
 }
 
 type LateSummary = {
@@ -151,10 +155,18 @@ export default function PayrollClient({
       body: JSON.stringify({ month, year, branchId: filterBranchId }),
     })
     if (ok) {
-      const result = data as { count?: number; message?: string; skippedApproved?: { userId: string; name: string }[] }
+      const result = data as {
+        count?: number
+        message?: string
+        skippedApproved?: { userId: string; name: string }[]
+        negativeNetSalaryWarning?: string
+      }
       toast.success(`สร้าง payroll สำเร็จ ${result.count ?? 0} คน`)
       if (result.skippedApproved && result.skippedApproved.length > 0) {
         toast.warning(result.message ?? `ข้าม ${result.skippedApproved.length} รายการที่อนุมัติแล้ว`)
+      }
+      if (result.negativeNetSalaryWarning) {
+        toast.warning(result.negativeNetSalaryWarning)
       }
       await loadPayrolls(month, year)
     } else {
@@ -652,7 +664,14 @@ export default function PayrollClient({
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] text-slate-400 dark:text-white/40">สุทธิ</p>
+                  <p className="text-[11px] text-slate-400 dark:text-white/40 flex items-center justify-end gap-1">
+                    สุทธิ
+                    {p.note && (
+                      <span title={p.note}>
+                        <AlertTriangle className="w-3 h-3 text-amber-400" />
+                      </span>
+                    )}
+                  </p>
                   <p className="font-bold text-green-400 text-lg">
                     {p.hasPayroll
                       ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}`
@@ -807,9 +826,16 @@ export default function PayrollClient({
                       {p.ssDeduction > 0 ? `-฿${p.ssDeduction.toFixed(0)}` : '-'}
                     </td>
                     <td className="p-3 text-right font-bold text-green-400">
-                      {p.hasPayroll
-                        ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}`
-                        : '—'}
+                      <span className="inline-flex items-center gap-1 justify-end">
+                        {p.note && (
+                          <span title={p.note}>
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                          </span>
+                        )}
+                        {p.hasPayroll
+                          ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}`
+                          : '—'}
+                      </span>
                     </td>
                     <td className="p-3 text-center text-xs text-slate-400 dark:text-white/40">
                       สาย {p.lateDays} วัน · ขาด {p.absentDays} วัน
