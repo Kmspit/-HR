@@ -37,6 +37,7 @@ function makeRow(overrides: Partial<PayrollExportRow> = {}): PayrollExportRow {
     studentLoanDeduction: 1200,
     netSalary: 16800,
     note: null,
+    criticalWarning: null,
     ...overrides,
   }
 }
@@ -82,6 +83,25 @@ describe('buildPayrollExcel', () => {
     const dataRow = ws.getRow(6)
     const noteCellValue = dataRow.getCell(23).value
     expect(noteCellValue).toBe('(เงินประกัน 3/6)')
+  })
+
+  it('combines note + criticalWarning (2026-09-30 severity-separation fix) into the one printed "หมายเหตุ" column, since a static Excel sheet has no way to color-differentiate severity the way the HR dashboard does', async () => {
+    const rowsByBranch = new Map<string, PayrollExportRow[]>([
+      ['สาขานครราชสีมา', [makeRow({
+        note: 'Prorated: เริ่มงาน 16/6/2569 — ทำงาน 5/31 วันของเดือนนี้',
+        criticalWarning: '⚠️ หักเกินเงินเดือนที่พึงได้รับในงวดนี้ 875 บาท — ปรับเป็น 0 แล้ว กรุณาตรวจสอบก่อนอนุมัติ',
+        securityDepositInstallmentNo: null,
+        securityDepositTotalInstallments: null,
+      })]],
+    ])
+    const buffer = await buildPayrollExcel(rowsByBranch, { month: 8, year: 2569, monthLabel: 'สิงหาคม' })
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer as any)
+    const ws = wb.getWorksheet('สาขานครราชสีมา')!
+    const noteCellValue = ws.getRow(6).getCell(23).value as string
+
+    expect(noteCellValue).toContain('Prorated: เริ่มงาน 16/6/2569')
+    expect(noteCellValue).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้ 875 บาท')
   })
 
   it('writes a totals row ("รวม") summing all employee rows in the branch', async () => {

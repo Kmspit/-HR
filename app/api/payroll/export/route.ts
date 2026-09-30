@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
         studentLoanDeduction: p.studentLoanDeduction,
         netSalary: p.netSalary,
         note: p.note,
+        criticalWarning: p.criticalWarning,
       }
       const list = rowsByBranch.get(branchName)
       if (list) list.push(row); else rowsByBranch.set(branchName, [row])

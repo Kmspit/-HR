@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react'
+import { DollarSign, Download, Loader2, MessageCircle, RefreshCw, Clock, X, CheckCircle, AlertTriangle, AlertOctagon, Trash2 } from 'lucide-react'
 import { TableSkeletonRows } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { apiJson, apiErrorMessage } from '@/lib/client-api'
@@ -42,10 +42,18 @@ type PayrollRow = {
   payslipSentStatus?: string | null
   payslipSentError?: string | null
   lineLinked?: boolean
-  /** Proration/disabled-account/negative-net-clamp review-me notes, `|`-joined
-   *  when more than one applies — already returned by the backend
-   *  (app/api/payroll/report/route.ts) but never previously read here. */
+  /** Informational review-me note (proration / disabled-account) — already
+   *  returned by the backend (app/api/payroll/report/route.ts) but never
+   *  previously read here. Deliberately SEPARATE from criticalWarning below
+   *  (2026-09-30 fix) — these used to be `|`-joined into this one field,
+   *  which made a harmless "hired mid-month" FYI look identical (same icon,
+   *  same color) to a genuine negative-netSalary clamp, risking HR alarm
+   *  fatigue on the common case masking the rare one that actually matters. */
   note?: string | null
+  /** Severity-critical: netSalary was clamped to 0 this period (deductions
+   *  exceeded what the employee was owed) — always shown with a distinct
+   *  icon/color from `note`, never merged into the same tooltip. */
+  criticalWarning?: string | null
 }
 
 type LateSummary = {
@@ -666,13 +674,21 @@ export default function PayrollClient({
                 <div className="text-right">
                   <p className="text-[11px] text-slate-400 dark:text-white/40 flex items-center justify-end gap-1">
                     สุทธิ
+                    {/* Two visually distinct indicators, never merged — a harmless
+                        proration/disabled-account FYI must never look the same as a
+                        genuine negative-netSalary clamp (2026-09-30 UX fix). */}
+                    {p.criticalWarning && (
+                      <span title={p.criticalWarning}>
+                        <AlertOctagon className="w-3 h-3 text-red-500" />
+                      </span>
+                    )}
                     {p.note && (
                       <span title={p.note}>
                         <AlertTriangle className="w-3 h-3 text-amber-400" />
                       </span>
                     )}
                   </p>
-                  <p className="font-bold text-green-400 text-lg">
+                  <p className={`font-bold text-lg ${p.criticalWarning ? 'text-red-500' : 'text-green-400'}`}>
                     {p.hasPayroll
                       ? `฿${p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 0 })}`
                       : '—'}
@@ -825,8 +841,15 @@ export default function PayrollClient({
                     <td className="p-3 text-right text-orange-400">
                       {p.ssDeduction > 0 ? `-฿${p.ssDeduction.toFixed(0)}` : '-'}
                     </td>
-                    <td className="p-3 text-right font-bold text-green-400">
+                    <td className={`p-3 text-right font-bold ${p.criticalWarning ? 'text-red-500' : 'text-green-400'}`}>
                       <span className="inline-flex items-center gap-1 justify-end">
+                        {/* Two visually distinct indicators, never merged — see the
+                            mobile-card version above for the full rationale. */}
+                        {p.criticalWarning && (
+                          <span title={p.criticalWarning}>
+                            <AlertOctagon className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          </span>
+                        )}
                         {p.note && (
                           <span title={p.note}>
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />

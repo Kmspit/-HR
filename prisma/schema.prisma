@@ -1608,6 +1608,11 @@ model Payroll {
   approvedById                 String?
   approvedAt                   DateTime?
   note                         String?
+  /// แยกจาก `note` โดยตั้งใจ (2026-09-30) — note = ข้อมูลทั่วไป (prorated/
+  /// ปิดบัญชี), criticalWarning = เตือนร้ายแรงเท่านั้น (netSalary ถูก clamp
+  /// เป็น 0) generate route เขียนทับ field นี้ทุกครั้งที่ generate/regenerate
+  /// (แม้เป็น null) กันไม่ให้ค่าเก่าค้างเมื่อรอบถัดไปไม่ติดขัดแล้ว
+  criticalWarning              String?
   deletedAt                    DateTime? @map("deleted_at") // soft-delete — สลิปเงินเดือนต้องเก็บตามกฎหมายแรงงานอย่างน้อย 2 ปี ห้าม hard delete
   deletedById                  String?   @map("deleted_by_id") // ใครเป็นคนลบ (audit)
   createdAt                    DateTime  @default(now())
