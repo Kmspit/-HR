@@ -8,9 +8,8 @@ import { canAccessPage } from '@/lib/page-access'
 import { canApprovePayroll, PAYROLL_DELETE_ROLES } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
+import { payrollEligibleUserWhere } from '@/lib/payroll-employee-scope'
 import { Suspense } from 'react'
-
-const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
 export default async function PayrollPage({
   searchParams,
@@ -24,12 +23,13 @@ export default async function PayrollPage({
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
-  const employeeWhere = branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } })
   const nestedUser = branchNestedUserWhere(scope)
 
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+
+  const employeeWhere = branchUserWhere(scope, payrollEligibleUserWhere(month, year))
 
   await ensurePayrollPayslipColumns()
 

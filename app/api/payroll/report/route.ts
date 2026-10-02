@@ -7,8 +7,7 @@ import { canManagePayroll, canApprovePayroll } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
-
-const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
+import { payrollEligibleUserWhere } from '@/lib/payroll-employee-scope'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -61,7 +60,7 @@ export async function GET(req: NextRequest) {
 
   const [employees, payrollRecords] = await Promise.all([
     prisma.user.findMany({
-      where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: [...PAYROLL_ROLES] } }),
+      where: branchUserWhere(scope, payrollEligibleUserWhere(month, year)),
       select: {
         id: true,
         name: true,
