@@ -67,7 +67,7 @@ function roleBadge(role: Role) {
   return (
     <span
       title={tip}
-      className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold cursor-help ${ROLE_COLORS[role]}`}
+      className={`whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-semibold cursor-help ${ROLE_COLORS[role]}`}
     >
       {ROLE_ICONS[role]} {ROLE_LABELS[role]}
     </span>
