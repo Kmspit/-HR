@@ -312,7 +312,7 @@ export default function HolidaysClient({
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`text-[12px] font-bold px-2 py-0.5 rounded-lg ${TYPE_BADGE[h.holidayType]}`}
+                        className={`whitespace-nowrap text-[12px] font-bold px-2 py-0.5 rounded-lg ${TYPE_BADGE[h.holidayType]}`}
                       >
                         {HOLIDAY_TYPE_LABELS[h.holidayType]}
                       </span>

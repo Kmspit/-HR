@@ -16,7 +16,7 @@ export default function OutsideWorkStatusBadge({ slot }: { slot: SlotLike }) {
     s === 'rejected_by_ceo' || s === 'rejected' || s === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-300' :
     'bg-yellow-100 text-yellow-800 border-yellow-300'
   return (
-    <span className={`inline-block px-1.5 py-0.5 rounded border text-sm font-semibold leading-tight ${cls}`}>
+    <span className={`inline-block whitespace-nowrap px-1.5 py-0.5 rounded border text-sm font-semibold leading-tight ${cls}`}>
       {label}
     </span>
   )

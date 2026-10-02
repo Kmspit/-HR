@@ -73,7 +73,7 @@ function StatusBadge({ status }: { status: ForgotScanRequest['status'] }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${cfg.cls}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${cfg.cls}`}
     >
       {cfg.label}
     </span>

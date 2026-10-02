@@ -152,7 +152,7 @@ export default function EmployeeManager({ users, stats, initialTab, orgFilterOpt
       DISABLED: s === 'DISABLED' && isTerminated ? 'พ้นสภาพ' : 'ระงับ',
       REJECTED: 'ปฏิเสธ',
     }
-    return <span className={`rounded-lg px-2.5 py-1 text-[12px] font-semibold ${map[s] ?? 'text-slate-600 bg-slate-100'}`}>{label[s] ?? s}</span>
+    return <span className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[12px] font-semibold ${map[s] ?? 'text-slate-600 bg-slate-100'}`}>{label[s] ?? s}</span>
   }
 
   return (
