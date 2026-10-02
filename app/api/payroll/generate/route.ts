@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { payrollPeriodRange } from '@/lib/payroll-period'
+import { payrollEligibleUserWhereForRange } from '@/lib/payroll-employee-scope'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
 import {
   buildApprovedLeaveDateSet,
@@ -20,8 +21,6 @@ import type { HolidayRecord } from '@/lib/company-holidays'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
-
-const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
 const GENERATE_ROLES = ['MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN', 'HR'] as const
 
@@ -85,13 +84,7 @@ export async function POST(req: NextRequest) {
     // plausibly relevant to this period — not to prorate their pay (see the
     // per-employee note below for why).
     const employees = await prisma.user.findMany({
-      where: branchUserWhere(scope, {
-        role: { in: [...PAYROLL_ROLES] },
-        OR: [
-          { status: 'ACTIVE' },
-          { status: 'DISABLED', updatedAt: { gte: startDate, lte: endDate } },
-        ],
-      }),
+      where: branchUserWhere(scope, payrollEligibleUserWhereForRange(startDate, endDate)),
       select: {
         id: true, name: true, baseSalary: true, socialSecurity: true, branchId: true,
         startDate: true, status: true, updatedAt: true, payType: true, dailyRate: true,
