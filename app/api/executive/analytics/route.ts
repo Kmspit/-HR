@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
  try {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!canAccessExecutiveApi(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await canAccessExecutiveApi(session.user.id, session.user.role))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const section = req.nextUrl.searchParams.get('section') ?? 'all'
   const now        = new Date()

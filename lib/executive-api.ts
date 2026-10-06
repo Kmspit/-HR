@@ -1,7 +1,10 @@
 import type { Role } from '@prisma/client'
-import { EXEC_ONLY } from '@/lib/module-gates'
+import { canAccessPageForUser } from '@/lib/page-access-server'
 
-/** Executive dashboard APIs — matches middleware `/executive` (CEO + SUPER_ADMIN only). */
-export function canAccessExecutiveApi(role: Role): boolean {
-  return EXEC_ONLY.includes(role)
+/** Executive dashboard APIs — default CEO + SUPER_ADMIN only (EXEC_ONLY), but
+ *  a specific user can be GRANTed in or RESTRICTed out via a per-user
+ *  '/executive' override (lib/override-eligible-paths.ts) — see
+ *  canAccessPageForUser() for the shared enforcement logic. */
+export async function canAccessExecutiveApi(userId: string, role: Role): Promise<boolean> {
+  return canAccessPageForUser(userId, role, '/executive')
 }

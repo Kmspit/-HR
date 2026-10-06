@@ -9,6 +9,8 @@ import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
+import { OVERRIDE_MANAGER_ROLES } from '@/lib/override-eligible-paths'
+import type { PagePermissionOverrideRow } from '@/components/employees/PagePermissionOverridesSection'
 
 export default async function EmployeeEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -59,6 +61,25 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
     ? await prisma.securityDepositPlan.findUnique({ where: { userId: id } })
     : null
 
+  // 2026-10-02 per-user page-access override feature — narrower than
+  // HR_ADMIN (drops HR/ADMIN, see OVERRIDE_MANAGER_ROLES's own comment).
+  // Data-filtered-at-source: not even queried when the viewer can't manage
+  // overrides, same principle as baseSalary/canViewSalary above.
+  const canManagePermissionOverrides = OVERRIDE_MANAGER_ROLES.includes(role)
+  // Direct (uncached) read on purpose — this is a low-traffic admin editor,
+  // not the hot enforcement path (that's lib/user-page-permissions-cache.ts),
+  // and the editor needs the full row (including `reason`, which the
+  // enforcement cache deliberately omits) always fresh.
+  const pagePermissionOverrides = (
+    canManagePermissionOverrides
+      ? await prisma.pagePermissionOverride.findMany({
+          where: { userId: id },
+          select: { path: true, direction: true, reason: true },
+          orderBy: { path: 'asc' },
+        })
+      : []
+  ) as PagePermissionOverrideRow[]
+
   return (
     <div className="flex flex-col min-h-0">
       <Topbar title="แก้ไขข้อมูลพนักงาน" subtitle={user.name} />
@@ -67,6 +88,8 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       canEditSalary={canViewSalary}
       canViewSensitive={HR_ADMIN.includes(role)}
       canManageEmploymentHistory={HR_ADMIN.includes(role)}
+      canManagePermissionOverrides={canManagePermissionOverrides}
+      pagePermissionOverrides={pagePermissionOverrides}
       securityDepositPlan={
         securityDepositPlan
           ? {

@@ -3,7 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { createAuditLog } from '@/lib/notifications'
-import { canManagePayroll, canApprovePayroll } from '@/lib/access-control'
+import { canApprovePayroll } from '@/lib/access-control'
+import { canAccessPageForUser } from '@/lib/page-access-server'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
@@ -25,7 +26,13 @@ export async function GET(req: NextRequest) {
   await ensurePayrollFieldsBatch2()
 
   const role = session.user.role
-  const isPayrollAdmin = canManagePayroll(role)
+  // canAccessPageForUser (not canManagePayroll directly) so a per-user
+  // GRANT/RESTRICT override on /payroll (lib/page-access.ts) actually takes
+  // effect on the data this endpoint returns, not just on whether the page
+  // shell renders — identical to canManagePayroll(role) for every role when
+  // no override exists (OVERRIDE_ELIGIBLE_PATH_DEFAULT_ROLES['/payroll'] ===
+  // HR_CORE === exactly the roles manage_payroll is granted to).
+  const isPayrollAdmin = await canAccessPageForUser(session.user.id, role, '/payroll')
 
   if (userId && userId !== session.user.id && !isPayrollAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

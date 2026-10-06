@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import ReportsClient from './ReportsClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { parseBranchQueryParam } from '@/lib/branch-scope'
-import { canAccessPage } from '@/lib/page-access'
+import { canAccessPageForUser } from '@/lib/page-access-server'
 import { Suspense } from 'react'
 
 export default async function ReportsPage({
@@ -13,7 +13,7 @@ export default async function ReportsPage({
 }) {
   const session = await auth()
   if (!session?.user) redirect('/')
-  if (!canAccessPage(session.user.role, '/reports')) redirect('/unauthorized')
+  if (!(await canAccessPageForUser(session.user.id, session.user.role, '/reports'))) redirect('/unauthorized')
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)

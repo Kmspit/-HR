@@ -9,6 +9,7 @@ type Counts = {
   recoveryPaymentCreated?: number; recoveryPaymentCollected?: number
   automationRule?: number; caseTemplates?: number
   attendanceImportBatch?: number
+  pagePermissionOverrideCreated?: number
 }
 
 // recovery_payments is checked twice (createdById, collectorId) via the same
@@ -40,6 +41,7 @@ function mockDb(counts: Counts = {}) {
     automationRule: { count: vi.fn().mockResolvedValue(counts.automationRule ?? 0) },
     $queryRawUnsafe: vi.fn().mockResolvedValue([{ cnt: counts.caseTemplates ?? 0 }]),
     attendanceImportBatch: { count: vi.fn().mockResolvedValue(counts.attendanceImportBatch ?? 0) },
+    pagePermissionOverride: { count: vi.fn().mockResolvedValue(counts.pagePermissionOverrideCreated ?? 0) },
     biometricConsent: { count: vi.fn() },
   }
 }
@@ -182,7 +184,24 @@ describe('checkPurgeGuard — 2026-09-09 wipe review: 12 required-FK tables + ca
     )
   })
 
-  it('a genuinely clean account still reports zero blockers across all 17 checks', async () => {
+  it('a genuinely clean account still reports zero blockers across all 18 checks', async () => {
+    const db = mockDb({})
+    const result = await checkPurgeGuard(db, 'user-1')
+    expect(result).toEqual([])
+  })
+})
+
+describe('checkPurgeGuard — page_permission_overrides createdById (2026-10-02 per-user override feature)', () => {
+  it('blocks when this user created an override that still governs some other employee\'s page access', async () => {
+    const db = mockDb({ pagePermissionOverrideCreated: 2 })
+    const result = await checkPurgeGuard(db, 'user-1')
+    expect(result).toEqual([
+      { label: 'page_permission_overrides (ผู้ตั้งค่าให้คนอื่น)', count: 2 },
+    ])
+    expect(db.pagePermissionOverride.count).toHaveBeenCalledWith({ where: { createdById: 'user-1' } })
+  })
+
+  it('does not block when this user never created any override for anyone', async () => {
     const db = mockDb({})
     const result = await checkPurgeGuard(db, 'user-1')
     expect(result).toEqual([])

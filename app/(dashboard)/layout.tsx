@@ -11,6 +11,7 @@ import OrgSetupBanner from '@/components/dashboard/OrgSetupBanner'
 import DashboardMotionShell from '@/components/motion/DashboardMotionShell'
 import { NotificationStreamProvider } from '@/components/notification-center/NotificationStreamProvider'
 import PWAInstallPrompt from '@/components/PWAInstallPrompt'
+import { getCachedUserPagePermissions } from '@/lib/user-page-permissions-cache'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -27,7 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     needsOrgSetup = !hasOrgAssignment(orgUser ?? {})
   }
 
-  const [avatarUser, unreadCount] = await Promise.all([
+  const [avatarUser, unreadCount, pageOverrides] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { profileImage: true },
@@ -35,6 +36,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     prisma.notification.count({
       where: { userId: session.user.id, isRead: false },
     }),
+    // 2026-10-02 per-user page-access overrides — cached (lib/user-page-
+    // permissions-cache.ts), so Sidebar's nav filter below stays fully
+    // synchronous (no client fetch/useEffect) exactly like avatarUrl already is.
+    getCachedUserPagePermissions(session.user.id),
   ])
 
   const user = {
@@ -43,6 +48,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     role:       session.user.role,
     department: session.user.department,
     avatarUrl:  resolveProfileImageUrl(avatarUser?.profileImage ?? null),
+    pageOverrides,
   }
 
   return (

@@ -9,7 +9,6 @@ import {
   HR_ADMIN,
   HR_CORE,
   APPR_ROLES,
-  MGR_UP,
   EMPLOYEE_MGMT,
   WEEKLY_PLAN,
   SCAN_HISTORY,
@@ -280,7 +279,16 @@ const DEBTOR_DELETE_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
-  '/executive':          EXEC_ONLY,
+  // /executive, /payroll, /reports widened to ALL_ROLES (2026-10-02): these
+  // 3 are override-eligible (lib/override-eligible-paths.ts) — a specific
+  // user can be GRANTed access here beyond their role via
+  // PagePermissionOverride. middleware runs on the Edge runtime with no DB
+  // access, so it can't make the per-user decision itself; it must let every
+  // staff role through here, and the REAL role-or-override decision happens
+  // in each page's Server Component + every API route it calls, via
+  // lib/page-access.ts's canAccessPageForUser(). Never narrow these 3 back
+  // without also removing them from OVERRIDE_ELIGIBLE_PATHS first.
+  '/executive':          ALL_ROLES,
   '/attendance':         ALL_ROLES,
   '/attendance/monthly': ALL_ROLES,
   '/attendance/scans':   SCAN_HISTORY,
@@ -292,9 +300,10 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/calendar':           ALL_ROLES,
   '/holidays':           HR_ADMIN,
   '/forgot-scan':        ALL_ROLES,
-  '/payroll':            HR_CORE,
+  // See the /executive comment above — same override-eligible widening.
+  '/payroll':            ALL_ROLES,
   '/payroll/deleted':    PAYROLL_DELETE_ROLES,
-  '/reports':            [...MGR_UP],
+  '/reports':            ALL_ROLES,
   '/payslip':            ALL_ROLES,
   '/employees':          EMPLOYEE_MGMT,
   '/approval-center':    APPR_ROLES,

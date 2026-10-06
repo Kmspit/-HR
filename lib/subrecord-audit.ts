@@ -183,3 +183,39 @@ export function summarizeBankAccountUpdate(before: BankAccountAuditRow, after: B
   if (lines.length === 0) return null
   return wrap('BankAccount', lines)
 }
+
+// ── PagePermissionOverride (2026-10-02) ───────────────────────────────────
+
+export type PagePermissionOverrideRow = { path: string; direction: 'GRANT' | 'RESTRICT' }
+
+const PAGE_OVERRIDE_DIRECTION_LABEL: Record<'GRANT' | 'RESTRICT' | 'NONE', string> = {
+  GRANT: 'อนุญาตเพิ่ม',
+  RESTRICT: 'ปิดกั้น',
+  NONE: 'ตามสิทธิ์เดิม',
+}
+
+/** Diffs the full before/after override set for one employee (always a full
+ *  replace — see PUT /api/users/[id]/page-permissions) and produces one
+ *  human-readable line per path whose direction actually changed. A path
+ *  missing from either array means "no override" (NONE / ตามสิทธิ์เดิม). */
+export function summarizePagePermissionOverrideChange(
+  before: PagePermissionOverrideRow[],
+  after: PagePermissionOverrideRow[],
+): SubrecordAuditEvent | null {
+  const beforeByPath = new Map(before.map((o) => [o.path, o.direction]))
+  const afterByPath = new Map(after.map((o) => [o.path, o.direction]))
+  const allPaths = new Set([...beforeByPath.keys(), ...afterByPath.keys()])
+
+  const lines: string[] = []
+  for (const path of allPaths) {
+    const beforeDir = beforeByPath.get(path) ?? 'NONE'
+    const afterDir = afterByPath.get(path) ?? 'NONE'
+    if (beforeDir === afterDir) continue
+    lines.push(
+      `สิทธิ์เข้าหน้า ${path}: เปลี่ยนจาก ${PAGE_OVERRIDE_DIRECTION_LABEL[beforeDir]} → ${PAGE_OVERRIDE_DIRECTION_LABEL[afterDir]}`,
+    )
+  }
+
+  if (lines.length === 0) return null
+  return wrap('PagePermissionOverride', lines)
+}

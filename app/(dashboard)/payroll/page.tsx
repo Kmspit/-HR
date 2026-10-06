@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import PayrollClient from './PayrollClient'
 import BranchFilterBar from '@/components/dashboard/BranchFilterBar'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
-import { canAccessPage } from '@/lib/page-access'
+import { canAccessPageForUser } from '@/lib/page-access-server'
 import { canApprovePayroll, PAYROLL_DELETE_ROLES } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
@@ -18,7 +18,7 @@ export default async function PayrollPage({
 }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/')
-  if (!canAccessPage(session.user.role, '/payroll')) redirect('/unauthorized')
+  if (!(await canAccessPageForUser(session.user.id, session.user.role, '/payroll'))) redirect('/unauthorized')
 
   const sp = await searchParams
   const branchParam = parseBranchQueryParam(sp.branchId)

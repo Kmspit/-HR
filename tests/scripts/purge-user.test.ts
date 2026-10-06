@@ -133,6 +133,29 @@ describe('purgeUser — security_deposit_plans (1:1, no real FK) deleted wholesa
   })
 })
 
+describe('purgeUser — page_permission_overrides (2026-10-02, no real FK, onDelete: Cascade in schema.prisma is NOT DB-enforced here) deleted by userId only', () => {
+  it('deletes overrides where this user is the TARGET (userId)', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.pagePermissionOverride.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } })
+  })
+
+  it('never deletes by createdById here — an override this user AUTHORED for someone else is that other employee\'s still-active data, not this user\'s own (checkPurgeGuard blocks that case instead)', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    const calls = db.pagePermissionOverride.deleteMany.mock.calls
+    for (const [arg] of calls) {
+      expect(arg.where).not.toHaveProperty('createdById')
+    }
+  })
+
+  it('still deletes the user row itself', async () => {
+    const db = makeFakeDb()
+    await purgeUser(db, 'user-1')
+    expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+  })
+})
+
 describe('purgeUser — professional_fee_payments/related_persons (hang off payrollId, not userId, no real FK)', () => {
   it('does nothing when this user has no payrolls at all', async () => {
     const db = makeFakeDb()

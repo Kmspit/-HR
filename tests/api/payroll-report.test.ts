@@ -24,8 +24,19 @@ vi.mock('@/lib/notifications', () => ({
 }))
 
 vi.mock('@/lib/access-control', () => ({
-  canManagePayroll: vi.fn((role: string) => ['HR', 'MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN'].includes(role)),
   canApprovePayroll: vi.fn().mockReturnValue(true),
+}))
+
+// report/route.ts's isPayrollAdmin now comes from canAccessPageForUser
+// (2026-10-02 per-user page-access override feature) instead of
+// canManagePayroll directly — mocked here with the same role set the old
+// canManagePayroll mock used, so this file's existing scenarios are
+// unaffected; canAccessPageForUser's own grant/restrict/fallback logic has
+// its own dedicated coverage in tests/lib/page-access-server.test.ts.
+vi.mock('@/lib/page-access-server', () => ({
+  canAccessPageForUser: vi.fn(async (_userId: string, role: string) =>
+    ['HR', 'MANAGER_HR', 'ADMIN', 'CEO', 'SUPER_ADMIN'].includes(role),
+  ),
 }))
 
 vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({

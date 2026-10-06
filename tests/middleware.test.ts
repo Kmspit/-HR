@@ -53,10 +53,19 @@ describe('middleware gates', () => {
     expect(isPublicApiRoute('/api/announcements/sse')).toBe(false)
   })
 
-  it('EMPLOYEE cannot access approval-center or payroll', () => {
+  it('EMPLOYEE cannot access approval-center', () => {
     expect(canAccess('EMPLOYEE', '/approval-center')).toBe(false)
-    expect(canAccess('EMPLOYEE', '/payroll')).toBe(false)
     expect(canAccess('EMPLOYEE', '/attendance')).toBe(true)
+  })
+
+  it('/payroll ROUTE_PERMISSIONS is now ALL_ROLES (2026-10-02, per-user override feature) — the real role check moved to canAccessPageForUser()', () => {
+    // '/payroll' (and '/reports', '/executive') were deliberately widened so
+    // middleware lets every staff role through at the Edge, moving the real
+    // role-or-override decision to lib/page-access.ts's canAccessPageForUser()
+    // at the Node layer (see tests/lib/page-access.test.ts for that coverage).
+    // This test exists so a future accidental narrowing-back is caught, with
+    // an explicit pointer to why it's wide instead of silently "passing".
+    expect(canAccess('EMPLOYEE', '/payroll')).toBe(true)
   })
 
   it('EMPLOYEE can access /manual (staff open + ROUTE_PERMISSIONS)', () => {

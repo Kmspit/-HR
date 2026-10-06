@@ -535,7 +535,7 @@ export type EmployeeHistoryItem = {
  *  audit.ts's summarizers compute the human-readable lines at WRITE time and
  *  store them directly under `after` with this marker, so mapEmployeeAuditLogs
  *  below can render them without attempting a field diff. */
-export type SubrecordEntityType = 'EmergencyContact' | 'Dependent' | 'BankAccount'
+export type SubrecordEntityType = 'EmergencyContact' | 'Dependent' | 'BankAccount' | 'PagePermissionOverride'
 export type SubrecordAuditEvent = {
   subrecordEvent: true
   entityType: SubrecordEntityType

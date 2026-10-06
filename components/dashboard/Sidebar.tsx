@@ -184,7 +184,15 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 ]
 
 type Props = {
-  user: { name: string; email: string; role: Role; department: string | null }
+  user: {
+    name: string
+    email: string
+    role: Role
+    department: string | null
+    /** 2026-10-02 per-user page-access overrides — pre-fetched server-side
+     *  (app/(dashboard)/layout.tsx) so this stays synchronous here. */
+    pageOverrides?: { path: string; direction: 'GRANT' | 'RESTRICT' }[]
+  }
   onClose?: () => void
 }
 
@@ -209,7 +217,18 @@ function SidebarContent({
     ...section,
     items: section.items.filter((item) => {
       if (isNavPathHidden(item.href)) return false
-      if (item.roles && !item.roles.includes(user.role)) return false
+
+      // 2026-10-02 per-user page-access override (lib/override-eligible-
+      // paths.ts) — checked before the normal role array. RESTRICT always
+      // hides; GRANT bypasses only the item-level role check below (section-
+      // level NAV_SECTION_ROLES still applies — moot in practice today since
+      // none of the 3 override-eligible paths live in a gated section, but
+      // kept for safety if that ever changes).
+      const override = user.pageOverrides?.find((o) => item.href === o.path || item.href.startsWith(`${o.path}/`))
+      if (override?.direction === 'RESTRICT') return false
+      const roleAllowed = override?.direction === 'GRANT' || !item.roles || item.roles.includes(user.role)
+      if (!roleAllowed) return false
+
       const sectionRoles = NAV_SECTION_ROLES[section.title]
       if (sectionRoles && !sectionRoles.includes(user.role)) return false
       return true

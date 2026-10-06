@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900044
+export const CURRENT_SCHEMA_VERSION = 900045
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -41,7 +41,7 @@ export const ALL_MAPPED_TABLES = [
   'emergency_contacts', 'dependents', 'bank_accounts', 'job_positions',
   'employment_assignments', 'biometric_consents',
   'security_deposit_plans', 'professional_fee_payments', 'professional_fee_related_persons',
-  'attendance_import_batches',
+  'attendance_import_batches', 'page_permission_overrides',
 ] as const
 const SCHEMA_MIGRATION_NAME = 'ensure_db_schema'
 
@@ -2602,6 +2602,29 @@ async function runEnsure(force = false): Promise<boolean> {
   // stale warning from a prior run can never linger once the underlying
   // numbers no longer clamp.
   await addPayrollColumnIfMissing('criticalWarning', `ALTER TABLE payrolls ADD COLUMN criticalWarning TEXT`)
+
+  // v900045 — per-user page-access permission overrides (2026-10-02). A
+  // small, explicitly curated set of paths (lib/override-eligible-paths.ts)
+  // where HR can grant a specific employee access their role would normally
+  // deny, or restrict access their role would normally allow — layered on
+  // top of (never replacing) the static ROUTE_PERMISSIONS role matrix. See
+  // lib/page-access.ts's canAccessPageForUser() for the enforcement side.
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS page_permission_overrides (
+      id TEXT NOT NULL PRIMARY KEY,
+      userId TEXT NOT NULL,
+      path TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      reason TEXT,
+      createdById TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(userId, path)
+    )
+  `)
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS page_permission_overrides_userId_idx ON page_permission_overrides (userId)`,
+  )
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()
