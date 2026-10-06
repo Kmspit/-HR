@@ -19,9 +19,11 @@ export type PagePermissionOverrideRow = {
 
 type Direction = 'NONE' | 'GRANT' | 'RESTRICT'
 
+// 2026-10-09 — only /executive remains in OVERRIDE_ELIGIBLE_PATHS; /payroll
+// and /reports were temporarily removed (see lib/override-eligible-paths.ts's
+// comment — a branch-scoping gap in lib/branch-scope.ts would have let a
+// GRANT'd low-ranked role see way more salary data than intended).
 const PATH_LABELS: Record<OverrideEligiblePath, string> = {
-  '/payroll': 'เงินเดือน',
-  '/reports': 'รายงานรายเดือน',
   '/executive': 'CEO Command Center',
 }
 

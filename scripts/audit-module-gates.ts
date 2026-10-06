@@ -96,11 +96,11 @@ const ROLE_EXPECTATIONS = [
 
   { role: 'EMPLOYEE' as Role, path: '/approval-center', allow: false },
 
-  // /payroll ROUTE_PERMISSIONS widened to ALL_ROLES (2026-10-02, per-user
-  // override feature) — middleware now lets every staff role through; the
-  // real role-or-override decision happens in lib/page-access.ts's
-  // canAccessPageForUser(), not this coarse ROUTE_PERMISSIONS check.
-  { role: 'EMPLOYEE' as Role, path: '/payroll', allow: true },
+  // /payroll reverted back to HR_CORE-only (2026-10-09) — temporarily
+  // removed from the per-user override feature (branch-scoping gap, see
+  // lib/override-eligible-paths.ts's comment), so its ROUTE_PERMISSIONS
+  // widening was reverted too.
+  { role: 'EMPLOYEE' as Role, path: '/payroll', allow: false },
 
   { role: 'TEAM_LEADER' as Role, path: '/approval-center', allow: true },
 
@@ -108,7 +108,7 @@ const ROLE_EXPECTATIONS = [
 
   { role: 'LAWYER' as Role, path: '/cases', allow: true },
 
-  { role: 'LAWYER' as Role, path: '/payroll', allow: true },
+  { role: 'LAWYER' as Role, path: '/payroll', allow: false },
 
 ]
 

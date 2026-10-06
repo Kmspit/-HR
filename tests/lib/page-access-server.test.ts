@@ -11,11 +11,13 @@ import { clearUserPagePermissionsCache } from '@/lib/user-page-permissions-cache
 
 /**
  * canAccessPageForUser() (2026-10-02) — the per-user override-aware check for
- * the 3 curated paths in lib/override-eligible-paths.ts. The critical thing
- * under test here: the "no override" fallback must use the ORIGINAL
- * (pre-widening) role list, never the now-widened ROUTE_PERMISSIONS entry —
- * using the widened value would make every role look allowed by default,
- * silently defeating RESTRICT and making GRANT meaningless.
+ * the curated path(s) in lib/override-eligible-paths.ts (only '/executive'
+ * as of 2026-10-09 — /payroll and /reports were temporarily removed, see
+ * that file's comment on the branch-scoping gap that motivated it). The
+ * critical thing under test here: the "no override" fallback must use the
+ * ORIGINAL (pre-widening) role list, never the now-widened ROUTE_PERMISSIONS
+ * entry — using the widened value would make every role look allowed by
+ * default, silently defeating RESTRICT and making GRANT meaningless.
  */
 describe('canAccessPageForUser', () => {
   beforeEach(() => {
@@ -25,34 +27,37 @@ describe('canAccessPageForUser', () => {
 
   it('no override row: falls back to the ORIGINAL role list, not the widened ALL_ROLES entry', async () => {
     vi.mocked(prisma.pagePermissionOverride.findMany).mockResolvedValue([])
-    // EMPLOYEE would pass canAccessPage('/payroll') now (widened), but must
+    // MANAGER would pass canAccessPage('/executive') now (widened), but must
     // NOT pass canAccessPageForUser absent an explicit GRANT.
-    expect(await canAccessPageForUser('u1', 'EMPLOYEE', '/payroll')).toBe(false)
     expect(await canAccessPageForUser('u1', 'MANAGER', '/executive')).toBe(false)
-    // A role that's actually in the original list still passes with no override.
-    expect(await canAccessPageForUser('u1', 'HR', '/payroll')).toBe(true)
+    // A role that's actually in the original EXEC_ONLY list still passes.
     expect(await canAccessPageForUser('u1', 'CEO', '/executive')).toBe(true)
   })
 
   it('GRANT override opens a path the role would normally be denied', async () => {
     vi.mocked(prisma.pagePermissionOverride.findMany).mockResolvedValue([
-      { path: '/payroll', direction: 'GRANT' },
+      { path: '/executive', direction: 'GRANT' },
     ] as any)
-    expect(await canAccessPageForUser('u1', 'EMPLOYEE', '/payroll')).toBe(true)
+    expect(await canAccessPageForUser('u1', 'MANAGER', '/executive')).toBe(true)
   })
 
   it('RESTRICT override closes a path the role would normally be allowed', async () => {
     vi.mocked(prisma.pagePermissionOverride.findMany).mockResolvedValue([
-      { path: '/payroll', direction: 'RESTRICT' },
+      { path: '/executive', direction: 'RESTRICT' },
     ] as any)
-    expect(await canAccessPageForUser('u1', 'MANAGER_HR', '/payroll')).toBe(false)
+    expect(await canAccessPageForUser('u1', 'CEO', '/executive')).toBe(false)
   })
 
-  it('an override row for a different eligible path does not affect this one', async () => {
+  it('a /payroll or /reports override row (stale — no longer eligible) has no effect, since those paths fall back to plain canAccessPage()', async () => {
     vi.mocked(prisma.pagePermissionOverride.findMany).mockResolvedValue([
+      { path: '/payroll', direction: 'GRANT' },
       { path: '/reports', direction: 'GRANT' },
     ] as any)
-    expect(await canAccessPageForUser('u1', 'EMPLOYEE', '/payroll')).toBe(false)
+    // /payroll and /reports are no longer in OVERRIDE_ELIGIBLE_PATHS — they
+    // behave exactly like any other non-eligible path now: identical to
+    // canAccessPage(), stale override rows ignored entirely.
+    expect(await canAccessPageForUser('u1', 'EMPLOYEE', '/payroll')).toBe(canAccessPage('EMPLOYEE', '/payroll'))
+    expect(await canAccessPageForUser('u1', 'MANAGER', '/reports')).toBe(canAccessPage('MANAGER', '/reports'))
   })
 
   it('non-eligible path: identical to canAccessPage(), never consults overrides at all', async () => {

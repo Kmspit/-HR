@@ -175,20 +175,24 @@ describe('PUT /api/users/[id]/page-permissions', () => {
   })
 
   it('successful PUT: deletes rows no longer present, upserts the rest, clears cache, writes an audit diff', async () => {
+    // CEO (not the default MANAGER_HR session) — MANAGER_HR can't GRANT
+    // /executive (lacks EXEC_ONLY by default), and /executive is the only
+    // eligible path since 2026-10-09 (see lib/override-eligible-paths.ts).
+    vi.mocked(requireRoles).mockResolvedValue(ceoSession as any)
     mocks.findMany
-      .mockResolvedValueOnce([{ path: '/reports', direction: 'RESTRICT' }]) // "before" snapshot
-      .mockResolvedValueOnce([{ path: '/payroll', direction: 'GRANT', reason: null }]) // final re-read for response
+      .mockResolvedValueOnce([{ path: '/executive', direction: 'RESTRICT' }]) // "before" snapshot
+      .mockResolvedValueOnce([{ path: '/executive', direction: 'GRANT', reason: null }]) // final re-read for response
 
     const res = await PUT(
-      makePut('u1', { overrides: [{ path: '/payroll', direction: 'GRANT', reason: 'มอบหมายพิเศษ' }] }),
+      makePut('u1', { overrides: [{ path: '/executive', direction: 'GRANT', reason: 'มอบหมายพิเศษ' }] }),
       params('u1'),
     )
 
     expect(res.status).toBe(200)
-    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1', path: { notIn: ['/payroll'] } } })
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { userId: 'u1', path: { notIn: ['/executive'] } } })
     expect(mocks.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId_path: { userId: 'u1', path: '/payroll' } },
+        where: { userId_path: { userId: 'u1', path: '/executive' } },
         update: expect.objectContaining({ direction: 'GRANT', reason: 'มอบหมายพิเศษ' }),
       }),
     )
@@ -198,20 +202,35 @@ describe('PUT /api/users/[id]/page-permissions', () => {
         after: expect.objectContaining({
           subrecordEvent: true,
           entityType: 'PagePermissionOverride',
-          lines: expect.arrayContaining([expect.stringContaining('/reports'), expect.stringContaining('/payroll')]),
+          lines: expect.arrayContaining([expect.stringContaining('/executive')]),
         }),
       }),
     )
   })
 
   it('no audit log written when nothing actually changed', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(ceoSession as any)
     mocks.findMany
-      .mockResolvedValueOnce([{ path: '/payroll', direction: 'GRANT' }])
-      .mockResolvedValueOnce([{ path: '/payroll', direction: 'GRANT', reason: null }])
+      .mockResolvedValueOnce([{ path: '/executive', direction: 'GRANT' }])
+      .mockResolvedValueOnce([{ path: '/executive', direction: 'GRANT', reason: null }])
 
-    await PUT(makePut('u1', { overrides: [{ path: '/payroll', direction: 'GRANT' }] }), params('u1'))
+    await PUT(makePut('u1', { overrides: [{ path: '/executive', direction: 'GRANT' }] }), params('u1'))
 
     expect(createAuditLog).not.toHaveBeenCalled()
+  })
+
+  /**
+   * 2026-10-09 — /payroll and /reports temporarily removed from
+   * OVERRIDE_ELIGIBLE_PATHS (branch-scoping gap, see lib/override-eligible-
+   * paths.ts). Regression guard: both must now be flatly rejected, same as
+   * any other non-curated path, regardless of direction or actor role.
+   */
+  it('400 for /payroll and /reports — no longer eligible paths', async () => {
+    const res1 = await PUT(makePut('u1', { overrides: [{ path: '/payroll', direction: 'GRANT' }] }), params('u1'))
+    expect(res1.status).toBe(400)
+    const res2 = await PUT(makePut('u1', { overrides: [{ path: '/reports', direction: 'RESTRICT' }] }), params('u1'))
+    expect(res2.status).toBe(400)
+    expect(mocks.upsert).not.toHaveBeenCalled()
   })
 })
 
@@ -251,25 +270,11 @@ describe('PUT /api/users/[id]/page-permissions — anti-privilege-escalation (20
     )
   })
 
-  it('MANAGER_HR CAN still GRANT /payroll and /reports — both are in its own default role list', async () => {
-    vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
-    mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
-    mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
-
-    const res = await PUT(
-      makePut('u1', { overrides: [{ path: '/payroll', direction: 'GRANT' }, { path: '/reports', direction: 'GRANT' }] }),
-      params('u1'),
-    )
-
-    expect(res.status).toBe(200)
-    expect(mocks.upsert).toHaveBeenCalledTimes(2)
-  })
-
   it('403: MANAGER_HR cannot create/edit an override for a CEO target — outranks the actor', async () => {
     vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
     mocks.findUnique.mockResolvedValue({ id: 'ceo-target', role: 'CEO' })
 
-    const res = await PUT(makePut('ceo-target', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }] }), params('ceo-target'))
+    const res = await PUT(makePut('ceo-target', { overrides: [{ path: '/executive', direction: 'RESTRICT' }] }), params('ceo-target'))
 
     expect(res.status).toBe(403)
     expect(mocks.upsert).not.toHaveBeenCalled()
@@ -289,7 +294,7 @@ describe('PUT /api/users/[id]/page-permissions — anti-privilege-escalation (20
     vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
     mocks.findUnique.mockResolvedValue({ id: 'peer-manager', role: 'MANAGER_HR' })
 
-    const res = await PUT(makePut('peer-manager', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }] }), params('peer-manager'))
+    const res = await PUT(makePut('peer-manager', { overrides: [{ path: '/executive', direction: 'RESTRICT' }] }), params('peer-manager'))
 
     expect(res.status).toBe(403)
     expect(mocks.upsert).not.toHaveBeenCalled()
@@ -299,7 +304,7 @@ describe('PUT /api/users/[id]/page-permissions — anti-privilege-escalation (20
     vi.mocked(requireRoles).mockResolvedValue(ceoSession as any)
     mocks.findUnique.mockResolvedValue({ id: 'super-target', role: 'SUPER_ADMIN' })
 
-    const res = await PUT(makePut('super-target', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }] }), params('super-target'))
+    const res = await PUT(makePut('super-target', { overrides: [{ path: '/executive', direction: 'RESTRICT' }] }), params('super-target'))
 
     expect(res.status).toBe(403)
   })
@@ -337,25 +342,23 @@ describe('PUT /api/users/[id]/page-permissions — anti-privilege-escalation (20
   })
 
   it('RESTRICT is never subject to the "actor lacks default access" check — only GRANT is', async () => {
-    // MANAGER_HR lacks /executive by default, but RESTRICT on a path the
-    // actor doesn't have is still logically safe (it only narrows someone
-    // else's access, granting nothing) — the check explicitly filters on
-    // direction === 'GRANT'. In this codebase's actual role sets, the only
-    // targets who'd default-have /executive (CEO/SUPER_ADMIN) also outrank
-    // MANAGER_HR and get blocked by the separate rank check first — so this
-    // test exercises the grant-check's own filter in isolation by confirming
-    // a RESTRICT entry alongside a GRANT entry for a grantable path doesn't
-    // get rejected because of the unrelated RESTRICT row.
+    // MANAGER_HR lacks /executive by default (not EXEC_ONLY), but RESTRICT
+    // on a path the actor doesn't have is still logically safe (it only
+    // narrows someone else's access, granting nothing) — the check
+    // explicitly filters on direction === 'GRANT'. Target role EMPLOYEE
+    // keeps the separate rank check out of the way, isolating just this one
+    // check: if RESTRICT were wrongly subject to it too, this would 403
+    // instead of succeeding.
     vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
     mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
     mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
 
     const res = await PUT(
-      makePut('u1', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }, { path: '/reports', direction: 'GRANT' }] }),
+      makePut('u1', { overrides: [{ path: '/executive', direction: 'RESTRICT' }] }),
       params('u1'),
     )
 
     expect(res.status).toBe(200)
-    expect(mocks.upsert).toHaveBeenCalledTimes(2)
+    expect(mocks.upsert).toHaveBeenCalledTimes(1)
   })
 })

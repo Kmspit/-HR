@@ -9,6 +9,7 @@ import {
   HR_ADMIN,
   HR_CORE,
   APPR_ROLES,
+  MGR_UP,
   EMPLOYEE_MGMT,
   WEEKLY_PLAN,
   SCAN_HISTORY,
@@ -279,15 +280,24 @@ const DEBTOR_DELETE_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR']
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/dashboard':          ALL_ROLES,
-  // /executive, /payroll, /reports widened to ALL_ROLES (2026-10-02): these
-  // 3 are override-eligible (lib/override-eligible-paths.ts) — a specific
-  // user can be GRANTed access here beyond their role via
-  // PagePermissionOverride. middleware runs on the Edge runtime with no DB
-  // access, so it can't make the per-user decision itself; it must let every
-  // staff role through here, and the REAL role-or-override decision happens
-  // in each page's Server Component + every API route it calls, via
-  // lib/page-access.ts's canAccessPageForUser(). Never narrow these 3 back
-  // without also removing them from OVERRIDE_ELIGIBLE_PATHS first.
+  // /executive widened to ALL_ROLES (2026-10-02): it's override-eligible
+  // (lib/override-eligible-paths.ts) — a specific user can be GRANTed access
+  // here beyond their role via PagePermissionOverride. middleware runs on
+  // the Edge runtime with no DB access, so it can't make the per-user
+  // decision itself; it must let every staff role through here, and the
+  // REAL role-or-override decision happens in the page's Server Component +
+  // every API route it calls, via lib/page-access-server.ts's
+  // canAccessPageForUser(). Never narrow this back without also removing it
+  // from OVERRIDE_ELIGIBLE_PATHS first.
+  //
+  // 2026-10-09: /payroll and /reports were ALSO widened like this, then
+  // reverted back to their original HR_CORE/MGR_UP values below — see
+  // lib/override-eligible-paths.ts's comment on why they were temporarily
+  // removed from the override feature (branch-scoping gap found in
+  // lib/branch-scope.ts's resolveFilterBranchId()). Re-widen them only
+  // together with re-adding them to OVERRIDE_ELIGIBLE_PATHS, never alone —
+  // widening ROUTE_PERMISSIONS without a working override gate behind it
+  // would open the page to every role with NO check at all.
   '/executive':          ALL_ROLES,
   '/attendance':         ALL_ROLES,
   '/attendance/monthly': ALL_ROLES,
@@ -300,10 +310,10 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/calendar':           ALL_ROLES,
   '/holidays':           HR_ADMIN,
   '/forgot-scan':        ALL_ROLES,
-  // See the /executive comment above — same override-eligible widening.
-  '/payroll':            ALL_ROLES,
+  // Reverted to original values 2026-10-09 — see the /executive comment above.
+  '/payroll':            HR_CORE,
   '/payroll/deleted':    PAYROLL_DELETE_ROLES,
-  '/reports':            ALL_ROLES,
+  '/reports':            [...MGR_UP],
   '/payslip':            ALL_ROLES,
   '/employees':          EMPLOYEE_MGMT,
   '/approval-center':    APPR_ROLES,

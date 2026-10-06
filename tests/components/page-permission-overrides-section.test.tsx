@@ -22,13 +22,15 @@ beforeEach(() => mockApiJson.mockReset())
  * tab) rather than mounting the whole EmployeeEditClient, which needs a much
  * larger prop surface unrelated to this feature.
  *
- * `viewerRole` defaults to 'SUPER_ADMIN' (unrestricted — can GRANT any
- * eligible path) in tests that aren't specifically about the 2026-10-06
- * anti-privilege-escalation addition, so those scenarios keep their original
- * meaning unaffected by the new restriction.
+ * 2026-10-09 — OVERRIDE_ELIGIBLE_PATHS was narrowed to just '/executive'
+ * (/payroll and /reports temporarily removed — see lib/override-eligible-
+ * paths.ts's comment on the branch-scoping gap that motivated it), so this
+ * file now only ever exercises a single row. `viewerRole` defaults to
+ * 'SUPER_ADMIN' (unrestricted) except in the dedicated describe block below
+ * that specifically tests the 2026-10-06 anti-privilege-escalation addition.
  */
 describe('PagePermissionOverridesSection', () => {
-  it('EMPLOYEE role: only "อนุญาตเพิ่ม" (GRANT) is offered for /payroll, not "ปิดกั้น" — role already denied by default', () => {
+  it('EMPLOYEE role: only "อนุญาตเพิ่ม" (GRANT) is offered for /executive, not "ปิดกั้น" — role already denied by default', () => {
     render(
       <PagePermissionOverridesSection userId="u1" employeeRole="EMPLOYEE" viewerRole="SUPER_ADMIN" initialOverrides={[]} />,
     )
@@ -36,14 +38,12 @@ describe('PagePermissionOverridesSection', () => {
     expect(screen.queryAllByText('ปิดกั้น')).toHaveLength(0)
   })
 
-  it('MANAGER_HR role: "ปิดกั้น" (RESTRICT) offered for /payroll and /reports (role already allowed there), "อนุญาตเพิ่ม" only for /executive (EXEC_ONLY, not allowed by default)', () => {
+  it('CEO role: only "ปิดกั้น" (RESTRICT) is offered for /executive — role already allowed by default (EXEC_ONLY)', () => {
     render(
-      <PagePermissionOverridesSection userId="u1" employeeRole="MANAGER_HR" viewerRole="SUPER_ADMIN" initialOverrides={[]} />,
+      <PagePermissionOverridesSection userId="u1" employeeRole="CEO" viewerRole="SUPER_ADMIN" initialOverrides={[]} />,
     )
-    // MANAGER_HR is in HR_CORE ('/payroll') and MGR_UP ('/reports') but not
-    // EXEC_ONLY ('/executive') — so RESTRICT shows for 2 rows, GRANT for 1.
-    expect(screen.getAllByText('ปิดกั้น')).toHaveLength(2)
-    expect(screen.getAllByText('อนุญาตเพิ่ม')).toHaveLength(1)
+    expect(screen.getAllByText('ปิดกั้น')).toHaveLength(1)
+    expect(screen.queryAllByText('อนุญาตเพิ่ม')).toHaveLength(0)
   })
 
   it('loads an existing GRANT override and shows its reason', () => {
@@ -52,7 +52,7 @@ describe('PagePermissionOverridesSection', () => {
         userId="u1"
         employeeRole="EMPLOYEE"
         viewerRole="SUPER_ADMIN"
-        initialOverrides={[{ path: '/payroll', direction: 'GRANT', reason: 'มอบหมายพิเศษ' }]}
+        initialOverrides={[{ path: '/executive', direction: 'GRANT', reason: 'มอบหมายพิเศษ' }]}
       />,
     )
     expect(screen.getByDisplayValue('มอบหมายพิเศษ')).toBeTruthy()
@@ -64,8 +64,7 @@ describe('PagePermissionOverridesSection', () => {
       <PagePermissionOverridesSection userId="u1" employeeRole="EMPLOYEE" viewerRole="SUPER_ADMIN" initialOverrides={[]} />,
     )
 
-    const grantButtons = screen.getAllByText('อนุญาตเพิ่ม')
-    fireEvent.click(grantButtons[0]) // /payroll row — first in OVERRIDE_ELIGIBLE_PATHS order
+    fireEvent.click(screen.getByText('อนุญาตเพิ่ม'))
 
     const reasonInput = await screen.findByPlaceholderText('เหตุผล (ไม่บังคับ)')
     fireEvent.change(reasonInput, { target: { value: 'ทดสอบเหตุผล' } })
@@ -77,7 +76,7 @@ describe('PagePermissionOverridesSection', () => {
     expect(url).toBe('/api/users/u1/page-permissions')
     expect((init as RequestInit).method).toBe('PUT')
     const body = JSON.parse((init as RequestInit).body as string)
-    expect(body.overrides).toEqual([{ path: '/payroll', direction: 'GRANT', reason: 'ทดสอบเหตุผล' }])
+    expect(body.overrides).toEqual([{ path: '/executive', direction: 'GRANT', reason: 'ทดสอบเหตุผล' }])
   })
 
   it('switching back to "ตามสิทธิ์เดิม" removes that path from the save payload', async () => {
@@ -87,11 +86,11 @@ describe('PagePermissionOverridesSection', () => {
         userId="u1"
         employeeRole="EMPLOYEE"
         viewerRole="SUPER_ADMIN"
-        initialOverrides={[{ path: '/payroll', direction: 'GRANT', reason: null }]}
+        initialOverrides={[{ path: '/executive', direction: 'GRANT', reason: null }]}
       />,
     )
 
-    fireEvent.click(screen.getAllByText('ตามสิทธิ์เดิม')[0])
+    fireEvent.click(screen.getByText('ตามสิทธิ์เดิม'))
     fireEvent.click(screen.getByRole('button', { name: /บันทึกสิทธิ์เฉพาะบุคคล/ }))
 
     await waitFor(() => expect(mockApiJson).toHaveBeenCalled())
@@ -107,42 +106,29 @@ describe('PagePermissionOverridesSection', () => {
  * permissions hard-blocks this server-side regardless; this is the UI-side
  * mirror so the editor never sees a button that would just 403 on submit).
  * RESTRICT is never affected — narrowing someone else's access never hands
- * out a capability the editor lacks.
+ * out a capability the editor lacks. Only /executive exists now (2026-10-09),
+ * so these scenarios collapse to one row each.
  */
-describe('PagePermissionOverridesSection — viewerRole restricts which GRANT buttons show', () => {
-  it('MANAGER_HR viewer editing an EMPLOYEE: GRANT offered for /payroll and /reports (MANAGER_HR has both by default), NOT for /executive (MANAGER_HR lacks EXEC_ONLY)', () => {
+describe('PagePermissionOverridesSection — viewerRole restricts whether the GRANT button shows', () => {
+  it('MANAGER_HR viewer editing an EMPLOYEE: no GRANT button for /executive — MANAGER_HR itself lacks EXEC_ONLY', () => {
     render(
       <PagePermissionOverridesSection userId="u1" employeeRole="EMPLOYEE" viewerRole="MANAGER_HR" initialOverrides={[]} />,
     )
-    // EMPLOYEE has none of the 3 by default, so all 3 rows would show GRANT
-    // for an unrestricted viewer — MANAGER_HR's own role caps it to 2.
-    expect(screen.getAllByText('อนุญาตเพิ่ม')).toHaveLength(2)
+    expect(screen.queryAllByText('อนุญาตเพิ่ม')).toHaveLength(0)
+    expect(screen.queryAllByText('ปิดกั้น')).toHaveLength(0)
   })
 
-  it('CEO viewer editing an EMPLOYEE: GRANT offered for all 3 paths (CEO has HR_CORE+MGR_UP+EXEC_ONLY by default)', () => {
+  it('CEO viewer editing an EMPLOYEE: GRANT button shown for /executive — CEO has EXEC_ONLY by default', () => {
     render(
       <PagePermissionOverridesSection userId="u1" employeeRole="EMPLOYEE" viewerRole="CEO" initialOverrides={[]} />,
     )
-    expect(screen.getAllByText('อนุญาตเพิ่ม')).toHaveLength(3)
+    expect(screen.getAllByText('อนุญาตเพิ่ม')).toHaveLength(1)
   })
 
-  it('MANAGER_HR viewer sees zero GRANT buttons when the employee already has everything MANAGER_HR could grant (/payroll, /reports) and lacks only /executive (ungrantable)', () => {
+  it('RESTRICT is unaffected by viewerRole — MANAGER_HR can still restrict a CEO-role employee from /executive even though MANAGER_HR itself can\'t GRANT it', () => {
     render(
-      <PagePermissionOverridesSection userId="u1" employeeRole="MANAGER_HR" viewerRole="MANAGER_HR" initialOverrides={[]} />,
+      <PagePermissionOverridesSection userId="u1" employeeRole="CEO" viewerRole="MANAGER_HR" initialOverrides={[]} />,
     )
-    // /payroll, /reports: employee already has them (roleDefaultAllowed) ->
-    // RESTRICT shown, not GRANT. /executive: employee lacks it AND viewer
-    // can't grant it either -> neither button shows for that row.
-    expect(screen.queryAllByText('อนุญาตเพิ่ม')).toHaveLength(0)
-    expect(screen.getAllByText('ปิดกั้น')).toHaveLength(2)
-  })
-
-  it('RESTRICT is unaffected by viewerRole — MANAGER_HR can still restrict a MANAGER_HR-role employee from /executive-adjacent paths it already has', () => {
-    render(
-      <PagePermissionOverridesSection userId="u1" employeeRole="MANAGER_HR" viewerRole="MANAGER_HR" initialOverrides={[]} />,
-    )
-    // Confirms RESTRICT count is identical regardless of viewer's own access —
-    // same 2 RESTRICT rows as the SUPER_ADMIN-viewer test above.
-    expect(screen.getAllByText('ปิดกั้น')).toHaveLength(2)
+    expect(screen.getAllByText('ปิดกั้น')).toHaveLength(1)
   })
 })
