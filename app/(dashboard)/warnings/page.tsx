@@ -35,6 +35,11 @@ export default async function WarningsPage({
   // MANAGER also holds approve_warning, so letting them trigger auto-check too
   // would let one person propose and approve their own team's warning alone.
   const canRunAutoCheck = isCompanyWideApprover(session.user.role as Role)
+  // TODO(team-scope): MANAGER/ENFORCEMENT are now branch-locked here (fail-close,
+  // 2026-10) instead of company-wide, but still see every warning/employee in
+  // their branch, not just their direct reports. api/warnings/employees already
+  // scopes them to direct-reports/self via resolveOrgListScope — this page
+  // bypasses that entirely and should switch to the same pattern later.
   const filterBranch = resolveFilterBranchId(scope)
 
   type EmployeeRow = {

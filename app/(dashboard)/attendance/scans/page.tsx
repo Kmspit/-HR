@@ -24,6 +24,11 @@ export default async function AttendanceScansPage({
   const branchParam = parseBranchQueryParam(sp.branchId)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
 
+  // TODO(team-scope): MANAGER/TEAM_LEADER are now branch-locked here (fail-close,
+  // 2026-10), but their real job is team-scoped, not branch-scoped — they still
+  // see every employee in their own branch, not just their direct reports. The
+  // API equivalents (api/attendance/work-log/*) already use resolveOrgListScope
+  // for this; consider switching this page to the same pattern later.
   const employees = await prisma.user.findMany({
     where: branchUserWhere(scope, { status: 'ACTIVE', role: { in: ATTENDANCE_TEAM_ROLES } }),
     select: { id: true, name: true, employeeId: true },

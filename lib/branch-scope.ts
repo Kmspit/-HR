@@ -4,14 +4,33 @@ import { HR_ADMIN } from '@/lib/module-gates'
 export type BranchScopeInput = {
   role: Role
   userBranchId: string | null | undefined
-  /** จาก ?branchId= สำหรับ HR/Admin — ค่า `all` หรือไม่ส่ง = ทุกสาขา */
+  /** จาก ?branchId= สำหรับ role ใน ALL_BRANCHES_ROLES — ค่า `all` หรือไม่ส่ง = ทุกสาขา */
   filterBranchId?: string | null
 }
 
-/** สาขาที่ใช้กรองข้อมูล — undefined = ทุกสาขา (เฉพาะ HR/Admin) */
+/**
+ * Roles that may see "all branches" (no filter) when no explicit ?branchId=
+ * is given — every other role is locked to its own branch below, and any
+ * ?branchId= they pass is ignored. 2026-10 fail-close: this used to be
+ * "every role except EMPLOYEE/LAWYER", which let MANAGER/TEAM_LEADER/
+ * ENFORCEMENT/CLIENT see company-wide data at ~10 call sites with no
+ * legitimate multi-branch use case (see fix/branch-scope-fail-closed audit).
+ */
+export const ALL_BRANCHES_ROLES: Role[] = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN']
+
+/**
+ * Returned by resolveFilterBranchId for a non-allow-listed role with no
+ * branchId of its own. Must never equal a real CompanyBranch id (those are
+ * cuid()-generated) — used as an ordinary branchId filter value so every
+ * `branchId ? { branchId } : {}`-style caller naturally matches zero rows
+ * instead of falling through to "no filter = all branches".
+ */
+export const NO_BRANCH_ACCESS_ID = '__no_branch_access__'
+
+/** สาขาที่ใช้กรองข้อมูล — undefined = ทุกสาขา (เฉพาะ ALL_BRANCHES_ROLES) */
 export function resolveFilterBranchId(scope: BranchScopeInput): string | undefined {
-  if (scope.role === 'EMPLOYEE' || scope.role === 'LAWYER') {
-    return scope.userBranchId ?? undefined
+  if (!ALL_BRANCHES_ROLES.includes(scope.role)) {
+    return scope.userBranchId ?? NO_BRANCH_ACCESS_ID
   }
   const f = scope.filterBranchId?.trim()
   if (!f || f === 'all') return undefined

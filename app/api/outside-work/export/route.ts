@@ -360,6 +360,9 @@ export async function POST(req: NextRequest) {
   // built from the caller's own real, current, scope-checked records.
   const canViewAll = CAN_VIEW_ALL_ROLES.includes(session.user.role)
   const scope = buildBranchScope({ role: session.user.role as Role, branchId: session.user.branchId })
+  // TODO(team-scope): see the matching TODO in app/(dashboard)/outside-work/page.tsx
+  // — MANAGER/TEAM_LEADER export every branch-mate's requests here, not just
+  // their own team's.
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
 
   const dateWhere = weekStart

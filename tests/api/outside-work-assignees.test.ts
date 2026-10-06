@@ -96,6 +96,10 @@ const empSession      = { user: { id: 'emp-1',      name: 'Employee',   role: 'E
 const otherEmpSession = { user: { id: 'other-emp',  name: 'Other',      role: 'EMPLOYEE', branchId: 'branch-a' } }
 const hrSession        = { user: { id: 'hr-1',       name: 'HR Admin',   role: 'CEO',      branchId: null } }
 const adminSession     = { user: { id: 'admin-1',    name: 'Admin',      role: 'ADMIN',    branchId: null } }
+const managerSession   = { user: { id: 'mgr-1',      name: 'Manager',    role: 'MANAGER',     branchId: 'branch-a' } }
+const teamLeadSession  = { user: { id: 'tl-1',       name: 'TeamLead',   role: 'TEAM_LEADER', branchId: 'branch-a' } }
+const enforcementSession = { user: { id: 'enf-1',    name: 'Enforcement', role: 'ENFORCEMENT', branchId: 'branch-a' } }
+const clientSession    = { user: { id: 'client-1',   name: 'Client',     role: 'CLIENT',   branchId: null } }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -207,6 +211,26 @@ describe('GET /api/outside-work/employees', () => {
     const ids = data.employees.map((e: any) => e.id)
     expect(ids).toEqual(expect.arrayContaining(['u-a1', 'u-a2', 'u-b1']))
     expect(ids).not.toContain('u-a3-inactive') // still excludes inactive regardless of role
+  })
+
+  // 2026-10-06: route had no role check at all — any authenticated session,
+  // including CLIENT, could list every active employee company-wide via the
+  // assignee picker. CORE_STAFF matches /outside-work's own page gate
+  // (ALL_ROLES in ROUTE_PERMISSIONS) exactly; CLIENT is the only role excluded.
+  it('returns 403 for CLIENT — not a CORE_STAFF role, cannot open /outside-work at all', async () => {
+    vi.mocked(auth).mockResolvedValue(clientSession as any)
+    const res = await employeesGET(makeGet('http://localhost/api/outside-work/employees'))
+    expect(res.status).toBe(403)
+  })
+
+  it.each([
+    ['MANAGER', managerSession],
+    ['TEAM_LEADER', teamLeadSession],
+    ['ENFORCEMENT', enforcementSession],
+  ])('allows %s — a CORE_STAFF role that legitimately opens /outside-work', async (_label, session) => {
+    vi.mocked(auth).mockResolvedValue(session as any)
+    const res = await employeesGET(makeGet('http://localhost/api/outside-work/employees'))
+    expect(res.status).toBe(200)
   })
 })
 
