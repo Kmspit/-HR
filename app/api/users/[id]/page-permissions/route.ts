@@ -4,8 +4,14 @@ import { apiError } from '@/lib/api-handler'
 import { requireRoles, isGuardResponse } from '@/lib/api-guard'
 import { createAuditLog } from '@/lib/notifications'
 import { summarizePagePermissionOverrideChange } from '@/lib/subrecord-audit'
-import { OVERRIDE_ELIGIBLE_PATHS, OVERRIDE_MANAGER_ROLES } from '@/lib/override-eligible-paths'
+import {
+  OVERRIDE_ELIGIBLE_PATHS,
+  OVERRIDE_MANAGER_ROLES,
+  OVERRIDE_ELIGIBLE_PATH_DEFAULT_ROLES,
+  type OverrideEligiblePath,
+} from '@/lib/override-eligible-paths'
 import { clearUserPagePermissionsCache } from '@/lib/user-page-permissions-cache'
+import { canAssignRole } from '@/lib/role-assignment'
 import type { PageOverrideDirection } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
@@ -82,8 +88,65 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: `หน้า ${invalidPath.path} ไม่รองรับการตั้งค่าสิทธิ์เฉพาะบุคคล` }, { status: 400 })
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    // Anti-privilege-escalation #1 (2026-10-06 security review finding) — an
+    // actor may only GRANT a path their OWN role already has by DEFAULT
+    // (OVERRIDE_ELIGIBLE_PATH_DEFAULT_ROLES, never the override-aware check —
+    // an actor's own override must never let them chain-delegate a path they
+    // only have via someone else's grant). RESTRICT has no such requirement:
+    // narrowing someone else's access never hands out a capability the actor
+    // lacks, so e.g. a MANAGER_HR can still RESTRICT a MANAGER from /reports
+    // despite MANAGER_HR itself never needing a grant to reach it.
+    const ungrantablePath = parsed.find(
+      (o) =>
+        o.direction === 'GRANT' &&
+        !OVERRIDE_ELIGIBLE_PATH_DEFAULT_ROLES[o.path as OverrideEligiblePath].includes(session.user.role),
+    )
+    if (ungrantablePath) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'User',
+        action: 'UPDATE',
+        after: {
+          pagePermissionOverrideChangeBlocked: true,
+          reason: 'actor lacks default access to the path being granted',
+          attemptedPath: ungrantablePath.path,
+        },
+        ip: requestIp(req),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+      })
+      return NextResponse.json(
+        { error: `คุณไม่มีสิทธิ์เข้าหน้า ${ungrantablePath.path} ตาม role ของตัวเอง จึงให้สิทธิ์ (อนุญาตเพิ่ม) หน้านี้แก่ผู้อื่นไม่ได้` },
+        { status: 403 },
+      )
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } })
     if (!targetUser) return NextResponse.json({ error: 'ไม่พบพนักงาน' }, { status: 404 })
+
+    // Anti-privilege-escalation #2 — an actor may never create/edit an
+    // override for a target whose role outranks or equals their own, except
+    // SUPER_ADMIN (unrestricted). Reuses the exact same role-hierarchy
+    // already established for role ASSIGNMENT (lib/role-assignment.ts's
+    // canAssignRole — e.g. MANAGER_HR cannot assign CEO/SUPER_ADMIN either),
+    // since "who may control whose access" is the same trust relationship.
+    if (!canAssignRole(session.user.role, targetUser.role)) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'User',
+        action: 'UPDATE',
+        after: {
+          pagePermissionOverrideChangeBlocked: true,
+          reason: 'target role outranks or equals actor',
+          attemptedByRole: session.user.role,
+          targetRole: targetUser.role,
+        },
+        ip: requestIp(req),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+      })
+      return NextResponse.json({ error: 'ไม่สามารถตั้งค่าสิทธิ์ของผู้ใช้ตำแหน่งนี้ได้' }, { status: 403 })
+    }
 
     const before = await prisma.pagePermissionOverride.findMany({
       where: { userId: id },

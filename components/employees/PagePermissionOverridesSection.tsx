@@ -39,10 +39,16 @@ const PATH_LABELS: Record<OverrideEligiblePath, string> = {
 export default function PagePermissionOverridesSection({
   userId,
   employeeRole,
+  viewerRole,
   initialOverrides,
 }: {
   userId: string
   employeeRole: Role
+  /** The editor's own role — 2026-10-06 security review addition. A GRANT
+   *  the editor's own role doesn't have by default is hidden here (server
+   *  hard-blocks it regardless, PUT /api/users/[id]/page-permissions) so the
+   *  editor never sees a button that would just 403 on submit. */
+  viewerRole: Role
   initialOverrides: PagePermissionOverrideRow[]
 }) {
   const initial = Object.fromEntries(
@@ -90,6 +96,7 @@ export default function PagePermissionOverridesSection({
 
       {OVERRIDE_ELIGIBLE_PATHS.map((path) => {
         const roleDefaultAllowed = OVERRIDE_ELIGIBLE_PATH_DEFAULT_ROLES[path].includes(employeeRole)
+        const viewerCanGrantThisPath = OVERRIDE_ELIGIBLE_PATH_DEFAULT_ROLES[path].includes(viewerRole)
         const row = state[path]
         return (
           <div key={path} className="space-y-2 border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
@@ -106,7 +113,7 @@ export default function PagePermissionOverridesSection({
               >
                 ตามสิทธิ์เดิม
               </button>
-              {!roleDefaultAllowed && (
+              {!roleDefaultAllowed && viewerCanGrantThisPath && (
                 <button
                   type="button"
                   onClick={() => setDirection(path, 'GRANT')}

@@ -4,7 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import type { Role } from '@prisma/client'
 import Topbar from '@/components/dashboard/Topbar'
 import EmployeeEditClient from './EmployeeEditClient'
-import { canManageUserProfile } from '@/lib/role-assignment'
+import { canManageUserProfile, canAssignRole } from '@/lib/role-assignment'
 import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
@@ -63,9 +63,14 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
 
   // 2026-10-02 per-user page-access override feature — narrower than
   // HR_ADMIN (drops HR/ADMIN, see OVERRIDE_MANAGER_ROLES's own comment).
-  // Data-filtered-at-source: not even queried when the viewer can't manage
-  // overrides, same principle as baseSalary/canViewSalary above.
-  const canManagePermissionOverrides = OVERRIDE_MANAGER_ROLES.includes(role)
+  // 2026-10-06 security review addition: also requires canAssignRole(viewer,
+  // target) — the same role-hierarchy already used for role ASSIGNMENT —
+  // so e.g. MANAGER_HR never even sees this section on a CEO's own edit
+  // page, matching the hard block PUT /api/users/[id]/page-permissions now
+  // enforces server-side. Data-filtered-at-source: not even queried when the
+  // viewer can't manage overrides, same principle as baseSalary/canViewSalary.
+  const canManagePermissionOverrides =
+    OVERRIDE_MANAGER_ROLES.includes(role) && canAssignRole(role, user.role as Role)
   // Direct (uncached) read on purpose — this is a low-traffic admin editor,
   // not the hot enforcement path (that's lib/user-page-permissions-cache.ts),
   // and the editor needs the full row (including `reason`, which the
@@ -90,6 +95,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       canManageEmploymentHistory={HR_ADMIN.includes(role)}
       canManagePermissionOverrides={canManagePermissionOverrides}
       pagePermissionOverrides={pagePermissionOverrides}
+      viewerRole={role}
       securityDepositPlan={
         securityDepositPlan
           ? {

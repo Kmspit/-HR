@@ -122,6 +122,7 @@ export default function EmployeeEditClient({
   canManageEmploymentHistory,
   canManagePermissionOverrides,
   pagePermissionOverrides,
+  viewerRole,
   securityDepositPlan: initialSecurityDepositPlan,
 }: {
   employee: Employee
@@ -146,6 +147,12 @@ export default function EmployeeEditClient({
    *  source, same principle as baseSalary/canEditSalary). */
   canManagePermissionOverrides: boolean
   pagePermissionOverrides: PagePermissionOverrideRow[]
+  /** 2026-10-06 security review addition — the VIEWER's (editor's) own role,
+   *  not the employee being edited. Needed so the UI can hide a GRANT option
+   *  the editor's own role doesn't have by default (PUT /api/users/[id]/
+   *  page-permissions hard-blocks this server-side regardless; this is only
+   *  so the editor never sees a button that would just 403 on submit). */
+  viewerRole: Role
   /** เงินประกัน 6 งวด (payroll fields batch 2, 2026-09) — null ถ้ายังไม่เคย
    *  สร้างแผนให้พนักงานคนนี้ หรือถ้า canEditSalary เป็น false (filtered ที่
    *  source ใน page.tsx เหมือน baseSalary/dailyRate) */
@@ -870,6 +877,7 @@ export default function EmployeeEditClient({
             <PagePermissionOverridesSection
               userId={employee.id}
               employeeRole={employee.role as Role}
+              viewerRole={viewerRole}
               initialOverrides={pagePermissionOverrides}
             />
           )}

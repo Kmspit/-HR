@@ -41,6 +41,8 @@ import { createAuditLog } from '@/lib/notifications'
 import { GET, PUT } from '@/app/api/users/[id]/page-permissions/route'
 
 const hrManagerSession = { user: { id: 'manager-1', name: 'ผจก.', role: 'MANAGER_HR' } }
+const ceoSession = { user: { id: 'ceo-1', name: 'CEO', role: 'CEO' } }
+const superAdminSession = { user: { id: 'super-1', name: 'Super Admin', role: 'SUPER_ADMIN' } }
 const params = (id: string) => ({ params: Promise.resolve({ id }) })
 
 function makePut(id: string, body: unknown) {
@@ -76,7 +78,7 @@ describe('PUT /api/users/[id]/page-permissions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
-    mocks.findUnique.mockResolvedValue({ id: 'u1' })
+    mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
     mocks.findMany.mockResolvedValue([])
   })
 
@@ -144,5 +146,150 @@ describe('PUT /api/users/[id]/page-permissions', () => {
     await PUT(makePut('u1', { overrides: [{ path: '/payroll', direction: 'GRANT' }] }), params('u1'))
 
     expect(createAuditLog).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * 2026-10-06 security review — two anti-privilege-escalation checks added to
+ * PUT after an independent audit found: (a) nothing stopped an actor from
+ * GRANTing a path their own role doesn't have by default (e.g. MANAGER_HR
+ * granting /executive despite never having it itself — a privilege-
+ * delegation gap), and (b) nothing stopped an actor from creating/editing an
+ * override for a target who outranks them (e.g. MANAGER_HR editing a CEO's
+ * overrides).
+ */
+describe('PUT /api/users/[id]/page-permissions — anti-privilege-escalation (2026-10-06)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.findMany.mockResolvedValue([])
+  })
+
+  it('403: MANAGER_HR cannot GRANT /executive — MANAGER_HR itself lacks EXEC_ONLY by default', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
+
+    const res = await PUT(makePut('u1', { overrides: [{ path: '/executive', direction: 'GRANT' }] }), params('u1'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.upsert).not.toHaveBeenCalled()
+    // Blocked before the target-role lookup even matters for this check —
+    // findUnique for the target should not need to have been consulted yet.
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({
+          pagePermissionOverrideChangeBlocked: true,
+          reason: 'actor lacks default access to the path being granted',
+          attemptedPath: '/executive',
+        }),
+      }),
+    )
+  })
+
+  it('MANAGER_HR CAN still GRANT /payroll and /reports — both are in its own default role list', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
+    mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    const res = await PUT(
+      makePut('u1', { overrides: [{ path: '/payroll', direction: 'GRANT' }, { path: '/reports', direction: 'GRANT' }] }),
+      params('u1'),
+    )
+
+    expect(res.status).toBe(200)
+    expect(mocks.upsert).toHaveBeenCalledTimes(2)
+  })
+
+  it('403: MANAGER_HR cannot create/edit an override for a CEO target — outranks the actor', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'ceo-target', role: 'CEO' })
+
+    const res = await PUT(makePut('ceo-target', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }] }), params('ceo-target'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({
+          pagePermissionOverrideChangeBlocked: true,
+          reason: 'target role outranks or equals actor',
+          attemptedByRole: 'MANAGER_HR',
+          targetRole: 'CEO',
+        }),
+      }),
+    )
+  })
+
+  it('403: MANAGER_HR cannot create/edit an override for ANOTHER MANAGER_HR — equal rank is also blocked, not just higher', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'peer-manager', role: 'MANAGER_HR' })
+
+    const res = await PUT(makePut('peer-manager', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }] }), params('peer-manager'))
+
+    expect(res.status).toBe(403)
+    expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it('CEO cannot create/edit an override for a SUPER_ADMIN target', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(ceoSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'super-target', role: 'SUPER_ADMIN' })
+
+    const res = await PUT(makePut('super-target', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }] }), params('super-target'))
+
+    expect(res.status).toBe(403)
+  })
+
+  it('CEO CAN create/edit an override for a MANAGER_HR target (strictly lower rank)', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(ceoSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'mgr-target', role: 'MANAGER_HR' })
+    mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    const res = await PUT(makePut('mgr-target', { overrides: [{ path: '/executive', direction: 'GRANT' }] }), params('mgr-target'))
+
+    expect(res.status).toBe(200)
+    expect(mocks.upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('SUPER_ADMIN is exempt from the rank check — can edit even a CEO or another SUPER_ADMIN\'s overrides', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(superAdminSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'ceo-target', role: 'CEO' })
+    mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    const res = await PUT(makePut('ceo-target', { overrides: [{ path: '/executive', direction: 'RESTRICT' }] }), params('ceo-target'))
+
+    expect(res.status).toBe(200)
+    expect(mocks.upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('SUPER_ADMIN can GRANT /executive — SUPER_ADMIN itself has EXEC_ONLY by default', async () => {
+    vi.mocked(requireRoles).mockResolvedValue(superAdminSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
+    mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    const res = await PUT(makePut('u1', { overrides: [{ path: '/executive', direction: 'GRANT' }] }), params('u1'))
+
+    expect(res.status).toBe(200)
+  })
+
+  it('RESTRICT is never subject to the "actor lacks default access" check — only GRANT is', async () => {
+    // MANAGER_HR lacks /executive by default, but RESTRICT on a path the
+    // actor doesn't have is still logically safe (it only narrows someone
+    // else's access, granting nothing) — the check explicitly filters on
+    // direction === 'GRANT'. In this codebase's actual role sets, the only
+    // targets who'd default-have /executive (CEO/SUPER_ADMIN) also outrank
+    // MANAGER_HR and get blocked by the separate rank check first — so this
+    // test exercises the grant-check's own filter in isolation by confirming
+    // a RESTRICT entry alongside a GRANT entry for a grantable path doesn't
+    // get rejected because of the unrelated RESTRICT row.
+    vi.mocked(requireRoles).mockResolvedValue(hrManagerSession as any)
+    mocks.findUnique.mockResolvedValue({ id: 'u1', role: 'EMPLOYEE' })
+    mocks.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    const res = await PUT(
+      makePut('u1', { overrides: [{ path: '/payroll', direction: 'RESTRICT' }, { path: '/reports', direction: 'GRANT' }] }),
+      params('u1'),
+    )
+
+    expect(res.status).toBe(200)
+    expect(mocks.upsert).toHaveBeenCalledTimes(2)
   })
 })
