@@ -37,12 +37,41 @@ function parseOverridesBody(body: unknown): OverrideInput[] | null {
   return parsed
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireRoles([...OVERRIDE_MANAGER_ROLES])
     if (isGuardResponse(session)) return session
 
     const { id } = await params
+
+    // Same role-hierarchy check as PUT (2026-10-09 security review finding
+    // — GET had none at all, so e.g. MANAGER_HR could read a CEO's
+    // overrides despite being unable to edit them). SUPER_ADMIN exempt, same
+    // as PUT. No self-block here on purpose — viewing your OWN overrides is
+    // harmless (PUT blocks self-EDIT, not self-view) and canAssignRole(role,
+    // role) already passes for every actor on an exact self-role match
+    // anyway, so this intentionally stays permissive for that one case.
+    const targetUser = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    if (!targetUser) return NextResponse.json({ error: 'ไม่พบพนักงาน' }, { status: 404 })
+
+    if (!canAssignRole(session.user.role, targetUser.role)) {
+      await createAuditLog({
+        actorId: session.user.id,
+        targetId: id,
+        targetType: 'User',
+        action: 'VIEW',
+        after: {
+          pagePermissionOverrideReadBlocked: true,
+          reason: 'target role outranks or equals actor',
+          attemptedByRole: session.user.role,
+          targetRole: targetUser.role,
+        },
+        ip: requestIp(req),
+        userAgent: req.headers.get('user-agent') ?? undefined,
+      })
+      return NextResponse.json({ error: 'ไม่สามารถดูสิทธิ์ของผู้ใช้ตำแหน่งนี้ได้' }, { status: 403 })
+    }
+
     const overrides = await prisma.pagePermissionOverride.findMany({
       where: { userId: id },
       select: { path: true, direction: true, reason: true, createdAt: true, updatedAt: true },
