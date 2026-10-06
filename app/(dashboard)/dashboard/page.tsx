@@ -42,6 +42,11 @@ export default async function DashboardPage({
     return <ApproverDashboard userId={userId} name={name ?? ''} role={role} />
   }
 
+  // TODO(team-scope): MANAGER/ENFORCEMENT are now branch-locked here (fail-close,
+  // 2026-10) instead of company-wide, but a branch-wide KPI view is still broader
+  // than their real job (team-scoped for MANAGER; ENFORCEMENT has no HR/attendance
+  // duty at all). Consider resolveOrgListScope (lib/org-scope.ts) for these KPIs
+  // instead of branch-scope, same pattern already used by api/attendance/work-log/*.
   const scope = buildBranchScope(session.user, { branchId: branchParam })
   const activeUserWhere = branchUserWhere(scope, { status: 'ACTIVE' })
   const pendingUserWhere = branchUserWhere(scope, { status: 'PENDING' })

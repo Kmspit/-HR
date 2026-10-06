@@ -29,6 +29,10 @@ export default async function EmployeesPage({
   const { tab } = sp
   const branchParam = parseBranchQueryParam(sp.branchId)
   const scope = buildBranchScope(session.user, { branchId: branchParam })
+  // TODO(team-scope): MANAGER is now branch-locked here (fail-close, 2026-10)
+  // instead of company-wide, but still sees the full roster of their own
+  // branch rather than just their direct reports. Consider resolveOrgListScope
+  // (lib/org-scope.ts) for MANAGER's employee list instead of branch-scope later.
   const filterBranchId = resolveFilterBranchId(scope)
   const orgFilters = {
     divisionId: parseOrgFilterParam(sp.divisionId),

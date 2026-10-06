@@ -22,6 +22,10 @@ export default async function OutsideWorkPage({
   const canViewAll = ['MANAGER_HR', 'ADMIN', 'HR', 'SUPER_ADMIN', 'MANAGER', 'TEAM_LEADER', 'CEO'].includes(session.user.role)
   const canApproveOutside = hasPermission(session.user.role as Role, 'approve_outside_work')
   const scope = buildBranchScope(session.user, { branchId: branchParam })
+  // TODO(team-scope): MANAGER/TEAM_LEADER are now branch-locked here (fail-close,
+  // 2026-10) instead of company-wide, but still see every outside-work request in
+  // their branch, not just their team's. Consider resolveOrgListScope
+  // (lib/org-scope.ts) for these two roles instead of branch-scope later.
   const nestedUser = canViewAll ? branchNestedUserWhere(scope) : undefined
   const companySettings = await getCachedCompanySettings().catch(() => null)
   const pageShell = (requests: Parameters<typeof OutsideWorkClient>[0]['requests']) => (
