@@ -125,6 +125,27 @@ async function findUser(ref) {
  * even under --force-guard is deliberately left behind rather than
  * force-deleted — orphaning someone else's real attendance history is
  * worse than leaving one extra row with a dangling uploadedById.
+ *
+ * page_permission_overrides (per-user page-access override feature,
+ * 2026-10-02) has TWO FK-shaped columns, no real FK on either (same gap
+ * class, confirmed by construction — its CREATE TABLE DDL in
+ * lib/ensure-db-schema.ts has no FOREIGN KEY clause; live-verified during
+ * that feature's own review that schema.prisma's `onDelete: Cascade` on the
+ * `userId` relation is NOT actually enforced at the DB level here, since
+ * this project never runs `prisma migrate` against the live Turso DB):
+ *   - `userId` (the TARGET whose access is being granted/restricted) — this
+ *     IS purely that target's own data, same shape as security_deposit_plans
+ *     above: deleted wholesale in purgeUser() below, no guard needed.
+ *   - `createdById` (which HR manager SET the override — SUPER_ADMIN/CEO/
+ *     MANAGER_HR only, see lib/override-eligible-paths.ts's
+ *     OVERRIDE_MANAGER_ROLES) is a DIFFERENT person's accountability record
+ *     for a decision that still actively governs some OTHER employee's page
+ *     access. Silently deleting it (or leaving a dangling createdById) when
+ *     the HR manager who set it is purged would erase who authorized a
+ *     still-active grant/restrict with no error to catch it — this IS a
+ *     checkPurgeGuard() blocker (flat, like billing_invoices' createdById),
+ *     requiring manual review (reassign or clear the override first) before
+ *     that HR manager's account can be purged.
  */
 async function checkPurgeGuard(db, userId) {
   const [
@@ -133,6 +154,7 @@ async function checkPurgeGuard(db, userId) {
     caseCourtsCreated, caseTimelines, caseDebtorActivities,
     debtorContacts, promisesToPay, recoveryPaymentsCreated, recoveryPaymentsCollected,
     automationRules, caseTemplatesRaw, attendanceImportBatchesWithDependents,
+    pagePermissionOverridesCreated,
   ] = await Promise.all([
     db.payroll.count({ where: { userId } }),
     db.warning.count({ where: { userId } }),
@@ -154,6 +176,7 @@ async function checkPurgeGuard(db, userId) {
     // above this function. A batch this user uploaded that nothing points
     // to any more is NOT counted here (purgeUser() deletes those safely).
     db.attendanceImportBatch.count({ where: { uploadedById: userId, attendances: { some: {} } } }),
+    db.pagePermissionOverride.count({ where: { createdById: userId } }),
   ])
   const caseTemplates = Number(caseTemplatesRaw?.[0]?.cnt ?? 0)
 
@@ -178,6 +201,12 @@ async function checkPurgeGuard(db, userId) {
     found.push({
       label: 'attendance_import_batches (ผู้ upload, ยังมี attendance คนอื่นผูกอยู่)',
       count: attendanceImportBatchesWithDependents,
+    })
+  }
+  if (pagePermissionOverridesCreated > 0) {
+    found.push({
+      label: 'page_permission_overrides (ผู้ตั้งค่าให้คนอื่น)',
+      count: pagePermissionOverridesCreated,
     })
   }
 
@@ -265,6 +294,15 @@ async function purgeUser(db, userId) {
   // wholesale" treatment as saved_work_places/user_devices just above.
   await run('security_deposit_plans', () =>
     db.securityDepositPlan.deleteMany({ where: { userId } }),
+  )
+  // Same "owned record, delete wholesale" treatment, by userId (the
+  // override's TARGET) only — never by createdById here, since a row this
+  // user merely AUTHORED for someone ELSE is that other employee's still-
+  // active access decision, not this user's own data (see checkPurgeGuard's
+  // blocker on createdById above, which must already have passed/been
+  // force-guarded before reaching this line).
+  await run('page_permission_overrides', () =>
+    db.pagePermissionOverride.deleteMany({ where: { userId } }),
   )
 
   if (planIds.length) {

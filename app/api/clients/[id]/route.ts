@@ -102,7 +102,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   // Unlink tasks and docs first
   await prisma.taskAssignment.updateMany({ where: { clientId: id }, data: { clientId: null } })
   await prisma.caseDocument.updateMany({ where: { clientId: id }, data: { clientId: null } })
-  await prisma.user.delete({ where: { id } })
+
+  // page_permission_overrides has no real FK (same gap class as every
+  // FK-shaped column scripts/purge-user.mjs documents — this project never
+  // runs `prisma migrate` against the live Turso DB, so schema.prisma's
+  // relation annotations aren't DB-enforced) — deleting a CLIENT user here
+  // without this would orphan any row where they're either the override's
+  // TARGET (userId) or — in practice never, since only SUPER_ADMIN/CEO/
+  // MANAGER_HR can ever create one — its creator (createdById). Cleaned up
+  // defensively for both, in the same transaction as the user delete itself
+  // (2026-10-06 security review finding — this route is a second user-
+  // deletion path besides scripts/purge-user.mjs, which already handles
+  // this table). Other tables' cleanup is intentionally out of scope here.
+  await prisma.$transaction([
+    prisma.pagePermissionOverride.deleteMany({ where: { OR: [{ userId: id }, { createdById: id }] } }),
+    prisma.user.delete({ where: { id } }),
+  ])
 
   return NextResponse.json({ ok: true })
 } catch (err) {

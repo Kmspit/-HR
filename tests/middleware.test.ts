@@ -53,10 +53,24 @@ describe('middleware gates', () => {
     expect(isPublicApiRoute('/api/announcements/sse')).toBe(false)
   })
 
-  it('EMPLOYEE cannot access approval-center or payroll', () => {
+  it('EMPLOYEE cannot access approval-center', () => {
     expect(canAccess('EMPLOYEE', '/approval-center')).toBe(false)
-    expect(canAccess('EMPLOYEE', '/payroll')).toBe(false)
     expect(canAccess('EMPLOYEE', '/attendance')).toBe(true)
+  })
+
+  it('/payroll is back to HR_CORE-only (2026-10-09) — /payroll and /reports were temporarily removed from the per-user override feature (branch-scoping gap, see lib/override-eligible-paths.ts), so their ROUTE_PERMISSIONS widening was reverted too', () => {
+    expect(canAccess('EMPLOYEE', '/payroll')).toBe(false)
+    expect(canAccess('HR', '/payroll')).toBe(true)
+  })
+
+  it('/executive is still ALL_ROLES (2026-10-02, per-user override feature) — the real role check moved to canAccessPageForUser()', () => {
+    // '/executive' is the only path still widened so middleware lets every
+    // staff role through at the Edge, moving the real role-or-override
+    // decision to lib/page-access-server.ts's canAccessPageForUser() at the
+    // Node layer. This test exists so a future accidental narrowing-back is
+    // caught, with an explicit pointer to why it's wide instead of silently
+    // "passing".
+    expect(canAccess('EMPLOYEE', '/executive')).toBe(true)
   })
 
   it('EMPLOYEE can access /manual (staff open + ROUTE_PERMISSIONS)', () => {

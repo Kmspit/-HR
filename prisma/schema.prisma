@@ -555,6 +555,8 @@ model User {
   teamMembers                User[]                    @relation("UserTeamLeader")
   attendances                Attendance[]
   attendanceImportBatches    AttendanceImportBatch[]
+  pagePermissionOverrides    PagePermissionOverride[]
+  pagePermissionOverridesSet PagePermissionOverride[] @relation("PagePermissionOverrideCreatedBy")
   leaveRequests              LeaveRequest[]
   outsideRequests            OutsideWorkRequest[]
   outsideRequestsDeleted     OutsideWorkRequest[]      @relation("OutsideWorkDeletedBy")
@@ -1225,6 +1227,37 @@ model AttendanceImportBatch {
 
   @@index([uploadedById])
   @@map("attendance_import_batches")
+}
+
+enum PageOverrideDirection {
+  GRANT
+  RESTRICT
+}
+
+/// Per-user page-access permission override (2026-10-02) — layered ON TOP OF
+/// (never replacing) the static role-based ROUTE_PERMISSIONS matrix in
+/// lib/access-control/index.ts. Scoped to a small, explicitly curated set of
+/// paths (lib/override-eligible-paths.ts) for v1 — not every route in the
+/// app. GRANT opens a path this user's role would normally deny; RESTRICT
+/// closes a path this user's role would normally allow. See
+/// lib/page-access.ts's canAccessPageForUser() for enforcement.
+model PagePermissionOverride {
+  id          String                @id @default(cuid())
+  userId      String
+  /// Must exactly match a key in OVERRIDE_ELIGIBLE_PATHS.
+  path        String
+  direction   PageOverrideDirection
+  reason      String?
+  createdById String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User @relation("PagePermissionOverrideCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([userId, path])
+  @@index([userId])
+  @@map("page_permission_overrides")
 }
 
 // ── LEAVE ───────────────────────────────────────

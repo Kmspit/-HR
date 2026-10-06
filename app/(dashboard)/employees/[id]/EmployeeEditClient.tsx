@@ -34,6 +34,8 @@ import EmployeeProfileTab from '@/components/employees/EmployeeProfileTab'
 import EmployeeContactsBankTab from '@/components/employees/EmployeeContactsBankTab'
 import EmploymentAssignmentHistoryTab from '@/components/employees/EmploymentAssignmentHistoryTab'
 import SecurityDepositSection, { type SecurityDepositPlan } from '@/components/employees/SecurityDepositSection'
+import PagePermissionOverridesSection, { type PagePermissionOverrideRow } from '@/components/employees/PagePermissionOverridesSection'
+import type { Role } from '@prisma/client'
 import { isValidLineIdInput, lineIdHint } from '@/lib/line-id-client'
 import {
   isValidEmailInput,
@@ -118,6 +120,9 @@ export default function EmployeeEditClient({
   canEditSalary,
   canViewSensitive,
   canManageEmploymentHistory,
+  canManagePermissionOverrides,
+  pagePermissionOverrides,
+  viewerRole,
   securityDepositPlan: initialSecurityDepositPlan,
 }: {
   employee: Employee
@@ -135,6 +140,19 @@ export default function EmployeeEditClient({
   /** Same literal role list again — Phase 1 step 8c — gates the "สร้าง
    *  ประวัติใหม่" button on the employment-history tab. */
   canManageEmploymentHistory: boolean
+  /** OVERRIDE_MANAGER_ROLES only (SUPER_ADMIN/CEO/MANAGER_HR — narrower than
+   *  HR_ADMIN) — 2026-10-02 per-user page-access override feature. Computed
+   *  server-side in page.tsx; gates both rendering the section below AND
+   *  whether pagePermissionOverrides was even fetched (data-filtered-at-
+   *  source, same principle as baseSalary/canEditSalary). */
+  canManagePermissionOverrides: boolean
+  pagePermissionOverrides: PagePermissionOverrideRow[]
+  /** 2026-10-06 security review addition — the VIEWER's (editor's) own role,
+   *  not the employee being edited. Needed so the UI can hide a GRANT option
+   *  the editor's own role doesn't have by default (PUT /api/users/[id]/
+   *  page-permissions hard-blocks this server-side regardless; this is only
+   *  so the editor never sees a button that would just 403 on submit). */
+  viewerRole: Role
   /** เงินประกัน 6 งวด (payroll fields batch 2, 2026-09) — null ถ้ายังไม่เคย
    *  สร้างแผนให้พนักงานคนนี้ หรือถ้า canEditSalary เป็น false (filtered ที่
    *  source ใน page.tsx เหมือน baseSalary/dailyRate) */
@@ -854,6 +872,15 @@ export default function EmployeeEditClient({
               </p>
             )}
           </section>
+
+          {canManagePermissionOverrides && !isSelf && (
+            <PagePermissionOverridesSection
+              userId={employee.id}
+              employeeRole={employee.role as Role}
+              viewerRole={viewerRole}
+              initialOverrides={pagePermissionOverrides}
+            />
+          )}
 
           <section className="glass-card rounded-2xl p-5 space-y-4 border border-green-500/15">
             <h2 className="font-semibold text-white flex items-center gap-2 text-sm">

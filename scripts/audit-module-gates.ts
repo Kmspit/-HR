@@ -96,6 +96,10 @@ const ROLE_EXPECTATIONS = [
 
   { role: 'EMPLOYEE' as Role, path: '/approval-center', allow: false },
 
+  // /payroll reverted back to HR_CORE-only (2026-10-09) — temporarily
+  // removed from the per-user override feature (branch-scoping gap, see
+  // lib/override-eligible-paths.ts's comment), so its ROUTE_PERMISSIONS
+  // widening was reverted too.
   { role: 'EMPLOYEE' as Role, path: '/payroll', allow: false },
 
   { role: 'TEAM_LEADER' as Role, path: '/approval-center', allow: true },
