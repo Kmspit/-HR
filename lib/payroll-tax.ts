@@ -60,7 +60,7 @@ function progressiveTax(taxableIncome: number): number {
  * @param grossIncome เงินได้ 40(1)+40(2) รวมกันแล้วของเดือนนี้ (ไม่ใช่แค่
  *   baseSalary อีกต่อไป — ชื่อเดิมคงไว้เป็น alias เพื่อ backward-compat)
  * @param socialSecurity เงินสมทบประกันสังคมที่หักของเดือนนี้ (หลังหักเพดาน
- *   SS_MAX แล้ว) — คูณ 12 แล้วหักออกจากเงินได้สุทธิร่วมกับ personalAllowance
+ *   ของปีนั้นแล้ว, ดู SS_MAX_WAGE_BY_YEAR) — คูณ 12 แล้วหักออกจากเงินได้สุทธิร่วมกับ personalAllowance
  *   ก่อนคำนวณภาษี ตามหลักเงินสมทบประกันสังคมเป็นค่าลดหย่อนได้ตามกฎหมาย
  */
 export function computeMonthlyTax(grossIncome: number, socialSecurity: number = 0): TaxDetail {

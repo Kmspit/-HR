@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { socialSecurityPreview, SS_RATE, SS_MAX } from '@/lib/payroll-constants'
+import { socialSecurityPreview, SS_RATE } from '@/lib/payroll-constants'
+
+const SS_MAX = 875 // 5% × เพดาน 17,500 (พ.ศ. 2569)
 
 function input(overrides: Partial<Parameters<typeof socialSecurityPreview>[0]> = {}) {
   return {
@@ -7,6 +9,7 @@ function input(overrides: Partial<Parameters<typeof socialSecurityPreview>[0]> =
     socialSecurityEnabled: true,
     taxScheme: 'NORMAL',
     baseSalary: 30_000,
+    year: 2026,
     ...overrides,
   }
 }

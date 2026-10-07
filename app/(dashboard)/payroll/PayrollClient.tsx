@@ -187,6 +187,8 @@ export default function PayrollClient({
         securityDepositDraftWarning?: string
         /** (2026-10) เงินเดือนฐานเกิน 500,000 — อาจกรอกผิด */
         highBaseSalaryWarning?: string
+        /** (2026-10) ปีของ payroll ไม่มีในตารางเพดานประกันสังคม — ใช้เพดานล่าสุดไปก่อน */
+        ssCeilingWarning?: string
       }
       toast.success(`สร้าง payroll สำเร็จ ${result.count ?? 0} คน`)
       if (result.skippedApproved && result.skippedApproved.length > 0) {
@@ -209,6 +211,9 @@ export default function PayrollClient({
       }
       if (result.negativeNetSalaryWarning) {
         toast.warning(result.negativeNetSalaryWarning)
+      }
+      if (result.ssCeilingWarning) {
+        toast.warning(result.ssCeilingWarning)
       }
       await loadPayrolls(month, year)
     } else {

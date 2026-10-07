@@ -24,6 +24,7 @@ import { computeDaysWorked } from '@/lib/payroll-daily-wage'
 import { computeDiligenceAllowance } from '@/lib/payroll-diligence'
 import { computeSecurityDepositInstallment } from '@/lib/payroll-security-deposit'
 import { computePayrollTotals } from '@/lib/payroll-totals'
+import { ssCeilingWarning } from '@/lib/payroll-constants'
 import { countUnrecordedAbsenceDays } from '@/lib/payroll-unrecorded-absence'
 import { bangkokDateKey } from '@/lib/datetime-bangkok'
 import type { HolidayRecord } from '@/lib/company-holidays'
@@ -220,6 +221,14 @@ export async function POST(req: NextRequest) {
     // computePayrollTotals() already clamps netSalary at 0 (2026-09-30 fix),
     // this just collects who it happened to for a response-level warning.
     const negativeNetClampedNames: string[] = []
+    // (2026-10) ปีของ payroll ไม่มีในตารางเพดานประกันสังคม — ใช้เพดานล่าสุดไปก่อน
+    // ข้อความเหมือนกันทุกแถว (ปีเดียวกัน) — response สรุปครั้งเดียวพร้อมจำนวนคน
+    const ssCeilingNames: string[] = []
+    function ssCeilingRowWarning(emp: PendingEmployee, totals: { ssCeilingWarning: string | null }): string[] {
+      if (!totals.ssCeilingWarning) return []
+      ssCeilingNames.push(emp.name)
+      return [totals.ssCeilingWarning]
+    }
 
     type PendingEmployee = (typeof pendingEmployees)[number]
     type AttendanceRow = (typeof allAttendances)[number]
@@ -381,6 +390,7 @@ export async function POST(req: NextRequest) {
       const earlyLeaveDeduction = early.earlyLeaveDeduction
 
       const totals = computePayrollTotals({
+        year: Number(year),
         baseSalary: periodBaseSalary,
         positionAllowance: extra.positionAllowance,
         diligenceAllowance: diligence.amount,
@@ -408,6 +418,7 @@ export async function POST(req: NextRequest) {
       const warnings = [
         ...rowWarnings(emp, { checkStartDate: true }),
         ...clampWarning(emp, totals),
+        ...ssCeilingRowWarning(emp, totals),
       ]
 
       return {
@@ -499,6 +510,7 @@ export async function POST(req: NextRequest) {
       })
 
       const totals = computePayrollTotals({
+        year: Number(year),
         baseSalary: periodEarnings,
         positionAllowance: extra.positionAllowance,
         diligenceAllowance: diligence.amount,
@@ -522,6 +534,7 @@ export async function POST(req: NextRequest) {
       const warnings = [
         ...rowWarnings(emp, { checkStartDate: false }),
         ...clampWarning(emp, totals),
+        ...ssCeilingRowWarning(emp, totals),
       ]
 
       return {
@@ -668,6 +681,9 @@ export async function POST(req: NextRequest) {
         missingStartDateWarning:
           `⚠️ รวม ${missingStartDateNames.length} พนักงานรายเดือนที่ยังไม่ได้กรอกวันเริ่มงาน (คำนวณเต็มรอบ) ` +
           `กรุณาตรวจสอบก่อนอนุมัติ: ${missingStartDateNames.join(', ')}`,
+      }),
+      ...(ssCeilingNames.length > 0 && {
+        ssCeilingWarning: `${ssCeilingWarning(Number(year))} (${ssCeilingNames.length} คนที่คิดประกันสังคมงวดนี้)`,
       }),
       ...(negativeNetClampedNames.length > 0 && {
         negativeNetSalaryWarning:

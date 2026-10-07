@@ -151,6 +151,7 @@ export async function POST(
       if (!current) throw new Error('payroll disappeared mid-transaction')
 
       const totals = computePayrollTotals({
+        year: current.year,
         baseSalary: current.baseSalary,
         positionAllowance: current.positionAllowance,
         diligenceAllowance: current.diligenceAllowance,

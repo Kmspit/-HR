@@ -95,6 +95,7 @@ describe('buildPayslipLineItems — tax columns', () => {
 
   it('NORMAL: progressive tax split into ภงด1(40)(1)/(40)(2) from taxDetail; หักภาษี stays 0', () => {
     const totals = computePayrollTotals({
+      year: 2026,
       baseSalary: 35000, positionAllowance: 0, diligenceAllowance: 0,
       backPay: 0, commission: 20000, overtimePay: 0, bonus: 0, professionalFee: 0, professionalFeeTax: 0,
       studentLoanDeduction: 0, securityDepositDeduction: 0, lateDeduction: 0, absentDeduction: 0,
@@ -137,6 +138,7 @@ describe('buildPayslipLineItems — tax columns', () => {
 describe('buildPayslipLineItems — reconciles with netSalary', () => {
   type Case = Parameters<typeof computePayrollTotals>[0] & { payType?: string; daysWorked?: number; dailyRateUsed?: number }
   const base: Case = {
+    year: 2026,
     baseSalary: 35000, positionAllowance: 3000, diligenceAllowance: 500,
     backPay: 1200, commission: 4000, overtimePay: 800, bonus: 2000, professionalFee: 5000, professionalFeeTax: 150,
     studentLoanDeduction: 1500, securityDepositDeduction: 833.33, lateDeduction: 72.92, absentDeduction: 1346.15,

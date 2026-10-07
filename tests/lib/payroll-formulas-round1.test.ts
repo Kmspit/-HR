@@ -39,6 +39,7 @@ const noLeave = new Set<string>()
 
 function totalsInput(overrides: Partial<PayrollTotalsInput>): PayrollTotalsInput {
   return {
+    year: 2026,
     baseSalary: 0, positionAllowance: 0, diligenceAllowance: 0, backPay: 0, commission: 0,
     overtimePay: 0, bonus: 0, professionalFee: 0, professionalFeeTax: 0, studentLoanDeduction: 0,
     securityDepositDeduction: 0, lateDeduction: 0, absentDeduction: 0, unpaidLeaveDeduction: 0,
@@ -99,7 +100,7 @@ describe('1. Social security — 5%, wage base 1,650–17,500, whole-baht roundi
     [35_000, 875], // above the 17,500 ceiling
     [0, 0], // no wage at all → nothing
   ])('wage %d → %d', (wage, ss) => {
-    expect(computeSocialSecurity(wage)).toBe(ss)
+    expect(computeSocialSecurity(wage, 2026)).toBe(ss)
   })
 
   it('uses the prorated paid amount, not the full monthly salary (new hire paid 8,750 of 17,500 → 438)', () => {

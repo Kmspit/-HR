@@ -3,6 +3,7 @@ import { computePayrollTotals, type PayrollTotalsInput } from '@/lib/payroll-tot
 
 function baseInput(overrides: Partial<PayrollTotalsInput> = {}): PayrollTotalsInput {
   return {
+    year: 2026,
     baseSalary: 30_000,
     positionAllowance: 0,
     diligenceAllowance: 0,
