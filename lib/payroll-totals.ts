@@ -80,10 +80,17 @@ export type PayrollTotalsResult = {
 export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsResult {
   const isOffSystemWht = input.taxScheme === 'OFF_SYSTEM_WHT'
 
+  // POLICY (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll policy #1/#3/#4/#5):
+  // ฐาน SS = ค่าจ้างหลัง prorate (รายวัน = ค่าจ้างที่ได้จริง) ไม่หักขาด/ลาไม่รับเงิน/สาย,
+  // คอมมิชชั่นไม่เข้าฐาน, OFF_SYSTEM_WHT ไม่หัก SS (positionAllowance+backPay ในฐาน
+  // = พฤติกรรมเดิม ยังไม่ได้ยืนยันแยก)
   const ssBase = input.baseSalary + input.positionAllowance + input.backPay
   const socialSecurity =
     !isOffSystemWht && input.socialSecurityEnabled ? computeSocialSecurity(ssBase) : 0
 
+  // POLICY #2/#5/#6 (ยืนยัน 2026-10-07, ดู CLAUDE.md): ฐานภาษี = รายได้รวม ไม่หักขาด/
+  // ลาไม่รับเงิน/สาย; OFF_SYSTEM_WHT = 3% ภ.ง.ด.3; ภ.ง.ด.1 ใช้ monthlyTaxOverride
+  // ถ้าพนักงานกำหนดไว้ ไม่งั้นใช้สูตร
   const grossIncome =
     input.baseSalary + input.positionAllowance + input.diligenceAllowance +
     input.backPay + input.commission + input.overtimePay + input.bonus

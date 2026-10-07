@@ -8,6 +8,8 @@ import { addDaysToKey } from '@/lib/payroll-period'
 /** Grace period ถูกหักแล้ว ณ เวลาเช็คอิน (lateMinutes ในฐานข้อมูลคือนาทีจาก effective deadline แล้ว) */
 export const PAYROLL_LATE_GRACE_MINUTES = 0
 
+// POLICY #7 (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll policy):
+// ค่าแรงต่อวัน = เงินเดือน ÷ 30, ค่าแรงต่อนาที = ค่าแรงต่อวัน ÷ 8 ÷ 60
 export const SALARY_DAYS_PER_MONTH = 30
 export const WORK_HOURS_PER_DAY = 8
 export const WORK_MINUTES_PER_HOUR = 60

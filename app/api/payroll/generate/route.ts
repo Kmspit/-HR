@@ -442,6 +442,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // POLICY #3 (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll
+    // policy): รายวันจ่ายเฉพาะวันที่มาทำงาน, SS คิดจากค่าจ้างที่ได้จริง (periodEarnings)
     // DAILY/INTERN — pay = days actually worked × dailyRate. No absent/
     // unpaid-leave deduction (a day not worked simply isn't paid). No holiday
     // pay for days not attended, including public/company holidays — a

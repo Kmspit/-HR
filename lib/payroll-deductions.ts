@@ -15,6 +15,9 @@ import { addDaysToKey, daysBetweenKeysInclusive } from '@/lib/payroll-period'
  * ค่าแรงต่อนาที = ค่าแรงต่อวัน ÷ 8 ÷ 60
  *
  * ปัดเศษ: คิดสูตรเต็มก่อน แล้วปัด 2 ตำแหน่งทีละวัน แล้วค่อยรวมทั้งเดือน
+ *
+ * POLICY #7 (ยืนยัน 2026-10-07 — ห้ามเปลี่ยน ÷30 / ÷8 ÷60 โดยไม่ถามผู้ใช้,
+ * ดู CLAUDE.md § Payroll policy)
  */
 
 export function dailyWageRate(params: { payType: string | null | undefined; baseSalary: number | null | undefined; dailyRate: number | null | undefined }): number {

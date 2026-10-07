@@ -101,7 +101,11 @@ export function computeMonthlyTax(grossIncome: number, socialSecurity: number = 
 /** หัก ณ ที่จ่ายแบบเหมา 3% — สูตรเดียวกับค่าวิชาชีพ 40(6) เป๊ะ (ยืนยัน 2026-09
  * ให้ taxScheme=OFF_SYSTEM_WHT ใช้สูตรเดียวกันนี้): ยอด <1,000 ไม่หัก,
  * ≥1,000 หัก 3% แบบเหมา. เดิมเป็น private function ในหน้า professional-fee
- * route เท่านั้น — ย้ายมาไว้ที่นี่ให้ทั้งสองจุดเรียกใช้สูตรเดียวกันจริงๆ */
+ * route เท่านั้น — ย้ายมาไว้ที่นี่ให้ทั้งสองจุดเรียกใช้สูตรเดียวกันจริงๆ
+ *
+ * POLICY #5 (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll
+ * policy): OFF_SYSTEM_WHT หัก 3% ยื่น ภ.ง.ด.3 (เกณฑ์ <1,000 ไม่หัก = พฤติกรรมเดิม
+ * ยังไม่ได้ยืนยันแยก) */
 export function computeFlatWithholdingTax(amount: number): number {
   if (amount < 1000) return 0
   return Math.round(amount * 0.03 * 100) / 100
