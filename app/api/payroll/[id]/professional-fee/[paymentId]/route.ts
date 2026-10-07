@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
 import { canApprovePayroll } from '@/lib/access-control'
 import { buildBranchScope, branchUserWhere } from '@/lib/branch-scope'
-import { computePayrollTotals } from '@/lib/payroll-totals'
+import { computePayrollTotals, monthlyTaxOverrideFromTaxDetail } from '@/lib/payroll-totals'
 import { createAuditLog } from '@/lib/notifications'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
@@ -73,8 +73,7 @@ export async function DELETE(
       if (!current) throw new Error('payroll disappeared mid-transaction')
 
       const totals = computePayrollTotals({
-        taxSsBaseSalary: current.baseSalary,
-        payoutBaseSalary: current.baseSalary,
+        baseSalary: current.baseSalary,
         positionAllowance: current.positionAllowance,
         diligenceAllowance: current.diligenceAllowance,
         backPay: current.backPay,
@@ -91,6 +90,7 @@ export async function DELETE(
         bonus: current.bonus,
         taxScheme: current.taxScheme,
         socialSecurityEnabled: current.user.socialSecurity,
+        monthlyTaxOverride: monthlyTaxOverrideFromTaxDetail(current.taxDetail),
       })
 
       await tx.payroll.update({

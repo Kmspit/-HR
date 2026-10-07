@@ -11,7 +11,7 @@ import PayrollEditModal from '@/components/payroll/PayrollEditModal'
 import { ManualButton } from '@/components/ui/ManualButton'
 import PortalModal from '@/components/ui/PortalModal'
 import { getPayslipBlockers, isPayslipSendReady, partitionPayslipBatch } from '@/lib/payslip-preflight'
-import { payrollPeriodRange } from '@/lib/payroll-period'
+import { dateKeyParts, payrollPeriodKeys } from '@/lib/payroll-period'
 
 type PayrollRow = {
   id: string
@@ -92,9 +92,12 @@ const MONTH_NAMES = [
 /** "เดือนกันยายน" ยังหมายถึงเดือนปิดยอด/จ่ายเงินเหมือนเดิม — แค่บอกช่วงวันที่
  *  นับมาสาย/ขาด/ลาจริง (21 ของเดือนก่อน - 20 ของเดือนนี้) กันสับสนตอน generate */
 function formatPayrollPeriodCaption(month: number, year: number): string {
-  const { start, end } = payrollPeriodRange(month, year)
-  const startLabel = `${start.getDate()} ${MONTH_NAMES[start.getMonth() + 1]}`
-  const endLabel = `${end.getDate()} ${MONTH_NAMES[end.getMonth() + 1]} ${end.getFullYear() + 543}`
+  // อ่านจาก date key ตรงๆ ไม่ใช่ getDate() — ดูหมายเหตุ timezone ใน lib/payroll-period.ts
+  const { startKey, endKey } = payrollPeriodKeys(month, year)
+  const start = dateKeyParts(startKey)
+  const end = dateKeyParts(endKey)
+  const startLabel = `${start.day} ${MONTH_NAMES[start.month]}`
+  const endLabel = `${end.day} ${MONTH_NAMES[end.month]} ${end.year + 543}`
   return `นับเวลาทำงานจริง ${startLabel} - ${endLabel}`
 }
 
@@ -178,6 +181,12 @@ export default function PayrollClient({
         // mid-period, please double-check" case HR needs to see.
         deletedWarning?: string
         disabledWarning?: string
+        /** (2026-10) พนักงานรายเดือนที่ยังไม่ได้กรอกวันเริ่มงาน — คำนวณเต็มรอบ */
+        missingStartDateWarning?: string
+        /** (2026-10) เดือนก่อนยังเป็นร่างสำหรับคนที่มีเงินประกัน — เลขงวดอาจซ้ำ */
+        securityDepositDraftWarning?: string
+        /** (2026-10) เงินเดือนฐานเกิน 500,000 — อาจกรอกผิด */
+        highBaseSalaryWarning?: string
       }
       toast.success(`สร้าง payroll สำเร็จ ${result.count ?? 0} คน`)
       if (result.skippedApproved && result.skippedApproved.length > 0) {
@@ -188,6 +197,15 @@ export default function PayrollClient({
       }
       if (result.disabledWarning) {
         toast.warning(result.disabledWarning)
+      }
+      if (result.missingStartDateWarning) {
+        toast.warning(result.missingStartDateWarning)
+      }
+      if (result.securityDepositDraftWarning) {
+        toast.warning(result.securityDepositDraftWarning)
+      }
+      if (result.highBaseSalaryWarning) {
+        toast.warning(result.highBaseSalaryWarning)
       }
       if (result.negativeNetSalaryWarning) {
         toast.warning(result.negativeNetSalaryWarning)

@@ -9,7 +9,7 @@ import { pragmaColumnNames, addColumnIfMissing, runMigration, validateCriticalSc
 
 /** Bump when runEnsure() logic changes — cron skips full run when DB version matches.
  *  Adding a column? See CONTRIBUTING.md — this file + schema.prisma + query `select`s all need updating together. */
-export const CURRENT_SCHEMA_VERSION = 900045
+export const CURRENT_SCHEMA_VERSION = 900046
 
 /** Every table schema.prisma declares via @@map(...) — hand-maintained mirror, see
  *  validateAllTablesExist() in lib/migrations/core.ts for why this exists and what
@@ -2625,6 +2625,13 @@ async function runEnsure(force = false): Promise<boolean> {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS page_permission_overrides_userId_idx ON page_permission_overrides (userId)`,
   )
+
+  // v900046 — payroll formulas round 1 (2026-10): users.monthlyTaxOverride
+  // (ภาษี ภงด.1 ต่อเดือนที่ HR กำหนดเองรายคน, null = ใช้สูตร) และ
+  // users.lastWorkingDate (วันทำงานวันสุดท้าย — ใช้ prorate และเลือกรอบเงินเดือน
+  // ของคนลาออกแทน updatedAt). Request-time path: lib/ensure-payroll-formulas-round1.ts
+  await addUserColumnIfMissing('monthlyTaxOverride', `ALTER TABLE users ADD COLUMN monthlyTaxOverride REAL`)
+  await addUserColumnIfMissing('lastWorkingDate', `ALTER TABLE users ADD COLUMN lastWorkingDate DATETIME`)
 
   // ── Startup schema validation — warns but never crashes ──────────────────────
   await validateCriticalSchema()

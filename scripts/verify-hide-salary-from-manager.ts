@@ -88,6 +88,7 @@ async function main() {
       employeeType: null, managerId: manager.id, teamLeaderId: null, baseSalary: SALARY,
       payType: 'MONTHLY', taxScheme: 'NORMAL', dailyRate: null,
       positionAllowance: null, diligenceAllowanceDefault: null, studentLoanDeduction: null,
+      monthlyTaxOverride: null, lastWorkingDate: null,
       socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null, employeeProfile: null,
     })
     const after = snapshotEmployeeForAudit({

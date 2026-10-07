@@ -6,6 +6,8 @@ export const SELF_PROFILE_FORBIDDEN = new Set([
   'status',
   'employeeId',
   'baseSalary',
+  'monthlyTaxOverride',
+  'lastWorkingDate',
   'department',
   'position',
   'branchId',

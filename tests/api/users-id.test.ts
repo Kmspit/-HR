@@ -28,6 +28,10 @@ vi.mock('@/lib/notifications', () => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-formulas-round1', () => ({
+  ensurePayrollFormulasRound1: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))
@@ -570,6 +574,115 @@ describe('PATCH /api/users/[id] — payroll fields batch 2 (2026-09): positionAl
     vi.mocked(auth).mockResolvedValue(hrSession as never)
     const res = await PATCH(makePatch('hr-1', { studentLoanDeduction: 1500 }), { params: params('hr-1') })
     expect(res.status).toBe(403)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/users/[id] — 2026-10 monthlyTaxOverride / lastWorkingDate (HR_ADMIN, never self)', () => {
+  const scopeCheckRow = { branchId: 'b1', managerId: null, teamLeaderId: null }
+  function auditRow(overrides: Record<string, unknown> = {}) {
+    return {
+      email: 'emp9@co.com', phone: null, name: 'พนักงาน เก้า', nameEn: null, nickname: null, prefix: null,
+      address: null, addressIdCard: null, birthDate: null, nationalId: null, lineId: null,
+      role: 'EMPLOYEE', status: 'ACTIVE', startDate: new Date('2024-01-01'), department: null, position: null,
+      employeeType: null, managerId: null, teamLeaderId: null, baseSalary: 30000,
+      monthlyTaxOverride: null, lastWorkingDate: null,
+      socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null,
+      ...overrides,
+    }
+  }
+  function updateData() {
+    return vi.mocked(prisma.user.update).mock.calls[0][0].data as Record<string, unknown>
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: 'emp-9' } as never)
+  })
+
+  it('HR sets a monthly tax override; the audit log records old (null = formula) → new', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(scopeCheckRow as never)
+      .mockResolvedValueOnce(auditRow() as never)
+      .mockResolvedValueOnce(auditRow({ monthlyTaxOverride: 1000 }) as never)
+
+    const res = await PATCH(makePatch('emp-9', { monthlyTaxOverride: 1000 }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    expect(updateData()).toMatchObject({ monthlyTaxOverride: 1000 })
+    expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      actorId: 'hr-1',
+      targetId: 'emp-9',
+      before: expect.objectContaining({ monthlyTaxOverride: null }),
+      after: expect.objectContaining({ monthlyTaxOverride: 1000 }),
+    }))
+  })
+
+  it('HR can clear the override back to the formula with null', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(scopeCheckRow as never).mockResolvedValue(null as never)
+    const res = await PATCH(makePatch('emp-9', { monthlyTaxOverride: null }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    expect(updateData()).toMatchObject({ monthlyTaxOverride: null })
+  })
+
+  it('rejects a negative / non-numeric override with 400', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    for (const bad of [-1, 'abc']) {
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(scopeCheckRow as never).mockResolvedValueOnce(null as never)
+      const res = await PATCH(makePatch('emp-9', { monthlyTaxOverride: bad }), { params: params('emp-9') })
+      expect(res.status).toBe(400)
+    }
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('silently ignores both fields from MANAGER (same HR_ADMIN gate as baseSalary)', async () => {
+    vi.mocked(auth).mockResolvedValue(managerSession as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'report-1' }] as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never)
+
+    const res = await PATCH(
+      makePatch('report-1', { monthlyTaxOverride: 1000, lastWorkingDate: '2026-10-10', position: 'Senior Dev' }),
+      { params: params('report-1') },
+    )
+    expect(res.status).toBe(200)
+    expect(updateData()).not.toHaveProperty('monthlyTaxOverride')
+    expect(updateData()).not.toHaveProperty('lastWorkingDate')
+  })
+
+  it('an HR user can never set their OWN tax override or last working date (403)', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    for (const body of [{ monthlyTaxOverride: 0 }, { lastWorkingDate: '2026-10-10' }]) {
+      const res = await PATCH(makePatch('hr-1', body), { params: params('hr-1') })
+      expect(res.status).toBe(403)
+    }
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('HR sets lastWorkingDate (stored like startDate), and the audit log shows it as YYYY-MM-DD', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(scopeCheckRow as never)
+      .mockResolvedValueOnce(auditRow() as never)
+      .mockResolvedValueOnce(auditRow({ lastWorkingDate: new Date('2026-10-10') }) as never)
+
+    const res = await PATCH(makePatch('emp-9', { lastWorkingDate: '2026-10-10' }), { params: params('emp-9') })
+    expect(res.status).toBe(200)
+    expect((updateData().lastWorkingDate as Date).toISOString()).toBe('2026-10-10T00:00:00.000Z')
+    expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      before: expect.objectContaining({ lastWorkingDate: null }),
+      after: expect.objectContaining({ lastWorkingDate: '2026-10-10' }),
+    }))
+  })
+
+  it('rejects a lastWorkingDate before the employee\'s startDate, or a malformed one, with 400', async () => {
+    vi.mocked(auth).mockResolvedValue(hrSession as never)
+    for (const bad of ['2023-12-31', '10/10/2026']) {
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(scopeCheckRow as never).mockResolvedValueOnce(auditRow() as never)
+      const res = await PATCH(makePatch('emp-9', { lastWorkingDate: bad }), { params: params('emp-9') })
+      expect(res.status).toBe(400)
+    }
     expect(prisma.user.update).not.toHaveBeenCalled()
   })
 })

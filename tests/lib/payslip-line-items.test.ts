@@ -95,7 +95,7 @@ describe('buildPayslipLineItems — tax columns', () => {
 
   it('NORMAL: progressive tax split into ภงด1(40)(1)/(40)(2) from taxDetail; หักภาษี stays 0', () => {
     const totals = computePayrollTotals({
-      taxSsBaseSalary: 35000, payoutBaseSalary: 35000, positionAllowance: 0, diligenceAllowance: 0,
+      baseSalary: 35000, positionAllowance: 0, diligenceAllowance: 0,
       backPay: 0, commission: 20000, overtimePay: 0, bonus: 0, professionalFee: 0, professionalFeeTax: 0,
       studentLoanDeduction: 0, securityDepositDeduction: 0, lateDeduction: 0, absentDeduction: 0,
       unpaidLeaveDeduction: 0, earlyLeaveDeduction: 0, taxScheme: 'NORMAL', socialSecurityEnabled: true,
@@ -137,7 +137,7 @@ describe('buildPayslipLineItems — tax columns', () => {
 describe('buildPayslipLineItems — reconciles with netSalary', () => {
   type Case = Parameters<typeof computePayrollTotals>[0] & { payType?: string; daysWorked?: number; dailyRateUsed?: number }
   const base: Case = {
-    taxSsBaseSalary: 35000, payoutBaseSalary: 35000, positionAllowance: 3000, diligenceAllowance: 500,
+    baseSalary: 35000, positionAllowance: 3000, diligenceAllowance: 500,
     backPay: 1200, commission: 4000, overtimePay: 800, bonus: 2000, professionalFee: 5000, professionalFeeTax: 150,
     studentLoanDeduction: 1500, securityDepositDeduction: 833.33, lateDeduction: 72.92, absentDeduction: 1346.15,
     unpaidLeaveDeduction: 1346.15, earlyLeaveDeduction: 673.08, taxScheme: 'NORMAL', socialSecurityEnabled: true,
@@ -146,7 +146,7 @@ describe('buildPayslipLineItems — reconciles with netSalary', () => {
     ['NORMAL with every field set', base],
     ['OFF_SYSTEM_WHT with every field set', { ...base, taxScheme: 'OFF_SYSTEM_WHT' }],
     ['DAILY', {
-      ...base, taxSsBaseSalary: 8600, payoutBaseSalary: 8600, payType: 'DAILY', daysWorked: 21.5, dailyRateUsed: 400,
+      ...base, baseSalary: 8600, payType: 'DAILY', daysWorked: 21.5, dailyRateUsed: 400,
       lateDeduction: 0, absentDeduction: 0, unpaidLeaveDeduction: 0, earlyLeaveDeduction: 0,
     }],
   ]
@@ -154,7 +154,7 @@ describe('buildPayslipLineItems — reconciles with netSalary', () => {
   it.each(cases)('%s: รวมรายได้ − รวมรายการหัก = netSalary', (_name, c) => {
     const totals = computePayrollTotals(c)
     const items = buildPayslipLineItems({
-      baseSalary: c.payoutBaseSalary,
+      baseSalary: c.baseSalary,
       payType: c.payType,
       daysWorked: c.daysWorked,
       dailyRateUsed: c.dailyRateUsed,

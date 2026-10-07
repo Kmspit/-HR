@@ -45,7 +45,8 @@ vi.mock('@/lib/soft-delete', () => ({
   softDelete: vi.fn(),
 }))
 
-vi.mock('@/lib/payroll-totals', () => ({
+vi.mock('@/lib/payroll-totals', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payroll-totals')>()),
   computePayrollTotals: vi.fn().mockReturnValue({
     socialSecurity: 111, taxDeduction: 22, taxDetail: '{"mock":true}', netSalary: 9999,
   }),

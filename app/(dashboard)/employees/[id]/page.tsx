@@ -9,6 +9,7 @@ import { canViewEmployeeTimeline } from '@/lib/employee-timeline/access'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
+import { ensurePayrollFormulasRound1 } from '@/lib/ensure-payroll-formulas-round1'
 import { OVERRIDE_MANAGER_ROLES } from '@/lib/override-eligible-paths'
 import type { PagePermissionOverrideRow } from '@/components/employees/PagePermissionOverridesSection'
 
@@ -33,6 +34,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
 
   await ensurePayrollFieldsBatch2()
   await ensurePayrollFieldsBatch3()
+  await ensurePayrollFormulasRound1()
 
   const user = await prisma.user.findUnique({
     where: { id },
@@ -43,6 +45,7 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
       baseSalary: true, payType: true, taxScheme: true, dailyRate: true, socialSecurity: true,
       positionAllowance: true, diligenceAllowanceDefault: true, studentLoanDeduction: true,
       isCoworker: true, startDate: true, phone: true, lineId: true,
+      monthlyTaxOverride: true, lastWorkingDate: true,
       lineUserId: true, lineDisplayName: true, branchId: true,
       prefix: true, nickname: true, birthDate: true, address: true, addressIdCard: true,
     },
@@ -120,7 +123,10 @@ export default async function EmployeeEditPage({ params }: { params: Promise<{ i
         positionAllowance: canViewSalary ? user.positionAllowance : null,
         diligenceAllowanceDefault: canViewSalary ? user.diligenceAllowanceDefault : null,
         studentLoanDeduction: canViewSalary ? user.studentLoanDeduction : null,
+        // (2026-10) ยอดภาษีหักต่อเดือนที่กำหนดเอง — HR_ADMIN-only เหมือนด้านบน
+        monthlyTaxOverride: canViewSalary ? user.monthlyTaxOverride : null,
         startDate: user.startDate?.toISOString() ?? null,
+        lastWorkingDate: user.lastWorkingDate?.toISOString() ?? null,
         birthDate: user.birthDate?.toISOString() ?? null,
         employeeType: user.employeeType ?? 'permanent_employee',
         warningCount,

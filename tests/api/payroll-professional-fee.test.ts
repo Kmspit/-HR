@@ -44,7 +44,8 @@ vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
   ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/lib/payroll-totals', () => ({
+vi.mock('@/lib/payroll-totals', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payroll-totals')>()),
   computePayrollTotals: vi.fn().mockReturnValue({
     socialSecurity: 100, taxDeduction: 10, taxDetail: '{}', netSalary: 5000,
   }),

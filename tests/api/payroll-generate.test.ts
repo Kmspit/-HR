@@ -35,6 +35,10 @@ vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
   ensurePayrollFieldsBatch3: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-formulas-round1', () => ({
+  ensurePayrollFormulasRound1: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Static mock matching the REAL payrollPeriodRange(1, 2025) result — 21 Dec
 // 2024 through 20 Jan 2025, not calendar-month Jan 1-31. Every existing test
 // in this file requests {month:1, year:2025} and uses attendance/updatedAt
@@ -42,10 +46,11 @@ vi.mock('@/lib/ensure-payroll-fields-batch-3', () => ({
 // for the function's own dedicated edge-case tests, incl. this exact
 // year-rollover case) — only the one test asserting the literal query
 // boundary (below) needed updating for the new dates.
-vi.mock('@/lib/payroll-period', () => ({
+vi.mock('@/lib/payroll-period', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payroll-period')>()),
   payrollPeriodRange: vi.fn().mockReturnValue({
-    start: new Date(2024, 11, 21),
-    end: new Date(2025, 0, 20, 23, 59, 59, 999),
+    start: new Date('2024-12-21T00:00:00.000+07:00'),
+    end: new Date('2025-01-20T23:59:59.999+07:00'),
   }),
 }))
 
@@ -58,7 +63,8 @@ vi.mock('@/lib/api-guard', () => ({
   requireCsrf: vi.fn().mockReturnValue(null),
 }))
 
-vi.mock('@/lib/payroll-late-deduction', () => ({
+vi.mock('@/lib/payroll-late-deduction', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payroll-late-deduction')>()),
   buildApprovedLeaveDateSet:    vi.fn().mockReturnValue(new Set()),
   computeLateDeduction:         vi.fn().mockReturnValue({ lateDeduction: 0, lateDays: 0, billableLateMinutes: 0, lines: [] }),
   serializeLateDeductionDetail: vi.fn().mockReturnValue('[]'),
@@ -73,7 +79,8 @@ vi.mock('@/lib/payroll-unrecorded-absence', () => ({
   countUnrecordedAbsenceDays: vi.fn().mockReturnValue(0),
 }))
 
-vi.mock('@/lib/payroll-tax', () => ({
+vi.mock('@/lib/payroll-tax', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payroll-tax')>()),
   computeMonthlyTax: vi.fn().mockReturnValue({ monthlyWithholding: 0 }),
   computeOffSystemWht: vi.fn().mockReturnValue({ monthlyWithholding: 0 }),
 }))
@@ -212,34 +219,81 @@ describe('POST /api/payroll/generate — does not overwrite APPROVED payroll', (
   })
 })
 
-describe('POST /api/payroll/generate — includes employees deactivated this month', () => {
+// Same instants as the file-level payrollPeriodRange mock (21 Dec 2024 – 20 Jan 2025, Bangkok time)
+const PERIOD_START = new Date('2024-12-21T00:00:00.000+07:00')
+const PERIOD_END = new Date('2025-01-20T23:59:59.999+07:00')
+
+describe('POST /api/payroll/generate — leavers: lastWorkingDate decides the period (2026-10)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(auth).mockResolvedValue(hrSession as any)
     vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
     vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
     vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0)
   })
 
-  it('queries with an OR of ACTIVE and (DISABLED + updatedAt in this PAYROLL PERIOD, 21 Dec – 20 Jan — not calendar-month Jan 1-31)', async () => {
+  it('selects employees by startDate (not after this period) and lastWorkingDate (not before it) — updatedAt only as a fallback for DISABLED rows with no lastWorkingDate yet', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
     await POST(makeReq({ month: 1, year: 2025 }))
 
     const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
-    expect(call.where.OR).toEqual([
-      { status: 'ACTIVE' },
+    expect(call.where.status).toEqual({ in: ['ACTIVE', 'DISABLED'] })
+    expect(call.where.AND).toEqual([
+      { OR: [{ startDate: null }, { startDate: { lte: PERIOD_END } }] },
       {
-        status: 'DISABLED',
-        updatedAt: { gte: new Date(2024, 11, 21), lte: new Date(2025, 0, 20, 23, 59, 59, 999) },
+        OR: [
+          { lastWorkingDate: { gte: PERIOD_START } },
+          { lastWorkingDate: null, status: 'ACTIVE' },
+          { lastWorkingDate: null, status: 'DISABLED', updatedAt: { gte: PERIOD_START, lte: PERIOD_END } },
+        ],
       },
     ])
   })
 
-  it('includes a DISABLED employee at full nominal salary with a review-me note, and reports it back', async () => {
+  it('leaver with lastWorkingDate: 30,000 − 1,000/day × days in the period after the last working day, no warning', async () => {
+    // last working day 10 Jan → 11–20 Jan = 10 days not worked → 30,000 − 10 × 1,000 = 20,000
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-3', name: 'พนักงาน สาม', baseSalary: 30000, socialSecurity: true, branchId: 'b1',
+        status: 'DISABLED', startDate: new Date('2020-01-01'), lastWorkingDate: new Date('2025-01-10'),
+      },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload.baseSalary).toBe(20000)
+    expect(payload.note).toContain('หลังวันทำงานวันสุดท้าย 10 วัน')
+    expect(payload.criticalWarning).toBeNull()
+    expect(data.disabledIncluded).toEqual([{ userId: 'emp-3', name: 'พนักงาน สาม' }])
+    expect(data.disabledWarning).toBeUndefined()
+  })
+
+  it('leaver with lastWorkingDate gets unrecorded absences counted only up to that date', async () => {
+    const lastWorkingDate = new Date('2025-01-10')
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: 'emp-3', name: 'พนักงาน สาม', baseSalary: 30000, socialSecurity: true, branchId: 'b1',
+        status: 'DISABLED', startDate: new Date('2020-01-01'), lastWorkingDate,
+      },
+    ] as any)
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+
+    expect(countUnrecordedAbsenceDays).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(countUnrecordedAbsenceDays).mock.calls[0][0]).toMatchObject({ employeeLastWorkingDate: lastWorkingDate })
+  })
+
+  it('DISABLED without lastWorkingDate: full salary + red row warning + response warning asking HR to fill it in', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       {
         id: 'emp-3', name: 'พนักงาน สาม', baseSalary: 20000, socialSecurity: true, branchId: 'b1',
-        status: 'DISABLED', updatedAt: new Date('2025-01-20'),
+        status: 'DISABLED', startDate: new Date('2020-01-01'), updatedAt: new Date('2025-01-20'),
       },
     ] as any)
 
@@ -249,62 +303,43 @@ describe('POST /api/payroll/generate — includes employees deactivated this mon
 
     expect(data.count).toBe(1)
     expect(data.disabledIncluded).toEqual([{ userId: 'emp-3', name: 'พนักงาน สาม' }])
+    expect(data.disabledWarning).toContain('ยังไม่ได้กรอกวันทำงานวันสุดท้าย')
     expect(data.disabledWarning).toContain('พนักงาน สาม')
 
-    const upsertCalls = vi.mocked(prisma.payroll.upsert).mock.calls
-    expect(upsertCalls).toHaveLength(1)
-    const payload = upsertCalls[0][0].update
-    expect(payload.baseSalary).toBe(20000) // full nominal amount, not shrunk
-    expect(payload.note).toContain('ปิดใช้งานในเดือนนี้')
-    expect(payload.note).toContain('ตรวจสอบและปรับยอดก่อนอนุมัติ')
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+    expect(payload.baseSalary).toBe(20000) // not prorated — nothing to prorate against yet
+    expect(payload.criticalWarning).toContain('ยังไม่ได้กรอกวันทำงานวันสุดท้าย')
+    expect(countUnrecordedAbsenceDays).not.toHaveBeenCalled()
   })
 
   it('does not flag or warn about a normal ACTIVE employee', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, socialSecurity: true, branchId: 'b1', status: 'ACTIVE', startDate: new Date('2020-01-01') },
+    ] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const data = await res.json()
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(data.disabledIncluded).toEqual([])
+    expect(data.disabledWarning).toBeUndefined()
+    expect(data.missingStartDateWarning).toBeUndefined()
+    expect(payload.criticalWarning).toBeNull()
+    expect(payload.note).toBeNull()
+  })
+
+  it('MONTHLY employee with no startDate: full salary + red row warning + response warning', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, socialSecurity: true, branchId: 'b1', status: 'ACTIVE' },
     ] as any)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
     const data = await res.json()
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
 
-    expect(data.disabledIncluded).toEqual([])
-    expect(data.disabledWarning).toBeUndefined()
-  })
-
-  it('splits disabledWarning into separate MONTHLY- and DAILY-worded messages when both pay types are disabled this month', async () => {
-    vi.mocked(prisma.user.findMany).mockResolvedValue([
-      {
-        id: 'emp-3', name: 'พนักงาน เดือน', baseSalary: 20000, socialSecurity: true, branchId: 'b1',
-        status: 'DISABLED', updatedAt: new Date('2025-01-20'), payType: 'MONTHLY',
-      },
-      {
-        id: 'emp-4', name: 'พนักงาน วัน', baseSalary: null, dailyRate: 300, socialSecurity: true, branchId: 'b1',
-        status: 'DISABLED', updatedAt: new Date('2025-01-15'), payType: 'DAILY',
-      },
-    ] as any)
-    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
-
-    const res = await POST(makeReq({ month: 1, year: 2025 }))
-    expect(res.status).toBe(200)
-    const data = await res.json()
-
-    expect(data.disabledIncluded).toEqual([
-      { userId: 'emp-3', name: 'พนักงาน เดือน' },
-      { userId: 'emp-4', name: 'พนักงาน วัน' },
-    ])
-    // Two distinct messages joined by ' | ' — MONTHLY's "ยอดเต็มเดือน (ยังไม่
-    // prorate)" wording must not bleed onto the DAILY employee, whose pay
-    // already only reflects days actually worked before being disabled.
-    const parts = data.disabledWarning.split(' | ')
-    expect(parts).toHaveLength(2)
-    expect(parts[0]).toContain('พนักงานรายเดือน')
-    expect(parts[0]).toContain('ยอดเต็มเดือน')
-    expect(parts[0]).toContain('พนักงาน เดือน')
-    expect(parts[0]).not.toContain('พนักงาน วัน')
-    expect(parts[1]).toContain('พนักงานรายวัน')
-    expect(parts[1]).toContain('จำนวนวันที่มาทำงานจริง')
-    expect(parts[1]).toContain('พนักงาน วัน')
-    expect(parts[1]).not.toContain('พนักงาน เดือน')
+    expect(payload.baseSalary).toBe(30000)
+    expect(payload.criticalWarning).toContain('ยังไม่ได้กรอกวันเริ่มงาน')
+    expect(data.missingStartDateWarning).toContain('พนักงาน หนึ่ง')
   })
 })
 
@@ -320,8 +355,8 @@ describe('POST /api/payroll/generate — wires payrollPeriodRange (21-20) into t
     // Distinct from the file's default static mock value, so a match here
     // proves the route actually used THIS call's return value, not some
     // coincidentally-equal hardcoded range.
-    const customStart = new Date(2026, 7, 21) // 21 Aug 2026
-    const customEnd = new Date(2026, 8, 20, 23, 59, 59, 999) // 20 Sep 2026
+    const customStart = new Date('2026-08-21T00:00:00.000+07:00')
+    const customEnd = new Date('2026-09-20T23:59:59.999+07:00')
     vi.mocked(payrollPeriodRange).mockReturnValueOnce({ start: customStart, end: customEnd })
 
     await POST(makeReq({ month: 9, year: 2026 }))
@@ -329,7 +364,8 @@ describe('POST /api/payroll/generate — wires payrollPeriodRange (21-20) into t
     expect(payrollPeriodRange).toHaveBeenCalledWith(9, 2026)
 
     const userCall = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
-    expect(userCall.where.OR[1]).toEqual({ status: 'DISABLED', updatedAt: { gte: customStart, lte: customEnd } })
+    expect(userCall.where.AND[0]).toEqual({ OR: [{ startDate: null }, { startDate: { lte: customEnd } }] })
+    expect(userCall.where.AND[1].OR[0]).toEqual({ lastWorkingDate: { gte: customStart } })
 
     const attendanceCall = vi.mocked(prisma.attendance.findMany).mock.calls[0][0] as any
     expect(attendanceCall.where.date).toEqual({ gte: customStart, lte: customEnd })
@@ -387,12 +423,14 @@ describe('POST /api/payroll/generate — DAILY pay type', () => {
     expect(payload.dailyRateUsed).toBe(300)
     expect(payload.payType).toBe('DAILY')
     expect(payload.baseSalary).toBe(1050) // 3.5 × 300
-    expect(payload.socialSecurity).toBe(52.5) // min(1050 × 0.05, 875)
+    expect(payload.socialSecurity).toBe(83) // wage 1,050 is below the 1,650 floor → 83
     expect(payload.taxDeduction).toBe(20)
-    expect(payload.netSalary).toBe(977.5) // 1050 - 52.5 - 20
+    // early leave 15 min × (300 ÷ 8 ÷ 60 = 0.625/min) = 9.375 → 9.38 (late is mocked to 0 in this file)
+    expect(payload.earlyLeaveDeduction).toBe(9.38)
+    expect(payload.netSalary).toBe(937.62) // 1050 − 83 − 20 − 9.38
   })
 
-  it('applies no late/absent/unpaid-leave deduction even when attendance would trigger one for a MONTHLY employee', async () => {
+  it('docks no absent/unpaid leave (unpaid days simply aren\'t paid), but does dock late per minute at dailyRate ÷ 8 ÷ 60 (2026-10)', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([dailyEmployee] as any)
     vi.mocked(prisma.attendance.findMany).mockResolvedValue([
       attRow('2025-01-05', 'NORMAL'),
@@ -400,21 +438,25 @@ describe('POST /api/payroll/generate — DAILY pay type', () => {
       attRow('2025-01-07', 'ABSENT', { checkIn: null }),
     ] as any)
     vi.mocked(prisma.leaveRequest.findMany).mockImplementation(({ where }: any) =>
-      Promise.resolve(where.type === 'UNPAID' ? [{ userId: 'emp-d1', days: 5 }] : []) as any,
+      Promise.resolve(where.type === 'UNPAID'
+        ? [{ userId: 'emp-d1', days: 5, startDate: new Date('2025-01-10'), endDate: new Date('2025-01-14') }]
+        : []) as any,
     )
+    vi.mocked(computeLateDeduction).mockReturnValueOnce({ lateDeduction: 624.38, lateDays: 1, billableLateMinutes: 999, lines: [] } as any)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
     expect(res.status).toBe(200)
+    vi.mocked(prisma.leaveRequest.findMany).mockResolvedValue([] as any)
 
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
-    expect(payload.lateDeduction).toBe(0)
     expect(payload.absentDeduction).toBe(0)
     expect(payload.unpaidLeave).toBe(0)
-    expect(payload.lateDays).toBe(0)
     expect(payload.absentDays).toBe(0)
-    // computeLateDeduction is the MONTHLY-only late-deduction formula — a
-    // DAILY employee must never even call it, not just discard its result.
-    expect(computeLateDeduction).not.toHaveBeenCalled()
+    // late goes through the same per-day computeLateDeduction as MONTHLY, but
+    // at this employee's own per-minute rate: 300 ÷ 8 ÷ 60 = 0.625
+    expect(computeLateDeduction).toHaveBeenCalledWith(expect.objectContaining({ ratePerMinute: 0.625 }))
+    expect(payload.lateDeduction).toBe(624.38)
+    expect(payload.lateDays).toBe(1)
   })
 
   it('computes SS/tax off daysWorked × dailyRate, not off baseSalary (which is null for a DAILY-only employee)', async () => {
@@ -423,7 +465,7 @@ describe('POST /api/payroll/generate — DAILY pay type', () => {
 
     await POST(makeReq({ month: 1, year: 2025 }))
 
-    expect(computeMonthlyTax).toHaveBeenCalledWith(300, 15) // 1 day × 300 dailyRate, SS = min(300×0.05, 875) = 15
+    expect(computeMonthlyTax).toHaveBeenCalledWith(300, 83) // 1 day × 300 dailyRate, SS = 83 (1,650 floor)
   })
 
   it('skips SS deduction when the employee has social security disabled, same as MONTHLY', async () => {
@@ -764,7 +806,7 @@ describe('POST /api/payroll/generate — unrecorded-absence days (no data + no a
   })
 })
 
-describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2026-09-30 fix)', () => {
+describe('POST /api/payroll/generate — prorate (2026-10 formulas) + netSalary clamp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(auth).mockResolvedValue(hrSession as any)
@@ -773,54 +815,111 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
     vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
     vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0)
+    vi.mocked(prisma.leaveRequest.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.companySettings.findUnique).mockResolvedValue({ absentDeductRate: 0 } as any)
   })
 
-  it('a mid-period new hire\'s absentDeduction is no longer computed off the FULL nominal baseSalary — it uses the prorated periodBaseSalary instead, and no longer goes negative', async () => {
-    // Real numbers from the 2026-09-30 production investigation: baseSalary
-    // 25,000, hired with only 5 of the period's 31 days worked, giving
-    // periodBaseSalary = round(25,000 × 5/31) = 4,032.26 exactly.
+  const FULL_PERIOD_START = new Date('2020-01-01')
+
+  it('new hire mid-period: 30,000 starting 5 Jan (15 period days before it) → 30,000 − 1,000 × 15 = 15,000, and SS/tax use that paid amount', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       {
-        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 25000, payType: 'MONTHLY', status: 'ACTIVE',
-        startDate: new Date(2025, 0, 16), socialSecurity: true, branchId: 'b1',
+        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE',
+        startDate: new Date('2025-01-05'), socialSecurity: true, branchId: 'b1',
       },
     ] as any)
-    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(4)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
     expect(res.status).toBe(200)
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
 
-    expect(payload.baseSalary).toBe(4032.26) // periodBaseSalary, confirms the proration itself is unchanged
-    // dailyRate = periodBaseSalary / 26 = 4032.26 / 26 = 155.0869... → absentDeduction = 4 × that, rounded
-    expect(payload.absentDeduction).toBe(620.35)
-    // Old formula (baseSalary/26 = 961.54/day × 4 = 3,846.16) + SS (875) would have been -688.89 (negative).
-    // Fixed formula: 4,032.26 - 620.35 - 875 (SS) = 2,536.91 (positive).
-    expect(payload.netSalary).toBeGreaterThan(0)
-    expect(payload.netSalary).toBe(2536.91)
+    expect(payload.baseSalary).toBe(15000)
+    expect(payload.note).toContain('ก่อนวันเริ่มงาน 15 วัน')
+    expect(payload.socialSecurity).toBe(750) // 5% of the 15,000 actually paid, not of 30,000
+    expect(computeMonthlyTax).toHaveBeenCalledWith(15000, 750)
+    expect(payload.netSalary).toBe(14250)
+    expect(payload.criticalWarning).toBeNull()
   })
 
-  it('a full-period (non-prorated) employee sees no change at all from the dailyRate fix — periodBaseSalary === baseSalary for them', async () => {
+  it('absences are docked at the FULL salary ÷ 30 per day even when the period is prorated (no more ÷ 26, no more prorated base)', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+      {
+        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE',
+        startDate: new Date('2025-01-05'), socialSecurity: true, branchId: 'b1',
+      },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(2)
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload.absentDeduction).toBe(2000) // 2 × 30,000 ÷ 30
+    expect(payload.netSalary).toBe(12250) // 15,000 − 2,000 − 750 SS
+  })
+
+  it('full-period employee: absent day = salary ÷ 30, rounded per day (26,000 → 866.67)', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
     ] as any)
     vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(1)
 
     await POST(makeReq({ month: 1, year: 2025 }))
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
 
-    // 26,000 / 26 = 1,000/day × 1 day — identical whether dailyRate is
-    // derived from baseSalary or periodBaseSalary, since they're equal here.
+    expect(payload.baseSalary).toBe(26000)
+    expect(payload.absentDeduction).toBe(866.67)
+  })
+
+  it('no longer adds CompanySettings.absentDeductRate on top of an absent day', async () => {
+    vi.mocked(prisma.companySettings.findUnique).mockResolvedValue({ absentDeductRate: 500 } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(1)
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
     expect(payload.absentDeduction).toBe(1000)
   })
 
-  it('clamps netSalary at 0 and writes the review-me text to criticalWarning — NEVER to note (2026-09-30 severity-separation fix)', async () => {
+  it('unpaid leave crossing two periods is docked only for its days inside this period', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
     ] as any)
-    // 26 unrecorded-absence days × (26,000/26 = 1,000/day) = 26,000 absentDeduction alone,
-    // plus SS (min(26,000×0.05, 875) = 875) — exceeds the full 26,000 base by 875.
-    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(26)
+    // 18 Jan – 24 Jan = 7 days on the request, but only 18–20 Jan (3 days) fall in this period
+    vi.mocked(prisma.leaveRequest.findMany).mockImplementation(({ where }: any) =>
+      Promise.resolve(where.type === 'UNPAID'
+        ? [{ userId: 'emp-1', days: 7, startDate: new Date('2025-01-18'), endDate: new Date('2025-01-24') }]
+        : []) as any,
+    )
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload.unpaidLeave).toBe(3000)
+  })
+
+  it('early leave is docked per actual minute (salary ÷ 30 ÷ 8 ÷ 60), not half a day: 30,000 × 5 minutes → 10.42', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([
+      { userId: 'emp-1', date: new Date('2025-01-06'), lateMinutes: 0, status: 'EARLY_LEAVE', earlyLeaveMinutes: 5, workMinutes: 0, leaveType: null, checkIn: new Date('2025-01-06T01:30:00Z') },
+    ] as any)
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload.earlyLeaveDeduction).toBe(10.42)
+  })
+
+  it('clamps netSalary at 0 and writes the review-me text to criticalWarning — note stays null', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
+    ] as any)
+    // 30 absent days × 1,000 = 30,000 alone, plus SS 875 → 875 over
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(30)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
     expect(res.status).toBe(200)
@@ -830,14 +929,14 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     expect(payload.netSalary).toBe(0)
     expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
     expect(payload.criticalWarning).toContain('875')
-    expect(payload.note).toBeUndefined() // no proration/disabled condition applies here — note must stay untouched, not carry the clamp text
+    expect(payload.note).toBeNull()
     expect(data.negativeNetSalaryWarning).toContain('พนักงาน หนึ่ง')
     expect(data.negativeNetSalaryWarning).toContain('875')
   })
 
   it('does not report a negativeNetSalaryWarning at all when nobody was clamped', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
     ] as any)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
@@ -856,9 +955,6 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     vi.mocked(prisma.attendance.findMany).mockResolvedValue([
       { userId: 'emp-d1', date: new Date('2025-01-05'), lateMinutes: 0, status: 'NORMAL', earlyLeaveMinutes: 0, workMinutes: 0, leaveType: null, checkIn: new Date('2025-01-05T08:00:00Z') },
     ] as any)
-    // No preserved-manual fields (findUnique's default DRAFT-with-no-fields
-    // mock from this block's beforeEach) — an artificially large tax mock is
-    // the only thing pushing this negative, isolating the clamp mechanism.
     vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 400 } as any)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
@@ -866,85 +962,123 @@ describe('POST /api/payroll/generate — netSalary clamp + prorated dailyRate (2
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
     const data = await res.json()
 
-    // periodEarnings = 1 × 300 = 300; SS = min(300×0.05, 875) = 15; net would
-    // be 300 - 15 - 400 (tax) = -115 → clamped
+    // periodEarnings = 300; SS = 83 (1,650 floor); 300 − 83 − 400 = −183 → clamped
     expect(payload.netSalary).toBe(0)
     expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
     expect(data.negativeNetSalaryWarning).toContain('พนักงาน รายวัน')
   })
 
-  it('regenerating with no clamp condition anymore explicitly clears criticalWarning (writes null, never omits the key) — no stale warning can linger', async () => {
+  it('regenerating with nothing to warn about explicitly clears criticalWarning and note (writes null, never omits the key)', async () => {
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
+      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
     ] as any)
-    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0)
 
     await POST(makeReq({ month: 1, year: 2025 }))
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
 
     expect('criticalWarning' in payload).toBe(true)
     expect(payload.criticalWarning).toBeNull()
-  })
-
-  it('a proration-only note (mid-period hire, no clamp) stays in note and criticalWarning is null — the two fields never bleed into each other', async () => {
-    vi.mocked(prisma.user.findMany).mockResolvedValue([
-      {
-        id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 25000, payType: 'MONTHLY', status: 'ACTIVE',
-        startDate: new Date(2025, 0, 16), socialSecurity: true, branchId: 'b1',
-      },
-    ] as any)
-    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(1) // small — nowhere near enough to clamp
-
-    const res = await POST(makeReq({ month: 1, year: 2025 }))
-    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
-    const data = await res.json()
-
-    expect(payload.netSalary).toBeGreaterThan(0)
-    expect(payload.note).toContain('Prorated: เริ่มงาน')
-    expect(payload.criticalWarning).toBeNull()
-    expect(data.negativeNetSalaryWarning).toBeUndefined()
-  })
-
-  it('a clamp-only case (full-period employee, no proration/disabled) has criticalWarning set and note absent — the two fields never bleed into each other', async () => {
-    vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', socialSecurity: true, branchId: 'b1' },
-    ] as any)
-    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(26)
-
-    const res = await POST(makeReq({ month: 1, year: 2025 }))
-    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
-    const data = await res.json()
-
-    expect(payload.netSalary).toBe(0)
-    expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
-    expect(payload.note).toBeUndefined()
-    expect(data.negativeNetSalaryWarning).toBeDefined()
+    expect('note' in payload).toBe(true)
+    expect(payload.note).toBeNull()
   })
 
   it('BOTH a proration note AND a clamp warning at once are each still their own distinct field, never concatenated together', async () => {
-    // Hired with only 1 of 31 period days worked — a tiny prorated base
-    // that a handful of unrecorded-absence days can easily overwhelm.
+    // Hired 19 Jan → 29 period days before → 26,000 − 866.67/day × 29 = 866.67;
+    // 1 absent day (866.67) + SS 83 (1,650 floor) → 83 over → clamped
     vi.mocked(prisma.user.findMany).mockResolvedValue([
       {
         id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE',
-        startDate: new Date(2025, 0, 20), socialSecurity: true, branchId: 'b1',
+        startDate: new Date('2025-01-19'), socialSecurity: true, branchId: 'b1',
       },
     ] as any)
-    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0) // no unrecorded absence needed — SS alone (875) already exceeds the tiny prorated base
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(1)
 
     const res = await POST(makeReq({ month: 1, year: 2025 }))
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
     const data = await res.json()
 
-    // periodBaseSalary = round(26,000 × 1/31) = 838.71 — SS = min(26,000×0.05, 875) = 875 alone clamps it.
-    expect(payload.baseSalary).toBe(838.71)
+    expect(payload.baseSalary).toBe(866.67)
+    expect(payload.socialSecurity).toBe(83)
     expect(payload.netSalary).toBe(0)
-    // note carries ONLY the proration text — never the clamp warning appended onto it.
-    expect(payload.note).toContain('Prorated: เริ่มงาน')
+    expect(payload.note).toContain('Prorated')
     expect(payload.note).not.toContain('หักเกินเงินเดือนที่พึงได้รับ')
-    // criticalWarning carries ONLY the clamp text — never the proration text folded in.
     expect(payload.criticalWarning).toContain('หักเกินเงินเดือนที่พึงได้รับในงวดนี้')
     expect(payload.criticalWarning).not.toContain('Prorated')
     expect(data.negativeNetSalaryWarning).toContain('พนักงาน หนึ่ง')
+  })
+})
+
+describe('POST /api/payroll/generate — review-me warnings (2026-10, never block generate)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.securityDepositPlan.findMany).mockResolvedValue([] as any)
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(0)
+  })
+
+  const employee = { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, payType: 'MONTHLY', status: 'ACTIVE', startDate: new Date('2020-01-01'), socialSecurity: true, branchId: 'b1' }
+
+  it('warns (row + response) when last month is still DRAFT for someone with a security-deposit plan — installment number may repeat', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([employee] as any)
+    vi.mocked(prisma.securityDepositPlan.findMany).mockResolvedValue([
+      { userId: 'emp-1', totalAmount: 5000, totalInstallments: 6, status: 'ACTIVE' },
+    ] as any)
+    vi.mocked(prisma.payroll.findMany).mockImplementation(({ where }: any) =>
+      Promise.resolve(where.status === 'DRAFT' ? [{ userId: 'emp-1' }] : []) as any,
+    )
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    const draftQuery = vi.mocked(prisma.payroll.findMany).mock.calls.map(([c]) => c as any).find((c) => c.where.status === 'DRAFT')
+    expect(draftQuery.where).toMatchObject({ month: 12, year: 2024, userId: { in: ['emp-1'] }, deletedAt: null })
+    expect(payload.criticalWarning).toContain('เลขงวดเงินประกันเดือนนี้อาจซ้ำ')
+    expect(data.securityDepositDraftWarning).toContain('พนักงาน หนึ่ง')
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+  })
+
+  it('no deposit warning when last month is not DRAFT (or there is no plan)', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([employee] as any)
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const data = await res.json()
+    expect(data.securityDepositDraftWarning).toBeUndefined()
+  })
+
+  it('warns in the row when total deductions exceed total income, quoting both totals', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([employee] as any)
+    vi.mocked(countUnrecordedAbsenceDays).mockReturnValue(30) // 30 × 1,000 + SS 875 = 30,875 > 30,000
+
+    await POST(makeReq({ month: 1, year: 2025 }))
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(payload.criticalWarning).toContain('ยอดหักรวม ฿30,875 มากกว่ารายได้รวม ฿30,000')
+    expect(payload.netSalary).toBe(0)
+  })
+
+  it('warns (row + response) when a monthly base salary is over 500,000, but still generates', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ ...employee, baseSalary: 3_000_000 }] as any)
+
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
+
+    expect(data.count).toBe(1)
+    expect(payload.criticalWarning).toContain('เกิน ฿500,000')
+    expect(data.highBaseSalaryWarning).toContain('พนักงาน หนึ่ง')
+  })
+
+  it('no high-salary warning at exactly 500,000', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ ...employee, baseSalary: 500_000 }] as any)
+    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    const data = await res.json()
+    expect(data.highBaseSalaryWarning).toBeUndefined()
   })
 })

@@ -159,9 +159,11 @@ export default function SettingsClient({ settings }: { settings: Settings | null
         <h2 className="font-semibold text-slate-900 dark:text-white">การหักเงิน</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="หักสาย (บาท/นาที)" value={form.lateDeductRate} onChange={(v: number) => set('lateDeductRate', v)} type="number" placeholder="0 = ไม่หัก" />
-          <Input label="หักขาดงาน (บาท/วัน เพิ่มเติม)" value={form.absentDeductRate} onChange={(v: number) => set('absentDeductRate', v)} type="number" placeholder="0 = คิดตามฐาน" />
+          {/* "หักขาดงาน (บาท/วัน เพิ่มเติม)" — absentDeductRate ถูกซ่อน (2026-10,
+              fix/payroll-formulas-round1): payroll เลิกใช้ค่าปรับขาดงานเพิ่มแล้ว
+              ขาดงานหักแค่ค่าแรงต่อวัน (เงินเดือน ÷ 30) — field ใน DB ยังอยู่ */}
         </div>
-        <p className="text-xs text-slate-400 dark:text-white/30">* ขาดงานจะหักตามอัตราเงินเดือนรายวันเสมอ ค่านี้เป็นเพิ่มเติม</p>
+        <p className="text-xs text-slate-400 dark:text-white/30">* ขาดงานหักตามค่าแรงต่อวัน (เงินเดือน ÷ 30) เท่านั้น ไม่มีค่าปรับเพิ่ม</p>
       </section>
 
       {/* Cloudinary retention */}

@@ -27,6 +27,10 @@ vi.mock('@/lib/access-control', () => ({
   PAYROLL_DELETE_ROLES: ['SUPER_ADMIN', 'CEO'],
 }))
 
+vi.mock('@/lib/ensure-payroll-formulas-round1', () => ({
+  ensurePayrollFormulasRound1: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
 }))
@@ -81,12 +85,12 @@ describe('PayrollPage — includes DISABLED-in-period employees (2026-10-02 bug 
 
     const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
     expect(call.where.role).toEqual({ in: ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] })
-    expect(call.where.OR[0]).toEqual({ status: 'ACTIVE' })
-    expect(call.where.OR[1].status).toBe('DISABLED')
-    expect(call.where.OR[1].updatedAt.gte).toBeInstanceOf(Date)
-    expect(call.where.OR[1].updatedAt.lte).toBeInstanceOf(Date)
+    expect(call.where.status).toEqual({ in: ['ACTIVE', 'DISABLED'] })
+    expect(call.where.AND[1].OR[2].status).toBe('DISABLED')
+    expect(call.where.AND[1].OR[2].updatedAt.gte).toBeInstanceOf(Date)
+    expect(call.where.AND[1].OR[2].updatedAt.lte).toBeInstanceOf(Date)
     // Sanity: the range this month/year actually produces still contains "now".
-    expect(now >= call.where.OR[1].updatedAt.gte && now <= call.where.OR[1].updatedAt.lte).toBe(true)
+    expect(now >= call.where.AND[1].OR[2].updatedAt.gte && now <= call.where.AND[1].OR[2].updatedAt.lte).toBe(true)
     void month
     void year
   })
@@ -134,7 +138,7 @@ describe('PayrollPage — includes DISABLED-in-period employees (2026-10-02 bug 
 
     const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
     const longAgoDisabled = new Date(0)
-    const { gte, lte } = call.where.OR[1].updatedAt
+    const { gte, lte } = call.where.AND[1].OR[2].updatedAt
     expect(longAgoDisabled >= gte && longAgoDisabled <= lte).toBe(false)
   })
 })

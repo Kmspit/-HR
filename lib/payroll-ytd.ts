@@ -62,10 +62,11 @@ export function computePayrollYtdFromRows(rows: PayrollYtdRow[]): PayrollYtdTota
 }
 
 /** ดึง Payroll ทุกแถวของ user คนนี้ ตั้งแต่เดือน 1 ถึง uptoMonth ของปี year
- * (inclusive ทั้งคู่) แล้วรวมยอดผ่าน computePayrollYtdFromRows — ไม่รวมแถวที่
- * soft-delete หรือ REJECTED (เดียวกับเงื่อนไขที่ใช้นับงวดเงินประกันใน
- * lib/payroll-security-deposit.ts) derive สดทุกครั้งจาก Payroll จริง ไม่ใช่
- * ตัวเลขสะสม mutable — เหตุผลเดียวกับ daysWorked/securityDepositInstallmentNo */
+ * (inclusive ทั้งคู่) แล้วรวมยอดผ่าน computePayrollYtdFromRows — นับเฉพาะงวดที่
+ * อนุมัติแล้ว (APPROVED/SENT) ไม่รวมแถวที่ soft-delete (2026-10: เดิมนับทุกสถานะ
+ * ยกเว้น REJECTED ทำให้ DRAFT ที่ยังไม่เคยอนุมัติไปโผล่ในยอดสะสมของสลิป —
+ * เงื่อนไขเดียวกับการนับงวดเงินประกันใน generate route) derive สดทุกครั้งจาก
+ * Payroll จริง ไม่ใช่ตัวเลขสะสม mutable */
 export async function computePayrollYtd(
   userId: string,
   year: number,
@@ -77,7 +78,7 @@ export async function computePayrollYtd(
       year,
       month: { lte: uptoMonth },
       deletedAt: null,
-      status: { not: 'REJECTED' },
+      status: { in: ['APPROVED', 'SENT'] },
     },
     select: {
       baseSalary: true,

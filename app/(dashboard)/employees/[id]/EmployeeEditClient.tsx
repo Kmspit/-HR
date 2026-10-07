@@ -45,7 +45,8 @@ import {
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
 import { EMPLOYEE_TYPES, PAY_TYPES, TAX_SCHEMES } from '@/lib/access-control'
-import { socialSecurityPreview } from '@/lib/payroll-constants'
+import { computeSocialSecurity, socialSecurityPreview } from '@/lib/payroll-constants'
+import { computeMonthlyTax } from '@/lib/payroll-tax'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
 import NumericInput from '@/components/ui/NumericInput'
@@ -69,9 +70,13 @@ type Employee = {
   positionAllowance: number | null
   diligenceAllowanceDefault: number | null
   studentLoanDeduction: number | null
+  /** (2026-10) ภาษี ภงด.1 หักต่อเดือนที่กำหนดเอง — null = ใช้ยอดตามสูตร */
+  monthlyTaxOverride: number | null
   socialSecurity: boolean
   isCoworker: boolean
   startDate: string | null
+  /** (2026-10) วันทำงานวันสุดท้าย (ลาออก) */
+  lastWorkingDate: string | null
   phone: string | null
   lineId: string | null
   lineUserId: string | null
@@ -184,9 +189,12 @@ export default function EmployeeEditClient({
     positionAllowance: employee.positionAllowance ?? 0,
     diligenceAllowanceDefault: employee.diligenceAllowanceDefault ?? 0,
     studentLoanDeduction: employee.studentLoanDeduction ?? 0,
+    // '' = ไม่กำหนด (ใช้ยอดตามสูตร)
+    monthlyTaxOverride: employee.monthlyTaxOverride == null ? '' : String(employee.monthlyTaxOverride),
     socialSecurity: employee.socialSecurity,
     isCoworker: employee.isCoworker,
     startDate: employee.startDate ? employee.startDate.substring(0, 10) : '',
+    lastWorkingDate: employee.lastWorkingDate ? employee.lastWorkingDate.substring(0, 10) : '',
     birthDate: employee.birthDate ? employee.birthDate.substring(0, 10) : '',
     address: employee.address ?? '',
     addressIdCard: employee.addressIdCard ?? '',
@@ -345,6 +353,13 @@ export default function EmployeeEditClient({
         positionAllowance: () => form.positionAllowance,
         diligenceAllowanceDefault: () => form.diligenceAllowanceDefault,
         studentLoanDeduction: () => form.studentLoanDeduction,
+        monthlyTaxOverride: () => {
+          const raw = form.monthlyTaxOverride.trim()
+          if (raw === '') return null
+          const n = Number(raw)
+          return Number.isFinite(n) ? n : raw // ส่งค่าที่ไม่ใช่ตัวเลขไปให้ server ตอบ 400 แทนการล้างค่าเงียบๆ
+        },
+        lastWorkingDate: () => form.lastWorkingDate || null,
         socialSecurity: () => form.socialSecurity,
         isCoworker: () => form.isCoworker,
         startDate: () => form.startDate || null,
@@ -666,6 +681,26 @@ export default function EmployeeEditClient({
                   className={profileInputClass}
                 />
               </FormField>
+              {/* (2026-10) วันทำงานวันสุดท้าย — ใช้ prorate เงินเดือนรอบที่ลาออก และ
+                  ตัดสินว่าอยู่ในรอบไหน gate เดียวกับเงินเดือน ห้ามแก้ของตัวเอง */}
+              {canEditSalary && (
+                <FormField label="วันทำงานวันสุดท้าย (ลาออก)">
+                  {isSelf ? (
+                    <p className="py-2.5 text-sm text-white/70">{form.lastWorkingDate || '—'}</p>
+                  ) : (
+                    <input
+                      type="date"
+                      value={form.lastWorkingDate}
+                      min={form.startDate || undefined}
+                      onChange={(e) => set('lastWorkingDate', e.target.value)}
+                      className={profileInputClass}
+                    />
+                  )}
+                  <p className="text-[11px] text-white/40 mt-1">
+                    กรอกเมื่อพนักงานลาออก — ระบบหักเงินเดือนรอบนั้นตามวันที่ไม่ได้ทำงาน (เงินเดือน ÷ 30 ต่อวัน)
+                  </p>
+                </FormField>
+              )}
               <FormField label="ประเภทพนักงาน">
                 <select
                   value={form.employeeType}
@@ -814,6 +849,55 @@ export default function EmployeeEditClient({
                   </p>
                 </FormField>
               </div>
+              {/* (2026-10) ภาษี ภงด.1 หักต่อเดือนกำหนดเองรายคน — HR ตั้งให้ตามที่
+                  พนักงานแจ้ง แสดงยอดตามสูตรไว้ข้างกันเสมอ ไม่ใช้กับนอกระบบ (3% ภงด.3) */}
+              {(() => {
+                if (form.taxScheme === 'OFF_SYSTEM_WHT') {
+                  return (
+                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white/50">
+                      ภาษี: หัก ณ ที่จ่าย 3% (ภงด.3) ของยอดที่จ่ายจริง — กำหนดยอดภาษีเองไม่ได้สำหรับพนักงานนอกระบบ
+                    </div>
+                  )
+                }
+                const formulaLabel = (() => {
+                  if (form.payType === 'DAILY') return 'ขึ้นกับจำนวนวันทำงานแต่ละเดือน (คำนวณตอนสร้าง payroll)'
+                  const ssBase = form.baseSalary + form.positionAllowance
+                  const ss = form.socialSecurity ? computeSocialSecurity(ssBase) : 0
+                  const gross = form.baseSalary + form.positionAllowance + form.diligenceAllowanceDefault
+                  const tax = computeMonthlyTax(gross, ss).monthlyWithholding
+                  return `฿${tax.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/เดือน (ประมาณจากเดือนเต็ม ไม่รวมคอมมิชชั่น/OT/โบนัส)`
+                })()
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField label="ภาษี ภงด.1 หักต่อเดือน (กำหนดเอง, บาท)">
+                      {isSelf ? (
+                        <p className="py-2.5 text-sm text-white/70">
+                          {form.monthlyTaxOverride === '' ? 'ใช้ยอดตามสูตร' : `฿${form.monthlyTaxOverride}`}
+                        </p>
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={form.monthlyTaxOverride}
+                          placeholder="เว้นว่าง = ใช้ยอดตามสูตร"
+                          onChange={(e) => set('monthlyTaxOverride', e.target.value)}
+                          className={profileInputClass}
+                        />
+                      )}
+                      <p className="text-[11px] text-white/40 mt-1">
+                        {isSelf
+                          ? 'แก้ยอดภาษีของตัวเองไม่ได้ — ให้ HR คนอื่นตั้งให้'
+                          : 'กรอกตามที่พนักงานแจ้ง เว้นว่างเพื่อกลับไปใช้ยอดตามสูตร'}
+                      </p>
+                    </FormField>
+                    <div className="flex flex-col justify-center p-3 bg-white/5 border border-white/10 rounded-xl text-sm">
+                      <span className="text-white/50 text-xs">ยอดตามสูตร</span>
+                      <span className="text-white/80">{formulaLabel}</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </section>
           )}
 

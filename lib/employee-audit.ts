@@ -90,6 +90,8 @@ export const EMPLOYEE_AUDIT_SELECT = {
   positionAllowance: true,
   diligenceAllowanceDefault: true,
   studentLoanDeduction: true,
+  monthlyTaxOverride: true,
+  lastWorkingDate: true,
   socialSecurity: true,
   isCoworker: true,
   divisionId: true,
@@ -164,6 +166,8 @@ type EmployeeAuditRow = {
   positionAllowance: number | null
   diligenceAllowanceDefault: number | null
   studentLoanDeduction: number | null
+  monthlyTaxOverride: number | null
+  lastWorkingDate: Date | null
   socialSecurity: boolean
   isCoworker: boolean
   divisionId: string | null
@@ -242,6 +246,10 @@ export function snapshotEmployeeForAudit(u: EmployeeAuditRow) {
     positionAllowance: u.positionAllowance,
     diligenceAllowanceDefault: u.diligenceAllowanceDefault,
     studentLoanDeduction: u.studentLoanDeduction,
+    // (2026-10) ภาษีหักต่อเดือนที่ HR กำหนดเอง — plain number เหมือน baseSalary
+    // เพื่อให้ตรวจย้อนได้ว่าใครตั้ง/แก้ยอดเท่าไหร่ → เท่าไหร่ (null = ใช้สูตร)
+    monthlyTaxOverride: u.monthlyTaxOverride,
+    lastWorkingDate: u.lastWorkingDate?.toISOString().slice(0, 10) ?? null,
     socialSecurity: u.socialSecurity,
     isCoworker: u.isCoworker,
     divisionId: u.divisionId,
@@ -345,6 +353,8 @@ const EMPLOYEE_FIELD_LABELS: Record<keyof EmployeeAuditSnapshot, string> = {
   positionAllowance: 'ค่าตำแหน่ง',
   diligenceAllowanceDefault: 'เบี้ยขยัน (ค่าเริ่มต้น)',
   studentLoanDeduction: 'ยอดหัก กยศ. ต่อเดือน',
+  monthlyTaxOverride: 'ภาษี ภงด.1 ต่อเดือน (กำหนดเอง)',
+  lastWorkingDate: 'วันทำงานวันสุดท้าย',
   socialSecurity: 'ประกันสังคม',
   isCoworker: 'พนักงานร่วมงาน',
   divisionId: 'ฝ่าย',
@@ -433,7 +443,8 @@ function formatEmployeeValue(key: keyof EmployeeAuditSnapshot, val: unknown, loo
   }
   if (
     key === 'baseSalary' || key === 'dailyRate' ||
-    key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction'
+    key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction' ||
+    key === 'monthlyTaxOverride'
   ) return currencyFmt(val as number)
   if (key === 'payType') return PAY_TYPE_LABELS[val as string] ?? String(val)
   if (key === 'taxScheme') return TAX_SCHEME_LABELS[val as string] ?? String(val)
@@ -496,7 +507,8 @@ export function summarizeEmployeeChanges(
     // (payroll fields batch 2, 2026-09) are real money figures too, same gate.
     if (
       (key === 'baseSalary' || key === 'dailyRate' ||
-       key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction') &&
+       key === 'positionAllowance' || key === 'diligenceAllowanceDefault' || key === 'studentLoanDeduction' ||
+    key === 'monthlyTaxOverride') &&
       !canViewSalary
     ) continue
 

@@ -23,6 +23,7 @@ import { EMPLOYEE_AUDIT_SELECT, snapshotEmployeeForAudit, logEmployeeUpdateIfCha
 import { createAuditLog } from '@/lib/notifications'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
+import { ensurePayrollFormulasRound1 } from '@/lib/ensure-payroll-formulas-round1'
 import type { Role, UserStatus } from '@prisma/client'
 
 function requestIp(req: NextRequest): string {
@@ -65,6 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (isGuardResponse(session)) return session
     await ensurePayrollFieldsBatch2()
     await ensurePayrollFieldsBatch3()
+    await ensurePayrollFormulasRound1()
 
     const { id } = await params
     if (id !== session.user.id) {
@@ -88,6 +90,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if ('baseSalary' in body && body.baseSalary !== undefined) {
         return NextResponse.json(
           { error: 'ไม่สามารถแก้เงินเดือนของตัวเองได้' },
+          { status: 403 },
+        )
+      }
+      // (2026-10) ยอดภาษีหักต่อเดือน/วันทำงานวันสุดท้าย — HR ตั้งให้ตามที่
+      // พนักงานแจ้ง ห้ามแก้ของตัวเองเด็ดขาด เหมือน baseSalary
+      if ('monthlyTaxOverride' in body && body.monthlyTaxOverride !== undefined) {
+        return NextResponse.json(
+          { error: 'ไม่สามารถแก้ยอดภาษีหักต่อเดือนของตัวเองได้ — ให้ HR คนอื่นตั้งให้' },
+          { status: 403 },
+        )
+      }
+      if ('lastWorkingDate' in body && body.lastWorkingDate !== undefined) {
+        return NextResponse.json(
+          { error: 'ไม่สามารถแก้วันทำงานวันสุดท้ายของตัวเองได้' },
           { status: 403 },
         )
       }
@@ -276,6 +292,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ('studentLoanDeduction' in body && body.studentLoanDeduction !== undefined) {
       if (HR_ADMIN.includes(session.user.role as Role)) {
         data.studentLoanDeduction = body.studentLoanDeduction
+      }
+    }
+
+    // (2026-10) ภาษี ภงด.1 ที่หักต่อเดือน (บาท) กำหนดเองรายคน — null = กลับไปใช้
+    // ยอดตามสูตร gate เดียวกับ baseSalary (HR_ADMIN) ใครตั้ง/แก้ เมื่อไหร่ ค่าเดิม→
+    // ค่าใหม่ บันทึกผ่าน logEmployeeUpdateIfChanged ด้านล่าง (snapshot มี field นี้)
+    if ('monthlyTaxOverride' in body && body.monthlyTaxOverride !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        const v = body.monthlyTaxOverride
+        if (v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0)) {
+          return NextResponse.json({ error: 'ยอดภาษีหักต่อเดือนต้องเป็นตัวเลขไม่ติดลบ' }, { status: 400 })
+        }
+        data.monthlyTaxOverride = v === null ? null : Math.round(v * 100) / 100
+      }
+    }
+
+    // (2026-10) วันทำงานวันสุดท้าย (YYYY-MM-DD หรือ null = ล้าง) — ใช้ prorate และ
+    // ตัดสินว่าอยู่ในรอบเงินเดือนไหน gate เดียวกับ baseSalary เก็บรูปแบบเดียวกับ
+    // startDate (เที่ยงคืน UTC ของวันนั้น)
+    if ('lastWorkingDate' in body && body.lastWorkingDate !== undefined) {
+      if (HR_ADMIN.includes(session.user.role as Role)) {
+        const v = body.lastWorkingDate
+        if (v === null || v === '') {
+          data.lastWorkingDate = null
+        } else if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(new Date(v).getTime())) {
+          return NextResponse.json({ error: 'วันทำงานวันสุดท้ายไม่ถูกต้อง' }, { status: 400 })
+        } else {
+          const startKey =
+            typeof body.startDate === 'string' && body.startDate
+              ? body.startDate.slice(0, 10)
+              : beforeAudit?.startDate?.toISOString().slice(0, 10)
+          if (startKey && v < startKey) {
+            return NextResponse.json({ error: 'วันทำงานวันสุดท้ายต้องไม่ก่อนวันเริ่มงาน' }, { status: 400 })
+          }
+          data.lastWorkingDate = new Date(v)
+        }
       }
     }
 

@@ -7,6 +7,7 @@ import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQu
 import { canAccessPageForUser } from '@/lib/page-access-server'
 import { canApprovePayroll, PAYROLL_DELETE_ROLES } from '@/lib/access-control'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { ensurePayrollFormulasRound1 } from '@/lib/ensure-payroll-formulas-round1'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
 import { payrollEligibleUserWhere } from '@/lib/payroll-employee-scope'
 import { Suspense } from 'react'
@@ -32,6 +33,8 @@ export default async function PayrollPage({
   const employeeWhere = branchUserWhere(scope, payrollEligibleUserWhere(month, year))
 
   await ensurePayrollPayslipColumns()
+  // users.lastWorkingDate อยู่ใน where ของ payrollEligibleUserWhere (2026-10)
+  await ensurePayrollFormulasRound1()
 
   const [employees, payrollRecords] = await Promise.all([
     prisma.user.findMany({

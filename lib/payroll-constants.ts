@@ -7,6 +7,23 @@
  */
 export const SS_RATE = 0.05
 export const SS_MAX = 875
+/** ฐานค่าจ้างขั้นต่ำ/สูงสุดที่ใช้คิดเงินสมทบ (2026-10): ค่าจ้างต่ำกว่า 1,650 คิดที่
+ *  1,650 (= 83 บาท), สูงกว่า 17,500 คิดที่ 17,500 (= 875 บาท) */
+export const SS_MIN_WAGE = 1_650
+export const SS_MAX_WAGE = 17_500
+
+/**
+ * เงินสมทบประกันสังคมส่วนลูกจ้างของเดือนนี้ — แหล่งเดียวทั้งระบบ (2026-10)
+ * ฐาน = ค่าจ้างที่จ่ายจริง (หลัง prorate) บีบไว้ในช่วง 1,650–17,500 × 5%
+ * ปัดเป็นบาทเต็มแบบ ≥ 0.50 ปัดขึ้น / < 0.50 ปัดทิ้ง ไม่มีค่าจ้างเลย (≤ 0) = 0
+ * ตัวอย่าง: 12,345 → 617 · 800 → 83 · 8,750 → 438 · 35,000 → 875
+ */
+export function computeSocialSecurity(wage: number): number {
+  if (!(wage > 0)) return 0
+  const base = Math.min(Math.max(wage, SS_MIN_WAGE), SS_MAX_WAGE)
+  // toFixed(6) กันค่า .5 พอดีที่ float เก็บเป็น .4999… แล้วถูกปัดลง
+  return Math.round(Number((base * SS_RATE).toFixed(6)))
+}
 
 export type SocialSecurityPreview =
   | { kind: 'amount'; amount: number }
@@ -29,5 +46,5 @@ export function socialSecurityPreview(input: {
 }): SocialSecurityPreview {
   if (input.payType !== 'MONTHLY' || !input.socialSecurityEnabled) return { kind: 'hidden' }
   if (input.taxScheme === 'OFF_SYSTEM_WHT') return { kind: 'off-system' }
-  return { kind: 'amount', amount: Math.min(input.baseSalary * SS_RATE, SS_MAX) }
+  return { kind: 'amount', amount: computeSocialSecurity(input.baseSalary) }
 }

@@ -41,6 +41,7 @@ function row(overrides: Record<string, unknown> = {}) {
     managerId: null, teamLeaderId: null, baseSalary: 30000,
     payType: 'MONTHLY', taxScheme: 'NORMAL', dailyRate: null,
     positionAllowance: null, diligenceAllowanceDefault: null, studentLoanDeduction: null,
+    monthlyTaxOverride: null, lastWorkingDate: null,
     socialSecurity: true, isCoworker: false, divisionId: null, sectionId: null,
     employeeProfile: null,
     ...overrides,
@@ -83,6 +84,7 @@ describe('snapshotEmployeeForAudit', () => {
       'employeeType', 'managerId',
       'teamLeaderId', 'baseSalary', 'payType', 'taxScheme', 'dailyRate',
       'positionAllowance', 'diligenceAllowanceDefault', 'studentLoanDeduction',
+      'monthlyTaxOverride', 'lastWorkingDate',
       'socialSecurity', 'isCoworker',
       'divisionId', 'sectionId',
       'nationality', 'maritalStatus', 'personalEmail', 'religion', 'paymentMethod',
@@ -303,6 +305,34 @@ describe('summarizeEmployeeChanges', () => {
     expect(lines.some((l) => l.startsWith('เบี้ยขยัน'))).toBe(false)
     expect(lines.some((l) => l.startsWith('ยอดหัก กยศ.'))).toBe(false)
     expect(lines.some((l) => l.includes('Junior') && l.includes('Senior'))).toBe(true)
+  })
+
+  it('(2026-10) records who changed the monthly tax override from what to what — formula (—) → ฿1,000, then cleared back', () => {
+    const formula = snapshotEmployeeForAudit(row({ monthlyTaxOverride: null }))
+    const set = snapshotEmployeeForAudit(row({ monthlyTaxOverride: 1000 }))
+    expect(set.monthlyTaxOverride).toBe(1000)
+    const setLines = summarizeEmployeeChanges(formula, set, emptyLookup(), true)
+    expect(setLines).toContainEqual(expect.stringMatching(/^ภาษี ภงด\.1 ต่อเดือน \(กำหนดเอง\).*—.*฿1,000/))
+    const clearLines = summarizeEmployeeChanges(set, formula, emptyLookup(), true)
+    expect(clearLines).toContainEqual(expect.stringMatching(/^ภาษี ภงด\.1 ต่อเดือน \(กำหนดเอง\).*฿1,000.*—/))
+  })
+
+  it('(2026-10) hides the monthly tax override line from viewers without salary access', () => {
+    const lines = summarizeEmployeeChanges(
+      snapshotEmployeeForAudit(row({ monthlyTaxOverride: null })),
+      snapshotEmployeeForAudit(row({ monthlyTaxOverride: 1000 })),
+      emptyLookup(),
+      false,
+    )
+    expect(lines.some((l) => l.startsWith('ภาษี ภงด.1'))).toBe(false)
+  })
+
+  it('(2026-10) snapshots lastWorkingDate as a plain YYYY-MM-DD and shows the change', () => {
+    const before = snapshotEmployeeForAudit(row({ lastWorkingDate: null }))
+    const after = snapshotEmployeeForAudit(row({ lastWorkingDate: new Date('2026-10-10') }))
+    expect(after.lastWorkingDate).toBe('2026-10-10')
+    const lines = summarizeEmployeeChanges(before, after, emptyLookup(), false)
+    expect(lines.some((l) => l.startsWith('วันทำงานวันสุดท้าย'))).toBe(true)
   })
 })
 
