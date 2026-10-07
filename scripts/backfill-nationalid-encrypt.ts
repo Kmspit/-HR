@@ -42,23 +42,24 @@
  *     same command again to do the next batch; the pending-rows filter
  *     means it automatically picks up where the previous run left off.
  */
-import { config } from 'dotenv'
-import { resolve } from 'path'
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 import { pathToFileURL } from 'url'
 
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { encryptedNationalIdFields } from '../lib/national-id'
 import { decryptField, FIELD_SALTS } from '../lib/field-crypto'
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
-const prisma =
-  url && token
-    ? new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('backfill-nationalid-encrypt.ts')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
     : new PrismaClient()
+}
 
 /** Every row this script still needs to process — has a plaintext nationalId
  *  but is missing either new column. Used both to fetch a batch (take: N)
@@ -278,10 +279,11 @@ async function main() {
 // touches the DB or exits the process as a side effect. Same guard as
 // scripts/purge-user.mjs.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main()
+  connectDb()
+    .then(main)
     .catch((err) => {
       console.error('script crashed:', err)
       process.exitCode = 1
     })
-    .finally(() => prisma.$disconnect())
+    .finally(() => prisma?.$disconnect())
 }

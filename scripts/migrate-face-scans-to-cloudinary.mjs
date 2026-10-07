@@ -2,16 +2,14 @@
  * ย้ายรูปจาก Turso (base64) → Cloudinary authenticated
  * รัน: npm run db:migrate:face-scans-to-cloudinary
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { createClient } from '@libsql/client'
 import { v2 as cloudinary } from 'cloudinary'
 
-config({ path: resolve(process.cwd(), '.env.local') })
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
+const { url, authToken: token } = await requireProdTarget('migrate-face-scans-to-cloudinary.mjs')
 
 if (!url || !token) {
   console.error('ต้องมี TURSO_DATABASE_URL และ TURSO_AUTH_TOKEN')

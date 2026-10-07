@@ -1,18 +1,9 @@
 // Script: push Prisma schema to Turso
 import { createClient } from '@libsql/client'
 import { spawnSync } from 'child_process'
-import { readFileSync } from 'fs'
+import { requireProdTarget } from './lib/prod-guard.mjs'
 
-// Load .env manually
-const envFile = readFileSync('.env', 'utf8')
-const envVars = {}
-for (const line of envFile.split('\n')) {
-  const match = line.match(/^([^#=]+)=["']?(.+?)["']?\s*$/)
-  if (match) envVars[match[1].trim()] = match[2].trim()
-}
-
-const TURSO_URL   = envVars.TURSO_DATABASE_URL
-const TURSO_TOKEN = envVars.TURSO_AUTH_TOKEN
+const { url: TURSO_URL, authToken: TURSO_TOKEN } = await requireProdTarget('push-to-turso.mjs')
 
 console.log('Connecting to Turso:', TURSO_URL)
 const db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN })

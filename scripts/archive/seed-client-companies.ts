@@ -4,24 +4,19 @@
  */
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
-import { config } from 'dotenv'
-import { resolve } from 'path'
+import { loadLocalEnv, resolveDbTarget } from '../lib/prod-guard.mjs'
 
-config({ path: resolve(process.cwd(), '.env') })
-config({ path: resolve(process.cwd(), '.env.local') })
+loadLocalEnv()
 
-function makePrisma() {
-  const url = process.env.TURSO_DATABASE_URL
-  const token = process.env.TURSO_AUTH_TOKEN
-  if (url && token) {
-    console.log('Using Turso:', url)
-    return new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
-  }
-  console.log('Using local SQLite')
-  return new PrismaClient()
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('seed-client-companies.ts')
+  console.log(prod ? `Using Turso (PRODUCTION): ${prod.url}` : 'Using local SQLite')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
+    : new PrismaClient()
 }
-
-const prisma = makePrisma()
 
 const COMPANY_NAMES = [
   'บริษัท บาร์เกน พ้อยท์ จำกัด (BPL)',
@@ -103,9 +98,10 @@ async function main() {
   }
 }
 
-main()
+connectDb()
+  .then(main)
   .catch((e) => {
     console.error(e)
     process.exit(1)
   })
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma?.$disconnect())

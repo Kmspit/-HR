@@ -13,22 +13,23 @@
  *
  * Usage: npx tsx scripts/verify-profile-self-service.ts
  */
-import { config } from 'dotenv'
-import { resolve } from 'path'
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { encryptField, decryptField, FIELD_SALTS } from '../lib/field-crypto'
 import { canAccessUserProfile, canEditUserProfile } from '../lib/user-access'
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
-const prisma =
-  url && token
-    ? new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('verify-profile-self-service.ts')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
     : new PrismaClient()
+}
 
 const stamp = Date.now()
 const tag = `script-verify-${stamp}`
@@ -214,9 +215,10 @@ async function main() {
   if (failed > 0) process.exitCode = 1
 }
 
-main()
+connectDb()
+  .then(main)
   .catch((err) => {
     console.error('verification script crashed:', err)
     process.exitCode = 1
   })
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma?.$disconnect())

@@ -37,6 +37,23 @@ divisionId/departmentId/baseSalary เป็น null) ทำให้เจ้�
    (`select` ฟิลด์ที่จะแก้ทั้งหมดเก็บไว้ในตัวแปรก่อน) แล้ว **restore จาก
    snapshot นั้นตอน cleanup** ไม่ใช่ hardcode ค่าที่คิดว่าน่าจะถูก
 
+## การต่อ production DB จากเครื่องนี้ (ตั้งแต่ 2026-10-07)
+
+เครื่องนี้ต่อ local `prisma/prisma/dev.db` เป็นค่าเริ่มต้นเสมอ — `TURSO_*` ถูกย้าย
+ออกจาก `.env`/`.env.local` ไปไว้ที่ `%USERPROFILE%.hrflow-prod.env` (นอก repo
+ไม่มีอะไรโหลดอัตโนมัติ)
+
+- `lib/prisma.ts` หยุดทำงานทันทีถ้าเจอ `TURSO_*` ขณะ NODE_ENV ไม่ใช่ production
+  (ยกเว้น `ALLOW_PROD=1` หรือรันบน Vercel) — ดู `lib/prod-guard.ts`
+- ทุกสคริปต์ใน `scripts/` + `prisma/seed.ts` ใช้ `scripts/lib/prod-guard.mjs`:
+  ไม่โหลด `TURSO_*` จากไฟล์ env เด็ดขาด, ไม่ใส่ `--prod` → local เสมอ,
+  ใส่ `--prod` → ต้องมี `TURSO_*` ใน shell + พิมพ์ชื่อ database ยืนยัน
+- รันกับ prod: `node --env-file=$HOME/.hrflow-prod.env scripts/<x> --prod ...`
+  (เช่น `scripts/purge-user.mjs --prod --dry-run <email>`) — ยังต้องทำตามกฎ
+  live-DB และ batch deletion ด้านบน/ล่างทุกข้อ
+- **ห้ามคัดลอก `TURSO_*` กลับเข้า `.env`/`.env.local`** และห้ามเพิ่มสคริปต์ใหม่
+  ที่อ่าน `TURSO_*` เองโดยไม่ผ่าน `requireProdTarget`/`resolveDbTarget`
+
 ## กฎบังคับ — การลบข้อมูลเป็นชุด (batch deletion)
 
 เพิ่มหลัง 2026-09-07: ระหว่างเตรียมล้างข้อมูลก่อน pilot launch ผู้ใช้อนุมัติ

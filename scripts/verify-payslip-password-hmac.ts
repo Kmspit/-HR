@@ -6,22 +6,24 @@
  *
  * Usage: npx tsx scripts/verify-payslip-password-hmac.ts
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { payslipPdfPassword } from '../lib/payslip-pdf-encrypt'
 import { getPayslipBlockers } from '../lib/payslip-preflight'
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
-const prisma =
-  url && token
-    ? new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('verify-payslip-password-hmac.ts')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
     : new PrismaClient()
+}
 
 const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
 
@@ -89,9 +91,10 @@ async function main() {
   if (failed > 0) process.exitCode = 1
 }
 
-main()
+connectDb()
+  .then(main)
   .catch((err) => {
     console.error('verification script crashed:', err)
     process.exitCode = 1
   })
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma?.$disconnect())
