@@ -53,6 +53,12 @@ divisionId/departmentId/baseSalary เป็น null) ทำให้เจ้�
   live-DB และ batch deletion ด้านบน/ล่างทุกข้อ
 - **ห้ามคัดลอก `TURSO_*` กลับเข้า `.env`/`.env.local`** และห้ามเพิ่มสคริปต์ใหม่
   ที่อ่าน `TURSO_*` เองโดยไม่ผ่าน `requireProdTarget`/`resolveDbTarget`
+- **ห้ามรัน `vercel pull` / `vercel env pull` ในเครื่องนี้เด็ดขาด** (ทุก environment
+  รวม development) — คำสั่งพวกนี้เขียนค่า env ของ Vercel (รวม `TURSO_*` และ
+  `VERCEL_ENV=production|preview`) ลง `.env.local` / `.vercel/.env.*.local` ซึ่ง
+  Next.js โหลดเอง และ `VERCEL_ENV`/`NODE_ENV=production` คือเงื่อนไขยกเว้นของ
+  prod-guard — แอปจะต่อ prod ได้โดยตัวกันไม่ทำงาน ถ้าต้องดูค่า env ให้ใช้
+  `vercel env ls` (เห็นแค่ชื่อ) แทน
 
 ## กฎบังคับ — การลบข้อมูลเป็นชุด (batch deletion)
 
