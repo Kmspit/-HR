@@ -156,6 +156,7 @@ export async function PATCH(
       // ตอน generate เดือนนี้เสมอ ไม่อ่าน User ปัจจุบันซ้ำ — กัน edge case ที่ HR
       // แก้ค่าเหล่านี้ของ user หลัง generate ไปแล้วแต่ก่อน approve เดือนนี้
       const totals = computePayrollTotals({
+        year: payroll.year,
         baseSalary: payroll.baseSalary,
         positionAllowance: payroll.positionAllowance,
         diligenceAllowance: payroll.diligenceAllowance,

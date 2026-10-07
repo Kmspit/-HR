@@ -45,7 +45,7 @@ import {
   profileInputErrorClass,
 } from '@/lib/profile-validators-client'
 import { EMPLOYEE_TYPES, PAY_TYPES, TAX_SCHEMES } from '@/lib/access-control'
-import { computeSocialSecurity, socialSecurityPreview } from '@/lib/payroll-constants'
+import { computeSocialSecurity, currentBangkokYear, socialSecurityPreview } from '@/lib/payroll-constants'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
 import { PREFIX_OPTIONS } from '@/lib/prefix-options'
 import { USER_STATUS_LABEL as STATUS_LABELS } from '@/lib/status-labels'
@@ -862,7 +862,7 @@ export default function EmployeeEditClient({
                 const formulaLabel = (() => {
                   if (form.payType === 'DAILY') return 'ขึ้นกับจำนวนวันทำงานแต่ละเดือน (คำนวณตอนสร้าง payroll)'
                   const ssBase = form.baseSalary + form.positionAllowance
-                  const ss = form.socialSecurity ? computeSocialSecurity(ssBase) : 0
+                  const ss = form.socialSecurity ? computeSocialSecurity(ssBase, currentBangkokYear()) : 0
                   const gross = form.baseSalary + form.positionAllowance + form.diligenceAllowanceDefault
                   const tax = computeMonthlyTax(gross, ss).monthlyWithholding
                   return `฿${tax.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/เดือน (ประมาณจากเดือนเต็ม ไม่รวมคอมมิชชั่น/OT/โบนัส)`

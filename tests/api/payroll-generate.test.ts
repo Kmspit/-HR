@@ -94,6 +94,7 @@ import { countUnrecordedAbsenceDays } from '@/lib/payroll-unrecorded-absence'
 import { computeMonthlyTax } from '@/lib/payroll-tax'
 import { payrollPeriodRange } from '@/lib/payroll-period'
 import { POST } from '@/app/api/payroll/generate/route'
+import { ssCeilingWarning } from '@/lib/payroll-constants'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -269,7 +270,9 @@ describe('POST /api/payroll/generate — leavers: lastWorkingDate decides the pe
 
     expect(payload.baseSalary).toBe(20000)
     expect(payload.note).toContain('หลังวันทำงานวันสุดท้าย 10 วัน')
-    expect(payload.criticalWarning).toBeNull()
+    // period math needs year 2025 here, which is outside the SS ceiling table → the
+    // ceiling warning is expected and must be the ONLY warning on this row
+    expect(payload.criticalWarning).toBe(ssCeilingWarning(2025))
     expect(data.disabledIncluded).toEqual([{ userId: 'emp-3', name: 'พนักงาน สาม' }])
     expect(data.disabledWarning).toBeUndefined()
   })
@@ -317,7 +320,9 @@ describe('POST /api/payroll/generate — leavers: lastWorkingDate decides the pe
       { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 30000, socialSecurity: true, branchId: 'b1', status: 'ACTIVE', startDate: new Date('2020-01-01') },
     ] as any)
 
-    const res = await POST(makeReq({ month: 1, year: 2025 }))
+    // year 2026 (in the SS ceiling table) — 2025 would now add the "no SS ceiling for
+    // this year" criticalWarning; dates here come from the mocked payroll period
+    const res = await POST(makeReq({ month: 1, year: 2026 }))
     const data = await res.json()
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
 
@@ -838,7 +843,9 @@ describe('POST /api/payroll/generate — prorate (2026-10 formulas) + netSalary 
     expect(payload.socialSecurity).toBe(750) // 5% of the 15,000 actually paid, not of 30,000
     expect(computeMonthlyTax).toHaveBeenCalledWith(15000, 750)
     expect(payload.netSalary).toBe(14250)
-    expect(payload.criticalWarning).toBeNull()
+    // period math needs year 2025 here, which is outside the SS ceiling table → the
+    // ceiling warning is expected and must be the ONLY warning on this row
+    expect(payload.criticalWarning).toBe(ssCeilingWarning(2025))
   })
 
   it('absences are docked at the FULL salary ÷ 30 per day even when the period is prorated (no more ÷ 26, no more prorated base)', async () => {
@@ -973,7 +980,9 @@ describe('POST /api/payroll/generate — prorate (2026-10 formulas) + netSalary 
       { id: 'emp-1', name: 'พนักงาน หนึ่ง', baseSalary: 26000, payType: 'MONTHLY', status: 'ACTIVE', startDate: FULL_PERIOD_START, socialSecurity: true, branchId: 'b1' },
     ] as any)
 
-    await POST(makeReq({ month: 1, year: 2025 }))
+    // year 2026 (in the SS ceiling table) — 2025 would now add the "no SS ceiling for
+    // this year" criticalWarning; dates here come from the mocked payroll period
+    await POST(makeReq({ month: 1, year: 2026 }))
     const payload = vi.mocked(prisma.payroll.upsert).mock.calls[0][0].update as any
 
     expect('criticalWarning' in payload).toBe(true)
@@ -1080,5 +1089,49 @@ describe('POST /api/payroll/generate — review-me warnings (2026-10, never bloc
     const res = await POST(makeReq({ month: 1, year: 2025 }))
     const data = await res.json()
     expect(data.highBaseSalaryWarning).toBeUndefined()
+  })
+})
+
+describe('POST /api/payroll/generate — SS ceiling by year (2026-10)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(hrSession as any)
+    vi.mocked(prisma.payroll.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.payroll.upsert).mockResolvedValue({ id: 'payroll-x' } as any)
+    vi.mocked(prisma.payroll.findUnique).mockResolvedValue({ status: 'DRAFT' } as any)
+    vi.mocked(prisma.attendance.findMany).mockResolvedValue([] as any)
+    vi.mocked(computeMonthlyTax).mockReturnValue({ monthlyWithholding: 0 } as any)
+  })
+
+  const employees = [
+    { id: 'emp-1', name: 'คนมีประกันสังคม', baseSalary: 20000, payType: 'MONTHLY', socialSecurity: true, startDate: new Date('2020-01-01'), branchId: 'b1' },
+    { id: 'emp-2', name: 'คนนอกระบบ', baseSalary: 20000, payType: 'MONTHLY', taxScheme: 'OFF_SYSTEM_WHT', socialSecurity: true, startDate: new Date('2020-01-01'), branchId: 'b1' },
+  ]
+  const payloadFor = (userId: string) =>
+    vi.mocked(prisma.payroll.upsert).mock.calls.find((c) => (c[0].where as any).userId_month_year.userId === userId)![0].update as any
+
+  it('year in the table (2028 = พ.ศ. 2571): no ceiling warning anywhere', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue(employees as any)
+    const res = await POST(makeReq({ month: 1, year: 2028 }))
+    const data = await res.json()
+    expect(data.ssCeilingWarning).toBeUndefined()
+    expect(payloadFor('emp-1').socialSecurity).toBe(875)
+    expect(payloadFor('emp-1').criticalWarning).toBeNull()
+  })
+
+  it('year not in the table (2029): uses the latest ceiling (17,500 → 875) and warns HR on the row + in the response', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue(employees as any)
+    const res = await POST(makeReq({ month: 1, year: 2029 }))
+    const data = await res.json()
+
+    const p1 = payloadFor('emp-1')
+    expect(p1.socialSecurity).toBe(875)
+    expect(p1.criticalWarning).toContain('ยังไม่มีเพดานประกันสังคมของปี พ.ศ. 2572')
+    // OFF_SYSTEM_WHT has no SS at all, so the ceiling is irrelevant → no warning on that row
+    expect(payloadFor('emp-2').socialSecurity).toBe(0)
+    expect(payloadFor('emp-2').criticalWarning).toBeNull()
+
+    expect(data.ssCeilingWarning).toContain('พ.ศ. 2572')
+    expect(data.ssCeilingWarning).toContain('(1 คนที่คิดประกันสังคมงวดนี้)')
   })
 })

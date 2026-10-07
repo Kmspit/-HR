@@ -1,6 +1,6 @@
 import { roundMoney } from '@/lib/payroll-late-deduction'
 import { computeMonthlyTax, computeOffSystemWht, parseTaxDetail } from '@/lib/payroll-tax'
-import { computeSocialSecurity } from '@/lib/payroll-constants'
+import { computeSocialSecurity, ssCeilingWarning } from '@/lib/payroll-constants'
 
 /**
  * รวมสูตรคำนวณ SS/ภาษี/netSalary ของ Payroll ไว้จุดเดียว — ทั้ง generate route
@@ -14,7 +14,8 @@ import { computeSocialSecurity } from '@/lib/payroll-constants'
  * รอบโดนหัก SS/ภาษีเต็มเดือน และ PATCH กับ generate ใช้ฐานไม่ตรงกัน)
  *
  * ฐาน SS: baseSalary + positionAllowance + backPay (เบี้ยขยัน/คอมมิชชั่น/OT/
- * โบนัส ไม่เข้า) — คิดผ่าน computeSocialSecurity (ฐาน 1,650–17,500, ปัดบาทเต็ม)
+ * โบนัส ไม่เข้า) — คิดผ่าน computeSocialSecurity (ฐาน 1,650–เพดานของปี payroll,
+ * ปัดบาทเต็ม — เพดานแยกตามปี ดู SS_MAX_WAGE_BY_YEAR)
  * ฐานภาษี 40(1)+40(2): baseSalary + positionAllowance + diligenceAllowance +
  * backPay + commission + overtimePay + bonus รวมก้อนเดียว — ไม่รวมค่าวิชาชีพ
  * 40(6) (professionalFee, คำนวณภาษีคนละระบบ 3% flat แยกต่างหาก) กยศ./เงิน
@@ -27,6 +28,8 @@ import { computeSocialSecurity } from '@/lib/payroll-constants'
  *   หัก ณ ที่จ่ายแบบเหมา 3% ของยอดที่จ่ายจริง (ภงด.3) — ไม่สนใจ monthlyTaxOverride
  */
 export type PayrollTotalsInput = {
+  /** ปีของ payroll (ค.ศ., = Payroll.year) — ใช้หาเพดานประกันสังคมของปีนั้น */
+  year: number
   /** ค่าจ้างที่จ่ายจริงงวดนี้ (หลัง prorate) — ฐานเดียวของ SS/ภาษี/net */
   baseSalary: number
   positionAllowance: number
@@ -75,6 +78,9 @@ export type PayrollTotalsResult = {
    *  เขียนคำเตือนตอนยอดหักรวมมากกว่ารายได้รวม */
   totalIncome: number
   totalDeductions: number
+  /** (2026-10) คำเตือนเมื่อปีของ payroll ไม่มีในตารางเพดานประกันสังคม (ใช้เพดาน
+   *  ล่าสุดแทน) — null ถ้ามีในตาราง หรือไม่ได้คิดประกันสังคมงวดนี้ */
+  ssCeilingWarning: string | null
 }
 
 export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsResult {
@@ -84,8 +90,8 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
   // ฐาน SS = ค่าจ้างหลัง prorate (รายวัน = ค่าจ้างที่ได้จริง) + ค่าตำแหน่ง + ตกเบิก
   // ไม่หักขาด/ลาไม่รับเงิน/สาย, คอมมิชชั่นไม่เข้าฐาน, OFF_SYSTEM_WHT ไม่หัก SS
   const ssBase = input.baseSalary + input.positionAllowance + input.backPay
-  const socialSecurity =
-    !isOffSystemWht && input.socialSecurityEnabled ? computeSocialSecurity(ssBase) : 0
+  const ssApplies = !isOffSystemWht && input.socialSecurityEnabled
+  const socialSecurity = ssApplies ? computeSocialSecurity(ssBase, input.year) : 0
 
   // POLICY #2/#5/#6 (ยืนยัน 2026-10-07, ดู CLAUDE.md): ฐานภาษี = รายได้รวม ไม่หักขาด/
   // ลาไม่รับเงิน/สาย; OFF_SYSTEM_WHT = 3% ภ.ง.ด.3; ภ.ง.ด.1 ใช้ monthlyTaxOverride
@@ -160,6 +166,7 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
     negativeClampAmount,
     totalIncome,
     totalDeductions,
+    ssCeilingWarning: ssApplies ? ssCeilingWarning(input.year) : null,
   }
 }
 
