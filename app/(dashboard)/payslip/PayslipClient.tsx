@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, type ReactNode } from 'react'
 import { FileText, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react'
 import LateDeductionDetail from '@/components/payroll/LateDeductionDetail'
-import { formatLateMinutes } from '@/lib/utils'
 import { payrollPeriodRange } from '@/lib/payroll-period'
+import { buildPayslipLineItems, formatPayslipAmount, type PayslipLineItem } from '@/lib/payslip-line-items'
 
 type Payslip = {
   id: string
@@ -26,6 +26,23 @@ type Payslip = {
   lateBillableMinutes?: number
   lateDeductionDetail?: string | null
   status: string
+  positionAllowance?: number
+  diligenceAllowance?: number
+  professionalFee?: number
+  commission?: number
+  overtimePay?: number
+  bonus?: number
+  backPay?: number
+  otherAddition?: number
+  taxScheme?: string | null
+  taxDetail?: string | null
+  professionalFeeTax?: number
+  securityDepositDeduction?: number
+  securityDepositInstallmentNo?: number | null
+  securityDepositTotalInstallments?: number | null
+  earlyLeaveDeduction?: number
+  otherDeduction?: number
+  studentLoanDeduction?: number
 }
 
 const MONTH_NAMES = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
@@ -136,50 +153,44 @@ export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
               {isOpen && (
                 <div className="border-t border-white/10 p-4 space-y-2">
                   <p className="text-xs text-white/40">{formatPayrollPeriodCaption(p.month, p.year)}</p>
-                  {p.payType === 'DAILY' ? (
-                    <Row
-                      label={`ค่าจ้างรายวัน (${p.daysWorked ?? 0} วัน × ฿${(p.dailyRateUsed ?? 0).toLocaleString()})`}
-                      value={`฿${p.baseSalary.toLocaleString()}`}
-                    />
-                  ) : (
-                    <Row label="เงินเดือนฐาน" value={`฿${p.baseSalary.toLocaleString()}`} />
-                  )}
-                  <div className="border-t border-white/5 pt-2 space-y-2">
-                    <p className="text-xs text-white/30 font-medium uppercase tracking-wider">รายการหัก</p>
-                    {p.lateDeduction > 0 && (
+                  {(() => {
+                    // 2026-10 feat/payslip-all-items — แหล่งเดียวกับ PDF (lib/payroll-pdf.ts)
+                    const items = buildPayslipLineItems({
+                      ...p,
+                      socialSecurity: p.ssDeduction,
+                      lateMinutes: p.lateBillableMinutes ?? p.lateMinutes,
+                    })
+                    return (
                       <>
-                        <Row
-                          label={`หักมาสาย (${p.lateDays} วัน · ${formatLateMinutes(p.lateBillableMinutes ?? p.lateMinutes)})`}
-                          value={`-฿${p.lateDeduction.toFixed(2)}`}
-                          red
+                        <LineItemSection
+                          title="รายได้"
+                          items={items.earnings}
+                          totalLabel="รวมรายได้ทั้งหมด"
+                          total={items.totalEarnings}
                         />
-                        <div className="pl-2 border-l border-white/10">
-                          <LateDeductionDetail
-                            baseSalary={p.baseSalary}
-                            lateDeduction={p.lateDeduction}
-                            lateBillableMinutes={p.lateBillableMinutes ?? p.lateMinutes}
-                            lateDays={p.lateDays}
-                            lateDeductionDetail={p.lateDeductionDetail}
-                          />
-                        </div>
+                        <LineItemSection
+                          title="รายการหัก"
+                          items={items.deductions}
+                          totalLabel="รวมรายการหัก"
+                          total={items.totalDeductions}
+                          red
+                          extra={(item) =>
+                            item.key === 'attendance' && p.lateDeduction > 0 ? (
+                              <div className="pl-2 border-l border-white/10">
+                                <LateDeductionDetail
+                                  baseSalary={p.baseSalary}
+                                  lateDeduction={p.lateDeduction}
+                                  lateBillableMinutes={p.lateBillableMinutes ?? p.lateMinutes}
+                                  lateDays={p.lateDays}
+                                  lateDeductionDetail={p.lateDeductionDetail}
+                                />
+                              </div>
+                            ) : null
+                          }
+                        />
                       </>
-                    )}
-                    {p.absentDeduction > 0 && (
-                      <Row label={`หักขาดงาน (${p.absentDays} วัน)`} value={`-฿${p.absentDeduction.toFixed(2)}`} red />
-                    )}
-                    {p.unpaidLeave > 0 && (
-                      <Row label="หักลาไม่รับเงิน" value={`-฿${p.unpaidLeave.toFixed(2)}`} red />
-                    )}
-                    {p.ssDeduction > 0 && (
-                      <Row label="ประกันสังคม (5%)" value={`-฿${p.ssDeduction.toFixed(2)}`} red />
-                    )}
-                    {p.taxDeduction > 0 && (
-                      <Row label="ภาษีหัก ณ ที่จ่าย (ภงด1)" value={`-฿${p.taxDeduction.toFixed(2)}`} red />
-                    )}
-                    {p.lateDeduction === 0 && p.absentDeduction === 0 && p.unpaidLeave === 0 && p.ssDeduction === 0 && p.taxDeduction === 0 && (
-                      <p className="text-white/30 text-sm">ไม่มีรายการหัก</p>
-                    )}
-                  </div>
+                    )
+                  })()}
                   <div className="border-t border-white/10 pt-3 flex justify-between items-center">
                     <span className="text-white font-bold">รับสุทธิ</span>
                     <span className="text-green-400 font-bold text-lg">฿{p.netSalary.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
@@ -205,11 +216,45 @@ export default function PayslipClient({ payrolls }: { payrolls: Payslip[] }) {
   )
 }
 
-function Row({ label, value, red = false }: { label: string; value: string; red?: boolean }) {
+function LineItemSection({
+  title,
+  items,
+  totalLabel,
+  total,
+  red = false,
+  extra,
+}: {
+  title: string
+  items: PayslipLineItem[]
+  totalLabel: string
+  total: number
+  red?: boolean
+  extra?: (item: PayslipLineItem) => ReactNode
+}) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-white/60">{label}</span>
-      <span className={red ? 'text-red-400' : 'text-white/80'}>{value}</span>
+    <div className="border-t border-white/5 pt-2 space-y-1.5">
+      <p className="text-xs text-white/30 font-medium uppercase tracking-wider">{title}</p>
+      {items.map((item) => {
+        const value = formatPayslipAmount(item.amount)
+        return (
+          <div key={item.key} className="space-y-0.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">{item.label}</span>
+              <span className={value === '-' ? 'text-white/30' : red ? 'text-red-400' : 'text-white/80'}>
+                {value === '-' ? value : `฿${value}`}
+              </span>
+            </div>
+            {item.detail?.map((d) => (
+              <p key={d} className="pl-3 text-[11px] text-white/35">{d}</p>
+            ))}
+            {extra?.(item)}
+          </div>
+        )
+      })}
+      <div className="flex justify-between text-sm font-semibold border-t border-white/5 pt-1.5">
+        <span className="text-white/80">{totalLabel}</span>
+        <span className="text-white/90">฿{total.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </div>
     </div>
   )
 }

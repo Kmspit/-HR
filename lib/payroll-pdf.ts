@@ -1,8 +1,8 @@
 import { rgb } from 'pdf-lib'
 import { createPdfKitDocument, drawRect, drawHLine, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
-import { formatLateMinutes } from '@/lib/utils'
 import { payrollPeriodRange } from '@/lib/payroll-period'
+import { buildPayslipLineItems, formatPayslipAmount, type PayslipLineItem } from '@/lib/payslip-line-items'
 
 export type SalarySlipInput = {
   companyName: string
@@ -38,6 +38,15 @@ export type SalarySlipInput = {
   securityDepositDeduction?: number
   securityDepositInstallmentNo?: number | null
   securityDepositTotalInstallments?: number | null
+  /** (2026-10, feat/payslip-all-items) field ที่นับใน netSalary อยู่แล้วแต่สลิป
+   * เดิมไม่เคยแสดง — ส่งต่อให้ lib/payslip-line-items.ts จัดแถวเท่านั้น */
+  backPay?: number
+  professionalFee?: number
+  professionalFeeTax?: number
+  earlyLeaveDeduction?: number
+  /** ใช้แยกช่อง "หักภาษี" (OFF_SYSTEM_WHT, ภงด.3) กับ ภงด1(40)(1)/(40)(2) */
+  taxScheme?: string | null
+  taxDetail?: string | null
   netSalary: number
   lateDays: number
   absentDays: number
@@ -103,11 +112,6 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
     drawHLine(doc, y, x1, x2, { thickness: 0.5, color: c.line })
   }
 
-  const row = (label: string, value: string, y: number, valueColor = c.dark) => {
-    drawText(label, 60, y, 10, c.mid)
-    drawText(value, W - 60 - widthOf(doc, value, 10), y, 10, valueColor)
-  }
-
   // Header bar
   drawRect(doc, 0, H - 70, W, 70, { fill: c.accent })
   drawText(input.companyName, 40, H - 38, 13, c.white)
@@ -129,96 +133,52 @@ export async function generateSalarySlipPdf(input: SalarySlipInput, password?: s
   const empMeta = [input.employeeId ? `รหัส: ${input.employeeId}` : null, input.department ?? null, input.position ?? null].filter(Boolean).join('  ·  ')
   if (empMeta) drawText(empMeta, 52, y - 36, 9, c.mid)
 
-  const isDaily = input.payType === 'DAILY'
-
-  // Section: รายได้
-  y = H - 182
-  drawText('รายได้', 60, y, 11, c.accent)
-  drawLine(y - 6)
-  y -= 20
-  if (isDaily) {
-    row(
-      `ค่าจ้างรายวัน (${fmt(input.daysWorked ?? 0)} วัน × ฿${fmt(input.dailyRateUsed ?? 0)})`,
-      `฿${fmt(input.baseSalary)}`,
-      y,
-    )
-  } else {
-    row('เงินเดือนฐาน', `฿${fmt(input.baseSalary)}`, y)
+  // Sections: รายได้ (ซ้าย) | รายการหัก (ขวา) — 2026-10 feat/payslip-all-items:
+  // แสดงครบทุกแถวตามลำดับคงที่จาก lib/payslip-line-items.ts (แหล่งเดียวกับ
+  // หน้าเว็บ /payslip) ค่า 0/ไม่มีข้อมูลแสดง "-" — วาง 2 คอลัมน์คู่กันเพราะ
+  // รายการครบทุกแถวเรียงคอลัมน์เดียวแล้วล้นหน้า A4 ทับ footer
+  const items = buildPayslipLineItems(input)
+  const sectionTop = H - 182
+  const colGap = 11
+  const colW = (W - 80 - colGap) / 2
+  const drawColumn = (
+    title: string,
+    lines: PayslipLineItem[],
+    totalLabel: string,
+    total: number,
+    x: number,
+    amountColor: ReturnType<typeof rgb>,
+  ): number => {
+    const labelX = x + 8
+    const rightX = x + colW - 8
+    const amountText = (amount: number | null) => {
+      const s = formatPayslipAmount(amount)
+      return s === '-' ? s : `฿${s}`
+    }
+    let cy = sectionTop
+    drawText(title, labelX, cy, 11, c.accent)
+    drawHLine(doc, cy - 6, x, x + colW, { thickness: 0.5, color: c.line })
+    cy -= 19
+    for (const item of lines) {
+      const value = amountText(item.amount)
+      drawText(item.label, labelX, cy, 9.5, c.mid)
+      drawText(value, rightX - widthOf(doc, value, 9.5), cy, 9.5, value === '-' ? c.light : amountColor)
+      cy -= 14
+      for (const d of item.detail ?? []) {
+        drawText(d, labelX + 8, cy + 2, 7.5, c.light)
+        cy -= 10
+      }
+    }
+    drawHLine(doc, cy + 6, x, x + colW, { thickness: 0.5, color: c.line })
+    cy -= 8
+    const totalValue = `฿${fmt(total)}`
+    drawText(totalLabel, labelX, cy, 10, c.dark)
+    drawText(totalValue, rightX - widthOf(doc, totalValue, 10), cy, 10, c.dark)
+    return cy
   }
-  if ((input.positionAllowance ?? 0) > 0) {
-    y -= 16
-    row('ค่าตำแหน่ง', `+฿${fmt(input.positionAllowance ?? 0)}`, y, c.green)
-  }
-  if ((input.diligenceAllowance ?? 0) > 0) {
-    y -= 16
-    row('เบี้ยขยัน', `+฿${fmt(input.diligenceAllowance ?? 0)}`, y, c.green)
-  }
-  if ((input.commission ?? 0) > 0) {
-    y -= 16
-    row('คอมมิชชั่น', `+฿${fmt(input.commission ?? 0)}`, y, c.green)
-  }
-  if ((input.overtimePay ?? 0) > 0) {
-    y -= 16
-    row('ค่าล่วงเวลา (OT)', `+฿${fmt(input.overtimePay ?? 0)}`, y, c.green)
-  }
-  if ((input.bonus ?? 0) > 0) {
-    y -= 16
-    row('โบนัส', `+฿${fmt(input.bonus ?? 0)}`, y, c.green)
-  }
-  if (input.otherAddition > 0) {
-    y -= 16
-    row('รายได้อื่นๆ', `+฿${fmt(input.otherAddition)}`, y, c.green)
-  }
-
-  // Section: รายการหัก
-  y -= 26
-  drawText('รายการหัก', 60, y, 11, c.accent)
-  drawLine(y - 6)
-  y -= 20
-
-  if (input.lateDeduction > 0) {
-    row(`หักมาสาย (${input.lateDays} วัน · ${formatLateMinutes(input.lateMinutes)})`, `-฿${fmt(input.lateDeduction)}`, y, c.red)
-    y -= 16
-  }
-  if (input.absentDeduction > 0) {
-    row(`หักขาดงาน (${input.absentDays} วัน)`, `-฿${fmt(input.absentDeduction)}`, y, c.red)
-    y -= 16
-  }
-  if (input.unpaidLeave > 0) {
-    row('หักลาไม่รับเงิน', `-฿${fmt(input.unpaidLeave)}`, y, c.red)
-    y -= 16
-  }
-  if (input.socialSecurity > 0) {
-    row('ประกันสังคม (5%)', `-฿${fmt(input.socialSecurity)}`, y, c.red)
-    y -= 16
-  }
-  if (input.taxDeduction > 0) {
-    row('ภาษีหัก ณ ที่จ่าย (ภงด1)', `-฿${fmt(input.taxDeduction)}`, y, c.red)
-    y -= 16
-  }
-  if (input.otherDeduction > 0) {
-    row('หักอื่นๆ', `-฿${fmt(input.otherDeduction)}`, y, c.red)
-    y -= 16
-  }
-  if ((input.studentLoanDeduction ?? 0) > 0) {
-    row('กยศ.', `-฿${fmt(input.studentLoanDeduction ?? 0)}`, y, c.red)
-    y -= 16
-  }
-  if ((input.securityDepositDeduction ?? 0) > 0) {
-    const installmentLabel = input.securityDepositInstallmentNo
-      ? ` (งวด ${input.securityDepositInstallmentNo}${input.securityDepositTotalInstallments ? `/${input.securityDepositTotalInstallments}` : ''})`
-      : ''
-    row(`เงินประกันเข้างาน${installmentLabel}`, `-฿${fmt(input.securityDepositDeduction ?? 0)}`, y, c.red)
-    y -= 16
-  }
-  if (
-    input.lateDeduction === 0 && input.absentDeduction === 0 && input.unpaidLeave === 0 &&
-    input.socialSecurity === 0 && input.taxDeduction === 0 && input.otherDeduction === 0 &&
-    (input.studentLoanDeduction ?? 0) === 0 && (input.securityDepositDeduction ?? 0) === 0
-  ) {
-    drawText('ไม่มีรายการหัก', 60, y, 10, c.light)
-    y -= 16
-  }
+  const earningsBottom = drawColumn('รายได้', items.earnings, 'รวมรายได้ทั้งหมด', items.totalEarnings, 40, c.green)
+  const deductionsBottom = drawColumn('รายการหัก', items.deductions, 'รวมรายการหัก', items.totalDeductions, 40 + colW + colGap, c.red)
+  y = Math.min(earningsBottom, deductionsBottom) - 12
 
   // YTD box (2026-09) — 4 ยอดสะสมสำหรับออกใบรับรองหักภาษี ณ ที่จ่าย 50 ทวิ
   // เรียงคอลัมน์เดียว 4 แถวเรียงบนลงล่าง (แก้ไข 2026-09-21 — เดิมเป็น grid
