@@ -104,8 +104,7 @@ export function computeMonthlyTax(grossIncome: number, socialSecurity: number = 
  * route เท่านั้น — ย้ายมาไว้ที่นี่ให้ทั้งสองจุดเรียกใช้สูตรเดียวกันจริงๆ
  *
  * POLICY #5 (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll
- * policy): OFF_SYSTEM_WHT หัก 3% ยื่น ภ.ง.ด.3 (เกณฑ์ <1,000 ไม่หัก = พฤติกรรมเดิม
- * ยังไม่ได้ยืนยันแยก) */
+ * policy): OFF_SYSTEM_WHT หัก 3% ยื่น ภ.ง.ด.3 เฉพาะยอด ≥ 1,000 บาท */
 export function computeFlatWithholdingTax(amount: number): number {
   if (amount < 1000) return 0
   return Math.round(amount * 0.03 * 100) / 100

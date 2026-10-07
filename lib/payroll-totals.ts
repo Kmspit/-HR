@@ -81,9 +81,8 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
   const isOffSystemWht = input.taxScheme === 'OFF_SYSTEM_WHT'
 
   // POLICY (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll policy #1/#3/#4/#5):
-  // ฐาน SS = ค่าจ้างหลัง prorate (รายวัน = ค่าจ้างที่ได้จริง) ไม่หักขาด/ลาไม่รับเงิน/สาย,
-  // คอมมิชชั่นไม่เข้าฐาน, OFF_SYSTEM_WHT ไม่หัก SS (positionAllowance+backPay ในฐาน
-  // = พฤติกรรมเดิม ยังไม่ได้ยืนยันแยก)
+  // ฐาน SS = ค่าจ้างหลัง prorate (รายวัน = ค่าจ้างที่ได้จริง) + ค่าตำแหน่ง + ตกเบิก
+  // ไม่หักขาด/ลาไม่รับเงิน/สาย, คอมมิชชั่นไม่เข้าฐาน, OFF_SYSTEM_WHT ไม่หัก SS
   const ssBase = input.baseSalary + input.positionAllowance + input.backPay
   const socialSecurity =
     !isOffSystemWht && input.socialSecurityEnabled ? computeSocialSecurity(ssBase) : 0
@@ -107,6 +106,8 @@ export function computePayrollTotals(input: PayrollTotalsInput): PayrollTotalsRe
   // ตกเบิก) กับ 40(2) (คอมมิชชั่น) ตามสัดส่วนรายได้ — ใช้แสดงแยกช่องในรายงาน/
   // ภ.ง.ด.1 เท่านั้น (นักบัญชียื่นแบบจริงต้องแยก 2 ช่องนี้) ไม่กระทบยอดหักจริง
   // ที่หักจากพนักงานเลย เพราะ taxDeduction ยังเป็นก้อนเดียวเท่าเดิม
+  // POLICY #10 (ยืนยัน 2026-10-07 — ห้ามเปลี่ยนโดยไม่ถามผู้ใช้, ดู CLAUDE.md § Payroll
+  // policy): คอมมิชชั่นยื่นเป็นเงินได้ 40(2) ภาษีแบ่งตามสัดส่วนไปช่อง ภ.ง.ด.1 (40)(2)
   const salaryIncome40_1 =
     input.baseSalary + input.positionAllowance + input.diligenceAllowance + input.backPay
   const commissionIncome40_2 = input.commission
