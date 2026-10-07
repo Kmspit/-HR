@@ -24,6 +24,23 @@ const PAYSLIP_PAYROLL_SELECT = {
   lateBillableMinutes: true,
   lateDeductionDetail: true,
   status: true,
+  // 2026-10 feat/payslip-all-items — รายการครบทุกแถว (lib/payslip-line-items.ts)
+  positionAllowance: true,
+  diligenceAllowance: true,
+  professionalFee: true,
+  commission: true,
+  overtimePay: true,
+  bonus: true,
+  backPay: true,
+  otherAddition: true,
+  taxScheme: true,
+  taxDetail: true,
+  professionalFeeTax: true,
+  securityDepositDeduction: true,
+  securityDepositInstallmentNo: true,
+  earlyLeaveDeduction: true,
+  otherDeduction: true,
+  studentLoanDeduction: true,
 } as const
 
 type PayslipPayrollRow = {
@@ -46,9 +63,25 @@ type PayslipPayrollRow = {
   lateBillableMinutes: number
   lateDeductionDetail: string | null
   status: string
+  positionAllowance: number
+  diligenceAllowance: number
+  professionalFee: number
+  commission: number
+  overtimePay: number
+  bonus: number
+  backPay: number
+  otherAddition: number
+  taxScheme: string | null
+  taxDetail: string | null
+  professionalFeeTax: number
+  securityDepositDeduction: number
+  securityDepositInstallmentNo: number | null
+  earlyLeaveDeduction: number
+  otherDeduction: number
+  studentLoanDeduction: number
 }
 
-function mapPayrolls(payrolls: PayslipPayrollRow[]) {
+function mapPayrolls(payrolls: PayslipPayrollRow[], securityDepositTotalInstallments: number | null) {
   return payrolls.map((p) => ({
     id: p.id,
     month: p.month,
@@ -69,6 +102,23 @@ function mapPayrolls(payrolls: PayslipPayrollRow[]) {
     lateBillableMinutes: p.lateBillableMinutes ?? p.lateMinutes,
     lateDeductionDetail: p.lateDeductionDetail,
     status: p.status,
+    positionAllowance: p.positionAllowance,
+    diligenceAllowance: p.diligenceAllowance,
+    professionalFee: p.professionalFee,
+    commission: p.commission,
+    overtimePay: p.overtimePay,
+    bonus: p.bonus,
+    backPay: p.backPay,
+    otherAddition: p.otherAddition,
+    taxScheme: p.taxScheme,
+    taxDetail: p.taxDetail,
+    professionalFeeTax: p.professionalFeeTax,
+    securityDepositDeduction: p.securityDepositDeduction,
+    securityDepositInstallmentNo: p.securityDepositInstallmentNo,
+    securityDepositTotalInstallments: p.securityDepositDeduction > 0 ? securityDepositTotalInstallments : null,
+    earlyLeaveDeduction: p.earlyLeaveDeduction,
+    otherDeduction: p.otherDeduction,
+    studentLoanDeduction: p.studentLoanDeduction,
   }))
 }
 
@@ -86,7 +136,13 @@ export default async function PayslipPage() {
       take: 36,
     })
 
-    return <PayslipClient payrolls={mapPayrolls(payrolls)} />
+    // totalInstallments ไม่ได้ snapshot ไว้ที่ Payroll — ดึงจากแผนของ user เดียวกับ
+    // app/api/payslip/[id]/pdf/route.ts เพื่อให้ "งวด n/total" ตรงกับ PDF
+    const securityDepositPlan = payrolls.some((p) => p.securityDepositDeduction > 0)
+      ? await prisma.securityDepositPlan.findUnique({ where: { userId: session.user.id }, select: { totalInstallments: true } })
+      : null
+
+    return <PayslipClient payrolls={mapPayrolls(payrolls, securityDepositPlan?.totalInstallments ?? null)} />
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string; meta?: unknown }
     console.error('[payslip PAGE ERROR]', err?.message, err?.code, JSON.stringify(err?.meta))
