@@ -1,12 +1,10 @@
 // Phase 4 — Case Document Center: create 4 new tables on Turso
 import { createClient } from '@libsql/client'
-import * as dotenv from 'dotenv'
-dotenv.config()
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
+loadLocalEnv()
 
-const client = createClient({
-  url:       process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-})
+const { url, authToken } = await requireProdTarget('migrate-turso-case-documents.mjs')
+const client = createClient({ url, authToken })
 
 const statements = [
   // Main document record

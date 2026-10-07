@@ -2,16 +2,14 @@
  * ย้ายรูปเดิมจาก DB (base64) → Cloudinary โดยไม่ลบแถว attendance
  * รัน: npm run db:migrate:all-images-cloudinary
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { createClient } from '@libsql/client'
 import { v2 as cloudinary } from 'cloudinary'
 
-config({ path: resolve(process.cwd(), '.env.local') })
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
+const { url, authToken: token } = await requireProdTarget('migrate-all-images-to-cloudinary.mjs')
 const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim()
 const apiKey = process.env.CLOUDINARY_API_KEY?.trim()
 const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim()

@@ -2,25 +2,19 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { DEFAULT_COMPANY_BRANCHES } from '../lib/company-branches'
 import { seedDefaultOrgStructure } from '../lib/default-org-structure'
-import { config } from 'dotenv'
-import { resolve } from 'path'
+import { loadLocalEnv, resolveDbTarget } from '../scripts/lib/prod-guard.mjs'
 
-// Load .env from project root
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
-function makePrisma() {
-  const url   = process.env.TURSO_DATABASE_URL
-  const token = process.env.TURSO_AUTH_TOKEN
-  if (url && token) {
-    console.log('Using Turso:', url)
-    const adapter = new PrismaLibSQL({ url, authToken: token })
-    return new PrismaClient({ adapter })
-  }
-  console.log('Using local SQLite')
-  return new PrismaClient()
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('seed.ts')
+  console.log(prod ? `Using Turso (PRODUCTION): ${prod.url}` : 'Using local SQLite')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
+    : new PrismaClient()
 }
-
-const prisma = makePrisma()
 
 async function main() {
   console.log('🌱 Seeding database...')
@@ -113,6 +107,7 @@ async function main() {
   console.log('✅ Seeding complete!')
 }
 
-main()
+connectDb()
+  .then(main)
   .catch(console.error)
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma?.$disconnect())

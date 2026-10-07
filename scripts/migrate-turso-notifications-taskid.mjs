@@ -2,15 +2,13 @@
  * Phase 2: เพิ่มคอลัมน์ task_id (nullable) บนตาราง notifications ใน Turso
  * รัน: node scripts/migrate-turso-notifications-taskid.mjs
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { createClient } from '@libsql/client'
 
-config({ path: resolve(process.cwd(), '.env.local') })
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
-const url   = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
+const { url, authToken: token } = await requireProdTarget('migrate-turso-notifications-taskid.mjs')
 if (!url || !token) {
   console.error('ต้องมี TURSO_DATABASE_URL และ TURSO_AUTH_TOKEN ใน .env.local')
   process.exit(1)

@@ -2,14 +2,13 @@
  * คอลัมน์สถานะส่ง LINE ใบเตือน
  * Run: npm run db:migrate:warning-line
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { createClient } from '@libsql/client'
 
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
-const url = process.env.TURSO_DATABASE_URL
-const authToken = process.env.TURSO_AUTH_TOKEN
+const { url, authToken } = await requireProdTarget('migrate-turso-warning-line.mjs')
 if (!url || !authToken) {
   console.error('Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN')
   process.exit(1)

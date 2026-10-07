@@ -1,11 +1,10 @@
-import { config } from 'dotenv'
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { createClient } from '@libsql/client'
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 
-config({ path: resolve(process.cwd(), '.env.local') })
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
 const data = {
   companyName: 'บริษัท เค เอ็ม เซอร์วิส พลัส จำกัด',
@@ -17,8 +16,7 @@ const data = {
   geofenceRadius: 250,
 }
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
+const { url, authToken: token } = (await resolveDbTarget('update-company-settings.mjs')) ?? {}
 
 if (url && token) {
   const db = createClient({ url, authToken: token })

@@ -3,7 +3,7 @@
  * รัน: npm run db:migrate:face-scans-to-r2
  * ต้องมี R2_* env ใน .env.local
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { createClient } from '@libsql/client'
 import {
@@ -11,11 +11,9 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3'
 
-config({ path: resolve(process.cwd(), '.env.local') })
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
+const { url, authToken: token } = await requireProdTarget('migrate-face-scans-to-r2.mjs')
 const accountId = process.env.R2_ACCOUNT_ID?.trim()
 const accessKey = process.env.R2_ACCESS_KEY_ID?.trim()
 const secretKey = process.env.R2_SECRET_ACCESS_KEY?.trim()

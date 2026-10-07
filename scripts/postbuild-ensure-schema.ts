@@ -39,12 +39,10 @@
  * every build and this would fail CLOSED (skip) even in production, same
  * safe default as before.
  */
-import { config } from 'dotenv'
-import { resolve } from 'path'
 import { pathToFileURL } from 'url'
 
-config({ path: resolve(process.cwd(), '.env') })
-
+// ไม่โหลด .env เอง — บน Vercel ค่า TURSO_* มาจาก env ของ build อยู่แล้ว และในเครื่อง dev
+// ต้องไม่มี TURSO_* (lib/prisma จะหยุดทำงานถ้าเจอนอก production — ดู lib/prod-guard.ts)
 import { ensureDbSchema, CURRENT_SCHEMA_VERSION } from '../lib/ensure-db-schema'
 
 /**

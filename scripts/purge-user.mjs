@@ -12,24 +12,20 @@
  * ตอนที่ยืนยันแล้วว่าบัญชีเป้าหมายไม่ใช่พนักงานจริงที่ต้องเก็บประวัติไว้
  * ยังพิมพ์รายการที่ guard เจอให้เห็นเสมอ ไม่ได้ซ่อนไว้ — แค่ไม่ exit(1)
  * ไม่เปลี่ยนพฤติกรรม default (ไม่ใส่ flag นี้ ยังบล็อกเหมือนเดิมทุกกรณี)
+ *
+ * --prod: ต่อ Turso production (ต้องตั้ง TURSO_* ใน shell + พิมพ์ชื่อ DB ยืนยัน —
+ * ดู scripts/lib/prod-guard.mjs) ไม่ใส่ → ใช้ local prisma/prisma/dev.db เสมอ
+ *   node --env-file=$HOME/.hrflow-prod.env scripts/purge-user.mjs --prod --dry-run user@example.com
  */
-import { config } from 'dotenv'
-import { resolve } from 'path'
 import { createInterface } from 'readline'
 import { pathToFileURL } from 'url'
-
-config({ path: resolve(process.cwd(), '.env') })
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
-
-const prisma =
-  url && token
-    ? new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
-    : new PrismaClient()
+// สร้างตอนรันเป็นสคริปต์เท่านั้น (ดูท้ายไฟล์) — import ไปทดสอบจะไม่ต่อ DB ใด ๆ
+let prisma
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const dryRun = args.includes('--dry-run')
@@ -568,6 +564,12 @@ export { checkPurgeGuard, purgeUser, purgeUserInTransaction, DryRunAbort, should
 // `main()` on import so requiring this module never touches the DB or exits
 // the process as a side effect.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  loadLocalEnv()
+  const prod = await resolveDbTarget('purge-user.mjs')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
+    : new PrismaClient()
+  console.log(`[purge-user] DB: ${prod ? 'PRODUCTION (Turso)' : 'local prisma/prisma/dev.db'}`)
   main()
     .catch((e) => {
       console.error('ล้มเหลว:', e.message)

@@ -22,23 +22,25 @@
  *   - Prints the password, then delete the output file when you're done
  *     testing (it's a real employee's real salary data).
  */
-import { config } from 'dotenv'
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 import { resolve } from 'path'
 import { writeFile } from 'fs/promises'
 
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { loadPayrollForSlip, buildPayrollSlipPdfBuffer } from '../lib/payslip-pdf-service'
 import { payslipPdfPassword } from '../lib/payslip-pdf-encrypt'
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
-const prisma =
-  url && token
-    ? new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('payslip-pdf-manual-test.ts')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
     : new PrismaClient()
+}
 
 async function main() {
   const argId = process.argv[2]
@@ -87,9 +89,10 @@ async function main() {
   console.log(`  rm "${outPath}"`)
 }
 
-main()
+connectDb()
+  .then(main)
   .catch((err) => {
     console.error('script crashed:', err)
     process.exitCode = 1
   })
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma?.$disconnect())

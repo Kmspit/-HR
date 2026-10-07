@@ -10,17 +10,14 @@
  *   node scripts/migrate-cloudinary-types.mjs --migrate    # re-upload as authenticated
  *   node scripts/migrate-cloudinary-types.mjs --table announcements  # different table
  *
- * Required env: TURSO_DATABASE_URL, TURSO_AUTH_TOKEN,
+ * Production DB: ต้องใส่ --prod และตั้ง TURSO_DATABASE_URL, TURSO_AUTH_TOKEN ใน shell (ดู scripts/lib/prod-guard.mjs)
+ * Required env:
  *               CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
  */
 
 import { createClient }   from '@libsql/client'
 import { v2 as cloudinary } from 'cloudinary'
-import { readFile }        from 'fs/promises'
-import path                from 'path'
-import { fileURLToPath }   from 'url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+import { loadLocalEnv, requireProdTarget } from './lib/prod-guard.mjs'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -30,19 +27,10 @@ const TABLE_ARG = (() => {
   return i !== -1 ? process.argv[i + 1] : null
 })()
 
-// Load .env.local if not running in CI
-if (!process.env.TURSO_DATABASE_URL) {
-  try {
-    const envPath = path.resolve(__dirname, '../.env.local')
-    const raw = await readFile(envPath, 'utf-8')
-    for (const line of raw.split('\n')) {
-      const m = line.match(/^([A-Z_]+)="?([^"]*)"?$/)
-      if (m) process.env[m[1]] = m[2]
-    }
-  } catch { /* no .env.local — use process.env from shell */ }
-}
+// Cloudinary keys มาจาก .env.local ได้ — TURSO_* มาจาก shell + --prod เท่านั้น
+loadLocalEnv()
 
-const { TURSO_DATABASE_URL, TURSO_AUTH_TOKEN } = process.env
+const { url: TURSO_DATABASE_URL, authToken: TURSO_AUTH_TOKEN } = await requireProdTarget('migrate-cloudinary-types.mjs')
 const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env
 
 if (!TURSO_DATABASE_URL) {

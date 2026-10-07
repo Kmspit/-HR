@@ -22,23 +22,23 @@
  *     Deletes every orphaned row found. Without --yes, prompts for
  *     confirmation first (same pattern as scripts/purge-user.mjs).
  */
-import { config } from 'dotenv'
-import { resolve } from 'path'
+import { loadLocalEnv, resolveDbTarget } from './lib/prod-guard.mjs'
 import { createInterface } from 'readline'
 import { pathToFileURL } from 'url'
 
-config({ path: resolve(process.cwd(), '.env') })
+loadLocalEnv()
 
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 
-const url = process.env.TURSO_DATABASE_URL
-const token = process.env.TURSO_AUTH_TOKEN
-
-const prisma =
-  url && token
-    ? new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken: token }) })
+// ไม่ใส่ --prod → local prisma/prisma/dev.db เสมอ (ดู scripts/lib/prod-guard.mjs)
+let prisma!: PrismaClient
+async function connectDb() {
+  const prod = await resolveDbTarget('cleanup-orphaned-face-profiles.ts')
+  prisma = prod
+    ? new PrismaClient({ adapter: new PrismaLibSQL({ url: prod.url, authToken: prod.authToken }) })
     : new PrismaClient()
+}
 
 export type OrphanedProfile = {
   id: string
@@ -144,10 +144,11 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main()
+  connectDb()
+    .then(main)
     .catch((e) => {
       console.error('ล้มเหลว:', e instanceof Error ? e.message : String(e))
       process.exit(1)
     })
-    .finally(() => prisma.$disconnect())
+    .finally(() => prisma?.$disconnect())
 }
