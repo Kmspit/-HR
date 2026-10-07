@@ -18,9 +18,9 @@ function totalsInput(overrides: Partial<PayrollTotalsInput>): PayrollTotalsInput
   }
 }
 
-describe('SS ceiling table by year (พ.ศ. 2569–2571 = 17,500)', () => {
-  it('has exactly 2026–2028 (= พ.ศ. 2569–2571) at 17,500', () => {
-    expect(SS_MAX_WAGE_BY_YEAR).toEqual({ 2026: 17_500, 2027: 17_500, 2028: 17_500 })
+describe('SS ceiling table by year (พ.ศ. 2568 = 15,000, 2569–2571 = 17,500)', () => {
+  it('has exactly 2025 (= พ.ศ. 2568) at 15,000 and 2026–2028 (= พ.ศ. 2569–2571) at 17,500', () => {
+    expect(SS_MAX_WAGE_BY_YEAR).toEqual({ 2025: 15_000, 2026: 17_500, 2027: 17_500, 2028: 17_500 })
     expect(Object.isFrozen(SS_MAX_WAGE_BY_YEAR)).toBe(true)
   })
 
@@ -30,7 +30,14 @@ describe('SS ceiling table by year (พ.ศ. 2569–2571 = 17,500)', () => {
     expect(computeSocialSecurity(35_000, year)).toBe(875)
   })
 
-  it.each([2029, 2035, 2025])('%d is not in the table → latest year (2028) ceiling + warning', (year) => {
+  it('2025 (พ.ศ. 2568) uses its own 15,000 ceiling → max 750, no warning', () => {
+    expect(ssMaxWageForYear(2025)).toEqual({ maxWage: 15_000, inTable: true, sourceYear: 2025 })
+    expect(ssCeilingWarning(2025)).toBeNull()
+    expect(computeSocialSecurity(35_000, 2025)).toBe(750)
+    expect(computeSocialSecurity(12_345, 2025)).toBe(617) // below both ceilings → unchanged
+  })
+
+  it.each([2029, 2035, 2024])('%d is not in the table → latest year (2028) ceiling + warning', (year) => {
     expect(ssMaxWageForYear(year)).toEqual({ maxWage: 17_500, inTable: false, sourceYear: 2028 })
     expect(computeSocialSecurity(35_000, year)).toBe(875)
     const w = ssCeilingWarning(year)
