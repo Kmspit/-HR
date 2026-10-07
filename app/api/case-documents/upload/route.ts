@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -22,7 +23,8 @@ async function canAccessCase(caseId: string, userId: string, role: string, depar
 // Creates CaseDocument + CaseDocumentFile in one transaction.
 // Caller has already uploaded the file to Cloudinary and provides the result.
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()

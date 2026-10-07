@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { prisma } from '@/lib/prisma'
 import { announcementEmitter } from '@/lib/announcement-events'
 import { ANNOUNCEMENT_EDITOR_ROLES } from '@/lib/access-control'
@@ -9,7 +10,8 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user) {
     return new Response('Unauthorized', { status: 401 })
   }

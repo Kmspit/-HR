@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { prisma } from '@/lib/prisma'
 import { findCalendarEventOverlaps } from '@/lib/calendar-overlap'
 
 const WRITE_ROLES = ['SUPER_ADMIN', 'CEO', 'MANAGER_HR', 'HR', 'ADMIN', 'MANAGER', 'TEAM_LEADER', 'LAWYER', 'ENFORCEMENT', 'EMPLOYEE']
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = req.nextUrl
@@ -46,7 +48,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!WRITE_ROLES.includes(session.user.role as string)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

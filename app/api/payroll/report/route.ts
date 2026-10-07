@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { prisma } from '@/lib/prisma'
 import { buildBranchScope, branchUserWhere, branchNestedUserWhere, parseBranchQueryParam } from '@/lib/branch-scope'
 import { createAuditLog } from '@/lib/notifications'
@@ -12,7 +13,8 @@ import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
 import { payrollEligibleUserWhere } from '@/lib/payroll-employee-scope'
 
 export async function GET(req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
@@ -189,7 +191,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id || !canApprovePayroll(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

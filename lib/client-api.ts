@@ -13,6 +13,22 @@ function mergeDeviceHeaders(init?: RequestInit): Headers {
   return headers
 }
 
+// endpoint พวกนี้ใช้ 401 = "รหัส/OTP ผิด" หรือมีระบบ session ของตัวเอง — ไม่ใช่ session พนักงานหมดอายุ
+const NON_SESSION_401_PREFIXES = ['/api/auth/', '/api/security/2fa/', '/api/client-portal/']
+let redirectingToLogin = false
+
+/** 401 จาก API = session ถูกเพิกถอน/หมดอายุ (auth() ตรวจกับ DB) → ไปหน้า login
+ *  (middleware → /api/auth/session-check จะลบ cookie แล้วพากลับ /login?reason=expired)
+ *  ไม่แตะ 503 — นั่นคือ DB ขัดข้องชั่วคราว ไม่ใช่ session หมดอายุ */
+export function shouldRedirectToLoginOn401(input: RequestInfo | URL, currentPath: string): boolean {
+  const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  const path = new URL(raw, 'http://localhost').pathname
+  if (!path.startsWith('/api/')) return false
+  if (NON_SESSION_401_PREFIXES.some((p) => path.startsWith(p))) return false
+  if (currentPath.startsWith('/login') || currentPath.startsWith('/client-portal')) return false
+  return true
+}
+
 export async function apiJson<T extends Record<string, unknown> = Record<string, unknown>>(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -31,6 +47,15 @@ export async function apiJson<T extends Record<string, unknown> = Record<string,
       } catch {
         data = { error: 'เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง' } as unknown as T
       }
+    }
+    if (
+      res.status === 401 &&
+      typeof window !== 'undefined' &&
+      !redirectingToLogin &&
+      shouldRedirectToLoginOn401(input, window.location.pathname)
+    ) {
+      redirectingToLogin = true
+      window.location.assign('/login')
     }
     return { ok: res.ok, status: res.status, data }
   } catch (err) {

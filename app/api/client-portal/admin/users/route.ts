@@ -3,11 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { apiError } from '@/lib/api-handler'
+import { authOrUnavailable } from '@/lib/session-response'
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'HR', 'MANAGER_HR']
 
 async function guard() {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return null
   if (!ADMIN_ROLES.includes(session.user.role)) return null
   return session
@@ -16,6 +18,8 @@ async function guard() {
 export async function GET(req: NextRequest) {
  try {
   const session = await guard()
+
+  if (session instanceof Response) return session
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const url             = new URL(req.url)
@@ -54,6 +58,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
  try {
   const session = await guard()
+
+  if (session instanceof Response) return session
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
@@ -94,6 +100,8 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
  try {
   const session = await guard()
+
+  if (session instanceof Response) return session
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
@@ -126,6 +134,8 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
  try {
   const session = await guard()
+
+  if (session instanceof Response) return session
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const url = new URL(req.url)

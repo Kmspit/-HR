@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { SESSION_UNAVAILABLE_DIGEST } from '@/lib/session-constants'
 
 export default function Error({
   error,
@@ -11,6 +12,8 @@ export default function Error({
   reset: () => void
 }) {
   const router = useRouter()
+  // auth() ตรวจ session กับ DB ไม่ได้ — ไม่ใช่ session หมดอายุ ห้ามพาไปหน้า login
+  const unavailable = error.digest === SESSION_UNAVAILABLE_DIGEST
 
   useEffect(() => {
     console.error('[HRFlow] Page error:', error.message, error.digest)
@@ -23,12 +26,12 @@ export default function Error({
           ⚠️
         </div>
         <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-          เกิดข้อผิดพลาด
+          {unavailable ? 'ระบบขัดข้องชั่วคราว' : 'เกิดข้อผิดพลาด'}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-          หน้านี้ไม่สามารถโหลดได้ในขณะนี้
+          {unavailable ? 'กรุณาลองใหม่อีกครั้งในอีกสักครู่' : 'หน้านี้ไม่สามารถโหลดได้ในขณะนี้'}
         </p>
-        {error.message && (
+        {!unavailable && error.message && (
           <p className="text-xs text-red-500 dark:text-red-400 mb-3 font-mono bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2 break-all">
             {error.message}
           </p>
@@ -40,7 +43,7 @@ export default function Error({
         )}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
-            onClick={reset}
+            onClick={() => (unavailable ? window.location.reload() : reset())}
             className="px-5 py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-sm font-medium rounded-xl transition-colors"
           >
             ลองใหม่

@@ -6,6 +6,7 @@ import { hasPermission, type AppPermission } from '@/lib/access-control'
 import { canAccessUserProfile, canEditUserProfile } from '@/lib/user-access'
 import { prisma } from '@/lib/prisma'
 import { validateCsrfOrigin } from '@/lib/csrf'
+import { authOrUnavailable } from '@/lib/session-response'
 import type { Role } from '@prisma/client'
 
 export type AuthSession = Session & {
@@ -22,7 +23,8 @@ export function requireCsrf(req: NextRequest): NextResponse | null {
 }
 
 export async function requireAuth(): Promise<AuthSession | NextResponse> {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (isGuardResponse(session)) return session
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

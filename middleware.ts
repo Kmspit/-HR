@@ -3,6 +3,7 @@ import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { ROLE_DEFAULT_ROUTE } from '@/lib/access-control'
+import { SESSION_EXPIRED_REASON } from '@/lib/session-constants'
 import {
   isApiDeployProfileExempt,
   isAuthPageRoute,
@@ -99,10 +100,15 @@ export default auth(async function middleware(req: NextRequest & { auth: { user?
     return NextResponse.redirect(url)
   }
 
-  // Logged-in user tries to visit auth pages → redirect to their dashboard
+  // Logged-in user tries to visit auth pages. middleware (edge) ตรวจ DB ไม่ได้ — JWT อาจถูกเพิกถอน
+  // ไปแล้ว (หน้า dashboard ส่งกลับมา /login เพราะ auth() คืน null) จึงให้ session-check ตรวจ:
+  // ใช้ได้ → หน้าแรกของ role, ใช้ไม่ได้ → ลบ cookie แล้วกลับมา /login?reason=expired
+  // reason=expired → ปล่อยผ่าน กัน redirect วน (ถ้าลบ cookie ไม่สำเร็จจะได้ไม่วนไม่จบ)
   if (isAuth) {
+    if (req.nextUrl.searchParams.get('reason') === SESSION_EXPIRED_REASON) return NextResponse.next()
     const url = req.nextUrl.clone()
-    url.pathname = ROLE_DEFAULT_ROUTE[role]
+    url.pathname = '/api/auth/session-check'
+    url.search = ''
     return NextResponse.redirect(url)
   }
 

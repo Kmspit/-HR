@@ -3,6 +3,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { runWarningCheck } from '@/lib/warningEngine'
 import type { Role } from '@prisma/client'
 
@@ -17,7 +18,8 @@ const ALLOWED_ROLES = new Set<Role>([
 ])
 
 export async function POST(_req: NextRequest) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

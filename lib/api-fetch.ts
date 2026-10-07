@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { shouldRedirectToLoginOn401 } from '@/lib/client-api'
 
 export class ApiError extends Error {
   constructor(
@@ -45,8 +46,16 @@ export async function apiFetch<T = unknown>(
   if (!options?.silent) {
     switch (response.status) {
       case 401:
-        toast.error('Session หมดอายุ', { description: 'กรุณาเข้าสู่ระบบใหม่' })
-        if (typeof window !== 'undefined') setTimeout(() => { window.location.href = '/login' }, 1500)
+        if (typeof window !== 'undefined' && shouldRedirectToLoginOn401(url, window.location.pathname)) {
+          toast.error('Session หมดอายุ', { description: 'กรุณาเข้าสู่ระบบใหม่' })
+          setTimeout(() => { window.location.href = '/login' }, 1500)
+        } else {
+          toast.error(msg)
+        }
+        break
+      case 503:
+        // DB ขัดข้องชั่วคราว — ไม่ใช่ session หมดอายุ ห้ามพาไปหน้า login
+        toast.error('ระบบขัดข้องชั่วคราว', { description: 'กรุณาลองใหม่อีกครั้งในอีกสักครู่' })
         break
       case 403:
         toast.error('ไม่มีสิทธิ์เข้าถึง', { description: msg })

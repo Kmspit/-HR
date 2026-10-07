@@ -18,6 +18,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { prisma } from '@/lib/prisma'
 import { loadBackupTable, BACKUP_TABLE_SPECS } from '@/lib/backup'
 import { logSecurityEvent } from '@/lib/security-events'
@@ -30,7 +31,8 @@ type Ctx = { params: Promise<{ id: string }> }
 type Body = { table?: string; dryRun?: boolean; confirmText?: string }
 
 export async function POST(req: NextRequest, { params }: Ctx) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!ALLOWED_ROLES.includes(session.user.role as typeof ALLOWED_ROLES[number])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

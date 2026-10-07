@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError } from '@/lib/api-handler'
+import { bumpSessionEpoch } from '@/lib/session-epoch'
 import { requireAuth, requireOrgScope, isGuardResponse } from '@/lib/api-guard'
 import { HR_ADMIN } from '@/lib/module-gates'
 import { canManageOrg } from '@/lib/org-permissions'
@@ -205,6 +206,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           },
         })
       })
+      // auth() ปฏิเสธ status DISABLED อยู่แล้ว — bump ซ้ำไว้กันกรณีมีการ rehire กลับเป็น ACTIVE
+      // แล้ว JWT เก่าก่อนพ้นสภาพจะกลับมาใช้ได้อีก
+      await bumpSessionEpoch(id)
 
       const afterAudit = await prisma.user.findUnique({ where: { id }, select: EMPLOYEE_AUDIT_SELECT })
       if (afterAudit) {

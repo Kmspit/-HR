@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { prisma } from '@/lib/prisma'
 import { loadBackupPayload } from '@/lib/backup'
 
@@ -13,7 +14,8 @@ const ALLOWED_ROLES = ['CEO', 'SUPER_ADMIN'] as const
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(req: NextRequest, { params }: Ctx) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!ALLOWED_ROLES.includes(session.user.role as typeof ALLOWED_ROLES[number])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -54,7 +56,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!ALLOWED_ROLES.includes(session.user.role as typeof ALLOWED_ROLES[number])) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

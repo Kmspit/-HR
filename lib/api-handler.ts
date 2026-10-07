@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
+import { isSessionUnavailableError } from '@/lib/session-validate'
+import { sessionUnavailableResponse } from '@/lib/session-response'
 
 export function apiError(err: unknown, fallback = 'เกิดข้อผิดพลาดในระบบ — กรุณาลองใหม่อีกครั้ง หากยังไม่ได้กรุณาติดต่อ HR') {
+  if (isSessionUnavailableError(err)) return sessionUnavailableResponse()
   const errObj = err as Record<string, unknown>
   const prismaCode = errObj?.code ? String(errObj.code) : null
   const prismaMsg  = err instanceof Error ? err.message : String(err)

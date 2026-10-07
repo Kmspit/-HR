@@ -11,6 +11,7 @@ export const API_PUBLIC_PREFIXES = [
   '/api/thai-address',
   '/api/auth/callback',
   '/api/auth/session',
+  '/api/auth/session-check', // จัดการกรณีไม่มี/เพิกถอน session เอง (redirect ไป /login)
   '/api/auth/csrf',
   '/api/auth/providers',
   '/api/auth/signin',

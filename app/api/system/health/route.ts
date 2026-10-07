@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,8 @@ type CheckStatus = 'ok' | 'warn' | 'error'
 interface HealthCheck { status: CheckStatus; latencyMs?: number; detail?: string }
 
 export async function GET() {
-  const session = await auth()
+  const session = await authOrUnavailable(auth)
+  if (session instanceof Response) return session
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!ALLOWED_ROLES.includes(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

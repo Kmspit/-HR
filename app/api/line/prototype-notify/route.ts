@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { authOrUnavailable } from '@/lib/session-response'
 import { pushLineMessages } from '@/lib/line-api'
 import { isLineOaConfiguredAsync } from '@/lib/line-config'
 import { getHrLineRecipients } from '@/lib/attendance-line-recipients'
@@ -46,7 +47,8 @@ export async function POST(req: NextRequest) {
     return json(body, bridgeErr.status, origin)
   }
   try {
-    const session = await auth()
+    const session = await authOrUnavailable(auth)
+    if (session instanceof Response) return session
     if (!session?.user) {
       return json({ error: 'Unauthorized' }, 401, origin)
     }

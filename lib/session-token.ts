@@ -72,6 +72,18 @@ export async function attachSessionCookie(
   return response
 }
 
+/** ลบ session cookie (ใช้เมื่อ session ใช้ไม่ได้แล้ว — ดู app/api/auth/session-check) */
+export function clearSessionCookie(response: NextResponse): NextResponse {
+  response.cookies.set(getSessionCookieName(), '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: shouldUseSecureCookies(),
+    maxAge: 0,
+  })
+  return response
+}
+
 /** @deprecated ใช้ attachSessionCookie แทน */
 export async function setSessionFromUser(user: SessionUserPayload) {
   const { cookieName, encoded, secure } = await buildSessionToken(user)
