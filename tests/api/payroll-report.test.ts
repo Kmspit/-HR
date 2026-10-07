@@ -39,6 +39,10 @@ vi.mock('@/lib/page-access-server', () => ({
   ),
 }))
 
+vi.mock('@/lib/ensure-payroll-formulas-round1', () => ({
+  ensurePayrollFormulasRound1: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
 }))
@@ -180,10 +184,11 @@ describe('GET /api/payroll/report — includes DISABLED-in-period employees (202
 
     const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
     expect(call.where.role).toEqual({ in: ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] })
-    expect(call.where.OR[0]).toEqual({ status: 'ACTIVE' })
-    expect(call.where.OR[1]).toEqual({
+    expect(call.where.status).toEqual({ in: ['ACTIVE', 'DISABLED'] })
+    expect(call.where.AND[1].OR[2]).toEqual({
       status: 'DISABLED',
-      updatedAt: { gte: new Date(2026, 8, 21), lte: new Date(2026, 9, 20, 23, 59, 59, 999) },
+      lastWorkingDate: null,
+      updatedAt: { gte: new Date('2026-09-21T00:00:00.000+07:00'), lte: new Date('2026-10-20T23:59:59.999+07:00') },
     })
   })
 
@@ -221,7 +226,7 @@ describe('GET /api/payroll/report — includes DISABLED-in-period employees (202
 
     const call = vi.mocked(prisma.user.findMany).mock.calls[0][0] as any
     const longAgoDisabled = new Date('2026-01-01T00:00:00.000Z')
-    const { gte, lte } = call.where.OR[1].updatedAt
+    const { gte, lte } = call.where.AND[1].OR[2].updatedAt
     expect(longAgoDisabled >= gte && longAgoDisabled <= lte).toBe(false)
   })
 })

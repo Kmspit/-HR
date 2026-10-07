@@ -16,7 +16,7 @@ export type SecurityDepositInstallmentResult = {
 /**
  * คำนวณยอด/ลำดับงวดที่ต้องหักเดือนนี้ จาก "จำนวนงวดที่หักไปแล้วก่อนหน้าเดือนนี้"
  * (priorPaidInstallments) ซึ่งต้องนับสดจาก Payroll จริงทุกครั้งตอน generate
- * (deletedAt null, status ไม่ใช่ REJECTED, securityDepositDeduction > 0, เดือน/ปี
+ * (deletedAt null, status APPROVED/SENT, securityDepositDeduction > 0, เดือน/ปี
  * ก่อนหน้าเดือนนี้) — ไม่เก็บเป็น counter ที่ +1 เอง เพื่อไม่ให้หลุด sync ถ้ามี
  * regenerate เดือนเดิมซ้ำ/soft-delete แล้วกู้คืน ยอดต่องวด = totalAmount หาร
  * totalInstallments ปัดเศษลง งวดสุดท้ายรับส่วนต่างที่ปัดเศษไปทั้งหมด เพื่อให้

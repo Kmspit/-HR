@@ -1,7 +1,7 @@
 import { rgb } from 'pdf-lib'
 import { createPdfKitDocument, drawRect, drawHLine, drawText as drawPdfText, finalizePdfKitDocument, widthOf } from '@/lib/pdfkit-compat'
 import { loadThaiPdfFontBytes } from '@/lib/thai-pdf-font'
-import { payrollPeriodRange } from '@/lib/payroll-period'
+import { dateKeyParts, payrollPeriodKeys } from '@/lib/payroll-period'
 import { buildPayslipLineItems, formatPayslipAmount, type PayslipLineItem } from '@/lib/payslip-line-items'
 
 export type SalarySlipInput = {
@@ -89,9 +89,12 @@ function fmt(n: number) {
  *  บอกช่วงวันที่นับมาสาย/ขาด/ลาจริง (21 ของเดือนก่อน - 20 ของเดือนนี้)
  *  กันพนักงาน/HR สับสนว่าทำไมยอดไม่ตรงกับปฏิทินเต็มเดือน */
 function formatPayrollPeriodCaption(month: number, year: number): string {
-  const { start, end } = payrollPeriodRange(month, year)
-  const startLabel = `${start.getDate()} ${MONTH_TH_SHORT[start.getMonth() + 1]}`
-  const endLabel = `${end.getDate()} ${MONTH_TH_SHORT[end.getMonth() + 1]} ${end.getFullYear() + 543}`
+  // อ่านจาก date key ตรงๆ ไม่ใช่ getDate() — ดูหมายเหตุ timezone ใน lib/payroll-period.ts
+  const { startKey, endKey } = payrollPeriodKeys(month, year)
+  const start = dateKeyParts(startKey)
+  const end = dateKeyParts(endKey)
+  const startLabel = `${start.day} ${MONTH_TH_SHORT[start.month]}`
+  const endLabel = `${end.day} ${MONTH_TH_SHORT[end.month]} ${end.year + 543}`
   return `(นับเวลาทำงาน ${startLabel} - ${endLabel})`
 }
 

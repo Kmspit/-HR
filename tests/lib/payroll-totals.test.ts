@@ -3,8 +3,7 @@ import { computePayrollTotals, type PayrollTotalsInput } from '@/lib/payroll-tot
 
 function baseInput(overrides: Partial<PayrollTotalsInput> = {}): PayrollTotalsInput {
   return {
-    taxSsBaseSalary: 30_000,
-    payoutBaseSalary: 30_000,
+    baseSalary: 30_000,
     positionAllowance: 0,
     diligenceAllowance: 0,
     backPay: 0,
@@ -84,14 +83,14 @@ describe('computePayrollTotals — taxScheme=OFF_SYSTEM_WHT (ยืนยัน 
 
   it('below the 1,000-baht threshold, withholds nothing at all', () => {
     const result = computePayrollTotals(
-      baseInput({ taxScheme: 'OFF_SYSTEM_WHT', taxSsBaseSalary: 500, payoutBaseSalary: 500 }),
+      baseInput({ taxScheme: 'OFF_SYSTEM_WHT', baseSalary: 500 }),
     )
     expect(result.taxDeduction).toBe(0)
   })
 
   it('a below-1,000-baht payout with 0 deductions never gets clamped or reported as clamped', () => {
     const result = computePayrollTotals(
-      baseInput({ taxScheme: 'OFF_SYSTEM_WHT', taxSsBaseSalary: 500, payoutBaseSalary: 500 }),
+      baseInput({ taxScheme: 'OFF_SYSTEM_WHT', baseSalary: 500 }),
     )
     expect(result.netSalary).toBe(500)
     expect(result.negativeClampAmount).toBe(0)
@@ -106,12 +105,12 @@ describe('computePayrollTotals — taxScheme=OFF_SYSTEM_WHT (ยืนยัน 
 })
 
 describe('computePayrollTotals — netSalary is never negative (2026-09-30 fix)', () => {
-  // taxSsBaseSalary: 0 throughout this block — isolates the clamp/deduction
-  // arithmetic from tax/SS (both correctly 0 on a 0 gross income), so the
+  // SS disabled and a base small enough (≤ 5,000) that tax is 0 throughout this
+  // block — isolates the clamp/deduction arithmetic from tax/SS, so the
   // expected numbers are exact hand-calculable amounts, not estimates.
   it('clamps netSalary at 0 when deductions exceed the payout base', () => {
     const result = computePayrollTotals(
-      baseInput({ taxSsBaseSalary: 0, payoutBaseSalary: 1_000, absentDeduction: 5_000, socialSecurityEnabled: false }),
+      baseInput({ baseSalary: 1_000, absentDeduction: 5_000, socialSecurityEnabled: false }),
     )
     expect(result.socialSecurity).toBe(0)
     expect(result.taxDeduction).toBe(0)
@@ -120,7 +119,7 @@ describe('computePayrollTotals — netSalary is never negative (2026-09-30 fix)'
 
   it('reports exactly how much it clamped off (negativeClampAmount)', () => {
     const result = computePayrollTotals(
-      baseInput({ taxSsBaseSalary: 0, payoutBaseSalary: 1_000, absentDeduction: 5_000, socialSecurityEnabled: false }),
+      baseInput({ baseSalary: 1_000, absentDeduction: 5_000, socialSecurityEnabled: false }),
     )
     // raw = 1,000 - 5,000 = -4,000
     expect(result.negativeClampAmount).toBe(4_000)
@@ -128,7 +127,7 @@ describe('computePayrollTotals — netSalary is never negative (2026-09-30 fix)'
 
   it('negativeClampAmount is exactly 0 whenever the raw calculation is already >= 0 (not merely "close to 0")', () => {
     const exactZero = computePayrollTotals(
-      baseInput({ taxSsBaseSalary: 0, payoutBaseSalary: 5_000, absentDeduction: 5_000, socialSecurityEnabled: false }),
+      baseInput({ baseSalary: 5_000, absentDeduction: 5_000, socialSecurityEnabled: false }),
     )
     expect(exactZero.netSalary).toBe(0)
     expect(exactZero.negativeClampAmount).toBe(0) // landed exactly on 0, not below it — nothing was clamped

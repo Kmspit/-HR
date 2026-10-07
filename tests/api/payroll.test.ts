@@ -33,6 +33,10 @@ vi.mock('@/lib/ensure-payroll-payslip-columns', () => ({
   ensurePayrollPayslipColumns: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('@/lib/ensure-payroll-formulas-round1', () => ({
+  ensurePayrollFormulasRound1: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/lib/ensure-payroll-fields-batch-2', () => ({
   ensurePayrollFieldsBatch2: vi.fn().mockResolvedValue(undefined),
 }))

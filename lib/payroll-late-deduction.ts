@@ -3,6 +3,7 @@ import {
   getHolidayForDate,
   toDateKey,
 } from '@/lib/company-holidays'
+import { addDaysToKey } from '@/lib/payroll-period'
 
 /** Grace period ถูกหักแล้ว ณ เวลาเช็คอิน (lateMinutes ในฐานข้อมูลคือนาทีจาก effective deadline แล้ว) */
 export const PAYROLL_LATE_GRACE_MINUTES = 0
@@ -57,10 +58,12 @@ export function buildApprovedLeaveDateSet(
     if (!APPROVED_LEAVE_STATUSES.includes(leave.status as (typeof APPROVED_LEAVE_STATUSES)[number])) {
       continue
     }
-    const start = new Date(Math.max(leave.startDate.getTime(), rangeStart.getTime()))
-    const end = new Date(Math.min(leave.endDate.getTime(), rangeEnd.getTime()))
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      set.add(toDateKey(d))
+    // ไล่ด้วย date key ตามปฏิทินไทย (2026-10) — เดิมใช้ d.setDate(d.getDate() + 1)
+    // ซึ่งขึ้นกับ TZ ของ server
+    const startKey = [toDateKey(leave.startDate), toDateKey(rangeStart)].sort()[1]
+    const endKey = [toDateKey(leave.endDate), toDateKey(rangeEnd)].sort()[0]
+    for (let key = startKey; key <= endKey; key = addDaysToKey(key, 1)) {
+      set.add(key)
     }
   }
   return set
@@ -71,19 +74,24 @@ export function isLateAttendance(att: { lateMinutes: number; status: string }): 
 }
 
 /**
- * หักมาสาย: เงินเดือน ÷ 30 ÷ 8 ÷ 60 × นาทีที่มาสาย
+ * หักมาสาย: ค่าแรงต่อนาที × นาทีที่มาสาย (รายเดือน = เงินเดือนเต็ม ÷ 30 ÷ 8 ÷ 60)
+ * ปัด 2 ตำแหน่งทีละวัน แล้วรวมทั้งเดือน
  * lateMinutes ที่บันทึกในฐานข้อมูลคือนาทีจาก effective deadline (หลัง grace period แล้ว)
  * ไม่หักวันลาอนุมัติ / วันหยุด
+ *
+ * ratePerMinute (2026-10): ส่งมาตรงๆ ได้ — พนักงานรายวันใช้ ค่าแรงรายวัน ÷ 8 ÷ 60
+ * (ดู lib/payroll-deductions.ts) ไม่ส่ง = คิดจาก baseSalary แบบรายเดือนเหมือนเดิม
  */
 export function computeLateDeduction(params: {
   baseSalary: number
+  ratePerMinute?: number
   attendances: { date: Date; lateMinutes: number; status: string }[]
   leaveDateKeys: Set<string>
   holidays: HolidayRecord[]
   branchId: string | null
 }): LateDeductionResult {
   const { baseSalary, attendances, leaveDateKeys, holidays, branchId } = params
-  const rate = lateRatePerMinute(baseSalary)
+  const rate = params.ratePerMinute ?? lateRatePerMinute(baseSalary)
   const lines: LateDeductionLine[] = []
 
   let billableLateMinutes = 0

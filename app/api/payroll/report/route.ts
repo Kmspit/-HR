@@ -6,6 +6,7 @@ import { createAuditLog } from '@/lib/notifications'
 import { canApprovePayroll } from '@/lib/access-control'
 import { canAccessPageForUser } from '@/lib/page-access-server'
 import { ensurePayrollPayslipColumns } from '@/lib/ensure-payroll-payslip-columns'
+import { ensurePayrollFormulasRound1 } from '@/lib/ensure-payroll-formulas-round1'
 import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { isCloudinaryConfigured } from '@/lib/cloudinary-service'
 import { payrollEligibleUserWhere } from '@/lib/payroll-employee-scope'
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
   const nestedUser = branchNestedUserWhere(scope)
 
   await ensurePayrollPayslipColumns()
+  // users.lastWorkingDate อยู่ใน where ของ payrollEligibleUserWhere (2026-10)
+  await ensurePayrollFormulasRound1()
   await ensurePayrollFieldsBatch2()
 
   const role = session.user.role

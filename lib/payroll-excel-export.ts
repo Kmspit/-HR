@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs'
 import { parseTaxDetail } from '@/lib/payroll-tax'
-import { payrollPeriodRange } from '@/lib/payroll-period'
+import { dateKeyParts, payrollPeriodKeys } from '@/lib/payroll-period'
 
 export type PayrollExportRow = {
   employeeId: string | null
@@ -106,9 +106,12 @@ const MONTH_TH_SHORT = [
  *  กันสับสน — ใช้ปี ค.ศ. ตรงๆ ไม่ใส่ +543 ให้สอดคล้องกับ meta.year ข้างบน
  *  ที่ไฟล์นี้แสดงเป็น ค.ศ. อยู่แล้ว (ไม่เหมือนสลิป/PayrollClient ที่ใช้ พ.ศ.) */
 function formatPayrollPeriodCaption(month: number, year: number): string {
-  const { start, end } = payrollPeriodRange(month, year)
-  const startLabel = `${start.getDate()} ${MONTH_TH_SHORT[start.getMonth() + 1]}`
-  const endLabel = `${end.getDate()} ${MONTH_TH_SHORT[end.getMonth() + 1]} ${end.getFullYear()}`
+  // อ่านจาก date key ตรงๆ ไม่ใช่ getDate() — ดูหมายเหตุ timezone ใน lib/payroll-period.ts
+  const { startKey, endKey } = payrollPeriodKeys(month, year)
+  const start = dateKeyParts(startKey)
+  const end = dateKeyParts(endKey)
+  const startLabel = `${start.day} ${MONTH_TH_SHORT[start.month]}`
+  const endLabel = `${end.day} ${MONTH_TH_SHORT[end.month]} ${end.year}`
   return `(นับเวลาทำงาน ${startLabel} - ${endLabel})`
 }
 

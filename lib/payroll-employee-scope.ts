@@ -26,13 +26,26 @@ export const PAYROLL_ROLES = ['EMPLOYEE', 'MANAGER_HR', 'LAWYER'] as const
  * (generate/route.ts) doesn't have to invoke it a second time — see
  * `payrollEligibleUserWhere` below for the month/year convenience wrapper
  * used by callers that haven't computed the range yet.
+ *
+ * 2026-10 (fix/payroll-formulas-round1): ใช้ lastWorkingDate (วันทำงานวัน
+ * สุดท้ายที่ HR กรอก) ตัดสินว่าคนลาออกอยู่ในรอบไหนแทน updatedAt และไม่รวมคนที่
+ * วันเริ่มงานอยู่หลังรอบนี้ (startDate > end) — updatedAt เหลือไว้เป็น fallback
+ * เฉพาะคนที่ DISABLED แล้วแต่ยังไม่ได้กรอก lastWorkingDate (generate ขึ้นคำเตือน
+ * แดงให้ HR กรอกก่อนอนุมัติ) ไม่งั้นคนกลุ่มนี้จะหายไปเลยหรือโผล่ทุกรอบตลอดไป
  */
 export function payrollEligibleUserWhereForRange(start: Date, end: Date): Prisma.UserWhereInput {
   return {
     role: { in: [...PAYROLL_ROLES] },
-    OR: [
-      { status: 'ACTIVE' },
-      { status: 'DISABLED', updatedAt: { gte: start, lte: end } },
+    status: { in: ['ACTIVE', 'DISABLED'] },
+    AND: [
+      { OR: [{ startDate: null }, { startDate: { lte: end } }] },
+      {
+        OR: [
+          { lastWorkingDate: { gte: start } },
+          { lastWorkingDate: null, status: 'ACTIVE' },
+          { lastWorkingDate: null, status: 'DISABLED', updatedAt: { gte: start, lte: end } },
+        ],
+      },
     ],
   }
 }

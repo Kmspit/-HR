@@ -45,6 +45,8 @@ export type UnrecordedAbsenceParams = {
    *  means unknown/legacy data; treated as "no lower bound" (same default
    *  the existing proration logic in buildMonthlyPayload already uses). */
   employeeStartDate: Date | null
+  /** วันทำงานวันสุดท้าย (2026-10) — ไม่นับวันหลังจากนี้เป็นขาดงาน */
+  employeeLastWorkingDate?: Date | null
 }
 
 /** Last day-of-month (1-indexed month) via UTC arithmetic — timezone-safe,
@@ -105,7 +107,7 @@ function isWorkingDay(
 export function countUnrecordedAbsenceDays(params: UnrecordedAbsenceParams): number {
   const {
     periodStart, periodEnd, today,
-    attendanceDateKeys, leaveDateKeys, holidays, branchId, employeeStartDate,
+    attendanceDateKeys, leaveDateKeys, holidays, branchId, employeeStartDate, employeeLastWorkingDate,
   } = params
 
   const hasSaturdayConfig = holidays.some((h) => h.holidayType === 'SATURDAY')
@@ -121,7 +123,8 @@ export function countUnrecordedAbsenceDays(params: UnrecordedAbsenceParams): num
   const periodStartKey = bangkokDateKey(periodStart)
   const periodEndKey = bangkokDateKey(periodEnd)
   const yesterdayKey = bangkokDateKey(new Date(today.getTime() - 86_400_000))
-  const upperBoundKey = periodEndKey < yesterdayKey ? periodEndKey : yesterdayKey
+  const lastWorkingKey = employeeLastWorkingDate ? bangkokDateKey(employeeLastWorkingDate) : null
+  const upperBoundKey = [periodEndKey, yesterdayKey, ...(lastWorkingKey ? [lastWorkingKey] : [])].sort()[0]
   const employeeStartKey = employeeStartDate ? bangkokDateKey(employeeStartDate) : null
   const lowerBoundKey = employeeStartKey && employeeStartKey > periodStartKey ? employeeStartKey : periodStartKey
 

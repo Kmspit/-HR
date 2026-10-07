@@ -527,7 +527,14 @@ model User {
   /// เดียวกับ payType (MANAGER เห็นได้) แต่แก้ได้เฉพาะ HR_ADMIN เหมือน
   /// baseSalary/dailyRate/studentLoanDeduction
   taxScheme                 TaxScheme  @default(NORMAL)
+  /// ภาษี ภงด.1 ที่หักต่อเดือน (บาท) ที่ HR กำหนดเองรายคนตามที่พนักงานแจ้ง
+  /// (2026-10) — null = ใช้ยอดตามสูตร มีผลเฉพาะ taxScheme NORMAL แก้ได้เฉพาะ
+  /// HR_ADMIN และห้ามแก้ของตัวเอง เหมือน baseSalary
+  monthlyTaxOverride        Float?
   startDate                 DateTime?
+  /// วันทำงานวันสุดท้าย (2026-10) — HR กรอกตอนพนักงานลาออก ใช้ prorate และ
+  /// ตัดสินว่าอยู่ในรอบเงินเดือนไหน (แทน updatedAt) ห้ามแก้ของตัวเอง
+  lastWorkingDate           DateTime?
   socialSecurity            Boolean    @default(true)
   lineId                    String?
   lineUserId                String?    @unique

@@ -157,11 +157,15 @@ export default function SettingsClient({ settings }: { settings: Settings | null
       {/* Payroll Deduction */}
       <section className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
         <h2 className="font-semibold text-slate-900 dark:text-white">การหักเงิน</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="หักสาย (บาท/นาที)" value={form.lateDeductRate} onChange={(v: number) => set('lateDeductRate', v)} type="number" placeholder="0 = ไม่หัก" />
-          <Input label="หักขาดงาน (บาท/วัน เพิ่มเติม)" value={form.absentDeductRate} onChange={(v: number) => set('absentDeductRate', v)} type="number" placeholder="0 = คิดตามฐาน" />
-        </div>
-        <p className="text-xs text-slate-400 dark:text-white/30">* ขาดงานจะหักตามอัตราเงินเดือนรายวันเสมอ ค่านี้เป็นเพิ่มเติม</p>
+        {/* "หักสาย (บาท/นาที)" (lateDeductRate) และ "หักขาดงาน (บาท/วัน เพิ่มเติม)"
+            (absentDeductRate) ถูกซ่อน (2026-10, fix/payroll-formulas-round1) —
+            payroll ไม่เคยอ่าน lateDeductRate และเลิกใช้ absentDeductRate แล้ว
+            สูตรหักเป็นค่าคงที่ใน lib/payroll-deductions.ts — field ใน DB ยังอยู่
+            (ค่าเดิมยังถูกส่งกลับตอนบันทึกเหมือนเดิม ไม่ถูกล้าง) */}
+        <p className="text-xs text-slate-400 dark:text-white/30">
+          * ระบบคำนวณการหักอัตโนมัติ: ค่าแรงต่อวัน = เงินเดือน ÷ 30 (รายวันใช้ค่าแรงรายวัน) —
+          ขาดงาน/ลาไม่รับเงินหักวันละค่าแรงต่อวัน, มาสาย/กลับก่อนหักค่าแรงต่อนาที (÷ 8 ÷ 60) × นาทีจริง
+        </p>
       </section>
 
       {/* Cloudinary retention */}

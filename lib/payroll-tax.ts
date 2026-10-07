@@ -18,6 +18,10 @@ export type TaxDetail = {
   commissionIncome40_2?: number
   tax40_1?: number
   tax40_2?: number
+  /** (2026-10) ยอดตามสูตรเสมอ — monthlyWithholding คือยอดที่หักจริง ซึ่งเป็น
+   * ยอดที่ HR กำหนดเองรายคน (monthlyTaxOverride) ถ้ามี */
+  formulaMonthlyWithholding?: number
+  monthlyTaxOverride?: number | null
 }
 
 // Progressive brackets: 0 → limit at given rate

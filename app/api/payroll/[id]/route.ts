@@ -9,7 +9,7 @@ import { ensurePayrollFieldsBatch2 } from '@/lib/ensure-payroll-fields-batch-2'
 import { ensurePayrollFieldsBatch3 } from '@/lib/ensure-payroll-fields-batch-3'
 import { createAuditLog } from '@/lib/notifications'
 import { softDelete } from '@/lib/soft-delete'
-import { computePayrollTotals } from '@/lib/payroll-totals'
+import { computePayrollTotals, monthlyTaxOverrideFromTaxDetail } from '@/lib/payroll-totals'
 
 function requestIp(req: NextRequest): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
@@ -149,18 +149,14 @@ export async function PATCH(
       const newBonus = editingBonus ? body.bonus! : payroll.bonus
 
       // Server คำนวณ SS/ภาษี/netSalary ใหม่เองเสมอ — ไม่เชื่อค่าที่ client ส่งมา
-      // เลย ใช้ payroll.baseSalary ที่ snapshot ไว้ตอน generate ทั้งเป็นฐาน SS/
-      // ภาษีและฐาน payout (สมมติฐาน: กรณีพนักงานเข้างานกลางเดือน generate ใช้
-      // baseSalary เต็มจำนวนคำนวณ SS/ภาษีแต่ payout เป็นค่า prorate — PATCH นี้
-      // ไม่ทราบค่าดิบก่อน prorate จึงใช้ค่า snapshot เดียวกันทั้งคู่ คลาดเคลื่อน
-      // ได้เฉพาะกรณี "เข้างานกลางเดือนนี้ + แก้ backPay/commission เดือนเดียวกัน"
-      // ซึ่งจะถูกต้องอีกครั้งทันทีที่ generate/regenerate รอบถัดไป) taxScheme
-      // ใช้ค่าที่ snapshot ไว้ตอน generate เดือนนี้เสมอ ไม่อ่าน User.taxScheme
-      // ปัจจุบันซ้ำ — กัน edge case ที่ HR แก้ taxScheme ของ user หลัง generate
-      // ไปแล้วแต่ก่อน approve เดือนนี้
+      // เลย ใช้ payroll.baseSalary (ยอดที่จ่ายจริงหลัง prorate) ที่ snapshot ไว้
+      // ตอน generate เป็นฐานเดียวของ SS/ภาษี/net — ตรงกับ generate ทุกกรณี
+      // (2026-10: generate เลิกใช้เงินเดือนเต็มเป็นฐาน SS/ภาษีแล้ว) taxScheme และ
+      // ยอดภาษีกำหนดเอง (monthlyTaxOverride ใน taxDetail) ใช้ค่าที่ snapshot ไว้
+      // ตอน generate เดือนนี้เสมอ ไม่อ่าน User ปัจจุบันซ้ำ — กัน edge case ที่ HR
+      // แก้ค่าเหล่านี้ของ user หลัง generate ไปแล้วแต่ก่อน approve เดือนนี้
       const totals = computePayrollTotals({
-        taxSsBaseSalary: payroll.baseSalary,
-        payoutBaseSalary: payroll.baseSalary,
+        baseSalary: payroll.baseSalary,
         positionAllowance: payroll.positionAllowance,
         diligenceAllowance: payroll.diligenceAllowance,
         backPay: newBackPay,
@@ -177,6 +173,7 @@ export async function PATCH(
         earlyLeaveDeduction: payroll.earlyLeaveDeduction,
         taxScheme: payroll.taxScheme,
         socialSecurityEnabled: payroll.user.socialSecurity,
+        monthlyTaxOverride: monthlyTaxOverrideFromTaxDetail(payroll.taxDetail),
       })
 
       updateData.backPay = newBackPay
